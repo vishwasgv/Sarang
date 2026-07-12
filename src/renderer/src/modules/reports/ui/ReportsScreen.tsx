@@ -20,6 +20,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
+import { Badge } from '@shared/ui/atoms/Badge'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (local duplicates — avoids cross-boundary imports from main process)
@@ -63,6 +64,12 @@ interface ProfitAndLossReport {
   }
   expensesByCategory: ProfitAndLossExpenseCategory[]
 }
+
+interface CashBookEntry { date: string; description: string; type: 'IN' | 'OUT'; paymentMethod: string; amount: number; runningBalance: number }
+interface CashBookReport { dateFrom: string; dateTo: string; openingBalance: number; entries: CashBookEntry[]; totalIn: number; totalOut: number; closingBalance: number }
+
+interface TrialBalanceRow { account: string; debit: number; credit: number }
+interface TrialBalanceReport { dateFrom: string; dateTo: string; asOf: string; rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number; balanced: boolean }
 
 interface AuditReportRow { date: string; user: string; action: string; entityType: string; entityId: string; details: string | null }
 interface AuditReport { dateFrom?: string; dateTo?: string; totalRecords: number; rows: AuditReportRow[]; page: number; limit: number }
@@ -229,7 +236,7 @@ type ReportChart =
 
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
-  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'audit' | 'backup'
+  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
   | 'foodCost' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
@@ -254,6 +261,8 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'supplierLedger', icon: <Truck size={18} />, category: 'suppliers', requiresDateRange: false, requiresEntity: 'supplier', permission: 'reports.financial' },
   { id: 'expenses', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'profitAndLoss', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'cashBook', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
+  { id: 'trialBalance', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -419,6 +428,12 @@ export function ReportsScreen() {
           break
         case 'profitAndLoss':
           res = await window.api.reports.profitAndLoss({ dateFrom, dateTo })
+          break
+        case 'cashBook':
+          res = await window.api.reports.cashBook({ dateFrom, dateTo })
+          break
+        case 'trialBalance':
+          res = await window.api.reports.trialBalance({ dateFrom, dateTo })
           break
         case 'audit':
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
@@ -596,6 +611,27 @@ export function ReportsScreen() {
             ...d.expensesByCategory.map(c => [c.category, -c.amount]),
             [t('reports.summary.totalExpenses'), -d.summary.totalExpenses],
             [t('reports.summary.netProfit'), d.summary.netProfit],
+          ]
+        }
+      }
+      case 'cashBook': {
+        const d = reportData as CashBookReport
+        return {
+          headers: [t('common.date'), t('reports.col.description'), t('reports.col.method'), `${t('reports.col.in')} (${currencySymbol})`, `${t('reports.col.out')} (${currencySymbol})`, `${t('common.balance')} (${currencySymbol})`],
+          rows: [
+            [t('reports.col.openingBalance'), '', '', '', '', d.openingBalance],
+            ...d.entries.map(e => [formatDate(e.date), e.description, e.paymentMethod, e.type === 'IN' ? e.amount : '', e.type === 'OUT' ? e.amount : '', e.runningBalance]),
+            [t('reports.col.closingBalance'), '', '', d.totalIn, d.totalOut, d.closingBalance],
+          ]
+        }
+      }
+      case 'trialBalance': {
+        const d = reportData as TrialBalanceReport
+        return {
+          headers: [t('reports.col.account'), `${t('common.debit')} (${currencySymbol})`, `${t('common.credit')} (${currencySymbol})`],
+          rows: [
+            ...d.rows.map(r => [r.account, r.debit || '', r.credit || '']),
+            [t('common.total'), d.totalDebit, d.totalCredit],
           ]
         }
       }
@@ -896,6 +932,22 @@ export function ReportsScreen() {
           { label: t('reports.summary.netProfit'), value: `${fmt(d.summary.netProfit)} (${d.summary.netMarginPercent}%)` }
         ]
       }
+      case 'cashBook': {
+        const d = reportData as CashBookReport
+        return [
+          { label: t('reports.col.openingBalance'), value: fmt(d.openingBalance) },
+          { label: t('reports.col.in'), value: fmt(d.totalIn) },
+          { label: t('reports.col.out'), value: fmt(d.totalOut) },
+          { label: t('reports.col.closingBalance'), value: fmt(d.closingBalance) }
+        ]
+      }
+      case 'trialBalance': {
+        const d = reportData as TrialBalanceReport
+        return [
+          { label: t('common.debit'), value: fmt(d.totalDebit) },
+          { label: t('common.credit'), value: fmt(d.totalCredit) }
+        ]
+      }
       case 'expenses': {
         const d = reportData as ExpenseReport
         return [
@@ -1149,13 +1201,15 @@ export function ReportsScreen() {
         if (d.suppliers.totalOutstanding > 0) charts.push({ type: 'bar', orientation: 'vertical', title: t('reports.summary.supplierPayables'), data: bucketLabels.map(([k, label]) => ({ label, value: d.suppliers.agingTotals[k] })), valueIsCurrency: true })
         return charts
       }
-      // Deliberately no chart — this is a statement for one specific account,
-      // often printed to hand directly to that customer/supplier or filed for
-      // records; a formal statement doesn't traditionally carry a chart, and
-      // with typically few transactions the balance line is rarely more than
-      // 2-3 points anyway.
+      // Deliberately no chart — these are all read as a table/statement, not
+      // a trend: a specific-account statement (often printed to hand
+      // directly to that customer/supplier or filed for records), a
+      // day-by-day cash register, and a Dr/Cr account listing all read the
+      // same way regardless of period length.
       case 'customerLedger':
-      case 'supplierLedger': return []
+      case 'supplierLedger':
+      case 'cashBook':
+      case 'trialBalance': return []
       case 'profitAndLoss': {
         const d = reportData as ProfitAndLossReport
         const charts: ReportChart[] = [{
@@ -1639,6 +1693,8 @@ function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChang
     case 'supplierLedger': return <LedgerReportView data={data as CustomerLedgerReport} entityType="supplier" fmt={fmt} currencySymbol={currencySymbol} />
     case 'expenses': return <ExpenseReportView data={data as ExpenseReport} fmt={fmt} />
     case 'profitAndLoss': return <ProfitAndLossView data={data as ProfitAndLossReport} fmt={fmt} />
+    case 'cashBook': return <CashBookView data={data as CashBookReport} fmt={fmt} currencySymbol={currencySymbol} />
+    case 'trialBalance': return <TrialBalanceView data={data as TrialBalanceReport} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />
@@ -1936,6 +1992,71 @@ function ProfitAndLossView({ data, fmt }: { data: ProfitAndLossReport; fmt: (n: 
             <span className={cn('text-base font-bold', netPositive ? 'text-success' : 'text-danger')}>{fmt(s.netProfit)} <span className="text-xs font-normal">({s.netMarginPercent}%)</span></span>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function CashBookView({ data, fmt, currencySymbol }: { data: CashBookReport; fmt: (n: number) => string; currencySymbol: string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <Card padding="md" className="flex flex-wrap gap-6">
+        <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('reports.col.openingBalance')}</div><div className="text-sm font-semibold text-dark dark:text-slate-100">{fmt(data.openingBalance)}</div></div>
+        <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('reports.col.in')}</div><div className="text-sm font-semibold text-success">{fmt(data.totalIn)}</div></div>
+        <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('reports.col.out')}</div><div className="text-sm font-semibold text-danger">{fmt(data.totalOut)}</div></div>
+        <div>
+          <div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('reports.col.closingBalance')}</div>
+          <div className={cn('text-sm font-bold', data.closingBalance >= 0 ? 'text-success' : 'text-danger')}>{fmt(data.closingBalance)}</div>
+        </div>
+      </Card>
+      <DataTable
+        headers={[t('common.date'), t('reports.col.description'), t('reports.col.method'), `${t('reports.col.in')} (${currencySymbol})`, `${t('reports.col.out')} (${currencySymbol})`, `${t('common.balance')} (${currencySymbol})`]}
+        rows={data.entries.map(e => [
+          formatDate(e.date), e.description, e.paymentMethod,
+          e.type === 'IN' ? e.amount.toFixed(2) : '',
+          e.type === 'OUT' ? e.amount.toFixed(2) : '',
+          e.runningBalance.toFixed(2)
+        ])}
+        emptyText={t('reports.empty.ledgerEntries')}
+      />
+    </div>
+  )
+}
+
+function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <Card padding="md" className="flex flex-wrap items-center gap-6">
+        <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('common.debit')}</div><div className="text-sm font-semibold text-dark dark:text-slate-100">{fmt(data.totalDebit)}</div></div>
+        <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('common.credit')}</div><div className="text-sm font-semibold text-dark dark:text-slate-100">{fmt(data.totalCredit)}</div></div>
+        <Badge variant={data.balanced ? 'success' : 'danger'}>{data.balanced ? t('reports.summary.balanced') : t('reports.summary.notBalanced')}</Badge>
+      </Card>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 font-semibold uppercase">
+              <th className="text-left px-5 py-3">{t('reports.col.account')}</th>
+              <th className="text-right px-5 py-3">{t('common.debit')}</th>
+              <th className="text-right px-5 py-3">{t('common.credit')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {data.rows.map((r) => (
+              <tr key={r.account}>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{r.account}</td>
+                <td className="px-5 py-3 text-right text-dark dark:text-slate-100">{r.debit > 0 ? fmt(r.debit) : ''}</td>
+                <td className="px-5 py-3 text-right text-dark dark:text-slate-100">{r.credit > 0 ? fmt(r.credit) : ''}</td>
+              </tr>
+            ))}
+            <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold">
+              <td className="px-5 py-4 text-dark dark:text-slate-100">{t('common.total')}</td>
+              <td className="px-5 py-4 text-right text-dark dark:text-slate-100">{fmt(data.totalDebit)}</td>
+              <td className="px-5 py-4 text-right text-dark dark:text-slate-100">{fmt(data.totalCredit)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   )

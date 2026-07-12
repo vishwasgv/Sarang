@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "Rapport des Fiches de Travail",
         "description": "Chaque travail de réparation/service par statut, coût estimé vs réel — pour les ateliers de réparation"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "Valeur Totale du Contrat",
       "totalJobs": "Total des Travaux",
       "pendingJobs": "En Attente",
-      "totalActualCost": "Coût Réel Total"
+      "totalActualCost": "Coût Réel Total",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "Actuel",
@@ -1089,7 +1099,11 @@
       "jobNumber": "Travail #",
       "estimatedCost": "Coût Estimé",
       "actualCost": "Coût Réel",
-      "receivedDate": "Date de Réception"
+      "receivedDate": "Date de Réception",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "Client de Passage",

@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "જોબ કાર્ડ અહેવાલ",
         "description": "સ્થિતિ, અંદાજિત વિરુદ્ધ વાસ્તવિક ખર્ચ મુજબ દરેક રિપેર/સેવા કાર્ય — રિપેર શોપ્સ માટે"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "કુલ કરાર મૂલ્ય",
       "totalJobs": "કુલ કાર્યો",
       "pendingJobs": "બાકી",
-      "totalActualCost": "કુલ વાસ્તવિક ખર્ચ"
+      "totalActualCost": "કુલ વાસ્તવિક ખર્ચ",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "વર્તમાન",
@@ -1089,7 +1099,11 @@
       "jobNumber": "જોબ #",
       "estimatedCost": "અંદાજિત ખર્ચ",
       "actualCost": "વાસ્તવિક ખર્ચ",
-      "receivedDate": "પ્રાપ્તિ તારીખ"
+      "receivedDate": "પ્રાપ્તિ તારીખ",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "વોક-ઇન",

@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "تقرير بطاقات العمل",
         "description": "كل عملية إصلاح/خدمة حسب الحالة، التكلفة التقديرية مقابل الفعلية — لمحلات الإصلاح"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "إجمالي قيمة العقد",
       "totalJobs": "إجمالي الأعمال",
       "pendingJobs": "قيد الانتظار",
-      "totalActualCost": "إجمالي التكلفة الفعلية"
+      "totalActualCost": "إجمالي التكلفة الفعلية",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "حالي",
@@ -1089,7 +1099,11 @@
       "jobNumber": "رقم العمل",
       "estimatedCost": "التكلفة التقديرية",
       "actualCost": "التكلفة الفعلية",
-      "receivedDate": "تاريخ الاستلام"
+      "receivedDate": "تاريخ الاستلام",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "عميل عابر",

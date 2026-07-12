@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "जॉब कार्ड रिपोर्ट",
         "description": "स्थिति, अनुमानित बनाम वास्तविक लागत के अनुसार प्रत्येक मरम्मत/सेवा कार्य — रिपेयर शॉप्स के लिए"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "कुल अनुबंध मूल्य",
       "totalJobs": "कुल कार्य",
       "pendingJobs": "लंबित",
-      "totalActualCost": "कुल वास्तविक लागत"
+      "totalActualCost": "कुल वास्तविक लागत",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "वर्तमान",
@@ -1089,7 +1099,11 @@
       "jobNumber": "जॉब #",
       "estimatedCost": "अनुमानित लागत",
       "actualCost": "वास्तविक लागत",
-      "receivedDate": "प्राप्ति तिथि"
+      "receivedDate": "प्राप्ति तिथि",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "वॉक-इन",

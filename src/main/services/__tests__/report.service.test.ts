@@ -1408,6 +1408,64 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(result.totalDebit).toBe(0)
     expect(result.totalCredit).toBe(0)
   })
+
+  it('puts a negative Cash & Bank balance on the credit side (never a negative number in either column), and still balances', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      expense: { findMany: vi.fn().mockResolvedValue([{ amount: 5000, category: { categoryName: 'Salary' } }]) },
+      payment: { findMany: vi.fn().mockResolvedValue([
+        { paymentDate: new Date('2026-01-05'), amount: 1000, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } },
+      ]) }, // 1000 in, 5000 out -> cash = -4000
+      customer: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const cashRow = result.rows.find(r => r.account === 'Cash & Bank')!
+    expect(cashRow.debit).toBe(0)
+    expect(cashRow.credit).toBe(4000) // -(-4000), shown positive on the correct side
+    for (const row of result.rows) {
+      expect(row.debit).toBeGreaterThanOrEqual(0)
+      expect(row.credit).toBeGreaterThanOrEqual(0)
+    }
+    expect(result.balanced).toBe(true)
+    expect(result.totalDebit).toBe(result.totalCredit)
+  })
+
+  it('puts negative COGS and negative net Revenue on the correct side when RETURN invoices outweigh SALEs in the period, and the Total row matches what is actually visible', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([
+        // A single big RETURN with no offsetting SALE: revenue goes negative,
+        // and so does COGS (goods came back into stock) — the same sign case
+        // generateProfitAndLossReport's own RETURN correction handles.
+        { totalAmount: -1180, invoiceType: 'RETURN', taxAmount: -180, items: [{ quantity: 1, product: { costPrice: 100 } }] },
+      ]) },
+      expense: { findMany: vi.fn().mockResolvedValue([]) },
+      payment: { findMany: vi.fn().mockResolvedValue([]) },
+      customer: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    // No row anywhere shows a negative number in either column — this is
+    // the exact bug a live-app check caught: a negative row's total was
+    // silently correct while the row itself vanished from both columns.
+    for (const row of result.rows) {
+      expect(row.debit).toBeGreaterThanOrEqual(0)
+      expect(row.credit).toBeGreaterThanOrEqual(0)
+    }
+    // The Total row must equal the sum of what's actually visible in each
+    // column — not just "some number that happens to balance."
+    const sumDebit = result.rows.reduce((s, r) => s + r.debit, 0)
+    const sumCredit = result.rows.reduce((s, r) => s + r.credit, 0)
+    expect(Math.round(sumDebit * 100) / 100).toBe(result.totalDebit)
+    expect(Math.round(sumCredit * 100) / 100).toBe(result.totalCredit)
+    expect(result.balanced).toBe(true)
+  })
 })
 
 // ─── Jewellery Report (fresh-audit fix, 2026-07-12) ────────────────────────────

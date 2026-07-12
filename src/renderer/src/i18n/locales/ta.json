@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "ஜாப் கார்டு அறிக்கை",
         "description": "நிலை, மதிப்பிடப்பட்ட மற்றும் உண்மையான செலவின் அடிப்படையில் ஒவ்வொரு பழுதுபார்ப்பு/சேவை பணி — பழுதுபார்ப்பு கடைகளுக்கு"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "மொத்த ஒப்பந்த மதிப்பு",
       "totalJobs": "மொத்த பணிகள்",
       "pendingJobs": "நிலுவையில்",
-      "totalActualCost": "மொத்த உண்மையான செலவு"
+      "totalActualCost": "மொத்த உண்மையான செலவு",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "தற்போதைய",
@@ -1089,7 +1099,11 @@
       "jobNumber": "பணி #",
       "estimatedCost": "மதிப்பிடப்பட்ட செலவு",
       "actualCost": "உண்மையான செலவு",
-      "receivedDate": "பெறப்பட்ட தேதி"
+      "receivedDate": "பெறப்பட்ட தேதி",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "வாக்-இன்",

@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "ಜಾಬ್ ಕಾರ್ಡ್ ವರದಿ",
         "description": "ಸ್ಥಿತಿ, ಅಂದಾಜು ವಿರುದ್ಧ ನಿಜವಾದ ವೆಚ್ಚದ ಪ್ರಕಾರ ಪ್ರತಿ ದುರಸ್ತಿ/ಸೇವಾ ಕೆಲಸ — ದುರಸ್ತಿ ಅಂಗಡಿಗಳಿಗಾಗಿ"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "ಒಟ್ಟು ಒಪ್ಪಂದ ಮೌಲ್ಯ",
       "totalJobs": "ಒಟ್ಟು ಕೆಲಸಗಳು",
       "pendingJobs": "ಬಾಕಿ ಇದೆ",
-      "totalActualCost": "ಒಟ್ಟು ನಿಜವಾದ ವೆಚ್ಚ"
+      "totalActualCost": "ಒಟ್ಟು ನಿಜವಾದ ವೆಚ್ಚ",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "ಪ್ರಸ್ತುತ",
@@ -1089,7 +1099,11 @@
       "jobNumber": "ಕೆಲಸ #",
       "estimatedCost": "ಅಂದಾಜು ವೆಚ್ಚ",
       "actualCost": "ನಿಜವಾದ ವೆಚ್ಚ",
-      "receivedDate": "ಸ್ವೀಕರಿಸಿದ ದಿನಾಂಕ"
+      "receivedDate": "ಸ್ವೀಕರಿಸಿದ ದಿನಾಂಕ",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "ವಾಕ್-ಇನ್",

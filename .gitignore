@@ -18,3 +18,4 @@ release/
 /1/
 /2/
 *.sarang-backup
+*.tsbuildinfo

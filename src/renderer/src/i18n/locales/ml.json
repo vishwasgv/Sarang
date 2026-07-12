@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "ജോബ് കാർഡ് റിപ്പോർട്ട്",
         "description": "സ്ഥിതി, കണക്കാക്കിയതും യഥാർത്ഥവുമായ ചെലവ് അനുസരിച്ച് ഓരോ അറ്റകുറ്റപ്പണി/സേവന ജോലിയും — റിപ്പയർ ഷോപ്പുകൾക്കായി"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "ആകെ കരാർ മൂല്യം",
       "totalJobs": "ആകെ ജോലികൾ",
       "pendingJobs": "തീർപ്പുകൽപ്പിക്കാത്തത്",
-      "totalActualCost": "ആകെ യഥാർത്ഥ ചെലവ്"
+      "totalActualCost": "ആകെ യഥാർത്ഥ ചെലവ്",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "നിലവിലുള്ളത്",
@@ -1089,7 +1099,11 @@
       "jobNumber": "ജോലി #",
       "estimatedCost": "കണക്കാക്കിയ ചെലവ്",
       "actualCost": "യഥാർത്ഥ ചെലവ്",
-      "receivedDate": "ലഭിച്ച തീയതി"
+      "receivedDate": "ലഭിച്ച തീയതി",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "വോക്ക്-ഇൻ",

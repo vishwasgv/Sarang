@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "Laporan Kartu Kerja",
         "description": "Setiap pekerjaan perbaikan/layanan berdasarkan status, biaya estimasi vs aktual — untuk Bengkel Perbaikan"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "Total Nilai Kontrak",
       "totalJobs": "Total Pekerjaan",
       "pendingJobs": "Tertunda",
-      "totalActualCost": "Total Biaya Aktual"
+      "totalActualCost": "Total Biaya Aktual",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "Terkini",
@@ -1089,7 +1099,11 @@
       "jobNumber": "Pekerjaan #",
       "estimatedCost": "Biaya Estimasi",
       "actualCost": "Biaya Aktual",
-      "receivedDate": "Tanggal Diterima"
+      "receivedDate": "Tanggal Diterima",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "Pelanggan Langsung",

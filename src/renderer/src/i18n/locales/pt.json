@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "Relatório de Ordens de Serviço",
         "description": "Cada trabalho de reparo/serviço por status, custo estimado vs. real — para Oficinas de Reparo"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "Valor Total do Contrato",
       "totalJobs": "Total de Trabalhos",
       "pendingJobs": "Pendente",
-      "totalActualCost": "Custo Real Total"
+      "totalActualCost": "Custo Real Total",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "Em Dia",
@@ -1089,7 +1099,11 @@
       "jobNumber": "Trabalho #",
       "estimatedCost": "Custo Estimado",
       "actualCost": "Custo Real",
-      "receivedDate": "Data de Recebimento"
+      "receivedDate": "Data de Recebimento",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "Cliente Ocasional",

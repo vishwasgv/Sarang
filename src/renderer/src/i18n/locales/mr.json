@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "जॉब कार्ड अहवाल",
         "description": "स्थिती, अंदाजित विरुद्ध प्रत्यक्ष खर्चानुसार प्रत्येक दुरुस्ती/सेवा कार्य — दुरुस्ती दुकानांसाठी"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "एकूण करार मूल्य",
       "totalJobs": "एकूण कामे",
       "pendingJobs": "प्रलंबित",
-      "totalActualCost": "एकूण प्रत्यक्ष खर्च"
+      "totalActualCost": "एकूण प्रत्यक्ष खर्च",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "सध्याचे",
@@ -1089,7 +1099,11 @@
       "jobNumber": "जॉब #",
       "estimatedCost": "अंदाजित खर्च",
       "actualCost": "प्रत्यक्ष खर्च",
-      "receivedDate": "प्राप्ती तारीख"
+      "receivedDate": "प्राप्ती तारीख",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "वॉक-इन",

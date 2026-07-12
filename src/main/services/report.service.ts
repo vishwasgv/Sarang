@@ -866,28 +866,44 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
     sumCurrency(cashMovements.filter((m) => m.type === 'OUT').map((m) => m.amount))
   )
 
-  const debitRows: TrialBalanceRow[] = [
-    { account: 'Cash & Bank', debit: cashAndBank, credit: 0 },
-    { account: 'Accounts Receivable', debit: accountsReceivable, credit: 0 },
-    { account: 'Cost of Goods Sold', debit: pnl.summary.cogs, credit: 0 },
-    { account: 'Operating Expenses', debit: pnl.summary.totalExpenses, credit: 0 }
-  ]
-  const creditRowsExclCapital: TrialBalanceRow[] = [
-    { account: 'Accounts Payable', debit: 0, credit: accountsPayable },
-    { account: 'Sales Revenue', debit: 0, credit: revenueNet },
-    { account: 'Tax Payable (Output)', debit: 0, credit: taxCollected }
+  // Several of these figures can legitimately go negative: Cash & Bank
+  // (more paid out than ever came in), Cost of Goods Sold and Sales Revenue
+  // (a period where RETURN invoices outweigh SALE invoices — the same sign
+  // case generateProfitAndLossReport's own RETURN-invoice correction
+  // handles). A negative "debit" account is, by definition, actually a
+  // credit balance for that period — put each figure on whichever side its
+  // sign actually belongs on, rather than either showing a negative number
+  // in a column (not how a real trial balance reads) or letting it silently
+  // disappear from both columns while still being netted into the totals.
+  function signedRow(account: string, naturalSide: 'debit' | 'credit', amount: number): TrialBalanceRow {
+    const magnitude = Math.abs(amount)
+    const side = amount >= 0 ? naturalSide : (naturalSide === 'debit' ? 'credit' : 'debit')
+    return side === 'debit' ? { account, debit: magnitude, credit: 0 } : { account, debit: 0, credit: magnitude }
+  }
+
+  const rowsExclCapital: TrialBalanceRow[] = [
+    signedRow('Cash & Bank', 'debit', cashAndBank),
+    signedRow('Accounts Receivable', 'debit', accountsReceivable),
+    signedRow('Cost of Goods Sold', 'debit', pnl.summary.cogs),
+    signedRow('Operating Expenses', 'debit', pnl.summary.totalExpenses),
+    signedRow('Accounts Payable', 'credit', accountsPayable),
+    signedRow('Sales Revenue', 'credit', revenueNet),
+    signedRow('Tax Payable (Output)', 'credit', taxCollected)
   ]
 
-  const totalDebit = roundCurrency(sumCurrency(debitRows.map((r) => r.debit)))
-  const totalCreditExclCapital = roundCurrency(sumCurrency(creditRowsExclCapital.map((r) => r.credit)))
-  const capital = roundCurrency(totalDebit - totalCreditExclCapital)
+  const totalDebitExclCapital = roundCurrency(sumCurrency(rowsExclCapital.map((r) => r.debit)))
+  const totalCreditExclCapital = roundCurrency(sumCurrency(rowsExclCapital.map((r) => r.credit)))
+  const capital = roundCurrency(totalDebitExclCapital - totalCreditExclCapital)
+  // The balancing plug can land on either side too (liabilities+income
+  // outweighing assets+expenses is a legitimate negative-equity position,
+  // not just a rounding artifact) — same non-negative-per-column treatment.
+  const capitalRow: TrialBalanceRow = capital >= 0
+    ? { account: 'Capital & Retained Earnings (balancing)', debit: 0, credit: capital }
+    : { account: 'Capital & Retained Earnings (balancing)', debit: -capital, credit: 0 }
 
-  const rows: TrialBalanceRow[] = [
-    ...debitRows,
-    ...creditRowsExclCapital,
-    { account: 'Capital & Retained Earnings (balancing)', debit: 0, credit: capital }
-  ]
-  const totalCredit = roundCurrency(totalCreditExclCapital + capital)
+  const rows: TrialBalanceRow[] = [...rowsExclCapital, capitalRow]
+  const totalDebit = roundCurrency(totalDebitExclCapital + capitalRow.debit)
+  const totalCredit = roundCurrency(totalCreditExclCapital + capitalRow.credit)
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, asOf: params.dateTo,

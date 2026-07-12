@@ -728,6 +728,14 @@
       "jobCards": {
         "label": "జాబ్ కార్డ్ నివేదిక",
         "description": "స్థితి, అంచనా వర్సెస్ వాస్తవ ఖర్చు ప్రకారం ప్రతి మరమ్మత్తు/సేవా పని — రిపేర్ షాప్‌ల కోసం"
+      },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
       }
     },
     "summary": {
@@ -836,7 +844,9 @@
       "totalContractValue": "మొత్తం ఒప్పంద విలువ",
       "totalJobs": "మొత్తం పనులు",
       "pendingJobs": "పెండింగ్‌లో ఉంది",
-      "totalActualCost": "మొత్తం వాస్తవ ఖర్చు"
+      "totalActualCost": "మొత్తం వాస్తవ ఖర్చు",
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced"
     },
     "aging": {
       "current": "ప్రస్తుత",
@@ -1089,7 +1099,11 @@
       "jobNumber": "పని #",
       "estimatedCost": "అంచనా ఖర్చు",
       "actualCost": "వాస్తవ ఖర్చు",
-      "receivedDate": "స్వీకరించిన తేదీ"
+      "receivedDate": "స్వీకరించిన తేదీ",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out"
     },
     "val": {
       "walkIn": "వాక్-ఇన్",

@@ -625,6 +625,14 @@
         "label": "Profit & Loss Statement",
         "description": "Revenue, cost of goods sold, gross profit, expenses by category, and net profit — ready to hand to an accountant"
       },
+      "cashBook": {
+        "label": "Cash Book",
+        "description": "A day-by-day register of every payment received and every expense or supplier payment made, with a running balance"
+      },
+      "trialBalance": {
+        "label": "Trial Balance",
+        "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
+      },
       "audit": {
         "label": "Audit Log Report",
         "description": "Full system action history for compliance and review"
@@ -731,6 +739,8 @@
       }
     },
     "summary": {
+      "balanced": "Balanced",
+      "notBalanced": "Not Balanced",
       "totalRevenue": "Total Revenue",
       "totalInvoices": "Total Invoices",
       "totalTaxAmount": "Total Tax",
@@ -943,6 +953,10 @@
       "customer": "Customer",
       "items": "Items",
       "method": "Method",
+      "description": "Description",
+      "account": "Account",
+      "in": "In",
+      "out": "Out",
       "sku": "SKU",
       "product": "Product",
       "category": "Category",
