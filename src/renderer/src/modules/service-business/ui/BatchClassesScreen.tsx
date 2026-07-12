@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Users, Calendar, X, Search, RefreshCw, Layers } from 'lucide-react'
+import { Plus, Users, Calendar, X, Search, Layers } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Card } from '@shared/ui/molecules/Card'
@@ -456,7 +456,8 @@ export function BatchClassesScreen() {
                           type="button"
                           onClick={() => {
                             const next = new Set(presentIds)
-                            isPresent ? next.delete(c.id) : next.add(c.id)
+                            if (isPresent) next.delete(c.id)
+                            else next.add(c.id)
                             setPresentIds(next)
                             setAttendanceSaved(false)
                           }}

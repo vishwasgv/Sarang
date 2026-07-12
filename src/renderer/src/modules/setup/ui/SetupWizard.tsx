@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Check, Upload, X, Sparkles } from 'lucide-react'
 import { BrandIcon, AszurexMark } from '@shared/ui/atoms/Brand'

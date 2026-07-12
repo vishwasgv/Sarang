@@ -145,7 +145,6 @@ export function AppointmentsScreen() {
       const next = new Set([...prev].filter((id) => stillSelectable.has(id)))
       return next.size === prev.size ? prev : next
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments])
 
   function toggleSelected(id: string): void {

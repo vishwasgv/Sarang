@@ -18,7 +18,6 @@ const { _electron } = require('playwright-core')
 const { DatabaseSync } = require('node:sqlite')
 const bcrypt = require('bcryptjs')
 const path = require('path')
-const fs = require('fs')
 const crypto = require('crypto')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')

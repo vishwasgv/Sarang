@@ -484,23 +484,6 @@ function UsersSection() {
   )
 }
 
-function ComingSoonSection({ title, phase }: { title: string; phase: string }) {
-  return (
-    <div className="max-w-xl space-y-4">
-      <div>
-        <h3 className="text-base font-semibold text-dark">{title}</h3>
-      </div>
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
-        <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center mx-auto mb-3">
-          <span className="text-brand font-semibold text-sm">S</span>
-        </div>
-        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Coming in {phase}</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">This section will be fully functional in {phase}.</p>
-      </div>
-    </div>
-  )
-}
-
 // ─── Tax Configuration ───────────────────────────────────────────────────────
 
 interface TaxConfig {

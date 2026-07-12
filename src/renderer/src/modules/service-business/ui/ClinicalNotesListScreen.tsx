@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Stethoscope, Search, Lock, FileText, RefreshCw } from 'lucide-react'
+import { Stethoscope, Lock, FileText, RefreshCw } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { Input } from '@shared/ui/atoms/Input'
 import { Card } from '@shared/ui/molecules/Card'

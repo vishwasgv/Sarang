@@ -172,7 +172,7 @@ async function validateZip(zipPath: string, expectedChecksum?: string): Promise<
             const chunks: Buffer[] = []
             stream.on('data', (c: Buffer) => chunks.push(c))
             stream.on('end', () => {
-              try { meta = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch {}
+              try { meta = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { /* meta stays null; caller treats a missing/corrupt meta.json as validation failure */ }
               zipfile.readEntry()
             })
           })
@@ -278,7 +278,7 @@ export async function createBackup(userId?: string): Promise<{
     try {
       const profile = await db.businessProfile.findFirst({ select: { businessName: true } })
       if (profile?.businessName) businessName = profile.businessName
-    } catch {}
+    } catch { /* keep the generic fallback name; a backup filename is cosmetic, not worth failing over */ }
 
     // 5. Checksum the db copy
     const dbChecksum = await sha256(tempDbPath)
@@ -302,16 +302,17 @@ export async function createBackup(userId?: string): Promise<{
       { path: metaPath, name: 'metadata.json' }
     ], zipPath)
 
-    // 8. Cleanup temp files
-    try { unlinkSync(tempDbPath) } catch {}
-    try { unlinkSync(metaPath) } catch {}
+    // 8. Cleanup temp files — best-effort; a leftover temp file doesn't
+    // invalidate the ZIP that was already written and checksummed below.
+    try { unlinkSync(tempDbPath) } catch { /* leftover temp file, harmless */ }
+    try { unlinkSync(metaPath) } catch { /* leftover temp file, harmless */ }
 
     // 9. Checksum the ZIP + validate (RULE BK001)
     const zipChecksum = await sha256(zipPath)
     const zipStats = await stat(zipPath)
     const validation = await validateZip(zipPath, zipChecksum)
     if (!validation.valid) {
-      try { unlinkSync(zipPath) } catch {}
+      try { unlinkSync(zipPath) } catch { /* already invalid; deletion failing doesn't change the BK-002 error returned below */ }
       return { success: false, error: { code: 'BK-002', message: `Backup validation failed: ${validation.error}` } }
     }
 
@@ -362,7 +363,7 @@ async function applyBackupRetentionPolicy(db: ReturnType<typeof getPrisma>, user
 
   const toDelete = allBackups.slice(keepCount)
   for (const b of toDelete) {
-    try { unlinkSync(b.backupPath) } catch {}
+    try { unlinkSync(b.backupPath) } catch { /* file already gone or inaccessible; still drop the DB record so retention count stays accurate */ }
     await db.backup.delete({ where: { id: b.id } })
     await logAction({ userId, action: 'BACKUP_DELETED_RETENTION', entityType: 'Backup', entityId: b.id })
   }
@@ -465,10 +466,10 @@ export async function restoreBackup(backupId: string, userId?: string): Promise<
         const rawSafetyPath = join((await getBackupDir()).dir, `PRE_RESTORE_SAFETY_${timestamp()}.db`)
         await copyFile(dbPath, rawSafetyPath)
         for (const suffix of ['-wal', '-shm']) {
-          try { if (existsSync(dbPath + suffix)) await copyFile(dbPath + suffix, rawSafetyPath + suffix) } catch {}
+          try { if (existsSync(dbPath + suffix)) await copyFile(dbPath + suffix, rawSafetyPath + suffix) } catch { /* WAL/SHM sidecars are transient SQLite state, not required for the safety copy to be useful */ }
         }
       } catch (err) {
-        try { unlinkSync(tempPath) } catch {}
+        try { unlinkSync(tempPath) } catch { /* cleanup only; BK-007 below is returned regardless */ }
         return {
           success: false,
           error: { code: 'BK-007', message: 'Could not create a safety copy of your current database before restoring. Aborting to protect your data.' }
@@ -497,7 +498,7 @@ export async function restoreBackup(backupId: string, userId?: string): Promise<
       // Remove them so the next connection can't attempt to replay stale WAL pages
       // against this unrelated, freshly-restored database file.
       for (const suffix of ['-wal', '-shm']) {
-        try { if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix) } catch {}
+        try { if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix) } catch { /* stale sidecar cleanup only; app.relaunch() below still gives a clean reconnect */ }
       }
 
       // Restart application — renderer will reconnect after relaunch
@@ -507,8 +508,8 @@ export async function restoreBackup(backupId: string, userId?: string): Promise<
       return { success: true }
     } catch (err) {
       // Attempt reconnect so the app stays functional
-      try { await initializeDatabase() } catch {}
-      try { if (existsSync(tempPath)) unlinkSync(tempPath) } catch {}
+      try { await initializeDatabase() } catch { /* BK-008 below already reports failure; nothing more to do if reconnect also fails */ }
+      try { if (existsSync(tempPath)) unlinkSync(tempPath) } catch { /* cleanup only */ }
       return {
         success: false,
         error: { code: 'BK-008', message: `Restore failed: ${err instanceof Error ? err.message : 'Unknown error'}. A safety backup was created before this attempt — restore from that backup if needed.` }
@@ -530,7 +531,7 @@ export async function deleteBackup(backupId: string, userId?: string): Promise<{
     const record = await db.backup.findUnique({ where: { id: backupId } })
     if (!record) return { success: false, error: { code: 'BK-004', message: 'Backup record not found.' } }
 
-    try { if (existsSync(record.backupPath)) unlinkSync(record.backupPath) } catch {}
+    try { if (existsSync(record.backupPath)) unlinkSync(record.backupPath) } catch { /* file already gone or inaccessible; still drop the DB record */ }
     await db.backup.delete({ where: { id: backupId } })
 
     await logAction({

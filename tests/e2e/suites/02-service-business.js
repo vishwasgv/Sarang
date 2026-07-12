@@ -48,7 +48,7 @@ async function run() {
       r.log('appointments-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
     })
 
-    let providerId, appointmentId, appointmentNumber
+    let providerId, appointmentId
 
     await r.step('create-provider-and-customer', async () => {
       const empRes = await page.evaluate(async () => window.api.hr.createEmployee({
@@ -104,7 +104,6 @@ async function run() {
       const items = listRes?.data?.items || []
       const created = items.find((a) => a.customerName === 'E2E Svc Client' || a.clientName === 'E2E Svc Client' || a.customer?.customerName === 'E2E Svc Client')
       appointmentId = created?.id
-      appointmentNumber = created?.appointmentNumber
       r.log('appointment-created-and-findable-via-api', !!appointmentId, JSON.stringify({ scheduledDate: created?.scheduledDate, scheduledTime: created?.scheduledTime }))
     })
 

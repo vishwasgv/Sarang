@@ -161,7 +161,7 @@ export async function logout(): Promise<ApiResponse> {
     try {
       const db = getPrisma()
       await db.user.update({ where: { id: currentSession.userId }, data: { sessionToken: null, tokenExpiresAt: null } })
-    } catch {}
+    } catch { /* best-effort: logout proceeds locally either way, see currentSession = null below */ }
     await logAction({ userId: currentSession.userId, action: 'USER_LOGOUT', entityType: 'User', entityId: currentSession.userId })
     currentSession = null
   }

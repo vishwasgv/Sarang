@@ -18,7 +18,6 @@ export function AboutScreen() {
   const [updateError, setUpdateError] = useState<string | null>(null)
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     api.app.getPaths().then((r: any) => {
       if (r?.success && r?.data) setPaths(r.data)
       else toastError(t('common.error'), r?.error?.message ?? 'Could not load storage paths.')

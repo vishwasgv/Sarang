@@ -90,7 +90,6 @@ export function MembershipsScreen() {
 
   // Check-in
   const [checkInSearch, setCheckInSearch] = useState('')
-  const [checkInResults, setCheckInResults] = useState<Membership[]>([])
   const [checkingIn, setCheckingIn] = useState<string | null>(null)
   const [checkInMsg, setCheckInMsg] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 

@@ -159,10 +159,6 @@ export function RecipesScreen() {
     setIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: value } : item))
   }
 
-  function setIngredientQuery(idx: number, value: string) {
-    setIngredients(prev => prev.map((item, i) => i === idx ? { ...item, query: value } : item))
-  }
-
   function setIngredientResults(idx: number, results: Product[]) {
     setIngredients(prev => prev.map((item, i) => i === idx ? { ...item, results } : item))
   }

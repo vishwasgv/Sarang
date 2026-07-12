@@ -88,7 +88,6 @@ const DEAL_STATUS_VARIANT: Record<string, BadgeVariant> = {
 
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-IN') : '-'
 const fmtLabel = (s: string) => s.replace(/_/g, ' ')
-const toDateInput = (d: string | null) => d ? new Date(d).toISOString().split('T')[0] : ''
 const fmtCurrency = (n: number | null) => n == null ? '-' : `₹${Number(n).toLocaleString('en-IN')}`
 
 function displayPrice(p: Property) {

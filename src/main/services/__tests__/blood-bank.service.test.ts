@@ -82,7 +82,7 @@ function makeMockDb() {
   const donationRecords: Record<string, any> = {}
   const productBatches: Record<string, any> = {}
   const bloodIssues: Record<string, any> = {}
-  let products: any[] = []
+  const products: any[] = []
 
   const db: Record<string, any> = {
     donor: {

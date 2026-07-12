@@ -122,7 +122,6 @@ export function DrivingSchoolScreen() {
 
   // Learners
   const [learnerSearch, setLearnerSearch] = useState('')
-  const [learners, setLearners] = useState<LearnerProfile[]>([])
   const [selectedLearner, setSelectedLearner] = useState<LearnerProfile | null>(null)
   const [learnerForm, setLearnerForm] = useState({ dlApplicationNumber: '', learnerLicenseNumber: '', learnerLicenseDate: '', permanentLicenseNumber: '', permanentLicenseDate: '', licenseClass: 'LMV', vehicleClassPreference: '' })
   const [savingLearner, setSavingLearner] = useState(false)

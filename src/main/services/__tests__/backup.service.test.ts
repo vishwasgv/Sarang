@@ -87,7 +87,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
-  try { rmSync(join(backupDir, '..'), { recursive: true, force: true }) } catch {}
+  try { rmSync(join(backupDir, '..'), { recursive: true, force: true }) } catch { /* test cleanup only */ }
 })
 
 async function importFresh() {

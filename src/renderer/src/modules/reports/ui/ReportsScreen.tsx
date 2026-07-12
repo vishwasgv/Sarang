@@ -308,7 +308,6 @@ export function ReportsScreen() {
   const [loading, setLoading] = useState(false)
   const [hasRun, setHasRun] = useState(false)
   const [currencySymbol, setCurrencySymbol] = useState('₹')
-  const [auditPage, setAuditPage] = useState(1)
   const AUDIT_PAGE_SIZE = 200
 
   // Load the configured currency symbol from the business profile
@@ -422,7 +421,6 @@ export function ReportsScreen() {
           res = await window.api.reports.profitAndLoss({ dateFrom, dateTo })
           break
         case 'audit':
-          setAuditPage(1)
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
           break
         case 'backup':
@@ -523,7 +521,6 @@ export function ReportsScreen() {
     try {
       const res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page, limit: AUDIT_PAGE_SIZE })
       if (res.success) {
-        setAuditPage(page)
         setReportData(res.data)
       } else {
         toastError(t('reports.title'), res.error?.message ?? t('reports.noData'))

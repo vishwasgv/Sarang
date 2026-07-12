@@ -195,6 +195,13 @@ describe('changePassword', () => {
 
   // Was previously the one auth path with no lockout at all — an incorrect
   // oldPassword could be retried unlimited times, unlike login's AUTH-004 cap.
+  //
+  // Both tests below do 6 real (unmocked) bcrypt.compare calls, matching
+  // production behavior — comfortably fast standalone, but the default 5s
+  // test timeout can be tight under full-suite parallel CPU contention.
+  // An explicit longer timeout costs nothing when the test is fast, and
+  // avoids flaking a correctness assertion for reasons unrelated to
+  // correctness.
   it('locks out after 5 failed attempts for the same userId (AUTH-004), matching login', async () => {
     vi.mocked(getPrisma).mockReturnValue(makeChangePasswordDb() as never)
 
@@ -205,7 +212,7 @@ describe('changePassword', () => {
 
     expect(lastResult!.success).toBe(false)
     expect((lastResult as { error: { code: string } }).error.code).toBe('AUTH-004')
-  })
+  }, 15000)
 
   it('does not lock out a different userId sharing no attempts with the failing one', async () => {
     vi.mocked(getPrisma).mockReturnValue(makeChangePasswordDb() as never)
@@ -216,5 +223,5 @@ describe('changePassword', () => {
     const result = await changePassword('user-b-unaffected', OLD_PASSWORD, 'NewLongEnoughPassword1')
 
     expect(result.success).toBe(true)
-  })
+  }, 15000)
 })

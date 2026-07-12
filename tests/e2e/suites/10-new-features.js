@@ -142,7 +142,7 @@ async function run() {
         const bodyText = await page.locator('body').innerText().catch(() => '')
         const cartText = await page.locator('div.flex-1.overflow-y-auto, main').first().innerText().catch(() => bodyText)
         console.log('DEBUG jewellery submit failed. Contains "Cart" text:', bodyText.includes('cart') || bodyText.includes('Cart'))
-        console.log('DEBUG jewellery submit failed. Toast-like keywords found:', ['Set Not', 'not set', 'required', 'Error', 'stock', 'Stock'].filter((k) => bodyText.includes(k)))
+        console.log('DEBUG jewellery submit failed. Toast-like keywords found:', ['Set Not', 'not set', 'required', 'Error', 'stock', 'Stock'].filter((k) => cartText.includes(k)))
         await h.shot(page, 'jewellery-submit-failed-debug')
       }
     })

@@ -190,7 +190,7 @@ function tokenizeCSV(content: string): string[][] {
 }
 
 function parseCSV(content: string): { headers: string[]; rows: Record<string, string>[] } {
-  const clean = content.replace(/^﻿/, '')
+  const clean = content.replace(/^\uFEFF/, '')
   const table = tokenizeCSV(clean)
   if (table.length === 0) return { headers: [], rows: [] }
   const headers = table[0]
