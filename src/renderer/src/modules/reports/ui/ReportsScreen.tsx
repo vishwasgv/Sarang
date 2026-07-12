@@ -6,7 +6,7 @@ import {
   Table, RefreshCw, Calendar, HardDrive, Utensils,
   Activity, UserCheck, Award, QrCode, PackageSearch, FlaskConical, Droplet,
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp,
-  Briefcase, Wrench
+  Briefcase, Wrench, BedDouble
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area
@@ -92,6 +92,10 @@ interface RentalStatusReport { rows: RentalStatusRow[]; summary: { totalCheckedO
 
 interface RentalRevenueRow { productName: string; bookingCount: number; totalRevenue: number; unitCount: number | null; utilizationPercent: number | null }
 interface RentalRevenueReport { dateFrom: string; dateTo: string; rows: RentalRevenueRow[]; summary: { totalRevenue: number; totalBookings: number } }
+
+interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
+interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
+interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
 
 interface GSTR3BStateRow { state: string; taxableValue: number; igstAmount: number }
 interface GSTR3BPreview {
@@ -243,6 +247,7 @@ type ReportType =
   | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'variantStock'
   | 'testScores' | 'complianceTasks'
   | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'jobCards'
+  | 'hotelOccupancy' | 'hotelGuestRegister'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -287,11 +292,13 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
   { id: 'rentalStatus', icon: <CalendarClock size={18} />, category: 'rental', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'rentalRevenue', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
+  { id: 'hotelOccupancy', icon: <BedDouble size={18} />, category: 'hotel', requiresDateRange: false, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
+  { id: 'hotelGuestRegister', icon: <Users size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'projects', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
   { id: 'jobCards', icon: <Wrench size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
 ]
 
-const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental']
+const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -461,6 +468,12 @@ export function ReportsScreen() {
           break
         case 'rentalRevenue':
           res = await window.api.reports.rentalRevenue({ dateFrom, dateTo })
+          break
+        case 'hotelOccupancy':
+          res = await window.api.hotel.occupancyReport()
+          break
+        case 'hotelGuestRegister':
+          res = await window.api.hotel.guestRegister({ dateFrom, dateTo })
           break
         case 'appointmentUtilisation':
           res = await window.api.reports.appointmentUtilisation({ dateFrom, dateTo, providerId: providerId || undefined })
@@ -715,6 +728,28 @@ export function ReportsScreen() {
         return {
           headers: [t('rental.col.item'), t('reports.col.bookingCount'), t('reports.col.value'), t('rental.utilization')],
           rows: d.rows.map(r => [r.productName, r.bookingCount, r.totalRevenue, r.utilizationPercent != null ? `${r.utilizationPercent.toFixed(0)}%` : '—'])
+        }
+      }
+      // Hotel/Lodge is a languageLock: 'en' business type (see
+      // industry-template.service.ts) — plain English headers here render
+      // identically to t()-wrapped ones would, since only English is ever
+      // selectable for this vertical. Matches HotelRoomsScreen.tsx/
+      // HotelBookingsScreen.tsx's own established choice.
+      case 'hotelOccupancy': {
+        const d = reportData as HotelOccupancyReport
+        return {
+          headers: ['Metric', 'Value'],
+          rows: [
+            ['Total Rooms', d.totalRooms], ['Occupied', d.occupied], ['Available', d.available],
+            ['Cleaning', d.cleaning], ['Maintenance / Out of Order', d.maintenance], ['Occupancy %', d.occupancyPercent],
+          ]
+        }
+      }
+      case 'hotelGuestRegister': {
+        const d = reportData as HotelGuestRegisterReport
+        return {
+          headers: ['Booking', 'Room', 'Guest Name', 'ID Type', 'ID Number', 'Nationality', 'Address', 'Check-In', 'Check-Out'],
+          rows: d.rows.map(r => [r.bookingNumber, r.roomNumber, r.guestName, r.idType, r.idNumber, r.nationality, r.address ?? '—', formatDate(r.checkInDate), formatDate(r.checkOutDate)])
         }
       }
       case 'appointmentUtilisation': {
@@ -1006,6 +1041,19 @@ export function ReportsScreen() {
           { label: t('reports.col.bookingCount'), value: String(d.summary.totalBookings) },
         ]
       }
+      case 'hotelOccupancy': {
+        const d = reportData as HotelOccupancyReport
+        return [
+          { label: 'Total Rooms', value: String(d.totalRooms) },
+          { label: 'Occupied', value: String(d.occupied) },
+          { label: 'Available', value: String(d.available) },
+          { label: 'Occupancy %', value: `${d.occupancyPercent}%` },
+        ]
+      }
+      case 'hotelGuestRegister': {
+        const d = reportData as HotelGuestRegisterReport
+        return [{ label: 'Registered Guests', value: String(d.rows.length) }]
+      }
       case 'appointmentUtilisation': {
         const d = reportData as AppointmentUtilisationReport
         return [
@@ -1257,6 +1305,22 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'bar', title: t('reports.summary.totalRevenue'), data: d.rows.slice(0, 10).map(r => ({ label: r.productName, value: r.totalRevenue })), valueIsCurrency: true }]
       }
+      case 'hotelOccupancy': {
+        const d = reportData as HotelOccupancyReport
+        return [{
+          type: 'bar', title: 'Room Status', orientation: 'horizontal',
+          data: [
+            { label: 'Occupied', value: d.occupied, color: STATUS_COLORS.brand },
+            { label: 'Available', value: d.available, color: STATUS_COLORS.success },
+            { label: 'Cleaning', value: d.cleaning, color: STATUS_COLORS.warning },
+            { label: 'Maintenance', value: d.maintenance, color: STATUS_COLORS.danger },
+          ],
+        }]
+      }
+      // Deliberately no chart — same reasoning as rentalStatus: this
+      // report's rows are individual guest ID records for a compliance
+      // register, read as a table/produced-on-demand document, not a trend.
+      case 'hotelGuestRegister': return []
       case 'appointmentUtilisation': {
         const d = reportData as AppointmentUtilisationReport
         if (d.byProvider.length === 0) return []
@@ -1704,6 +1768,8 @@ function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChang
     case 'gstr3bPreview': return <GSTR3BPreviewView data={data as GSTR3BPreview} fmt={fmt} />
     case 'rentalStatus': return <RentalStatusView data={data as RentalStatusReport} />
     case 'rentalRevenue': return <RentalRevenueView data={data as RentalRevenueReport} fmt={fmt} />
+    case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
+    case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
     case 'clientRetention': return <ClientRetentionView data={data as ClientRetentionReport} />
     case 'commission': return <CommissionReportView data={data as CommissionReport} fmt={fmt} />
@@ -2333,6 +2399,45 @@ function RentalRevenueView({ data, fmt }: { data: RentalRevenueReport; fmt: (n: 
         />
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">{t('rental.empty.revenue')}</div>
+      )}
+    </div>
+  )
+}
+
+// Hotel/Lodge is a languageLock: 'en' business type — plain English strings
+// here render identically to t()-wrapped ones would (see
+// HotelRoomsScreen.tsx's header comment for the full reasoning).
+function HotelOccupancyView({ data }: { data: HotelOccupancyReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Rooms', value: String(data.totalRooms) },
+        { label: 'Occupied', value: String(data.occupied) },
+        { label: 'Available', value: String(data.available) },
+        { label: 'Occupancy %', value: `${data.occupancyPercent}%` },
+      ]} />
+      <DataTable
+        headers={['Status', 'Room Count']}
+        rows={[
+          ['Occupied', data.occupied], ['Available', data.available],
+          ['Cleaning', data.cleaning], ['Maintenance / Out of Order', data.maintenance],
+        ]}
+      />
+    </div>
+  )
+}
+
+function HotelGuestRegisterView({ data }: { data: HotelGuestRegisterReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[{ label: 'Registered Guests', value: String(data.rows.length) }]} />
+      {data.rows.length > 0 ? (
+        <DataTable
+          headers={['Booking', 'Room', 'Guest Name', 'ID Type', 'ID Number', 'Nationality', 'Address', 'Check-In', 'Check-Out']}
+          rows={data.rows.map(r => [r.bookingNumber, r.roomNumber, r.guestName, r.idType, r.idNumber, r.nationality, r.address ?? '—', formatDate(r.checkInDate), formatDate(r.checkOutDate)])}
+        />
+      ) : (
+        <div className="text-center py-12 text-slate-400 text-sm">No registered guests for this date range.</div>
       )}
     </div>
   )

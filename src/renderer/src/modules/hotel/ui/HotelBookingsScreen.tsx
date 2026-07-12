@@ -191,6 +191,10 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
   const [chargeDesc, setChargeDesc] = useState('')
   const [chargeQty, setChargeQty] = useState('1')
   const [chargePrice, setChargePrice] = useState('')
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewIsReceipt, setPreviewIsReceipt] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   const idTypes = getIdTypesForCountry(profile?.country)
 
@@ -265,6 +269,47 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       else toastError('Error', res.error?.message ?? 'Could not generate invoice.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  // Hotel checkout generates a real Invoice (billingService.createInvoice)
+  // — reuses the exact same A4/thermal print pipeline every other invoice
+  // in the app goes through (print.service.ts), not a bespoke Hotel-only
+  // print path. Preview-before-print matches InvoiceDetailScreen.tsx's
+  // pattern: review the rendered layout/totals before committing to the OS
+  // print dialog (which is also how "download as PDF" works in this app —
+  // the OS print dialog's own "Save as PDF" destination, same as every
+  // other invoice/receipt/report print in Sarang).
+  async function handleOpenPreview(receipt: boolean) {
+    if (!booking.invoiceId) return
+    setPreviewLoading(true)
+    setPreviewIsReceipt(receipt)
+    try {
+      const res = receipt
+        ? await window.api.print.previewReceipt({ invoiceId: booking.invoiceId })
+        : await window.api.print.previewInvoice({ invoiceId: booking.invoiceId })
+      if (res.success) setPreviewHtml(res.data as string)
+      else toastError('Preview Failed', res.error?.message ?? 'Could not generate preview.')
+    } catch {
+      toastError('Preview Failed', 'Could not generate preview.')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  async function handlePrintNow() {
+    if (!booking.invoiceId) return
+    setPrinting(true)
+    try {
+      const res = previewIsReceipt
+        ? await window.api.print.receipt({ invoiceId: booking.invoiceId })
+        : await window.api.print.invoice({ invoiceId: booking.invoiceId })
+      if (!res.success) toastError('Print Failed', res.error?.message ?? 'Could not print.')
+      else setPreviewHtml(null)
+    } catch {
+      toastError('Print Failed', 'Could not print.')
+    } finally {
+      setPrinting(false)
     }
   }
 
@@ -381,10 +426,38 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
             </Button>
           )}
           {booking.invoiceId && (
-            <div className="text-xs text-success bg-success/10 rounded-lg p-3">Invoice generated for this stay.</div>
+            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="text-xs text-success bg-success/10 rounded-lg p-3">Invoice generated for this stay.</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenPreview(false)} loading={previewLoading && !previewIsReceipt}>
+                  Print Invoice (A4)
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenPreview(true)} loading={previewLoading && previewIsReceipt}>
+                  Print Receipt (Thermal)
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>
+
+      {previewHtml && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <p className="font-semibold text-dark dark:text-slate-100">{previewIsReceipt ? 'Print Receipt (Thermal)' : 'Print Invoice (A4)'} — Preview</p>
+              <button onClick={() => setPreviewHtml(null)} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={18} /></button>
+            </div>
+            <div className="flex-1 p-4 overflow-hidden">
+              <iframe title="Print preview" srcDoc={previewHtml} className="w-full h-full bg-white rounded-lg border border-slate-200" style={{ minHeight: '60vh' }} />
+            </div>
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPreviewHtml(null)}>Cancel</Button>
+              <Button onClick={handlePrintNow} loading={printing}>Print</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={showCancelConfirm}

@@ -590,7 +590,8 @@
       "bloodBank": "Blood Bank",
       "jewellery": "Jewellery",
       "logistics": "Logistics",
-      "rental": "Rental"
+      "rental": "Rental",
+      "hotel": "Hotel"
     },
     "defs": {
       "sales": {
@@ -668,6 +669,14 @@
       "rentalRevenue": {
         "label": "Rental Revenue & Utilization",
         "description": "Revenue by rental item, plus utilization rate for individually-tracked units"
+      },
+      "hotelOccupancy": {
+        "label": "Room Occupancy",
+        "description": "Current room status breakdown and occupancy rate, right now"
+      },
+      "hotelGuestRegister": {
+        "label": "Guest Register",
+        "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
       },
       "appointmentUtilisation": {
         "label": "Appointment Utilisation",

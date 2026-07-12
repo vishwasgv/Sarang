@@ -156,6 +156,9 @@ async function main() {
         db.prepare('DELETE FROM HotelBooking WHERE id = ?').run(dbCheck.booking.id)
       }
       db.prepare("DELETE FROM HotelRoom WHERE roomNumber = 'E2E-101'").run()
+      const custRow = db.prepare("SELECT id FROM Customer WHERE customerName = 'E2E Hotel Guest Customer'").get()
+      if (custRow) db.prepare('DELETE FROM CustomerLedger WHERE customerId = ?').run(custRow.id)
+      db.prepare("DELETE FROM Customer WHERE customerName = 'E2E Hotel Guest Customer'").run()
     })
     console.log('\ncleanup done')
   } catch (e) {

@@ -590,7 +590,8 @@
       "bloodBank": "ബ്ലഡ് ബാങ്ക്",
       "logistics": "ലോജിസ്റ്റിക്സ്",
       "rental": "വാടക",
-      "jewellery": "ആഭരണങ്ങൾ"
+      "jewellery": "ആഭരണങ്ങൾ",
+      "hotel": "Hotel"
     },
     "defs": {
       "sales": {
@@ -736,6 +737,14 @@
       "trialBalance": {
         "label": "Trial Balance",
         "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
+      },
+      "hotelOccupancy": {
+        "label": "Room Occupancy",
+        "description": "Current room status breakdown and occupancy rate, right now"
+      },
+      "hotelGuestRegister": {
+        "label": "Guest Register",
+        "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
       }
     },
     "summary": {
