@@ -36,6 +36,13 @@ export type BusinessType =
   // which prices by a fixed per-unit-weight rate the OWNER sets once, not a
   // daily-fluctuating market rate) covers this.
   | 'JEWELLERY'
+  // Hotel/Lodge vertical (SERVICE category) — deliberately its own vertical,
+  // not an extension of RENTAL. See hotel.service.ts's header comment: a
+  // hotel booking needs guest ID compliance (many jurisdictions legally
+  // require a producible guest register), per-night billing, and in-stay
+  // extra charges that RENTAL's short-term-checkout model has no equivalent
+  // of.
+  | 'HOTEL_LODGE'
 
 export type TemplateModule =
   // Phase 1 modules
@@ -137,6 +144,11 @@ export type TemplateModule =
   // everyday civil-practice bookkeeping distinct from an architect's
   // drawing-issue workflow.
   | 'site_visit_log'
+  // Hotel/Lodge module. Bundles room roster, availability-checked booking
+  // lifecycle, guest ID compliance capture at check-in, in-stay extra
+  // charges, and checkout billing under one flag — same "one flag per
+  // vertical's whole workflow" convention as rental_bookings/blood_bank.
+  | 'hotel_bookings'
 
 export interface TemplateConfig {
   businessType: string
@@ -153,7 +165,7 @@ export const SERVICE_TEMPLATE_TYPES = new Set<string>([
   'MARKETING_AGENCY', 'SOFTWARE_AGENCY', 'PHOTO_STUDIO', 'EVENT_MANAGEMENT',
   'COACHING_INSTITUTE',
   'CAR_SERVICE_CENTER', 'TAILOR_BOUTIQUE', 'PEST_CONTROL', 'PLACEMENT_AGENCY',
-  'DIAGNOSTIC_LAB',
+  'DIAGNOSTIC_LAB', 'HOTEL_LODGE',
 ])
 
 // Phase 48 — named, contained exceptions to the standing "languageLock: 'en'
@@ -297,6 +309,14 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   TAILOR_BOUTIQUE:    [...SERVICE_BASE_MODULES, 'tailoring_orders'],
   PEST_CONTROL:       [...SERVICE_BASE_MODULES, 'pest_contracts'],
   PLACEMENT_AGENCY:   [...SERVICE_BASE_MODULES, 'placement_agency'],
+  // Hotel/Lodge. Deliberately does NOT spread SERVICE_BASE_MODULES — a
+  // hotel needs its own dedicated multi-night room-booking lifecycle, not
+  // the generic single-visit 'appointments'/'service_catalog'/
+  // 'provider_schedule' scaffold every other SERVICE_TEMPLATE_TYPES member
+  // above uses. hotel_bookings bundles the whole workflow standalone, same
+  // "one flag, no base spread" shape RENTAL uses for the identical reason
+  // on the PRODUCT-category side.
+  HOTEL_LODGE: ['hotel_bookings'],
 }
 
 const DASHBOARD_LAYOUTS: Record<string, string> = {
@@ -334,6 +354,7 @@ const DASHBOARD_LAYOUTS: Record<string, string> = {
   CAR_SERVICE_CENTER: 'service', TAILOR_BOUTIQUE: 'service',
   PEST_CONTROL: 'service', PLACEMENT_AGENCY: 'service',
   DIAGNOSTIC_LAB: 'service',
+  HOTEL_LODGE: 'service',
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

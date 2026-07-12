@@ -82,6 +82,8 @@ import { BloodStockScreen } from '@modules/blood-bank/ui/BloodStockScreen'
 import { BloodIssueScreen } from '@modules/blood-bank/ui/BloodIssueScreen'
 import { RentalBookingsScreen } from '@modules/rental/ui/RentalBookingsScreen'
 import { RentalUnitsScreen } from '@modules/rental/ui/RentalUnitsScreen'
+import { HotelBookingsScreen } from '@modules/hotel/ui/HotelBookingsScreen'
+import { HotelRoomsScreen } from '@modules/hotel/ui/HotelRoomsScreen'
 import { MetalRatesScreen } from '@modules/jewellery/ui/MetalRatesScreen'
 import { MetalExchangeScreen } from '@modules/jewellery/ui/MetalExchangeScreen'
 // Phase 25 — Dental
@@ -283,6 +285,8 @@ export function AppRouter() {
         <Route path="/blood-bank/issue" element={<ProtectedRoute permission="bloodBank.view"><BloodIssueScreen /></ProtectedRoute>} />
         <Route path="/rental/bookings" element={<ProtectedRoute permission="rental.view"><RentalBookingsScreen /></ProtectedRoute>} />
         <Route path="/rental/units" element={<ProtectedRoute permission="rental.view"><RentalUnitsScreen /></ProtectedRoute>} />
+        <Route path="/hotel/bookings" element={<ProtectedRoute permission="hotel.view"><HotelBookingsScreen /></ProtectedRoute>} />
+        <Route path="/hotel/rooms" element={<ProtectedRoute permission="hotel.view"><HotelRoomsScreen /></ProtectedRoute>} />
         <Route path="/jewellery/metal-rates" element={<ProtectedRoute permission="jewellery.view"><MetalRatesScreen /></ProtectedRoute>} />
         <Route path="/jewellery/exchanges" element={<ProtectedRoute permission="jewellery.view"><MetalExchangeScreen /></ProtectedRoute>} />
         {/* Phase 25 — Dental */}

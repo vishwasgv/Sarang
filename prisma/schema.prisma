@@ -314,6 +314,115 @@ model RentalBookingItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HOTEL / LODGE — deliberately its own vertical, not an extension of Rental.
+// Rental's own header comment scopes it to short-term equipment/tool
+// checkout, not overnight guest lodging — a hotel booking needs guest ID
+// compliance (many jurisdictions legally require a hotel to maintain a
+// guest register with ID details producible for police/immigration
+// verification), per-night billing (not flexible HOUR/WEEK/MONTH rate
+// bases), and in-stay extra charges (room service, laundry) that Rental
+// has no equivalent of.
+// ─────────────────────────────────────────────────────────────────────────────
+model HotelRoom {
+  id           String   @id @default(cuid())
+  roomNumber   String   @unique
+  roomType     String // business-defined free text, e.g. "Single", "Double", "Deluxe", "Suite"
+  floor        String?
+  maxOccupancy Int      @default(2)
+  baseRate     Float    @default(0) // per night
+  status       String   @default("AVAILABLE") // AVAILABLE | OCCUPIED | CLEANING | MAINTENANCE | OUT_OF_ORDER
+  amenities    String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings HotelBooking[]
+
+  @@index([status])
+}
+
+model HotelBooking {
+  id                   String    @id @default(cuid())
+  bookingNumber        String    @unique
+  roomId               String
+  customerId           String?
+  guestName            String
+  guestPhone           String?
+  guestEmail           String?
+  numberOfGuests       Int       @default(1)
+  checkInDate          DateTime // planned check-in (date-level; the actual moment is actualCheckInAt)
+  checkOutDate         DateTime // planned check-out
+  actualCheckInAt      DateTime?
+  actualCheckOutAt     DateTime?
+  ratePerNight         Float // snapshot at booking time — room.baseRate can change later without affecting this booking
+  status               String    @default("CONFIRMED") // CONFIRMED | CHECKED_IN | CHECKED_OUT | CANCELLED | NO_SHOW
+  advanceAmount        Float     @default(0)
+  advancePaymentMethod String    @default("CASH") // CASH | UPI | CARD | WALLET — recorded as a real Payment against the invoice generated at checkout
+  cancelReason         String?
+  notes                String?
+  invoiceId            String? // unenforced FK, deliberately — same atomic claim-sentinel
+  // convention RentalBooking.invoiceId documents: a placeholder string is
+  // written here before the real Invoice exists, which a real foreign key
+  // would reject.
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  room     HotelRoom          @relation(fields: [roomId], references: [id])
+  customer Customer?          @relation(fields: [customerId], references: [id])
+  guests   HotelGuestId[]
+  charges  HotelExtraCharge[]
+
+  @@index([roomId])
+  @@index([status])
+  @@index([checkInDate, checkOutDate])
+  @@index([customerId])
+}
+
+// One row per guest occupying the room, captured at check-in — the legal
+// guest-register requirement this vertical exists to support. idType's
+// valid options are country-dependent (Aadhaar/Passport/Driving
+// License/Voter ID/PAN in India; Passport/National ID/Driving License/Other
+// elsewhere) — enforced in the validation layer against the business's own
+// BusinessProfile.country, not hardcoded here as a fixed enum, since a
+// SQLite String column can't itself encode "valid values depend on another
+// table's row."
+model HotelGuestId {
+  id          String   @id @default(cuid())
+  bookingId   String
+  guestName   String
+  idType      String
+  idNumber    String
+  nationality String   @default("IN")
+  address     String?
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  booking HotelBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+// Mini-bar, room service, laundry, extra bed, etc. — billed into the guest
+// folio at checkout alongside the room charge, same as a real hotel PMS.
+model HotelExtraCharge {
+  id          String   @id @default(cuid())
+  bookingId   String
+  description String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  amount      Float
+  chargeDate  DateTime @default(now())
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  booking HotelBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // INVENTORY
 // ─────────────────────────────────────────────────────────────────────────────
 model Inventory {
@@ -421,6 +530,7 @@ model Customer {
   labTestOrders             LabTestOrder[] // Phase 50 — Diagnostic Labs
   bloodIssues               BloodIssue[] // Phase 51 — Blood Bank
   rentalBookings            RentalBooking[] // Phase 54G — Rental
+  hotelBookings             HotelBooking[] // Hotel/Lodge vertical
 
   @@index([customerName])
   @@index([phone])
@@ -580,32 +690,32 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id             String   @id @default(cuid())
-  invoiceId      String
-  productId      String
-  productName    String   @default("")
-  productSku     String?
-  hsnCode        String?
-  quantity       Float
-  unitPrice      Float
-  discountAmount Float    @default(0)
-  taxRate        Float    @default(0)
-  taxAmount      Float    @default(0)
-  lineTotal      Float
-  variantId      String?
-  variantInfo    String?
-  weightUnit     String?
+  id                    String   @id @default(cuid())
+  invoiceId             String
+  productId             String
+  productName           String   @default("")
+  productSku            String?
+  hsnCode               String?
+  quantity              Float
+  unitPrice             Float
+  discountAmount        Float    @default(0)
+  taxRate               Float    @default(0)
+  taxAmount             Float    @default(0)
+  lineTotal             Float
+  variantId             String?
+  variantInfo           String?
+  weightUnit            String?
   // Fresh-audit fix (2026-07-12): snapshot of the purity/weight/making-charge
   // breakdown a jewellery line was actually priced from — previously this was
   // computed correctly at billing time then silently discarded, so a printed
   // jewellery invoice could never show it and it was unrecoverable after the
   // sale. Null/absent for a non-jewellery line.
-  jewelleryMetalType   String?
-  jewelleryPurity      String?
-  jewelleryNetWeight   Float?
-  jewelleryRatePerGram Float?
+  jewelleryMetalType    String?
+  jewelleryPurity       String?
+  jewelleryNetWeight    Float?
+  jewelleryRatePerGram  Float?
   jewelleryMakingCharge Float?
-  createdAt      DateTime @default(now())
+  createdAt             DateTime @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

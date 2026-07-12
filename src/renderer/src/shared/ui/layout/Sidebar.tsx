@@ -16,6 +16,7 @@ import {
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
+  Hotel, BedDouble,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -101,6 +102,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Blood Issue', path: '/blood-bank/issue', icon: Send, permissionKey: 'bloodBank.view', requiredModule: 'blood_bank' },
   { label: 'Rental Bookings', path: '/rental/bookings', icon: CalendarClock, permissionKey: 'rental.view', requiredModule: 'rental_bookings' },
   { label: 'Rental Units', path: '/rental/units', icon: Boxes, permissionKey: 'rental.view', requiredModule: 'rental_bookings' },
+  // Hotel/Lodge vertical
+  { label: 'Hotel Bookings', path: '/hotel/bookings', icon: Hotel, permissionKey: 'hotel.view', requiredModule: 'hotel_bookings' },
+  { label: 'Rooms', path: '/hotel/rooms', icon: BedDouble, permissionKey: 'hotel.view', requiredModule: 'hotel_bookings' },
   // Fresh-audit build (2026-07-12) — Jewellery
   { label: 'Metal Rates', path: '/jewellery/metal-rates', icon: Gem, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   { label: 'Old-Metal Exchange', path: '/jewellery/exchanges', icon: Repeat, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },

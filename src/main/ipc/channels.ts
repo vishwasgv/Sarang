@@ -482,6 +482,26 @@ export interface IpcChannels {
     updateUnit: (payload: { id: string; unitLabel?: string; status?: string; conditionNotes?: string }) => Promise<ApiResponse>
     deleteUnit: (payload: { id: string }) => Promise<ApiResponse>
   }
+  hotel: {
+    listRooms: (payload?: { status?: string; roomType?: string; includeInactive?: boolean }) => Promise<ApiResponse>
+    createRoom: (payload: { roomNumber: string; roomType: string; floor?: string; maxOccupancy?: number; baseRate?: number; amenities?: string; notes?: string }) => Promise<ApiResponse>
+    updateRoom: (payload: { id: string; roomType?: string; floor?: string; maxOccupancy?: number; baseRate?: number; status?: string; amenities?: string; notes?: string; isActive?: boolean }) => Promise<ApiResponse>
+    deleteRoom: (payload: { id: string }) => Promise<ApiResponse>
+    checkAvailability: (payload: { roomId: string; checkInDate: string; checkOutDate: string; excludeBookingId?: string }) => Promise<ApiResponse>
+    listAvailableRooms: (payload: { checkInDate: string; checkOutDate: string; roomType?: string }) => Promise<ApiResponse>
+    listBookings: (payload?: { status?: string; roomId?: string; customerId?: string }) => Promise<ApiResponse>
+    getBooking: (payload: { id: string }) => Promise<ApiResponse>
+    createBooking: (payload: { roomId: string; customerId?: string; guestName: string; guestPhone?: string; guestEmail?: string; numberOfGuests?: number; checkInDate: string; checkOutDate: string; ratePerNight?: number; advanceAmount?: number; advancePaymentMethod?: string; notes?: string }) => Promise<ApiResponse>
+    checkIn: (payload: { id: string; guests: Array<{ guestName: string; idType: string; idNumber: string; nationality?: string; address?: string; isPrimary?: boolean }> }) => Promise<ApiResponse>
+    checkOut: (payload: { id: string }) => Promise<ApiResponse>
+    cancelBooking: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
+    markNoShow: (payload: { id: string }) => Promise<ApiResponse>
+    addExtraCharge: (payload: { bookingId: string; description: string; quantity?: number; unitPrice: number }) => Promise<ApiResponse>
+    removeExtraCharge: (payload: { chargeId: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { bookingId: string }) => Promise<ApiResponse>
+    occupancyReport: () => Promise<ApiResponse>
+    guestRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+  }
   metalRate: {
     list: () => Promise<ApiResponse>
     get: (payload: { metalType: string; purity: string }) => Promise<ApiResponse>

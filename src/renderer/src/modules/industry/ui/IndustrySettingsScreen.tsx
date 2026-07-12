@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   UtensilsCrossed, ShoppingBag, Hammer, Truck, CheckCircle2, RefreshCw, AlertTriangle, Pill, Smartphone, Shirt, Footprints, Factory, Briefcase, Wrench, UserCheck, Tractor, Droplet, CalendarClock, Gem,
-  PawPrint, Stethoscope, HeartPulse, Smile, Activity, Microscope, Sparkles, Dumbbell, Car, Scale, Calculator, FileText, Compass, HardHat, Home, UserCog, Megaphone, Code2, Camera, PartyPopper, GraduationCap, CarFront, Scissors, Bug, Users,
+  PawPrint, Stethoscope, HeartPulse, Smile, Activity, Microscope, Sparkles, Dumbbell, Car, Scale, Calculator, FileText, Compass, HardHat, Home, UserCog, Megaphone, Code2, Camera, PartyPopper, GraduationCap, CarFront, Scissors, Bug, Users, Hotel,
 } from 'lucide-react'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
@@ -121,6 +121,14 @@ const TEMPLATES: Template[] = [
     icon: <CalendarClock size={22} />,
     modules: ['rental_bookings'],
     moduleLabels: ['Rental Bookings', 'Rental Units & Asset Roster', 'Availability Checking', 'Checkout & Return'],
+  },
+  {
+    type: 'HOTEL_LODGE',
+    label: 'Hotel / Lodge',
+    description: 'Room booking with availability checking, guest ID registration at check-in, in-stay extra charges, and checkout billing.',
+    icon: <Hotel size={22} />,
+    modules: ['hotel_bookings'],
+    moduleLabels: ['Room Roster', 'Booking & Availability', 'Guest ID Registration', 'In-Stay Charges', 'Checkout Billing'],
   },
   {
     type: 'MANUFACTURING',

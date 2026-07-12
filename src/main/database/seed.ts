@@ -177,6 +177,12 @@ const PERMISSIONS = [
   // (adding/retiring a RentalUnit) sits under the same rental.manage gate.
   { permissionKey: 'rental.view', permissionName: 'View Rental Bookings & Catalog' },
   { permissionKey: 'rental.manage', permissionName: 'Create Bookings, Check Out/In, Manage Rental Units' },
+  // Hotel/Lodge vertical. Same bounded front-desk trust level as rental.manage
+  // — creating a booking, checking a guest in/out, and adding folio charges
+  // are routine counter operations (Cashier reaches this); the room roster
+  // (adding/deactivating a HotelRoom) sits under the same hotel.manage gate.
+  { permissionKey: 'hotel.view', permissionName: 'View Hotel Rooms & Bookings' },
+  { permissionKey: 'hotel.manage', permissionName: 'Create Bookings, Check In/Out Guests, Manage Rooms' },
   // Fresh-audit build (2026-07-12) — Jewellery. Split into 3, same
   // "different actions, different trust levels" reasoning as
   // labOrders.create/labOrders.manage: rate-setting affects the price of
@@ -224,6 +230,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'logistics.view', 'logistics.manage',
     'sales.view', 'sales.manage',
     'rental.view', 'rental.manage',
+    'hotel.view', 'hotel.manage',
     'jewellery.view', 'jewellery.manageRates', 'jewellery.manageExchanges'
   ],
   Cashier: [
@@ -256,6 +263,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Booking/checkout/return at a rental counter is the same trust level as
     // billing.createInvoice, which Cashier already has.
     'rental.view', 'rental.manage',
+    // Front-desk check-in/out at a hotel is the same bounded, per-transaction
+    // trust level — same reasoning as rental.manage immediately above.
+    'hotel.view', 'hotel.manage',
     // Recording an old-metal exchange at the counter is the same bounded,
     // per-transaction trust level — but NOT jewellery.manageRates, which
     // affects the price of every future sale shop-wide (Manager+ only).
@@ -269,6 +279,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'analytics.viewDashboard',
     'purchaseOrders.view', 'purchaseOrders.receive',
     'rental.view',
+    'hotel.view',
     'jewellery.view'
   ],
   'Kitchen Staff': [

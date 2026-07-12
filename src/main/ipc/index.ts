@@ -35,6 +35,7 @@ import { register as registerDocuments } from './handlers/document.handler'
 import { register as registerHr } from './handlers/hr.handler'
 import { register as registerPayroll } from './handlers/payroll.handler'
 import { register as registerRental } from './handlers/rental.handler'
+import { register as registerHotel } from './handlers/hotel.handler'
 import { register as registerMetalRate } from './handlers/metal-rate.handler'
 import { register as registerMetalExchange } from './handlers/metal-exchange.handler'
 import { register as registerDrawingRevision } from './handlers/drawing-revision.handler'
@@ -176,6 +177,7 @@ export function registerAllIpcHandlers(): void {
   registerHr(h)
   registerPayroll(h)
   registerRental(h)
+  registerHotel(h)
   registerMetalRate(h)
   registerMetalExchange(h)
   registerDrawingRevision(h)

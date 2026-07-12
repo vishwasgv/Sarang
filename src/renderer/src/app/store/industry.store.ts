@@ -64,6 +64,10 @@ export type TemplateModule =
   // Engineer site visit log (real differentiation, previously identical
   // module sets).
   | 'drawing_register' | 'site_visit_log'
+  // Hotel/Lodge vertical (room roster, availability-checked booking
+  // lifecycle, guest ID compliance capture, in-stay charges, checkout
+  // billing) — see industry-template.service.ts's header comment.
+  | 'hotel_bookings'
 
 interface IndustryState {
   businessType: string
