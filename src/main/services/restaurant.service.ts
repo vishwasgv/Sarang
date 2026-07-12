@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { inventoryService } from './inventory.service'
 import { logAction } from './audit.service'
+import { createNotification } from './notification.service'
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -192,8 +193,20 @@ async function deductIngredients(
           quantity: newQty,
           reason: `${INGREDIENT_DEDUCTION_REMARKS_PREFIX} — recipe: ${recipe.recipeName}`
         }, userId)
-      } catch {
-        // Do not abort KOT fulfillment if an ingredient is out of stock
+      } catch (err) {
+        // Do not abort KOT fulfillment if an ingredient stock adjustment
+        // fails — but a swallowed failure here previously left inventory
+        // silently wrong with zero trace. Surface it: log to console, record
+        // an audit entry, and raise a visible notification so staff know
+        // stock needs a manual recount for this ingredient.
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        console.error(`[Restaurant] Ingredient deduction failed for recipe "${recipe.recipeName}" (ingredient ${ri.ingredientProductId}):`, message)
+        await logAction(userId, 'INGREDIENT_DEDUCTION_FAILED', 'Inventory', ri.ingredientProductId, undefined, message).catch(() => {})
+        await createNotification({
+          title: 'Ingredient stock not deducted',
+          message: `Recipe "${recipe.recipeName}" fulfilled, but stock for one ingredient could not be updated (${message}). Recount this ingredient's stock manually.`,
+          notificationType: 'WARNING'
+        }).catch(() => {})
       }
     }
   }
