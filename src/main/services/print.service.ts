@@ -44,8 +44,17 @@ interface BusinessProfile {
 // QR-ordering flow) shares one gate rather than each re-deriving it —
 // `generateUpiQr()` itself does NOT self-guard on country, callers must
 // check this first.
+//
+// BusinessProfile.country is free text typed into SetupWizard.tsx's plain
+// input (defaulting to "India", never normalized to an ISO code — see that
+// file's COUNTRY_DEFAULTS map, which is itself keyed by lowercased country
+// name, not 'IN'), so a strict `=== 'IN'` check never matches a real
+// business and silently disables the QR for every Indian setup. Match
+// loosely instead, same convention as HotelBookingsScreen.tsx's
+// getIdTypesForCountry.
 export function canShowUpiQr(profile: { upiId?: string | null; country?: string | null } | null | undefined): boolean {
-  return Boolean(profile?.upiId) && profile?.country === 'IN'
+  const country = (profile?.country ?? '').trim().toLowerCase()
+  return Boolean(profile?.upiId) && (country === 'in' || country.includes('india'))
 }
 
 function logoToFileUrl(p: string): string {

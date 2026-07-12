@@ -7,6 +7,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
+import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface MetalRate {
@@ -30,6 +31,7 @@ const METAL_TYPES = ['GOLD', 'SILVER', 'PLATINUM']
 export function MetalRatesScreen(): React.JSX.Element {
   const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
+  const sym = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canManage = hasPermission('jewellery.manageRates')
 
@@ -144,7 +146,7 @@ export function MetalRatesScreen(): React.JSX.Element {
               <div key={r.id} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center">
                 <div className="col-span-3 text-sm font-medium text-dark dark:text-slate-100">{r.metalType}</div>
                 <div className="col-span-3 text-sm text-slate-600 dark:text-slate-300">{r.purity}</div>
-                <div className="col-span-3 text-right text-sm font-semibold text-dark dark:text-slate-100">{r.ratePerGram.toFixed(2)}</div>
+                <div className="col-span-3 text-right text-sm font-semibold text-dark dark:text-slate-100">{sym}{r.ratePerGram.toFixed(2)}</div>
                 <div className="col-span-2 text-right text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</div>
                 <div className="col-span-1 text-right">
                   {canManage && (

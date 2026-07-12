@@ -94,6 +94,15 @@ describe('printService UPI QR country gating', () => {
     expect(html).not.toContain('Scan to Pay (UPI)')
   })
 
+  // Regression for a real gap found 2026-07-13: SetupWizard.tsx's country
+  // field is free text defaulting to "India" (never normalized to the ISO
+  // code 'IN' anywhere), so a strict `country === 'IN'` check silently
+  // disabled the QR for every real Indian setup that used the default value.
+  it('shows the UPI QR for the real-world "India" free-text default, not just the ISO code', async () => {
+    const html = await printService.generateInvoiceHtml(makeUnpaidInvoice() as never, { ...profile, upiId: 'biz@upi', country: 'India' } as never)
+    expect(html).toContain('Scan to Pay (UPI)')
+  })
+
   it('never shows the UPI QR when upiId is not configured, even for an Indian business', async () => {
     const html = await printService.generateInvoiceHtml(makeUnpaidInvoice() as never, { ...profile, country: 'IN' } as never)
     expect(html).not.toContain('Scan to Pay (UPI)')
