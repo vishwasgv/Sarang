@@ -6,6 +6,16 @@ import {
 } from '../../services/hr.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import {
+  CreateEmployeeSchema,
+  UpdateEmployeeSchema,
+  DeactivateEmployeeSchema,
+  MarkAttendanceSchema,
+  BulkMarkAttendanceSchema,
+  CreateLeaveTypeSchema,
+  CreateLeaveRequestSchema,
+  UpdateLeaveStatusSchema,
+} from '../../validation/hr.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -25,30 +35,39 @@ export function register(handle: HandleFn): void {
 
   handle('hr:createEmployee', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    return createEmployee(payload as Parameters<typeof createEmployee>[0])
+    const parsed = CreateEmployeeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createEmployee(parsed.data)
   })
 
   handle('hr:updateEmployee', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    return updateEmployee(payload as Parameters<typeof updateEmployee>[0])
+    const parsed = UpdateEmployeeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateEmployee(parsed.data)
   })
 
   handle('hr:deactivateEmployee', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    const p = payload as { id: string }
-    return deactivateEmployee(p.id)
+    const parsed = DeactivateEmployeeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deactivateEmployee(parsed.data.id)
   })
 
   // ─── Attendance ─────────────────────────────────────────────────────────────
 
   handle('hr:markAttendance', async (payload) => {
     const deny = await requirePermission('hr.attendance'); if (deny) return deny
-    return markAttendance(payload as Parameters<typeof markAttendance>[0])
+    const parsed = MarkAttendanceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return markAttendance(parsed.data)
   })
 
   handle('hr:bulkMarkAttendance', async (payload) => {
     const deny = await requirePermission('hr.attendance'); if (deny) return deny
-    return bulkMarkAttendance(payload as Parameters<typeof bulkMarkAttendance>[0])
+    const parsed = BulkMarkAttendanceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return bulkMarkAttendance(parsed.data)
   })
 
   handle('hr:getMonthAttendance', async (payload) => {
@@ -70,7 +89,9 @@ export function register(handle: HandleFn): void {
 
   handle('hr:createLeaveType', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    return createLeaveType(payload as Parameters<typeof createLeaveType>[0])
+    const parsed = CreateLeaveTypeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createLeaveType(parsed.data)
   })
 
   // ─── Leave Requests ─────────────────────────────────────────────────────────
@@ -82,14 +103,17 @@ export function register(handle: HandleFn): void {
 
   handle('hr:createLeaveRequest', async (payload) => {
     const deny = await requirePermission('hr.attendance'); if (deny) return deny
-    return createLeaveRequest(payload as Parameters<typeof createLeaveRequest>[0])
+    const parsed = CreateLeaveRequestSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createLeaveRequest(parsed.data)
   })
 
   handle('hr:updateLeaveStatus', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    const p = payload as Parameters<typeof updateLeaveStatus>[0]
+    const parsed = UpdateLeaveStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const session = getCurrentSession()
-    return updateLeaveStatus({ ...p, approvedBy: session?.userId })
+    return updateLeaveStatus({ ...parsed.data, approvedBy: session?.userId })
   })
 
   handle('hr:getLeaveBalance', async (payload) => {

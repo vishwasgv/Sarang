@@ -5,6 +5,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 const api = window.api
@@ -139,6 +140,10 @@ export default function PestControlScreen() {
   const [pickedContractClient, setPickedContractClient] = useState<Customer | null>(null)
   const [pickedSheetClient, setPickedSheetClient] = useState<Customer | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [deleteContractTarget, setDeleteContractTarget] = useState<PestServiceContract | null>(null)
+  const [deletingContract, setDeletingContract] = useState(false)
+  const [deleteSheetTarget, setDeleteSheetTarget] = useState<PestJobSheet | null>(null)
+  const [deletingSheet, setDeletingSheet] = useState(false)
 
   const loadKpis = useCallback(() => {
     api.pestContract.kpis().then(r => { if (r.success) setKpis(r.data as typeof kpis) })
@@ -225,12 +230,14 @@ export default function PestControlScreen() {
     else setContractFormError(res.error?.message ?? 'Save failed.')
   }
 
-  async function handleDeleteContract(id: string) {
-    if (!window.confirm('Delete this contract? This will fail if the contract has existing job sheets.')) return
+  async function handleDeleteContract() {
+    if (!deleteContractTarget) return
+    setDeletingContract(true)
     setActionError(null)
-    const res = await api.pestContract.delete(id)
-    if (res.success) { await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
+    const res = await api.pestContract.delete(deleteContractTarget.id)
+    if (res.success) { setDeleteContractTarget(null); await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
     else setActionError(res.error?.message ?? 'Failed to delete contract.')
+    setDeletingContract(false)
   }
 
   function openCreateSheet(contractId?: string, client?: Customer) {
@@ -285,17 +292,20 @@ export default function PestControlScreen() {
     } else setSheetFormError(res.error?.message ?? 'Save failed.')
   }
 
-  async function handleDeleteSheet(id: string) {
-    if (!window.confirm('Delete this job sheet?')) return
+  async function handleDeleteSheet() {
+    if (!deleteSheetTarget) return
+    setDeletingSheet(true)
     setActionError(null)
-    const res = await api.pestJobSheet.delete(id)
+    const res = await api.pestJobSheet.delete(deleteSheetTarget.id)
     if (res.success) {
+      setDeleteSheetTarget(null)
       await Promise.all([
         loadJobs(jobStatusFilter || undefined, jobSearch || undefined),
         loadContracts(contractStatusFilter || undefined, contractSearch || undefined),
       ])
       loadKpis()
     } else setActionError(res.error?.message ?? 'Failed to delete job sheet.')
+    setDeletingSheet(false)
   }
 
   async function handleAdvanceJobStatus(sheet: PestJobSheet) {
@@ -471,7 +481,7 @@ export default function PestControlScreen() {
                             <Plus size={12} /> Job Sheet
                           </button>
                           <button onClick={() => openEditContract(c)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={15} /></button>
-                          <button onClick={() => handleDeleteContract(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={15} /></button>
+                          <button onClick={() => setDeleteContractTarget(c)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={15} /></button>
                           <button onClick={() => setExpandedContractId(isExpanded ? null : c.id)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200">
                             {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                           </button>
@@ -573,7 +583,7 @@ export default function PestControlScreen() {
                                 )}
                                 {sheet.invoiceId && <span className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 flex items-center gap-1"><FileText size={10} /> Invoiced</span>}
                                 <button onClick={() => openEditSheet(sheet)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={13} /></button>
-                                <button onClick={() => handleDeleteSheet(sheet.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500"><X size={13} /></button>
+                                <button onClick={() => setDeleteSheetTarget(sheet)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500"><X size={13} /></button>
                               </div>
                             </td>
                           </tr>
@@ -771,6 +781,26 @@ export default function PestControlScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteContractTarget}
+        onClose={() => setDeleteContractTarget(null)}
+        onConfirm={handleDeleteContract}
+        loading={deletingContract}
+        title="Delete Contract"
+        message="Delete this contract? This will fail if the contract has existing job sheets."
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!deleteSheetTarget}
+        onClose={() => setDeleteSheetTarget(null)}
+        onConfirm={handleDeleteSheet}
+        loading={deletingSheet}
+        title="Delete Job Sheet"
+        message="Delete this job sheet?"
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

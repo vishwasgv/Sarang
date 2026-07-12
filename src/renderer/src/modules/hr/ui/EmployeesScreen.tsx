@@ -6,6 +6,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Employee {
   id: string
@@ -45,6 +46,8 @@ export function EmployeesScreen() {
   const [editing, setEditing] = useState<Employee | null>(null)
   const [detail, setDetail] = useState<Employee | null>(null)
   const [showInactive, setShowInactive] = useState(false)
+  const [deactivateTarget, setDeactivateTarget] = useState<Employee | null>(null)
+  const [deactivating, setDeactivating] = useState(false)
 
   const [form, setForm] = useState({
     fullName: '', employeeNumber: '', phone: '', email: '',
@@ -164,19 +167,23 @@ export function EmployeesScreen() {
     }
   }
 
-  async function deactivate(emp: Employee) {
-    if (!confirm(t('hr.confirmDeactivate', { name: emp.fullName }))) return
+  async function deactivate() {
+    if (!deactivateTarget) return
+    setDeactivating(true)
     try {
-      const res = await api.hr.deactivateEmployee({ id: emp.id })
+      const res = await api.hr.deactivateEmployee({ id: deactivateTarget.id })
       if (res.success) {
         toastSuccess(t('hr.employeeDeactivated'))
         setDetail(null)
+        setDeactivateTarget(null)
         load()
       } else {
         toastError(res.error?.message ?? t('hr.actionFailed'))
       }
     } catch {
       toastError(t('hr.actionFailed'))
+    } finally {
+      setDeactivating(false)
     }
   }
 
@@ -391,13 +398,23 @@ export function EmployeesScreen() {
             </div>
             <div className="flex gap-3 p-6 pt-0">
               {detail.isActive && (
-                <button onClick={() => deactivate(detail)} className="flex-1 px-4 py-2.5 border border-danger/30 text-danger rounded-lg text-sm font-medium hover:bg-danger/5">{t('hr.deactivate')}</button>
+                <button onClick={() => setDeactivateTarget(detail)} className="flex-1 px-4 py-2.5 border border-danger/30 text-danger rounded-lg text-sm font-medium hover:bg-danger/5">{t('hr.deactivate')}</button>
               )}
               <button onClick={() => openEdit(detail)} className="flex-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90">{t('common.edit')}</button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={deactivate}
+        loading={deactivating}
+        title={t('hr.deactivate')}
+        message={deactivateTarget ? t('hr.confirmDeactivate', { name: deactivateTarget.fullName }) : ''}
+        confirmLabel={t('hr.deactivate')}
+      />
     </div>
   )
 }

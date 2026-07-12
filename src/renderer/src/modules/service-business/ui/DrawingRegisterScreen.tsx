@@ -6,6 +6,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -46,6 +47,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DrawingRevision | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     window.api.serviceProject.list().then((res) => {
@@ -105,11 +108,16 @@ export function DrawingRegisterScreen(): React.JSX.Element {
     else toastError('Error', res.error?.message ?? 'Could not update status.')
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this drawing revision record?')) return
-    const res = await window.api.drawingRevision.delete({ id })
-    if (res.success) { toastSuccess('Deleted', 'Drawing revision removed.'); await load(projectId) }
-    else toastError('Error', res.error?.message ?? 'Could not delete.')
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await window.api.drawingRevision.delete({ id: deleteTarget.id })
+      if (res.success) { toastSuccess('Deleted', 'Drawing revision removed.'); setDeleteTarget(null); await load(projectId) }
+      else toastError('Error', res.error?.message ?? 'Could not delete.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -194,7 +202,7 @@ export function DrawingRegisterScreen(): React.JSX.Element {
                         <Select value={d.status} onChange={(e) => void handleStatusChange(d, e.target.value)} className="!h-9 !py-0 text-xs">
                           {STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
                         </Select>
-                        <button onClick={() => void handleDelete(d.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
+                        <button onClick={() => setDeleteTarget(d)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
                       </>
                     )}
                   </div>
@@ -209,6 +217,16 @@ export function DrawingRegisterScreen(): React.JSX.Element {
           </div>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Drawing Revision"
+        message={`Delete drawing revision record "${deleteTarget?.drawingNumber}"?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

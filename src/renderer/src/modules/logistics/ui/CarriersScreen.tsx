@@ -7,6 +7,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Carrier {
   id: string; name: string; type: string; phone: string | null; email: string | null
@@ -29,6 +30,8 @@ export default function CarriersScreen() {
   const [error, setError] = useState<string | null>(null)
   const [activeOnly, setActiveOnly] = useState(false)
   const [search, setSearch] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Carrier | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const PAGE_SIZE = 100
   const [limit, setLimit] = useState(PAGE_SIZE)
@@ -82,11 +85,13 @@ export default function CarriersScreen() {
     }
   }
 
-  const del = async (c: Carrier) => {
-    if (!confirm(t('logistics.carriers.deleteConfirm', { name: c.name }))) return
-    const res = await window.api.logisticsCarrier.delete(c.id)
-    if (res.success) load()
-    else alert(res.error?.message)
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.logisticsCarrier.delete(deleteTarget.id)
+    setDeleting(false)
+    if (res.success) { setDeleteTarget(null); load() }
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
   const filtered = carriers.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? '').includes(search))
@@ -131,7 +136,7 @@ export default function CarriersScreen() {
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openEdit(c)} className="text-blue-600 text-xs hover:underline">{t('common.edit')}</button>
                 <button onClick={() => toggle(c.id)} className="text-yellow-600 text-xs hover:underline">{c.isActive ? t('logistics.carriers.deactivate') : t('logistics.carriers.activate')}</button>
-                <button onClick={() => del(c)} className="text-red-500 text-xs hover:underline">{t('common.delete')}</button>
+                <button onClick={() => setDeleteTarget(c)} className="text-red-500 text-xs hover:underline">{t('common.delete')}</button>
               </div>
             </Card>
           ))}
@@ -190,6 +195,16 @@ export default function CarriersScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('common.delete')}
+        message={deleteTarget ? t('logistics.carriers.deleteConfirm', { name: deleteTarget.name }) : ''}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

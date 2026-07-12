@@ -4,6 +4,7 @@ import {
   generateContractInvoice
 } from '../../services/pest-contract.service'
 import { requirePermission } from '../permission-guard'
+import { CreatePestContractSchema, UpdatePestContractSchema, GenerateContractInvoiceSchema } from '../../validation/pest-contract.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -20,12 +21,16 @@ export function registerPestContract(handle: HandleFn): void {
 
   handle('pestContract:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createPestContract(raw as Parameters<typeof createPestContract>[0])
+    const parsed = CreatePestContractSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createPestContract(parsed.data)
   })
 
   handle('pestContract:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updatePestContract(raw as Parameters<typeof updatePestContract>[0])
+    const parsed = UpdatePestContractSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updatePestContract(parsed.data)
   })
 
   handle('pestContract:delete', async (raw) => {
@@ -40,7 +45,8 @@ export function registerPestContract(handle: HandleFn): void {
 
   handle('pestContract:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id, period } = raw as { id: string; period?: string }
-    return generateContractInvoice(id, period)
+    const parsed = GenerateContractInvoiceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateContractInvoice(parsed.data.id, parsed.data.period)
   })
 }

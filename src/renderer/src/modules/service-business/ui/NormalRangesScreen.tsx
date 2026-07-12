@@ -6,6 +6,7 @@ import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface NormalRange {
@@ -38,6 +39,9 @@ export function NormalRangesScreen() {
   const [maxValue, setMaxValue] = useState('')
   const [gender, setGender] = useState<'ALL' | 'MALE' | 'FEMALE'>('ALL')
   const [notes, setNotes] = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<NormalRange | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,14 +83,17 @@ export function NormalRangesScreen() {
     }
   }
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Remove this normal range?')) return
+  async function handleDelete(): Promise<void> {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.normalRange.delete({ id })
-      if (res.success) load()
+      const res = await api.normalRange.delete({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); load() }
       else toastError('Error', res.error?.message ?? 'Could not delete normal range.')
     } catch {
       toastError('Error', 'Could not delete normal range.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -161,7 +168,7 @@ export function NormalRangesScreen() {
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.gender === 'ALL' ? 'Everyone' : r.gender}</td>
                     <td className="px-4 py-3 text-right">
                       {canWrite && (
-                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
+                        <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -173,6 +180,16 @@ export function NormalRangesScreen() {
           </Card>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Remove Normal Range"
+        message={`Remove this normal range for "${deleteTarget?.testName}"?`}
+        confirmLabel="Remove"
+      />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { listSprints, createSprint, updateSprint, deleteSprint } from '../../services/sprint.service'
+import { CreateSprintSchema, UpdateSprintSchema, DeleteSprintSchema } from '../../validation/sprint.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,19 +13,22 @@ export function register(handle: HandleFn): void {
 
   handle('sprint:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { projectId: string; name?: string; goal?: string; startDate: string; endDate: string }
-    return createSprint(payload)
+    const parsed = CreateSprintSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createSprint(parsed.data)
   })
 
   handle('sprint:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; name?: string | null; goal?: string | null; startDate?: string; endDate?: string; status?: string }
-    return updateSprint(payload)
+    const parsed = UpdateSprintSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateSprint(parsed.data)
   })
 
   handle('sprint:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string }
-    return deleteSprint(payload.id)
+    const parsed = DeleteSprintSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteSprint(parsed.data.id)
   })
 }

@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { listChallans, getChallan, createChallan, updateChallan, updateChallanStatus, recordChallanReturn, deleteChallan } from '../../services/logistics-challan.service'
+import { CreateChallanSchema, UpdateChallanSchema, UpdateChallanStatusSchema, RecordChallanReturnSchema } from '../../validation/logistics-challan.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,22 +18,30 @@ export function registerLogisticsChallanHandlers(handle: HandleFn): void {
 
   handle('logisticsChallan:create', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return createChallan(raw as Parameters<typeof createChallan>[0], getCurrentSession()?.userId)
+    const parsed = CreateChallanSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createChallan(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsChallan:update', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return updateChallan(raw as Parameters<typeof updateChallan>[0], getCurrentSession()?.userId)
+    const parsed = UpdateChallanSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateChallan(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsChallan:updateStatus', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return updateChallanStatus(raw as { id: string; status: string }, getCurrentSession()?.userId)
+    const parsed = UpdateChallanStatusSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateChallanStatus(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsChallan:recordReturn', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return recordChallanReturn(raw as Parameters<typeof recordChallanReturn>[0], getCurrentSession()?.userId)
+    const parsed = RecordChallanReturnSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return recordChallanReturn(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsChallan:delete', async (raw) => {

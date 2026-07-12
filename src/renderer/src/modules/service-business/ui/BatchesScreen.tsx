@@ -5,6 +5,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface Instructor { id: string; fullName: string }
@@ -92,6 +93,9 @@ export default function BatchesScreen() {
   const [enrForm, setEnrForm] = useState({ ...EMPTY_ENR })
   const [enrSaving, setEnrSaving] = useState(false)
   const [enrError, setEnrError] = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<CoachingBatch | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -216,14 +220,17 @@ export default function BatchesScreen() {
     }
   }
 
-  async function handleDeleteBatch(b: CoachingBatch) {
-    if (!confirm(`Delete batch "${b.batchName}"? All enrollments and fee records will be deleted.`)) return
+  async function handleDeleteBatch() {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.coachingBatch.delete({ id: b.id })
-      if (res.success) loadAll()
+      const res = await api.coachingBatch.delete({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Failed to delete batch.')
     } catch {
       toastError('Error', 'Failed to delete batch.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -345,7 +352,7 @@ export default function BatchesScreen() {
                   <button onClick={() => openEditBatch(b)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Edit">
                     <Edit2 size={14} />
                   </button>
-                  <button onClick={() => handleDeleteBatch(b)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500" title="Delete">
+                  <button onClick={() => setDeleteTarget(b)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500" title="Delete">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -562,6 +569,16 @@ export default function BatchesScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteBatch}
+        loading={deleting}
+        title="Delete Batch"
+        message={`Delete batch "${deleteTarget?.batchName}"? All enrollments and fee records will be deleted.`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

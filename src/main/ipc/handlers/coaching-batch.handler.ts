@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { listBatches, createBatch, updateBatch, deleteBatch, getBatchKPIs } from '../../services/coaching-batch.service'
+import { CreateCoachingBatchSchema, UpdateCoachingBatchSchema, CoachingBatchIdSchema } from '../../validation/coaching-batch.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,28 +13,23 @@ export function register(handle: HandleFn): void {
 
   handle('coachingBatch:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      batchName: string; subjectOrCourse: string; instructorId?: string
-      scheduleDays?: string[]; scheduleTime?: string; roomOrLocation?: string
-      maxCapacity?: number; startDate: string; endDate?: string; feePerMonth: number; status?: string
-    }
-    return createBatch(payload)
+    const parsed = CreateCoachingBatchSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createBatch(parsed.data)
   })
 
   handle('coachingBatch:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      id: string; batchName?: string; subjectOrCourse?: string; instructorId?: string | null
-      scheduleDays?: string[]; scheduleTime?: string | null; roomOrLocation?: string | null
-      maxCapacity?: number; startDate?: string; endDate?: string | null; feePerMonth?: number; status?: string
-    }
-    return updateBatch(payload)
+    const parsed = UpdateCoachingBatchSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateBatch(parsed.data)
   })
 
   handle('coachingBatch:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string }
-    return deleteBatch(payload.id)
+    const parsed = CoachingBatchIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteBatch(parsed.data.id)
   })
 
   handle('coachingBatch:kpis', async () => {

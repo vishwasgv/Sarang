@@ -3,6 +3,7 @@ import {
   updateMeasurementRecord, deleteMeasurementRecord
 } from '../../services/measurement-record.service'
 import { requirePermission } from '../permission-guard'
+import { CreateMeasurementRecordSchema, UpdateMeasurementRecordSchema } from '../../validation/measurement-record.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,12 +20,16 @@ export function registerMeasurementRecord(handle: HandleFn): void {
 
   handle('measurementRecord:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createMeasurementRecord(raw as Parameters<typeof createMeasurementRecord>[0])
+    const parsed = CreateMeasurementRecordSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createMeasurementRecord(parsed.data)
   })
 
   handle('measurementRecord:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateMeasurementRecord(raw as Parameters<typeof updateMeasurementRecord>[0])
+    const parsed = UpdateMeasurementRecordSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateMeasurementRecord(parsed.data)
   })
 
   handle('measurementRecord:delete', async (raw) => {

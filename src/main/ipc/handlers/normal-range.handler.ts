@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { listNormalRanges, saveNormalRange, deleteNormalRange, evaluateAgainstNormalRange, findNormalRange } from '../../services/normal-range.service'
+import { SaveNormalRangeSchema } from '../../validation/normal-range.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -11,9 +12,9 @@ export function register(handle: HandleFn): void {
 
   handle('normalRange:save', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
-    const p = payload as { testName?: string }
-    if (!p?.testName) return { success: false, error: { code: 'VAL-001', message: 'Test name is required.' } }
-    return saveNormalRange(payload as Parameters<typeof saveNormalRange>[0])
+    const parsed = SaveNormalRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return saveNormalRange(parsed.data)
   })
 
   handle('normalRange:delete', async (payload) => {

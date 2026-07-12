@@ -6,6 +6,12 @@ import {
   deleteEngagement,
   generateEngagementInvoice,
 } from '../../services/engagement.service'
+import {
+  CreateEngagementSchema,
+  UpdateEngagementSchema,
+  DeleteEngagementSchema,
+  GenerateEngagementInvoiceSchema,
+} from '../../validation/engagement.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -18,25 +24,29 @@ export function register(handle: HandleFn): void {
 
   handle('engagement:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { clientId: string; staffId?: string; title: string; engagementType?: string; feeType?: string; feeAmount?: number; billingDay?: number; startDate?: string; endDate?: string; notes?: string }
-    return createEngagement(payload)
+    const parsed = CreateEngagementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createEngagement(parsed.data)
   })
 
   handle('engagement:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; staffId?: string | null; title?: string; engagementType?: string; status?: string; feeType?: string; feeAmount?: number | null; billingDay?: number | null; startDate?: string | null; endDate?: string | null; notes?: string | null }
-    return updateEngagement(payload)
+    const parsed = UpdateEngagementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateEngagement(parsed.data)
   })
 
   handle('engagement:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = raw as { id: string }
-    return deleteEngagement(id)
+    const parsed = DeleteEngagementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteEngagement(parsed.data.id)
   })
 
   handle('engagement:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id, period } = raw as { id: string; period?: string }
-    return generateEngagementInvoice(id, period)
+    const parsed = GenerateEngagementInvoiceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateEngagementInvoice(parsed.data.id, parsed.data.period)
   })
 }

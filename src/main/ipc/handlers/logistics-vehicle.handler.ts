@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { listVehicles, createVehicle, updateVehicle, deleteVehicle, updateVehicleStatus } from '../../services/logistics-vehicle.service'
+import { CreateVehicleSchema, UpdateVehicleSchema, UpdateVehicleStatusSchema } from '../../validation/logistics-vehicle.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,12 +13,16 @@ export function registerLogisticsVehicleHandlers(handle: HandleFn): void {
 
   handle('logisticsVehicle:create', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return createVehicle(raw as Parameters<typeof createVehicle>[0], getCurrentSession()?.userId)
+    const parsed = CreateVehicleSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createVehicle(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsVehicle:update', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return updateVehicle(raw as Parameters<typeof updateVehicle>[0], getCurrentSession()?.userId)
+    const parsed = UpdateVehicleSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateVehicle(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsVehicle:delete', async (raw) => {
@@ -27,7 +32,8 @@ export function registerLogisticsVehicleHandlers(handle: HandleFn): void {
 
   handle('logisticsVehicle:updateStatus', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    const p = raw as { id: string; status: string }
-    return updateVehicleStatus(p.id, p.status, getCurrentSession()?.userId)
+    const parsed = UpdateVehicleStatusSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateVehicleStatus(parsed.data.id, parsed.data.status, getCurrentSession()?.userId)
   })
 }

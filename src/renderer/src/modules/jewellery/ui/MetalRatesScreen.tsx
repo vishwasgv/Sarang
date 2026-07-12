@@ -5,6 +5,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -40,6 +41,8 @@ export function MetalRatesScreen(): React.JSX.Element {
   const [formRate, setFormRate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<MetalRate | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,10 +79,12 @@ export function MetalRatesScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(t('jewellery.confirmDeleteRate'))) return
-    const res = await window.api.metalRate.delete({ id })
-    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); await load() }
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.metalRate.delete({ id: deleteTarget.id })
+    setDeleting(false)
+    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
     else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
@@ -143,7 +148,7 @@ export function MetalRatesScreen(): React.JSX.Element {
                 <div className="col-span-2 text-right text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</div>
                 <div className="col-span-1 text-right">
                   {canManage && (
-                    <button onClick={() => void handleDelete(r.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
+                    <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
                   )}
                 </div>
               </div>
@@ -151,6 +156,16 @@ export function MetalRatesScreen(): React.JSX.Element {
           </div>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('jewellery.deleted')}
+        message={t('jewellery.confirmDeleteRate')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

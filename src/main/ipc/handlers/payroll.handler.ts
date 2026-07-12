@@ -9,30 +9,38 @@ import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
+import { PayrollPeriodSchema, UpdateDeductionsSchema, MarkSalaryPaidSchema } from '../../validation/payroll.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
 export function register(handle: HandleFn): void {
   handle('payroll:listForPeriod', async (payload) => {
     const deny = await requirePermission('hr.view'); if (deny) return deny
-    return listPayrollForPeriod(payload as { year: number; month: number })
+    const parsed = PayrollPeriodSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listPayrollForPeriod(parsed.data)
   })
 
   handle('payroll:generate', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    return generatePayrollForPeriod(payload as { year: number; month: number })
+    const parsed = PayrollPeriodSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generatePayrollForPeriod(parsed.data)
   })
 
   handle('payroll:updateDeductions', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
-    return updateSalaryPayment(payload as Parameters<typeof updateSalaryPayment>[0])
+    const parsed = UpdateDeductionsSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateSalaryPayment(parsed.data)
   })
 
   handle('payroll:markPaid', async (payload) => {
     const deny = await requirePermission('hr.manage'); if (deny) return deny
+    const parsed = MarkSalaryPaidSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const session = getCurrentSession()
-    const p = payload as { id: string; paymentMethod: string; paidDate?: string }
-    return markSalaryPaid({ ...p, userId: session?.userId })
+    return markSalaryPaid({ ...parsed.data, userId: session?.userId })
   })
 
   handle('payroll:print', async (payload) => {

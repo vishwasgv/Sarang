@@ -8,6 +8,7 @@ import {
   addWeightEntry,
   listWeightHistory,
 } from '../../services/pet.service'
+import { CreatePetSchema, UpdatePetSchema, PetIdSchema, AddWeightEntrySchema } from '../../validation/pet.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -29,26 +30,33 @@ export function register(handle: HandleFn): void {
   handle('pets:create', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    return createPet(payload as Parameters<typeof createPet>[0])
+    const parsed = CreatePetSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createPet(parsed.data)
   })
 
   handle('pets:update', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    return updatePet(payload as Parameters<typeof updatePet>[0])
+    const parsed = UpdatePetSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updatePet(parsed.data)
   })
 
   handle('pets:delete', async (payload) => {
     const deny = await requirePermission('billing.void')
     if (deny) return deny
-    const { id } = payload as { id: string }
-    return deletePet(id)
+    const parsed = PetIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deletePet(parsed.data.id)
   })
 
   handle('pets:addWeight', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    return addWeightEntry(payload as Parameters<typeof addWeightEntry>[0])
+    const parsed = AddWeightEntrySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return addWeightEntry(parsed.data)
   })
 
   handle('pets:weightHistory', async (payload) => {

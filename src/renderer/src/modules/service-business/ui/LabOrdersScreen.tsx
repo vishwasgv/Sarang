@@ -7,6 +7,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { Tabs } from '@shared/ui/molecules/Tabs'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { LabReportPrint } from './LabReportPrint'
@@ -88,6 +89,10 @@ export function LabOrdersScreen() {
   const [resultParams, setResultParams] = useState<ResultParameter[]>([{ parameter: '', value: '', unit: '', referenceRange: '', flag: 'NORMAL' }])
   const [resultSummary, setResultSummary] = useState('')
   const [showPrint, setShowPrint] = useState(false)
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState(false)
 
   // Phase 54B — once a lab has saved a normal range for a test name (Settings
   // > Normal Ranges), typing that same test + a value here auto-fills the
@@ -244,18 +249,23 @@ export function LabOrdersScreen() {
     else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update.')
   }
 
-  async function handleCancel(id: string) {
-    if (!confirm('Cancel this lab test order?')) return
+  async function handleCancel() {
+    if (!cancelTargetId) return
+    setCancelling(true)
+    const id = cancelTargetId
     const res = await api.labTestOrders.cancel({ id })
-    if (res.success) { toastSuccess('Order Cancelled', 'Order cancelled.'); refreshDetail(id); load() }
+    if (res.success) { toastSuccess('Order Cancelled', 'Order cancelled.'); setCancelTargetId(null); refreshDetail(id); load() }
     else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel order.')
+    setCancelling(false)
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this lab test order? This cannot be undone.')) return
-    const res = await api.labTestOrders.delete({ id })
-    if (res.success) { toastSuccess('Order Deleted', 'Order deleted.'); setDetail(null); load() }
+  async function handleDelete() {
+    if (!deleteTargetId) return
+    setDeletingOrder(true)
+    const res = await api.labTestOrders.delete({ id: deleteTargetId })
+    if (res.success) { toastSuccess('Order Deleted', 'Order deleted.'); setDeleteTargetId(null); setDetail(null); load() }
     else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not delete order.')
+    setDeletingOrder(false)
   }
 
   async function handleGenerateInvoice(id: string) {
@@ -532,12 +542,12 @@ export function LabOrdersScreen() {
                     </button>
                   )}
                   {detail.status !== 'DELIVERED' && detail.status !== 'CANCELLED' && (
-                    <button onClick={() => handleCancel(detail.id)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+                    <button onClick={() => setCancelTargetId(detail.id)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                       Cancel Order
                     </button>
                   )}
                   {detail.status === 'ORDERED' && !detail.invoiceId && (
-                    <button onClick={() => handleDelete(detail.id)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+                    <button onClick={() => setDeleteTargetId(detail.id)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                       Delete Order
                     </button>
                   )}
@@ -551,6 +561,26 @@ export function LabOrdersScreen() {
       {showPrint && detail && (
         <LabReportPrint order={detail} profile={profile} onClose={() => setShowPrint(false)} />
       )}
+
+      <ConfirmDialog
+        open={!!cancelTargetId}
+        onClose={() => setCancelTargetId(null)}
+        onConfirm={handleCancel}
+        loading={cancelling}
+        title="Cancel Lab Test Order"
+        message="Cancel this lab test order?"
+        confirmLabel="Cancel Order"
+      />
+
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        loading={deletingOrder}
+        title="Delete Lab Test Order"
+        message="Delete this lab test order? This cannot be undone."
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

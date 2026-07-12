@@ -7,6 +7,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -59,6 +60,8 @@ export function MetalExchangeScreen(): React.JSX.Element {
   const [error, setError] = useState('')
   const [linkTarget, setLinkTarget] = useState<MetalExchange | null>(null)
   const [linkInvoiceNumber, setLinkInvoiceNumber] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<MetalExchange | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -112,10 +115,12 @@ export function MetalExchangeScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(t('jewellery.confirmDeleteExchange'))) return
-    const res = await window.api.metalExchange.delete({ id })
-    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); await load() }
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.metalExchange.delete({ id: deleteTarget.id })
+    setDeleting(false)
+    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
     else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
@@ -224,7 +229,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
                     </button>
                   )}
                   {!x.invoiceId && canManage && (
-                    <button onClick={() => void handleDelete(x.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
+                    <button onClick={() => setDeleteTarget(x)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
                   )}
                 </div>
               </div>
@@ -232,6 +237,16 @@ export function MetalExchangeScreen(): React.JSX.Element {
           </div>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('jewellery.deleted')}
+        message={t('jewellery.confirmDeleteExchange')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

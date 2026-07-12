@@ -7,6 +7,7 @@ import {
   getEventKPIs,
   generateEventInvoice,
 } from '../../services/event-booking.service'
+import { CreateEventBookingSchema, UpdateEventBookingSchema, EventBookingIdSchema } from '../../validation/event-booking.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,17 +20,23 @@ export function registerEventBooking(handle: HandleFn): void {
 
   handle('eventBooking:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createEventBooking(raw as Parameters<typeof createEventBooking>[0])
+    const parsed = CreateEventBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createEventBooking(parsed.data)
   })
 
   handle('eventBooking:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateEventBooking(raw as Parameters<typeof updateEventBooking>[0])
+    const parsed = UpdateEventBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateEventBooking(parsed.data)
   })
 
   handle('eventBooking:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteEventBooking(raw as string)
+    const parsed = EventBookingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteEventBooking(parsed.data)
   })
 
   handle('eventBooking:kpis', async () => {
@@ -39,6 +46,8 @@ export function registerEventBooking(handle: HandleFn): void {
 
   handle('eventBooking:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generateEventInvoice(raw as string)
+    const parsed = EventBookingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateEventInvoice(parsed.data)
   })
 }

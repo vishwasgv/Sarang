@@ -5,6 +5,7 @@ import {
   updateBoardMeeting,
   deleteBoardMeeting,
 } from '../../services/board-meeting.service'
+import { CreateBoardMeetingSchema, UpdateBoardMeetingSchema, BoardMeetingIdSchema } from '../../validation/board-meeting.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,19 +18,22 @@ export function register(handle: HandleFn): void {
 
   handle('boardMeeting:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { clientId: string; meetingType?: string; meetingDate: string; meetingTime?: string; venue?: string; agenda?: string; notes?: string }
-    return createBoardMeeting(payload)
+    const parsed = CreateBoardMeetingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createBoardMeeting(parsed.data)
   })
 
   handle('boardMeeting:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; meetingType?: string; meetingDate?: string; meetingTime?: string | null; venue?: string | null; agenda?: string | null; quorumMet?: boolean; minutesDone?: boolean; minutesText?: string | null; noticesSent?: boolean; notes?: string | null }
-    return updateBoardMeeting(payload)
+    const parsed = UpdateBoardMeetingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateBoardMeeting(parsed.data)
   })
 
   handle('boardMeeting:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = raw as { id: string }
-    return deleteBoardMeeting(id)
+    const parsed = BoardMeetingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteBoardMeeting(parsed.data.id)
   })
 }

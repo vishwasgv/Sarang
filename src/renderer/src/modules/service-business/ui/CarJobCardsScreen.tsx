@@ -5,6 +5,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -124,6 +125,8 @@ export default function CarJobCardsScreen() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [partQuery, setPartQuery] = useState('')
   const [partResults, setPartResults] = useState<InventoryProduct[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<CarJobCard | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Debounced inventory search for linking a part to a real Product, same
   // pattern BulkOrderScreen uses for its product picker.
@@ -247,12 +250,14 @@ export default function CarJobCardsScreen() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('Delete this job card?')) return
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
     setActionError(null)
-    const res = await api.carJobCard.delete(id)
-    if (res.success) { await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
+    const res = await api.carJobCard.delete(deleteTarget.id)
+    if (res.success) { setDeleteTarget(null); await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
     else setActionError(res.error?.message ?? 'Failed to delete job card.')
+    setDeleting(false)
   }
 
   async function handleAdvanceStatus(card: CarJobCard) {
@@ -427,7 +432,7 @@ export default function CarJobCardsScreen() {
                         </span>
                       )}
                       <button onClick={() => openEdit(card)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={15} /></button>
-                      <button onClick={() => handleDelete(card.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={15} /></button>
+                      <button onClick={() => setDeleteTarget(card)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={15} /></button>
                       <button onClick={() => setExpandedId(isExpanded ? null : card.id)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200">
                         {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                       </button>
@@ -701,6 +706,16 @@ export default function CarJobCardsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Job Card"
+        message={`Delete job card "${deleteTarget?.jobNumber}"?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

@@ -13,6 +13,13 @@ import {
   getExpiringMemberships,
   generateMembershipInvoice,
 } from '../../services/membership.service'
+import {
+  CreateMembershipPlanSchema,
+  UpdateMembershipPlanSchema,
+  CreateMembershipSchema,
+  UpdateMembershipSchema,
+  CheckInMemberSchema,
+} from '../../validation/membership.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -25,14 +32,16 @@ export function register(handle: HandleFn): void {
 
   handle('membershipPlan:create', async (raw) => {
     const deny = await requirePermission('settings.view'); if (deny) return deny
-    const payload = raw as { planName: string; durationDays: number; price: number; sessionsIncluded?: number; allowedClasses?: string; isActive?: boolean }
-    return createMembershipPlan(payload)
+    const parsed = CreateMembershipPlanSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createMembershipPlan(parsed.data)
   })
 
   handle('membershipPlan:update', async (raw) => {
     const deny = await requirePermission('settings.view'); if (deny) return deny
-    const payload = raw as { id: string; planName?: string; durationDays?: number; price?: number; sessionsIncluded?: number | null; allowedClasses?: string | null; isActive?: boolean }
-    return updateMembershipPlan(payload)
+    const parsed = UpdateMembershipPlanSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateMembershipPlan(parsed.data)
   })
 
   handle('membershipPlan:delete', async (raw) => {
@@ -56,20 +65,23 @@ export function register(handle: HandleFn): void {
 
   handle('membership:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { clientId: string; planId: string; startDate: string; paymentStatus?: string; notes?: string }
-    return createMembership(payload)
+    const parsed = CreateMembershipSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createMembership(parsed.data)
   })
 
   handle('membership:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; status?: string; paymentStatus?: string; freezeHistory?: string; notes?: string; sessionsUsed?: number }
-    return updateMembership(payload)
+    const parsed = UpdateMembershipSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateMembership(parsed.data)
   })
 
   handle('membership:checkIn', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { clientId: string; membershipId: string }
-    return checkInMember(payload.clientId, payload.membershipId)
+    const parsed = CheckInMemberSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return checkInMember(parsed.data.clientId, parsed.data.membershipId)
   })
 
   handle('membership:attendance', async (raw) => {

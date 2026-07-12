@@ -8,6 +8,7 @@ import {
   getShootKPIs,
   generateShootInvoice,
 } from '../../services/shoot-booking.service'
+import { CreateShootBookingSchema, UpdateShootBookingSchema, ShootBookingIdSchema } from '../../validation/shoot-booking.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -25,17 +26,23 @@ export function registerShootBooking(handle: HandleFn): void {
 
   handle('shootBooking:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createShootBooking(raw as Parameters<typeof createShootBooking>[0])
+    const parsed = CreateShootBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createShootBooking(parsed.data)
   })
 
   handle('shootBooking:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateShootBooking(raw as Parameters<typeof updateShootBooking>[0])
+    const parsed = UpdateShootBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateShootBooking(parsed.data)
   })
 
   handle('shootBooking:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteShootBooking(raw as string)
+    const parsed = ShootBookingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteShootBooking(parsed.data)
   })
 
   handle('shootBooking:kpis', async () => {
@@ -45,6 +52,8 @@ export function registerShootBooking(handle: HandleFn): void {
 
   handle('shootBooking:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generateShootInvoice(raw as string)
+    const parsed = ShootBookingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateShootInvoice(parsed.data)
   })
 }

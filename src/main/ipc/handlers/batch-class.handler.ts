@@ -9,6 +9,13 @@ import {
   markBatchClassAttendance,
   getBatchClassAttendance,
 } from '../../services/batch-class.service'
+import {
+  CreateBatchClassSchema,
+  UpdateBatchClassSchema,
+  EnrollMemberSchema,
+  UnenrollMemberSchema,
+  MarkAttendanceSchema,
+} from '../../validation/batch-class.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -27,32 +34,37 @@ export function register(handle: HandleFn): void {
 
   handle('batchClass:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { className: string; instructorId?: string; maxCapacity: number; scheduleDays: string; scheduleTime: string; startDate: string; endDate?: string; roomOrLocation?: string }
-    return createBatchClass(payload)
+    const parsed = CreateBatchClassSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createBatchClass(parsed.data)
   })
 
   handle('batchClass:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; className?: string; instructorId?: string | null; maxCapacity?: number; scheduleDays?: string; scheduleTime?: string; startDate?: string; endDate?: string | null; roomOrLocation?: string | null; status?: string }
-    return updateBatchClass(payload)
+    const parsed = UpdateBatchClassSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateBatchClass(parsed.data)
   })
 
   handle('batchClass:enroll', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { batchClassId: string; memberId: string }
-    return enrollMember(payload.batchClassId, payload.memberId)
+    const parsed = EnrollMemberSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return enrollMember(parsed.data.batchClassId, parsed.data.memberId)
   })
 
   handle('batchClass:unenroll', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { batchClassId: string; memberId: string }
-    return unenrollMember(payload.batchClassId, payload.memberId)
+    const parsed = UnenrollMemberSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return unenrollMember(parsed.data.batchClassId, parsed.data.memberId)
   })
 
   handle('batchClass:markAttendance', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { classId: string; memberIds: string[]; sessionDate: string }
-    return markBatchClassAttendance(payload.classId, payload.memberIds, payload.sessionDate)
+    const parsed = MarkAttendanceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return markBatchClassAttendance(parsed.data.classId, parsed.data.memberIds, parsed.data.sessionDate)
   })
 
   handle('batchClass:getAttendance', async (raw) => {

@@ -7,6 +7,7 @@ import {
   deleteProperty,
   getPropertyKPIs,
 } from '../../services/property.service'
+import { CreatePropertySchema, UpdatePropertySchema, PropertyIdSchema } from '../../validation/property.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -24,17 +25,23 @@ export function registerProperty(handle: HandleFn): void {
 
   handle('property:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createProperty(raw as Parameters<typeof createProperty>[0])
+    const parsed = CreatePropertySchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createProperty(parsed.data)
   })
 
   handle('property:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateProperty(raw as Parameters<typeof updateProperty>[0])
+    const parsed = UpdatePropertySchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateProperty(parsed.data)
   })
 
   handle('property:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteProperty(raw as string)
+    const parsed = PropertyIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteProperty(parsed.data)
   })
 
   handle('property:kpis', async () => {

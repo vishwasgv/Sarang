@@ -6,6 +6,7 @@ import {
   updateLegalCase,
   deleteLegalCase,
 } from '../../services/legal-case.service'
+import { CreateLegalCaseSchema, UpdateLegalCaseSchema } from '../../validation/legal-case.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -24,14 +25,16 @@ export function register(handle: HandleFn): void {
 
   handle('legalCase:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { caseNumber: string; caseTitle: string; caseType?: string; courtName: string; courtDistrict?: string; courtState?: string; eCourtId?: string; clientId: string; advocateId?: string; filingDate?: string; feeAgreed?: number; notes?: string }
-    return createLegalCase(payload)
+    const parsed = CreateLegalCaseSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createLegalCase(parsed.data)
   })
 
   handle('legalCase:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; caseNumber?: string; caseTitle?: string; caseType?: string; courtName?: string; courtDistrict?: string | null; courtState?: string | null; eCourtId?: string | null; advocateId?: string | null; status?: string; filingDate?: string | null; nextHearingDate?: string | null; feeAgreed?: number | null; feeCollected?: number; notes?: string | null }
-    return updateLegalCase(payload)
+    const parsed = UpdateLegalCaseSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateLegalCase(parsed.data)
   })
 
   handle('legalCase:delete', async (raw) => {

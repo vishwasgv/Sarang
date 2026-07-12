@@ -2,6 +2,7 @@ import * as expenseService from '../../services/expense.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
+import { CreateExpenseSchema, UpdateExpenseSchema, CreateExpenseCategorySchema } from '../../validation/expenses.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -21,16 +22,16 @@ export function register(handle: HandleFn): void {
 
   handle('expenses:create', async (payload) => {
     const deny = await requirePermission('expenses.create'); if (deny) return deny
-    const p = payload as { categoryId: string; expenseName: string; amount: number; expenseDate?: string; paymentMethod?: string; remarks?: string }
-    if (!p?.categoryId || !p?.expenseName || !p?.amount) return { success: false, error: { code: 'VAL-001', message: 'categoryId, expenseName, and amount are required.' } }
-    return expenseService.createExpense(p, getCurrentSession()?.userId)
+    const parsed = CreateExpenseSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return expenseService.createExpense(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('expenses:update', async (payload) => {
     const deny = await requirePermission('expenses.modify'); if (deny) return deny
-    const p = payload as { id: string; categoryId: string; expenseName: string; amount: number; expenseDate?: string; paymentMethod?: string; remarks?: string }
-    if (!p?.id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
-    return expenseService.updateExpense(p, getCurrentSession()?.userId)
+    const parsed = UpdateExpenseSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return expenseService.updateExpense(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('expenses:delete', async (id) => {
@@ -55,8 +56,9 @@ export function register(handle: HandleFn): void {
 
   handle('expenses:createCategory', async (payload) => {
     const deny = await requirePermission('expenses.create'); if (deny) return deny
-    const p = payload as { categoryName: string; description?: string }
-    if (!p?.categoryName?.trim()) return { success: false, error: { code: 'VAL-001', message: 'categoryName is required.' } }
+    const parsed = CreateExpenseCategorySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const p = parsed.data
     const db = getPrisma()
     const existing = await db.expenseCategory.findFirst({ where: { categoryName: p.categoryName.trim() } })
     if (existing) return { success: false, error: { code: 'EXP-009', message: 'Category already exists.' } }

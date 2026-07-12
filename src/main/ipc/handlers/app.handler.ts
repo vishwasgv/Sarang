@@ -5,6 +5,7 @@ import { getPrisma } from '../../database/db'
 import { logger } from '../../utils/logger'
 import { requireSession } from '../permission-guard'
 import { logoToBase64DataUri, generateUpiQr, canShowUpiQr } from '../../services/print.service'
+import { OpenFileDialogSchema, GenerateUpiPaymentQrSchema } from '../../validation/app.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -108,7 +109,9 @@ export function register(handle: HandleFn): void {
   })
 
   handle('dialog:openFile', async (payload) => {
-    const opts = (payload ?? {}) as { title?: string; accept?: string[]; maxSizeBytes?: number }
+    const parsed = OpenFileDialogSchema.safeParse(payload ?? {})
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const opts = parsed.data
     const filters = opts.accept?.length
       ? [{ name: 'Images', extensions: opts.accept.map((a) => a.replace(/^\./, '')) }]
       : [{ name: 'All Files', extensions: ['*'] }]
@@ -166,7 +169,9 @@ export function register(handle: HandleFn): void {
   // every caller can treat "no QR" as a normal, silent case.
   handle('app:generateUpiPaymentQr', async (payload) => {
     const deny = requireSession(); if (deny) return deny
-    const { amount, note } = (payload ?? {}) as { amount?: number; note?: string }
+    const parsed = GenerateUpiPaymentQrSchema.safeParse(payload ?? {})
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const { amount, note } = parsed.data
     if (!amount || amount <= 0.01 || !note) return { success: true, data: null }
     const profile = await getPrisma().businessProfile.findFirst({ select: { businessName: true, upiId: true, country: true } })
     if (!canShowUpiQr(profile)) return { success: true, data: null }

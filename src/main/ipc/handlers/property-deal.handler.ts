@@ -6,6 +6,7 @@ import {
   deletePropertyDeal,
   generateCommissionInvoice,
 } from '../../services/property-deal.service'
+import { CreatePropertyDealSchema, UpdatePropertyDealSchema, PropertyDealIdSchema } from '../../validation/property-deal.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -18,21 +19,29 @@ export function registerPropertyDeal(handle: HandleFn): void {
 
   handle('propertyDeal:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createPropertyDeal(raw as Parameters<typeof createPropertyDeal>[0])
+    const parsed = CreatePropertyDealSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createPropertyDeal(parsed.data)
   })
 
   handle('propertyDeal:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updatePropertyDeal(raw as Parameters<typeof updatePropertyDeal>[0])
+    const parsed = UpdatePropertyDealSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updatePropertyDeal(parsed.data)
   })
 
   handle('propertyDeal:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deletePropertyDeal(raw as string)
+    const parsed = PropertyDealIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deletePropertyDeal(parsed.data)
   })
 
   handle('propertyDeal:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generateCommissionInvoice(raw as string)
+    const parsed = PropertyDealIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateCommissionInvoice(parsed.data)
   })
 }

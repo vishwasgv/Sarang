@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { listPerformances, createPerformance, updatePerformance, deletePerformance } from '../../services/performance.service'
+import { CreatePerformanceSchema, UpdatePerformanceSchema } from '../../validation/performance.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,20 +13,16 @@ export function register(handle: HandleFn): void {
 
   handle('performance:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      batchId: string; performanceName: string; date: string
-      venue?: string; participatingStudentIds?: string[]; notes?: string
-    }
-    return createPerformance(payload)
+    const parsed = CreatePerformanceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createPerformance(parsed.data)
   })
 
   handle('performance:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      id: string; performanceName?: string; date?: string; venue?: string | null
-      participatingStudentIds?: string[]; notes?: string | null
-    }
-    return updatePerformance(payload)
+    const parsed = UpdatePerformanceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updatePerformance(parsed.data)
   })
 
   handle('performance:delete', async (raw) => {

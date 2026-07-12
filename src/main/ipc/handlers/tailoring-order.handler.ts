@@ -3,6 +3,7 @@ import {
   deleteTailoringOrder, generateTailoringInvoice, getTailoringKPIs
 } from '../../services/tailoring-order.service'
 import { requirePermission } from '../permission-guard'
+import { CreateTailoringOrderSchema, UpdateTailoringOrderSchema, TailoringOrderIdSchema } from '../../validation/tailoring-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,22 +20,30 @@ export function registerTailoringOrder(handle: HandleFn): void {
 
   handle('tailoringOrder:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createTailoringOrder(raw as Parameters<typeof createTailoringOrder>[0])
+    const parsed = CreateTailoringOrderSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createTailoringOrder(parsed.data)
   })
 
   handle('tailoringOrder:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateTailoringOrder(raw as Parameters<typeof updateTailoringOrder>[0])
+    const parsed = UpdateTailoringOrderSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateTailoringOrder(parsed.data)
   })
 
   handle('tailoringOrder:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteTailoringOrder(raw as string)
+    const parsed = TailoringOrderIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteTailoringOrder(parsed.data)
   })
 
   handle('tailoringOrder:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generateTailoringInvoice(raw as string)
+    const parsed = TailoringOrderIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateTailoringInvoice(parsed.data)
   })
 
   handle('tailoringOrder:kpis', async () => {

@@ -3,6 +3,7 @@ import {
   deleteCarJobCard, generateCarJobInvoice, getCarJobCardKPIs
 } from '../../services/car-job-card.service'
 import { requirePermission } from '../permission-guard'
+import { CarJobCardIdSchema, CreateCarJobCardSchema, UpdateCarJobCardSchema } from '../../validation/car-job-card.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,22 +20,30 @@ export function registerCarJobCard(handle: HandleFn): void {
 
   handle('carJobCard:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createCarJobCard(raw as Parameters<typeof createCarJobCard>[0])
+    const parsed = CreateCarJobCardSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createCarJobCard(parsed.data)
   })
 
   handle('carJobCard:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateCarJobCard(raw as Parameters<typeof updateCarJobCard>[0])
+    const parsed = UpdateCarJobCardSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateCarJobCard(parsed.data)
   })
 
   handle('carJobCard:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteCarJobCard(raw as string)
+    const parsed = CarJobCardIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteCarJobCard(parsed.data)
   })
 
   handle('carJobCard:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generateCarJobInvoice(raw as string)
+    const parsed = CarJobCardIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateCarJobInvoice(parsed.data)
   })
 
   handle('carJobCard:kpis', async () => {

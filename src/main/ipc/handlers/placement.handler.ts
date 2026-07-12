@@ -3,6 +3,7 @@ import {
   deletePlacement, generatePlacementInvoice, getPlacementKPIs
 } from '../../services/placement.service'
 import { requirePermission } from '../permission-guard'
+import { CreatePlacementSchema, UpdatePlacementSchema, PlacementIdSchema } from '../../validation/placement.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,22 +20,30 @@ export function registerPlacement(handle: HandleFn): void {
 
   handle('placement:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createPlacement(raw as Parameters<typeof createPlacement>[0])
+    const parsed = CreatePlacementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createPlacement(parsed.data)
   })
 
   handle('placement:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updatePlacement(raw as Parameters<typeof updatePlacement>[0])
+    const parsed = UpdatePlacementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updatePlacement(parsed.data)
   })
 
   handle('placement:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deletePlacement(raw as string)
+    const parsed = PlacementIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deletePlacement(parsed.data)
   })
 
   handle('placement:generateInvoice', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return generatePlacementInvoice(raw as string)
+    const parsed = PlacementIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generatePlacementInvoice(parsed.data)
   })
 
   handle('placement:kpis', async () => {

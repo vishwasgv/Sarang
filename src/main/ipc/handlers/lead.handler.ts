@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { listLeads, createLead, updateLead, deleteLead } from '../../services/lead.service'
+import { CreateLeadSchema, UpdateLeadSchema } from '../../validation/lead.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,14 +13,16 @@ export function register(handle: HandleFn): void {
 
   handle('lead:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { fullName: string; email?: string; phone?: string; companyName?: string; source?: string; status?: string; estimatedValue?: number; assignedToId?: string; notes?: string }
-    return createLead(payload)
+    const parsed = CreateLeadSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createLead(parsed.data)
   })
 
   handle('lead:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; fullName?: string; email?: string | null; phone?: string | null; companyName?: string | null; source?: string; status?: string; estimatedValue?: number | null; assignedToId?: string | null; convertedClientId?: string | null; notes?: string | null }
-    return updateLead(payload)
+    const parsed = UpdateLeadSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateLead(parsed.data)
   })
 
   handle('lead:delete', async (raw) => {

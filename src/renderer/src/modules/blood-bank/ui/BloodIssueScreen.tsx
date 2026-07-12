@@ -5,6 +5,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 
@@ -45,6 +46,8 @@ export function BloodIssueScreen() {
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<BloodIssue | null>(null)
   const [incompatibleUnits, setIncompatibleUnits] = useState<{ donationRecordId: string; note: string }[]>([])
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -143,9 +146,12 @@ export function BloodIssueScreen() {
     }
   }
 
-  async function handleCancel(id: string) {
-    if (!confirm('Cancel this issue and return all units to stock?')) return
-    const res = await api.bloodBank.cancelIssue({ id })
+  async function handleCancel() {
+    if (!detail) return
+    setCancelling(true)
+    const res = await api.bloodBank.cancelIssue({ id: detail.id })
+    setCancelling(false)
+    setConfirmCancel(false)
     if (res.success) { toastSuccess('Issue Cancelled', 'Units returned to stock.'); setDetail(null); load() }
     else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel issue.')
   }
@@ -324,12 +330,22 @@ export function BloodIssueScreen() {
                 <button onClick={() => handleGenerateInvoice(detail.id)} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors">Generate Invoice</button>
               )}
               {canManage && detail.status === 'ISSUED' && !detail.invoiceId && (
-                <button onClick={() => handleCancel(detail.id)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">Cancel Issue</button>
+                <button onClick={() => setConfirmCancel(true)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">Cancel Issue</button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={handleCancel}
+        loading={cancelling}
+        title="Cancel Issue"
+        message="Cancel this issue and return all units to stock?"
+        confirmLabel="Cancel Issue"
+      />
     </div>
   )
 }

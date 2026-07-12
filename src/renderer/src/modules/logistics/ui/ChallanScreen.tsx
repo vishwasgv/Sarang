@@ -8,6 +8,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface ChallanItem {
   id: string; productId: string | null; productName: string; quantity: number
@@ -63,6 +64,10 @@ export default function ChallanScreen() {
   const [editItems, setEditItems] = useState<typeof EMPTY_ITEM[]>([])
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Challan | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<Challan | null>(null)
+  const [cancelling, setCancelling] = useState(false)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const profile = useBusinessStore(s => s.profile)
   const PAGE_SIZE = 100
@@ -119,8 +124,16 @@ export default function ChallanScreen() {
 
   const changeStatus = async (id: string, status: string) => {
     const res = await window.api.logisticsChallan.updateStatus({ id, status })
-    if (!res.success) alert(res.error?.message)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     load()
+  }
+
+  const handleCancelChallan = async () => {
+    if (!cancelTarget) return
+    setCancelling(true)
+    await changeStatus(cancelTarget.id, 'CANCELLED')
+    setCancelling(false)
+    setCancelTarget(null)
   }
 
   const openEdit = (c: Challan) => {
@@ -168,11 +181,13 @@ export default function ChallanScreen() {
     else setEditError(res.error?.message ?? t('common.error'))
   }
 
-  const deleteChallan = async (c: Challan) => {
-    if (!confirm(t('logistics.challan.deleteConfirm', { number: c.challanNumber }))) return
-    const res = await window.api.logisticsChallan.delete(c.id)
-    if (!res.success) alert(res.error?.message)
-    else load()
+  const handleDeleteChallan = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.logisticsChallan.delete(deleteTarget.id)
+    setDeleting(false)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    else { setDeleteTarget(null); load() }
   }
 
   const openReturnDialog = (c: Challan) => {
@@ -259,11 +274,11 @@ export default function ChallanScreen() {
                   <p className="text-xs text-gray-400">{t('logistics.challan.itemsCount', { count: c.items.length })}</p>
                   <div className="flex gap-2 mt-1 justify-end flex-wrap">
                     {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); openEdit(c) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
-                    {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); deleteChallan(c) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
+                    {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); setDeleteTarget(c) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
                     {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'ISSUED') }} className="text-xs text-indigo-600 hover:underline">{t('logistics.challan.issue')}</button>}
                     {c.status === 'ISSUED' && c.challanType !== 'RETURNABLE' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'DELIVERED') }} className="text-xs text-green-600 hover:underline">{t('logistics.challan.markDelivered')}</button>}
                     {c.challanType === 'RETURNABLE' && c.status === 'ISSUED' && <button onClick={e => { e.stopPropagation(); openReturnDialog(c) }} className="text-xs text-orange-600 hover:underline">{t('logistics.challan.recordReturn')}</button>}
-                    {['DRAFT', 'ISSUED'].includes(c.status) && <button onClick={e => { e.stopPropagation(); if (confirm(t('logistics.challan.cancelConfirm', { number: c.challanNumber }))) changeStatus(c.id, 'CANCELLED') }} className="text-xs text-gray-500 hover:underline">{t('logistics.challan.cancelChallan')}</button>}
+                    {['DRAFT', 'ISSUED'].includes(c.status) && <button onClick={e => { e.stopPropagation(); setCancelTarget(c) }} className="text-xs text-gray-500 hover:underline">{t('logistics.challan.cancelChallan')}</button>}
                     <button onClick={e => { e.stopPropagation(); printChallan(c) }} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>
                   </div>
                 </div>
@@ -472,6 +487,26 @@ export default function ChallanScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteChallan}
+        loading={deleting}
+        title={t('common.delete')}
+        message={deleteTarget ? t('logistics.challan.deleteConfirm', { number: deleteTarget.challanNumber }) : ''}
+        confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelChallan}
+        loading={cancelling}
+        title={t('logistics.challan.cancelChallan')}
+        message={cancelTarget ? t('logistics.challan.cancelConfirm', { number: cancelTarget.challanNumber }) : ''}
+        confirmLabel={t('logistics.challan.cancelChallan')}
+      />
     </div>
   )
 }

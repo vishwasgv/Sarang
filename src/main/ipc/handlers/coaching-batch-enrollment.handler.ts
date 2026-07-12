@@ -6,6 +6,7 @@ import {
   updateEnrollment,
   deleteEnrollment,
 } from '../../services/coaching-batch-enrollment.service'
+import { CreateEnrollmentSchema, UpdateEnrollmentSchema, EnrollmentIdSchema } from '../../validation/coaching-batch-enrollment.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -24,25 +25,22 @@ export function register(handle: HandleFn): void {
 
   handle('enrollment:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      batchId: string; studentId: string; discountType?: string
-      discountAmount?: number; effectiveFee: number; enrolledDate?: string; notes?: string
-    }
-    return createEnrollment(payload)
+    const parsed = CreateEnrollmentSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createEnrollment(parsed.data)
   })
 
   handle('enrollment:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as {
-      id: string; status?: string; discountType?: string
-      discountAmount?: number; effectiveFee?: number; notes?: string | null
-    }
-    return updateEnrollment(payload)
+    const parsed = UpdateEnrollmentSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateEnrollment(parsed.data)
   })
 
   handle('enrollment:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string }
-    return deleteEnrollment(payload.id)
+    const parsed = EnrollmentIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteEnrollment(parsed.data.id)
   })
 }

@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getActiveProgram, listPrograms, upsertProgram, markProgramPrinted } from '../../services/exercise-program.service'
+import { UpsertProgramSchema, MarkProgramPrintedSchema } from '../../validation/exercise-program.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -25,13 +26,15 @@ export function register(handle: HandleFn): void {
     // now only used for the audit log's userId, which is correctly FK'd to
     // User.
     const session = getCurrentSession()
-    const p = payload as Parameters<typeof upsertProgram>[0]
-    return upsertProgram({ ...p, createdById: undefined, userId: session?.userId })
+    const parsed = UpsertProgramSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return upsertProgram({ ...parsed.data, createdById: undefined, userId: session?.userId })
   })
 
   handle('exerciseProgram:markPrinted', async (payload) => {
     const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return markProgramPrinted(id)
+    const parsed = MarkProgramPrintedSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return markProgramPrinted(parsed.data.id)
   })
 }

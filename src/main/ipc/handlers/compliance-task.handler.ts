@@ -5,6 +5,7 @@ import {
   updateComplianceTask,
   deleteComplianceTask,
 } from '../../services/compliance-task.service'
+import { CreateComplianceTaskSchema, UpdateComplianceTaskSchema, ComplianceTaskIdSchema } from '../../validation/compliance-task.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,19 +18,22 @@ export function register(handle: HandleFn): void {
 
   handle('complianceTask:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { complianceEventId?: string; clientId: string; staffId?: string; title: string; category: string; dueDate: string; priority?: string; notes?: string }
-    return createComplianceTask(payload)
+    const parsed = CreateComplianceTaskSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createComplianceTask(parsed.data)
   })
 
   handle('complianceTask:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; staffId?: string | null; title?: string; category?: string; dueDate?: string; status?: string; priority?: string; notes?: string | null; filedOn?: string | null; acknowledgmentNo?: string | null }
-    return updateComplianceTask(payload)
+    const parsed = UpdateComplianceTaskSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateComplianceTask(parsed.data)
   })
 
   handle('complianceTask:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = raw as { id: string }
-    return deleteComplianceTask(id)
+    const parsed = ComplianceTaskIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteComplianceTask(parsed.data.id)
   })
 }

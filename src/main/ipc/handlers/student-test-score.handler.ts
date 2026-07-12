@@ -5,6 +5,7 @@ import {
   updateTestScore,
   deleteTestScore,
 } from '../../services/student-test-score.service'
+import { CreateTestScoreSchema, UpdateTestScoreSchema, DeleteTestScoreSchema } from '../../validation/student-test-score.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,19 +18,22 @@ export function register(handle: HandleFn): void {
 
   handle('studentTestScore:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { enrollmentId: string; testName: string; subject?: string; marksObtained: number; maxMarks: number; testDate: string; grade?: string; notes?: string }
-    return createTestScore(payload)
+    const parsed = CreateTestScoreSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createTestScore(parsed.data)
   })
 
   handle('studentTestScore:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; testName?: string; subject?: string | null; marksObtained?: number; maxMarks?: number; testDate?: string; grade?: string | null; notes?: string | null }
-    return updateTestScore(payload)
+    const parsed = UpdateTestScoreSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateTestScore(parsed.data)
   })
 
   handle('studentTestScore:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = raw as { id: string }
-    return deleteTestScore(id)
+    const parsed = DeleteTestScoreSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteTestScore(parsed.data.id)
   })
 }

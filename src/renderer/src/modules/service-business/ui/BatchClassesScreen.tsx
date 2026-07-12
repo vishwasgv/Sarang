@@ -189,7 +189,7 @@ export function BatchClassesScreen() {
       loadClasses()
       setEnrollClass(null)
     } else {
-      alert(res.error?.message ?? 'Could not enroll member.')
+      toastError('Error', res.error?.message ?? 'Could not enroll member.')
     }
   }
 

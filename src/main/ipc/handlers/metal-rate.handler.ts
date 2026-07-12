@@ -1,6 +1,7 @@
 import { listMetalRates, getMetalRate, upsertMetalRate, deleteMetalRate } from '../../services/metal-rate.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { UpsertMetalRateSchema } from '../../validation/metal-rate.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -18,8 +19,10 @@ export function register(handle: HandleFn): void {
 
   handle('metalRate:upsert', async (payload) => {
     const deny = await requirePermission('jewellery.manageRates'); if (deny) return deny
+    const parsed = UpsertMetalRateSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const session = getCurrentSession()
-    return upsertMetalRate({ ...(payload as Parameters<typeof upsertMetalRate>[0]), updatedById: session?.userId })
+    return upsertMetalRate({ ...parsed.data, updatedById: session?.userId })
   })
 
   handle('metalRate:delete', async (payload) => {

@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { listGRNs, getGRN, createGRN, updateGRN, postGRN, deleteGRN, reverseGRN } from '../../services/logistics-grn.service'
+import { CreateGRNSchema, UpdateGRNSchema } from '../../validation/logistics-grn.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,12 +18,16 @@ export function registerLogisticsGrnHandlers(handle: HandleFn): void {
 
   handle('logisticsGrn:create', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return createGRN(raw as Parameters<typeof createGRN>[0], getCurrentSession()?.userId)
+    const parsed = CreateGRNSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createGRN(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsGrn:update', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
-    return updateGRN(raw as Parameters<typeof updateGRN>[0], getCurrentSession()?.userId)
+    const parsed = UpdateGRNSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateGRN(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('logisticsGrn:post', async (raw) => {

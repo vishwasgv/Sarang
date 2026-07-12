@@ -1,6 +1,7 @@
 import { listBatches, createBatch, updateBatch, deleteBatch, getExpiryAlerts } from '../../services/batch.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { CreateBatchSchema, UpdateBatchSchema, DeleteBatchSchema } from '../../validation/batch.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,18 +13,23 @@ export function register(handle: HandleFn): void {
 
   handle('batches:create', async (payload) => {
     const deny = await requirePermission('inventory.addStock'); if (deny) return deny
-    return createBatch(payload as Parameters<typeof createBatch>[0], getCurrentSession()?.userId)
+    const parsed = CreateBatchSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createBatch(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('batches:update', async (payload) => {
     const deny = await requirePermission('inventory.adjustStock'); if (deny) return deny
-    return updateBatch(payload as Parameters<typeof updateBatch>[0], getCurrentSession()?.userId)
+    const parsed = UpdateBatchSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateBatch(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('batches:delete', async (payload) => {
     const deny = await requirePermission('inventory.adjustStock'); if (deny) return deny
-    const p = (payload ?? {}) as { id: string }
-    return deleteBatch(p.id, getCurrentSession()?.userId)
+    const parsed = DeleteBatchSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteBatch(parsed.data.id, getCurrentSession()?.userId)
   })
 
   handle('batches:expiryAlerts', async (payload) => {

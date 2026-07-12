@@ -5,6 +5,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 const api = window.api
@@ -248,6 +249,12 @@ export default function PlacementScreen() {
   // Unfiltered lists for form dropdowns — never overwritten by tab filter effects
   const [allCandidates, setAllCandidates] = useState<Candidate[]>([])
   const [allJobOrders, setAllJobOrders] = useState<JobOrderRow[]>([])
+  const [deleteCandTarget, setDeleteCandTarget] = useState<Candidate | null>(null)
+  const [deletingCand, setDeletingCand] = useState(false)
+  const [deleteJOTarget, setDeleteJOTarget] = useState<JobOrderRow | null>(null)
+  const [deletingJO, setDeletingJO] = useState(false)
+  const [deletePLCTarget, setDeletePLCTarget] = useState<PlacementRow | null>(null)
+  const [deletingPLC, setDeletingPLC] = useState(false)
 
   // ── Load helpers (do NOT call setLoading) ────────────────────────────────────
 
@@ -379,10 +386,13 @@ export default function PlacementScreen() {
       loadKpis()
     } finally { setCandSaving(false) }
   }
-  async function deleteCand(c: Candidate) {
-    if (!window.confirm(`Delete candidate ${c.candidateNumber}?`)) return
-    const res = await api.candidate.delete(c.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+  async function deleteCand() {
+    if (!deleteCandTarget) return
+    setDeletingCand(true)
+    const res = await api.candidate.delete(deleteCandTarget.id)
+    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingCand(false); return }
+    setDeleteCandTarget(null)
+    setDeletingCand(false)
     await loadCandidates(candStatusFilter, candSearch)
     loadKpis()
   }
@@ -435,10 +445,13 @@ export default function PlacementScreen() {
       loadKpis()
     } finally { setJoSaving(false) }
   }
-  async function deleteJO(jo: JobOrderRow) {
-    if (!window.confirm(`Delete job order ${jo.orderNumber}?`)) return
-    const res = await api.jobOrder.delete(jo.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+  async function deleteJO() {
+    if (!deleteJOTarget) return
+    setDeletingJO(true)
+    const res = await api.jobOrder.delete(deleteJOTarget.id)
+    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingJO(false); return }
+    setDeleteJOTarget(null)
+    setDeletingJO(false)
     await loadJobOrders(joStatusFilter, joSearch)
     loadKpis()
   }
@@ -484,10 +497,13 @@ export default function PlacementScreen() {
       loadKpis()
     } finally { setPlcSaving(false) }
   }
-  async function deletePLC(p: PlacementRow) {
-    if (!window.confirm(`Delete placement ${p.placementNumber}?`)) return
-    const res = await api.placement.delete(p.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+  async function deletePLC() {
+    if (!deletePLCTarget) return
+    setDeletingPLC(true)
+    const res = await api.placement.delete(deletePLCTarget.id)
+    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingPLC(false); return }
+    setDeletePLCTarget(null)
+    setDeletingPLC(false)
     await loadPlacements(plcStatusFilter, plcSearch)
     loadKpis()
   }
@@ -723,7 +739,7 @@ export default function PlacementScreen() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => openCandEdit(c)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:text-slate-500"><Pencil size={15} /></button>
-                        <button onClick={() => deleteCand(c)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
+                        <button onClick={() => setDeleteCandTarget(c)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   </Card>
@@ -892,7 +908,7 @@ export default function PlacementScreen() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => openJOEdit(jo)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:text-slate-500"><Pencil size={15} /></button>
-                        <button onClick={() => deleteJO(jo)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
+                        <button onClick={() => setDeleteJOTarget(jo)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   </Card>
@@ -1034,7 +1050,7 @@ export default function PlacementScreen() {
                           <div className="flex gap-2">
                             <button onClick={() => printPlacementLetter(p)} title="Print confirmation letter" className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:text-slate-500"><Printer size={15} /></button>
                             <button onClick={() => openPLCEdit(p)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:text-slate-500"><Pencil size={15} /></button>
-                            <button onClick={() => deletePLC(p)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
+                            <button onClick={() => setDeletePLCTarget(p)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
                           </div>
                           {PLC_STATUS_NEXT[p.status] && (
                             <button onClick={() => advancePLC(p)} className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 rounded-full">
@@ -1060,6 +1076,36 @@ export default function PlacementScreen() {
             )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteCandTarget}
+        onClose={() => setDeleteCandTarget(null)}
+        onConfirm={deleteCand}
+        loading={deletingCand}
+        title="Delete Candidate"
+        message={`Delete candidate ${deleteCandTarget?.candidateNumber}?`}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!deleteJOTarget}
+        onClose={() => setDeleteJOTarget(null)}
+        onConfirm={deleteJO}
+        loading={deletingJO}
+        title="Delete Job Order"
+        message={`Delete job order ${deleteJOTarget?.orderNumber}?`}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!deletePLCTarget}
+        onClose={() => setDeletePLCTarget(null)}
+        onConfirm={deletePLC}
+        loading={deletingPLC}
+        title="Delete Placement"
+        message={`Delete placement ${deletePLCTarget?.placementNumber}?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

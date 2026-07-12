@@ -5,6 +5,7 @@ import {
   updateVendorBooking,
   deleteVendorBooking,
 } from '../../services/event-vendor-booking.service'
+import { CreateVendorBookingSchema, UpdateVendorBookingSchema, VendorBookingIdSchema } from '../../validation/event-vendor-booking.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -16,16 +17,22 @@ export function registerEventVendorBooking(handle: HandleFn): void {
 
   handle('eventVendorBooking:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createVendorBooking(raw as Parameters<typeof createVendorBooking>[0])
+    const parsed = CreateVendorBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createVendorBooking(parsed.data)
   })
 
   handle('eventVendorBooking:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return updateVendorBooking(raw as Parameters<typeof updateVendorBooking>[0])
+    const parsed = UpdateVendorBookingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateVendorBooking(parsed.data)
   })
 
   handle('eventVendorBooking:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return deleteVendorBooking(raw as string)
+    const parsed = VendorBookingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteVendorBooking(parsed.data)
   })
 }

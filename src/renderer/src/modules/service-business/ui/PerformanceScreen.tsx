@@ -5,6 +5,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface BatchInfo { id: string; batchName: string; subjectOrCourse: string }
@@ -41,6 +42,9 @@ export default function PerformanceScreen() {
   const [batchStudents, setBatchStudents] = useState<EnrolledStudent[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<Performance | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -145,14 +149,17 @@ export default function PerformanceScreen() {
     }
   }
 
-  async function handleDelete(p: Performance) {
-    if (!confirm(`Delete performance "${p.performanceName}"?`)) return
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.performance.delete({ id: p.id })
-      if (res.success) loadAll()
+      const res = await api.performance.delete({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete performance.')
     } catch {
       toastError('Error', 'Could not delete performance.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -231,7 +238,7 @@ export default function PerformanceScreen() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => openEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDelete(p)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteTarget(p)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -313,6 +320,16 @@ export default function PerformanceScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Performance"
+        message={`Delete performance "${deleteTarget?.performanceName}"?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

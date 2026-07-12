@@ -6,6 +6,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface Sprint {
@@ -85,6 +86,9 @@ export default function IssuesScreen(): React.ReactElement {
   const [fStatus, setFStatus]         = useState('OPEN')
   const [fAssignedToId, setFAssignedToId] = useState('')
   const [fSprintId, setFSprintId]     = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<Issue | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -186,14 +190,17 @@ export default function IssuesScreen(): React.ReactElement {
     }
   }
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Delete this issue?')) return
+  async function handleDelete(): Promise<void> {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.issue.delete({ id })
-      if (res.success) loadAll()
+      const res = await api.issue.delete({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete issue.')
     } catch {
       toastError('Error', 'Could not delete issue.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -309,7 +316,7 @@ export default function IssuesScreen(): React.ReactElement {
                         <button onClick={() => openEdit(i)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(i.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
+                        <button onClick={() => setDeleteTarget(i)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -387,6 +394,16 @@ export default function IssuesScreen(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Issue"
+        message={`Delete issue "${deleteTarget?.title}"?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

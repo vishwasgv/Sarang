@@ -6,6 +6,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -307,6 +308,10 @@ export default function EventsScreen() {
   const [loading, setLoading] = useState(true)
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<EventBooking | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteVendorTarget, setDeleteVendorTarget] = useState<{ vendorId: string; eventId: string; vendorName: string } | null>(null)
+  const [deletingVendor, setDeletingVendor] = useState(false)
 
   const loadEvents = useCallback(async (filter?: string) => {
     try {
@@ -345,12 +350,14 @@ export default function EventsScreen() {
     await loadEvents(s)
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('Delete this event booking?')) return
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
     setErrorBanner(null)
-    const res = await api.eventBooking.delete(id)
-    if (res.success) { setEvents(ev => ev.filter(e => e.id !== id)); loadKpis() }
+    const res = await api.eventBooking.delete(deleteTarget.id)
+    if (res.success) { setEvents(ev => ev.filter(e => e.id !== deleteTarget.id)); setDeleteTarget(null); loadKpis() }
     else setErrorBanner(res.error?.message ?? 'Failed to delete event.')
+    setDeleting(false)
   }
 
   async function handleVendorStatusChange(vendorId: string, eventId: string, newStatus: string) {
@@ -366,8 +373,10 @@ export default function EventsScreen() {
     }
   }
 
-  async function handleDeleteVendor(vendorId: string, eventId: string) {
-    if (!window.confirm('Remove this vendor?')) return
+  async function handleDeleteVendor() {
+    if (!deleteVendorTarget) return
+    const { vendorId, eventId } = deleteVendorTarget
+    setDeletingVendor(true)
     setErrorBanner(null)
     const res = await api.eventVendorBooking.delete(vendorId)
     if (res.success) {
@@ -375,10 +384,12 @@ export default function EventsScreen() {
         if (e.id !== eventId) return e
         return { ...e, vendorBookings: e.vendorBookings.filter(v => v.id !== vendorId) }
       }))
+      setDeleteVendorTarget(null)
       loadKpis()
     } else {
       setErrorBanner(res.error?.message ?? 'Failed to remove vendor.')
     }
+    setDeletingVendor(false)
   }
 
   async function handleVendorAdded(eventId: string) {
@@ -501,7 +512,7 @@ export default function EventsScreen() {
                   <button onClick={e => { e.stopPropagation(); setEditEvent(ev) }} className="text-gray-400 hover:text-gray-700 p-1 dark:text-slate-500 dark:hover:text-slate-200">
                     <Pencil size={13} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(ev.id) }} className="text-gray-300 hover:text-red-500 p-1">
+                  <button onClick={e => { e.stopPropagation(); setDeleteTarget(ev) }} className="text-gray-300 hover:text-red-500 p-1">
                     <X size={14} />
                   </button>
                 </div>
@@ -535,7 +546,7 @@ export default function EventsScreen() {
                             >
                               {VENDOR_STATUSES.map(s => <option key={s} value={s}>{fmtLabel(s)}</option>)}
                             </select>
-                            <button onClick={() => handleDeleteVendor(v.id, ev.id)} className="text-gray-300 hover:text-red-500 p-1">
+                            <button onClick={() => setDeleteVendorTarget({ vendorId: v.id, eventId: ev.id, vendorName: v.vendor.supplierName })} className="text-gray-300 hover:text-red-500 p-1">
                               <X size={13} />
                             </button>
                           </div>
@@ -583,6 +594,26 @@ export default function EventsScreen() {
           onClose={() => { setShowForm(false); setEditEvent(null) }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Event"
+        message={`Delete this event booking "${deleteTarget?.eventName}"?`}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!deleteVendorTarget}
+        onClose={() => setDeleteVendorTarget(null)}
+        onConfirm={handleDeleteVendor}
+        loading={deletingVendor}
+        title="Remove Vendor"
+        message={`Remove vendor "${deleteVendorTarget?.vendorName}" from this event?`}
+        confirmLabel="Remove"
+      />
     </div>
   )
 }

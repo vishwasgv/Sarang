@@ -4,6 +4,7 @@ import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface Lead {
@@ -82,6 +83,9 @@ export default function LeadsScreen(): React.ReactElement {
   const [fEstValue, setFEstValue]         = useState('')
   const [fAssignedToId, setFAssignedToId] = useState('')
   const [fNotes, setFNotes]               = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -165,15 +169,19 @@ export default function LeadsScreen(): React.ReactElement {
     setSaving(false)
   }
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Delete this lead?')) return
+  async function handleDelete(): Promise<void> {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleting(true)
     setDeleteErrors((prev) => { const n = { ...prev }; delete n[id]; return n })
     const res = await api.lead.delete({ id })
     if (res.success) {
+      setDeleteTarget(null)
       void loadAll()
     } else {
       setDeleteErrors((prev) => ({ ...prev, [id]: res.error?.message ?? 'Could not delete.' }))
     }
+    setDeleting(false)
   }
 
   // Move a lead to a new status column via drag-and-drop
@@ -292,7 +300,7 @@ export default function LeadsScreen(): React.ReactElement {
                             <button onClick={() => openEdit(lead)} className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500" style={{ minHeight: 28, minWidth: 28 }}>
                               <Edit2 className="w-3 h-3" />
                             </button>
-                            <button onClick={() => void handleDelete(lead.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500" style={{ minHeight: 28, minWidth: 28 }}>
+                            <button onClick={() => setDeleteTarget(lead)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500" style={{ minHeight: 28, minWidth: 28 }}>
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
@@ -390,6 +398,16 @@ export default function LeadsScreen(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Lead"
+        message={`Delete lead "${deleteTarget?.fullName}"?`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

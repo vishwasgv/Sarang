@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import * as svc from '../../services/provider-schedule.service'
+import { UpsertProviderScheduleSchema, AddHolidaySchema, DeleteHolidaySchema, UpsertCancellationPolicySchema } from '../../validation/provider-schedule.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,7 +13,9 @@ export function register(handle: HandleFn): void {
 
   handle('providerSchedule:upsert', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    return svc.upsertProviderSchedule(payload as Parameters<typeof svc.upsertProviderSchedule>[0])
+    const parsed = UpsertProviderScheduleSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.upsertProviderSchedule(parsed.data)
   })
 
   handle('providerSchedule:getAvailability', async (payload) => {
@@ -27,13 +30,16 @@ export function register(handle: HandleFn): void {
 
   handle('providerSchedule:addHoliday', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    return svc.addHoliday(payload as Parameters<typeof svc.addHoliday>[0])
+    const parsed = AddHolidaySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.addHoliday(parsed.data)
   })
 
   handle('providerSchedule:deleteHoliday', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return svc.deleteHoliday(id)
+    const parsed = DeleteHolidaySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.deleteHoliday(parsed.data.id)
   })
 
   handle('providerSchedule:getCancellationPolicy', async () => {
@@ -43,6 +49,8 @@ export function register(handle: HandleFn): void {
 
   handle('providerSchedule:upsertCancellationPolicy', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    return svc.upsertCancellationPolicy(payload as Parameters<typeof svc.upsertCancellationPolicy>[0])
+    const parsed = UpsertCancellationPolicySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.upsertCancellationPolicy(parsed.data)
   })
 }

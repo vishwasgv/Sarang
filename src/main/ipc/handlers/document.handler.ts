@@ -2,6 +2,7 @@ import { dialog, shell } from 'electron'
 import * as documentService from '../../services/document.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { AttachDocumentSchema, DeleteDocumentSchema } from '../../validation/document.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -22,11 +23,9 @@ export function register(handle: HandleFn): void {
 
   handle('documents:attach', async (payload) => {
     const deny = await requirePermission('settings.view'); if (deny) return deny
-    const p = payload as { sourcePath: string; fileName: string; entityType: documentService.DocumentEntityType; entityId: string; notes?: string }
-    if (!p?.sourcePath || !p?.fileName || !p?.entityType || !p?.entityId) {
-      return { success: false, error: { code: 'VAL-001', message: 'sourcePath, fileName, entityType, and entityId are required.' } }
-    }
-    return documentService.attachDocument(p, getCurrentSession()?.userId)
+    const parsed = AttachDocumentSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return documentService.attachDocument(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('documents:list', async (payload) => {
@@ -38,9 +37,9 @@ export function register(handle: HandleFn): void {
 
   handle('documents:delete', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { id } = payload as { id: string }
-    if (!id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
-    return documentService.deleteDocument(id, getCurrentSession()?.userId)
+    const parsed = DeleteDocumentSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return documentService.deleteDocument(parsed.data.id, getCurrentSession()?.userId)
   })
 
   handle('documents:listAll', async (payload) => {

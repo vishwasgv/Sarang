@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Wallet, Plus, Trash2, Printer, CheckCircle2,
 import { api } from '@renderer/services/ipc-client'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -50,6 +51,7 @@ export function PayrollScreen() {
   const [saving, setSaving] = useState(false)
   const [markingPaid, setMarkingPaid] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('CASH')
+  const [confirmMarkPaid, setConfirmMarkPaid] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,7 +132,6 @@ export function PayrollScreen() {
 
   async function handleMarkPaid() {
     if (!selected) return
-    if (!window.confirm(t('hr.confirmMarkPaid'))) return
     setMarkingPaid(true)
     try {
       const res = await api.payroll.markPaid({ id: selected.id, paymentMethod })
@@ -145,6 +146,7 @@ export function PayrollScreen() {
       toastError(t('hr.actionFailed'))
     } finally {
       setMarkingPaid(false)
+      setConfirmMarkPaid(false)
     }
   }
 
@@ -322,7 +324,7 @@ export function PayrollScreen() {
                         <option value="CHEQUE">Cheque</option>
                         <option value="UPI">UPI</option>
                       </select>
-                      <Button onClick={handleMarkPaid} disabled={markingPaid} className="w-full">
+                      <Button onClick={() => setConfirmMarkPaid(true)} disabled={markingPaid} className="w-full">
                         <CheckCircle2 size={16} className="mr-1.5" /> {markingPaid ? '…' : t('hr.markAsPaid')}
                       </Button>
                     </div>
@@ -341,6 +343,16 @@ export function PayrollScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmMarkPaid}
+        onClose={() => setConfirmMarkPaid(false)}
+        onConfirm={handleMarkPaid}
+        loading={markingPaid}
+        title={t('hr.markAsPaid')}
+        message={t('hr.confirmMarkPaid')}
+        confirmLabel={t('hr.markAsPaid')}
+      />
     </div>
   )
 }
