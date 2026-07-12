@@ -1,0 +1,3666 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS PROFILE
+// ─────────────────────────────────────────────────────────────────────────────
+model BusinessProfile {
+  id                      String   @id @default(cuid())
+  businessName            String
+  businessType            String
+  businessCategory        String   @default("PRODUCT") // PRODUCT | SERVICE
+  serviceTemplateType     String? // e.g. VET_CLINIC, GP_CLINIC
+  clinicSpecialty         String? // Phase 54B — free text, e.g. "Pediatrics", "Orthopedics", "ENT", "Ophthalmology" — SPECIALIST_CLINIC's own real identity, not a fixed enum (matches ServiceCatalog.category's free-text precedent)
+  languageLock            String   @default("multi") // multi | en
+  ownerName               String?
+  email                   String?
+  phone                   String?
+  address                 String?
+  city                    String?
+  state                   String?
+  country                 String   @default("IN")
+  postalCode              String?
+  currencyCode            String   @default("INR")
+  currencySymbol          String   @default("₹")
+  taxModel                String   @default("GST")
+  taxNumber               String?
+  upiId                   String?
+  website                 String?
+  logoPath                String?
+  showLogoOnDashboard     Boolean  @default(false)
+  enableDocumentWatermark Boolean  @default(false)
+  timezone                String   @default("Asia/Kolkata")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id             String    @id @default(cuid())
+  fullName       String
+  email          String?
+  phone          String?
+  username       String    @unique
+  passwordHash   String
+  roleId         String
+  isActive       Boolean   @default(true)
+  lastLogin      DateTime?
+  sessionToken   String?   @unique
+  tokenExpiresAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  role               Role                @relation(fields: [roleId], references: [id])
+  auditLogs          AuditLog[]
+  invoices           Invoice[]           @relation("InvoiceCreatedBy")
+  expenses           Expense[]           @relation("ExpenseCreatedBy")
+  payments           Payment[]           @relation("PaymentRecordedBy")
+  stockMovements     InventoryMovement[] @relation("MovementCreatedBy")
+  assignedProjects   Project[]           @relation("ProjectAssignedTo")
+  assignedTickets    ServiceTicket[]     @relation("TicketAssignedTo")
+  assignedJobCards   JobCard[]           @relation("JobCardAssignedTo")
+  workLogs           WorkLog[]
+  bloodIssuesHandled BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  roleName    String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users           User[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id             String   @id @default(cuid())
+  permissionKey  String   @unique
+  permissionName String
+  description    String?
+  createdAt      DateTime @default(now())
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────────────────────────────────────────
+model ProductCategory {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  parentCategoryId String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  parent   ProductCategory?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  children ProductCategory[] @relation("CategoryHierarchy")
+  products Product[]
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  categoryId   String?
+  sku          String?  @unique
+  barcode      String?  @unique
+  hsnCode      String?
+  productName  String
+  description  String?
+  productType  String   @default("STANDARD")
+  unit         String   @default("PCS")
+  costPrice    Float    @default(0)
+  sellingPrice Float
+  taxRate      Float    @default(0)
+  imagePath    String?
+  isActive     Boolean  @default(true)
+  // Phase 48 — MENS|WOMENS|UNISEX. Nullable/optional, no default forced —
+  // only meaningful for apparel-style businesses (surfaced in the UI when
+  // variant_tracking is enabled, CLOTHING/FOOTWEAR's default flag).
+  gender       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Phase 38: loose/weight-based billing (opt-in, off by default — see barcode_generation/loose_billing TemplateModule flags)
+  sellByWeight          Boolean   @default(false)
+  weightUnit            String?
+  pricePerWeightUnit    Float?
+  barcodeSource         String?
+  // Compact sequential reference (0-99999) embedded in weight-embedded barcode labels for this
+  // product — distinct from Product.barcode (which may be a real manufacturer code, or absent).
+  // Assigned once, lazily, the first time this product is configured for loose billing.
+  looseItemCode         Int?      @unique
+  // A regular (non-weight) barcode label prints a price as plain text at print
+  // time, but the barcode itself only ever encodes identity — so the *charge*
+  // at checkout is always correct (live price lookup), but the *printed
+  // sticker* goes stale if the price changes and nobody reprints it. These two
+  // fields let updateProduct warn "you changed the price, and a label was
+  // printed before at a different price — you may want to reprint the shelf
+  // tag" — the same idea as the weight-embedded reprint warning, generalized
+  // to every product, not just loose-billed ones.
+  lastLabelPrintedAt    DateTime?
+  lastLabelPrintedPrice Float?
+
+  // Phase 54G — Rental. Additive, off by default (isRentable: false) — no
+  // effect on any non-rental business. rentalRates is a JSON array
+  // [{basis:'HOUR'|'DAY'|'WEEK'|'MONTH'|'YEAR', amount:number}] since a
+  // rentable item's price genuinely varies by how long it's booked for, not
+  // a single sellingPrice the way a sale does.
+  isRentable            Boolean @default(false)
+  rentalTrackingType    String? // 'UNIT' | 'BULK'
+  rentalRates           String  @default("[]")
+  rentalSecurityDeposit Float?
+
+  // Jewellery vertical (fresh-audit build, 2026-07-12) — additive, off by
+  // default (metalType null). A jewellery item's real sale price isn't the
+  // static sellingPrice every other product uses — it's netWeight × today's
+  // metal rate (MetalRate) + a making charge, computed at billing time, same
+  // "compute at checkout, not at product-save time" reasoning loose/weight
+  // billing already established for Product.pricePerWeightUnit.
+  metalType         String? // 'GOLD' | 'SILVER' | 'PLATINUM'
+  purity            String? // "22K"/"18K"/"916"/"999" — free text, purity conventions vary (karat vs. fineness) by market
+  hallmarkNumber    String? // BIS HUID (India) or equivalent
+  grossWeight       Float? // grams, item as a whole including stones
+  stoneWeight       Float? // grams, deducted from grossWeight — metal is only ever priced on netWeight
+  netWeight         Float? // grams, the metal-only weight actually priced
+  makingChargeType  String? // 'FIXED' | 'PER_GRAM' | 'PERCENTAGE'
+  makingChargeValue Float?
+
+  category           ProductCategory?    @relation(fields: [categoryId], references: [id])
+  inventory          Inventory?
+  movements          InventoryMovement[]
+  invoiceItems       InvoiceItem[]
+  purchaseItems      PurchaseOrderItem[]
+  recipeItems        RecipeItem[]
+  variants           ProductVariant[]
+  batches            ProductBatch[]
+  serials            ProductSerial[]
+  bom                BillOfMaterial?
+  productionOrders   ProductionOrder[]
+  dispatchRecords    DispatchRecord[]
+  labelPrintLogs     LabelPrintLog[]
+  rentalUnits        RentalUnit[]
+  rentalBookingItems RentalBookingItem[]
+
+  @@index([productName])
+  @@index([isActive])
+  @@index([categoryId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 38: BARCODE / LOOSE BILLING
+// ─────────────────────────────────────────────────────────────────────────────
+model LabelPrintLog {
+  id                        String   @id @default(cuid())
+  productId                 String
+  barcode                   String
+  weightGrams               Float
+  pricePerWeightUnitAtPrint Float
+  weightUnitAtPrint         String
+  printedAt                 DateTime @default(now())
+  printedBy                 String?
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([barcode])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 54G: RENTAL BUSINESS VERTICAL
+// Availability is always computed live from active RentalBooking rows, never
+// from a physical Inventory.quantity decrement — see
+// PHASE_54G_RENTAL_TECHNICAL_SPEC.md Section 2.2 for why (a reservation must
+// block availability before checkout, which a decrement-at-checkout-only
+// model would miss). OVERDUE is likewise never a stored status — it's
+// derived (status == CHECKED_OUT && endDateTime < now) wherever displayed,
+// same "reclassify at display time" rule this bundle's F.9 report established.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model RentalUnit {
+  id             String    @id @default(cuid())
+  productId      String
+  unitLabel      String // e.g. "KA01AB1234", "Console #3", "Villa - Sea View"
+  status         String    @default("AVAILABLE") // AVAILABLE | RENTED | MAINTENANCE | RETIRED
+  conditionNotes String?
+  purchaseDate   DateTime?
+  unitCost       Float     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bookingItems RentalBookingItem[]
+
+  @@index([productId])
+  @@index([status])
+}
+
+model RentalBooking {
+  id                       String    @id @default(cuid())
+  bookingNumber            String    @unique
+  customerId               String
+  status                   String    @default("RESERVED") // RESERVED | CHECKED_OUT | RETURNED | CANCELLED
+  startDateTime            DateTime
+  endDateTime              DateTime
+  securityDepositCollected Float     @default(0)
+  securityDepositRefunded  Float?
+  lateFeeAmount            Float     @default(0)
+  damageChargeAmount       Float     @default(0)
+  checkoutNotes            String?
+  returnNotes              String?
+  checkedOutAt             DateTime?
+  returnedAt               DateTime?
+  cancelledAt              DateTime?
+  invoiceId                String? // Not a Prisma-enforced FK, deliberately — generateRentalInvoice's
+  // atomic claim-sentinel (a placeholder string written here before the
+  // real Invoice exists) would violate a real foreign key. Same
+  // unenforced-invoiceId convention DrivingSession/DrivingPackageEnrollment
+  // already use for the identical claim-then-generate-then-link pattern.
+  notes                    String?
+  createdById              String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  customer Customer            @relation(fields: [customerId], references: [id])
+  items    RentalBookingItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([startDateTime, endDateTime])
+}
+
+model RentalBookingItem {
+  id           String   @id @default(cuid())
+  bookingId    String
+  productId    String
+  rentalUnitId String? // set only for UNIT-tracked items
+  quantity     Float    @default(1) // used for BULK items; always 1 for UNIT items
+  rateBasis    String // HOUR | DAY | WEEK | MONTH | YEAR — snapshot at booking time
+  rateAmount   Float // snapshot at booking time
+  lineTotal    Float // rateAmount x duration-in-rateBasis-units x quantity
+  conditionOut String?
+  conditionIn  String?
+  createdAt    DateTime @default(now())
+
+  booking    RentalBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  product    Product       @relation(fields: [productId], references: [id])
+  rentalUnit RentalUnit?   @relation(fields: [rentalUnitId], references: [id])
+
+  @@index([bookingId])
+  @@index([productId])
+  @@index([rentalUnitId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────────────────────────────────────
+model Inventory {
+  id               String   @id @default(cuid())
+  productId        String   @unique
+  quantity         Float    @default(0)
+  reservedQuantity Float    @default(0)
+  reorderLevel     Float    @default(0)
+  reorderQuantity  Float    @default(0)
+  averageCost      Float    @default(0)
+  updatedAt        DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model InventoryMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  movementType  String
+  quantity      Float
+  referenceType String?
+  referenceId   String?
+  remarks       String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User?   @relation("MovementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([productId])
+  @@index([movementType])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMERS
+// ─────────────────────────────────────────────────────────────────────────────
+model Customer {
+  id                 String   @id @default(cuid())
+  customerCode       String?  @unique
+  customerName       String
+  phone              String?
+  email              String?
+  address            String?
+  city               String?
+  state              String?
+  country            String?
+  taxNumber          String?
+  taxExempt          Boolean  @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
+  taxExemptReason    String? // e.g. "Reverse charge — VAT Reg GB123456789" — printed on the invoice so it's not just a silent internal flag
+  creditLimit        Float    @default(0)
+  outstandingBalance Float    @default(0)
+  notes              String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  ledgerEntries             CustomerLedger[]
+  invoices                  Invoice[]
+  payments                  Payment[]
+  dispatchRecords           DispatchRecord[]
+  metalExchanges            MetalExchange[]
+  projects                  Project[]
+  serviceTickets            ServiceTicket[]
+  jobCards                  JobCard[]
+  quotations                Quotation[]
+  creditNotes               CreditNote[]
+  appointments              Appointment[]
+  pets                      Pet[]
+  toothRecords              ToothRecord[] // Phase 25 — Dental
+  treatmentPlans            TreatmentPlan[] // Phase 25 — Dental
+  recallRecord              RecallRecord? // Phase 25 — Dental
+  treatmentPhases           TreatmentPhase[] // Phase 26 — Physio
+  exercisePrograms          ExerciseProgram[] // Phase 26 — Physio
+  sessionPacks              ClientSessionPack[] // Phase 26 — Physio
+  memberships               Membership[] // Phase 27 — Gym
+  memberAttendances         MemberAttendance[] // Phase 27 — Gym
+  batchClassAttendances     BatchClassAttendance[] // Phase 27 — Gym
+  learnerProfile            LearnerProfile? // Phase 27 — Driving
+  drivingSessions           DrivingSession[]           @relation("DrivingLearner") // Phase 27 — Driving
+  drivingTests              DrivingTest[] // Phase 27 — Driving
+  drivingPackageEnrollments DrivingPackageEnrollment[] @relation("DrivingPackageLearner") // Phase 41 — Driving package invoicing
+  legalCases                LegalCase[] // Phase 28 — Legal
+  complianceTasks           ComplianceTask[] // Phase 29 — CA/CS
+  engagements               Engagement[] // Phase 29 — CA
+  rocFilings                ROCFiling[] // Phase 29 — CS
+  boardMeetings             BoardMeeting[] // Phase 29 — CS
+  serviceProjects           ServiceProject[] // Phase 30 — Arch/Civil/Consultant/Agency
+  retainerAgreements        RetainerAgreement[] // Phase 30 — Consultant/Agency
+  studentProfile            StudentProfile? // Phase 31 — Coaching
+  coachingEnrollments       CoachingBatchEnrollment[] // Phase 31 — Coaching
+  shootBookings             ShootBooking[] // Phase 32 — Photography
+  eventBookings             EventBooking[] // Phase 32 — Event
+  ownedProperties           Property[]                 @relation("PropertyOwner") // Phase 32 — Real Estate
+  propertyInquiries         PropertyInquiry[]          @relation("InquiryBuyer") // Phase 32 — Real Estate
+  dealsBuying               PropertyDeal[]             @relation("DealBuyer") // Phase 32 — Real Estate
+  dealsSelling              PropertyDeal[]             @relation("DealSeller") // Phase 32 — Real Estate
+  carJobCards               CarJobCard[] // Phase 33 — Car Service
+  measurementRecords        MeasurementRecord[] // Phase 33 — Tailor
+  tailoringOrders           TailoringOrder[] // Phase 33 — Tailor
+  pestContracts             PestServiceContract[] // Phase 33 — Pest Control
+  pestJobSheets             PestJobSheet[] // Phase 33 — Pest Control
+  jobOrders                 JobOrder[]                 @relation("JobOrderClient") // Phase 34 — Placement
+  placements                Placement[]                @relation("PlacementClient") // Phase 34 — Placement
+  labTestOrders             LabTestOrder[] // Phase 50 — Diagnostic Labs
+  bloodIssues               BloodIssue[] // Phase 51 — Blood Bank
+  rentalBookings            RentalBooking[] // Phase 54G — Rental
+
+  @@index([customerName])
+  @@index([phone])
+  @@index([isActive])
+}
+
+model CustomerLedger {
+  id            String   @id @default(cuid())
+  customerId    String
+  referenceType String
+  referenceId   String?
+  debitAmount   Float    @default(0)
+  creditAmount  Float    @default(0)
+  balance       Float    @default(0)
+  remarks       String?
+  createdAt     DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPPLIERS
+// ─────────────────────────────────────────────────────────────────────────────
+model Supplier {
+  id           String   @id @default(cuid())
+  supplierCode String?  @unique
+  supplierName String
+  phone        String?
+  email        String?
+  address      String?
+  city         String?
+  state        String?
+  country      String?
+  taxNumber    String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ledgerEntries       SupplierLedger[]
+  purchaseOrders      PurchaseOrder[]
+  batches             ProductBatch[]
+  rawMaterials        RawMaterial[]
+  debitNotes          DebitNote[]
+  eventVendorBookings EventVendorBooking[] // Phase 32 — Event
+}
+
+model SupplierLedger {
+  id            String   @id @default(cuid())
+  supplierId    String
+  referenceType String
+  referenceId   String?
+  debitAmount   Float    @default(0)
+  creditAmount  Float    @default(0)
+  balance       Float    @default(0)
+  remarks       String?
+  createdAt     DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PURCHASE ORDERS
+// ─────────────────────────────────────────────────────────────────────────────
+model PurchaseOrder {
+  id           String    @id @default(cuid())
+  poNumber     String    @unique
+  supplierId   String
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  status       String    @default("DRAFT")
+  subtotal     Float     @default(0)
+  taxAmount    Float     @default(0)
+  totalAmount  Float     @default(0)
+  notes        String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  items      PurchaseOrderItem[]
+  debitNotes DebitNote[]
+  grns       GoodsReceiptNote[]  @relation("GRNPurchaseOrder")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  quantity        Float
+  unitCost        Float
+  taxRate         Float    @default(0)
+  taxAmount       Float    @default(0)
+  itcAmount       Float    @default(0)
+  total           Float
+  createdAt       DateTime @default(now())
+
+  receivedQty Float @default(0) // updated by postGRN() transaction — Phase 37
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVOICES & BILLING
+// ─────────────────────────────────────────────────────────────────────────────
+model Invoice {
+  id                String    @id @default(cuid())
+  invoiceNumber     String    @unique
+  invoiceType       String    @default("RETAIL")
+  customerId        String?
+  invoiceDate       DateTime  @default(now())
+  dueDate           DateTime?
+  status            String    @default("ACTIVE")
+  subtotal          Float     @default(0)
+  discountAmount    Float     @default(0)
+  taxAmount         Float     @default(0)
+  roundingAmount    Float     @default(0)
+  totalAmount       Float     @default(0)
+  paidAmount        Float     @default(0)
+  balanceAmount     Float     @default(0)
+  paymentStatus     String    @default("UNPAID")
+  gstType           String    @default("CGST_SGST")
+  buyerState        String?
+  notes             String?
+  quotationId       String?   @unique
+  originalInvoiceId String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  createdBy       User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  items           InvoiceItem[]
+  payments        Payment[]
+  kot             KOT?
+  creditNotes     CreditNote[]
+  quotation       Quotation?        @relation("QuotationToInvoice", fields: [quotationId], references: [id])
+  challans        DeliveryChallan[] @relation("ChallanInvoice")
+  originalInvoice Invoice?          @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
+  returns         Invoice[]         @relation("InvoiceReturns")
+
+  @@index([customerId])
+  @@index([invoiceDate])
+  @@index([paymentStatus])
+  @@index([status])
+  @@index([status, invoiceDate])
+  @@index([createdAt])
+  @@index([createdById])
+  @@index([originalInvoiceId])
+}
+
+model InvoiceItem {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  productId      String
+  productName    String   @default("")
+  productSku     String?
+  hsnCode        String?
+  quantity       Float
+  unitPrice      Float
+  discountAmount Float    @default(0)
+  taxRate        Float    @default(0)
+  taxAmount      Float    @default(0)
+  lineTotal      Float
+  variantId      String?
+  variantInfo    String?
+  weightUnit     String?
+  // Fresh-audit fix (2026-07-12): snapshot of the purity/weight/making-charge
+  // breakdown a jewellery line was actually priced from — previously this was
+  // computed correctly at billing time then silently discarded, so a printed
+  // jewellery invoice could never show it and it was unrecoverable after the
+  // sale. Null/absent for a non-jewellery line.
+  jewelleryMetalType   String?
+  jewelleryPurity      String?
+  jewelleryNetWeight   Float?
+  jewelleryRatePerGram Float?
+  jewelleryMakingCharge Float?
+  createdAt      DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────────────────────────────────────
+model Payment {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  customerId      String?
+  paymentMethod   String
+  amount          Float
+  referenceNumber String?
+  paymentDate     DateTime @default(now())
+  remarks         String?
+  isReversed      Boolean  @default(false)
+  reversalReason  String?
+  recordedById    String?
+  createdAt       DateTime @default(now())
+
+  invoice    Invoice   @relation(fields: [invoiceId], references: [id])
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  recordedBy User?     @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([paymentDate])
+  @@index([isReversed])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPENSES
+// ─────────────────────────────────────────────────────────────────────────────
+model ExpenseCategory {
+  id           String   @id @default(cuid())
+  categoryName String   @unique
+  description  String?
+  createdAt    DateTime @default(now())
+
+  expenses Expense[]
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  categoryId    String
+  expenseName   String
+  amount        Float
+  expenseDate   DateTime @default(now())
+  paymentMethod String   @default("CASH")
+  remarks       String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
+  createdBy     User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  salaryPayment SalaryPayment?
+
+  @@index([categoryId])
+  @@index([expenseDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAX CONFIGURATION
+// ─────────────────────────────────────────────────────────────────────────────
+model TaxConfiguration {
+  id        String   @id @default(cuid())
+  taxName   String
+  taxType   String
+  rate      Float
+  country   String?
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([taxName, taxType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────────────────────────────────────────
+model Setting {
+  id           String   @id @default(cuid())
+  settingKey   String   @unique
+  settingValue String
+  settingType  String   @default("STRING")
+  updatedAt    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  oldValue   String?
+  newValue   String?
+  createdAt  DateTime @default(now())
+  // Phase 54F.15 — tamper-evident hash chain. Nullable because pre-migration
+  // rows never had a hash computed for them; the chain simply starts fresh
+  // from the first row written after this migration ships (see
+  // verifyAuditLogChain in audit.service.ts for how that boundary is handled).
+  hash       String?
+  prevHash   String?
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType])
+  @@index([entityId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+model Notification {
+  id               String   @id @default(cuid())
+  notificationType String
+  title            String
+  message          String
+  isRead           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BACKUPS
+// ─────────────────────────────────────────────────────────────────────────────
+model Backup {
+  id            String   @id @default(cuid())
+  backupName    String
+  backupPath    String
+  backupSize    BigInt   @default(0)
+  backupDate    DateTime @default(now())
+  backupVersion String
+  schemaVersion String?
+  checksum      String?
+  isValid       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INDUSTRY TEMPLATE SETTINGS
+// ─────────────────────────────────────────────────────────────────────────────
+model IndustryTemplateSetting {
+  id              String   @id @default(cuid())
+  businessType    String   @unique
+  enabledModules  String
+  dashboardLayout String?
+  reportLayout    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESTAURANT MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+model RestaurantTable {
+  id          String   @id @default(cuid())
+  tableNumber String   @unique
+  tableName   String?
+  status      String   @default("AVAILABLE")
+  createdAt   DateTime @default(now())
+
+  kots          KOT[]
+  orderRequests TableOrderRequest[]
+}
+
+// Phase 47 — a customer's QR-scanned order. Never becomes an Invoice/KOT on
+// its own — staff must explicitly accept it (see restaurant-order.service.ts),
+// so a submission here can never bill or affect inventory unattended.
+model TableOrderRequest {
+  id         String    @id @default(cuid())
+  tableId    String
+  status     String    @default("PENDING") // PENDING | ACCEPTED | REJECTED
+  notes      String?
+  invoiceId  String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  table RestaurantTable         @relation(fields: [tableId], references: [id])
+  items TableOrderRequestItem[]
+
+  @@index([tableId])
+  @@index([status])
+}
+
+model TableOrderRequestItem {
+  id        String @id @default(cuid())
+  requestId String
+  productId String
+  quantity  Int
+
+  request TableOrderRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model KOT {
+  id        String   @id @default(cuid())
+  invoiceId String   @unique
+  tableId   String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice Invoice          @relation(fields: [invoiceId], references: [id])
+  table   RestaurantTable? @relation(fields: [tableId], references: [id])
+}
+
+model Recipe {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  recipeName String
+  createdAt  DateTime @default(now())
+
+  items RecipeItem[]
+}
+
+model RecipeItem {
+  id                  String   @id @default(cuid())
+  recipeId            String
+  ingredientProductId String
+  quantity            Float
+  createdAt           DateTime @default(now())
+
+  recipe     Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Product @relation(fields: [ingredientProductId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 2 — INDUSTRY EXPANSION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Clothing / Footwear — Size × Colour variants per product
+model ProductVariant {
+  id              String   @id @default(cuid())
+  productId       String
+  size            String?
+  color           String?
+  sku             String?  @unique
+  barcode         String?  @unique
+  additionalPrice Float    @default(0)
+  stockQty        Float    @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([isActive])
+}
+
+// Pharmacy — Batch tracking with expiry dates
+model ProductBatch {
+  id                String    @id @default(cuid())
+  productId         String
+  batchNumber       String
+  mfgDate           DateTime?
+  expiryDate        DateTime
+  quantityReceived  Float     @default(0)
+  quantityRemaining Float     @default(0)
+  unitCost          Float     @default(0)
+  supplierId        String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id])
+  donationRecord DonationRecord? // Phase 51 — Blood Bank: this batch IS a specific collected unit
+
+  @@unique([productId, batchNumber])
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([isActive])
+}
+
+// Electronics / Mobile — Serial number and IMEI tracking
+model ProductSerial {
+  id                 String    @id @default(cuid())
+  productId          String
+  serialNumber       String    @unique
+  imeiNumber         String?   @unique
+  imei2Number        String?   @unique
+  warrantyMonths     Int?
+  warrantyExpiryDate DateTime?
+  purchaseDate       DateTime?
+  unitCost           Float     @default(0)
+  status             String    @default("AVAILABLE")
+  invoiceId          String?
+  soldDate           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([status])
+  @@index([imeiNumber])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAILY CASH CLOSE
+// ─────────────────────────────────────────────────────────────────────────────
+model DailyCashClose {
+  id           String   @id @default(cuid())
+  closeDate    DateTime
+  expectedCash Float
+  actualCash   Float
+  variance     Float
+  notes        String?
+  closedById   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([closeDate])
+  @@index([closeDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3 — MANUFACTURING LITE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model RawMaterial {
+  id           String   @id @default(cuid())
+  name         String
+  unit         String   @default("kg")
+  currentStock Float    @default(0)
+  reorderLevel Float    @default(0)
+  unitCost     Float    @default(0)
+  supplierId   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  supplier        Supplier?                 @relation(fields: [supplierId], references: [id])
+  movements       RawMaterialMovement[]
+  bomItems        BillOfMaterialItem[]
+  productionUsage ProductionMaterialUsage[]
+
+  @@index([isActive])
+  @@index([supplierId])
+}
+
+model RawMaterialMovement {
+  id            String   @id @default(cuid())
+  rawMaterialId String
+  type          String // PURCHASE, CONSUMED, ADJUSTMENT, RETURN
+  quantity      Float
+  balanceAfter  Float    @default(0)
+  reference     String?
+  unitCost      Float    @default(0)
+  notes         String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  @@index([rawMaterialId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model BillOfMaterial {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  description String?
+  outputQty   Float    @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product          Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items            BillOfMaterialItem[]
+  productionOrders ProductionOrder[]
+
+  @@index([isActive])
+}
+
+model BillOfMaterialItem {
+  id             String @id @default(cuid())
+  bomId          String
+  rawMaterialId  String
+  quantityNeeded Float
+  wastagePercent Float  @default(0)
+
+  bom         BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial    @relation(fields: [rawMaterialId], references: [id])
+
+  @@unique([bomId, rawMaterialId])
+  @@index([bomId])
+}
+
+model ProductionOrder {
+  id            String    @id @default(cuid())
+  orderNumber   String    @unique
+  productId     String
+  bomId         String
+  plannedQty    Float
+  producedQty   Float     @default(0)
+  status        String    @default("DRAFT")
+  startDate     DateTime?
+  completedDate DateTime?
+  notes         String?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  product       Product                   @relation(fields: [productId], references: [id])
+  bom           BillOfMaterial            @relation(fields: [bomId], references: [id])
+  materialUsage ProductionMaterialUsage[]
+  workOrders    WorkOrder[]
+
+  @@index([status])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model ProductionMaterialUsage {
+  id                String @id @default(cuid())
+  productionOrderId String
+  rawMaterialId     String
+  quantityPlanned   Float
+  quantityActual    Float  @default(0)
+
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  rawMaterial     RawMaterial     @relation(fields: [rawMaterialId], references: [id])
+
+  @@unique([productionOrderId, rawMaterialId])
+  @@index([productionOrderId])
+}
+
+model WorkOrder {
+  id                String    @id @default(cuid())
+  productionOrderId String
+  stepNumber        Int
+  taskName          String
+  status            String    @default("PENDING")
+  notes             String?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([productionOrderId, stepNumber])
+  @@index([productionOrderId])
+  @@index([status])
+}
+
+model DispatchRecord {
+  id                String    @id @default(cuid())
+  dispatchNumber    String    @unique
+  productId         String
+  productionOrderId String?
+  quantity          Float
+  customerId        String?
+  destination       String?
+  status            String    @default("READY")
+  dispatchDate      DateTime?
+  deliveryDate      DateTime?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  product  Product   @relation(fields: [productId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([status])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 4 — SERVICE BUSINESS MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Project {
+  id              String    @id @default(cuid())
+  projectNumber   String    @unique
+  title           String
+  description     String?
+  status          String    @default("OPEN")
+  priority        String    @default("MEDIUM")
+  customerId      String?
+  assignedToId    String?
+  estimatedHours  Float     @default(0)
+  estimatedAmount Float     @default(0)
+  startDate       DateTime?
+  dueDate         DateTime?
+  completedDate   DateTime?
+  notes           String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer   Customer?     @relation(fields: [customerId], references: [id])
+  assignedTo User?         @relation("ProjectAssignedTo", fields: [assignedToId], references: [id])
+  tasks      ProjectTask[]
+  workLogs   WorkLog[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model ProjectTask {
+  id             String    @id @default(cuid())
+  projectId      String
+  title          String
+  description    String?
+  status         String    @default("PENDING")
+  priority       String    @default("MEDIUM")
+  estimatedHours Float     @default(0)
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model ServiceTicket {
+  id           String    @id @default(cuid())
+  ticketNumber String    @unique
+  title        String
+  description  String?
+  status       String    @default("OPEN")
+  priority     String    @default("MEDIUM")
+  category     String?
+  customerId   String?
+  assignedToId String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  resolution   String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  assignedTo User?     @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  workLogs   WorkLog[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model JobCard {
+  id              String    @id @default(cuid())
+  jobNumber       String    @unique
+  title           String
+  itemDescription String?
+  status          String    @default("RECEIVED")
+  priority        String    @default("MEDIUM")
+  customerId      String?
+  assignedToId    String?
+  estimatedCost   Float     @default(0)
+  actualCost      Float     @default(0)
+  receivedDate    DateTime  @default(now())
+  expectedDate    DateTime?
+  deliveredDate   DateTime?
+  notes           String?
+  internalNotes   String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  assignedTo User?     @relation("JobCardAssignedTo", fields: [assignedToId], references: [id])
+  workLogs   WorkLog[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model WorkLog {
+  id          String   @id @default(cuid())
+  projectId   String?
+  ticketId    String?
+  jobCardId   String?
+  userId      String?
+  title       String
+  description String?
+  hours       Float    @default(0)
+  logDate     DateTime @default(now())
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  user    User?          @relation(fields: [userId], references: [id])
+  project Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ticket  ServiceTicket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  jobCard JobCard?       @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([ticketId])
+  @@index([jobCardId])
+  @@index([userId])
+  @@index([logDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 11 — DOCUMENT MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Document {
+  id            String   @id @default(cuid())
+  fileName      String
+  storedName    String
+  filePath      String
+  mimeType      String   @default("application/octet-stream")
+  fileSizeBytes BigInt   @default(0)
+  entityType    String // INVOICE | PURCHASE_ORDER | CUSTOMER | SUPPLIER | EXPENSE | PRODUCTION_ORDER
+  entityId      String
+  notes         String?
+  uploadedById  String?
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 17 — HR & ATTENDANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Employee {
+  id             String    @id @default(cuid())
+  employeeNumber String?   @unique
+  fullName       String
+  phone          String?
+  email          String?
+  department     String?
+  designation    String?
+  employeeType   String    @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACT, DAILY_WAGE
+  joinDate       DateTime
+  exitDate       DateTime?
+  isActive       Boolean   @default(true)
+  salaryType     String    @default("MONTHLY") // MONTHLY, DAILY, HOURLY
+  basicSalary    Float     @default(0)
+  allowances     String    @default("[]") // JSON: [{name:string, amount:number}]
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  commissionRate          Float?
+  commissionType          String? @default("PERCENT") // Phase 27 — Salon/Gym: PERCENT|FLAT
+  hourlyBillingRate       Float?
+  specialization          String?
+  providerCalendarEnabled Boolean @default(false)
+  providerColor           String?
+  maxAppointmentsPerDay   Int?
+
+  primaryLocationId String? // Phase 36 — reserved for V2 multi-location (not populated in V1)
+
+  attendances               Attendance[]
+  leaveRequests             LeaveRequest[]
+  appointments              Appointment[]             @relation("AppointmentProvider")
+  providerSchedules         ProviderSchedule[]
+  toothRecordings           ToothRecord[]             @relation("ToothRecordRecordedBy") // Phase 25 — Dental
+  treatmentPlansCreated     TreatmentPlan[]           @relation("TreatmentPlanCreatedBy") // Phase 25 — Dental
+  treatmentPhasesCreated    TreatmentPhase[]          @relation("TreatmentPhaseCreatedBy") // Phase 26 — Physio
+  exerciseProgramsCreated   ExerciseProgram[]         @relation("ExerciseProgramCreatedBy") // Phase 26 — Physio
+  staffCommissions          StaffCommission[] // Phase 27 — Commission
+  batchClassesInstructed    BatchClass[]              @relation("BatchClassInstructor") // Phase 27 — Gym
+  drivingSessionsTaught     DrivingSession[]          @relation("DrivingSessionInstructor") // Phase 27 — Driving
+  drivingVehiclesAssigned   DrivingVehicle[]          @relation("VehicleInstructor") // Phase 27 — Driving
+  legalCasesAsAdvocate      LegalCase[]               @relation("CaseAdvocate") // Phase 28 — Legal
+  timeEntries               TimeEntry[] // Phase 28 — Legal
+  complianceTasks           ComplianceTask[]          @relation("TaskStaff") // Phase 29 — CA/CS
+  engagements               Engagement[]              @relation("EngagementStaff") // Phase 29 — CA
+  rocFilings                ROCFiling[]               @relation("ROCFilingStaff") // Phase 29 — CS
+  assignedLeads             Lead[]                    @relation("LeadAssignee") // Phase 30
+  assignedServiceProjects   ServiceProject[]          @relation("ServiceProjectAssignee") // Phase 30
+  retainerAgreements        RetainerAgreement[]       @relation("RetainerAssignee") // Phase 30
+  assignedIssues            Issue[]                   @relation("IssueAssignee") // Phase 30
+  coachingBatchesInstructed CoachingBatch[]           @relation("CoachingBatchInstructor") // Phase 31
+  coachingAttendancesTaken  CoachingBatchAttendance[] @relation("CoachingAttendanceTaker") // Phase 31
+  shootsEdited              ShootBooking[]            @relation("ShootEditor") // Phase 32
+  carJobsAdvised            CarJobCard[]              @relation("CarJobAdvisor") // Phase 33
+  measurementsTaken         MeasurementRecord[]       @relation("MeasurementTakenBy") // Phase 33
+  tailoringOrdersAssigned   TailoringOrder[]          @relation("TailoringAssignedTo") // Phase 33
+  pestContractsAssigned     PestServiceContract[]     @relation("PestContractAssignee") // Phase 33
+  labOrdersReferred         LabTestOrder[]            @relation("LabOrderReferrer") // Phase 50
+  labOrdersSampleCollected  LabTestOrder[]            @relation("LabOrderSampleCollector") // Phase 50
+  labOrdersReported         LabTestOrder[]            @relation("LabOrderReporter") // Phase 50
+  salaryPayments            SalaryPayment[] // Phase 54F.16
+  siteVisitsRecorded        SiteVisit[]               @relation("SiteVisitRecordedBy") // Fresh-audit build — Civil Engineer
+
+  @@index([isActive])
+  @@index([department])
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       DateTime
+  status     String   @default("PRESENT") // PRESENT, ABSENT, HALF_DAY, LEAVE, HOLIDAY, WEEK_OFF
+  checkIn    String? // "09:00"
+  checkOut   String? // "18:00"
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([employeeId])
+}
+
+model LeaveType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  maxDays   Int      @default(0) // 0 = unlimited
+  isPaid    Boolean  @default(true)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  leaveRequests LeaveRequest[]
+}
+
+model LeaveRequest {
+  id          String    @id @default(cuid())
+  employeeId  String
+  leaveTypeId String
+  fromDate    DateTime
+  toDate      DateTime
+  days        Float
+  reason      String?
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedBy  String?
+  approvedAt  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@index([status])
+  @@index([fromDate])
+}
+
+// ─── Phase 54F.16: Real Payroll ──────────────────────────────────────────────
+// Deliberately owner-configurable deductions (name+amount pairs), not computed
+// statutory formulas — see PHASE_54F_16_TECHNICAL_SPEC.md Section 1 for why
+// (PF wage ceilings / ESI thresholds / state-specific PT slabs / annual TDS
+// math all change with government notifications; a wrong auto-computed number
+// is a worse failure mode than an empty field the owner or their CA fills in).
+model SalaryPayment {
+  id              String    @id @default(cuid())
+  employeeId      String
+  periodYear      Int
+  periodMonth     Int // 1-12
+  basicSalary     Float
+  allowances      String    @default("[]") // JSON snapshot: [{name, amount}] — copied from Employee at generation time
+  grossSalary     Float
+  deductions      String    @default("[]") // JSON: [{name, amount}] — e.g. PF, ESI, Professional Tax, TDS, Advance Recovery
+  totalDeductions Float     @default(0)
+  netPayable      Float
+  status          String    @default("DRAFT") // DRAFT | PAID
+  paidDate        DateTime?
+  paymentMethod   String?
+  expenseId       String?   @unique // set once marked PAID — the real Expense row this payroll run created
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  expense  Expense? @relation(fields: [expenseId], references: [id])
+
+  @@unique([employeeId, periodYear, periodMonth])
+  @@index([periodYear, periodMonth])
+  @@index([status])
+}
+
+// ─── Phase 20: Billing Feature Depth ─────────────────────────────────────────
+
+model Quotation {
+  id              String    @id @default(cuid())
+  quotationNumber String    @unique
+  customerId      String?
+  customerName    String?
+  validUntil      DateTime?
+  status          String    @default("DRAFT") // DRAFT, SENT, ACCEPTED, EXPIRED
+  subtotal        Float     @default(0)
+  taxAmount       Float     @default(0)
+  discountAmount  Float     @default(0)
+  totalAmount     Float     @default(0)
+  notes           String?
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    QuotationItem[]
+  invoice  Invoice?        @relation("QuotationToInvoice")
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model QuotationItem {
+  id          String  @id @default(cuid())
+  quotationId String
+  productId   String?
+  productName String
+  sku         String?
+  quantity    Float
+  unitPrice   Float
+  discount    Float   @default(0)
+  taxRate     Float   @default(0)
+  lineTotal   Float
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model CreditNote {
+  id               String   @id @default(cuid())
+  creditNoteNumber String   @unique
+  customerId       String?
+  invoiceId        String?
+  reason           String
+  amount           Float
+  notes            String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([createdAt])
+}
+
+model DebitNote {
+  id              String   @id @default(cuid())
+  debitNoteNumber String   @unique
+  supplierId      String?
+  purchaseOrderId String?
+  reason          String
+  amount          Float
+  notes           String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([purchaseOrderId])
+  @@index([createdAt])
+}
+
+// ─── Phase 22: Service Business Foundation ───────────────────────────────────
+
+model ServiceCatalog {
+  id              String   @id @default(cuid())
+  serviceName     String
+  serviceCode     String?  @unique
+  category        String?
+  description     String?
+  durationMinutes Int      @default(30)
+  basePrice       Float    @default(0)
+  taxRate         Float    @default(0)
+  sacCode         String?
+  isActive        Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  locationId String? // Phase 36 — reserved for V2 multi-location (not populated in V1)
+
+  appointments      Appointment[]
+  labTestOrderItems LabTestOrderItem[] // Phase 50 — Diagnostic Labs: test/panel catalog reuses this model
+
+  @@index([isActive])
+  @@index([category])
+  @@index([serviceName])
+}
+
+model Appointment {
+  id                 String   @id @default(cuid())
+  appointmentNumber  String   @unique
+  customerId         String?
+  customerName       String?
+  providerId         String?
+  serviceCatalogId   String?
+  serviceTitle       String
+  scheduledDate      DateTime
+  scheduledTime      String
+  durationMinutes    Int      @default(30)
+  status             String   @default("SCHEDULED") // SCHEDULED|CONFIRMED|IN_PROGRESS|COMPLETED|CANCELLED|NO_SHOW
+  notes              String?
+  privateNotes       String?
+  cancellationReason String?
+  invoiceId          String?
+  totalAmount        Float    @default(0)
+  depositPaid        Float    @default(0)
+  createdBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  petId                   String? // Phase 23 — Vet: link to patient
+  chairAssignment         String? // Phase 25 — Dental: chair number (Chair 1, Chair 2, etc.)
+  services                String? // Phase 27 — Salon: JSON [{id,serviceName,price,duration}]
+  locationId              String? // Phase 36 — reserved for V2 multi-location (not populated in V1)
+  referredFromVisitNoteId String? // Phase 54F — real in-app referral: this appointment was booked FROM a visit note's "refer to another provider" action, not created standalone. Distinct from VisitNote.referredBy (that's the free-text record of an inbound referral from an outside doctor); this is the outbound, in-app-routed case.
+
+  customer              Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  provider              Employee?        @relation("AppointmentProvider", fields: [providerId], references: [id], onDelete: SetNull)
+  serviceCatalog        ServiceCatalog?  @relation(fields: [serviceCatalogId], references: [id], onDelete: SetNull)
+  pet                   Pet?             @relation(fields: [petId], references: [id], onDelete: SetNull)
+  visitNote             VisitNote?       @relation("AppointmentOwnVisitNote") // Phase 24 — Medical: SOAP consultation note for THIS appointment
+  referredFromVisitNote VisitNote?       @relation("ReferralSource", fields: [referredFromVisitNoteId], references: [id], onDelete: SetNull) // Phase 54F — the note that referred the patient TO this appointment
+  tokenQueueEntry       TokenQueue? // Phase 24 — GP: token queue link
+  sessionLog            SessionLog? // Phase 26 — Physio: session pack deduction
+  staffCommission       StaffCommission? // Phase 27 — Salon/Gym: commission record
+  labTestOrder          LabTestOrder? // Phase 50 — Diagnostic Labs: sample-collection visit link
+
+  @@index([customerId])
+  @@index([providerId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([referredFromVisitNoteId])
+  @@index([createdAt])
+  @@index([petId])
+}
+
+// ─── Phase 50: Diagnostic & Pathology Labs ───────────────────────────────────
+// Test/panel catalog deliberately reuses ServiceCatalog (a lab creates catalog
+// rows like "Complete Blood Count"/"Lipid Profile"/"Chest X-Ray" with
+// category="Pathology"/"Radiology"/"Panel") rather than a parallel catalog
+// model. appointmentId links an order to a sample-collection visit when one
+// was booked; referredByProviderId/referringNotes record a referral — either
+// from a provider within this same install, or (the far more common case,
+// since Sarang is single-business/offline with no cross-install networking)
+// free text naming an external referring doctor/clinic.
+model LabTestOrder {
+  id                   String    @id @default(cuid())
+  orderNumber          String    @unique
+  customerId           String?
+  patientName          String
+  patientAge           String?
+  appointmentId        String?   @unique
+  referredByProviderId String?
+  referringNotes       String?
+  status               String    @default("ORDERED") // ORDERED|SAMPLE_COLLECTED|IN_PROCESS|REPORTED|DELIVERED|CANCELLED
+  sampleCollectedAt    DateTime?
+  sampleCollectedById  String?
+  reportedAt           DateTime?
+  reportedById         String?
+  totalAmount          Float     @default(0)
+  invoiceId            String?
+  notes                String?
+  createdBy            String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  customer           Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment        Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  referredByProvider Employee?          @relation("LabOrderReferrer", fields: [referredByProviderId], references: [id], onDelete: SetNull)
+  sampleCollectedBy  Employee?          @relation("LabOrderSampleCollector", fields: [sampleCollectedById], references: [id], onDelete: SetNull)
+  reportedBy         Employee?          @relation("LabOrderReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  items              LabTestOrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// One row per test/panel within an order — a single visit commonly orders
+// several tests (e.g. CBC + Lipid Profile + Thyroid Panel) that can each
+// complete at different times, hence per-item status. resultParameters holds
+// structured pathology results (JSON: [{parameter,value,unit,referenceRange,
+// flag}]); resultSummary is free text for imaging/radiology-style findings
+// that don't decompose into discrete parameters. testName/category/price are
+// denormalized snapshots (same pattern as InvoiceItem denormalizing
+// productName) so a later rename/deactivation of the catalog entry doesn't
+// change historical orders.
+model LabTestOrderItem {
+  id               String   @id @default(cuid())
+  labTestOrderId   String
+  serviceCatalogId String?
+  testName         String
+  category         String?
+  sampleType       String   @default("BLOOD") // BLOOD|URINE|STOOL|SWAB|IMAGING|OTHER
+  price            Float    @default(0)
+  status           String   @default("PENDING") // PENDING|COLLECTED|RESULT_READY|REPORTED
+  resultParameters String   @default("[]")
+  resultSummary    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  labTestOrder   LabTestOrder    @relation(fields: [labTestOrderId], references: [id], onDelete: Cascade)
+  serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id], onDelete: SetNull)
+
+  @@index([labTestOrderId])
+  @@index([status])
+}
+
+// ─── Phase 51: Blood Bank ─────────────────────────────────────────────────────
+// Donor management is structurally distinct from Customer (medical eligibility
+// fields, not a billing party) so gets its own model rather than overloading
+// Customer. Each collected+screened-passed unit becomes one ProductBatch row
+// under a single shared "Blood Unit" placeholder Product (found-or-created,
+// same pattern as findOrCreateServiceCatalogProduct/findOrCreateTestProduct in
+// appointment.service.ts/lab-test-order.service.ts) — DonationRecord carries
+// all the real blood-specific semantics (group/component/donor/camp) while
+// ProductBatch is reused purely as the underlying stock-quantity/expiry ledger.
+// This is why BLOOD_BANK does NOT get the generic batch_tracking module/screen
+// (see industry-template.service.ts's comment): the generic BatchManagement
+// screen's hardcoded 30-day "expiring soon" window is wrong for blood (a 5-day
+// platelet shelf life would show every single platelet unit as "expiring" at
+// all times) and has no blood-group grouping — Blood Bank gets its own
+// dedicated stock screen with per-component-type alert thresholds instead.
+model Donor {
+  id               String    @id @default(cuid())
+  donorCode        String    @unique
+  fullName         String
+  phone            String?
+  email            String?
+  dateOfBirth      DateTime?
+  gender           String?
+  bloodGroup       String? // A+|A-|B+|B-|AB+|AB-|O+|O-|UNKNOWN
+  weightKg         Float?
+  address          String?
+  lastDonationDate DateTime?
+  isDeferred       Boolean   @default(false)
+  deferralReason   String?
+  deferredUntil    DateTime?
+  notes            String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  donations DonationRecord[]
+
+  @@index([bloodGroup])
+  @@index([isActive])
+  @@index([fullName])
+}
+
+model DonationCamp {
+  id        String   @id @default(cuid())
+  campName  String
+  location  String?
+  campDate  DateTime
+  organizer String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donations DonationRecord[]
+
+  @@index([campDate])
+}
+
+model DonationRecord {
+  id              String   @id @default(cuid())
+  donationNumber  String   @unique
+  donorId         String
+  campId          String?
+  collectionDate  DateTime @default(now())
+  bloodGroup      String
+  componentType   String   @default("WHOLE_BLOOD") // WHOLE_BLOOD|PACKED_RBC|PLATELETS|PLASMA|CRYOPRECIPITATE
+  volumeMl        Float    @default(450)
+  screeningStatus String   @default("PENDING") // PENDING|PASSED|FAILED
+  screeningNotes  String?
+  productBatchId  String?  @unique
+  isIssued        Boolean  @default(false)
+  notes           String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  donor          Donor           @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  camp           DonationCamp?   @relation(fields: [campId], references: [id], onDelete: SetNull)
+  productBatch   ProductBatch?   @relation(fields: [productBatchId], references: [id], onDelete: SetNull)
+  bloodIssueItem BloodIssueItem?
+
+  @@index([donorId])
+  @@index([bloodGroup])
+  @@index([screeningStatus])
+  @@index([collectionDate])
+}
+
+model BloodIssue {
+  id            String   @id @default(cuid())
+  issueNumber   String   @unique
+  customerId    String?
+  recipientName String
+  purpose       String?
+  status        String   @default("ISSUED") // ISSUED|CANCELLED
+  totalAmount   Float    @default(0)
+  invoiceId     String?
+  issuedById    String?
+  notes         String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  // Populated from the logged-in session's userId (who clicked "Issue Units"),
+  // NOT a dropdown-selected staff member — so this must reference User (the
+  // auth/session identity), not Employee (a separate HR-only ID space with no
+  // link to User at all). Found live: issuedById was originally wired to
+  // Employee, which meant every real issuance failed a foreign-key check
+  // since no logged-in admin/manager/cashier's User.id ever coincidentally
+  // matches an Employee.id. Matches the precedent already set by
+  // Invoice.createdBy/Expense.createdBy/Payment.recordedBy, all of which
+  // relate to User for exactly this reason.
+  issuedBy User?            @relation("BloodIssueIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  items    BloodIssueItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model BloodIssueItem {
+  id                String   @id @default(cuid())
+  bloodIssueId      String
+  donationRecordId  String   @unique
+  bloodGroup        String
+  componentType     String
+  price             Float    @default(0)
+  compatibilityNote String? // e.g. "O- recipient, issued A+ unit — INCOMPATIBLE, issued on override"
+  createdAt         DateTime @default(now())
+
+  bloodIssue     BloodIssue     @relation(fields: [bloodIssueId], references: [id], onDelete: Cascade)
+  donationRecord DonationRecord @relation(fields: [donationRecordId], references: [id])
+
+  @@index([bloodIssueId])
+}
+
+model ProviderSchedule {
+  id           String   @id @default(cuid())
+  providerId   String
+  dayOfWeek    Int // 0=Sun, 1=Mon … 6=Sat
+  isWorking    Boolean  @default(true)
+  startTime    String // "09:00"
+  endTime      String // "18:00"
+  breakStart   String?
+  breakEnd     String?
+  slotDuration Int      @default(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  provider Employee @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, dayOfWeek])
+  @@index([providerId])
+}
+
+model ClinicHoliday {
+  id         String   @id @default(cuid())
+  date       DateTime
+  name       String
+  isGlobal   Boolean  @default(true)
+  providerId String?
+  createdAt  DateTime @default(now())
+
+  @@index([date])
+  @@index([providerId])
+}
+
+model CancellationPolicy {
+  id                   String   @id @default(cuid())
+  noticePeriodHours    Int      @default(24)
+  cancellationFeeType  String   @default("NONE") // NONE | FIXED | PERCENT
+  cancellationFeeValue Float    @default(0)
+  notes                String?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model NotificationQueue {
+  id               String    @id @default(cuid())
+  appointmentId    String?
+  customerId       String?
+  customerName     String?
+  customerPhone    String?
+  notificationType String // APPOINTMENT_REMINDER|APPOINTMENT_CONFIRM|APPOINTMENT_CANCEL|CUSTOM
+  templateBody     String
+  whatsappLink     String?
+  scheduledFor     DateTime?
+  status           String    @default("PENDING") // PENDING | SENT | DISMISSED | FAILED
+  sentAt           DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([appointmentId])
+  @@index([customerId])
+  @@index([scheduledFor])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 23 — VETERINARY: PET MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+model Pet {
+  id          String    @id @default(cuid())
+  customerId  String?
+  petName     String
+  species     String    @default("Dog") // Dog | Cat | Bird | Rabbit | Reptile | Other
+  breed       String?
+  dateOfBirth DateTime?
+  gender      String? // Male | Female | Unknown
+  color       String?
+  weight      Float? // current weight in kg
+  microchipId String?
+  isActive    Boolean   @default(true)
+  notes       String?
+  photoPath   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer      Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  weightHistory WeightHistory[]
+  vaccinations  VaccinationRecord[]
+  appointments  Appointment[]
+
+  @@index([customerId])
+  @@index([species])
+  @@index([isActive])
+}
+
+model WeightHistory {
+  id         String   @id @default(cuid())
+  petId      String
+  weightKg   Float
+  recordedAt DateTime @default(now())
+  notes      String?
+
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([recordedAt])
+}
+
+model VaccinationRecord {
+  id                 String    @id @default(cuid())
+  petId              String
+  vaccineName        String
+  vaccineType        String? // Core | Non-core | Optional
+  batchNumber        String?
+  manufacturer       String?
+  administeredAt     DateTime
+  administeredBy     String?
+  nextDueDate        DateTime?
+  notes              String?
+  certificatePrinted Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([nextDueDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 24 — MEDICAL: VISIT NOTES (SOAP) + GP TOKEN QUEUE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VisitNote {
+  id             String    @id @default(cuid())
+  appointmentId  String    @unique
+  patientName    String
+  patientAge     String? // "35 years" or "6 months"
+  chiefComplaint String?
+  subjective     String? // patient-reported history
+  objective      String? // vitals and examination findings
+  assessment     String? // diagnosis / differential
+  plan           String? // treatment plan, medications, procedures
+  followUpDate   DateTime?
+  followUpNotes  String?
+  referredBy     String? // specialist: who referred this patient
+  referralDate   DateTime?
+  referralReason String?
+  treatmentDone  String? // Phase 25 — Dental: what was done this session
+  painScore      Int? // Phase 26 — Physio: pain score 0–10
+  treatmentGiven String? // Phase 26 — Physio: modalities applied this session
+  bpSystolic     Int? // Phase 54B — structured vitals, mmHg
+  bpDiastolic    Int? // Phase 54B — structured vitals, mmHg
+  pulseRate      Int? // Phase 54B — bpm
+  temperatureF   Float? // Phase 54B — °F
+  heightCm       Float? // Phase 54B
+  weightKg       Float? // Phase 54B
+  vitalsFlags    String? // Phase 54B — JSON: computed LOW|NORMAL|HIGH per vital, from NormalRangeReference
+  isFinalized    Boolean   @default(false)
+  finalizedAt    DateTime?
+  createdBy      String // userId who created the note
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  appointment          Appointment   @relation("AppointmentOwnVisitNote", fields: [appointmentId], references: [id], onDelete: Cascade)
+  referralAppointments Appointment[] @relation("ReferralSource") // Phase 54F — real in-app referrals booked FROM this note (see Appointment.referredFromVisitNoteId)
+
+  @@index([createdBy])
+  @@index([isFinalized])
+  @@index([createdAt])
+}
+
+// Phase 54B — a single reusable "what's normal for this test" library shared
+// by BOTH structured vitals (VisitNote.bpSystolic etc.) and lab test result
+// parameters (LabTestOrderItem.resultParameters' referenceRange/flag) — one
+// place to define/save a normal range instead of every lab tech retyping it
+// per result and every doctor eyeballing vitals with no saved reference.
+model NormalRangeReference {
+  id        String   @id @default(cuid())
+  testName  String // e.g. "Blood Pressure - Systolic", "Fasting Blood Sugar"
+  unit      String? // e.g. "mmHg", "mg/dL"
+  minValue  Float?
+  maxValue  Float?
+  gender    String   @default("ALL") // ALL | MALE | FEMALE
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([testName, gender])
+  @@index([testName])
+}
+
+model TokenQueue {
+  id            String    @id @default(cuid())
+  queueDate     DateTime // midnight UTC of the queue day
+  tokenNumber   Int
+  patientName   String
+  age           String?
+  gender        String?
+  phone         String?
+  appointmentId String?   @unique
+  status        String    @default("WAITING") // WAITING | CALLED | SEEN | SKIPPED
+  calledAt      DateTime?
+  seenAt        DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@unique([queueDate, tokenNumber])
+  @@index([queueDate, status])
+  @@index([appointmentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 25 — DENTAL CLINIC
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ToothRecord {
+  id           String   @id @default(cuid())
+  patientId    String
+  toothNumber  Int // FDI: 11-18,21-28,31-38,41-48 (perm); 51-55,61-65,71-75,81-85 (deciduous)
+  surface      String   @default("[]") // JSON: ["BUCCAL","LINGUAL","MESIAL","DISTAL","OCCLUSAL"]
+  condition    String   @default("SOUND") // SOUND|CARIES|FILLED|MISSING|CROWN|BRIDGE_ABUTMENT|IMPLANT|ROOT_CANAL|EXTRACTION_SITE|FRACTURE
+  notes        String?
+  recordedDate DateTime @default(now())
+  recordedById String?
+  updatedAt    DateTime @updatedAt
+
+  patient    Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedBy Employee? @relation("ToothRecordRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@unique([patientId, toothNumber])
+  @@index([patientId])
+  @@index([condition])
+}
+
+model TreatmentPlan {
+  id                 String    @id @default(cuid())
+  patientId          String
+  createdById        String?
+  title              String    @default("Treatment Plan")
+  status             String    @default("PROPOSED") // PROPOSED|ACCEPTED|IN_PROGRESS|COMPLETED|DECLINED
+  planItems          String    @default("[]") // JSON: [{toothNumber,procedure,estimatedCost,itemStatus}]
+  totalEstimatedCost Decimal   @default(0)
+  notes              String?
+  acceptedDate       DateTime?
+  completedDate      DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  patient   Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdBy Employee? @relation("TreatmentPlanCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RecallRecord {
+  id               String    @id @default(cuid())
+  patientId        String    @unique
+  recallType       String    @default("HYGIENE_6M") // HYGIENE_6M|HYGIENE_12M|CROWN_REVIEW|CUSTOM
+  lastVisitDate    DateTime
+  nextRecallDate   DateTime
+  reminderSent     Boolean   @default(false)
+  reminderSentDate DateTime?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  patient Customer @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([nextRecallDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 26 — PHYSIOTHERAPY CLINIC
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TreatmentPhase {
+  id          String    @id @default(cuid())
+  patientId   String
+  phase       String    @default("ASSESSMENT") // ASSESSMENT|ACUTE|SUB_ACUTE|REHABILITATION|MAINTENANCE|DISCHARGE
+  title       String
+  startDate   DateTime
+  endDate     DateTime?
+  goals       String?
+  outcome     String?
+  isActive    Boolean   @default(true)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  patient   Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdBy Employee? @relation("TreatmentPhaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([isActive])
+}
+
+model ExerciseProgram {
+  id          String    @id @default(cuid())
+  patientId   String
+  title       String    @default("Home Exercise Program")
+  exercises   String    @default("[]") // JSON: [{name,description,sets,reps,hold,frequency,notes}]
+  isActive    Boolean   @default(true)
+  printedAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  patient   Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdBy Employee? @relation("ExerciseProgramCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([isActive])
+}
+
+model ClientSessionPack {
+  id            String    @id @default(cuid())
+  customerId    String
+  packName      String
+  totalSessions Int
+  usedSessions  Int       @default(0)
+  purchaseDate  DateTime  @default(now())
+  expiryDate    DateTime?
+  pricePerPack  Decimal   @default(0)
+  taxRate       Float     @default(18) // Phase 41: set at pack creation, mirrors ServiceCatalog.taxRate — business owner configures per-pack, no hardcoded guess
+  sacCode       String? // Phase 41
+  invoiceId     String? // Phase 41: set by generateSessionPackInvoice
+  notes         String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sessionLogs SessionLog[]
+
+  @@index([customerId])
+  @@index([isActive])
+  @@index([expiryDate])
+}
+
+model SessionLog {
+  id                  String   @id @default(cuid())
+  clientSessionPackId String
+  appointmentId       String?  @unique
+  deductedAt          DateTime @default(now())
+  notes               String?
+
+  clientSessionPack ClientSessionPack @relation(fields: [clientSessionPackId], references: [id], onDelete: Cascade)
+  appointment       Appointment?      @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([clientSessionPackId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 27 — SALON, GYM/STUDIO, DRIVING SCHOOL
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StaffCommission {
+  id               String    @id @default(cuid())
+  staffId          String
+  appointmentId    String?   @unique
+  serviceRevenue   Decimal   @default(0)
+  commissionType   String    @default("PERCENT") // PERCENT | FLAT
+  commissionRate   Decimal   @default(0)
+  commissionAmount Decimal   @default(0)
+  tipAmount        Decimal   @default(0)
+  period           String // YYYY-MM
+  isPaid           Boolean   @default(false)
+  paidDate         DateTime?
+  createdAt        DateTime  @default(now())
+
+  staff       Employee     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([staffId])
+  @@index([period])
+  @@index([isPaid])
+  @@index([appointmentId])
+}
+
+model MembershipPlan {
+  id               String   @id @default(cuid())
+  planName         String
+  durationDays     Int      @default(30)
+  price            Decimal  @default(0)
+  sessionsIncluded Int?
+  allowedClasses   String? // JSON: ["Yoga","Zumba"]
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  memberships Membership[]
+
+  @@index([isActive])
+}
+
+model Membership {
+  id            String   @id @default(cuid())
+  clientId      String
+  planId        String
+  startDate     DateTime
+  endDate       DateTime
+  status        String   @default("ACTIVE") // ACTIVE|FROZEN|EXPIRED|CANCELLED
+  paymentStatus String   @default("PENDING") // PAID|PENDING|PARTIAL
+  sessionsUsed  Int      @default(0)
+  invoiceId     String?
+  freezeHistory String? // JSON: [{frozenOn,resumedOn,reason}]
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  client      Customer           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plan        MembershipPlan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  attendances MemberAttendance[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([endDate])
+}
+
+model MemberAttendance {
+  id           String    @id @default(cuid())
+  clientId     String
+  membershipId String
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  createdAt    DateTime  @default(now())
+
+  client     Customer   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([membershipId])
+  @@index([checkInTime])
+}
+
+model BatchClass {
+  id                String    @id @default(cuid())
+  className         String
+  instructorId      String?
+  maxCapacity       Int       @default(20)
+  enrolledMemberIds String    @default("[]") // JSON: [customerId, ...]
+  scheduleDays      String    @default("[]") // JSON: ["MON","WED","FRI"]
+  scheduleTime      String
+  roomOrLocation    String?
+  startDate         DateTime
+  endDate           DateTime?
+  status            String    @default("ACTIVE") // ACTIVE|COMPLETED|CANCELLED
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  instructor  Employee?              @relation("BatchClassInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  attendances BatchClassAttendance[]
+
+  @@index([status])
+  @@index([instructorId])
+}
+
+model BatchClassAttendance {
+  id          String   @id @default(cuid())
+  classId     String
+  memberId    String
+  sessionDate DateTime
+  createdAt   DateTime @default(now())
+
+  class  BatchClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  member Customer   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, memberId, sessionDate])
+  @@index([classId])
+  @@index([sessionDate])
+}
+
+model LearnerProfile {
+  id                     String    @id @default(cuid())
+  customerId             String    @unique
+  dlApplicationNumber    String?
+  learnerLicenseNumber   String?
+  learnerLicenseDate     DateTime?
+  permanentLicenseNumber String?
+  permanentLicenseDate   DateTime?
+  licenseClass           String    @default("LMV") // LMV|HMV|TWO_WHEELER|LMV_AND_TWO_WHEELER
+  vehicleClassPreference String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model DrivingVehicle {
+  id                 String   @id @default(cuid())
+  registrationNumber String   @unique
+  make               String
+  model              String
+  vehicleClass       String   @default("LMV") // LMV|TWO_WHEELER|HMV
+  instructorId       String?
+  status             String   @default("ACTIVE") // ACTIVE|MAINTENANCE|RETIRED
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  instructor      Employee?        @relation("VehicleInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  drivingSessions DrivingSession[]
+
+  @@index([status])
+  @@index([vehicleClass])
+}
+
+model DrivingSession {
+  id                  String   @id @default(cuid())
+  learnerId           String
+  instructorId        String
+  vehicleId           String
+  sessionDate         DateTime
+  sessionTime         String
+  durationMinutes     Int      @default(60)
+  pickupPoint         String?
+  sessionNumber       Int      @default(1)
+  status              String   @default("SCHEDULED") // SCHEDULED|COMPLETED|CANCELLED|NO_SHOW
+  instructorNotes     String?
+  invoiceId           String?
+  sessionFee          Decimal? // Phase 41: ad-hoc per-session fee; null if billed via a package instead
+  packageEnrollmentId String? // Phase 41: set if this session was redeemed against a DrivingPackageEnrollment — mirrors Appointment/SessionLog
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  learner           Customer                  @relation("DrivingLearner", fields: [learnerId], references: [id], onDelete: Cascade)
+  instructor        Employee                  @relation("DrivingSessionInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  vehicle           DrivingVehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  packageEnrollment DrivingPackageEnrollment? @relation(fields: [packageEnrollmentId], references: [id], onDelete: SetNull)
+
+  @@index([learnerId])
+  @@index([instructorId])
+  @@index([sessionDate])
+  @@index([status])
+  @@index([packageEnrollmentId])
+}
+
+model DrivingPackage {
+  id            String   @id @default(cuid())
+  packageName   String // "10-Lesson LMV Package"
+  totalSessions Int
+  price         Decimal
+  vehicleClass  String   @default("LMV") // LMV|TWO_WHEELER|HMV
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  enrollments DrivingPackageEnrollment[]
+
+  @@index([isActive])
+}
+
+model DrivingPackageEnrollment {
+  id           String   @id @default(cuid())
+  learnerId    String
+  packageId    String
+  sessionsUsed Int      @default(0)
+  purchaseDate DateTime @default(now())
+  invoiceId    String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  learner  Customer         @relation("DrivingPackageLearner", fields: [learnerId], references: [id], onDelete: Cascade)
+  package  DrivingPackage   @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  sessions DrivingSession[]
+
+  @@index([learnerId])
+}
+
+model DrivingTest {
+  id         String    @id @default(cuid())
+  learnerId  String
+  testType   String // LL_TEST|DL_TEST
+  testDate   DateTime
+  testCenter String
+  result     String    @default("PENDING") // PENDING|PASSED|FAILED
+  retestDate DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  learner Customer @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@index([testType])
+  @@index([result])
+}
+
+// Relation back-reference on Appointment for StaffCommission
+// (already referenced above via @unique on appointmentId)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 28 — LEGAL (LAWYER template)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LegalCase {
+  id              String    @id @default(cuid())
+  caseNumber      String // Court-assigned number
+  caseTitle       String // "Ramesh Sharma vs State"
+  caseType        String    @default("CIVIL") // CIVIL|CRIMINAL|FAMILY|CORPORATE|PROPERTY|ARBITRATION|OTHER
+  courtName       String // "District Court, Lucknow"
+  courtDistrict   String?
+  courtState      String?
+  eCourtId        String? // eCourts case reference for link-out
+  clientId        String
+  advocateId      String?
+  status          String    @default("ACTIVE") // ACTIVE|CLOSED|STAYED|DISPOSED|TRANSFERRED
+  filingDate      DateTime?
+  nextHearingDate DateTime?
+  feeAgreed       Decimal?
+  feeCollected    Decimal   @default(0)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client      Customer    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  advocate    Employee?   @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
+  hearings    Hearing[]
+  timeEntries TimeEntry[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([advocateId])
+  @@index([nextHearingDate])
+}
+
+model Hearing {
+  id          String    @id @default(cuid())
+  caseId      String
+  hearingDate DateTime
+  hearingTime String? // "10:30 AM"
+  courtRoom   String?
+  purpose     String? // Arguments|Evidence|Judgment|Framing|Other
+  status      String    @default("SCHEDULED") // SCHEDULED|COMPLETED|ADJOURNED|CANCELLED
+  outcome     String?
+  nextDate    DateTime? // Set on adjournment
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  case LegalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([hearingDate])
+  @@index([status])
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  employeeId  String?
+  caseId      String? // For LAWYER; null = freestanding (CA, Arch etc.)
+  projectId   String? // For ARCHITECT|CIVIL_ENGINEER|CONSULTANT|AGENCY
+  date        DateTime
+  description String
+  hours       Decimal
+  ratePerHour Decimal  @default(0)
+  amount      Decimal  @default(0) // hours × ratePerHour, computed at service layer
+  isBilled    Boolean  @default(false)
+  invoiceId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee Employee?       @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  case     LegalCase?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  project  ServiceProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([caseId])
+  @@index([projectId])
+  @@index([date])
+  @@index([isBilled])
+}
+
+// ─── Phase 29 — CA + CS ───────────────────────────────────────────────────────
+
+model ComplianceEvent {
+  id           String   @id @default(cuid())
+  title        String // "GSTR-3B Filing"
+  category     String // INCOME_TAX|GST|TDS|ROC|MCA|AUDIT|OTHER
+  frequency    String   @default("ANNUAL") // ANNUAL|QUARTERLY|MONTHLY|ONE_TIME
+  applicableTo String   @default("ALL") // ALL|COMPANY|INDIVIDUAL|LLP|FIRM
+  description  String? // due date hint text
+  // Structured due date, additive — nullable so AGM-relative ROC/MCA events
+  // (whose real due date depends on each client's own AGM date, not tracked
+  // anywhere in this schema) can stay unset and are simply excluded from
+  // auto-generation rather than guessed at. dueMonth null + dueDay set means
+  // "this day of every month" (GSTR-1/GSTR-3B); both set means a single fixed
+  // calendar date recurring once a year (covers ANNUAL and the pre-split
+  // per-quarter QUARTERLY rows alike).
+  dueMonth     Int? // 1-12, null = monthly recurrence
+  dueDay       Int? // 1-31, null = not auto-computable (AGM-relative)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tasks ComplianceTask[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model ComplianceTask {
+  id                String    @id @default(cuid())
+  complianceEventId String?
+  clientId          String
+  staffId           String?
+  title             String
+  category          String // INCOME_TAX|GST|TDS|ROC|MCA|AUDIT|OTHER
+  dueDate           DateTime
+  status            String    @default("PENDING") // PENDING|IN_PROGRESS|FILED|DONE|OVERDUE
+  priority          String    @default("NORMAL") // LOW|NORMAL|HIGH|URGENT
+  notes             String?
+  filedOn           DateTime?
+  acknowledgmentNo  String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  event  ComplianceEvent? @relation(fields: [complianceEventId], references: [id], onDelete: SetNull)
+  client Customer         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staff  Employee?        @relation("TaskStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([staffId])
+  @@index([complianceEventId])
+}
+
+model Engagement {
+  id                 String    @id @default(cuid())
+  clientId           String
+  staffId            String?
+  title              String // "GST Filing & Advisory Retainer"
+  engagementType     String    @default("RETAINER") // RETAINER|ONE_TIME|AUDIT|ADVISORY|TAX
+  status             String    @default("ACTIVE") // ACTIVE|COMPLETED|PAUSED|TERMINATED
+  startDate          DateTime?
+  endDate            DateTime?
+  feeType            String    @default("FIXED") // FIXED|HOURLY|RETAINER_MONTHLY
+  feeAmount          Decimal?
+  billingDay         Int? // day-of-month for retainer auto-invoice
+  invoiceId          String? // reference to the MOST RECENT generated invoice (informational only — not used for re-invoicing gating, see lastInvoicedPeriod)
+  lastInvoicedPeriod String? // "YYYY-MM" of the last period actually invoiced — the real re-invoicing claim key, same pattern as RetainerAgreement; invoiceId alone used to permanently block re-invoicing after month 1
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staff  Employee? @relation("EngagementStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([status])
+  @@index([staffId])
+}
+
+model ROCFiling {
+  id            String    @id @default(cuid())
+  clientId      String
+  staffId       String?
+  formType      String // MGT-7|AOC-4|DIR-12|INC-22|PAS-3|ADT-1|MBP-1|OTHER
+  financialYear String? // "2025-26"
+  purpose       String?
+  dueDate       DateTime?
+  filedOn       DateTime?
+  srn           String? // MCA Service Request Number
+  status        String    @default("PENDING") // PENDING|IN_PROGRESS|FILED|ACKNOWLEDGED|DEFECTIVE
+  govtFee       Decimal?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  client Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staff  Employee? @relation("ROCFilingStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([staffId])
+}
+
+model BoardMeeting {
+  id          String   @id @default(cuid())
+  clientId    String
+  meetingType String   @default("BOARD") // BOARD|AGM|EGM|AUDIT_COMMITTEE|NRC
+  meetingDate DateTime
+  meetingTime String?
+  venue       String?
+  agenda      String?
+  quorumMet   Boolean  @default(false)
+  minutesDone Boolean  @default(false) // quick status flag — kept alongside minutesText below, not replaced by it
+  minutesText String? // Phase 54F — the actual minutes document text; minutesDone was previously the only record of a meeting's minutes, a checkbox with no content behind it
+  noticesSent Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Customer          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  resolutions BoardResolution[] // Phase 54F — individual resolutions passed at this meeting
+
+  @@index([clientId])
+  @@index([meetingDate])
+}
+
+// Phase 54F — a real resolution register. Previously nothing recorded WHICH
+// resolutions were passed at a board meeting, only that minutes existed
+// (as a boolean). Numbered resolutions with their actual text are what a
+// company secretary files/references, not a yes/no flag.
+model BoardResolution {
+  id                String   @id @default(cuid())
+  boardMeetingId    String
+  resolutionNumber  String // e.g. "1", "2024-03" — firm's own numbering convention, free text
+  resolutionType    String   @default("ORDINARY") // ORDINARY|SPECIAL
+  resolutionText    String
+  passedUnanimously Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  boardMeeting BoardMeeting @relation(fields: [boardMeetingId], references: [id], onDelete: Cascade)
+
+  @@index([boardMeetingId])
+}
+
+// ─── Phase 30 — Architect, Civil, Consultant, Agency ─────────────────────────
+
+model Lead {
+  id                String   @id @default(cuid())
+  fullName          String
+  email             String?
+  phone             String?
+  companyName       String?
+  source            String   @default("REFERRAL") // REFERRAL|WEBSITE|WALK_IN|SOCIAL|COLD_CALL|OTHER
+  status            String   @default("OPEN") // OPEN|CONTACTED|PROPOSAL|WON|LOST
+  estimatedValue    Decimal?
+  assignedToId      String?
+  convertedClientId String? // set when WON and linked to a Customer
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  assignedTo Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model ServiceProject {
+  id                 String    @id @default(cuid())
+  clientId           String
+  projectName        String
+  projectType        String    @default("GENERAL") // GENERAL|RESIDENTIAL|COMMERCIAL|RENOVATION|PRODUCT_BUILD|FEATURE_DEVELOPMENT|MAINTENANCE_RETAINER|CONSULTING|MARKETING_CAMPAIGN
+  stage              String? // Arch: CONCEPT|SCHEMATIC|DESIGN_DEVELOPMENT|DRAWINGS|APPROVALS|CONSTRUCTION|HANDOVER; Civil: SURVEY|DESIGN|FOUNDATION|STRUCTURE|FINISHING|HANDOVER
+  status             String    @default("ACTIVE") // ACTIVE|ON_HOLD|COMPLETED|CANCELLED
+  totalContractValue Decimal?
+  startDate          DateTime?
+  expectedEndDate    DateTime?
+  completedDate      DateTime?
+  assignedToId       String?
+  notes              String?
+  // Phase 54F — Marketing Agency depth (marketing_campaigns module flag).
+  // Generic, nullable columns on the shared ServiceProject model rather than
+  // a parallel "Campaign" entity — same reuse-over-parallel-schema call this
+  // project has made repeatedly (appointments, lab orders). Populated only
+  // when marketing_campaigns is enabled; every other ServiceProject-using
+  // vertical (Architect/Civil/Consultant/Software Agency) simply never sets
+  // them.
+  targetChannel      String? // e.g. "Google Ads", "Meta Ads", "SEO", "Email", "Social Media", "Content" — free text, not a fixed enum
+  deliverableType    String? // e.g. "Campaign Launch", "Creative Asset Set", "Monthly Report", "Website"
+  adSpendBudget      Decimal? // Planned/allocated ad spend for this campaign — distinct from totalContractValue (the agency's own fee)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client           Customer                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignedTo       Employee?                 @relation("ServiceProjectAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  milestones       ServiceProjectMilestone[]
+  timeEntries      TimeEntry[]
+  issues           Issue[]
+  sprints          Sprint[]
+  drawingRevisions DrawingRevision[]
+  siteVisits       SiteVisit[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+// Fresh-audit build (2026-07-12) — Architect real depth. A drawing register
+// (which drawing, which revision, current status) is genuine, everyday
+// architectural-practice bookkeeping that Consultant/Civil Engineer don't
+// share — previously Architect had ZERO fields of its own beyond the
+// generic ServiceProject/leads/time_entries scaffold, byte-for-byte
+// identical to Civil Engineer's module set.
+model DrawingRevision {
+  id             String    @id @default(cuid())
+  projectId      String
+  drawingNumber  String
+  title          String
+  discipline     String    @default("ARCHITECTURAL") // ARCHITECTURAL|STRUCTURAL|MEP|LANDSCAPE|INTERIOR
+  revisionNumber String    @default("A")
+  status         String    @default("DRAFT") // DRAFT|ISSUED_FOR_REVIEW|APPROVED|SUPERSEDED
+  issuedDate     DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+// Fresh-audit build (2026-07-12) — Civil Engineer real depth. A site visit
+// log (survey/inspection/progress-check findings) is genuine, everyday
+// civil-practice bookkeeping distinct from an architect's drawing-issue
+// workflow — the actual differentiator this vertical was missing.
+model SiteVisit {
+  id                String   @id @default(cuid())
+  projectId         String
+  visitDate         DateTime
+  visitType         String   @default("INSPECTION") // SURVEY|INSPECTION|PROGRESS_CHECK|HANDOVER
+  findings          String?
+  weatherConditions String?
+  recordedById      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project    ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recordedBy Employee?      @relation("SiteVisitRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([visitDate])
+}
+
+model ServiceProjectMilestone {
+  id              String    @id @default(cuid())
+  projectId       String
+  milestoneName   String
+  milestoneAmount Decimal?
+  status          String    @default("UPCOMING") // UPCOMING|IN_PROGRESS|COMPLETED|INVOICED|PAID
+  dueDate         DateTime?
+  completedDate   DateTime?
+  invoiceId       String? // Invoice reference when INVOICED
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model RetainerAgreement {
+  id                 String    @id @default(cuid())
+  clientId           String
+  assignedToId       String?
+  title              String
+  retainerType       String    @default("FIXED_FEE") // FIXED_FEE|HOURLY_BUCKET|DELIVERABLE_BASED
+  monthlyAmount      Decimal
+  billingDay         Int       @default(1) // Day of month to generate invoice (1–28)
+  hoursPerMonth      Decimal? // For HOURLY_BUCKET
+  deliverables       String? // JSON string for DELIVERABLE_BASED
+  status             String    @default("ACTIVE") // ACTIVE|PAUSED|EXPIRED
+  startDate          DateTime
+  endDate            DateTime?
+  notes              String?
+  lastInvoicedPeriod String? // Phase 54B — "YYYY-MM" of the last period actually invoiced; recurring, so unlike a one-off invoiceId this is a claim key not a nullable pointer
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client     Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignedTo Employee? @relation("RetainerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model Issue {
+  id           String    @id @default(cuid())
+  projectId    String
+  title        String
+  description  String?
+  priority     String    @default("MED") // HIGH|MED|LOW
+  status       String    @default("OPEN") // OPEN|IN_PROGRESS|RESOLVED|CLOSED
+  assignedToId String?
+  sprintId     String?
+  reportedDate DateTime  @default(now())
+  resolvedDate DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  project    ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo Employee?      @relation("IssueAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  sprint     Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([sprintId])
+}
+
+model Sprint {
+  id           String   @id @default(cuid())
+  projectId    String
+  sprintNumber Int
+  name         String? // "Sprint 1 — MVP Core"
+  goal         String?
+  startDate    DateTime
+  endDate      DateTime
+  status       String   @default("PLANNING") // PLANNING|ACTIVE|COMPLETED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  Issue[]
+
+  @@unique([projectId, sprintNumber])
+  @@index([projectId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 31 — COACHING INSTITUTE / TUITION / ACADEMY
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StudentProfile {
+  id             String   @id @default(cuid())
+  customerId     String   @unique
+  rollNumber     String?
+  classOrGrade   String
+  schoolName     String?
+  parentPhone    String?
+  enrollmentDate DateTime @default(now())
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+}
+
+model CoachingBatch {
+  id              String    @id @default(cuid())
+  batchName       String
+  subjectOrCourse String
+  instructorId    String?
+  scheduleDays    String    @default("[]") // JSON: ["MON","WED","FRI"]
+  scheduleTime    String?
+  roomOrLocation  String?
+  maxCapacity     Int       @default(20)
+  startDate       DateTime
+  endDate         DateTime?
+  status          String    @default("ACTIVE") // ACTIVE|COMPLETED|CANCELLED
+  feePerMonth     Decimal
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  instructor   Employee?                 @relation("CoachingBatchInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  enrollments  CoachingBatchEnrollment[]
+  attendances  CoachingBatchAttendance[]
+  performances Performance[]
+  feeRecords   CoachingFeeRecord[]
+
+  @@index([status])
+  @@index([instructorId])
+}
+
+model CoachingBatchEnrollment {
+  id             String   @id @default(cuid())
+  batchId        String
+  studentId      String
+  enrolledDate   DateTime @default(now())
+  status         String   @default("ACTIVE") // ACTIVE|DROPPED|COMPLETED
+  discountType   String   @default("NONE") // NONE|SCHOLARSHIP|SIBLING|REFERRAL|CUSTOM
+  discountAmount Decimal  @default(0)
+  effectiveFee   Decimal
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  batch      CoachingBatch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student    Customer            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeRecords CoachingFeeRecord[]
+  testScores StudentTestScore[] // Phase 54F — real academic test-score tracking, distinct from Performance (below) which is event/recital bookings
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model CoachingBatchAttendance {
+  id                String   @id @default(cuid())
+  batchId           String
+  attendanceDate    DateTime
+  presentStudentIds String   @default("[]") // JSON array of Customer IDs
+  absentStudentIds  String   @default("[]") // JSON array of Customer IDs
+  takenById         String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  batch   CoachingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  takenBy Employee?     @relation("CoachingAttendanceTaker", fields: [takenById], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, attendanceDate])
+  @@index([batchId])
+  @@index([attendanceDate])
+}
+
+model CoachingFeeRecord {
+  id             String    @id @default(cuid())
+  enrollmentId   String
+  studentId      String // denormalized from enrollment for direct queries
+  batchId        String // denormalized from enrollment for direct queries
+  feeMonth       String // "2026-07" format (YYYY-MM)
+  dueDate        DateTime?
+  baseAmount     Decimal   @default(0) // fee before tax
+  taxRate        Decimal   @default(0) // e.g. 18 for 18% GST; 0 = GST-exempt
+  taxAmount      Decimal   @default(0) // computed: baseAmount × taxRate / 100
+  amountDue      Decimal
+  amountReceived Decimal   @default(0)
+  status         String    @default("PENDING") // PENDING|PAID|PARTIAL|WAIVED
+  paidDate       DateTime?
+  notes          String?
+  invoiceId      String? // Phase 54B — real GST Invoice generated once, the first time this record reaches PAID (was a shadow ledger with no Invoice link at all before this)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  enrollment CoachingBatchEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  batch      CoachingBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, feeMonth])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([status])
+  @@index([feeMonth])
+}
+
+// Event/recital bookings (school function, annual day performance, etc.) —
+// despite the model name, this is NOT academic test-score tracking. See
+// StudentTestScore below for that; the two are deliberately separate models,
+// not a naming overlap to be confused with each other. The renderer already
+// labels this "Performances & Recitals" (PerformanceScreen.tsx), which is
+// accurate — the model name itself just predates StudentTestScore existing.
+model Performance {
+  id                      String   @id @default(cuid())
+  batchId                 String
+  performanceName         String
+  date                    DateTime
+  venue                   String?
+  participatingStudentIds String   @default("[]") // JSON array of Customer IDs
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  batch CoachingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([date])
+}
+
+// Phase 54F — real academic performance: test/exam scores per student
+// enrollment. Closes the gap the audit found: "performance tracking" only
+// ever meant event/recital bookings (Performance, above) — there was no
+// subject-wise mark/grade record anywhere despite the feature's name.
+model StudentTestScore {
+  id            String   @id @default(cuid())
+  enrollmentId  String
+  testName      String // e.g. "Unit Test 1", "Mid-Term"
+  subject       String?
+  marksObtained Float
+  maxMarks      Float
+  testDate      DateTime
+  grade         String? // optional letter/grade label, entered manually — not auto-computed (grading scales vary too much per institute to hardcode one)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  enrollment CoachingBatchEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@index([testDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 32 — PHOTOGRAPHY, EVENT MANAGEMENT, REAL ESTATE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ShootBooking {
+  id                     String    @id @default(cuid())
+  clientId               String
+  shootType              String // WEDDING|MATERNITY|NEWBORN|BIRTHDAY|CORPORATE|PRODUCT|PORTFOLIO|REAL_ESTATE|OTHER
+  shootDate              DateTime
+  shootTime              String?
+  shootLocation          String
+  estimatedDurationHours Decimal
+  deliverableType        String    @default("DIGITAL_ONLY") // DIGITAL_ONLY|PRINT_ALBUM|PRINTS|MIXED
+  expectedPhotosCount    Int?
+  deliveryDeadline       DateTime?
+  photographerIds        String    @default("[]") // JSON array of Employee IDs
+  editorAssignedId       String?
+  status                 String    @default("INQUIRY") // INQUIRY|CONFIRMED|SHOT|EDITING|DELIVERED|CANCELLED
+  finalAmount            Decimal? // Phase 40: agreed billable amount, set once quoted/confirmed — distinct from any rough estimate; required before an invoice can be generated
+  invoiceId              String?
+  notes                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  client   Customer         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editor   Employee?        @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
+  delivery DeliveryTracker?
+
+  @@index([clientId])
+  @@index([shootDate])
+  @@index([status])
+}
+
+model DeliveryTracker {
+  id                    String    @id @default(cuid())
+  shootBookingId        String    @unique
+  proofsSentDate        DateTime?
+  selectionReceivedDate DateTime?
+  editingStartedDate    DateTime?
+  albumProofSentDate    DateTime?
+  finalDeliveredDate    DateTime?
+  deliveryFormat        String?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  shootBooking ShootBooking @relation(fields: [shootBookingId], references: [id], onDelete: Cascade)
+}
+
+model EventBooking {
+  id                 String    @id @default(cuid())
+  clientId           String
+  eventName          String
+  eventType          String // WEDDING|CORPORATE|BIRTHDAY|CONFERENCE|SOCIAL|POOJA|OTHER
+  eventDate          DateTime
+  eventEndDate       DateTime?
+  venueName          String
+  venueAddress       String?
+  expectedGuestCount Int?
+  clientBudget       Decimal?
+  finalAmount        Decimal? // Phase 40: agreed billable amount, set once quoted/confirmed — distinct from clientBudget (a rough pre-booking estimate); required before an invoice can be generated
+  status             String    @default("INQUIRY") // INQUIRY|QUOTED|CONFIRMED|IN_PROGRESS|COMPLETED|CANCELLED
+  invoiceId          String?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client         Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  vendorBookings EventVendorBooking[]
+
+  @@index([clientId])
+  @@index([eventDate])
+  @@index([status])
+}
+
+model EventVendorBooking {
+  id             String   @id @default(cuid())
+  eventId        String
+  vendorId       String
+  vendorCategory String // CATERING|DECORATION|PHOTOGRAPHY|AV_SOUND|VENUE|ENTERTAINMENT|TRANSPORT|FLOWERS|OTHER
+  quotedAmount   Decimal
+  advancePaid    Decimal  @default(0)
+  status         String   @default("ENQUIRED") // ENQUIRED|BOOKED|CONFIRMED|COMPLETED
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event  EventBooking @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vendor Supplier     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@index([eventId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+model Property {
+  id               String   @id @default(cuid())
+  propertyType     String // RESIDENTIAL_FLAT|INDEPENDENT_HOUSE|PLOT|COMMERCIAL_OFFICE|COMMERCIAL_SHOP|WAREHOUSE|AGRICULTURAL
+  listingType      String // SALE|RENT|LEASE
+  status           String   @default("AVAILABLE") // AVAILABLE|UNDER_NEGOTIATION|SOLD|RENTED|OFF_MARKET
+  location         String
+  area             Decimal
+  floorNumber      Int?
+  totalFloors      Int?
+  askingPrice      Decimal?
+  monthlyRent      Decimal?
+  securityDeposit  Decimal?
+  ownerClientId    String
+  brokeragePercent Decimal?
+  photos           String   @default("[]") // JSON: local file paths
+  description      String?
+  amenities        String   @default("[]") // JSON array of strings
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner     Customer          @relation("PropertyOwner", fields: [ownerClientId], references: [id], onDelete: Cascade)
+  inquiries PropertyInquiry[]
+  deals     PropertyDeal[]
+
+  @@index([status])
+  @@index([listingType])
+  @@index([ownerClientId])
+}
+
+model PropertyInquiry {
+  id               String    @id @default(cuid())
+  propertyId       String
+  buyerClientId    String
+  inquiryDate      DateTime  @default(now())
+  status           String    @default("SHORTLISTED") // SHORTLISTED|SITE_VISIT_SCHEDULED|NEGOTIATION|DEAL_CLOSED|REJECTED
+  notes            String?
+  nextFollowUpDate DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer    Customer @relation("InquiryBuyer", fields: [buyerClientId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([buyerClientId])
+  @@index([status])
+}
+
+model PropertyDeal {
+  id                       String    @id @default(cuid())
+  propertyId               String
+  buyerClientId            String
+  sellerClientId           String
+  dealValue                Decimal
+  brokeragePercent         Decimal
+  brokerageAmount          Decimal
+  expectedRegistrationDate DateTime?
+  status                   String    @default("IN_PROGRESS") // IN_PROGRESS|REGISTERED|FELL_THROUGH
+  invoiceId                String?
+  notes                    String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer    Customer @relation("DealBuyer", fields: [buyerClientId], references: [id], onDelete: Restrict)
+  seller   Customer @relation("DealSeller", fields: [sellerClientId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+// ─── Phase 33 — Car Service, Tailor Boutique, Pest Control ────────────────────
+
+model CarJobCard {
+  id                String    @id @default(cuid())
+  jobNumber         String    @unique
+  clientId          String
+  vehicleNumber     String
+  vehicleMake       String
+  vehicleModel      String
+  vehicleYear       Int?
+  vehicleType       String    @default("4W") // 2W|4W|COMMERCIAL|OTHER
+  kmIn              Int?
+  kmOut             Int?
+  serviceAdvisorId  String?
+  technicianIds     String    @default("[]") // JSON array of Employee IDs
+  serviceItems      String    @default("[]") // JSON: [{name,quantity,unitPrice}]
+  partsItems        String    @default("[]") // JSON: [{name,partNumber?,quantity,unitPrice}]
+  laborTotal        Decimal   @default(0)
+  partsTotal        Decimal   @default(0)
+  estimatedDelivery DateTime?
+  deliveredDate     DateTime?
+  status            String    @default("RECEIVED") // RECEIVED|INSPECTION|IN_PROGRESS|WAITING_PARTS|READY|DELIVERED|CANCELLED
+  invoiceId         String?
+  notes             String?
+  internalNotes     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  client         Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceAdvisor Employee? @relation("CarJobAdvisor", fields: [serviceAdvisorId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([status])
+  @@index([vehicleNumber])
+  @@index([createdAt])
+}
+
+model MeasurementRecord {
+  id             String   @id @default(cuid())
+  clientId       String
+  chest          Decimal?
+  waist          Decimal?
+  hips           Decimal?
+  shoulder       Decimal?
+  neck           Decimal?
+  sleeve         Decimal?
+  inseam         Decimal?
+  outseam        Decimal?
+  thigh          Decimal?
+  height         Decimal?
+  // Phase 48 — the generic unisex set above (chest/waist/shoulder/sleeve
+  // etc.) is not sufficient for accurate blouse tailoring (needs neck
+  // depth/armhole/length) and shirt tailoring is missing a real cuff
+  // measurement (distinct from sleeve length) — confirmed via this phase's
+  // own audit, not assumed. All optional; pant is already adequately
+  // covered by the existing waist/hips/inseam/outseam/thigh set.
+  armhole        Decimal?
+  frontNeckDepth Decimal?
+  backNeckDepth  Decimal?
+  garmentLength  Decimal?
+  cuff           Decimal?
+  notes          String?
+  takenById      String?
+  recordDate     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client          Customer         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  takenBy         Employee?        @relation("MeasurementTakenBy", fields: [takenById], references: [id], onDelete: SetNull)
+  tailoringOrders TailoringOrder[]
+
+  @@index([clientId])
+  @@index([recordDate])
+}
+
+model TailoringOrder {
+  id                  String    @id @default(cuid())
+  orderNumber         String    @unique
+  clientId            String
+  measurementRecordId String?
+  garmentType         String // SHIRT|PANT|SUIT|KURTA|SALWAR_KAMEEZ|BLOUSE|LEHENGA|SAREE_BLOUSE|JACKET|OTHER
+  // Phase 48 — nullable/optional, no default forced. gender: MENS|WOMENS.
+  // styleRegion: INDIAN|WESTERN.
+  gender              String?
+  styleRegion         String?
+  fabricDescription   String?
+  fabricSupplied      String    @default("CLIENT") // CLIENT|SHOP
+  quantity            Int       @default(1)
+  unitPrice           Decimal   @default(0)
+  totalAmount         Decimal   @default(0)
+  advancePaid         Decimal   @default(0)
+  trialDate           DateTime?
+  deliveryDate        DateTime?
+  deliveredDate       DateTime?
+  status              String    @default("RECEIVED") // RECEIVED|IN_CUTTING|IN_STITCHING|TRIAL_SCHEDULED|ALTERATIONS|READY|DELIVERED|CANCELLED
+  assignedToId        String?
+  invoiceId           String?
+  specialInstructions String?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  client      Customer           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  measurement MeasurementRecord? @relation(fields: [measurementRecordId], references: [id], onDelete: SetNull)
+  assignedTo  Employee?          @relation("TailoringAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([createdAt])
+}
+
+model PestServiceContract {
+  id                 String    @id @default(cuid())
+  contractNumber     String    @unique
+  clientId           String
+  propertyAddress    String
+  propertyType       String    @default("RESIDENTIAL") // RESIDENTIAL|COMMERCIAL|INDUSTRIAL
+  pestTypes          String    @default("[]") // JSON: ["COCKROACHES","RODENTS","TERMITES","ANTS","MOSQUITOES","BEDBUGS","OTHER"]
+  serviceFrequency   String    @default("QUARTERLY") // MONTHLY|QUARTERLY|HALF_YEARLY|YEARLY|ONE_TIME
+  startDate          DateTime
+  endDate            DateTime?
+  contractValue      Decimal
+  status             String    @default("ACTIVE") // ACTIVE|EXPIRED|CANCELLED|PENDING
+  assignedToId       String?
+  notes              String?
+  lastInvoicedPeriod String? // "YYYY-MM" of the last period actually invoiced for the recurring contractValue — contractValue was previously never billed at all, only ad-hoc job sheets invoiced
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client     Customer       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignedTo Employee?      @relation("PestContractAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  jobSheets  PestJobSheet[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model PestJobSheet {
+  id              String    @id @default(cuid())
+  jobNumber       String    @unique
+  contractId      String?
+  clientId        String
+  visitDate       DateTime
+  scheduledTime   String?
+  technicianIds   String    @default("[]") // JSON array of Employee IDs
+  pesticideUsed   String?
+  areasServiced   String    @default("[]") // JSON: ["Kitchen","Store Room"]
+  treatmentType   String    @default("SPRAY") // SPRAY|GEL|FUMIGATION|TRAP|BAIT|COMBINED
+  jobAmount       Decimal   @default(0)
+  status          String    @default("SCHEDULED") // SCHEDULED|IN_PROGRESS|COMPLETED|CANCELLED
+  completedDate   DateTime?
+  followUpDate    DateTime?
+  clientSignature Boolean   @default(false)
+  invoiceId       String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  contract PestServiceContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  client   Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([clientId])
+  @@index([status])
+  @@index([visitDate])
+}
+
+// ─── Phase 34 — Placement Agency ──────────────────────────────────────────────
+
+model Candidate {
+  id                 String    @id @default(cuid())
+  candidateNumber    String    @unique
+  fullName           String
+  email              String?
+  phone              String?
+  currentJobTitle    String?
+  currentEmployer    String?
+  totalExperience    Decimal? // years
+  skills             String    @default("[]") // JSON: ["React","TypeScript"]
+  preferredLocations String    @default("[]") // JSON: ["Bangalore","Mumbai"]
+  educationSummary   String?
+  resumeNotes        String?
+  expectedSalary     Decimal?
+  currentSalary      Decimal?
+  availableFrom      DateTime?
+  status             String    @default("ACTIVE") // ACTIVE|PLACED|ON_HOLD|BLACKLISTED
+  source             String    @default("WALKIN") // REFERRAL|LINKEDIN|WEBSITE|WALKIN|OTHER
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  placements Placement[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([fullName])
+}
+
+model JobOrder {
+  id                String    @id @default(cuid())
+  orderNumber       String    @unique
+  clientId          String // the hiring company (Customer)
+  jobTitle          String
+  jobDescription    String?
+  requiredSkills    String    @default("[]") // JSON: ["Java","Spring Boot"]
+  experienceMin     Decimal? // years
+  experienceMax     Decimal?
+  salaryBudgetMin   Decimal?
+  salaryBudgetMax   Decimal?
+  location          String?
+  numberOfPositions Int       @default(1)
+  status            String    @default("OPEN") // OPEN|IN_PROGRESS|ON_HOLD|CLOSED|CANCELLED
+  targetDate        DateTime?
+  commissionType    String    @default("PERCENTAGE") // PERCENTAGE|FIXED
+  commissionValue   Decimal   @default(0)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  client     Customer    @relation("JobOrderClient", fields: [clientId], references: [id], onDelete: Cascade)
+  placements Placement[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Placement {
+  id               String   @id @default(cuid())
+  placementNumber  String   @unique
+  candidateId      String
+  jobOrderId       String
+  clientId         String // hiring company — denormalized for billing
+  joiningDate      DateTime
+  offeredSalary    Decimal
+  commissionAmount Decimal  @default(0)
+  invoiceId        String?
+  status           String   @default("OFFERED") // OFFERED|JOINED|INVOICED|CANCELLED
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobOrder  JobOrder  @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  client    Customer  @relation("PlacementClient", fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([jobOrderId])
+  @@index([clientId])
+  @@index([status])
+  @@index([joiningDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 37 — LOGISTICS & SUPPLY CHAIN MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id            String   @id @default(cuid())
+  vehicleNumber String   @unique
+  vehicleType   String // TRUCK, TEMPO, VAN, BIKE, AUTO
+  ownerType     String   @default("OWN") // OWN, HIRED, 3PL
+  driverName    String?
+  driverPhone   String?
+  capacity      Float?
+  capacityUnit  String   @default("KG")
+  status        String   @default("AVAILABLE") // AVAILABLE, IN_TRANSIT, MAINTENANCE, RETIRED
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shipments Shipment[]
+  challans  DeliveryChallan[]
+
+  @@index([status])
+}
+
+model Carrier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      String   @default("COURIER") // COURIER, TRANSPORT, 3PL, OWN_FLEET
+  phone     String?
+  email     String?
+  gstNumber String?
+  ratePerKg Float?
+  ratePerKm Float?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipments     Shipment[]
+  freightLedger FreightLedger[]
+
+  @@index([isActive])
+}
+
+model Shipment {
+  id                 String    @id @default(cuid())
+  shipmentNumber     String    @unique
+  shipmentType       String    @default("OUTBOUND") // OUTBOUND, INBOUND, INTERNAL
+  referenceType      String? // INVOICE, PRODUCTION_ORDER, PURCHASE_ORDER, MANUAL
+  referenceId        String?
+  referenceNumber    String?
+  originAddress      String?
+  destinationAddress String
+  customerId         String?
+  customerName       String?
+  supplierId         String?
+  supplierName       String?
+  carrierId          String?
+  vehicleId          String?
+  trackingNumber     String?
+  freightAmount      Float     @default(0)
+  freightPaidBy      String    @default("SENDER") // SENDER, RECEIVER, THIRD_PARTY
+  weight             Float?
+  weightUnit         String    @default("KG")
+  packages           Int       @default(1)
+  status             String    @default("PENDING")
+  scheduledDate      DateTime?
+  readyAt            DateTime?
+  inTransitAt        DateTime?
+  outForDeliveryAt   DateTime?
+  expectedDelivery   DateTime?
+  deliveredAt        DateTime?
+  challanNumber      String?
+  ewayBillNumber     String?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  carrier       Carrier?           @relation(fields: [carrierId], references: [id])
+  vehicle       Vehicle?           @relation(fields: [vehicleId], references: [id])
+  items         ShipmentItem[]
+  grns          GoodsReceiptNote[]
+  challans      DeliveryChallan[]
+  freightLedger FreightLedger[]
+
+  @@index([status])
+  @@index([carrierId])
+  @@index([vehicleId])
+  @@index([scheduledDate])
+  @@index([createdAt])
+}
+
+model ShipmentItem {
+  id           String  @id @default(cuid())
+  shipmentId   String
+  productId    String?
+  productName  String
+  quantity     Float
+  unit         String  @default("PCS")
+  unitValue    Float   @default(0)
+  totalValue   Float   @default(0)
+  batchNumber  String?
+  serialNumber String?
+  notes        String?
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+model GoodsReceiptNote {
+  id              String    @id @default(cuid())
+  grnNumber       String    @unique
+  supplierId      String?
+  supplierName    String
+  purchaseOrderId String?
+  shipmentId      String?
+  receivedDate    DateTime  @default(now())
+  invoiceNumber   String?
+  invoiceDate     DateTime?
+  totalValue      Float     @default(0)
+  status          String    @default("DRAFT") // DRAFT, VERIFIED, POSTED, REVERSED
+  postedAt        DateTime?
+  reversedAt      DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  purchaseOrder PurchaseOrder? @relation("GRNPurchaseOrder", fields: [purchaseOrderId], references: [id])
+  shipment      Shipment?      @relation(fields: [shipmentId], references: [id])
+  items         GRNItem[]
+
+  @@index([purchaseOrderId])
+  @@index([status])
+  @@index([receivedDate])
+}
+
+model GRNItem {
+  id            String    @id @default(cuid())
+  grnId         String
+  productId     String?
+  rawMaterialId String?
+  itemName      String
+  orderedQty    Float?
+  receivedQty   Float
+  rejectedQty   Float     @default(0)
+  unit          String    @default("PCS")
+  unitCost      Float     @default(0)
+  totalCost     Float     @default(0)
+  batchNumber   String?
+  expiryDate    DateTime?
+  notes         String?
+
+  grn GoodsReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+
+  @@index([grnId])
+}
+
+model DeliveryChallan {
+  id              String    @id @default(cuid())
+  challanNumber   String    @unique
+  challanType     String    @default("DELIVERY") // DELIVERY, RETURNABLE, BRANCH_TRANSFER
+  customerId      String?
+  customerName    String
+  customerAddress String?
+  shipmentId      String?
+  invoiceId       String?
+  vehicleId       String?
+  driverName      String?
+  driverPhone     String?
+  dispatchDate    DateTime?
+  expectedReturn  DateTime?
+  returnedAt      DateTime?
+  status          String    @default("DRAFT") // DRAFT, ISSUED, DELIVERED, RETURNED
+  totalValue      Float     @default(0)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shipment Shipment?     @relation(fields: [shipmentId], references: [id])
+  invoice  Invoice?      @relation("ChallanInvoice", fields: [invoiceId], references: [id])
+  vehicle  Vehicle?      @relation(fields: [vehicleId], references: [id])
+  items    ChallanItem[]
+
+  @@index([status])
+  @@index([invoiceId])
+  @@index([shipmentId])
+}
+
+model ChallanItem {
+  id          String  @id @default(cuid())
+  challanId   String
+  productId   String?
+  productName String
+  quantity    Float
+  unit        String  @default("PCS")
+  unitValue   Float   @default(0)
+  totalValue  Float   @default(0)
+  returnedQty Float   @default(0)
+  notes       String?
+
+  challan DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+
+  @@index([challanId])
+}
+
+model FreightLedger {
+  id              String    @id @default(cuid())
+  shipmentId      String?
+  carrierId       String?
+  carrierName     String
+  referenceNumber String?
+  amount          Float
+  paidDate        DateTime?
+  paidBy          String    @default("CASH") // CASH, BANK, CREDIT
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shipment Shipment? @relation(fields: [shipmentId], references: [id])
+  carrier  Carrier?  @relation(fields: [carrierId], references: [id])
+
+  @@index([carrierId])
+  @@index([shipmentId])
+  @@index([paidDate])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JEWELLERY VERTICAL (fresh-audit build, 2026-07-12)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Owner-updated today's metal rate — one row per metalType+purity combination
+// (22K gold and 18K gold trade at genuinely different per-gram rates, not a
+// single "gold rate"). Product pricing at billing time always reads the
+// CURRENT row for the item's own metalType+purity; historical invoices keep
+// their own already-computed unitPrice, so a rate change never retroactively
+// alters a past sale.
+model MetalRate {
+  id          String   @id @default(cuid())
+  metalType   String // 'GOLD' | 'SILVER' | 'PLATINUM'
+  purity      String // "22K"/"18K"/"916"/"999" — matches Product.purity's free-text convention
+  ratePerGram Float
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([metalType, purity])
+}
+
+// Old-gold/silver exchange (buyback / trade-in) — standalone record-keeping,
+// deliberately NOT atomically wired into billing.service.ts's invoice
+// creation (that function is the single most money-critical, most-tested
+// path in this codebase; adding a new money-affecting side-channel to it is
+// a correctness risk this scope doesn't need to take). A jeweller computes
+// the exchange value here, then applies it as an ordinary invoice-level
+// discount on the new-purchase invoice through the ALREADY-existing,
+// already-tested globalDiscount mechanism — invoiceId is set afterward
+// purely so the exchange record shows which sale it was applied against.
+model MetalExchange {
+  id              String   @id @default(cuid())
+  exchangeNumber  String   @unique
+  customerId      String?
+  customerName    String? // snapshot for walk-in exchanges with no Customer record
+  metalType       String // 'GOLD' | 'SILVER' | 'PLATINUM'
+  purity          String
+  grossWeight     Float
+  deductionWeight Float    @default(0) // wastage/impurity deduction subtracted before pricing
+  netWeight       Float // grossWeight - deductionWeight, the actually-priced weight
+  ratePerGram     Float // rate used at the time of this exchange (snapshotted, not a live FK — same reasoning invoice line items snapshot their own price)
+  valueGiven      Float // netWeight * ratePerGram, the credit given to the customer
+  invoiceId       String? // set once this credit is applied against a purchase invoice
+  notes           String?
+  createdAt       DateTime @default(now())
+  createdById     String?
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([createdAt])
+}

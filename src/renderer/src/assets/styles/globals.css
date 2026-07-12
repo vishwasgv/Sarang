@@ -1,0 +1,127 @@
+@import '@fontsource/noto-sans-devanagari/400.css';
+@import '@fontsource/noto-sans-devanagari/700.css';
+@import '@fontsource/noto-sans-gujarati/400.css';
+@import '@fontsource/noto-sans-gujarati/700.css';
+@import '@fontsource/noto-sans-kannada/400.css';
+@import '@fontsource/noto-sans-kannada/700.css';
+@import '@fontsource/noto-sans-tamil/400.css';
+@import '@fontsource/noto-sans-tamil/700.css';
+@import '@fontsource/noto-sans-telugu/400.css';
+@import '@fontsource/noto-sans-telugu/700.css';
+@import '@fontsource/noto-sans-malayalam/400.css';
+@import '@fontsource/noto-sans-malayalam/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Semantic color tokens (shadcn/ui-style HSL triplets) consumed by
+     tailwind.config.ts's `colors` block — bg-card, text-foreground,
+     bg-primary, bg-muted, border-border, bg-info, etc. Values mirror the
+     slate/brand palette already used everywhere else via dark:bg-slate-900
+     / dark:border-slate-700 / dark:text-slate-100, so screens using either
+     convention stay visually consistent. */
+  :root {
+    --background: 210 40% 98%;
+    --card: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --primary: 196 100% 47%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --border: 214 32% 91%;
+    --info: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --card: 222 47% 11%;
+    --foreground: 210 40% 96%;
+    --primary: 196 100% 47%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --border: 215 25% 27%;
+    --info: 213 94% 68%;
+  }
+
+  html {
+    font-family: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Gujarati', 'Noto Sans Kannada', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Malayalam', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    height: 100%;
+  }
+
+  body {
+    height: 100%;
+    background-color: #F8FAFC;
+    color: #0F172A;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  .dark body {
+    background-color: #0F172A;
+    color: #E2E8F0;
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: 2px solid #00AEEF;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .drag {
+    -webkit-app-region: drag;
+  }
+}

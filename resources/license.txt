@@ -1,0 +1,60 @@
+SARANG BUSINESS OS LITE — LICENSE & TERMS OF USE
+Aszurex | Trust Beyond Limits
+Copyright (c) 2026 Aszurex. All rights reserved.
+
+Please read these terms before installing.
+
+1. FREE SOFTWARE, NO SUBSCRIPTION
+   Sarang Business OS Lite is provided free of charge. There is no
+   subscription, no license fee, and no in-app purchase. Aszurex does not
+   collect payment for the use of this software.
+
+2. OFFLINE-FIRST, YOUR DATA STAYS ON YOUR COMPUTER
+   Sarang stores all business data (invoices, customers, inventory, and
+   everything else you enter) locally on this computer, in a SQLite
+   database under your Windows user profile. Sarang does not require an
+   internet connection to operate, does not send your business data to
+   Aszurex or any third party, and does not use cloud storage. You are
+   solely responsible for backing up and safeguarding your own data;
+   Sarang includes built-in backup and restore tools for this purpose.
+
+3. NO TRACKING, NO TELEMETRY
+   Sarang does not collect analytics, usage telemetry, or tracking data
+   of any kind, and makes no network calls to Aszurex servers during
+   normal operation.
+
+4. NO PAYMENT PROCESSING
+   Sarang can generate UPI QR codes for display so your customers can pay
+   you directly through their own banking or UPI app. Aszurex does not
+   process, verify, or handle any payment through this software — Sarang
+   only records that a payment was made, based on what you enter.
+
+5. "AS IS", NO WARRANTY
+   This software is provided "as is", without warranty of any kind,
+   express or implied, including but not limited to warranties of
+   merchantability, fitness for a particular purpose, or accuracy of
+   calculations (including tax, GST, or other statutory computations).
+   You are responsible for verifying that figures used for tax filing,
+   compliance, or other legal/financial purposes are correct before
+   relying on them.
+
+6. LIMITATION OF LIABILITY
+   To the maximum extent permitted by applicable law, Aszurex shall not
+   be liable for any indirect, incidental, special, or consequential
+   damages, or for any loss of data, profits, or business, arising from
+   the use of or inability to use this software.
+
+7. ACCEPTABLE USE
+   You may install and use Sarang Business OS Lite for your own business
+   operations. You may not resell, sublicense, or represent this software
+   as your own product.
+
+8. CHANGES TO THIS SOFTWARE
+   Aszurex may release updated versions of Sarang. Installing an update
+   preserves your existing data; a safety backup is created automatically
+   before any update that changes the database structure.
+
+By clicking "I Agree", you acknowledge that you have read and accepted
+these terms.
+
+Sarang Business OS Lite | Aszurex | www.aszurex.com

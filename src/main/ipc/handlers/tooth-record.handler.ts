@@ -1,0 +1,25 @@
+import { requirePermission } from '../permission-guard'
+import { getCurrentSession } from '../../services/auth.service'
+import { getPatientChart, upsertTooth } from '../../services/tooth-record.service'
+
+type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
+
+export function register(handle: HandleFn): void {
+  handle('toothRecord:getChart', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
+    const { patientId } = payload as { patientId: string }
+    return getPatientChart(patientId)
+  })
+
+  handle('toothRecord:upsert', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
+    // recordedById is FK'd to Employee, not User — the logged-in session's
+    // userId is a User record and there is no schema link from User to
+    // Employee, so passing it as recordedById always violated the FK. It's
+    // now only used for the audit log's userId, which is correctly FK'd to
+    // User.
+    const session = getCurrentSession()
+    const p = payload as Parameters<typeof upsertTooth>[0]
+    return upsertTooth({ ...p, recordedById: undefined, userId: session?.userId })
+  })
+}
