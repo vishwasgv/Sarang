@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { getPrisma } from '../database/db'
 import { ensureRecentBackup } from './backup.service'
 import { logAction } from './audit.service'
+import { roundCurrency } from './currency.service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -909,7 +910,7 @@ export async function executeImport(
             })
 
             const prevBalance = last?.balance ?? 0
-            const newBalance = type === 'DR' ? prevBalance + amount : prevBalance - amount
+            const newBalance = roundCurrency(type === 'DR' ? prevBalance + amount : prevBalance - amount)
 
             await db.$transaction([
               db.customerLedger.create({

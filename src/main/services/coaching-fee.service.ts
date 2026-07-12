@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializeEnrollment } from './coaching-batch-enrollment.service'
 import { billingService } from './billing.service'
+import { calculateTax, roundCurrency, sumCurrency } from './currency.service'
 
 // CoachingFeeRecord has 5 Prisma Decimal fields (baseAmount, taxRate,
 // taxAmount, amountDue, amountReceived) — Electron's IPC (structured clone)
@@ -48,7 +49,7 @@ export async function generateMonthlyFees(month: string, taxRate = 0) {
     const baseAmount = Number(enrollment.effectiveFee)
     // taxRate defaults to 0 (small institutes exempt under ₹20L) but can be
     // passed by GST-registered institutes generating this month's fees.
-    const taxAmount = Math.round(baseAmount * taxRate / 100 * 100) / 100
+    const taxAmount = calculateTax(baseAmount, taxRate)
 
     await db.coachingFeeRecord.create({
       data: {
@@ -60,7 +61,7 @@ export async function generateMonthlyFees(month: string, taxRate = 0) {
         baseAmount,
         taxRate,
         taxAmount,
-        amountDue: baseAmount + taxAmount,
+        amountDue: roundCurrency(baseAmount + taxAmount),
         status: 'PENDING',
       },
     })
@@ -107,8 +108,8 @@ export async function getFeeKPIs(month: string) {
     where: { feeMonth: month },
   })
 
-  const totalDue = records.reduce((s, r) => s + Number(r.amountDue), 0)
-  const totalReceived = records.reduce((s, r) => s + Number(r.amountReceived), 0)
+  const totalDue = sumCurrency(records.map((r) => Number(r.amountDue)))
+  const totalReceived = sumCurrency(records.map((r) => Number(r.amountReceived)))
   const pendingCount = records.filter((r) => r.status === 'PENDING').length
   const partialCount = records.filter((r) => r.status === 'PARTIAL').length
   const paidCount = records.filter((r) => r.status === 'PAID').length

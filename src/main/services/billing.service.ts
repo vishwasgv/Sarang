@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
+import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { createNotification } from './notification.service'
@@ -151,7 +152,7 @@ export const billingService = {
       // grand total going negative, so a large per-line discount offset by other
       // lines could silently understate the true tax owed without ever failing
       // that check. Reject at the line level instead.
-      const lineGross = item.quantity * item.unitPrice
+      const lineGross = roundCurrency(item.quantity * item.unitPrice)
       if ((item.discountAmount ?? 0) > lineGross + 0.01) {
         return { success: false, error: { code: 'INVOC-010', message: `Discount for "${product.productName}" cannot exceed the line's value (${lineGross.toFixed(2)}).` } }
       }
@@ -213,9 +214,11 @@ export const billingService = {
 
       const effectiveTaxRate = customerTaxExempt ? 0 : (item.taxRate ?? product.taxRate ?? 0)
       const lineDiscount = item.discountAmount ?? 0
-      const lineTaxable = (item.quantity * item.unitPrice) - lineDiscount
-      const lineTax = lineTaxable * (effectiveTaxRate / 100)
-      const lineTotal = lineTaxable + lineTax
+      // Decimal-safe: subtotal/discount/tax/total are computed once via
+      // Prisma.Decimal (see currency.service.ts) instead of chained float
+      // arithmetic, so per-line rounding error can't creep into lineTax.
+      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscount, effectiveTaxRate)
+      const lineTaxable = roundCurrency(lineSubtotal - lineDiscount)
 
       validatedItems.push({
         productId: item.productId,
@@ -242,16 +245,23 @@ export const billingService = {
       })
     }
 
-    // Compute invoice-level totals
-    const subtotal = validatedItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
-    const totalLineDiscount = validatedItems.reduce((s, i) => s + i.discountAmount, 0)
+    // Compute invoice-level totals. Summed via Decimal (sumCurrency), not a
+    // plain-float reduce — accumulating many lineTax/discount values with
+    // `+=` on floats is exactly where binary representation error compounds
+    // across a multi-line invoice.
+    const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice))
+    const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount))
     const globalDiscount = payload.globalDiscount ?? 0
-    const discountAmount = totalLineDiscount + globalDiscount
-    const taxAmount = validatedItems.reduce((s, i) => s + i.lineTax, 0)
-    const rawTotal = subtotal - discountAmount + taxAmount
-    // Round to nearest whole unit (common in Indian retail)
-    const roundingAmount = Math.round(rawTotal) - rawTotal
-    const totalAmount = rawTotal + roundingAmount
+    const discountAmount = roundCurrency(totalLineDiscount + globalDiscount)
+    const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax))
+    const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount)
+    // Round to nearest whole unit (common in Indian retail cash transactions).
+    // rawTotal is already a clean, drift-free 2-decimal value at this point,
+    // so a single Math.round is exact here — no need for the old
+    // "round(x) - x, then add it back" indirection, which computed the same
+    // result via an extra float subtraction/addition for no benefit.
+    const roundingAmount = roundCurrency(Math.round(rawTotal) - rawTotal)
+    const totalAmount = Math.round(rawTotal)
 
     // RULE B005: Invoice total cannot be negative
     if (totalAmount < 0) {

@@ -1,5 +1,19 @@
-// Currency formatting engine — used by service layer for reports
-// Renderer uses currency.util.ts via Zustand store
+// Currency formatting + money-math engine — used by service layer for
+// invoicing, reports, and everywhere else amounts are computed or displayed.
+// Renderer uses currency.util.ts via Zustand store for display-only formatting.
+//
+// All arithmetic below runs on Prisma.Decimal (decimal.js, already bundled
+// with @prisma/client — no extra dependency) instead of plain JS numbers.
+// IEEE754 doubles cannot represent most decimal fractions exactly (the
+// classic 0.1 + 0.2 !== 0.3 problem), and that representation error
+// compounds across multi-line invoices — summing dozens of line taxes/totals
+// with `+=` on floats can land a fraction of a cent off. Decimal instances
+// are only converted to `number` once, at the very end of each function,
+// which is safe because nothing further is computed from that value here.
+import { Prisma } from '@prisma/client'
+
+const { Decimal } = Prisma
+type DecimalInput = number | string | Prisma.Decimal
 
 const LOCALE_MAP: Record<string, string> = {
   IN: 'en-IN',
@@ -21,24 +35,37 @@ export function formatAmount(amount: number, currencySymbol: string, numberForma
   }
 }
 
-export function roundCurrency(amount: number, decimals = 2): number {
-  return Math.round(amount * Math.pow(10, decimals)) / Math.pow(10, decimals)
+export function roundCurrency(amount: DecimalInput, decimals = 2): number {
+  return new Decimal(amount).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP).toNumber()
 }
 
-export function calculateTax(amount: number, taxRate: number): number {
-  return roundCurrency((amount * taxRate) / 100)
+export function calculateTax(amount: DecimalInput, taxRate: DecimalInput, decimals = 2): number {
+  return new Decimal(amount).mul(taxRate).div(100).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP).toNumber()
 }
 
-export function calculateLineTotal(qty: number, unitPrice: number, discountAmount = 0, taxRate = 0): {
+// Sums a list of amounts using Decimal addition throughout, only converting
+// to `number` on the final result — avoids the drift that `array.reduce((s,
+// x) => s + x, 0)` accumulates when done on plain floats.
+export function sumCurrency(amounts: DecimalInput[], decimals = 2): number {
+  const total = amounts.reduce((acc: Prisma.Decimal, x) => acc.add(new Decimal(x)), new Decimal(0))
+  return total.toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP).toNumber()
+}
+
+export function calculateLineTotal(qty: DecimalInput, unitPrice: DecimalInput, discountAmount: DecimalInput = 0, taxRate: DecimalInput = 0, decimals = 2): {
   subtotal: number
   discountAmount: number
   taxAmount: number
   lineTotal: number
 } {
-  const subtotal = roundCurrency(qty * unitPrice)
-  const discount = roundCurrency(Math.min(discountAmount, subtotal))
-  const taxableAmount = subtotal - discount
-  const taxAmount = calculateTax(taxableAmount, taxRate)
-  const lineTotal = roundCurrency(taxableAmount + taxAmount)
-  return { subtotal, discountAmount: discount, taxAmount, lineTotal }
+  const subtotalD = new Decimal(qty).mul(unitPrice).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+  const discountD = Decimal.min(new Decimal(discountAmount), subtotalD).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+  const taxableD = subtotalD.sub(discountD)
+  const taxAmountD = taxableD.mul(taxRate).div(100).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+  const lineTotalD = taxableD.add(taxAmountD)
+  return {
+    subtotal: subtotalD.toNumber(),
+    discountAmount: discountD.toNumber(),
+    taxAmount: taxAmountD.toNumber(),
+    lineTotal: lineTotalD.toNumber()
+  }
 }

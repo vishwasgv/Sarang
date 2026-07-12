@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { roundCurrency } from './currency.service'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -444,7 +445,7 @@ export async function createBooking(payload: {
             data: {
               bookingId: booking.id, productId: product.id, quantity: requestedQty,
               rateBasis: itemReq.rateBasis, rateAmount: rate.amount,
-              lineTotal: rate.amount * durationUnits * requestedQty,
+              lineTotal: roundCurrency(rate.amount * durationUnits * requestedQty),
             },
           })
         } else {
@@ -461,7 +462,7 @@ export async function createBooking(payload: {
             data: {
               bookingId: booking.id, productId: product.id, rentalUnitId: claimed.id, quantity: 1,
               rateBasis: itemReq.rateBasis, rateAmount: rate.amount,
-              lineTotal: rate.amount * durationUnits,
+              lineTotal: roundCurrency(rate.amount * durationUnits),
             },
           })
         }

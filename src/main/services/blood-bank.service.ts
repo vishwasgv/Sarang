@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateWhatsAppLink } from './notification-queue.service'
 import { logAction } from './audit.service'
+import { roundCurrency } from './currency.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -511,7 +512,7 @@ export async function createBloodIssue(payload: {
           customerId: payload.customerId,
           recipientName: payload.recipientName.trim(),
           purpose: payload.purpose,
-          totalAmount: price * donationRecords.length,
+          totalAmount: roundCurrency(price * donationRecords.length),
           issuedById: userId,
           createdBy: userId ?? 'system',
           items: {

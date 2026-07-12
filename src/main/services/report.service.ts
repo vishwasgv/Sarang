@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -598,14 +599,17 @@ async function generateExpenseReport(params: { dateFrom: string; dateTo: string;
     orderBy: { expenseDate: 'asc' }
   })
 
-  const catMap = new Map<string, { amount: number; count: number }>()
+  const catRaw = new Map<string, { amounts: number[]; count: number }>()
   for (const e of expenses) {
     const name = e.category.categoryName
-    const existing = catMap.get(name) ?? { amount: 0, count: 0 }
-    existing.amount += e.amount
+    const existing = catRaw.get(name) ?? { amounts: [], count: 0 }
+    existing.amounts.push(e.amount)
     existing.count += 1
-    catMap.set(name, existing)
+    catRaw.set(name, existing)
   }
+  const catMap = new Map<string, { amount: number; count: number }>(
+    Array.from(catRaw.entries()).map(([name, { amounts, count }]) => [name, { amount: sumCurrency(amounts), count }])
+  )
 
   const rows: ExpenseReportRow[] = expenses.map(e => ({
     date: new Date(e.expenseDate).toISOString().slice(0, 10),
@@ -620,7 +624,7 @@ async function generateExpenseReport(params: { dateFrom: string; dateTo: string;
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
     summary: {
-      totalAmount: expenses.reduce((s, e) => s + e.amount, 0),
+      totalAmount: sumCurrency(expenses.map(e => e.amount)),
       expenseCount: expenses.length
     },
     byCategory: Array.from(catMap.entries())
@@ -666,25 +670,26 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
     })
   ])
 
-  const revenue = invoices.reduce((s, inv) => s + inv.totalAmount, 0)
+  const revenue = sumCurrency(invoices.map(inv => inv.totalAmount))
   // Same RETURN-invoice sign correction as analytics.service.ts's
   // computeProfit(): a return's item quantities are stored positive (used to
   // restock inventory), so summing quantity*costPrice unconditionally would
   // double-punish profit — revenue already dropped via totalAmount, COGS
   // must drop too (the goods came back into stock), not rise as a second sale.
-  const cogs = invoices.reduce((s, inv) => {
+  const cogs = sumCurrency(invoices.flatMap((inv) => {
     const sign = inv.invoiceType === 'RETURN' ? -1 : 1
-    return s + inv.items.reduce((si, it) => si + sign * it.quantity * it.product.costPrice, 0)
-  }, 0)
-  const grossProfit = revenue - cogs
+    return inv.items.map((it) => sign * it.quantity * it.product.costPrice)
+  }))
+  const grossProfit = roundCurrency(revenue - cogs)
 
-  const catMap = new Map<string, number>()
+  const catRaw = new Map<string, number[]>()
   for (const e of expenses) {
     const name = e.category.categoryName
-    catMap.set(name, (catMap.get(name) ?? 0) + e.amount)
+    catRaw.set(name, [...(catRaw.get(name) ?? []), e.amount])
   }
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-  const netProfit = grossProfit - totalExpenses
+  const catMap = new Map<string, number>(Array.from(catRaw.entries()).map(([name, amounts]) => [name, sumCurrency(amounts)]))
+  const totalExpenses = sumCurrency(expenses.map(e => e.amount))
+  const netProfit = roundCurrency(grossProfit - totalExpenses)
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
