@@ -3,7 +3,8 @@ import { requirePermission } from '../permission-guard'
 import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
-  OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema
+  OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema,
+  CashBookReportSchema, TrialBalanceReportSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -58,6 +59,25 @@ export function register(handle: HandleFn): void {
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateProfitAndLossReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:cashBook', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = CashBookReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCashBookReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:trialBalance', async (payload) => {
+    // Same trust boundary as reports:profitAndLoss — a trial balance exposes
+    // Sales Revenue, COGS, and a computed Capital/Retained-Earnings figure,
+    // all profit-adjacent, so it's gated the same way.
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = TrialBalanceReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTrialBalanceReport(parsed.data)
     return { success: true, data }
   })
 

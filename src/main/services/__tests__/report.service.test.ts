@@ -48,7 +48,9 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     product: { findMany: vi.fn().mockResolvedValue([]) },
     customer: { findMany: vi.fn().mockResolvedValue([]) },
     supplier: { findMany: vi.fn().mockResolvedValue([]) },
-    supplierLedger: { findMany: vi.fn().mockResolvedValue([]) },
+    supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    payment: { findMany: vi.fn().mockResolvedValue([]) },
+    expense: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0)
@@ -1275,6 +1277,136 @@ describe('reportService.generateProfitAndLossReport', () => {
     expect(result.summary.grossMarginPercent).toBe(0)
     expect(result.summary.netMarginPercent).toBe(0)
     expect(result.summary.netProfit).toBe(-50)
+  })
+})
+
+describe('reportService.generateCashBookReport', () => {
+  it('computes an opening balance from movements strictly before dateFrom, then a running balance across in-range entries', async () => {
+    const db = makeDb({
+      payment: { findMany: vi.fn().mockResolvedValue([
+        { paymentDate: new Date('2025-12-20'), amount: 1000, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } }, // before range -> opening balance
+        { paymentDate: new Date('2026-01-10'), amount: 500, paymentMethod: 'UPI', referenceNumber: null, invoice: { invoiceNumber: 'INV-2' } }, // in range
+      ]) },
+      expense: { findMany: vi.fn().mockResolvedValue([
+        { expenseDate: new Date('2025-12-25'), amount: 200, paymentMethod: 'CASH', expenseName: 'Rent' }, // before range
+        { expenseDate: new Date('2026-01-15'), amount: 100, paymentMethod: 'CASH', expenseName: 'Utilities' }, // in range
+      ]) },
+      supplierLedger: {
+        findMany: vi.fn().mockResolvedValue([]),
+        groupBy: vi.fn().mockResolvedValue([]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashBookReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    // Opening balance = 1000 (payment before range) - 200 (expense before range) = 800
+    expect(result.openingBalance).toBe(800)
+    expect(result.entries).toHaveLength(2)
+    expect(result.entries[0].type).toBe('IN')
+    expect(result.entries[0].runningBalance).toBe(1300) // 800 + 500
+    expect(result.entries[1].type).toBe('OUT')
+    expect(result.entries[1].runningBalance).toBe(1200) // 1300 - 100
+    expect(result.totalIn).toBe(500)
+    expect(result.totalOut).toBe(100)
+    expect(result.closingBalance).toBe(1200) // openingBalance + totalIn - totalOut
+  })
+
+  it('includes supplier payments (SupplierLedger PAYMENT entries) as cash-out, but not PURCHASE_ORDER entries which are only an obligation, not cash movement', async () => {
+    const db = makeDb({
+      payment: { findMany: vi.fn().mockResolvedValue([]) },
+      expense: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierLedger: {
+        findMany: vi.fn().mockImplementation((args: { where?: { referenceType?: string } }) => {
+          // Real Prisma would filter server-side; the mock simulates that by
+          // honoring the where.referenceType filter the service passes.
+          const all = [
+            { createdAt: new Date('2026-01-05'), creditAmount: 300, referenceType: 'PAYMENT', supplier: { supplierName: 'Acme Supplies' } },
+          ]
+          return Promise.resolve(args?.where?.referenceType === 'PAYMENT' ? all : [])
+        }),
+        groupBy: vi.fn().mockResolvedValue([]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashBookReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].type).toBe('OUT')
+    expect(result.entries[0].paymentMethod).toBe('SUPPLIER_PAYMENT')
+    expect(result.entries[0].amount).toBe(300)
+    expect(result.closingBalance).toBe(-300)
+  })
+
+  it('filters entries by paymentMethod when provided, without affecting the opening balance calculation for a different method', async () => {
+    const db = makeDb({
+      payment: { findMany: vi.fn().mockResolvedValue([
+        { paymentDate: new Date('2026-01-05'), amount: 500, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } },
+        { paymentDate: new Date('2026-01-06'), amount: 700, paymentMethod: 'UPI', referenceNumber: null, invoice: { invoiceNumber: 'INV-2' } },
+      ]) },
+      expense: { findMany: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashBookReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31', paymentMethod: 'CASH' })
+
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].amount).toBe(500)
+  })
+})
+
+describe('reportService.generateTrialBalanceReport', () => {
+  it('always balances (total debit === total credit) via the Capital & Retained Earnings plug line', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([
+        { totalAmount: 1180, invoiceType: 'SALE', taxAmount: 180, items: [{ quantity: 2, product: { costPrice: 100 } }] },
+      ]) },
+      expense: { findMany: vi.fn().mockResolvedValue([{ amount: 150, category: { categoryName: 'Rent' } }]) },
+      payment: { findMany: vi.fn().mockResolvedValue([
+        { paymentDate: new Date('2026-01-10'), amount: 1180, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } },
+      ]) },
+      customer: { findMany: vi.fn().mockResolvedValue([{ outstandingBalance: 250 }, { outstandingBalance: 400 }]) },
+      supplierLedger: {
+        findMany: vi.fn().mockResolvedValue([]),
+        groupBy: vi.fn().mockResolvedValue([
+          { supplierId: 's1', _sum: { debitAmount: 600, creditAmount: 100 } }, // net payable 500
+          { supplierId: 's2', _sum: { debitAmount: 50, creditAmount: 200 } },  // net -150, excluded (not payable)
+        ]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.balanced).toBe(true)
+    expect(result.totalDebit).toBe(result.totalCredit)
+
+    const byAccount = Object.fromEntries(result.rows.map(r => [r.account, r]))
+    expect(byAccount['Accounts Receivable'].debit).toBe(650) // 250 + 400
+    expect(byAccount['Accounts Payable'].credit).toBe(500) // only the positive net balance
+    expect(byAccount['Sales Revenue'].credit).toBe(1000) // 1180 total - 180 tax
+    expect(byAccount['Tax Payable (Output)'].credit).toBe(180)
+    expect(byAccount['Cost of Goods Sold'].debit).toBe(200) // 2 * 100
+    expect(byAccount['Operating Expenses'].debit).toBe(150)
+    expect(byAccount['Cash & Bank'].debit).toBe(1180 - 150) // payments in - expenses out
+  })
+
+  it('produces a balanced trial balance even with zero activity', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      expense: { findMany: vi.fn().mockResolvedValue([]) },
+      payment: { findMany: vi.fn().mockResolvedValue([]) },
+      customer: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.balanced).toBe(true)
+    expect(result.totalDebit).toBe(0)
+    expect(result.totalCredit).toBe(0)
   })
 })
 

@@ -185,6 +185,8 @@ export interface IpcChannels {
     outstanding: () => Promise<ApiResponse>
     expenses: (payload: unknown) => Promise<ApiResponse>
     profitAndLoss: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    cashBook: (payload: { dateFrom: string; dateTo: string; paymentMethod?: string }) => Promise<ApiResponse>
+    trialBalance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     customerLedger: (payload: unknown) => Promise<ApiResponse>
     supplierLedger: (payload: unknown) => Promise<ApiResponse>
     audit: (payload?: unknown) => Promise<ApiResponse>

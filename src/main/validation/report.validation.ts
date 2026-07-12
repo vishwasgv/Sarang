@@ -17,6 +17,12 @@ export const InventoryReportSchema = z.object({
 
 export const TaxReportSchema = DateRangeSchema
 
+export const CashBookReportSchema = DateRangeSchema.extend({
+  paymentMethod: z.string().optional()
+})
+
+export const TrialBalanceReportSchema = DateRangeSchema
+
 export const GSTR1Schema = DateRangeSchema
 
 export const ExpenseReportSchema = DateRangeSchema.extend({

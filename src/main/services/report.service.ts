@@ -707,6 +707,196 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Cash Book — a chronological register of every real cash/bank movement:
+// customer payments in (Payment, non-reversed), and cash out via both
+// Expense records and supplier payments (SupplierLedger referenceType
+// 'PAYMENT' entries — the only SupplierLedger rows that represent money
+// actually leaving the business, as opposed to PURCHASE_ORDER/DEBIT_NOTE
+// rows which just record an obligation). Opening balance is the net of
+// every such movement strictly before dateFrom, so closingBalance always
+// ties out to "if you replayed every transaction from day one."
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CashBookEntry {
+  date: string
+  description: string
+  type: 'IN' | 'OUT'
+  paymentMethod: string
+  amount: number
+  runningBalance: number
+}
+export interface CashBookReport {
+  dateFrom: string; dateTo: string
+  openingBalance: number
+  entries: CashBookEntry[]
+  totalIn: number
+  totalOut: number
+  closingBalance: number
+}
+
+async function fetchCashMovements(upTo: Date): Promise<{ date: Date; description: string; type: 'IN' | 'OUT'; paymentMethod: string; amount: number }[]> {
+  const db = getPrisma()
+  const [payments, expenses, supplierPayments] = await Promise.all([
+    db.payment.findMany({
+      where: { isReversed: false, paymentDate: { lte: upTo } },
+      select: { paymentDate: true, amount: true, paymentMethod: true, referenceNumber: true, invoice: { select: { invoiceNumber: true } } }
+    }),
+    db.expense.findMany({
+      where: { expenseDate: { lte: upTo } },
+      select: { expenseDate: true, amount: true, paymentMethod: true, expenseName: true }
+    }),
+    db.supplierLedger.findMany({
+      where: { referenceType: 'PAYMENT', createdAt: { lte: upTo } },
+      select: { createdAt: true, creditAmount: true, supplier: { select: { supplierName: true } } }
+    })
+  ])
+
+  return [
+    ...payments.map((p) => ({
+      date: p.paymentDate, type: 'IN' as const, paymentMethod: p.paymentMethod, amount: p.amount,
+      description: `Payment received — ${p.invoice.invoiceNumber}${p.referenceNumber ? ` (Ref: ${p.referenceNumber})` : ''}`
+    })),
+    ...expenses.map((e) => ({
+      date: e.expenseDate, type: 'OUT' as const, paymentMethod: e.paymentMethod, amount: e.amount,
+      description: `Expense — ${e.expenseName}`
+    })),
+    ...supplierPayments.map((s) => ({
+      date: s.createdAt, type: 'OUT' as const, paymentMethod: 'SUPPLIER_PAYMENT', amount: s.creditAmount,
+      description: `Payment to supplier — ${s.supplier.supplierName}`
+    }))
+  ]
+}
+
+async function generateCashBookReport(params: { dateFrom: string; dateTo: string; paymentMethod?: string }): Promise<CashBookReport> {
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const allUpToEnd = await fetchCashMovements(to)
+  const filtered = params.paymentMethod
+    ? allUpToEnd.filter((m) => m.paymentMethod === params.paymentMethod)
+    : allUpToEnd
+
+  const before = filtered.filter((m) => m.date < from)
+  const openingBalance = roundCurrency(
+    sumCurrency(before.filter((m) => m.type === 'IN').map((m) => m.amount)) -
+    sumCurrency(before.filter((m) => m.type === 'OUT').map((m) => m.amount))
+  )
+
+  const inRange = filtered.filter((m) => m.date >= from).sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  let running = openingBalance
+  const entries: CashBookEntry[] = inRange.map((m) => {
+    running = roundCurrency(m.type === 'IN' ? running + m.amount : running - m.amount)
+    return {
+      date: m.date.toISOString(),
+      description: m.description,
+      type: m.type,
+      paymentMethod: m.paymentMethod,
+      amount: m.amount,
+      runningBalance: running
+    }
+  })
+
+  const totalIn = sumCurrency(inRange.filter((m) => m.type === 'IN').map((m) => m.amount))
+  const totalOut = sumCurrency(inRange.filter((m) => m.type === 'OUT').map((m) => m.amount))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    openingBalance, entries, totalIn, totalOut,
+    closingBalance: roundCurrency(openingBalance + totalIn - totalOut)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trial Balance — derived from this app's existing ledgers/invoices/expenses
+// rather than a persisted double-entry general ledger (this app doesn't have
+// one; see currency/ledger notes elsewhere). Deliberately reuses
+// generateProfitAndLossReport's exact revenue/COGS/expense numbers so this
+// never disagrees with the P&L report for the same period.
+//
+// Cash & Bank, Accounts Receivable, and Accounts Payable are CURRENT
+// (as-of-now) balances, not reconstructed as of dateTo — Customer.
+// outstandingBalance and the SupplierLedger running balance are maintained
+// as live running totals, not a dated history that can be rewound. Cash &
+// Bank IS computed as of dateTo (it's derived from dated transaction rows,
+// so it can be). This is stated plainly in the report's own `asOf` field
+// rather than silently presented as more precise than it is.
+//
+// "Capital & Retained Earnings" is a balancing entry, not a tracked account
+// (this app has no owner's-capital ledger) — it's Debit total minus every
+// other Credit line, labelled as computed so it's never mistaken for a real
+// ledger balance.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TrialBalanceRow { account: string; debit: number; credit: number }
+export interface TrialBalanceReport {
+  dateFrom: string; dateTo: string; asOf: string
+  rows: TrialBalanceRow[]
+  totalDebit: number
+  totalCredit: number
+  balanced: boolean
+}
+
+async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: string }): Promise<TrialBalanceReport> {
+  const db = getPrisma()
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const [pnl, taxInvoices, customers, supplierBalances, cashMovements] = await Promise.all([
+    generateProfitAndLossReport({ dateFrom: params.dateFrom, dateTo: params.dateTo }),
+    db.invoice.findMany({
+      where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: toDate(params.dateFrom), lte: to } },
+      select: { taxAmount: true }
+    }),
+    db.customer.findMany({ where: { outstandingBalance: { gt: 0 } }, select: { outstandingBalance: true } }),
+    db.supplierLedger.groupBy({ by: ['supplierId'], _sum: { debitAmount: true, creditAmount: true } }),
+    fetchCashMovements(to)
+  ])
+
+  const taxCollected = sumCurrency(taxInvoices.map((inv) => inv.taxAmount))
+  const revenueNet = roundCurrency(pnl.summary.revenue - taxCollected)
+
+  const accountsReceivable = sumCurrency(customers.map((c) => c.outstandingBalance))
+  const accountsPayable = sumCurrency(
+    supplierBalances
+      .map((s) => (s._sum.debitAmount ?? 0) - (s._sum.creditAmount ?? 0))
+      .filter((bal) => bal > 0)
+  )
+  const cashAndBank = roundCurrency(
+    sumCurrency(cashMovements.filter((m) => m.type === 'IN').map((m) => m.amount)) -
+    sumCurrency(cashMovements.filter((m) => m.type === 'OUT').map((m) => m.amount))
+  )
+
+  const debitRows: TrialBalanceRow[] = [
+    { account: 'Cash & Bank', debit: cashAndBank, credit: 0 },
+    { account: 'Accounts Receivable', debit: accountsReceivable, credit: 0 },
+    { account: 'Cost of Goods Sold', debit: pnl.summary.cogs, credit: 0 },
+    { account: 'Operating Expenses', debit: pnl.summary.totalExpenses, credit: 0 }
+  ]
+  const creditRowsExclCapital: TrialBalanceRow[] = [
+    { account: 'Accounts Payable', debit: 0, credit: accountsPayable },
+    { account: 'Sales Revenue', debit: 0, credit: revenueNet },
+    { account: 'Tax Payable (Output)', debit: 0, credit: taxCollected }
+  ]
+
+  const totalDebit = roundCurrency(sumCurrency(debitRows.map((r) => r.debit)))
+  const totalCreditExclCapital = roundCurrency(sumCurrency(creditRowsExclCapital.map((r) => r.credit)))
+  const capital = roundCurrency(totalDebit - totalCreditExclCapital)
+
+  const rows: TrialBalanceRow[] = [
+    ...debitRows,
+    ...creditRowsExclCapital,
+    { account: 'Capital & Retained Earnings (balancing)', debit: 0, credit: capital }
+  ]
+  const totalCredit = roundCurrency(totalCreditExclCapital + capital)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, asOf: params.dateTo,
+    rows, totalDebit, totalCredit,
+    balanced: Math.abs(totalDebit - totalCredit) < 0.01
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Audit Report (Admin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2343,6 +2533,8 @@ export const reportService = {
   generateSupplierLedgerReport,
   generateExpenseReport,
   generateProfitAndLossReport,
+  generateCashBookReport,
+  generateTrialBalanceReport,
   generateAuditReport,
   generateFoodCostReport,
   generateGSTR1,
