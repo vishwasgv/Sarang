@@ -6,6 +6,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface CoachingBatch { id: string; batchName: string; subjectOrCourse: string }
 interface EnrolledStudent { id: string; studentId: string; status: string; student: { id: string; customerName: string } }
@@ -60,6 +61,8 @@ export default function TestScoresScreen() {
   const [batchStudents, setBatchStudents] = useState<EnrolledStudent[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<TestScore | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -175,13 +178,15 @@ export default function TestScoresScreen() {
   }
 
   async function handleDelete(s: TestScore) {
-    if (!confirm(`Delete "${s.testName}" for ${s.enrollment.student.customerName}?`)) return
+    setDeleting(true)
     try {
       const res = await api.studentTestScore.delete({ id: s.id })
-      if (res.success) loadAll()
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete test score.')
     } catch {
       toastError('Error', 'Could not delete test score.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -254,7 +259,7 @@ export default function TestScoresScreen() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDelete(s)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteTarget(s)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -351,6 +356,16 @@ export default function TestScoresScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        loading={deleting}
+        title="Delete Test Score"
+        message={deleteTarget ? `Delete "${deleteTarget.testName}" for ${deleteTarget.enrollment.student.customerName}?` : ''}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

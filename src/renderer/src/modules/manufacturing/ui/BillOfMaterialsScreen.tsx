@@ -5,6 +5,7 @@ import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface BomItem {
   id: string
@@ -65,6 +66,10 @@ export function BillOfMaterialsScreen() {
 
   // Detail view modal
   const [detailBom, setDetailBom] = useState<Bom | null>(null)
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Bom | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -188,11 +193,14 @@ export function BillOfMaterialsScreen() {
     }
   }
 
-  async function handleDelete(bom: Bom) {
-    if (!confirm(t('manufacturing.confirmDeleteBom', { name: bom.productName }))) return
-    const res = await api.bom.delete({ productId: bom.productId })
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await api.bom.delete({ productId: deleteTarget.productId })
+    setDeleting(false)
     if (res.success) {
       toastSuccess(t('manufacturing.bomDeleted'))
+      setDeleteTarget(null)
       loadData()
     } else {
       toastError(res.error?.message ?? t('manufacturing.actionFailed'))
@@ -246,7 +254,7 @@ export function BillOfMaterialsScreen() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => setDetailBom(bom)} className="p-2 rounded-lg text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors text-xs">{t('common.view')}</button>
                     <button onClick={() => openEditBom(bom)} className="p-2 rounded-lg text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors text-xs">{t('common.edit')}</button>
-                    <button onClick={() => handleDelete(bom)} className="p-2 rounded-lg text-text-secondary hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <button onClick={() => setDeleteTarget(bom)} className="p-2 rounded-lg text-text-secondary hover:text-red-500 hover:bg-red-50 transition-colors">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -456,6 +464,16 @@ export function BillOfMaterialsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('manufacturing.bom')}
+        message={deleteTarget ? t('manufacturing.confirmDeleteBom', { name: deleteTarget.productName }) : ''}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

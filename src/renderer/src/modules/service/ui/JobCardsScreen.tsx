@@ -9,6 +9,7 @@ import { formatDate } from '@shared/utils/locale.util'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Customer { id: string; customerName: string }
 interface User { id: string; fullName: string }
@@ -63,6 +64,8 @@ export function JobCardsScreen() {
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<JobCard | null>(null)
   const [actualCost, setActualCost] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -165,9 +168,13 @@ export function JobCardsScreen() {
     }
   }
 
-  async function handleDelete(cardId: string) {
-    if (!confirm(t('service.confirmDeleteJob'))) return
+  async function handleDelete() {
+    if (!deleteConfirmId) return
+    const cardId = deleteConfirmId
+    setDeleting(true)
     const res = await api.jobCards.delete({ id: cardId })
+    setDeleting(false)
+    setDeleteConfirmId(null)
     if (res.success) {
       toastSuccess(t('service.jobDeleted'))
       setDetail(null)
@@ -410,7 +417,7 @@ export function JobCardsScreen() {
               )}
             </div>
             <div className="px-6 pb-6">
-              <button onClick={() => handleDelete(detail.id)}
+              <button onClick={() => setDeleteConfirmId(detail.id)}
                 className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                 {t('service.deleteJobCard')}
               </button>
@@ -418,6 +425,16 @@ export function JobCardsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('service.deleteJobCard')}
+        message={t('service.confirmDeleteJob')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

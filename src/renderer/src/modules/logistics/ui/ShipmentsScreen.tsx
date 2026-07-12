@@ -8,6 +8,7 @@ import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface ShipmentListItem {
   id: string; shipmentNumber: string; shipmentType: string; referenceType: string | null; referenceNumber: string | null
@@ -53,6 +54,8 @@ export default function ShipmentsScreen() {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [shipments, setShipments] = useState<ShipmentListItem[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<ShipmentListItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,7 +129,7 @@ export default function ShipmentsScreen() {
 
   const openEdit = async (s: ShipmentListItem) => {
     const res = await window.api.logisticsShipment.get(s.id)
-    if (!res.success) { alert(t('common.error')); return }
+    if (!res.success) { toastError(t('common.error'), t('common.error')); return }
     const full = res.data as any
     setForm({
       shipmentType: full.shipmentType, originAddress: full.originAddress ?? '',
@@ -182,15 +185,17 @@ export default function ShipmentsScreen() {
 
   const changeStatus = async (id: string, status: string) => {
     const res = await window.api.logisticsShipment.updateStatus({ id, status })
-    if (!res.success) alert(res.error?.message)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     load()
   }
 
-  const deleteShipment = async (s: ShipmentListItem) => {
-    if (!confirm(t('logistics.shipments.deleteConfirm', { number: s.shipmentNumber }))) return
-    const res = await window.api.logisticsShipment.delete(s.id)
-    if (!res.success) alert(res.error?.message)
-    else load()
+  const handleDeleteShipment = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.logisticsShipment.delete(deleteTarget.id)
+    setDeleting(false)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    else { setDeleteTarget(null); load() }
   }
 
   const printShipment = async (s: ShipmentListItem) => {
@@ -270,7 +275,7 @@ export default function ShipmentsScreen() {
                   <button onClick={() => openEdit(s)} className="text-xs text-blue-600 hover:underline ml-auto">{t('common.edit')}</button>
                 )}
                 {['PENDING', 'CANCELLED'].includes(s.status) && (
-                  <button onClick={() => deleteShipment(s)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
+                  <button onClick={() => setDeleteTarget(s)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
                 )}
                 <button onClick={() => printShipment(s)} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>
               </div>
@@ -390,6 +395,16 @@ export default function ShipmentsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteShipment}
+        loading={deleting}
+        title={t('common.delete')}
+        message={deleteTarget ? t('logistics.shipments.deleteConfirm', { number: deleteTarget.shipmentNumber }) : ''}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

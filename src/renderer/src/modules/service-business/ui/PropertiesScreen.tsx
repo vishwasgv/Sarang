@@ -7,6 +7,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -447,6 +448,13 @@ export default function PropertiesScreen() {
   const [dealDeleteError, setDealDeleteError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  type DeleteTarget =
+    | { kind: 'property'; id: string }
+    | { kind: 'inquiry'; id: string; propertyId: string }
+    | { kind: 'deal'; id: string; propertyId: string }
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   const loadProperties = useCallback(async (status?: string, listingType?: string): Promise<Property[]> => {
     try {
       const payload: Record<string, string> = {}
@@ -509,18 +517,21 @@ export default function PropertiesScreen() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Delete this property listing?')) return
+    setDeleting(true)
     setActionError(null)
     const res = await api.property.delete(id)
-    if (res.success) { setProperties(ps => ps.filter(p => p.id !== id)); loadKpis() }
+    setDeleting(false)
+    if (res.success) { setDeleteTarget(null); setProperties(ps => ps.filter(p => p.id !== id)); loadKpis() }
     else setActionError(res.error?.message ?? 'Failed to delete property.')
   }
 
   async function handleDeleteInquiry(inquiryId: string, propertyId: string) {
-    if (!window.confirm('Delete this inquiry?')) return
+    setDeleting(true)
     setActionError(null)
     const res = await api.propertyInquiry.delete(inquiryId)
+    setDeleting(false)
     if (res.success) {
+      setDeleteTarget(null)
       setPropertyDetails(prev => {
         const existing = prev[propertyId]
         if (!existing) return prev
@@ -533,10 +544,12 @@ export default function PropertiesScreen() {
   }
 
   async function handleDeleteDeal(dealId: string, propertyId: string) {
-    if (!window.confirm('Delete this deal? The property will be reset to Available if no other active deals exist.')) return
+    setDeleting(true)
     setDealDeleteError(null)
     const res = await api.propertyDeal.delete(dealId)
+    setDeleting(false)
     if (res.success) {
+      setDeleteTarget(null)
       setPropertyDetails(prev => {
         const existing = prev[propertyId]
         if (!existing) return prev
@@ -547,6 +560,13 @@ export default function PropertiesScreen() {
     } else {
       setDealDeleteError(res.error?.message ?? 'Failed to delete deal.')
     }
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    if (deleteTarget.kind === 'property') await handleDelete(deleteTarget.id)
+    else if (deleteTarget.kind === 'inquiry') await handleDeleteInquiry(deleteTarget.id, deleteTarget.propertyId)
+    else await handleDeleteDeal(deleteTarget.id, deleteTarget.propertyId)
   }
 
   async function handleUpdateDealStatus(dealId: string, propertyId: string, status: string) {
@@ -693,7 +713,7 @@ export default function PropertiesScreen() {
                   <button onClick={e => { e.stopPropagation(); setEditProperty(p) }} className="text-gray-400 hover:text-gray-700 p-1 dark:text-slate-500 dark:hover:text-slate-200">
                     <Pencil size={13} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(p.id) }} className="text-gray-300 hover:text-red-500 p-1">
+                  <button onClick={e => { e.stopPropagation(); setDeleteTarget({ kind: 'property', id: p.id }) }} className="text-gray-300 hover:text-red-500 p-1">
                     <X size={14} />
                   </button>
                 </div>
@@ -732,7 +752,7 @@ export default function PropertiesScreen() {
                                     >
                                       {INQUIRY_STATUSES.map(s => <option key={s} value={s}>{fmtLabel(s)}</option>)}
                                     </select>
-                                    <button onClick={() => handleDeleteInquiry(inq.id, p.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                                    <button onClick={() => setDeleteTarget({ kind: 'inquiry', id: inq.id, propertyId: p.id })} className="text-gray-300 hover:text-red-500 p-0.5">
                                       <X size={12} />
                                     </button>
                                   </div>
@@ -779,7 +799,7 @@ export default function PropertiesScreen() {
                                   </div>
                                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                     <Badge variant={DEAL_STATUS_VARIANT[deal.status] ?? 'neutral'} size="sm">{fmtLabel(deal.status)}</Badge>
-                                    <button onClick={() => handleDeleteDeal(deal.id, p.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                                    <button onClick={() => setDeleteTarget({ kind: 'deal', id: deal.id, propertyId: p.id })} className="text-gray-300 hover:text-red-500 p-0.5">
                                       <X size={12} />
                                     </button>
                                   </div>
@@ -847,6 +867,23 @@ export default function PropertiesScreen() {
           onClose={() => { setShowForm(false); setEditProperty(null) }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        loading={deleting}
+        title={
+          deleteTarget?.kind === 'property' ? 'Delete Property' :
+          deleteTarget?.kind === 'inquiry' ? 'Delete Inquiry' : 'Delete Deal'
+        }
+        message={
+          deleteTarget?.kind === 'property' ? 'Delete this property listing?' :
+          deleteTarget?.kind === 'inquiry' ? 'Delete this inquiry?' :
+          'Delete this deal? The property will be reset to Available if no other active deals exist.'
+        }
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

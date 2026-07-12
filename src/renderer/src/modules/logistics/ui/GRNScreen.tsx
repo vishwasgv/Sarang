@@ -8,6 +8,7 @@ import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface GRNItem {
   id: string; productId: string | null; rawMaterialId: string | null; itemName: string
@@ -41,6 +42,8 @@ export default function GRNScreen() {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [grns, setGrns] = useState<GRN[]>([])
+  const [confirmAction, setConfirmAction] = useState<{ type: 'post' | 'reverse' | 'delete'; id: string; grnNumber: string } | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -210,21 +213,21 @@ export default function GRNScreen() {
 
   const verify = async (id: string) => {
     const res = await window.api.logisticsGrn.update({ id, status: 'VERIFIED' })
-    if (!res.success) alert(res.error?.message)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     load()
   }
 
-  const post = async (id: string) => {
-    if (!confirm(t('logistics.grn.postConfirm'))) return
-    const res = await window.api.logisticsGrn.post(id)
-    if (!res.success) alert(res.error?.message)
-    load()
-  }
-
-  const reverse = async (id: string, grnNumber: string) => {
-    if (!confirm(t('logistics.grn.reverseConfirm', { number: grnNumber }))) return
-    const res = await window.api.logisticsGrn.reverse(id)
-    if (!res.success) alert(res.error?.message)
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return
+    setConfirmLoading(true)
+    const res = confirmAction.type === 'post'
+      ? await window.api.logisticsGrn.post(confirmAction.id)
+      : confirmAction.type === 'reverse'
+        ? await window.api.logisticsGrn.reverse(confirmAction.id)
+        : await window.api.logisticsGrn.delete(confirmAction.id)
+    setConfirmLoading(false)
+    setConfirmAction(null)
+    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); if (confirmAction.type !== 'delete') load(); return }
     load()
   }
 
@@ -290,13 +293,6 @@ export default function GRNScreen() {
     else setEditError(res.error?.message ?? t('common.error'))
   }
 
-  const deleteGRN = async (id: string, grnNumber: string) => {
-    if (!confirm(t('logistics.grn.deleteConfirm', { number: grnNumber }))) return
-    const res = await window.api.logisticsGrn.delete(id)
-    if (!res.success) alert(res.error?.message)
-    else load()
-  }
-
   const printGRN = (g: GRN) => {
     const rows = g.items.map(i => `<tr><td>${i.itemName}</td><td>${i.receivedQty}</td><td>${i.rejectedQty}</td><td>${i.unit}</td><td>${formatCurrency(i.unitCost)}</td><td>${formatCurrency(i.totalCost)}</td><td>${i.batchNumber ?? '-'}</td></tr>`).join('')
     const html = `<html><head><style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{margin-bottom:16px}.meta{margin-bottom:12px;font-size:11px;color:#666}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px}th{background:#f5f5f5}.total{text-align:right;font-weight:bold;margin-top:8px}footer{margin-top:24px;font-size:10px;color:#888;text-align:center}</style></head><body><h2>Goods Receipt Note: ${g.grnNumber}</h2><div class="meta">Supplier: ${g.supplierName} | Invoice: ${g.invoiceNumber ?? '-'} | Date: ${formatDate(g.receivedDate)} | Status: ${g.status}</div><table><thead><tr><th>Item</th><th>Received</th><th>Rejected</th><th>Unit</th><th>Unit Cost</th><th>Total</th><th>Batch</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total Value: ${formatCurrency(g.totalValue)}</div><footer>${aszurexFooterHtml(10)}</footer></body></html>`
@@ -359,9 +355,9 @@ export default function GRNScreen() {
                   <div className="flex gap-2 mt-1">
                     {!['POSTED', 'REVERSED'].includes(g.status) && <button onClick={e => { e.stopPropagation(); openEditGRN(g) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
                     {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); verify(g.id) }} className="text-xs text-purple-600 hover:underline">{t('logistics.grn.verify')}</button>}
-                    {g.status === 'VERIFIED' && <button onClick={e => { e.stopPropagation(); post(g.id) }} className="text-xs text-green-600 hover:underline">{t('logistics.grn.post')}</button>}
-                    {g.status === 'POSTED' && <button onClick={e => { e.stopPropagation(); reverse(g.id, g.grnNumber) }} className="text-xs text-orange-600 hover:underline">{t('logistics.grn.reverse')}</button>}
-                    {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); deleteGRN(g.id, g.grnNumber) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
+                    {g.status === 'VERIFIED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'post', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-green-600 hover:underline">{t('logistics.grn.post')}</button>}
+                    {g.status === 'POSTED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'reverse', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-orange-600 hover:underline">{t('logistics.grn.reverse')}</button>}
+                    {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'delete', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
                     <button onClick={e => { e.stopPropagation(); printGRN(g) }} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>
                   </div>
                 </div>
@@ -542,6 +538,20 @@ export default function GRNScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        loading={confirmLoading}
+        title={confirmAction?.type === 'post' ? t('logistics.grn.post') : confirmAction?.type === 'reverse' ? t('logistics.grn.reverse') : t('common.delete')}
+        message={
+          confirmAction?.type === 'post' ? t('logistics.grn.postConfirm')
+            : confirmAction?.type === 'reverse' ? t('logistics.grn.reverseConfirm', { number: confirmAction.grnNumber })
+              : confirmAction ? t('logistics.grn.deleteConfirm', { number: confirmAction.grnNumber }) : ''
+        }
+        confirmLabel={confirmAction?.type === 'post' ? t('logistics.grn.post') : confirmAction?.type === 'reverse' ? t('logistics.grn.reverse') : t('common.delete')}
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import {
   updateROCFiling,
   deleteROCFiling,
 } from '../../services/roc-filing.service'
+import { CreateROCFilingSchema, UpdateROCFilingSchema, ROCFilingIdSchema } from '../../validation/roc-filing.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,19 +18,22 @@ export function register(handle: HandleFn): void {
 
   handle('rocFiling:create', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { clientId: string; staffId?: string; formType: string; financialYear?: string; purpose?: string; dueDate?: string; govtFee?: number; notes?: string }
-    return createROCFiling(payload)
+    const parsed = CreateROCFilingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createROCFiling(parsed.data)
   })
 
   handle('rocFiling:update', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const payload = raw as { id: string; staffId?: string | null; formType?: string; financialYear?: string | null; purpose?: string | null; dueDate?: string | null; filedOn?: string | null; srn?: string | null; status?: string; govtFee?: number | null; notes?: string | null }
-    return updateROCFiling(payload)
+    const parsed = UpdateROCFilingSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateROCFiling(parsed.data)
   })
 
   handle('rocFiling:delete', async (raw) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = raw as { id: string }
-    return deleteROCFiling(id)
+    const parsed = ROCFilingIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteROCFiling(parsed.data.id)
   })
 }

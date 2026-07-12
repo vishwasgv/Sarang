@@ -8,6 +8,7 @@ import {
 } from '../../services/raw-material.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { CreateRawMaterialSchema, UpdateRawMaterialSchema, RawMaterialIdSchema, AdjustRawMaterialStockSchema } from '../../validation/raw-material.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,23 +20,30 @@ export function register(handle: HandleFn): void {
 
   handle('rawMaterials:create', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    return createRawMaterial(payload as Parameters<typeof createRawMaterial>[0], getCurrentSession()?.userId)
+    const parsed = CreateRawMaterialSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createRawMaterial(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('rawMaterials:update', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    return updateRawMaterial(payload as Parameters<typeof updateRawMaterial>[0], getCurrentSession()?.userId)
+    const parsed = UpdateRawMaterialSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateRawMaterial(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('rawMaterials:delete', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    const p = (payload ?? {}) as { id: string }
-    return deleteRawMaterial(p.id, getCurrentSession()?.userId)
+    const parsed = RawMaterialIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteRawMaterial(parsed.data.id, getCurrentSession()?.userId)
   })
 
   handle('rawMaterials:adjustStock', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    return adjustRawMaterialStock(payload as Parameters<typeof adjustRawMaterialStock>[0], getCurrentSession()?.userId)
+    const parsed = AdjustRawMaterialStockSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return adjustRawMaterialStock(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('rawMaterials:movements', async (payload) => {

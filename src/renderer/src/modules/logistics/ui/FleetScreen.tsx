@@ -4,6 +4,7 @@ import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface Vehicle {
@@ -39,6 +40,8 @@ export default function FleetScreen() {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -90,14 +93,16 @@ export default function FleetScreen() {
   const updateStatus = async (id: string, status: string) => {
     const res = await window.api.logisticsVehicle.updateStatus({ id, status })
     if (res.success) load()
-    else alert(res.error?.message)
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
-  const del = async (v: Vehicle) => {
-    if (!confirm(t('logistics.fleet.deleteConfirm', { number: v.vehicleNumber }))) return
-    const res = await window.api.logisticsVehicle.delete(v.id)
-    if (res.success) load()
-    else alert(res.error?.message)
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.logisticsVehicle.delete(deleteTarget.id)
+    setDeleting(false)
+    if (res.success) { setDeleteTarget(null); load() }
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
   // Status filtering is server-side; ownerType and search are client-side
@@ -174,7 +179,7 @@ export default function FleetScreen() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(v)} className="text-blue-600 hover:underline text-xs">{t('common.edit')}</button>
-                      {v.status !== 'IN_TRANSIT' && <button onClick={() => del(v)} className="text-red-500 hover:underline text-xs">{t('common.delete')}</button>}
+                      {v.status !== 'IN_TRANSIT' && <button onClick={() => setDeleteTarget(v)} className="text-red-500 hover:underline text-xs">{t('common.delete')}</button>}
                     </div>
                   </td>
                 </tr>
@@ -234,6 +239,16 @@ export default function FleetScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('common.delete')}
+        message={deleteTarget ? t('logistics.fleet.deleteConfirm', { number: deleteTarget.vehicleNumber }) : ''}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

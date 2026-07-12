@@ -6,6 +6,7 @@ import {
   createTreatmentPlan,
   updateTreatmentPlan,
 } from '../../services/treatment-plan.service'
+import { CreateTreatmentPlanSchema, UpdateTreatmentPlanSchema } from '../../validation/treatment-plan.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -30,12 +31,15 @@ export function register(handle: HandleFn): void {
     // now only used for the audit log's userId, which is correctly FK'd to
     // User.
     const session = getCurrentSession()
-    const p = payload as Parameters<typeof createTreatmentPlan>[0]
-    return createTreatmentPlan({ ...p, createdById: undefined, userId: session?.userId })
+    const parsed = CreateTreatmentPlanSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createTreatmentPlan({ ...parsed.data, createdById: undefined, userId: session?.userId })
   })
 
   handle('treatmentPlan:update', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
-    return updateTreatmentPlan(payload as Parameters<typeof updateTreatmentPlan>[0])
+    const parsed = UpdateTreatmentPlanSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateTreatmentPlan(parsed.data)
   })
 }

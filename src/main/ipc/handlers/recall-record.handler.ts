@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import { getPatientRecall, upsertRecall, listRecalls } from '../../services/recall-record.service'
+import { UpsertRecallSchema } from '../../validation/recall-record.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,6 +18,8 @@ export function register(handle: HandleFn): void {
 
   handle('recall:upsert', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
-    return upsertRecall(payload as Parameters<typeof upsertRecall>[0])
+    const parsed = UpsertRecallSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return upsertRecall(parsed.data)
   })
 }

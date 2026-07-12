@@ -8,6 +8,7 @@ import {
   resetToken,
   getQueueStats,
 } from '../../services/token-queue.service'
+import { CreateTokenSchema, TokenQueueIdSchema } from '../../validation/token-queue.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -26,30 +27,36 @@ export function register(handle: HandleFn): void {
 
   handle('tokenQueue:create', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    return createToken(payload as Parameters<typeof createToken>[0])
+    const parsed = CreateTokenSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createToken(parsed.data)
   })
 
   handle('tokenQueue:call', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return callToken(id)
+    const parsed = TokenQueueIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return callToken(parsed.data.id)
   })
 
   handle('tokenQueue:seen', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return markSeen(id)
+    const parsed = TokenQueueIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return markSeen(parsed.data.id)
   })
 
   handle('tokenQueue:skip', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return skipToken(id)
+    const parsed = TokenQueueIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return skipToken(parsed.data.id)
   })
 
   handle('tokenQueue:reset', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return resetToken(id)
+    const parsed = TokenQueueIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return resetToken(parsed.data.id)
   })
 }

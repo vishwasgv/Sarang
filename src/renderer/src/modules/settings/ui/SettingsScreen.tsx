@@ -706,6 +706,8 @@ function UsersManagementSection() {
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const currentUser = useAuthStore((s) => s.user)
   const { error: toastError } = useNotificationStore()
+  const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
+  const [deactivating, setDeactivating] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -757,13 +759,15 @@ function UsersManagementSection() {
   }
 
   const deactivate = async (u: User) => {
-    if (!confirm(`Deactivate "${u.fullName}"? They will no longer be able to log in.`)) return
+    setDeactivating(true)
     try {
       const res = await window.api.users.deactivate({ userId: u.id })
-      if (res.success) loadData()
-      else alert(res.error?.message ?? 'Failed to deactivate user.')
+      if (res.success) { setDeactivateTarget(null); loadData() }
+      else toastError('Error', res.error?.message ?? 'Failed to deactivate user.')
     } catch {
-      alert('Failed to deactivate user.')
+      toastError('Error', 'Failed to deactivate user.')
+    } finally {
+      setDeactivating(false)
     }
   }
 
@@ -833,7 +837,7 @@ function UsersManagementSection() {
                 </button>
               )}
               {canDisable && u.isActive && u.id !== currentUser?.id && (
-                <button onClick={() => deactivate(u)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-danger transition-colors" title="Deactivate user">
+                <button onClick={() => setDeactivateTarget(u)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-danger transition-colors" title="Deactivate user">
                   <Trash2 size={14} />
                 </button>
               )}
@@ -927,6 +931,16 @@ function UsersManagementSection() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={() => deactivateTarget && deactivate(deactivateTarget)}
+        loading={deactivating}
+        title="Deactivate User"
+        message={deactivateTarget ? `Deactivate "${deactivateTarget.fullName}"? They will no longer be able to log in.` : ''}
+        confirmLabel="Deactivate"
+      />
     </div>
   )
 }

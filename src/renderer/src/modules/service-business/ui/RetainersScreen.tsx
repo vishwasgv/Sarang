@@ -8,6 +8,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface RetainerAgreement {
   id: string
@@ -88,6 +89,10 @@ export default function RetainersScreen(): React.ReactElement {
   const [fStartDate, setFStartDate]       = useState('')
   const [fEndDate, setFEndDate]           = useState('')
   const [fNotes, setFNotes]               = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<RetainerAgreement | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [invoiceTarget, setInvoiceTarget] = useState<RetainerAgreement | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -179,13 +184,15 @@ export default function RetainersScreen(): React.ReactElement {
   }
 
   async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Delete this retainer agreement?')) return
+    setDeleting(true)
     try {
       const res = await api.retainer.delete({ id })
-      if (res.success) loadAll()
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete retainer agreement.')
     } catch {
       toastError('Error', 'Could not delete retainer agreement.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -193,11 +200,10 @@ export default function RetainersScreen(): React.ReactElement {
 
   async function handleGenerateInvoice(r: RetainerAgreement): Promise<void> {
     const period = currentPeriod()
-    if (!window.confirm(`Generate a ₹${r.monthlyAmount} invoice for ${r.client.customerName} — ${period}?`)) return
     setGeneratingId(r.id)
     try {
       const res = await api.retainer.generateInvoice({ id: r.id, period })
-      if (res.success) { loadAll() } else { window.alert(res.error?.message ?? 'Could not generate invoice.') }
+      if (res.success) { setInvoiceTarget(null); loadAll() } else { toastError('Error', res.error?.message ?? 'Could not generate invoice.') }
     } catch {
       toastError('Error', 'Could not generate invoice.')
     } finally {
@@ -305,7 +311,7 @@ export default function RetainersScreen(): React.ReactElement {
                           r.lastInvoicedPeriod === currentPeriod() ? (
                             <span className="text-xs text-gray-400 dark:text-slate-500 px-1.5">Invoiced {currentPeriod()}</span>
                           ) : (
-                            <button onClick={() => handleGenerateInvoice(r)} disabled={generatingId === r.id}
+                            <button onClick={() => setInvoiceTarget(r)} disabled={generatingId === r.id}
                               title="Generate this month's invoice"
                               className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded dark:text-slate-500 disabled:opacity-50">
                               <Receipt className={cn('w-4 h-4', generatingId === r.id && 'animate-pulse')} />
@@ -315,7 +321,7 @@ export default function RetainersScreen(): React.ReactElement {
                         <button onClick={() => openEdit(r)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
+                        <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -413,6 +419,27 @@ export default function RetainersScreen(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+        loading={deleting}
+        title="Delete Retainer"
+        message="Delete this retainer agreement?"
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        open={!!invoiceTarget}
+        onClose={() => setInvoiceTarget(null)}
+        onConfirm={() => invoiceTarget && handleGenerateInvoice(invoiceTarget)}
+        loading={!!invoiceTarget && generatingId === invoiceTarget.id}
+        title="Generate Invoice"
+        message={invoiceTarget ? `Generate a ₹${invoiceTarget.monthlyAmount} invoice for ${invoiceTarget.client.customerName} — ${currentPeriod()}?` : ''}
+        confirmLabel="Generate"
+        confirmVariant="primary"
+      />
     </div>
   )
 }

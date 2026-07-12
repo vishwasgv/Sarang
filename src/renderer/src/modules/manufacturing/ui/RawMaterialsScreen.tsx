@@ -8,6 +8,7 @@ import { formatNumber, formatDateTime } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface RawMaterial {
   id: string
@@ -75,6 +76,10 @@ export function RawMaterialsScreen() {
   const [movements, setMovements] = useState<Movement[]>([])
   const [movementsLoading, setMovementsLoading] = useState(false)
 
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<RawMaterial | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -137,11 +142,14 @@ export function RawMaterialsScreen() {
     }
   }
 
-  async function handleDelete(m: RawMaterial) {
-    if (!confirm(t('manufacturing.confirmRemoveMaterial', { name: m.name }))) return
-    const res = await api.rawMaterials.delete({ id: m.id })
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await api.rawMaterials.delete({ id: deleteTarget.id })
+    setDeleting(false)
     if (res.success) {
       toastSuccess(t('common.removed'))
+      setDeleteTarget(null)
       loadData()
     } else {
       toastError(res.error?.message ?? t('manufacturing.actionFailed'))
@@ -278,7 +286,7 @@ export function RawMaterialsScreen() {
                         <button onClick={() => openMovements(m)} className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors border border-border" title="Movement History">{t('manufacturing.movementHistory')}</button>
                         <button onClick={() => openAdjust(m)} className="px-3 py-1.5 rounded-lg text-xs text-brand hover:bg-brand/5 transition-colors border border-brand/30" title="Adjust Stock">{t('manufacturing.adjustStock')}</button>
                         <button onClick={() => openEdit(m)} className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors border border-border">{t('common.edit')}</button>
-                        <button onClick={() => handleDelete(m)} className="px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-colors border border-red-200">{t('inventory.remove')}</button>
+                        <button onClick={() => setDeleteTarget(m)} className="px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-colors border border-red-200">{t('inventory.remove')}</button>
                       </div>
                     </td>
                   </tr>
@@ -475,6 +483,16 @@ export function RawMaterialsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('inventory.remove')}
+        message={deleteTarget ? t('manufacturing.confirmRemoveMaterial', { name: deleteTarget.name }) : ''}
+        confirmLabel={t('inventory.remove')}
+      />
     </div>
   )
 }

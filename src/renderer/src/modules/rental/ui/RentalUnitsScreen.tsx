@@ -6,6 +6,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { Select } from '@shared/ui/atoms/Select'
 import { Input } from '@shared/ui/atoms/Input'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -42,6 +43,8 @@ export function RentalUnitsScreen() {
   const [conditionNotes, setConditionNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RentalUnit | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,11 +95,13 @@ export function RentalUnitsScreen() {
     }
   }
 
-  async function handleDelete(unit: RentalUnit) {
-    if (!window.confirm(t('rental.confirmDeleteUnit'))) return
-    const res = await api.rental.deleteUnit({ id: unit.id })
-    if (res.success) await load()
-    else window.alert(res.error?.message ?? t('rental.deleteFailed') as string)
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await api.rental.deleteUnit({ id: deleteTarget.id })
+    setDeleting(false)
+    if (res.success) { setDeleteTarget(null); await load() }
+    else toastError(t('common.error'), res.error?.message ?? t('rental.deleteFailed') as string)
   }
 
   return (
@@ -149,7 +154,7 @@ export function RentalUnitsScreen() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canManage && u.status !== 'RENTED' && (
-                      <button onClick={() => handleDelete(u)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteTarget(u)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
                     )}
                   </td>
                 </tr>
@@ -179,6 +184,16 @@ export function RentalUnitsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title={t('common.delete')}
+        message={t('rental.confirmDeleteUnit')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

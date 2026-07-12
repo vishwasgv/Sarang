@@ -8,6 +8,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,6 +184,14 @@ export default function ProjectsScreen(): React.ReactElement {
   const [sEndDate, setSEndDate]       = useState('')
   const [sStatus, setSStatus]         = useState('PLANNING')
 
+  // ── Delete confirmation state ───────────────────────────────────────────────
+  type DeleteTarget =
+    | { kind: 'project'; id: string }
+    | { kind: 'milestone'; id: string }
+    | { kind: 'sprint'; id: string; projectId: string }
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const loadAll = useCallback(async () => {
@@ -310,13 +319,15 @@ export default function ProjectsScreen(): React.ReactElement {
   }
 
   async function handleDeleteProject(id: string): Promise<void> {
-    if (!window.confirm('Delete this project and all its data?')) return
+    setDeleting(true)
     try {
       const res = await api.serviceProject.delete({ id })
-      if (res.success) loadAll()
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete project.')
     } catch {
       toastError('Error', 'Could not delete project.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -369,13 +380,15 @@ export default function ProjectsScreen(): React.ReactElement {
   }
 
   async function handleDeleteMilestone(id: string): Promise<void> {
-    if (!window.confirm('Delete this milestone?')) return
+    setDeleting(true)
     try {
       const res = await api.milestone.delete({ id })
-      if (res.success) loadAll()
+      if (res.success) { setDeleteTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not delete milestone.')
     } catch {
       toastError('Error', 'Could not delete milestone.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -433,14 +446,23 @@ export default function ProjectsScreen(): React.ReactElement {
   }
 
   async function handleDeleteSprint(id: string, projectId: string): Promise<void> {
-    if (!window.confirm('Delete this sprint? Issues will move to backlog.')) return
+    setDeleting(true)
     try {
       const res = await api.sprint.delete({ id })
-      if (res.success) loadSprints(projectId)
+      if (res.success) { setDeleteTarget(null); loadSprints(projectId) }
       else toastError('Error', res.error?.message ?? 'Could not delete sprint.')
     } catch {
       toastError('Error', 'Could not delete sprint.')
+    } finally {
+      setDeleting(false)
     }
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!deleteTarget) return
+    if (deleteTarget.kind === 'project') await handleDeleteProject(deleteTarget.id)
+    else if (deleteTarget.kind === 'milestone') await handleDeleteMilestone(deleteTarget.id)
+    else await handleDeleteSprint(deleteTarget.id, deleteTarget.projectId)
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -563,7 +585,7 @@ export default function ProjectsScreen(): React.ReactElement {
                     <button onClick={() => openEditProject(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteProject(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
+                    <button onClick={() => setDeleteTarget({ kind: 'project', id: p.id })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -616,7 +638,7 @@ export default function ProjectsScreen(): React.ReactElement {
                                   <button onClick={() => openEditMilestone(m, p.id)} className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
                                     <Edit2 className="w-3 h-3" />
                                   </button>
-                                  <button onClick={() => handleDeleteMilestone(m.id)} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500">
+                                  <button onClick={() => setDeleteTarget({ kind: 'milestone', id: m.id })} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500">
                                     <Trash2 className="w-3 h-3" />
                                   </button>
                                 </div>
@@ -683,7 +705,7 @@ export default function ProjectsScreen(): React.ReactElement {
                                   <button onClick={() => openEditSprint(s)} className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
                                     <Edit2 className="w-3 h-3" />
                                   </button>
-                                  <button onClick={() => handleDeleteSprint(s.id, p.id)} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500">
+                                  <button onClick={() => setDeleteTarget({ kind: 'sprint', id: s.id, projectId: p.id })} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500">
                                     <Trash2 className="w-3 h-3" />
                                   </button>
                                 </div>
@@ -897,6 +919,23 @@ export default function ProjectsScreen(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        loading={deleting}
+        title={
+          deleteTarget?.kind === 'project' ? 'Delete Project' :
+          deleteTarget?.kind === 'milestone' ? 'Delete Milestone' : 'Delete Sprint'
+        }
+        message={
+          deleteTarget?.kind === 'project' ? 'Delete this project and all its data?' :
+          deleteTarget?.kind === 'milestone' ? 'Delete this milestone?' :
+          'Delete this sprint? Issues will move to backlog.'
+        }
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

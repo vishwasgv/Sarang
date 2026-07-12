@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPatientChart, upsertTooth } from '../../services/tooth-record.service'
+import { UpsertToothSchema } from '../../validation/tooth-record.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,7 +20,8 @@ export function register(handle: HandleFn): void {
     // now only used for the audit log's userId, which is correctly FK'd to
     // User.
     const session = getCurrentSession()
-    const p = payload as Parameters<typeof upsertTooth>[0]
-    return upsertTooth({ ...p, recordedById: undefined, userId: session?.userId })
+    const parsed = UpsertToothSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return upsertTooth({ ...parsed.data, recordedById: undefined, userId: session?.userId })
   })
 }

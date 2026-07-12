@@ -1,5 +1,6 @@
 import { requirePermission } from '../permission-guard'
 import * as svc from '../../services/service-catalog.service'
+import { CreateServiceSchema, UpdateServiceSchema, ServiceIdSchema } from '../../validation/service-catalog.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -17,18 +18,23 @@ export function register(handle: HandleFn): void {
 
   handle('serviceCatalog:create', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    return svc.createService(payload as Parameters<typeof svc.createService>[0])
+    const parsed = CreateServiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.createService(parsed.data)
   })
 
   handle('serviceCatalog:update', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    return svc.updateService(payload as Parameters<typeof svc.updateService>[0])
+    const parsed = UpdateServiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.updateService(parsed.data)
   })
 
   handle('serviceCatalog:delete', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return svc.deleteService(id)
+    const parsed = ServiceIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.deleteService(parsed.data.id)
   })
 
   handle('serviceCatalog:listCategories', async () => {

@@ -9,6 +9,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface FreightEntry {
   id: string; shipmentId: string | null; shipmentNumber: string | null
@@ -34,6 +35,8 @@ export default function FreightLedgerScreen() {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [entries, setEntries] = useState<FreightEntry[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<FreightEntry | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -119,7 +122,7 @@ export default function FreightLedgerScreen() {
 
   const markPaid = async (id: string) => {
     const res = await window.api.logisticsFreight.markPaid({ id })
-    if (!res.success) alert(res.error?.message)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     load()
   }
 
@@ -153,11 +156,13 @@ export default function FreightLedgerScreen() {
     else setEditError(res.error?.message ?? t('common.error'))
   }
 
-  const deleteFreightEntry = async (e: FreightEntry) => {
-    if (!confirm(t('logistics.freight.deleteConfirm', { carrier: e.carrierName, amount: formatCurrency(e.amount) }))) return
-    const res = await window.api.logisticsFreight.delete(e.id)
-    if (!res.success) alert(res.error?.message)
-    else load()
+  const handleDeleteFreightEntry = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await window.api.logisticsFreight.delete(deleteTarget.id)
+    setDeleting(false)
+    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    else { setDeleteTarget(null); load() }
   }
 
   const printLedger = () => {
@@ -246,7 +251,7 @@ export default function FreightLedgerScreen() {
                     <div className="flex gap-2">
                       {e.status === 'PENDING' && <button onClick={() => markPaid(e.id)} className="text-xs text-green-600 hover:underline">{t('logistics.freight.markPaid')}</button>}
                       {e.status === 'PENDING' && <button onClick={() => openEditFreight(e)} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
-                      {e.status === 'PENDING' && <button onClick={() => deleteFreightEntry(e)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
+                      {e.status === 'PENDING' && <button onClick={() => setDeleteTarget(e)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
                     </div>
                   </td>
                 </tr>
@@ -342,6 +347,16 @@ export default function FreightLedgerScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteFreightEntry}
+        loading={deleting}
+        title={t('common.delete')}
+        message={deleteTarget ? t('logistics.freight.deleteConfirm', { carrier: deleteTarget.carrierName, amount: formatCurrency(deleteTarget.amount) }) : ''}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

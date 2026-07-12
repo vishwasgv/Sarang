@@ -7,6 +7,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Project { id: string; projectName: string; client: { customerName: string } }
 interface SiteVisit {
@@ -39,6 +40,8 @@ export function SiteVisitsScreen(): React.JSX.Element {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     window.api.serviceProject.list().then((res) => {
@@ -91,9 +94,10 @@ export function SiteVisitsScreen(): React.JSX.Element {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this site visit record?')) return
+    setDeleting(true)
     const res = await window.api.siteVisit.delete({ id })
-    if (res.success) { toastSuccess('Deleted', 'Site visit removed.'); await load(projectId) }
+    setDeleting(false)
+    if (res.success) { toastSuccess('Deleted', 'Site visit removed.'); setDeleteTargetId(null); await load(projectId) }
     else toastError('Error', res.error?.message ?? 'Could not delete.')
   }
 
@@ -172,7 +176,7 @@ export function SiteVisitsScreen(): React.JSX.Element {
                       <Paperclip size={13} /> Files {expandedId === v.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
                     {canManage && (
-                      <button onClick={() => void handleDelete(v.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteTargetId(v.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
                     )}
                   </div>
                 </div>
@@ -186,6 +190,16 @@ export function SiteVisitsScreen(): React.JSX.Element {
           </div>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => deleteTargetId && handleDelete(deleteTargetId)}
+        loading={deleting}
+        title="Delete Site Visit"
+        message="Delete this site visit record?"
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

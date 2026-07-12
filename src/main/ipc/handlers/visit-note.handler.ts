@@ -9,6 +9,12 @@ import {
   referToProvider,
   listReferralsForVisitNote,
 } from '../../services/visit-note.service'
+import {
+  CreateVisitNoteSchema,
+  UpdateVisitNoteSchema,
+  FinalizeVisitNoteSchema,
+  ReferToProviderSchema,
+} from '../../validation/visit-note.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -28,27 +34,32 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-003', message: 'Your session has expired.' } }
-    const p = payload as Parameters<typeof createVisitNote>[0]
-    return createVisitNote({ ...p, createdBy: session.userId })
+    const parsed = CreateVisitNoteSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createVisitNote({ ...parsed.data, createdBy: session.userId })
   })
 
   handle('visitNotes:update', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
-    return updateVisitNote(payload as Parameters<typeof updateVisitNote>[0])
+    const parsed = UpdateVisitNoteSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateVisitNote(parsed.data)
   })
 
   handle('visitNotes:finalize', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
-    const { id } = payload as { id: string }
-    return finalizeVisitNote(id)
+    const parsed = FinalizeVisitNoteSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return finalizeVisitNote(parsed.data.id)
   })
 
   handle('visitNotes:referToProvider', async (payload) => {
     const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-003', message: 'Your session has expired.' } }
-    const p = payload as Parameters<typeof referToProvider>[0]
-    return referToProvider({ ...p, createdBy: session.userId })
+    const parsed = ReferToProviderSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return referToProvider({ ...parsed.data, createdBy: session.userId })
   })
 
   handle('visitNotes:listReferrals', async (payload) => {

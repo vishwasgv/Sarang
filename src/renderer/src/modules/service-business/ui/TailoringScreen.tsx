@@ -10,6 +10,7 @@ import { Tabs } from '@shared/ui/molecules/Tabs'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 const api = window.api
 
@@ -149,6 +150,10 @@ export default function TailoringScreen() {
   const [measSaving, setMeasSaving] = useState(false)
   const [measError, setMeasError] = useState('')
   const [clientMeasurements, setClientMeasurements] = useState<Record<string, MeasurementRecord[]>>({})
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState(false)
+  const [deleteMeasId, setDeleteMeasId] = useState<string | null>(null)
+  const [deletingMeas, setDeletingMeas] = useState(false)
 
   const statusLabel = (s: string) => t(`tailoring.status.${s}`, STATUS_LABELS_FALLBACK[s] ?? s)
   const garmentLabel = (g: string) => t(`tailoring.garmentTypes.${g}`, g.replace(/_/g, ' '))
@@ -275,10 +280,11 @@ export default function TailoringScreen() {
   }
 
   async function handleDeleteOrder(id: string) {
-    if (!window.confirm(t('tailoring.confirm.deleteOrder'))) return
     setActionError(null)
+    setDeletingOrder(true)
     const res = await api.tailoringOrder.delete(id)
-    if (res.success) { await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
+    setDeletingOrder(false)
+    if (res.success) { setDeleteOrderId(null); await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
     else setActionError(res.error?.message ?? t('tailoring.errors.deleteOrderFailed'))
   }
 
@@ -364,9 +370,10 @@ export default function TailoringScreen() {
   }
 
   async function handleDeleteMeas(id: string) {
-    if (!window.confirm(t('tailoring.confirm.deleteMeasurement'))) return
+    setDeletingMeas(true)
     const res = await api.measurementRecord.delete(id)
-    if (res.success) setMeasurements(ms => ms.filter(m => m.id !== id))
+    setDeletingMeas(false)
+    if (res.success) { setDeleteMeasId(null); setMeasurements(ms => ms.filter(m => m.id !== id)) }
     else setActionError(res.error?.message ?? t('tailoring.errors.deleteMeasurementFailed'))
   }
 
@@ -517,7 +524,7 @@ export default function TailoringScreen() {
                                 )}
                                 {order.invoiceId && <span className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 flex items-center gap-1"><FileText size={10} /> {t('tailoring.actions.invoiced')}</span>}
                                 <button onClick={() => openEditOrder(order)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={13} /></button>
-                                <button onClick={() => handleDeleteOrder(order.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500"><X size={13} /></button>
+                                <button onClick={() => setDeleteOrderId(order.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500"><X size={13} /></button>
                               </div>
                             </td>
                           </tr>
@@ -567,7 +574,7 @@ export default function TailoringScreen() {
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => openEditMeas(m)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={14} /></button>
-                      <button onClick={() => handleDeleteMeas(m.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={14} /></button>
+                      <button onClick={() => setDeleteMeasId(m.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={14} /></button>
                     </div>
                   </div>
                   <div className="grid grid-cols-5 gap-3">
@@ -731,6 +738,26 @@ export default function TailoringScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteOrderId}
+        onClose={() => setDeleteOrderId(null)}
+        onConfirm={() => deleteOrderId && handleDeleteOrder(deleteOrderId)}
+        loading={deletingOrder}
+        title="Delete Order"
+        message={t('tailoring.confirm.deleteOrder')}
+        confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={!!deleteMeasId}
+        onClose={() => setDeleteMeasId(null)}
+        onConfirm={() => deleteMeasId && handleDeleteMeas(deleteMeasId)}
+        loading={deletingMeas}
+        title="Delete Measurement"
+        message={t('tailoring.confirm.deleteMeasurement')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

@@ -20,7 +20,6 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { useNavigate } from 'react-router-dom'
-import { formatDate } from '@shared/utils/locale.util'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
 interface InventoryStats { total: number; inStock: number; lowStock: number; outOfStock: number }
 interface DashboardKpis { todaySales: number; todayTrend: number; weekSales: number; weekTrend: number; monthSales: number; monthTrend: number; totalInvoices: number; outstanding: number; inventoryValue: number; monthExpenses: number; expenseTrend: number; estimatedProfit: number; profitTrend: number; lowStockCount: number; customerCount: number; supplierCount: number; inventoryStats: InventoryStats; occupiedTables?: number; kotPending?: number; kotInProgress?: number }

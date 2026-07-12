@@ -1,6 +1,7 @@
 import { listWorkOrders, upsertWorkOrders, updateWorkOrderStatus } from '../../services/work-order.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { UpsertWorkOrdersSchema, UpdateWorkOrderStatusSchema } from '../../validation/work-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -13,11 +14,15 @@ export function register(handle: HandleFn): void {
 
   handle('workOrders:upsert', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    return upsertWorkOrders(payload as Parameters<typeof upsertWorkOrders>[0], getCurrentSession()?.userId)
+    const parsed = UpsertWorkOrdersSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return upsertWorkOrders(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('workOrders:updateStatus', async (payload) => {
     const deny = await requirePermission('inventory.manage'); if (deny) return deny
-    return updateWorkOrderStatus(payload as Parameters<typeof updateWorkOrderStatus>[0], getCurrentSession()?.userId)
+    const parsed = UpdateWorkOrderStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateWorkOrderStatus(parsed.data, getCurrentSession()?.userId)
   })
 }

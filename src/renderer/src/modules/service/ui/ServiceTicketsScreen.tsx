@@ -8,6 +8,7 @@ import { formatDate } from '@shared/utils/locale.util'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Customer { id: string; customerName: string }
 interface User { id: string; fullName: string }
@@ -57,6 +58,8 @@ export function ServiceTicketsScreen() {
   const [detail, setDetail] = useState<Ticket | null>(null)
   const [resolution, setResolution] = useState('')
   const [savingRes, setSavingRes] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -135,11 +138,13 @@ export function ServiceTicketsScreen() {
   }
 
   async function handleDelete(ticketId: string) {
-    if (!confirm(t('service.confirmDeleteTicket'))) return
+    setDeleting(true)
     const res = await api.tickets.delete({ id: ticketId })
+    setDeleting(false)
     if (res.success) {
       toastSuccess(t('service.ticketDeleted'))
       setDetail(null)
+      setConfirmDelete(false)
       setTickets(prev => prev.filter(t => t.id !== ticketId))
     } else {
       toastError((res.error as any)?.message ?? 'Could not delete ticket')
@@ -349,7 +354,7 @@ export function ServiceTicketsScreen() {
               )}
             </div>
             <div className="px-6 pb-6">
-              <button onClick={() => handleDelete(detail.id)}
+              <button onClick={() => setConfirmDelete(true)}
                 className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                 {t('service.deleteTicket')}
               </button>
@@ -357,6 +362,16 @@ export function ServiceTicketsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => detail && handleDelete(detail.id)}
+        loading={deleting}
+        title={t('service.deleteTicket')}
+        message={t('service.confirmDeleteTicket')}
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

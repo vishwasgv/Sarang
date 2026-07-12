@@ -1,11 +1,12 @@
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
-import { quotationService, type CreateQuotationPayload } from '../../services/quotation.service'
+import { quotationService } from '../../services/quotation.service'
 import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
+import { CreateQuotationSchema, UpdateQuotationStatusSchema } from '../../validation/quotation.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -32,15 +33,18 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('billing.create'); if (deny) return deny
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-001', message: 'Not authenticated.' } }
-    return quotationService.create(payload as CreateQuotationPayload, session.userId)
+    const parsed = CreateQuotationSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return quotationService.create(parsed.data, session.userId)
   })
 
   handle('quotations:updateStatus', async (payload) => {
     const deny = await requirePermission('billing.create'); if (deny) return deny
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-001', message: 'Not authenticated.' } }
-    const p = payload as { id: string; status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' }
-    return quotationService.updateStatus(p, session.userId)
+    const parsed = UpdateQuotationStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return quotationService.updateStatus(parsed.data, session.userId)
   })
 
   handle('quotations:convertToInvoice', async (id) => {

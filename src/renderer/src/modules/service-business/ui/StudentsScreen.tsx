@@ -7,6 +7,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Customer {
   id: string
@@ -52,6 +53,8 @@ export default function StudentsScreen() {
   const [pickedCustomer, setPickedCustomer] = useState<CustomerLite | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<StudentProfile | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -165,9 +168,10 @@ export default function StudentsScreen() {
   }
 
   async function handleDelete(s: StudentProfile) {
-    if (!confirm(`Remove ${s.customer.customerName} from students? Their billing records will be kept.`)) return
+    setDeleting(true)
     const res = await api.student.delete({ id: s.id })
-    if (res.success) loadAll()
+    setDeleting(false)
+    if (res.success) { setDeleteTarget(null); loadAll() }
     else setError(res.error?.message ?? 'Delete failed.')
   }
 
@@ -252,7 +256,7 @@ export default function StudentsScreen() {
                     <button onClick={() => handleToggleActive(s)} className="p-1.5 text-gray-400 hover:text-amber-600 rounded dark:text-slate-500" title={s.isActive ? 'Deactivate' : 'Activate'}>
                       {s.isActive ? <XCircle size={14} /> : <CheckCircle size={14} />}
                     </button>
-                    <button onClick={() => handleDelete(s)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500" title="Remove">
+                    <button onClick={() => setDeleteTarget(s)} className="p-1.5 text-gray-400 hover:text-red-600 rounded dark:text-slate-500" title="Remove">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -346,6 +350,16 @@ export default function StudentsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        loading={deleting}
+        title="Remove Student"
+        message={deleteTarget ? `Remove ${deleteTarget.customer.customerName} from students? Their billing records will be kept.` : ''}
+        confirmLabel="Remove"
+      />
     </div>
   )
 }

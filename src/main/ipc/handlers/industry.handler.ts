@@ -4,6 +4,11 @@ import * as restaurantOrderService from '../../services/restaurant-order.service
 import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { ensureQrOrderServerState, getServerStatus } from '../../server/qr-order-server'
+import {
+  ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
+  DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
+  AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema,
+} from '../../validation/industry.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -19,18 +24,18 @@ export function register(handle: HandleFn): void {
     // the unguarded service call. This channel was previously reachable from
     // any renderer script with zero permission check.
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { businessType } = payload as { businessType: string }
-    if (!businessType) return { success: false, error: { code: 'VAL-001', message: 'businessType is required.' } }
-    const result = await industryService.changeBusinessType(businessType, getCurrentSession()?.userId)
+    const parsed = ChangeBusinessTypeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
     if (result.success) await ensureQrOrderServerState()
     return result
   })
 
   handle('industry:changeBusinessType', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { businessType } = payload as { businessType: string }
-    if (!businessType) return { success: false, error: { code: 'VAL-001', message: 'businessType is required.' } }
-    const result = await industryService.changeBusinessType(businessType, getCurrentSession()?.userId)
+    const parsed = ChangeBusinessTypeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
     // Phase 47: a business-type switch changes which enabledModules apply —
     // resync the QR-ordering server's running state either way.
     if (result.success) await ensureQrOrderServerState()
@@ -39,9 +44,9 @@ export function register(handle: HandleFn): void {
 
   handle('industry:updateModules', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
-    const { modules } = payload as { modules: string[] }
-    if (!Array.isArray(modules)) return { success: false, error: { code: 'VAL-001', message: 'modules must be an array.' } }
-    const result = await industryService.updateEnabledModules(modules as industryService.TemplateModule[], getCurrentSession()?.userId)
+    const parsed = UpdateModulesSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const result = await industryService.updateEnabledModules(parsed.data.modules as industryService.TemplateModule[], getCurrentSession()?.userId)
     // Phase 47: toggling qr_table_ordering on/off must take effect immediately —
     // starts/stops the local HTTP server without requiring an app restart.
     if (result.success) await ensureQrOrderServerState()
@@ -55,23 +60,23 @@ export function register(handle: HandleFn): void {
 
   handle('restaurant:createTable', async (payload) => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
-    const { tableNumber, tableName } = payload as { tableNumber: string; tableName?: string }
-    if (!tableNumber?.trim()) return { success: false, error: { code: 'VAL-001', message: 'Table number is required.' } }
-    return restaurantService.createTable(tableNumber.trim(), tableName?.trim(), getCurrentSession()?.userId)
+    const parsed = CreateRestaurantTableSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.createTable(parsed.data.tableNumber.trim(), parsed.data.tableName?.trim(), getCurrentSession()?.userId)
   })
 
   handle('restaurant:updateTableStatus', async (payload) => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
-    const { tableId, status } = payload as { tableId: string; status: string }
-    if (!tableId || !status) return { success: false, error: { code: 'VAL-001', message: 'tableId and status are required.' } }
-    return restaurantService.updateTableStatus(tableId, status, getCurrentSession()?.userId)
+    const parsed = UpdateTableStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.updateTableStatus(parsed.data.tableId, parsed.data.status, getCurrentSession()?.userId)
   })
 
   handle('restaurant:deleteTable', async (payload) => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
-    const { tableId } = payload as { tableId: string }
-    if (!tableId) return { success: false, error: { code: 'VAL-001', message: 'tableId is required.' } }
-    return restaurantService.deleteTable(tableId, getCurrentSession()?.userId)
+    const parsed = DeleteTableSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.deleteTable(parsed.data.tableId, getCurrentSession()?.userId)
   })
 
   handle('restaurant:listKOTs', async (payload) => {
@@ -82,16 +87,16 @@ export function register(handle: HandleFn): void {
 
   handle('restaurant:createKOT', async (payload) => {
     const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
-    const { invoiceId, tableId } = payload as { invoiceId: string; tableId?: string }
-    if (!invoiceId) return { success: false, error: { code: 'VAL-001', message: 'invoiceId is required.' } }
-    return restaurantService.createKOT(invoiceId, tableId, getCurrentSession()?.userId)
+    const parsed = CreateKOTSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.createKOT(parsed.data.invoiceId, parsed.data.tableId, getCurrentSession()?.userId)
   })
 
   handle('restaurant:updateKOTStatus', async (payload) => {
     const deny = await requirePermission('restaurant.updateKOT'); if (deny) return deny
-    const { kotId, status } = payload as { kotId: string; status: string }
-    if (!kotId || !status) return { success: false, error: { code: 'VAL-001', message: 'kotId and status are required.' } }
-    return restaurantService.updateKOTStatus(kotId, status, getCurrentSession()?.userId)
+    const parsed = UpdateKOTStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.updateKOTStatus(parsed.data.kotId, parsed.data.status, getCurrentSession()?.userId)
   })
 
   handle('restaurant:listRecipes', async () => {
@@ -108,16 +113,16 @@ export function register(handle: HandleFn): void {
 
   handle('restaurant:upsertRecipe', async (payload) => {
     const deny = await requirePermission('restaurant.manageRecipes'); if (deny) return deny
-    const { productId, recipeName, items } = payload as { productId: string; recipeName: string; items: Array<{ ingredientProductId: string; quantity: number }> }
-    if (!productId || !recipeName) return { success: false, error: { code: 'VAL-001', message: 'productId and recipeName are required.' } }
-    return restaurantService.upsertRecipe(productId, recipeName, items ?? [], getCurrentSession()?.userId)
+    const parsed = UpsertRecipeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.upsertRecipe(parsed.data.productId, parsed.data.recipeName, parsed.data.items ?? [], getCurrentSession()?.userId)
   })
 
   handle('restaurant:deleteRecipe', async (payload) => {
     const deny = await requirePermission('restaurant.manageRecipes'); if (deny) return deny
-    const { recipeId } = payload as { recipeId: string }
-    if (!recipeId) return { success: false, error: { code: 'VAL-001', message: 'recipeId is required.' } }
-    return restaurantService.deleteRecipe(recipeId, getCurrentSession()?.userId)
+    const parsed = DeleteRecipeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.deleteRecipe(parsed.data.recipeId, getCurrentSession()?.userId)
   })
 
   handle('restaurant:getDailyClosingSummary', async (payload) => {
@@ -146,26 +151,27 @@ export function register(handle: HandleFn): void {
 
   handle('restaurant:acceptOrderRequest', async (payload) => {
     const deny = await requirePermission('restaurant.manageOrderRequests'); if (deny) return deny
-    const { requestId, paymentMethod, customerId } = payload as { requestId: string; paymentMethod: string; customerId?: string }
-    if (!requestId || !paymentMethod) return { success: false, error: { code: 'VAL-001', message: 'requestId and paymentMethod are required.' } }
+    const parsed = AcceptOrderRequestSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return restaurantOrderService.acceptOrderRequest(
-      requestId,
-      { paymentMethod: paymentMethod as 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT', customerId },
+      parsed.data.requestId,
+      { paymentMethod: parsed.data.paymentMethod, customerId: parsed.data.customerId },
       getCurrentSession()?.userId
     )
   })
 
   handle('restaurant:rejectOrderRequest', async (payload) => {
     const deny = await requirePermission('restaurant.manageOrderRequests'); if (deny) return deny
-    const { requestId } = payload as { requestId: string }
-    if (!requestId) return { success: false, error: { code: 'VAL-001', message: 'requestId is required.' } }
-    return restaurantOrderService.rejectOrderRequest(requestId, getCurrentSession()?.userId)
+    const parsed = RejectOrderRequestSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantOrderService.rejectOrderRequest(parsed.data.requestId, getCurrentSession()?.userId)
   })
 
   handle('restaurant:generateTableQr', async (payload) => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
-    const { tableId } = payload as { tableId: string }
-    if (!tableId) return { success: false, error: { code: 'VAL-001', message: 'tableId is required.' } }
+    const parsed = GenerateTableQrSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const { tableId } = parsed.data
     const status = getServerStatus()
     if (!status.running || status.lanUrls.length === 0) {
       return { success: false, error: { code: 'QRO-040', message: 'QR ordering is not currently running. Enable it in Settings first.' } }

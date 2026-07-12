@@ -5,6 +5,7 @@ import { api } from '@renderer/services/ipc-client'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -168,6 +169,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
   const [returnNotes, setReturnNotes] = useState('')
   const [damageCharge, setDamageCharge] = useState('0')
   const [depositRefund, setDepositRefund] = useState(String(booking.securityDepositCollected))
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   async function handleCheckout() {
     setBusy(true)
@@ -200,10 +202,10 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
   }
 
   async function handleCancel() {
-    if (!window.confirm(t('rental.confirmCancel'))) return
     setBusy(true)
     try {
       const res = await api.rental.cancelBooking({ id: booking.id })
+      setShowCancelConfirm(false)
       if (res.success) onChanged()
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
@@ -257,7 +259,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                 className="w-full h-20 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 resize-none" />
               <div className="flex gap-2">
                 <Button onClick={handleCheckout} disabled={busy} className="flex-1"><Clock size={16} className="mr-1.5" /> {t('rental.checkOut')}</Button>
-                <Button variant="outline" onClick={handleCancel} disabled={busy}><Ban size={16} /></Button>
+                <Button variant="outline" onClick={() => setShowCancelConfirm(true)} disabled={busy}><Ban size={16} /></Button>
               </div>
             </div>
           )}
@@ -295,6 +297,16 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+        loading={busy}
+        title={t('common.cancel')}
+        message={t('rental.confirmCancel')}
+        confirmLabel={t('common.cancel')}
+      />
     </div>
   )
 }

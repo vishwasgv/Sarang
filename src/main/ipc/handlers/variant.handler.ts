@@ -1,6 +1,7 @@
 import { listVariants, upsertVariants, deleteVariant, adjustVariantStock, getVariantSummary } from '../../services/variant.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { UpsertVariantsSchema, DeleteVariantSchema, AdjustVariantStockSchema } from '../../validation/variant.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -13,18 +14,23 @@ export function register(handle: HandleFn): void {
 
   handle('variants:upsert', async (payload) => {
     const deny = await requirePermission('products.update'); if (deny) return deny
-    return upsertVariants(payload as Parameters<typeof upsertVariants>[0], getCurrentSession()?.userId)
+    const parsed = UpsertVariantsSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return upsertVariants(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('variants:delete', async (payload) => {
     const deny = await requirePermission('products.update'); if (deny) return deny
-    const p = (payload ?? {}) as { id: string }
-    return deleteVariant(p.id, getCurrentSession()?.userId)
+    const parsed = DeleteVariantSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteVariant(parsed.data.id, getCurrentSession()?.userId)
   })
 
   handle('variants:adjustStock', async (payload) => {
     const deny = await requirePermission('inventory.adjustStock'); if (deny) return deny
-    return adjustVariantStock(payload as Parameters<typeof adjustVariantStock>[0], getCurrentSession()?.userId)
+    const parsed = AdjustVariantStockSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return adjustVariantStock(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('variants:summary', async (payload) => {

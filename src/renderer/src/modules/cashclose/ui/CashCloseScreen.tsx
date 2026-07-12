@@ -5,7 +5,7 @@ import { Button } from '@shared/ui/atoms/Button'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDate, formatDateTime, formatTime } from '@shared/utils/locale.util'
+import { formatDate, formatTime } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { Card } from '@shared/ui/molecules/Card'
 

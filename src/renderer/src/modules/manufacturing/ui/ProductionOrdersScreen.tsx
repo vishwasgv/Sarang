@@ -9,6 +9,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Tabs } from '@shared/ui/molecules/Tabs'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface WorkOrderStep {
   id: string
@@ -112,6 +113,9 @@ export function ProductionOrdersScreen() {
   const [woSteps, setWoSteps] = useState<Array<{ taskName: string; notes: string }>>([{ taskName: '', notes: '' }])
   const [savingWO, setSavingWO] = useState(false)
 
+  // Start-order confirmation
+  const [startTarget, setStartTarget] = useState<ProductionOrder | null>(null)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -162,11 +166,13 @@ export function ProductionOrdersScreen() {
     }
   }
 
-  async function handleStart(order: ProductionOrder) {
-    if (!confirm(t('manufacturing.confirmStartOrder', { number: order.orderNumber }))) return
+  async function handleStart() {
+    if (!startTarget) return
+    const order = startTarget
     setActionBusy(true)
     const res = await api.production.start({ id: order.id })
     setActionBusy(false)
+    setStartTarget(null)
     if (res.success) {
       toastSuccess(t('manufacturing.orderStarted', { number: order.orderNumber }))
       setDetailOrder(res.data as ProductionOrder)
@@ -336,7 +342,7 @@ export function ProductionOrdersScreen() {
                   {order.status === 'DRAFT' && (
                     <div className="mt-3 flex justify-end">
                       <button
-                        onClick={e => { e.stopPropagation(); handleStart(order) }}
+                        onClick={e => { e.stopPropagation(); setStartTarget(order) }}
                         disabled={actionBusy}
                         className="flex items-center gap-2 px-4 h-9 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                       >
@@ -538,7 +544,7 @@ export function ProductionOrdersScreen() {
               <div className="px-6 pb-6 shrink-0 flex gap-3 border-t border-border pt-4">
                 {detailOrder.status === 'DRAFT' && (
                   <button
-                    onClick={() => handleStart(detailOrder)}
+                    onClick={() => setStartTarget(detailOrder)}
                     disabled={actionBusy}
                     className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
@@ -688,6 +694,17 @@ export function ProductionOrdersScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!startTarget}
+        onClose={() => setStartTarget(null)}
+        onConfirm={handleStart}
+        loading={actionBusy}
+        title={t('manufacturing.startProduction')}
+        message={startTarget ? t('manufacturing.confirmStartOrder', { number: startTarget.orderNumber }) : ''}
+        confirmLabel={t('manufacturing.startProduction')}
+        confirmVariant="primary"
+      />
     </div>
   )
 }

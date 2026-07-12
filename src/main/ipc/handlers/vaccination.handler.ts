@@ -8,6 +8,12 @@ import {
   generateVaccineReminder,
   getUpcomingVaccinations,
 } from '../../services/vaccination.service'
+import {
+  CreateVaccinationRecordSchema,
+  UpdateVaccinationRecordSchema,
+  DeleteVaccinationRecordSchema,
+  CreateVaccineReminderSchema,
+} from '../../validation/vaccination.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -29,27 +35,33 @@ export function register(handle: HandleFn): void {
   handle('vaccinations:create', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    return createVaccinationRecord(payload as Parameters<typeof createVaccinationRecord>[0])
+    const parsed = CreateVaccinationRecordSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createVaccinationRecord(parsed.data)
   })
 
   handle('vaccinations:update', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    return updateVaccinationRecord(payload as Parameters<typeof updateVaccinationRecord>[0])
+    const parsed = UpdateVaccinationRecordSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateVaccinationRecord(parsed.data)
   })
 
   handle('vaccinations:delete', async (payload) => {
     const deny = await requirePermission('billing.void')
     if (deny) return deny
-    const { id } = payload as { id: string }
-    return deleteVaccinationRecord(id)
+    const parsed = DeleteVaccinationRecordSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return deleteVaccinationRecord(parsed.data.id)
   })
 
   handle('vaccinations:createReminder', async (payload) => {
     const deny = await requirePermission('billing.createInvoice')
     if (deny) return deny
-    const { vaccinationRecordId } = payload as { vaccinationRecordId: string }
-    return generateVaccineReminder(vaccinationRecordId)
+    const parsed = CreateVaccineReminderSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateVaccineReminder(parsed.data.vaccinationRecordId)
   })
 
   handle('vaccinations:upcoming', async (payload) => {

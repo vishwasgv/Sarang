@@ -7,6 +7,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -322,6 +323,8 @@ export default function ShootsScreen() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadBookings = useCallback(async (filter?: string) => {
     try {
@@ -402,9 +405,11 @@ export default function ShootsScreen() {
 
   async function handleDelete(id: string) {
     setDeleteError(null)
-    if (!window.confirm('Delete this shoot booking?')) return
+    setDeleting(true)
     const res = await api.shootBooking.delete(id)
+    setDeleting(false)
     if (res.success) {
+      setDeleteTargetId(null)
       setBookings(bs => bs.filter(b => b.id !== id))
       loadKpis()
     } else {
@@ -526,7 +531,7 @@ export default function ShootsScreen() {
                   <button onClick={e => { e.stopPropagation(); setEditBooking(b) }} className="text-gray-400 hover:text-gray-700 p-1 dark:text-slate-500 dark:hover:text-slate-200">
                     <Pencil size={13} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(b.id) }} className="text-gray-300 hover:text-red-500 p-1">
+                  <button onClick={e => { e.stopPropagation(); setDeleteTargetId(b.id) }} className="text-gray-300 hover:text-red-500 p-1">
                     <X size={14} />
                   </button>
                 </div>
@@ -581,6 +586,16 @@ export default function ShootsScreen() {
           onClose={() => { setShowForm(false); setEditBooking(null) }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => deleteTargetId && handleDelete(deleteTargetId)}
+        loading={deleting}
+        title="Delete Shoot Booking"
+        message="Delete this shoot booking?"
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

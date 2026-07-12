@@ -5,6 +5,7 @@ import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useIndustryStore } from '@renderer/app/store/industry.store'
 import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -36,6 +37,7 @@ export function RestaurantTablesScreen() {
   const [closeResult, setCloseResult] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RestaurantTable | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [showDailyCloseConfirm, setShowDailyCloseConfirm] = useState(false)
 
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const qrEnabled = enabledModules.includes('qr_table_ordering')
@@ -158,7 +160,7 @@ export function RestaurantTablesScreen() {
   }
 
   async function handleDailyClose() {
-    if (!window.confirm('Perform daily close? This will mark all occupied tables as available and log a closing summary.')) return
+    setShowDailyCloseConfirm(false)
     setClosingDay(true)
     setCloseResult(null)
     try {
@@ -189,7 +191,7 @@ export function RestaurantTablesScreen() {
             <RefreshCw size={14} /> Refresh
           </button>
           <button
-            onClick={handleDailyClose}
+            onClick={() => setShowDailyCloseConfirm(true)}
             disabled={closingDay}
             className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
             <MoonStar size={14} /> {closingDay ? 'Closing…' : 'End of Day'}
@@ -384,6 +386,16 @@ export function RestaurantTablesScreen() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={showDailyCloseConfirm}
+        onClose={() => setShowDailyCloseConfirm(false)}
+        onConfirm={handleDailyClose}
+        loading={closingDay}
+        title="End of Day"
+        message="Perform daily close? This will mark all occupied tables as available and log a closing summary."
+        confirmLabel="End of Day"
+        confirmVariant="primary"
+      />
     </div>
   )
 }
