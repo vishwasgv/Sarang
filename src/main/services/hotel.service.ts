@@ -453,13 +453,17 @@ export async function checkInBooking(payload: {
       return { success: false, error: { code: 'HTL-032', message: `Cannot check in a booking with status ${booking.status}. Only a CONFIRMED booking can be checked in.` } }
     }
 
+    // Guarantee exactly one primary guest even if the caller didn't mark
+    // one — defense-in-depth rather than trusting every future caller
+    // (renderer, future API consumer) to remember to flag the first guest.
+    const hasPrimary = payload.guests.some((g) => g.isPrimary)
     await db.$transaction(async (tx) => {
       await tx.hotelBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_IN', actualCheckInAt: new Date() } })
       await tx.hotelGuestId.createMany({
-        data: payload.guests.map((g) => ({
+        data: payload.guests.map((g, i) => ({
           bookingId: payload.id, guestName: g.guestName.trim(), idType: g.idType.trim(),
           idNumber: g.idNumber.trim(), nationality: g.nationality?.trim() || 'IN',
-          address: g.address?.trim() || null, isPrimary: g.isPrimary ?? false,
+          address: g.address?.trim() || null, isPrimary: hasPrimary ? (g.isPrimary ?? false) : i === 0,
         })),
       })
       await tx.hotelRoom.update({ where: { id: booking.roomId }, data: { status: 'OCCUPIED' } })
