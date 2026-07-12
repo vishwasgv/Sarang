@@ -22,6 +22,21 @@ const LOCALE_MAP: Record<string, string> = {
   UK: 'en-GB'
 }
 
+// ISO 4217 currencies whose minor unit isn't 2 decimal places. Rounding a
+// JPY or KRW invoice to "100.00" is wrong (they have no subunit in practice);
+// rounding a BHD/KWD/OMR invoice to 2dp silently drops real fils/baisa value.
+// Every currency not listed here defaults to 2, which covers the vast
+// majority (USD, EUR, GBP, INR, AED, SGD, ...).
+const ZERO_DECIMAL_CURRENCIES = new Set(['BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'])
+const THREE_DECIMAL_CURRENCIES = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND'])
+
+export function getCurrencyDecimals(currencyCode?: string | null): number {
+  if (!currencyCode) return 2
+  if (ZERO_DECIMAL_CURRENCIES.has(currencyCode)) return 0
+  if (THREE_DECIMAL_CURRENCIES.has(currencyCode)) return 3
+  return 2
+}
+
 export function formatAmount(amount: number, currencySymbol: string, numberFormat = 'IN', decimals = 2, symbolPosition: 'prefix' | 'suffix' = 'prefix'): string {
   try {
     const locale = LOCALE_MAP[numberFormat] ?? 'en-IN'

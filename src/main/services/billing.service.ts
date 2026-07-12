@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
-import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
+import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { createNotification } from './notification.service'
@@ -107,6 +107,11 @@ export const billingService = {
     const allowNegative = await getAllowNegativeInventory()
     const allowExpiredBatchSale = await getAllowExpiredBatchSale()
     const maxDiscountPercent = await getMaxDiscountPercent()
+    // Decimal places vary by currency (JPY/KRW have none, BHD/KWD/OMR have
+    // 3) — hardcoding 2 everywhere silently mis-rounds every non-2dp
+    // currency's invoice math, not just its display.
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
 
     // Fresh-audit fix (2026-07-12): a B2B customer marked tax-exempt (reverse
     // charge, diplomatic/NGO exemption, etc.) previously had no way to get a
@@ -152,7 +157,7 @@ export const billingService = {
       // grand total going negative, so a large per-line discount offset by other
       // lines could silently understate the true tax owed without ever failing
       // that check. Reject at the line level instead.
-      const lineGross = roundCurrency(item.quantity * item.unitPrice)
+      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
       if ((item.discountAmount ?? 0) > lineGross + 0.01) {
         return { success: false, error: { code: 'INVOC-010', message: `Discount for "${product.productName}" cannot exceed the line's value (${lineGross.toFixed(2)}).` } }
       }
@@ -217,8 +222,8 @@ export const billingService = {
       // Decimal-safe: subtotal/discount/tax/total are computed once via
       // Prisma.Decimal (see currency.service.ts) instead of chained float
       // arithmetic, so per-line rounding error can't creep into lineTax.
-      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscount, effectiveTaxRate)
-      const lineTaxable = roundCurrency(lineSubtotal - lineDiscount)
+      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscount, effectiveTaxRate, currencyDecimals)
+      const lineTaxable = roundCurrency(lineSubtotal - lineDiscount, currencyDecimals)
 
       validatedItems.push({
         productId: item.productId,
@@ -249,19 +254,21 @@ export const billingService = {
     // plain-float reduce — accumulating many lineTax/discount values with
     // `+=` on floats is exactly where binary representation error compounds
     // across a multi-line invoice.
-    const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice))
-    const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount))
+    const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
+    const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
     const globalDiscount = payload.globalDiscount ?? 0
-    const discountAmount = roundCurrency(totalLineDiscount + globalDiscount)
-    const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax))
-    const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount)
-    // Round to nearest whole unit (common in Indian retail cash transactions).
-    // rawTotal is already a clean, drift-free 2-decimal value at this point,
-    // so a single Math.round is exact here — no need for the old
-    // "round(x) - x, then add it back" indirection, which computed the same
-    // result via an extra float subtraction/addition for no benefit.
-    const roundingAmount = roundCurrency(Math.round(rawTotal) - rawTotal)
-    const totalAmount = Math.round(rawTotal)
+    const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
+    const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax), currencyDecimals)
+    const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
+    // Whole-unit cash rounding is an Indian retail convention (rupee coins
+    // are the smallest cash denomination in practice) — applying it to every
+    // currency would be wrong for e.g. a USD invoice, where cents matter.
+    // Only round to whole units for zero-decimal-native currencies (INR
+    // keeps its historical default here) or when the currency already has no
+    // subunit (JPY, KRW, ...); everything else keeps its natural precision.
+    const applyWholeUnitRounding = currencyDecimals === 2 && (businessProfile?.currencyCode ?? 'INR') === 'INR'
+    const totalAmount = applyWholeUnitRounding ? Math.round(rawTotal) : rawTotal
+    const roundingAmount = roundCurrency(totalAmount - rawTotal, currencyDecimals)
 
     // RULE B005: Invoice total cannot be negative
     if (totalAmount < 0) {

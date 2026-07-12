@@ -35,6 +35,7 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(makeProduct(productOverrides)),
     },
     customer: { findUnique: vi.fn().mockResolvedValue(null) },
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencyCode: 'INR' }) },
     invoice: {
       create: vi.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-2024-000001', paidAmount: 0 }),
       findUnique: vi.fn(),
