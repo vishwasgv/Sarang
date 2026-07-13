@@ -10,7 +10,7 @@ import {
 import {
   TrendingUp, TrendingDown, ShoppingCart, Package, Users, Truck,
   DollarSign, AlertTriangle, RefreshCw, AlertCircle, CheckCircle, X,
-  Utensils, Store, HardHat, Layers, Activity, Zap, Gem
+  Utensils, Store, HardHat, Layers, Activity, Zap, Gem, Sparkles
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
@@ -107,12 +107,14 @@ export function DashboardScreen() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(
     () => localStorage.getItem('sarang-onboarding-dismissed') === '1'
   )
+  const [aiQuestion, setAiQuestion] = useState('')
 
   // Permissions
   const canViewRevenue = hasPermission('analytics.viewRevenue')
   const canViewInventory = hasPermission('analytics.viewInventory')
   const canViewProfit = hasPermission('analytics.viewProfit')
   const canViewExpenses = hasPermission('analytics.viewExpenses')
+  const canUseAi = isModuleEnabled('ai_assistant') && hasPermission('ai.query')
 
   // Refs to avoid stale closures and double-fetch
   const periodRef = useRef<Period>('30d')
@@ -244,6 +246,19 @@ export function DashboardScreen() {
     setOnboardingDismissed(true)
   }
 
+  // The owner types the question here on the home screen, but the answer is
+  // rendered on the dedicated AI Assistant screen (model load / inference
+  // has nowhere sensible to live inline on the Dashboard) — the question is
+  // handed over via router state and AiAssistantScreen auto-asks it on
+  // arrival (see that screen's own initialQuestion effect).
+  function handleAskFromDashboard(e: React.FormEvent) {
+    e.preventDefault()
+    const q = aiQuestion.trim()
+    if (!q) return
+    setAiQuestion('')
+    navigate('/ai-assistant', { state: { initialQuestion: q } })
+  }
+
   const hasProducts = (kpis?.inventoryStats?.total ?? 0) > 0
   const hasCustomers = (kpis?.customerCount ?? 0) > 0
   const hasInvoice = (kpis?.totalInvoices ?? 0) > 0
@@ -287,6 +302,32 @@ export function DashboardScreen() {
           {t('common.refresh')}
         </button>
       </div>
+
+      {/* ─── Ask Sarang (AI Assistant entry point) ───────────────────────
+          Placed first, right under the header — the most visible slot on
+          the home screen — so it's the first thing a business owner sees,
+          not buried in the Quick Actions grid below. Owner types the
+          question right here; the answer renders on the dedicated AI
+          Assistant screen (handleAskFromDashboard hands the question over
+          via router state). */}
+      {canUseAi && (
+        <form onSubmit={handleAskFromDashboard}
+          className="w-full flex items-center gap-3 bg-gradient-to-r from-brand/10 to-brand/5 border border-brand/20 rounded-xl p-3 focus-within:border-brand/40 transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-brand/20 flex items-center justify-center shrink-0">
+            <Sparkles size={18} className="text-brand" />
+          </div>
+          <input
+            value={aiQuestion}
+            onChange={(e) => setAiQuestion(e.target.value)}
+            placeholder="Ask Sarang about your sales, stock, customers, or profit..."
+            className="flex-1 h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-dark dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand placeholder:text-slate-400"
+          />
+          <button type="submit" disabled={!aiQuestion.trim()}
+            className="h-11 px-4 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand/90 disabled:opacity-40 transition-colors shrink-0">
+            Ask →
+          </button>
+        </form>
+      )}
 
       {/* ─── Onboarding ───────────────────────────────────────────────── */}
       {showOnboarding && (

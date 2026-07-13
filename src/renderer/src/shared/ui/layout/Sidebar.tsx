@@ -16,7 +16,7 @@ import {
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
-  Hotel, BedDouble,
+  Hotel, BedDouble, Sparkles,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -37,6 +37,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', i18nKey: 'nav.dashboard', path: '/', icon: LayoutDashboard },
+  // Phase 57 — AI Assistant. Cross-cutting, opt-in (off by default for every
+  // business type), English-only (no i18nKey — same convention as other
+  // languageLock:'en'-adjacent additions), fixed placement per
+  // AI_ASSISTANT_MASTER_PROMPT.md Section 5.1.
+  { label: 'Ask Sarang', path: '/ai-assistant', icon: Sparkles, permissionKey: 'ai.query', requiredModule: 'ai_assistant' },
   { label: 'Billing', i18nKey: 'nav.billing', path: '/billing', icon: ShoppingCart, permissionKey: 'billing.view' },
   { label: 'Quotations', i18nKey: 'nav.quotations', path: '/billing/quotations', icon: FileText, permissionKey: 'billing.view' },
   { label: 'Credit Notes', i18nKey: 'nav.creditNotes', path: '/billing/credit-notes', icon: MinusCircle, permissionKey: 'billing.view' },

@@ -3,7 +3,7 @@
 **App:** Sarang Business OS Lite  
 **Company:** Aszurex · Trust Beyond Limits  
 **Platform:** Windows 10/11 x64  
-**Target installer size:** < 150 MB
+**Target installer size:** < 150 MB for the core app — **superseded for any build with the AI Assistant (Phase 57) module included**, per explicit founder instruction ("once downloaded, internet should never be required — proceed even if it's 2GB"). With the AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct, Apache 2.0), real measured additive cost is ~1.03GB (941MB model + 45MB pruned native binary + 42MB JS bundle), for an estimated total of ~1.15-1.3GB uncompressed — confirmed via an actual packaged build (Phase 57.1), not a projection. Final LZMA-compressed installer size should be re-measured with a real `npm run dist` once this ships; the compressible portion (Electron/app.asar) will shrink somewhat, the already-quantized GGUF model will not. See `AI_ASSISTANT_MASTER_PROMPT.md` and `PHASE_57_TECHNICAL_SPEC.md` for the full decision record.
 
 ---
 

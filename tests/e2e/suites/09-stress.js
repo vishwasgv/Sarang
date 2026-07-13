@@ -25,6 +25,19 @@ function newId() { return crypto.randomUUID() }
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
+  // Self-healing pre-cleanup, added 2026-07-13: this suite's own teardown
+  // (the `finally` block below) only runs if the process gets a normal
+  // chance to unwind — a force-killed process (e.g. `taskkill /F` on a
+  // stray electron.exe from a previous interrupted run, which does happen
+  // in real dev-loop usage) skips it entirely, orphaning the "Heavy Ledger
+  // Customer" fixture with a stale nonzero outstandingBalance and zero
+  // backing ledger rows. Found live: exactly this artifact was still
+  // sitting in the dev DB from an earlier interrupted run, and was the
+  // single largest contributor to a real 3-way outstanding-balance
+  // discrepancy investigation. Running the same cleanup BEFORE this suite's
+  // own setup makes each run self-healing regardless of how the previous
+  // one ended, instead of accumulating orphans indefinitely.
+  h.cleanupByNamePrefix(TEST_PREFIX)
   const app = await h.launchApp()
 
   try {

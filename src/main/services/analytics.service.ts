@@ -386,11 +386,19 @@ export async function getRevenueTrend(
 // getTopProducts — by revenue (all-time)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getTopProducts(limit: number = 10): Promise<TopProduct[]> {
+// Phase 57 (AI Assistant) added the optional dateFrom/dateTo params — the
+// original all-time-only call sites (Dashboard) pass neither and are
+// unaffected; inventory.topRevenueProducts needs period-scoping.
+export async function getTopProducts(limit: number = 10, dateFrom?: string, dateTo?: string): Promise<TopProduct[]> {
   const db = getPrisma()
 
   const items = await db.invoiceItem.findMany({
-    where: { invoice: { status: 'ACTIVE' } },
+    where: {
+      invoice: {
+        status: 'ACTIVE',
+        ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
+      }
+    },
     select: {
       productId: true,
       quantity: true,

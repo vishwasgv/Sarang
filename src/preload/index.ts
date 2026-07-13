@@ -1007,6 +1007,11 @@ const api: IpcChannels = {
   logisticsAnalytics: {
     get: (p?: unknown) => invoke('logisticsAnalytics:get', p),
   },
+  ai: {
+    query: (p: { question: string }) => invoke('ai:query', p),
+    getStatus: () => invoke('ai:getStatus'),
+    clearHistory: () => invoke('ai:clearHistory'),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
   Info, Shield, Plus, Edit2, Trash2, Check, X, Star, Layers, RefreshCw, Globe, Moon, Printer,
-  ChevronRight, Eye, EyeOff, Barcode, ToggleRight
+  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles
 } from 'lucide-react'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useTranslation } from 'react-i18next'
@@ -111,6 +111,14 @@ const SECTIONS: SettingsSection[] = [
     status: 'available'
   },
   {
+    id: 'aiAssistant',
+    label: 'AI Assistant',
+    description: 'Ask your business simple questions — fully offline, on this device only',
+    icon: <Sparkles size={18} />,
+    permission: 'settings.modify',
+    status: 'available'
+  },
+  {
     id: 'security',
     label: 'Security',
     description: 'Change your password',
@@ -203,6 +211,7 @@ export function SettingsScreen() {
         {activeSection === 'appearance' && <AppearanceSection />}
         {activeSection === 'businessFeatures' && <BusinessFeaturesSection />}
         {activeSection === 'barcode' && <BarcodeSection />}
+        {activeSection === 'aiAssistant' && <AiAssistantSection />}
         {activeSection === 'security' && <SecuritySection />}
       </div>
     </div>
@@ -1647,6 +1656,98 @@ function BarcodeSection() {
           {backfillResult && <p className="text-xs text-success mt-2">{backfillResult}</p>}
         </Card>
       )}
+    </div>
+  )
+}
+
+// Phase 57 — AI Assistant. Same opt-in shape as BarcodeSection: default OFF
+// for every business type, nothing changes until the owner turns it on.
+// Deliberately never names the underlying model/runtime here or anywhere
+// else user-facing — "Sarang AI Assistant" only.
+function AiAssistantSection() {
+  const { enabledModules, updateEnabledModules } = useIndustryStore()
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const [saving, setSaving] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  const on = enabledModules.includes('ai_assistant')
+
+  async function toggle(next: boolean) {
+    setSaving(true)
+    try {
+      const updated = next ? [...enabledModules, 'ai_assistant' as never] : enabledModules.filter((m) => m !== 'ai_assistant')
+      const res = await updateEnabledModules(updated as typeof enabledModules)
+      if (res.success) toastSuccess(next ? 'Enabled' : 'Disabled', next ? 'AI Assistant is now available from the sidebar.' : 'AI Assistant turned off.')
+      else toastError('Error', res.error?.message ?? 'Could not update.')
+    } catch {
+      toastError('Error', 'Could not update.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function clearHistory() {
+    setClearing(true)
+    try {
+      const res = await window.api.ai.clearHistory()
+      if (res.success) toastSuccess('Cleared', 'AI question history has been cleared.')
+      else toastError('Error', res.error?.message ?? 'Could not clear history.')
+    } catch {
+      toastError('Error', 'Could not clear history.')
+    } finally {
+      setClearing(false)
+      setShowClearConfirm(false)
+    }
+  }
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-dark dark:text-slate-100">AI Assistant</h3>
+        <p className="text-sm text-slate-500 mt-1">Ask simple questions about your sales, inventory, customers, suppliers, and profit — answered entirely on this device. No internet connection is used, ever.</p>
+      </div>
+
+      <Card padding="none">
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="pr-4">
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">Enable AI Assistant</p>
+            <p className="text-xs text-slate-400 mt-0.5">Adds "Ask Sarang" to the sidebar. Off by default — nothing changes until you turn this on.</p>
+          </div>
+          <button
+            onClick={() => toggle(!on)}
+            disabled={saving}
+            className={cn(
+              'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50',
+              on ? 'bg-brand' : 'bg-slate-200'
+            )}
+            role="switch" aria-checked={on}
+          >
+            <span className={cn(
+              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200',
+              on ? 'translate-x-5' : 'translate-x-0'
+            )} />
+          </button>
+        </div>
+      </Card>
+
+      {on && (
+        <Card padding="none" className="px-5 py-4">
+          <p className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">Clear Question History</p>
+          <p className="text-xs text-slate-400 mb-3">Every question asked is logged locally for your own review (visible under Audit Log) — never sent anywhere. This clears that record.</p>
+          <Button size="sm" variant="secondary" onClick={() => setShowClearConfirm(true)} loading={clearing}>Clear History</Button>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={clearHistory}
+        loading={clearing}
+        title="Clear AI Question History"
+        message="This permanently deletes the local record of every question asked. This cannot be undone."
+        confirmLabel="Clear History"
+      />
     </div>
   )
 }

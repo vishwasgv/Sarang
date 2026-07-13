@@ -1086,6 +1086,13 @@ export interface IpcChannels {
   logisticsAnalytics: {
     get: (payload?: { fromDate?: string; toDate?: string }) => Promise<ApiResponse>
   }
+  // Phase 57 — AI Assistant. Local, offline natural-language business
+  // queries. See AI_ASSISTANT_MASTER_PROMPT.md / PHASE_57_TECHNICAL_SPEC.md.
+  ai: {
+    query: (payload: { question: string }) => Promise<ApiResponse>
+    getStatus: () => Promise<ApiResponse>
+    clearHistory: () => Promise<ApiResponse>
+  }
 }
 
 export interface SetupPayload {

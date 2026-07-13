@@ -68,6 +68,9 @@ export type TemplateModule =
   // lifecycle, guest ID compliance capture, in-stay charges, checkout
   // billing) — see industry-template.service.ts's header comment.
   | 'hotel_bookings'
+  // Phase 57 — AI Assistant, cross-cutting opt-in, see
+  // industry-template.service.ts's header comment.
+  | 'ai_assistant'
 
 interface IndustryState {
   businessType: string

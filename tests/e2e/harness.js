@@ -203,7 +203,17 @@ function cleanupByNamePrefix(prefix) {
     }
     for (const cid of custIds) {
       db.prepare('DELETE FROM CustomerLedger WHERE customerId = ?').run(cid)
-      try { db.prepare('DELETE FROM Customer WHERE id = ?').run(cid) } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(cid) }
+      // Real bug found 2026-07-13 (live investigation into a 3-way
+      // outstanding-balance discrepancy): the soft-delete fallback used to
+      // leave `outstandingBalance` untouched even though the customer's
+      // CustomerLedger rows (which the column is supposed to mirror) were
+      // just deleted above — a soft-deleted customer with a nonzero stale
+      // balance and zero backing ledger history. Confirmed as the root
+      // cause for 2 of 3 stale customers found in the dev DB. Reset it in
+      // both branches, not just the soft-delete one, since a hard delete
+      // removes the row and can't leave a stale value, but a fallback that
+      // ever changes shape shouldn't silently reintroduce this.
+      try { db.prepare('DELETE FROM Customer WHERE id = ?').run(cid) } catch { db.prepare('UPDATE Customer SET isActive = 0, outstandingBalance = 0 WHERE id = ?').run(cid) }
     }
     for (const pid of prodIds) {
       db.prepare('DELETE FROM Inventory WHERE productId = ?').run(pid)

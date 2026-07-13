@@ -60,6 +60,7 @@ model User {
 
   role               Role                @relation(fields: [roleId], references: [id])
   auditLogs          AuditLog[]
+  aiQueryLogs        AiQueryLog[]
   invoices           Invoice[]           @relation("InvoiceCreatedBy")
   expenses           Expense[]           @relation("ExpenseCreatedBy")
   payments           Payment[]           @relation("PaymentRecordedBy")
@@ -3772,5 +3773,28 @@ model MetalExchange {
 
   @@index([customerId])
   @@index([invoiceId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI ASSISTANT (Phase 57)
+// ─────────────────────────────────────────────────────────────────────────────
+// Local-only audit log of AI questions — never transmitted anywhere, respects
+// the same audit-log access permissions as the rest of the app (see
+// AI_ASSISTANT_MASTER_PROMPT.md Section 4/5.7, PHASE_57_TECHNICAL_SPEC.md
+// Section 4). Additive-only model, no existing table touched.
+model AiQueryLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  question        String // raw user text, for the owner's own audit review
+  matchedTemplate String? // e.g. "sales.totalToday", null if out_of_scope/no-match
+  matchedCategory String // sales | inventory | customers | suppliers | credit | finance | vertical | out_of_scope
+  success         Boolean // false if refusal/fallback fired
+  executionTimeMs Int
+  createdAt       DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
   @@index([createdAt])
 }

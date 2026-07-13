@@ -192,7 +192,15 @@ const PERMISSIONS = [
   // which Cashier already has).
   { permissionKey: 'jewellery.view', permissionName: 'View Metal Rates & Exchanges' },
   { permissionKey: 'jewellery.manageRates', permissionName: 'Set Today\'s Metal Rates' },
-  { permissionKey: 'jewellery.manageExchanges', permissionName: 'Record Old-Metal Exchanges' }
+  { permissionKey: 'jewellery.manageExchanges', permissionName: 'Record Old-Metal Exchanges' },
+  // Phase 57 — AI Assistant. Deliberately Admin/Manager only, not Cashier/Staff:
+  // the query catalog spans profit (analytics.viewProfit is Admin-only
+  // elsewhere), supplier purchase volume, and full customer/credit visibility
+  // all in one surface — granting it to a role whose normal screens don't show
+  // all of that would be exactly the side-channel the spec's permission-parity
+  // requirement forbids. Admin/Manager already have that breadth on their
+  // normal screens, so this is genuine parity, not a new exposure.
+  { permissionKey: 'ai.query', permissionName: 'Ask the AI Assistant Business Questions' }
 ]
 
 // Role → permission assignments from PERMISSIONS_MATRIX.md
@@ -231,7 +239,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'sales.view', 'sales.manage',
     'rental.view', 'rental.manage',
     'hotel.view', 'hotel.manage',
-    'jewellery.view', 'jewellery.manageRates', 'jewellery.manageExchanges'
+    'jewellery.view', 'jewellery.manageRates', 'jewellery.manageExchanges',
+    'ai.query'
   ],
   Cashier: [
     'auth.login', 'auth.changeOwnPassword',

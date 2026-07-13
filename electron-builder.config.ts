@@ -29,7 +29,18 @@ const config: Configuration = {
     // not even the sqlite one. Pure dead weight in every installer otherwise.
     '!node_modules/@prisma/client/runtime/query_engine_bg.*.wasm-base64.*',
     '!node_modules/@prisma/client/runtime/query_compiler_bg.*.wasm-base64.*',
-    '!node_modules/@prisma/client/runtime/*.wasm'
+    '!node_modules/@prisma/client/runtime/*.wasm',
+    // Phase 57 — AI Assistant. node-llama-cpp ships prebuilt native binaries
+    // for 5 platform/GPU variants (~695MB combined on a plain npm install);
+    // only the Windows CPU-only build is ever used (Section 3 of the master
+    // prompt requires gpu:false explicitly — GPU auto-detection crashes with
+    // an out-of-VRAM error on real integrated-GPU hardware). Excluding the
+    // other 4 saves ~650MB of dead weight in every installer. Validated via
+    // a real isolated packaged build (Phase 57.1) before writing this.
+    '!node_modules/@node-llama-cpp/win-arm64',
+    '!node_modules/@node-llama-cpp/win-x64-cuda',
+    '!node_modules/@node-llama-cpp/win-x64-cuda-ext',
+    '!node_modules/@node-llama-cpp/win-x64-vulkan'
   ],
 
   // Unpack native addons from the ASAR — Node.js cannot dlopen() from inside
@@ -72,6 +83,17 @@ const config: Configuration = {
     },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
+    // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,
+    // Apache 2.0 — see AI_ASSISTANT_MASTER_PROMPT.md for the full model/
+    // license/benchmark decision record). Shipped inside the installer, never
+    // downloaded on first run, per the founder's explicit "internet should
+    // never be required, even if it's 2GB" instruction. The .gguf file itself
+    // is not tracked in git (resources/models/README.md) — a real installer
+    // build requires placing it manually first.
+    {
+      from: 'resources/models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
+      to: 'models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf'
+    }
   ],
 
   // ── Windows ─────────────────────────────────────────────────────────────────

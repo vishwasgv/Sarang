@@ -19,3 +19,10 @@ release/
 /2/
 *.sarang-backup
 *.tsbuildinfo
+
+# AI Assistant (Phase 57) — the bundled local LLM model file (~941MB) is a
+# downloadable build asset, not source. Committing it would bloat the repo
+# from ~33MB to ~1GB permanently (git history never shrinks without a
+# rewrite). Place Qwen2.5-1.5B-Instruct-Q4_K_M.gguf here manually before
+# running a real installer build (npm run dist) — see resources/models/README.md.
+resources/models/*.gguf

@@ -149,6 +149,13 @@ export type TemplateModule =
   // charges, and checkout billing under one flag — same "one flag per
   // vertical's whole workflow" convention as rental_bookings/blood_bank.
   | 'hotel_bookings'
+  // Phase 57 — AI Assistant. Local, offline natural-language business
+  // queries (see AI_ASSISTANT_MASTER_PROMPT.md). Cross-cutting — available
+  // to every business type, not vertical-specific — but deliberately never
+  // added to TEMPLATE_DEFAULTS below (same opt-in convention as
+  // barcode_generation/barcode_printing/loose_billing): an owner turns it on
+  // explicitly in Settings, until then this phase is entirely dormant.
+  | 'ai_assistant'
 
 export interface TemplateConfig {
   businessType: string

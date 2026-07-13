@@ -125,7 +125,15 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           window.api.products.list({ isActive: true, limit: 500 })
         ])
         if (sRes.success) {
-          setSuppliers(sRes.data as Supplier[])
+          // suppliers.list returns a paginated wrapper ({ suppliers, total,
+          // page, limit, pages }), not a bare array — casting sRes.data
+          // straight to Supplier[] (as this used to) left `suppliers` state
+          // holding that wrapper object, and every suppliers.map() below
+          // threw "suppliers.map is not a function", making the Purchase
+          // Order form's supplier dropdown permanently empty/broken. Found
+          // live 2026-07-13 while setting up test data, not a hypothetical.
+          const d = sRes.data as { suppliers: Supplier[] }
+          setSuppliers(d.suppliers ?? [])
         } else {
           toastError('Error', sRes.error?.message ?? 'Failed to load suppliers.')
         }

@@ -38,6 +38,7 @@ import { register as registerRental } from './handlers/rental.handler'
 import { register as registerHotel } from './handlers/hotel.handler'
 import { register as registerMetalRate } from './handlers/metal-rate.handler'
 import { register as registerMetalExchange } from './handlers/metal-exchange.handler'
+import { register as registerAi } from './handlers/ai.handler'
 import { register as registerDrawingRevision } from './handlers/drawing-revision.handler'
 import { register as registerSiteVisit } from './handlers/site-visit.handler'
 import { register as registerQuotations } from './handlers/quotation.handler'
@@ -182,6 +183,7 @@ export function registerAllIpcHandlers(): void {
   registerMetalExchange(h)
   registerDrawingRevision(h)
   registerSiteVisit(h)
+  registerAi(h)
   registerQuotations(h)
   registerCreditNotes(h)
   registerDebitNotes(h)
