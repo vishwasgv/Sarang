@@ -43,7 +43,8 @@
     "deliveryChallan": "Bon de Livraison",
     "freightLedger": "Registre de Fret",
     "logisticsAnalytics": "Analyses Logistiques",
-    "tailoring": "Couture"
+    "tailoring": "Couture",
+    "manual": "Manuel"
   },
   "common": {
     "save": "Enregistrer",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "Impossible de calculer le prix du bijou. Vérifiez le cours et rajoutez cet article.",
     "priceNotSetTitle": "Prix du Bijou Non Défini",
     "priceNotSetDesc": "{{productName}} n'a pas encore de prix — définissez le cours du jour dans Bijouterie → Cours des Métaux, puis retirez et rajoutez cet article."
+  },
+  "manual": {
+    "yourType": "Le vôtre",
+    "downloadPdf": "Télécharger le manuel (PDF)",
+    "comingSoon": "Ce chapitre est en cours de rédaction et sera bientôt disponible.",
+    "groupGettingStarted": "Premiers Pas",
+    "groupUniversal": "Fonctionnalités Universelles",
+    "groupAi": "Assistant IA",
+    "groupBusiness": "Types d'Entreprise"
   }
 }

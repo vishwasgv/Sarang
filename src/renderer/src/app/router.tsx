@@ -33,6 +33,7 @@ import { RecipesScreen } from '@modules/restaurant/ui/RecipesScreen'
 import { ReturnScreen } from '@modules/retail/ui/ReturnScreen'
 import { IndustrySettingsScreen } from '@modules/industry/ui/IndustrySettingsScreen'
 import { AboutScreen } from '@modules/settings/ui/AboutScreen'
+import { ManualScreen } from '@modules/manual/ui/ManualScreen'
 import { DisclaimerScreen } from '@modules/disclaimer/ui/DisclaimerScreen'
 import { BackupPromptScreen } from '@modules/backup/ui/BackupPromptScreen'
 import { BulkOrderScreen } from '@modules/distributor/ui/BulkOrderScreen'
@@ -348,6 +349,7 @@ export function AppRouter() {
         <Route path="/audit" element={<ProtectedRoute permission="audit.view"><AuditLogsScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute permission="settings.view"><SettingsScreen /></ProtectedRoute>} />
         <Route path="/about" element={<AboutScreen />} />
+        <Route path="/manual/*" element={<ManualScreen />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

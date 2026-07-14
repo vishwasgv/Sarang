@@ -43,7 +43,8 @@
     "deliveryChallan": "إذن التسليم",
     "freightLedger": "سجل الشحن",
     "logisticsAnalytics": "تحليلات اللوجستيات",
-    "tailoring": "التفصيل والخياطة"
+    "tailoring": "التفصيل والخياطة",
+    "manual": "الدليل"
   },
   "common": {
     "save": "حفظ",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "تعذر حساب سعر المجوهرات. يرجى التحقق من السعر وإعادة إضافة هذا الصنف.",
     "priceNotSetTitle": "سعر المجوهرات غير محدد",
     "priceNotSetDesc": "{{productName}} ليس له سعر بعد — حدد سعر اليوم في المجوهرات ← أسعار المعادن، ثم احذف هذا الصنف وأضفه مرة أخرى."
+  },
+  "manual": {
+    "yourType": "نوعك",
+    "downloadPdf": "تنزيل الدليل (PDF)",
+    "comingSoon": "هذا الفصل قيد الإعداد وسيكون متاحًا قريبًا.",
+    "groupGettingStarted": "البدء",
+    "groupUniversal": "الميزات الشاملة",
+    "groupAi": "مساعد الذكاء الاصطناعي",
+    "groupBusiness": "أنواع الأعمال"
   }
 }

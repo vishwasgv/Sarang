@@ -43,7 +43,8 @@
     "deliveryChallan": "Surat Jalan",
     "freightLedger": "Buku Besar Ongkir",
     "logisticsAnalytics": "Analitik Logistik",
-    "tailoring": "Penjahitan"
+    "tailoring": "Penjahitan",
+    "manual": "Manual"
   },
   "common": {
     "save": "Simpan",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "Tidak dapat menghitung harga perhiasan. Periksa harga dan tambahkan kembali barang ini.",
     "priceNotSetTitle": "Harga Perhiasan Belum Ditetapkan",
     "priceNotSetDesc": "{{productName}} belum memiliki harga — tetapkan harga hari ini di Perhiasan → Harga Logam, lalu hapus dan tambahkan kembali barang ini."
+  },
+  "manual": {
+    "yourType": "Milik Anda",
+    "downloadPdf": "Unduh Manual (PDF)",
+    "comingSoon": "Bab ini sedang ditulis dan akan segera tersedia.",
+    "groupGettingStarted": "Memulai",
+    "groupUniversal": "Fitur Universal",
+    "groupAi": "Asisten AI",
+    "groupBusiness": "Jenis Bisnis"
   }
 }

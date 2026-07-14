@@ -43,7 +43,8 @@
     "deliveryChallan": "डिलीवरी चालान",
     "freightLedger": "भाड़ा लेजर",
     "logisticsAnalytics": "लॉजिस्टिक्स विश्लेषण",
-    "tailoring": "टेलरिंग"
+    "tailoring": "टेलरिंग",
+    "manual": "मैनुअल"
   },
   "common": {
     "save": "सहेजें",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "ज्वेलरी की कीमत की गणना नहीं हो सकी। कृपया दर जांचें और इस वस्तु को फिर से जोड़ें।",
     "priceNotSetTitle": "ज्वेलरी की कीमत सेट नहीं है",
     "priceNotSetDesc": "{{productName}} की अभी तक कोई कीमत नहीं है — ज्वेलरी → धातु दरें में आज की दर सेट करें, फिर इस वस्तु को हटाकर फिर से जोड़ें।"
+  },
+  "manual": {
+    "yourType": "आपका प्रकार",
+    "downloadPdf": "मैनुअल डाउनलोड करें (PDF)",
+    "comingSoon": "यह अध्याय अभी लिखा जा रहा है और जल्द ही उपलब्ध होगा।",
+    "groupGettingStarted": "शुरुआत करें",
+    "groupUniversal": "सार्वभौमिक सुविधाएँ",
+    "groupAi": "एआई असिस्टेंट",
+    "groupBusiness": "व्यवसाय प्रकार"
   }
 }

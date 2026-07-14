@@ -43,7 +43,8 @@
     "deliveryChallan": "Guia de Remessa",
     "freightLedger": "Livro de Fretes",
     "logisticsAnalytics": "Análise de Logística",
-    "tailoring": "Alfaiataria"
+    "tailoring": "Alfaiataria",
+    "manual": "Manual"
   },
   "common": {
     "save": "Salvar",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "Não foi possível calcular o preço da joia. Verifique a cotação e adicione este item novamente.",
     "priceNotSetTitle": "Preço da Joia Não Definido",
     "priceNotSetDesc": "{{productName}} ainda não tem preço — defina a cotação de hoje em Joalheria → Cotações de Metais, depois remova e adicione este item novamente."
+  },
+  "manual": {
+    "yourType": "Seu",
+    "downloadPdf": "Baixar Manual (PDF)",
+    "comingSoon": "Este capítulo está sendo escrito e estará disponível em breve.",
+    "groupGettingStarted": "Primeiros Passos",
+    "groupUniversal": "Recursos Universais",
+    "groupAi": "Assistente de IA",
+    "groupBusiness": "Tipos de Negócio"
   }
 }

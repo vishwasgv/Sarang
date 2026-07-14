@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Package, Users, Truck, Receipt, ArrowRight, X } from 'lucide-react'
+import { Search, Package, Users, Truck, Receipt, HelpCircle, ArrowRight, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
+import { MANUAL_CHAPTERS } from '@modules/manual/manifest'
+import { getChapterTitle } from '@modules/manual/content-loader'
 
 interface SearchProduct { id: string; productName: string; sku?: string | null; sellingPrice: number }
 interface SearchCustomer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
@@ -34,6 +37,8 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const locale = i18n.language
   const profile = useBusinessStore(s => s.profile)
   const sym = profile?.currencySymbol ?? '₹'
   const [query, setQuery] = useState('')
@@ -69,7 +74,25 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, search])
 
-  const flatItems: ResultItem[] = results ? [
+  // Manual chapters are static content already in the renderer bundle — filtered locally,
+  // no IPC round-trip needed (unlike products/customers/suppliers/invoices above). Gate uses
+  // the same untrimmed-length threshold as the remote search below (`q.length < 2`) so a
+  // whitespace-padded short query doesn't suppress Manual results while other categories
+  // still search — only the match itself is done against the trimmed, lowercased query.
+  const manualMatches = query.length >= 2
+    ? MANUAL_CHAPTERS
+        .map(c => ({ chapter: c, title: getChapterTitle(locale, c.slug, c.title) }))
+        .filter(({ title }) => title.toLowerCase().includes(query.trim().toLowerCase()))
+        .slice(0, 5)
+    : []
+
+  const flatItems: ResultItem[] = [
+    ...manualMatches.map(({ chapter, title }) => ({
+      id: chapter.slug, label: title, sub: 'Manual',
+      path: `/manual/${chapter.slug}`, category: 'Manual',
+      icon: <HelpCircle size={14} className="text-brand" />
+    })),
+    ...(results ? [
     ...results.products.map(p => ({
       id: p.id, label: p.productName, sub: `${sym}${p.sellingPrice.toFixed(2)}${p.sku ? ` · ${p.sku}` : ''}`,
       path: '/products', category: 'Products',
@@ -90,7 +113,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       path: `/billing/${inv.id}`, category: 'Invoices',
       icon: <Receipt size={14} className="text-slate-500" />
     })),
-  ] : []
+    ] : [])
+  ]
 
   const totalItems = flatItems.length
 

@@ -12,6 +12,7 @@
     "documents": "Documents",
     "backup": "Backup",
     "settings": "Settings",
+    "manual": "Manual",
     "about": "About",
     "cashClose": "Cash Close",
     "returns": "Returns",
@@ -1368,6 +1369,15 @@
     "industryModules": "Industry Modules",
     "enableModule": "Enable Module",
     "disableModule": "Disable Module"
+  },
+  "manual": {
+    "yourType": "Yours",
+    "downloadPdf": "Download Manual (PDF)",
+    "comingSoon": "This chapter is being written and will be available soon.",
+    "groupGettingStarted": "Getting Started",
+    "groupUniversal": "Universal Features",
+    "groupAi": "AI Assistant",
+    "groupBusiness": "Business Types"
   },
   "about": {
     "title": "About Sarang",

@@ -16,7 +16,7 @@ import {
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
-  Hotel, BedDouble, Sparkles,
+  Hotel, BedDouble, Sparkles, HelpCircle,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -171,6 +171,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Backup', i18nKey: 'nav.backup', path: '/backup', icon: HardDrive, permissionKey: 'backup.view' },
   { label: 'Audit Log', i18nKey: 'nav.auditLog', path: '/audit', icon: ScrollText, permissionKey: 'audit.view' },
   { label: 'Settings', i18nKey: 'nav.settings', path: '/settings', icon: Settings, permissionKey: 'settings.view' },
+  // Phase 56 — User Manual. Read-only reference content, no permissionKey — every
+  // role should be able to look up how to use the product, same convention as About.
+  { label: 'Manual', i18nKey: 'nav.manual', path: '/manual', icon: HelpCircle },
   { label: 'About', i18nKey: 'nav.about', path: '/about', icon: Info }
 ]
 

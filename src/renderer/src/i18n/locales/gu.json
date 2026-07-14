@@ -43,7 +43,8 @@
     "deliveryChallan": "ડિલિવરી ચલણ",
     "freightLedger": "ભાડું ખાતાવહી",
     "logisticsAnalytics": "લોજિસ્ટિક્સ વિશ્લેષણ",
-    "tailoring": "ટેલરિંગ"
+    "tailoring": "ટેલરિંગ",
+    "manual": "મેન્યુઅલ"
   },
   "common": {
     "save": "સાચવો",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "ઘરેણાની કિંમતની ગણતરી કરી શકાઈ નથી. કૃપા કરી ભાવ તપાસો અને આ વસ્તુ ફરીથી ઉમેરો.",
     "priceNotSetTitle": "ઘરેણાની કિંમત સેટ નથી",
     "priceNotSetDesc": "{{productName}} ને હજુ કિંમત નથી — ઘરેણાં → ધાતુના ભાવ માં આજનો ભાવ સેટ કરો, પછી આ વસ્તુ દૂર કરી ફરીથી ઉમેરો."
+  },
+  "manual": {
+    "yourType": "તમારો પ્રકાર",
+    "downloadPdf": "મેન્યુઅલ ડાઉનલોડ કરો (PDF)",
+    "comingSoon": "આ પ્રકરણ હજુ લખાઈ રહ્યું છે અને ટૂંક સમયમાં ઉપલબ્ધ થશે.",
+    "groupGettingStarted": "શરૂઆત કરો",
+    "groupUniversal": "સાર્વત્રિક સુવિધાઓ",
+    "groupAi": "એઆઈ સહાયક",
+    "groupBusiness": "વ્યવસાય પ્રકારો"
   }
 }

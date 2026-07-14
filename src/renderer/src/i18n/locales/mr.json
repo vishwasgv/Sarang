@@ -43,7 +43,8 @@
     "deliveryChallan": "डिलिव्हरी चलन",
     "freightLedger": "मालवाहतूक खातेवही",
     "logisticsAnalytics": "लॉजिस्टिक्स विश्लेषण",
-    "tailoring": "टेलरिंग"
+    "tailoring": "टेलरिंग",
+    "manual": "मॅन्युअल"
   },
   "common": {
     "save": "जतन करा",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "दागिन्याची किंमत मोजता आली नाही. कृपया दर तपासा आणि ही वस्तू पुन्हा जोडा.",
     "priceNotSetTitle": "दागिन्याची किंमत सेट नाही",
     "priceNotSetDesc": "{{productName}} ला अद्याप किंमत नाही — दागिने → धातू दर मध्ये आजचा दर सेट करा, नंतर ही वस्तू काढून पुन्हा जोडा."
+  },
+  "manual": {
+    "yourType": "तुमचा प्रकार",
+    "downloadPdf": "मॅन्युअल डाउनलोड करा (PDF)",
+    "comingSoon": "हा अध्याय सध्या लिहिला जात आहे आणि लवकरच उपलब्ध होईल.",
+    "groupGettingStarted": "सुरुवात करा",
+    "groupUniversal": "सार्वत्रिक वैशिष्ट्ये",
+    "groupAi": "एआय सहाय्यक",
+    "groupBusiness": "व्यवसाय प्रकार"
   }
 }

@@ -43,7 +43,8 @@
     "deliveryChallan": "Albarán de Entrega",
     "freightLedger": "Libro de Fletes",
     "logisticsAnalytics": "Análisis de Logística",
-    "tailoring": "Sastrería"
+    "tailoring": "Sastrería",
+    "manual": "Manual"
   },
   "common": {
     "save": "Guardar",
@@ -2465,5 +2466,14 @@
     "computeErrorDesc": "No se pudo calcular el precio de la joyería. Verifique la tarifa y vuelva a agregar este artículo.",
     "priceNotSetTitle": "Precio de Joyería No Establecido",
     "priceNotSetDesc": "{{productName}} aún no tiene precio — fije la tarifa de hoy en Joyería → Tasas de Metal, luego elimine y vuelva a agregar este artículo."
+  },
+  "manual": {
+    "yourType": "El suyo",
+    "downloadPdf": "Descargar Manual (PDF)",
+    "comingSoon": "Este capítulo se está redactando y estará disponible próximamente.",
+    "groupGettingStarted": "Primeros Pasos",
+    "groupUniversal": "Funciones Universales",
+    "groupAi": "Asistente de IA",
+    "groupBusiness": "Tipos de Negocio"
   }
 }
