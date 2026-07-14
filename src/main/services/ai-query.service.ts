@@ -17,7 +17,7 @@ import { getReadOnlyPrisma } from '../database/ai-readonly-db'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { reportService } from './report.service'
-import { getDashboardKpis, getOutstandingAmount, getTopProducts } from './analytics.service'
+import { getDashboardKpis, getOutstandingAmount, getTopProducts, getDashboardAlerts } from './analytics.service'
 import { getDeadStock, getBottomRevenueProducts, getTopCustomersByRevenue, getCustomersWithNoRecentPurchases, getTopSuppliersByPurchaseVolume } from './ai-aggregations.service'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from './ai-vertical-templates.service'
 import { formatAmountForSpeech } from './ai-format.util'
@@ -137,7 +137,17 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'service.clientRetention', patterns: [/client\s+retention/i, /(new|returning)\s+clients?/i] },
   { template: 'service.commission', patterns: [/staff\s+commission/i, /\bcommission\b/i] },
   { template: 'logistics.summary', patterns: [/shipments?/i, /deliver(y|ies)\s+rate/i] },
-  { template: 'placement.summary', patterns: [/candidates?\s+placed/i, /job\s+orders?/i, /placements?\s+this/i] }
+  { template: 'placement.summary', patterns: [/candidates?\s+placed/i, /job\s+orders?/i, /placements?\s+this/i] },
+  // meta.* templates, added to answer "what can this thing even do" and
+  // "what should I look at" questions — deliberately phrased WITHOUT the
+  // word "should" for the suggestions trigger. `isDeterministicallyOutOfScope`
+  // runs before this fast-path and its `/\bshould i\b/i` pattern would
+  // otherwise refuse a perfectly legitimate "what should I pay attention to"
+  // as if it were advice-seeking — rather than loosen that safety net (added
+  // for a real live misclassification bug, deliberately biased toward
+  // over-refusing), these trigger phrasings just avoid the word entirely.
+  { template: 'meta.capabilities', patterns: [/what can you do/i, /what can'?t you do/i, /what (questions|things) can i ask/i, /^help$/i, /what are you (capable of|able to do)/i] },
+  { template: 'meta.suggestions', patterns: [/what needs my attention/i, /anything (i need to know|to review|urgent)/i, /any (suggestions|recommendations)/i, /what'?s (important|urgent) today/i, /things? to review/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -150,7 +160,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'meta'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -485,6 +495,47 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
           `90+ days: ${formatAmountForSpeech(b.days90plus, sym)}`
         ],
         isEmpty: report.customers.count === 0
+      }
+    }
+  },
+  // meta.capabilities — a fixed, code-owned description of scope, same
+  // "never model-generated" principle as REFUSAL_MESSAGE/FALLBACK_MESSAGE
+  // above. Deliberately static text, not a model call: what the assistant can
+  // do should never vary run-to-run or risk the model describing a
+  // capability it doesn't actually have.
+  'meta.capabilities': {
+    category: 'meta',
+    async execute(_params, _sym) {
+      return {
+        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, and profit — plus questions specific to your business type',
+        details: [
+          'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What\'s our profit?"',
+          "I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records",
+          'Ask "how do I..." or "where is..." a feature and I\'ll point you to the right Manual chapter',
+          'I only understand English right now, and everything I answer stays on this device — nothing is ever sent anywhere'
+        ],
+        isEmpty: false
+      }
+    }
+  },
+  // meta.suggestions — restates the exact same DashboardAlert objects the
+  // Dashboard's own alert tiles already compute (analytics.service.ts's
+  // getDashboardAlerts, RULE AN001 etc.) as a natural-language answer. Zero
+  // new business logic and zero risk of the model inventing a numeric
+  // suggestion it can't justify — deliberately narrower than open-ended
+  // "give me advice," which a 1.5B local model isn't reliable enough for.
+  'meta.suggestions': {
+    category: 'meta',
+    async execute(_params, _sym) {
+      const alerts = await getDashboardAlerts()
+      if (alerts.length === 0) {
+        return { headline: 'Nothing needs your attention right now — no low stock, overdue payments, or pending reminders', details: [], isEmpty: false }
+      }
+      const urgentCount = alerts.filter((a) => a.severity === 'danger').length
+      return {
+        headline: `${alerts.length} thing${alerts.length > 1 ? 's' : ''} may need your attention${urgentCount > 0 ? ` (${urgentCount} urgent)` : ''}`,
+        details: alerts.map((a) => a.message),
+        isEmpty: false
       }
     }
   }

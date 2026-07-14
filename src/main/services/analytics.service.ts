@@ -389,7 +389,15 @@ export async function getRevenueTrend(
 // Phase 57 (AI Assistant) added the optional dateFrom/dateTo params — the
 // original all-time-only call sites (Dashboard) pass neither and are
 // unaffected; inventory.topRevenueProducts needs period-scoping.
-export async function getTopProducts(limit: number = 10, dateFrom?: string, dateTo?: string): Promise<TopProduct[]> {
+//
+// AI expansion (2026-07) added the optional sortBy param — "best-seller" by
+// REVENUE and by QUANTITY are genuinely different questions with different
+// correct answers (a product selling many cheap units can outrank a
+// low-volume expensive one on quantity but not revenue, or vice versa).
+// Reuses the exact same aggregation rather than a second parallel function —
+// only the final sort differs. Defaults to 'revenue' so every existing call
+// site's behavior is unchanged.
+export async function getTopProducts(limit: number = 10, dateFrom?: string, dateTo?: string, sortBy: 'revenue' | 'quantity' = 'revenue'): Promise<TopProduct[]> {
   const db = getPrisma()
 
   const items = await db.invoiceItem.findMany({

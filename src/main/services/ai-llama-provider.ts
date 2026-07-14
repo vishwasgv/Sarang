@@ -32,6 +32,7 @@ export const INTENT_TEMPLATE_NAMES = [
   'suppliers.topByPurchaseVolume', 'suppliers.pendingPayments',
   'credit.whoOwesMe', 'credit.totalReceivable', 'credit.overdueInvoices',
   'finance.profitAndLoss',
+  'meta.capabilities', 'meta.suggestions',
   'out_of_scope'
 ] as const
 
@@ -46,7 +47,8 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   hotel: 'vertical', jewellery: 'vertical', rental: 'vertical', lab: 'vertical', bloodBank: 'vertical',
   restaurant: 'vertical', manufacturing: 'vertical', electronics: 'vertical', retail: 'vertical',
   coaching: 'vertical', compliance: 'vertical', repair: 'vertical', service: 'vertical', logistics: 'vertical',
-  placement: 'vertical'
+  placement: 'vertical',
+  meta: 'meta'
 }
 
 function categoryFor(template: string): string {

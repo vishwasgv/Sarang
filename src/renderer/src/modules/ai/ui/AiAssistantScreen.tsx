@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Sparkles, Send } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Sparkles, Send, BookOpen } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
+import { MANUAL_CHAPTERS } from '@modules/manual/manifest'
+import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/content-loader'
 
 // Phase 57 — AI Assistant chat panel. English-only (see
 // AI_ASSISTANT_MASTER_PROMPT.md Section 6 — small local models' non-English
@@ -23,6 +26,57 @@ import { Button } from '@shared/ui/atoms/Button'
 interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
+  manualSlug?: string
+}
+
+// Navigation-help interception — answered entirely client-side, never sent
+// through the ~20-30s model pipeline, since the model has no knowledge of
+// the app's UI anyway (its templates only cover business-data questions).
+// The Manual (Phase 56) is the single source of truth here — this only
+// decides whether to point the user at one of its chapters, it never
+// invents navigation instructions of its own.
+const NAV_INTENT_PATTERN = /\bhow (do|can|to)\b|\bwhere (is|can|do)\b|\bhow to\b/i
+const STOPWORDS = new Set(['how', 'do', 'i', 'can', 'to', 'the', 'a', 'an', 'is', 'are', 'where', 'find', 'my', 'me', 'in', 'on', 'for', 'of', 'what', 'does', 'you', 'and'])
+
+function tokenize(s: string): string[] {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w.length > 2 && !STOPWORDS.has(w))
+}
+
+function findManualMatch(question: string, locale: string): { slug: string; title: string } | null {
+  if (!NAV_INTENT_PATTERN.test(question)) return null
+  const qWords = new Set(tokenize(question))
+  if (qWords.size === 0) return null
+  let best: { slug: string; title: string; score: number } | null = null
+  for (const chapter of MANUAL_CHAPTERS) {
+    const title = getChapterTitle(locale, chapter.slug, chapter.title)
+    const titleWords = tokenize(title)
+    const titleHit = titleWords.some((w) => qWords.has(w))
+    // Body content is searched too (not just the title) — "how do I create an
+    // invoice" shares no words with the title "Billing & Documents", but the
+    // chapter body obviously discusses invoices at length. Still 100%
+    // deterministic keyword matching, never generated text — only decides
+    // WHICH real, already-written chapter to point at.
+    //
+    // Scored by TERM FREQUENCY, not just distinct-word presence — found live:
+    // "how do I create an invoice" matched both `getting-started.md` (which
+    // mentions "invoice" once, in its own walkthrough) and `billing.md` (which
+    // discusses invoices at length) with the same distinct-word count, and the
+    // tie went to whichever chapter happens to come first in MANUAL_CHAPTERS.
+    // Counting occurrences instead means the chapter that's actually ABOUT the
+    // topic wins, not just the first one that mentions it in passing.
+    const bodyTokens = tokenize(getChapterContentWithFallback(locale, chapter.slug))
+    const bodyCounts = new Map<string, number>()
+    for (const w of bodyTokens) bodyCounts.set(w, (bodyCounts.get(w) ?? 0) + 1)
+    const matchedDistinct = [...qWords].filter((w) => bodyCounts.has(w) || titleWords.includes(w))
+    if (matchedDistinct.length === 0) continue
+    const strongMatch = matchedDistinct.some((w) => w.length >= 6)
+    if (matchedDistinct.length < 2 && !strongMatch) continue
+    let occurrenceScore = 0
+    for (const w of qWords) occurrenceScore += bodyCounts.get(w) ?? 0
+    const score = occurrenceScore + (titleHit ? 20 : 0)
+    if (!best || score > best.score) best = { slug: chapter.slug, title, score }
+  }
+  return best ? { slug: best.slug, title: best.title } : null
 }
 
 export function AiAssistantScreen() {
@@ -31,6 +85,8 @@ export function AiAssistantScreen() {
   const [asking, setAsking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { i18n } = useTranslation()
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -45,6 +101,17 @@ export function AiAssistantScreen() {
     if (!q || asking) return
     setMessages((prev) => [...prev, { role: 'user', text: q }])
     setQuestion('')
+
+    const navMatch = findManualMatch(q, i18n.language)
+    if (navMatch) {
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        text: `Here's how — see the "${navMatch.title}" chapter of the Manual for step-by-step instructions.`,
+        manualSlug: navMatch.slug
+      }])
+      return
+    }
+
     setAsking(true)
     try {
       const res = await window.api.ai.query({ question: q })
@@ -98,7 +165,8 @@ export function AiAssistantScreen() {
               <Sparkles size={36} className="mb-3 text-slate-300" />
               <p className="font-medium text-slate-500 dark:text-slate-400">Ask Your Business.</p>
               <p className="text-sm mt-1 max-w-sm">
-                Try "How much did I sell today?", "What's low on stock?", or "Who owes me money?" —
+                Try "How much did I sell today?", "What's low on stock?", "Who owes me money?",
+                "What needs my attention?", "How do I create an invoice?", or "What can you do?" —
                 answered entirely on this device, never sent anywhere.
               </p>
             </div>
@@ -113,6 +181,14 @@ export function AiAssistantScreen() {
                 }`}
               >
                 {m.text}
+                {m.manualSlug && (
+                  <button
+                    onClick={() => navigate(`/manual/${m.manualSlug}`)}
+                    className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+                  >
+                    <BookOpen size={13} /> Open in Manual
+                  </button>
+                )}
               </div>
             </div>
           ))}

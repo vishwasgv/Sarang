@@ -38,7 +38,8 @@ vi.mock('../report.service', () => ({
 vi.mock('../analytics.service', () => ({
   getDashboardKpis: vi.fn(),
   getOutstandingAmount: vi.fn(),
-  getTopProducts: vi.fn()
+  getTopProducts: vi.fn(),
+  getDashboardAlerts: vi.fn()
 }))
 vi.mock('../ai-aggregations.service', () => ({
   getDeadStock: vi.fn(),
@@ -53,7 +54,7 @@ vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled, getActiveTemplate } from '../industry-template.service'
 import { reportService } from '../report.service'
-import { getDashboardKpis, getOutstandingAmount } from '../analytics.service'
+import { getDashboardKpis, getOutstandingAmount, getDashboardAlerts } from '../analytics.service'
 import { getDeadStock, getTopSuppliersByPurchaseVolume } from '../ai-aggregations.service'
 import { getPlacementKPIs } from '../placement.service'
 import { askQuestion, setAIProvider } from '../ai-query.service'
@@ -486,6 +487,61 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
 
     fetchSpy.mockRestore()
+  })
+
+  // Capabilities/suggestions meta.* templates — added so the assistant can
+  // describe its own scope and surface existing dashboard alerts on request,
+  // without ever calling the model (same fixed-text principle as
+  // REFUSAL_MESSAGE/FALLBACK_MESSAGE).
+  it('answers "what can you do" via the deterministic fast-path, describing real scope without calling the model', async () => {
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What can you do?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('meta.capabilities')
+    expect(res.data?.answer).toMatch(/sales, inventory, customers, suppliers, credit, and profit/i)
+    expect(res.data?.answer).toMatch(/legal, tax, medical, investment, or compliance/i)
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Real design constraint being locked in: `isDeterministicallyOutOfScope`'s
+  // `/\bshould i\b/i` pattern runs BEFORE the fast-path and would refuse this
+  // as advice-seeking if the suggestions trigger phrasing used the word
+  // "should" — the trigger phrasings deliberately avoid it. This test proves
+  // the question actually reaches meta.suggestions, not the refusal path.
+  it('answers "what needs my attention" via meta.suggestions, not the out-of-scope refusal', async () => {
+    vi.mocked(getDashboardAlerts).mockResolvedValue([
+      { type: 'LOW_STOCK', message: '3 products are at or below reorder level', severity: 'warning' },
+      { type: 'LARGE_OUTSTANDING', message: 'Total customer outstanding exceeds ₹50K. Review pending payments.', severity: 'danger' }
+    ])
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What needs my attention?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('meta.suggestions')
+    expect(res.data?.answer).toContain('2 things may need your attention')
+    expect(res.data?.answer).toContain('1 urgent')
+    expect(res.data?.answer).toContain('3 products are at or below reorder level')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('says nothing needs attention, not the generic "could not find" fallback, when getDashboardAlerts returns zero alerts', async () => {
+    vi.mocked(getDashboardAlerts).mockResolvedValue([])
+    const fake = new FakeAIProvider()
+    setAIProvider(fake)
+
+    const res = await askQuestion('Any suggestions for me?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('meta.suggestions')
+    expect(res.data?.answer).toMatch(/nothing needs your attention/i)
+    expect(res.data?.answer).not.toMatch(/could not find enough information/i)
   })
 
 })
