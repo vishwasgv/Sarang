@@ -434,7 +434,7 @@ export async function getTopProducts(limit: number = 10, dateFrom?: string, date
   }
 
   return Array.from(map.values())
-    .sort((a, b) => b.revenue - a.revenue)
+    .sort(sortBy === 'quantity' ? (a, b) => b.quantitySold - a.quantitySold : (a, b) => b.revenue - a.revenue)
     .slice(0, limit)
     .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }))
 }

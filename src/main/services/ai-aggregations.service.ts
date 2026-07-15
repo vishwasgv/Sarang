@@ -129,6 +129,27 @@ export async function getCustomersWithNoRecentPurchases(days = 90): Promise<Inac
     .sort((a, b) => (a.lastPurchaseDate ?? '').localeCompare(b.lastPurchaseDate ?? ''))
 }
 
+// AI expansion, 2026-07 — mirrors getCustomersWithNoRecentPurchases above,
+// on the purchase-order side instead of the sales side.
+export interface InactiveSupplier { supplierName: string; phone: string | null; lastOrderDate: string | null }
+export async function getInactiveSuppliers(days = 90): Promise<InactiveSupplier[]> {
+  const db = getPrisma()
+  const cutoff = daysAgo(days)
+
+  const suppliers = await db.supplier.findMany({
+    where: { isActive: true },
+    select: {
+      supplierName: true, phone: true,
+      purchaseOrders: { where: { status: { not: 'CANCELLED' } }, orderBy: { orderDate: 'desc' }, take: 1, select: { orderDate: true } }
+    }
+  })
+
+  return suppliers
+    .map((s) => ({ supplierName: s.supplierName, phone: s.phone, lastOrderDate: s.purchaseOrders[0]?.orderDate.toISOString().slice(0, 10) ?? null }))
+    .filter((s) => s.lastOrderDate && new Date(s.lastOrderDate) < cutoff)
+    .sort((a, b) => (a.lastOrderDate ?? '').localeCompare(b.lastOrderDate ?? ''))
+}
+
 export interface TopSupplier { supplierName: string; phone: string | null; poCount: number; totalPurchaseValue: number }
 export async function getTopSuppliersByPurchaseVolume(limit = 10): Promise<TopSupplier[]> {
   const db = getPrisma()

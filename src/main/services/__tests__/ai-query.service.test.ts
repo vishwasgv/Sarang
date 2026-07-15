@@ -50,6 +50,12 @@ vi.mock('../ai-aggregations.service', () => ({
 }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
+// AI expansion, 2026-07 — Tier 1/2 dependencies, mocked just enough to
+// exercise the new date/search-term extraction logic end-to-end without
+// needing a real Prisma client (most other new templates call getPrisma()
+// directly and are covered by the underlying, already-tested service/report
+// functions they reuse rather than re-tested here individually).
+vi.mock('../customer.service', () => ({ listCustomers: vi.fn(), searchCustomers: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled, getActiveTemplate } from '../industry-template.service'
@@ -57,8 +63,22 @@ import { reportService } from '../report.service'
 import { getDashboardKpis, getOutstandingAmount, getDashboardAlerts } from '../analytics.service'
 import { getDeadStock, getTopSuppliersByPurchaseVolume } from '../ai-aggregations.service'
 import { getPlacementKPIs } from '../placement.service'
+import { listCustomers, searchCustomers } from '../customer.service'
 import { askQuestion, setAIProvider } from '../ai-query.service'
 import { FakeAIProvider } from '../ai-provider'
+
+// Mirrors ai-query.service.ts's own toLocalISODate — tests must compute
+// expected values with the SAME timezone-correct formatting the
+// implementation now uses (real bug, 2026-07: toISOString().slice(0, 10)
+// silently shifts the calendar day backward on IST/positive-UTC-offset
+// machines, so an expected value computed that way is wrong exactly when
+// the implementation is right).
+function toISO(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 function makeMockDb() {
   const db: Record<string, any> = {
@@ -390,7 +410,6 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     const now = new Date()
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-    const toISO = (d: Date): string => d.toISOString().slice(0, 10)
     expect(call.dateFrom).toBe(toISO(lastMonth))
     expect(call.dateTo).toBe(toISO(lastMonthEnd))
   })
@@ -502,7 +521,7 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
 
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('meta.capabilities')
-    expect(res.data?.answer).toMatch(/sales, inventory, customers, suppliers, credit, and profit/i)
+    expect(res.data?.answer).toMatch(/sales, inventory, customers, suppliers, credit, finance, staff, and documents/i)
     expect(res.data?.answer).toMatch(/legal, tax, medical, investment, or compliance/i)
     expect(classifySpy).not.toHaveBeenCalled()
   })
@@ -544,4 +563,126 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(res.data?.answer).not.toMatch(/could not find enough information/i)
   })
 
+  // AI expansion, 2026-07 — extractParams' new tryParseSpecificDate() and
+  // this-year/last-year branches, and extractSearchTerm()'s Tier 2
+  // record-lookup extraction. These are new regex/date-arithmetic logic
+  // with no prior coverage — routed through an already-mocked template
+  // (sales.averageInvoiceValue → generateSalesReport) rather than adding a
+  // real Prisma mock for every new template individually.
+  describe('AI expansion — new param extraction', () => {
+    it('parses a specific calendar date ("15th Jan 2025") into a single-day dateFrom/dateTo range', async () => {
+      vi.mocked(reportService.generateSalesReport).mockResolvedValue({
+        summary: { averageOrderValue: 1200, totalInvoices: 5 }
+      } as never)
+      const fake = new FakeAIProvider({
+        'What was my average invoice value on 15th Jan 2025?': { template: 'sales.averageInvoiceValue', category: 'sales', params: {} }
+      })
+      setAIProvider(fake)
+
+      const res = await askQuestion('What was my average invoice value on 15th Jan 2025?')
+
+      expect(res.success).toBe(true)
+      const call = vi.mocked(reportService.generateSalesReport).mock.calls[0][0] as { dateFrom: string; dateTo: string }
+      expect(call.dateFrom).toBe('2025-01-15')
+      expect(call.dateTo).toBe('2025-01-15')
+    })
+
+    it('rolls a year-less specific date back to the most recent past occurrence when it would otherwise land in the future', async () => {
+      vi.mocked(reportService.generateSalesReport).mockResolvedValue({
+        summary: { averageOrderValue: 1200, totalInvoices: 5 }
+      } as never)
+      const now = new Date()
+      const future = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000)
+      const dayMonth = `${future.getDate()}th ${future.toLocaleString('en-US', { month: 'long' })}`
+      const fake = new FakeAIProvider({
+        [`What was my average invoice value on ${dayMonth}?`]: { template: 'sales.averageInvoiceValue', category: 'sales', params: {} }
+      })
+      setAIProvider(fake)
+
+      await askQuestion(`What was my average invoice value on ${dayMonth}?`)
+
+      const call = vi.mocked(reportService.generateSalesReport).mock.calls[0][0] as { dateFrom: string; dateTo: string }
+      const expected = new Date(now.getFullYear() - 1, future.getMonth(), future.getDate())
+      expect(call.dateFrom).toBe(toISO(expected))
+    })
+
+    it('extracts "this year" as Jan 1 of the current year through today', async () => {
+      vi.mocked(reportService.generateSalesReport).mockResolvedValue({
+        summary: { averageOrderValue: 1200, totalInvoices: 5 }
+      } as never)
+      const fake = new FakeAIProvider({
+        'What was my average invoice value this year?': { template: 'sales.averageInvoiceValue', category: 'sales', params: {} }
+      })
+      setAIProvider(fake)
+
+      await askQuestion('What was my average invoice value this year?')
+
+      const call = vi.mocked(reportService.generateSalesReport).mock.calls[0][0] as { dateFrom: string; dateTo: string }
+      const now = new Date()
+      expect(call.dateFrom).toBe(toISO(new Date(now.getFullYear(), 0, 1)))
+      expect(call.dateTo).toBe(toISO(now))
+    })
+
+    it('extracts "last year" as the full Jan 1 – Dec 31 range of the previous year', async () => {
+      vi.mocked(reportService.generateSalesReport).mockResolvedValue({
+        summary: { averageOrderValue: 1200, totalInvoices: 5 }
+      } as never)
+      const fake = new FakeAIProvider({
+        'What was my average invoice value last year?': { template: 'sales.averageInvoiceValue', category: 'sales', params: {} }
+      })
+      setAIProvider(fake)
+
+      await askQuestion('What was my average invoice value last year?')
+
+      const call = vi.mocked(reportService.generateSalesReport).mock.calls[0][0] as { dateFrom: string; dateTo: string }
+      const now = new Date()
+      expect(call.dateFrom).toBe(toISO(new Date(now.getFullYear() - 1, 0, 1)))
+      expect(call.dateTo).toBe(toISO(new Date(now.getFullYear() - 1, 11, 31)))
+    })
+
+    it('extracts a quoted name as the Tier 2 search term and passes it to searchCustomers verbatim', async () => {
+      vi.mocked(searchCustomers).mockResolvedValue({
+        success: true,
+        data: [{ customerName: 'Ramesh Kumar', phone: '9876543210', outstandingBalance: 500, customerCode: 'CUS-00012' }]
+      } as never)
+      const fake = new FakeAIProvider({
+        'Look up customer "Ramesh Kumar"': { template: 'customers.byNameOrPhone', category: 'customers', params: {} }
+      })
+      setAIProvider(fake)
+
+      const res = await askQuestion('Look up customer "Ramesh Kumar"')
+
+      expect(res.success).toBe(true)
+      expect(searchCustomers).toHaveBeenCalledWith('Ramesh Kumar')
+      expect(res.data?.answer).toContain('Ramesh Kumar')
+      expect(res.data?.answer).toContain('9876543210')
+    })
+
+    it('falls back to the standard fallback message when no identifier can be extracted from a Tier 2 lookup question', async () => {
+      const fake = new FakeAIProvider({
+        'look up that customer': { template: 'customers.byNameOrPhone', category: 'customers', params: {} }
+      })
+      setAIProvider(fake)
+
+      const res = await askQuestion('look up that customer')
+
+      expect(res.success).toBe(true)
+      expect(searchCustomers).not.toHaveBeenCalled()
+      expect(res.data?.answer).toMatch(/could not find enough information/i)
+    })
+
+    it('wires the Tier 1 customers.totalCount template to listCustomers verbatim', async () => {
+      vi.mocked(listCustomers).mockResolvedValue({ success: true, data: { total: 42 } } as never)
+      const fake = new FakeAIProvider({
+        'How many customers do I have?': { template: 'customers.totalCount', category: 'customers', params: {} }
+      })
+      setAIProvider(fake)
+
+      const res = await askQuestion('How many customers do I have?')
+
+      expect(res.success).toBe(true)
+      expect(listCustomers).toHaveBeenCalledWith({ limit: 1 })
+      expect(res.data?.answer).toContain('42 customers')
+    })
+  })
 })

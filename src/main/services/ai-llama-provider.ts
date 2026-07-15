@@ -33,12 +33,38 @@ export const INTENT_TEMPLATE_NAMES = [
   'credit.whoOwesMe', 'credit.totalReceivable', 'credit.overdueInvoices',
   'finance.profitAndLoss',
   'meta.capabilities', 'meta.suggestions',
+  // AI expansion, 2026-07, Tier 1 — trivial reuse of existing report
+  // functions. See ai-query.service.ts's TEMPLATE_CATALOG for the full set.
+  'inventory.stockValue', 'inventory.outOfStockCount',
+  'finance.cashInHand', 'finance.expenseBreakdown', 'finance.biggestExpenseCategory', 'finance.taxCollected',
+  'staff.attendanceToday', 'staff.onLeave',
+  'documents.pendingQuotations', 'documents.pendingPurchaseOrders', 'documents.creditDebitNotesIssued',
+  'customers.totalCount',
+  // AI expansion, 2026-07, Tier 2 — record lookup by identifier.
+  'documents.invoiceByNumber', 'documents.purchaseOrderByNumber',
+  'customers.byNameOrPhone', 'suppliers.byName', 'inventory.productByNameOrSku',
+  // AI expansion, 2026-07 — universal deepening batch.
+  'inventory.topSellingByQuantity', 'sales.byCategory', 'sales.byHourOfDay',
+  'sales.uniqueCustomersServed', 'sales.totalDiscountsGiven', 'sales.returnsAndRefunds',
+  'sales.cancelledInvoices', 'sales.walkInVsRegistered',
+  'inventory.stockValueByCategory', 'inventory.nearReorderLevel', 'inventory.distinctSkuCount',
+  'inventory.productsAddedThisMonth', 'inventory.productsNeverPurchased',
+  'inventory.stockTurnoverRate', 'inventory.biggestStockAdjustment',
+  'customers.highestSinglePurchase', 'customers.averageSpend', 'customers.byCity',
+  'customers.repeatPurchaseRate', 'customers.newThisWeek',
+  'suppliers.inactive', 'suppliers.averageDeliveryLeadTime', 'suppliers.totalPurchaseValueThisMonth',
+  'finance.netGstPayable', 'finance.cashVsBankSplit', 'finance.discountImpact',
+  'finance.netWorthSnapshot', 'finance.expenseTrend', 'finance.profitTrend',
+  'staff.totalSalaryPaidThisMonth', 'staff.bestWorstAttendance', 'staff.activeHeadcount',
+  'documents.openQuotationsValue', 'documents.quotationConversionRate', 'documents.overduePurchaseOrders',
   'out_of_scope'
 ] as const
 
 const CATEGORY_BY_PREFIX: Record<string, string> = {
   sales: 'sales', inventory: 'inventory', customers: 'customers',
   suppliers: 'suppliers', credit: 'credit', finance: 'finance',
+  // AI expansion, 2026-07 — new Tier 1/2/deepening categories.
+  staff: 'staff', documents: 'documents',
   // Active-vertical template prefixes (ai-vertical-templates.service.ts) —
   // all map to the same 'vertical' category label for audit logging.
   // Extended 2026-07-13 alongside ai-vertical-templates.service.ts's
@@ -48,6 +74,9 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   restaurant: 'vertical', manufacturing: 'vertical', electronics: 'vertical', retail: 'vertical',
   coaching: 'vertical', compliance: 'vertical', repair: 'vertical', service: 'vertical', logistics: 'vertical',
   placement: 'vertical',
+  // AI expansion, 2026-07 — 18 vertical-specific templates' new prefixes.
+  legal: 'vertical', realEstate: 'vertical', driving: 'vertical', pestControl: 'vertical',
+  vet: 'vertical', dental: 'vertical', carService: 'vertical', tailoring: 'vertical', photography: 'vertical', events: 'vertical',
   meta: 'meta'
 }
 
@@ -139,7 +168,26 @@ export class NodeLlamaProvider implements AIProvider {
 
     const prompt = `You classify a small business owner's question into exactly one category from a fixed list. Categories: ${enumValues.join(', ')}. If the question asks for legal, tax, medical, investment, or compliance advice, or anything unrelated to their own business's data, respond with "out_of_scope". Question: "${question}"`
 
+    // Real bug found live 2026-07-15, UAT of the ~70-template expansion:
+    // LlamaChatSession is a multi-turn CHAT abstraction — by default it
+    // appends every prompt+response to its own internal history and
+    // re-evaluates against the full accumulated context on every call. Every
+    // question this assistant answers is independent by design (Section
+    // 5.6: "no multi-turn chat memory... every question is independent"),
+    // but the session object itself was never told that — it was created
+    // once in initialize() and reused for the app's entire lifetime, so
+    // history silently grew with every question asked. Measured live: the
+    // first ~8 questions in a session took the expected ~65-85s each: the
+    // 9th and 10th (once accumulated history approached the 4096-token
+    // context cap set above) took 452s and 463s — a 6x+ spike from
+    // node-llama-cpp's context-shift/recompute cost, and one that would only
+    // keep recurring/worsening for any real user who asks more than ~8
+    // questions without restarting the app. resetChatHistory() after every
+    // exchange keeps each call's context to just that one prompt, matching
+    // the architecture's actual statelessness and eliminating the
+    // accumulation this bug depended on entirely, not just deferring it.
     const result = await this.session.prompt(prompt, { grammar, maxTokens: 40 })
+    this.session.resetChatHistory()
     const parsed = grammar.parse(result) as { template: string }
 
     const template = parsed.template === 'out_of_scope' ? null : parsed.template
@@ -153,6 +201,7 @@ export class NodeLlamaProvider implements AIProvider {
   async generateResponse(prompt: string): Promise<string> {
     if (!this.initialized || !this.session) throw new Error('NodeLlamaProvider not initialized')
     const response = await this.session.prompt(prompt, { maxTokens: 150 })
+    this.session.resetChatHistory()
     return response.trim()
   }
 

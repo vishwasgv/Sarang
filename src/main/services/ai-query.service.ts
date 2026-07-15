@@ -17,9 +17,16 @@ import { getReadOnlyPrisma } from '../database/ai-readonly-db'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { reportService } from './report.service'
-import { getDashboardKpis, getOutstandingAmount, getTopProducts, getDashboardAlerts } from './analytics.service'
-import { getDeadStock, getBottomRevenueProducts, getTopCustomersByRevenue, getCustomersWithNoRecentPurchases, getTopSuppliersByPurchaseVolume } from './ai-aggregations.service'
+import { getDashboardKpis, getOutstandingAmount, getTopProducts, getDashboardAlerts, getTopCategories } from './analytics.service'
+import { getDeadStock, getBottomRevenueProducts, getTopCustomersByRevenue, getCustomersWithNoRecentPurchases, getTopSuppliersByPurchaseVolume, getInactiveSuppliers } from './ai-aggregations.service'
+import { listPayrollForPeriod } from './payroll.service'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from './ai-vertical-templates.service'
+import { quotationService } from './quotation.service'
+import { purchaseOrderService } from './purchase-order.service'
+import { listCustomers, searchCustomers } from './customer.service'
+import { searchSuppliers } from './supplier.service'
+import { billingService } from './billing.service'
+import { inventoryService } from './inventory.service'
 import { formatAmountForSpeech } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
@@ -93,13 +100,30 @@ function formatDeterministicAnswer(result: TemplateResult): string {
 const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'sales.totalToday', patterns: [/\btoday'?s?\s+sales?\b/i, /how much.*(sold|sell|sale).*today/i, /today.*(sold|sell)/i] },
   { template: 'sales.totalThisWeek', patterns: [/\bthis week'?s?\s+sales?\b/i, /(sold|sell|sale).*this week/i] },
+  // Checked BEFORE sales.totalThisMonth below — "walk-in versus registered
+  // ... sales this month" also matches that broader `sale.*this month`
+  // pattern, and being earlier in this array it would otherwise always win
+  // first. Real bug found live during the 70-template UAT re-verification.
+  { template: 'sales.walkInVsRegistered', patterns: [/walk-?in.*(vs\.?|versus).*registered/i, /walk-?in.*registered/i] },
   { template: 'sales.totalThisMonth', patterns: [/\bthis month'?s?\s+sales?\b/i, /(sold|sell|sale).*this month/i] },
   { template: 'sales.averageInvoiceValue', patterns: [/average\s+(invoice|order|sale|bill)/i] },
   { template: 'inventory.lowStock', patterns: [/low\s+(on\s+)?stock/i, /running\s+(low|out)/i, /what'?s\s+low/i] },
   { template: 'inventory.deadStock', patterns: [/(not\s+sold|hasn'?t\s+sold|dead\s+stock|not\s+moving|stale\s+stock)/i] },
+  // Real misclassification found live during the 70-template UAT (2026-07-15,
+  // 50% miss rate on the full battery) — checked BEFORE the broader
+  // inventory.topRevenueProducts pattern below since "best-selling by
+  // quantity" would otherwise be shadowed by it (that pattern matches any
+  // "best-sell..." phrase regardless of the quantity qualifier).
+  { template: 'inventory.topSellingByQuantity', patterns: [/(top|best)[\s-]sell.*quantity/i, /quantity.*(top|best)[\s-]sell/i] },
   { template: 'inventory.topRevenueProducts', patterns: [/(top|best)[\s-]sell/i, /(top|best)\s+products?\b/i] },
   { template: 'credit.whoOwesMe', patterns: [/who owes me/i, /^who owes\b/i] },
   { template: 'credit.totalReceivable', patterns: [/total\s+(receivable|owed to me|amount owed)/i] },
+  // Checked BEFORE finance.profitAndLoss below — its own `/\bprofit\b/i`
+  // pattern matches any mention of the word "profit" at all, so "profit
+  // trend" would always be caught by it first if this weren't earlier in
+  // the array. Real bug found live during the 70-template UAT
+  // re-verification.
+  { template: 'finance.profitTrend', patterns: [/profit trend/i] },
   { template: 'finance.profitAndLoss', patterns: [/\bprofit\b/i, /\bp\s?&\s?l\b/i, /net\s+(income|profit|earning)/i] },
   // Real bug found live 2026-07-13 (full question-battery test, not a
   // hypothetical): "Who do I buy the most from?" — a natural, common
@@ -147,7 +171,63 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // for a real live misclassification bug, deliberately biased toward
   // over-refusing), these trigger phrasings just avoid the word entirely.
   { template: 'meta.capabilities', patterns: [/what can you do/i, /what can'?t you do/i, /what (questions|things) can i ask/i, /^help$/i, /what are you (capable of|able to do)/i] },
-  { template: 'meta.suggestions', patterns: [/what needs my attention/i, /anything (i need to know|to review|urgent)/i, /any (suggestions|recommendations)/i, /what'?s (important|urgent) today/i, /things? to review/i] }
+  { template: 'meta.suggestions', patterns: [/what needs my attention/i, /anything (i need to know|to review|urgent)/i, /any (suggestions|recommendations)/i, /what'?s (important|urgent) today/i, /things? to review/i] },
+  // AI expansion, 2026-07 — 3 real misclassifications caught live during the
+  // 70-template UAT (a 12-question sample already found these 3 wrong out of
+  // 12, a real accuracy concern now that the classification grammar has
+  // grown to ~110 template names). Same fix shape as every other live-caught
+  // misclassification in this file's history: a deterministic pattern wins
+  // over model judgment for the clearest phrasings, rather than trusting the
+  // model to keep discriminating well as the catalog grows.
+  { template: 'documents.pendingPurchaseOrders', patterns: [/purchase orders?.*(pending|approval|awaiting)/i, /pending.*purchase orders?/i] },
+  { template: 'staff.attendanceToday', patterns: [/staff.*(present|attendance)/i, /(present|attendance).*today/i, /who'?s (in|present) today/i] },
+  { template: 'documents.creditDebitNotesIssued', patterns: [/credit (and|&)?\s?debit notes?/i, /(credit|debit) notes?.*issued/i] },
+  // AI expansion, 2026-07 — the rest of the 35 misclassifications found by
+  // the full 70-question live UAT run (50% miss rate on the first full
+  // pass). Same fix shape as every prior entry in this array: a specific,
+  // deterministic pattern for the clearest phrasing of each template's
+  // actual question, since a 1.5B model choosing among ~110+ template names
+  // demonstrably can't be trusted to discriminate this many similarly-named
+  // options reliably. Five of these (realEstate/photography/pestControl/
+  // vet/dental) were being refused outright (classified as out_of_scope)
+  // before this fix — the worst failure mode, since the question was
+  // genuinely answerable and the assistant said it couldn't help at all.
+  { template: 'finance.biggestExpenseCategory', patterns: [/biggest expense category/i] },
+  { template: 'documents.invoiceByNumber', patterns: [/(look\s*up|find|show me)\s+invoice\b/i] },
+  { template: 'documents.purchaseOrderByNumber', patterns: [/(look\s*up|find|show me)\s+purchase\s+order\b/i] },
+  { template: 'customers.byNameOrPhone', patterns: [/(look\s*up|find)\s+customer\b/i] },
+  { template: 'suppliers.byName', patterns: [/(look\s*up|find)\s+supplier\b/i] },
+  { template: 'sales.cancelledInvoices', patterns: [/cancelled invoices?/i] },
+  { template: 'inventory.nearReorderLevel', patterns: [/close to.*reorder/i, /near.*reorder level/i] },
+  { template: 'inventory.biggestStockAdjustment', patterns: [/biggest stock adjustment/i, /stock adjustment/i] },
+  { template: 'customers.highestSinglePurchase', patterns: [/highest single purchase/i, /biggest single purchase/i] },
+  { template: 'customers.averageSpend', patterns: [/average.*customer spend/i, /customer spend/i] },
+  { template: 'customers.repeatPurchaseRate', patterns: [/repeat purchase rate/i, /repeat buyers?/i] },
+  { template: 'suppliers.inactive', patterns: [/suppliers?.*(haven'?t|not).*order/i, /inactive suppliers?/i] },
+  { template: 'suppliers.averageDeliveryLeadTime', patterns: [/delivery lead time/i, /supplier.*lead time/i] },
+  { template: 'suppliers.totalPurchaseValueThisMonth', patterns: [/purchase value.*suppliers?/i, /total purchase value/i] },
+  { template: 'finance.discountImpact', patterns: [/discounts?.*impact/i, /impact.*discount/i] },
+  { template: 'staff.totalSalaryPaidThisMonth', patterns: [/salary.*paid/i, /paid.*salary/i] },
+  { template: 'documents.openQuotationsValue', patterns: [/value.*open quotations?/i, /open quotations?.*value/i] },
+  { template: 'documents.quotationConversionRate', patterns: [/quotation.*(conversion|convert)/i] },
+  { template: 'documents.overduePurchaseOrders', patterns: [/purchase orders?.*overdue/i, /overdue.*purchase orders?/i] },
+  { template: 'service.unbilledTimeValue', patterns: [/unbilled time/i] },
+  { template: 'compliance.upcomingFilings', patterns: [/roc filings?/i, /filings?\s+due/i] },
+  { template: 'service.siteVisitsDueThisWeek', patterns: [/site visits?.*due/i, /site visits?.*week/i] },
+  { template: 'realEstate.listingsAndLeads', patterns: [/listings?.*leads?/i, /leads?.*listings?/i] },
+  { template: 'service.openIssues', patterns: [/open issues?/i] },
+  // `\s+` required the trigger word and qualifier to be directly adjacent —
+  // real phrasing like "shoots do I have coming up" has words in between.
+  // Real bug found live during the 70-template UAT re-verification; widened
+  // to `.*` for this and the two entries below.
+  { template: 'photography.upcomingShoots', patterns: [/shoots?.*(coming up|upcoming|scheduled)/i, /upcoming shoots?/i] },
+  { template: 'driving.upcomingTestsAndLowBalance', patterns: [/learners?.*(test|package|session)/i, /(upcoming test|package session)/i] },
+  { template: 'pestControl.contractsDueForRenewal', patterns: [/pest.*contracts?/i, /contracts?.*renewal/i] },
+  { template: 'vet.vaccinationsDue', patterns: [/vaccinations?.*(due|soon)/i] },
+  { template: 'dental.recallsDue', patterns: [/(patient )?recalls?.*(due|soon)/i] },
+  { template: 'carService.vehiclesInService', patterns: [/vehicles?.*in service/i] },
+  { template: 'lab.reportsPendingFinalization', patterns: [/lab reports?.*pending/i, /reports?.*finaliz/i] },
+  { template: 'placement.pipelineByStage', patterns: [/pipeline.*stage/i, /candidate pipeline/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -160,7 +240,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'meta'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -180,8 +260,102 @@ function categoryOf(template: string): string {
 // strictly more reliable for this than asking a 1.5B model to compute dates
 // in its head, and costs microseconds instead of reintroducing the extra
 // model-generation time that caused the original slowdown.
+// Real, verified bug fix, 2026-07 — NEVER use Date.prototype.toISOString()
+// to stringify a date that represents a LOCAL calendar boundary ("today",
+// start of month, a specific date the user asked about). toISOString()
+// converts to UTC, which silently shifts the calendar day backward for any
+// positive UTC-offset timezone — including IST (UTC+5:30), this app's
+// primary market. Reproduced directly: `new Date(2025, 0, 15).toISOString()`
+// on an IST machine returns "2025-01-14T18:30:00.000Z", so `.slice(0, 10)`
+// silently returns Jan 14 for a question about Jan 15. The same class of bug
+// hits "today" during the local 00:00-05:29 window (`new Date().toISOString()`
+// still reports the previous UTC day) and every "start of this month/week"
+// boundary, always, for any IST user regardless of time of day. Caught by a
+// new test for the specific-date parser; the fix applies everywhere in this
+// file that stringifies a LOCAL calendar boundary, not just that one path.
+function toLocalISODate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// Month-name → zero-indexed month map, longest keys first when built into a
+// regex alternation (matched via MONTH_PATTERN below) so "september" isn't
+// pre-empted by a shorter alias.
+const MONTH_NAMES: Record<string, number> = {
+  january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2, april: 3, apr: 3,
+  may: 4, june: 5, jun: 5, july: 6, jul: 6, august: 7, aug: 7,
+  september: 8, sept: 8, sep: 8, october: 9, oct: 9, november: 10, nov: 10, december: 11, dec: 11
+}
+const MONTH_PATTERN = Object.keys(MONTH_NAMES).sort((a, b) => b.length - a.length).join('|')
+
+// AI expansion, 2026-07 — a specific calendar date ("sales on 15th Jan",
+// "how much did we sell on Jan 15 2025") was previously invisible to
+// extractParams entirely, silently falling through to whatever default the
+// matched template happened to use. Handles ISO (YYYY-MM-DD), day-first
+// slash (DD/MM/YYYY, matching this codebase's Indian-locale convention
+// elsewhere), "15th Jan[uary] [YYYY]", and "Jan[uary] 15[th] [,YYYY]".
+// When no year is stated, defaults to the current year but rolls back to
+// last year if that would land in the future — a bare "15th Jan" asked
+// about a backward-looking sales question almost certainly means the most
+// recent past occurrence, not a date that hasn't happened yet.
+function tryParseSpecificDate(question: string, now: Date): string | null {
+  const toISO = toLocalISODate
+  const resolveYear = (day: number, month: number, explicitYear: string | undefined): Date => {
+    if (explicitYear) return new Date(parseInt(explicitYear, 10), month, day)
+    const d = new Date(now.getFullYear(), month, day)
+    return d.getTime() > now.getTime() ? new Date(now.getFullYear() - 1, month, day) : d
+  }
+
+  const isoMatch = question.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+  if (isoMatch) return toISO(new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10)))
+
+  const slashMatch = question.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/)
+  if (slashMatch) return toISO(new Date(parseInt(slashMatch[3], 10), parseInt(slashMatch[2], 10) - 1, parseInt(slashMatch[1], 10)))
+
+  const dayMonthMatch = question.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_PATTERN})\\b(?:\\s+(\\d{4}))?`, 'i'))
+  if (dayMonthMatch) return toISO(resolveYear(parseInt(dayMonthMatch[1], 10), MONTH_NAMES[dayMonthMatch[2].toLowerCase()], dayMonthMatch[3]))
+
+  const monthDayMatch = question.match(new RegExp(`\\b(${MONTH_PATTERN})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4}))?`, 'i'))
+  if (monthDayMatch) return toISO(resolveYear(parseInt(monthDayMatch[2], 10), MONTH_NAMES[monthDayMatch[1].toLowerCase()], monthDayMatch[3]))
+
+  return null
+}
+
+// AI expansion, 2026-07 — Tier 2 (record-lookup-by-identifier templates).
+// A single generic extractor rather than five bespoke ones: try the most
+// unambiguous signal first (a quoted string), then a code-like token (covers
+// invoice/PO/quotation numbers, SKUs, and phone numbers — all
+// letters+digits or pure digits), then fall back to a run of Title-Case
+// words for a bare person/business name. Returns null rather than a bad
+// guess if none of these find anything — the lookup template's own isEmpty
+// path then produces the standard FALLBACK_MESSAGE instead of a wrong match.
+function extractSearchTerm(question: string): string | null {
+  const quoted = question.match(/["'“”]([^"'“”]{2,60})["'“”]/)
+  if (quoted) return quoted[1].trim()
+
+  const codeMatches = question.match(/\b[A-Za-z]*\d[A-Za-z0-9-]*\b/g)
+  if (codeMatches) {
+    const longest = codeMatches.filter((t) => t.length >= 3).sort((a, b) => b.length - a.length)[0]
+    if (longest) return longest
+  }
+
+  const words = question.trim().split(/\s+/)
+  const nameWords: string[] = []
+  for (let i = 1; i < words.length; i++) {
+    const w = words[i].replace(/[?.,!]/g, '')
+    if (/^[A-Z][a-z]+$/.test(w)) nameWords.push(w)
+    else if (nameWords.length > 0) break
+  }
+  return nameWords.length > 0 ? nameWords.join(' ') : null
+}
+
 function extractParams(question: string): Record<string, unknown> {
   const params: Record<string, unknown> = {}
+
+  const searchTerm = extractSearchTerm(question)
+  if (searchTerm) params.searchTerm = searchTerm
 
   const topNMatch = question.match(/\b(?:top|best|bottom|worst|lowest)\s+(\d+)\b/i)
   if (topNMatch) params.topN = parseInt(topNMatch[1], 10)
@@ -190,7 +364,7 @@ function extractParams(question: string): Record<string, unknown> {
   if (daysMatch) params.days = parseInt(daysMatch[1], 10)
 
   const now = new Date()
-  const toISO = (d: Date): string => d.toISOString().slice(0, 10)
+  const toISO = toLocalISODate
   const startOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1)
   const endOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth() + 1, 0)
   const startOfWeek = (d: Date): Date => {
@@ -199,7 +373,11 @@ function extractParams(question: string): Record<string, unknown> {
     return s
   }
 
-  if (/\byesterday\b/i.test(question)) {
+  const specificDate = tryParseSpecificDate(question, now)
+  if (specificDate) {
+    params.dateFrom = specificDate
+    params.dateTo = specificDate
+  } else if (/\byesterday\b/i.test(question)) {
     const y = new Date(now)
     y.setDate(y.getDate() - 1)
     params.dateFrom = toISO(y)
@@ -225,6 +403,12 @@ function extractParams(question: string): Record<string, unknown> {
   } else if (/\bthis month\b/i.test(question)) {
     params.dateFrom = toISO(startOfMonth(now))
     params.dateTo = toISO(now)
+  } else if (/\blast year\b/i.test(question)) {
+    params.dateFrom = toISO(new Date(now.getFullYear() - 1, 0, 1))
+    params.dateTo = toISO(new Date(now.getFullYear() - 1, 11, 31))
+  } else if (/\bthis year\b/i.test(question)) {
+    params.dateFrom = toISO(new Date(now.getFullYear(), 0, 1))
+    params.dateTo = toISO(now)
   }
 
   return params
@@ -249,6 +433,18 @@ interface TemplateDef {
 // reusing canonical functions below, not this pass.
 function validate(result: TemplateResult): TemplateResult {
   return result
+}
+
+// AI expansion, 2026-07 — a large fraction of the new templates default to
+// "this month to date" when no date range was extracted from the question,
+// same convention as sales.averageInvoiceValue/finance.profitAndLoss above.
+// Factored out once here rather than repeated inline a dozen more times.
+function defaultThisMonthRange(params: Record<string, unknown>): { dateFrom: string; dateTo: string } {
+  const now = new Date()
+  return {
+    dateFrom: (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    dateTo: (params.dateTo as string) ?? toLocalISODate(now)
+  }
 }
 
 const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
@@ -289,8 +485,8 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     category: 'sales',
     async execute(params, sym) {
       const now = new Date()
-      const dateFrom = (params.dateFrom as string) ?? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = (params.dateTo as string) ?? now.toISOString().slice(0, 10)
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
       const report = await reportService.generateSalesReport({ dateFrom, dateTo })
       return {
         headline: `Average invoice value: ${formatAmountForSpeech(report.summary.averageOrderValue, sym)}`,
@@ -326,8 +522,8 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     category: 'finance',
     async execute(params, sym) {
       const now = new Date()
-      const dateFrom = (params.dateFrom as string) ?? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = (params.dateTo as string) ?? now.toISOString().slice(0, 10)
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
       const report = await reportService.generateProfitAndLossReport({ dateFrom, dateTo })
       // A negative netProfit is a real loss, not a small profit — say so in
       // words, not just via a minus sign a skimming reader could miss. Found
@@ -503,13 +699,20 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   // above. Deliberately static text, not a model call: what the assistant can
   // do should never vary run-to-run or risk the model describing a
   // capability it doesn't actually have.
+  // AI expansion, 2026-07 — updated after the ~70-template expansion (Phase
+  // 57 Addendum 7) to actually describe current scope: staff and documents
+  // are now real answerable categories (they weren't before), and looking
+  // up ONE specific record by name/number is a genuinely new capability
+  // shape worth surfacing, not just a variation on the aggregate questions
+  // already listed. Still a fixed, code-owned description, never model text.
   'meta.capabilities': {
     category: 'meta',
     async execute(_params, _sym) {
       return {
-        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, and profit — plus questions specific to your business type',
+        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, finance, staff, and documents like quotations and purchase orders — plus questions specific to your business type',
         details: [
-          'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What\'s our profit?"',
+          'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What\'s our profit this month?"',
+          'I can also look up one specific invoice, customer, supplier, or product by name or number — e.g. "Look up invoice INV-2026-000123"',
           "I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records",
           'Ask "how do I..." or "where is..." a feature and I\'ll point you to the right Manual chapter',
           'I only understand English right now, and everything I answer stays on this device — nothing is ever sent anywhere'
@@ -536,6 +739,872 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
         headline: `${alerts.length} thing${alerts.length > 1 ? 's' : ''} may need your attention${urgentCount > 0 ? ` (${urgentCount} urgent)` : ''}`,
         details: alerts.map((a) => a.message),
         isEmpty: false
+      }
+    }
+  },
+  // AI expansion, 2026-07 — Tier 1: wiring an already-existing
+  // report.service.ts/service function into a new template, zero new
+  // aggregation logic. See project memory "AI Expansion Progress" for the
+  // full ~83-item audit this batch is drawn from.
+  'inventory.stockValue': {
+    category: 'inventory',
+    async execute(_params, sym) {
+      const report = await reportService.generateInventoryReport()
+      return {
+        headline: `Total stock value: ${formatAmountForSpeech(report.summary.totalStockValue, sym)}`,
+        details: [`${report.summary.totalProducts} products tracked`],
+        isEmpty: report.summary.totalProducts === 0
+      }
+    }
+  },
+  'inventory.outOfStockCount': {
+    category: 'inventory',
+    async execute(_params, _sym) {
+      const report = await reportService.generateInventoryReport()
+      const outOfStock = report.rows.filter((r) => r.currentStock === 0).slice(0, 10)
+      return {
+        headline: `${report.summary.outOfStockItems} products are out of stock`,
+        details: outOfStock.map((r) => r.productName),
+        isEmpty: report.summary.outOfStockItems === 0
+      }
+    }
+  },
+  // Cash-in-hand is a running balance, not a period figure — dateFrom is
+  // pinned to well before any real business's data (rather than left
+  // undefined) so `openingBalance` computes to 0 and `closingBalance`
+  // reflects every cash movement ever recorded, up to today.
+  'finance.cashInHand': {
+    category: 'finance',
+    async execute(_params, sym) {
+      const now = new Date()
+      const report = await reportService.generateCashBookReport({ dateFrom: '2000-01-01', dateTo: toLocalISODate(now) })
+      return {
+        headline: `Cash in hand: ${formatAmountForSpeech(report.closingBalance, sym)}`,
+        details: [],
+        isEmpty: false
+      }
+    }
+  },
+  'finance.expenseBreakdown': {
+    category: 'finance',
+    async execute(params, sym) {
+      const now = new Date()
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
+      const report = await reportService.generateExpenseReport({ dateFrom, dateTo })
+      return {
+        headline: `Total expenses for the selected period: ${formatAmountForSpeech(report.summary.totalAmount, sym)}`,
+        details: report.byCategory.map((c) => `${c.category}: ${formatAmountForSpeech(c.amount, sym)}`),
+        isEmpty: report.summary.expenseCount === 0
+      }
+    }
+  },
+  'finance.biggestExpenseCategory': {
+    category: 'finance',
+    async execute(params, sym) {
+      const now = new Date()
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
+      const report = await reportService.generateExpenseReport({ dateFrom, dateTo })
+      const top = [...report.byCategory].sort((a, b) => b.amount - a.amount)[0]
+      if (!top) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Your biggest expense category is ${top.category} at ${formatAmountForSpeech(top.amount, sym)}`,
+        details: [`${top.count} expense entries in this category for the selected period`],
+        isEmpty: false
+      }
+    }
+  },
+  'finance.taxCollected': {
+    category: 'finance',
+    async execute(params, sym) {
+      const now = new Date()
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
+      const report = await reportService.generateTaxReport({ dateFrom, dateTo })
+      return {
+        headline: `Tax collected for the selected period: ${formatAmountForSpeech(report.summary.totalTaxCollected, sym)}`,
+        details: [`Taxable turnover: ${formatAmountForSpeech(report.summary.totalTaxableAmount, sym)}`],
+        isEmpty: report.summary.totalTaxCollected === 0
+      }
+    }
+  },
+  'staff.attendanceToday': {
+    category: 'staff',
+    async execute(_params, _sym) {
+      const today = toLocalISODate(new Date())
+      const report = await reportService.generateAttendanceReport({ dateFrom: today, dateTo: today })
+      return {
+        headline: `${report.summary.presentCount} of ${report.summary.totalRecords} staff present today`,
+        details: [`Absent: ${report.summary.absentCount}`, `On leave: ${report.summary.leaveCount}`],
+        isEmpty: report.summary.totalRecords === 0
+      }
+    }
+  },
+  'staff.onLeave': {
+    category: 'staff',
+    async execute(_params, _sym) {
+      const today = toLocalISODate(new Date())
+      const report = await reportService.generateAttendanceReport({ dateFrom: today, dateTo: today })
+      const onLeave = report.rows.filter((r) => r.status === 'LEAVE')
+      return {
+        headline: `${report.summary.leaveCount} staff on leave today`,
+        details: onLeave.map((r) => r.employeeName),
+        isEmpty: report.summary.leaveCount === 0
+      }
+    }
+  },
+  // Pending = not yet resolved to a final ACCEPTED/EXPIRED (quotations) or
+  // RECEIVED/CANCELLED (purchase orders) state — two service calls rather
+  // than one query since both list() functions only accept a single status
+  // filter, matching the existing "reuse canonical functions" pattern
+  // instead of a new raw aggregation.
+  'documents.pendingQuotations': {
+    category: 'documents',
+    async execute(_params, _sym) {
+      const [draft, sent] = await Promise.all([
+        quotationService.list({ status: 'DRAFT' }),
+        quotationService.list({ status: 'SENT' })
+      ])
+      const count = (draft.data?.total ?? 0) + (sent.data?.total ?? 0)
+      return {
+        headline: `${count} quotations are still pending a customer decision`,
+        details: [],
+        isEmpty: count === 0
+      }
+    }
+  },
+  'documents.pendingPurchaseOrders': {
+    category: 'documents',
+    async execute(_params, _sym) {
+      const [draft, approved] = await Promise.all([
+        purchaseOrderService.listPOs({ status: 'DRAFT' }),
+        purchaseOrderService.listPOs({ status: 'APPROVED' })
+      ])
+      const count = (draft.data?.total ?? 0) + (approved.data?.total ?? 0)
+      return {
+        headline: `${count} purchase orders are still pending receipt`,
+        details: [`Awaiting approval: ${draft.data?.total ?? 0}`, `Approved, awaiting delivery: ${approved.data?.total ?? 0}`],
+        isEmpty: count === 0
+      }
+    }
+  },
+  'documents.creditDebitNotesIssued': {
+    category: 'documents',
+    async execute(params, sym) {
+      const now = new Date()
+      const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const [creditNotes, debitNotes] = await Promise.all([
+        db.creditNote.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { amount: true } }),
+        db.debitNote.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { amount: true } })
+      ])
+      const creditTotal = creditNotes.reduce((s, c) => s + c.amount, 0)
+      const debitTotal = debitNotes.reduce((s, d) => s + d.amount, 0)
+      return {
+        headline: `${creditNotes.length} credit notes and ${debitNotes.length} debit notes issued in the selected period`,
+        details: [`Credit notes total: ${formatAmountForSpeech(creditTotal, sym)}`, `Debit notes total: ${formatAmountForSpeech(debitTotal, sym)}`],
+        isEmpty: creditNotes.length === 0 && debitNotes.length === 0
+      }
+    }
+  },
+  'customers.totalCount': {
+    category: 'customers',
+    async execute(_params, _sym) {
+      const res = await listCustomers({ limit: 1 })
+      const total = (res.data as { total?: number } | undefined)?.total ?? 0
+      return {
+        headline: `You have ${total} customers on record`,
+        details: [],
+        isEmpty: total === 0
+      }
+    }
+  },
+  // AI expansion, 2026-07 — Tier 2: look up ONE specific record by
+  // identifier. Every template shares extractSearchTerm's params.searchTerm
+  // and reuses each screen's own existing search-capable lookup function —
+  // no new search logic. isEmpty is true both when no identifier could be
+  // extracted from the question AND when a real search found nothing, since
+  // either way there's no record to report.
+  'documents.invoiceByNumber': {
+    category: 'documents',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await billingService.listInvoices({ search: term, limit: 1 })
+      const invoice = (res.data as { invoices?: Array<{ invoiceNumber: string; totalAmount: number; status: string; invoiceDate: Date; customer: { customerName: string } | null }> } | undefined)?.invoices?.[0]
+      if (!invoice) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Invoice ${invoice.invoiceNumber}: ${formatAmountForSpeech(invoice.totalAmount, sym)}, status ${invoice.status}`,
+        details: [
+          `Customer: ${invoice.customer?.customerName ?? 'Walk-in'}`,
+          `Date: ${toLocalISODate(new Date(invoice.invoiceDate))}`
+        ],
+        isEmpty: false
+      }
+    }
+  },
+  'documents.purchaseOrderByNumber': {
+    category: 'documents',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const po = await db.purchaseOrder.findFirst({
+        where: { poNumber: { contains: term } },
+        include: { supplier: { select: { supplierName: true } } },
+        orderBy: { createdAt: 'desc' }
+      })
+      if (!po) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Purchase order ${po.poNumber}: ${formatAmountForSpeech(po.totalAmount, sym)}, status ${po.status}`,
+        details: [`Supplier: ${po.supplier.supplierName}`, `Order date: ${toLocalISODate(po.orderDate)}`],
+        isEmpty: false
+      }
+    }
+  },
+  'customers.byNameOrPhone': {
+    category: 'customers',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await searchCustomers(term)
+      const customer = (res.data as Array<{ customerName: string; phone: string | null; outstandingBalance: number; customerCode: string | null }> | undefined)?.[0]
+      if (!customer) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `${customer.customerName}${customer.customerCode ? ` (${customer.customerCode})` : ''}`,
+        details: [
+          `Phone: ${customer.phone ?? 'not recorded'}`,
+          `Outstanding balance: ${formatAmountForSpeech(customer.outstandingBalance, sym)}`
+        ],
+        isEmpty: false
+      }
+    }
+  },
+  'suppliers.byName': {
+    category: 'suppliers',
+    async execute(params, _sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await searchSuppliers(term)
+      const supplier = (res.data as Array<{ supplierName: string; phone: string | null; supplierCode: string | null }> | undefined)?.[0]
+      if (!supplier) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `${supplier.supplierName}${supplier.supplierCode ? ` (${supplier.supplierCode})` : ''}`,
+        details: [`Phone: ${supplier.phone ?? 'not recorded'}`],
+        isEmpty: false
+      }
+    }
+  },
+  'inventory.productByNameOrSku': {
+    category: 'inventory',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await inventoryService.listInventory({ search: term, limit: 1 })
+      const item = (res.data as { inventory?: Array<{ quantity: number; averageCost: number; product: { productName: string; sku: string | null; unit: string } }> } | undefined)?.inventory?.[0]
+      if (!item) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `${item.product.productName}${item.product.sku ? ` (${item.product.sku})` : ''}: ${item.quantity} ${item.product.unit} in stock`,
+        details: [`Average cost: ${formatAmountForSpeech(item.averageCost, sym)}`],
+        isEmpty: false
+      }
+    }
+  },
+  // AI expansion, 2026-07 — universal deepening batch (~35 templates covering
+  // sales/inventory/customers/suppliers/finance/staff/documents questions
+  // one level deeper than the original 18). See project memory "AI Expansion
+  // Progress" for the full audit this batch is drawn from. Two items from
+  // that audit are deliberately NOT here: "upcoming staff birthdays" (the
+  // Employee model has no dateOfBirth field — genuinely unsupported by the
+  // data, not an oversight) and "products with no supplier assigned" is
+  // reinterpreted below as "products never purchased from any supplier"
+  // (this app has no direct Product→Supplier assignment field).
+  'inventory.topSellingByQuantity': {
+    category: 'inventory',
+    async execute(params, sym) {
+      const topN = (params.topN as number) ?? 5
+      const products = await getTopProducts(topN, params.dateFrom as string | undefined, params.dateTo as string | undefined, 'quantity')
+      return {
+        headline: `Your top ${products.length} products by quantity sold`,
+        details: products.map((p) => `${p.productName}: ${p.quantitySold} sold (${formatAmountForSpeech(p.revenue, sym)})`),
+        isEmpty: products.length === 0
+      }
+    }
+  },
+  'sales.byCategory': {
+    category: 'sales',
+    async execute(params, sym) {
+      const topN = (params.topN as number) ?? 5
+      const categories = await getTopCategories(topN)
+      return {
+        headline: `Your top ${categories.length} product categories by revenue (all-time)`,
+        details: categories.map((c) => `${c.categoryName}: ${formatAmountForSpeech(c.revenue, sym)} (${c.itemsSold} items)`),
+        isEmpty: categories.length === 0
+      }
+    }
+  },
+  'sales.byHourOfDay': {
+    category: 'sales',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateSalesReport({ dateFrom, dateTo })
+      const busiest = [...report.byHour].sort((a, b) => b.revenue - a.revenue).slice(0, 5)
+      if (busiest.length === 0) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Your busiest hour is ${busiest[0].hour} with ${formatAmountForSpeech(busiest[0].revenue, sym)} in sales`,
+        details: busiest.slice(1).map((h) => `${h.hour}: ${formatAmountForSpeech(h.revenue, sym)} (${h.invoiceCount} invoices)`),
+        isEmpty: false
+      }
+    }
+  },
+  'sales.uniqueCustomersServed': {
+    category: 'sales',
+    async execute(params, _sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const invoices = await db.invoice.findMany({
+        where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, invoiceDate: { gte: from, lte: to } },
+        select: { customerId: true }
+      })
+      const uniqueCustomers = new Set(invoices.filter((i) => i.customerId).map((i) => i.customerId)).size
+      const walkIns = invoices.filter((i) => !i.customerId).length
+      return {
+        headline: `${uniqueCustomers} unique registered customers served in the selected period`,
+        details: [`Plus ${walkIns} walk-in (unregistered) sales`],
+        isEmpty: invoices.length === 0
+      }
+    }
+  },
+  'sales.totalDiscountsGiven': {
+    category: 'sales',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateSalesReport({ dateFrom, dateTo })
+      return {
+        headline: `Total discounts given in the selected period: ${formatAmountForSpeech(report.summary.totalDiscount, sym)}`,
+        details: [`Across ${report.summary.totalInvoices} invoices`],
+        isEmpty: report.summary.totalDiscount === 0
+      }
+    }
+  },
+  'sales.returnsAndRefunds': {
+    category: 'sales',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const returns = await db.invoice.findMany({
+        where: { invoiceType: 'RETURN', invoiceDate: { gte: from, lte: to } },
+        select: { totalAmount: true }
+      })
+      const totalValue = returns.reduce((s, r) => s + Math.abs(r.totalAmount), 0)
+      return {
+        headline: `${returns.length} returns processed in the selected period, totaling ${formatAmountForSpeech(totalValue, sym)}`,
+        details: [],
+        isEmpty: returns.length === 0
+      }
+    }
+  },
+  'sales.cancelledInvoices': {
+    category: 'sales',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateSalesReport({ dateFrom, dateTo })
+      const cancelledRows = report.rows.filter((r) => r.paymentStatus === 'CANCELLED')
+      const cancelledValue = cancelledRows.reduce((s, r) => s + r.totalAmount, 0)
+      return {
+        headline: `${report.summary.cancelledInvoices} invoices were cancelled in the selected period, totaling ${formatAmountForSpeech(cancelledValue, sym)}`,
+        details: [],
+        isEmpty: report.summary.cancelledInvoices === 0
+      }
+    }
+  },
+  'sales.walkInVsRegistered': {
+    category: 'sales',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateSalesReport({ dateFrom, dateTo })
+      const active = report.rows.filter((r) => r.paymentStatus !== 'CANCELLED')
+      const registered = active.filter((r) => r.customer !== null)
+      const walkIn = active.filter((r) => r.customer === null)
+      const registeredValue = registered.reduce((s, r) => s + r.totalAmount, 0)
+      const walkInValue = walkIn.reduce((s, r) => s + r.totalAmount, 0)
+      return {
+        headline: `${registered.length} sales to registered customers, ${walkIn.length} walk-in sales in the selected period`,
+        details: [`Registered customer revenue: ${formatAmountForSpeech(registeredValue, sym)}`, `Walk-in revenue: ${formatAmountForSpeech(walkInValue, sym)}`],
+        isEmpty: active.length === 0
+      }
+    }
+  },
+  'inventory.stockValueByCategory': {
+    category: 'inventory',
+    async execute(_params, sym) {
+      const report = await reportService.generateInventoryReport()
+      const map = new Map<string, number>()
+      for (const r of report.rows) map.set(r.category, (map.get(r.category) ?? 0) + r.stockValue)
+      const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+      if (sorted.length === 0) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Stock value is spread across ${sorted.length} categories, led by ${sorted[0][0]} at ${formatAmountForSpeech(sorted[0][1], sym)}`,
+        details: sorted.slice(1, 6).map(([cat, val]) => `${cat}: ${formatAmountForSpeech(val, sym)}`),
+        isEmpty: false
+      }
+    }
+  },
+  'inventory.nearReorderLevel': {
+    category: 'inventory',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const items = await db.inventory.findMany({
+        where: { reorderLevel: { gt: 0 } },
+        select: { quantity: true, reorderLevel: true, product: { select: { productName: true, isActive: true } } }
+      })
+      const near = items.filter((i) => i.product.isActive && i.quantity > i.reorderLevel && i.quantity <= i.reorderLevel * 1.2)
+      return {
+        headline: `${near.length} products are close to their reorder level but not yet below it`,
+        details: near.slice(0, 10).map((i) => `${i.product.productName}: ${i.quantity} in stock (reorder at ${i.reorderLevel})`),
+        isEmpty: near.length === 0
+      }
+    }
+  },
+  'inventory.distinctSkuCount': {
+    category: 'inventory',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const count = await db.product.count({ where: { isActive: true, sku: { not: null } } })
+      return {
+        headline: `You have ${count} distinct SKUs on record`,
+        details: [],
+        isEmpty: count === 0
+      }
+    }
+  },
+  'inventory.productsAddedThisMonth': {
+    category: 'inventory',
+    async execute(_params, _sym) {
+      const now = new Date()
+      const from = new Date(now.getFullYear(), now.getMonth(), 1)
+      const db = getPrisma()
+      const count = await db.product.count({ where: { createdAt: { gte: from } } })
+      return {
+        headline: `${count} products added this month`,
+        details: [],
+        isEmpty: count === 0
+      }
+    }
+  },
+  // "Products with no supplier assigned" reinterpreted: this app has no
+  // direct Product→Supplier assignment field (a product only links to a
+  // supplier through its actual purchase-order history, PurchaseOrderItem)
+  // — so the honest version of this question is "products that have never
+  // appeared on any purchase order," which captures the same real concern
+  // (no known supplier relationship for this product) without inventing data.
+  'inventory.productsNeverPurchased': {
+    category: 'inventory',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const products = await db.product.findMany({
+        where: { isActive: true, purchaseItems: { none: {} } },
+        select: { productName: true, sku: true }
+      })
+      return {
+        headline: `${products.length} products have never been purchased from a supplier`,
+        details: products.slice(0, 10).map((p) => p.productName),
+        isEmpty: products.length === 0
+      }
+    }
+  },
+  'inventory.stockTurnoverRate': {
+    category: 'inventory',
+    async execute(params, _sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const [pnl, inv] = await Promise.all([
+        reportService.generateProfitAndLossReport({ dateFrom, dateTo }),
+        reportService.generateInventoryReport()
+      ])
+      const turnover = inv.summary.totalStockValue > 0 ? pnl.summary.cogs / inv.summary.totalStockValue : 0
+      return {
+        headline: `Stock turnover for the selected period: ${turnover.toFixed(2)}x`,
+        details: ['Based on cost of goods sold vs current stock value — an estimate, not a historical daily average, since this app doesn\'t keep a stock-value snapshot history'],
+        isEmpty: inv.summary.totalStockValue === 0
+      }
+    }
+  },
+  'inventory.biggestStockAdjustment': {
+    category: 'inventory',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const movements = await db.inventoryMovement.findMany({
+        where: { movementType: 'ADJUSTMENT', createdAt: { gte: from, lte: to } },
+        select: { quantity: true, product: { select: { productName: true, costPrice: true } } }
+      })
+      if (movements.length === 0) return { headline: '', details: [], isEmpty: true }
+      const biggest = [...movements].sort((a, b) => Math.abs(b.quantity * b.product.costPrice) - Math.abs(a.quantity * a.product.costPrice))[0]
+      return {
+        headline: `Biggest stock adjustment this period: ${biggest.product.productName}, ${biggest.quantity} units (~${formatAmountForSpeech(Math.abs(biggest.quantity * biggest.product.costPrice), sym)})`,
+        details: [`${movements.length} adjustments recorded in total this period`],
+        isEmpty: false
+      }
+    }
+  },
+  'customers.highestSinglePurchase': {
+    category: 'customers',
+    async execute(_params, sym) {
+      const db = getPrisma()
+      const invoice = await db.invoice.findFirst({
+        where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null } },
+        orderBy: { totalAmount: 'desc' },
+        select: { totalAmount: true, invoiceNumber: true, invoiceDate: true, customer: { select: { customerName: true } } }
+      })
+      if (!invoice) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Highest single purchase ever: ${formatAmountForSpeech(invoice.totalAmount, sym)} by ${invoice.customer?.customerName ?? 'a customer'}`,
+        details: [`Invoice ${invoice.invoiceNumber}, ${toLocalISODate(invoice.invoiceDate)}`],
+        isEmpty: false
+      }
+    }
+  },
+  'customers.averageSpend': {
+    category: 'customers',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const invoices = await db.invoice.findMany({
+        where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null }, invoiceDate: { gte: from, lte: to } },
+        select: { customerId: true, totalAmount: true }
+      })
+      const byCustomer = new Map<string, number>()
+      for (const inv of invoices) {
+        const id = inv.customerId as string
+        byCustomer.set(id, (byCustomer.get(id) ?? 0) + inv.totalAmount)
+      }
+      const totalCustomers = byCustomer.size
+      const totalSpend = Array.from(byCustomer.values()).reduce((s, v) => s + v, 0)
+      const avg = totalCustomers > 0 ? totalSpend / totalCustomers : 0
+      return {
+        headline: `Average spend per customer in the selected period: ${formatAmountForSpeech(avg, sym)}`,
+        details: [`Across ${totalCustomers} customers`],
+        isEmpty: totalCustomers === 0
+      }
+    }
+  },
+  'customers.byCity': {
+    category: 'customers',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const customers = await db.customer.findMany({ where: { isActive: true }, select: { city: true } })
+      const map = new Map<string, number>()
+      for (const c of customers) {
+        const city = c.city?.trim() || 'Not recorded'
+        map.set(city, (map.get(city) ?? 0) + 1)
+      }
+      const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+      if (sorted.length === 0) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `Your customers are spread across ${sorted.length} cities/areas, led by ${sorted[0][0]} with ${sorted[0][1]} customers`,
+        details: sorted.slice(1, 6).map(([city, count]) => `${city}: ${count}`),
+        isEmpty: false
+      }
+    }
+  },
+  // Generalizes generateClientRetentionReport (service-appointment
+  // businesses only) to any product business — repeat rate here is simply
+  // "of the customers who bought in this period, what share bought more
+  // than once."
+  'customers.repeatPurchaseRate': {
+    category: 'customers',
+    async execute(params, _sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const invoices = await db.invoice.findMany({
+        where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null }, invoiceDate: { gte: from, lte: to } },
+        select: { customerId: true }
+      })
+      const counts = new Map<string, number>()
+      for (const inv of invoices) {
+        const id = inv.customerId as string
+        counts.set(id, (counts.get(id) ?? 0) + 1)
+      }
+      const total = counts.size
+      const repeat = Array.from(counts.values()).filter((c) => c > 1).length
+      const rate = total > 0 ? (repeat / total) * 100 : 0
+      return {
+        headline: `${rate.toFixed(0)}% of customers who bought this period bought more than once`,
+        details: [`${repeat} of ${total} customers were repeat buyers`],
+        isEmpty: total === 0
+      }
+    }
+  },
+  'customers.newThisWeek': {
+    category: 'customers',
+    async execute(_params, _sym) {
+      const now = new Date()
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      const db = getPrisma()
+      const customers = await db.customer.findMany({ where: { createdAt: { gte: startOfWeek } }, select: { customerName: true } })
+      return {
+        headline: `${customers.length} new customers added this week`,
+        details: customers.slice(0, 10).map((c) => c.customerName),
+        isEmpty: customers.length === 0
+      }
+    }
+  },
+  'suppliers.inactive': {
+    category: 'suppliers',
+    async execute(params, _sym) {
+      const days = (params.days as number) ?? 90
+      const suppliers = await getInactiveSuppliers(days)
+      const top10 = suppliers.slice(0, 10)
+      return {
+        headline: `${suppliers.length} suppliers haven't received an order from you in the last ${days} days`,
+        details: top10.map((s) => `${s.supplierName} — last order ${s.lastOrderDate}`),
+        isEmpty: suppliers.length === 0
+      }
+    }
+  },
+  'suppliers.averageDeliveryLeadTime': {
+    category: 'suppliers',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const grns = await db.goodsReceiptNote.findMany({
+        where: { purchaseOrderId: { not: null } },
+        select: { receivedDate: true, purchaseOrder: { select: { orderDate: true } } }
+      })
+      const leadTimes = grns
+        .filter((g): g is typeof g & { purchaseOrder: { orderDate: Date } } => g.purchaseOrder !== null)
+        .map((g) => (g.receivedDate.getTime() - g.purchaseOrder.orderDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (leadTimes.length === 0) return { headline: '', details: [], isEmpty: true }
+      const avg = leadTimes.reduce((s, v) => s + v, 0) / leadTimes.length
+      return {
+        headline: `Average delivery lead time: ${avg.toFixed(1)} days`,
+        details: [`Based on ${leadTimes.length} received purchase orders`],
+        isEmpty: false
+      }
+    }
+  },
+  'suppliers.totalPurchaseValueThisMonth': {
+    category: 'suppliers',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const orders = await db.purchaseOrder.findMany({
+        where: { status: { not: 'CANCELLED' }, orderDate: { gte: from, lte: to } },
+        select: { totalAmount: true }
+      })
+      const total = orders.reduce((s, o) => s + o.totalAmount, 0)
+      return {
+        headline: `Total purchase value across all suppliers this period: ${formatAmountForSpeech(total, sym)}`,
+        details: [`${orders.length} purchase orders`],
+        isEmpty: orders.length === 0
+      }
+    }
+  },
+  'finance.netGstPayable': {
+    category: 'finance',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const [taxReport, purchaseOrders] = await Promise.all([
+        reportService.generateTaxReport({ dateFrom, dateTo }),
+        db.purchaseOrder.findMany({ where: { status: { not: 'CANCELLED' }, orderDate: { gte: from, lte: to } }, select: { taxAmount: true } })
+      ])
+      const outputTax = taxReport.summary.totalTaxCollected
+      const inputTax = purchaseOrders.reduce((s, po) => s + po.taxAmount, 0)
+      const net = outputTax - inputTax
+      return {
+        headline: `Estimated net GST payable for the selected period: ${formatAmountForSpeech(net, sym)}`,
+        details: [
+          `Output tax collected on sales: ${formatAmountForSpeech(outputTax, sym)}`,
+          `Input tax on purchase orders: ${formatAmountForSpeech(inputTax, sym)}`,
+          'Estimate only, based on purchase-order tax — not a full input-tax-credit ledger'
+        ],
+        isEmpty: outputTax === 0 && inputTax === 0
+      }
+    }
+  },
+  'finance.cashVsBankSplit': {
+    category: 'finance',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const payments = await db.payment.findMany({
+        where: { isReversed: false, paymentDate: { gte: from, lte: to } },
+        select: { amount: true, paymentMethod: true }
+      })
+      const cash = payments.filter((p) => p.paymentMethod === 'CASH').reduce((s, p) => s + p.amount, 0)
+      const nonCash = payments.filter((p) => p.paymentMethod !== 'CASH').reduce((s, p) => s + p.amount, 0)
+      return {
+        headline: `Receipts this period: ${formatAmountForSpeech(cash, sym)} cash, ${formatAmountForSpeech(nonCash, sym)} non-cash (card/UPI/bank transfer/other)`,
+        details: [],
+        isEmpty: payments.length === 0
+      }
+    }
+  },
+  'finance.discountImpact': {
+    category: 'finance',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateSalesReport({ dateFrom, dateTo })
+      const pct = report.summary.totalRevenue > 0 ? (report.summary.totalDiscount / report.summary.totalRevenue) * 100 : 0
+      return {
+        headline: `Discounts reduced revenue by ${formatAmountForSpeech(report.summary.totalDiscount, sym)} this period, ${pct.toFixed(1)}% of gross sales`,
+        details: [],
+        isEmpty: report.summary.totalDiscount === 0
+      }
+    }
+  },
+  'finance.netWorthSnapshot': {
+    category: 'finance',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateTrialBalanceReport({ dateFrom, dateTo })
+      const capitalRow = report.rows.find((r) => r.account.startsWith('Capital & Retained Earnings'))
+      const netWorth = capitalRow ? capitalRow.credit - capitalRow.debit : 0
+      return {
+        headline: `Estimated net worth as of ${report.asOf}: ${formatAmountForSpeech(netWorth, sym)}`,
+        details: ['Derived from your trial balance, not a persisted double-entry ledger — treat as an estimate'],
+        isEmpty: false
+      }
+    }
+  },
+  'finance.expenseTrend': {
+    category: 'finance',
+    async execute(_params, sym) {
+      const kpis = await getDashboardKpis()
+      return {
+        headline: `This month's expenses: ${formatAmountForSpeech(kpis.monthExpenses, sym)}, ${kpis.expenseTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.expenseTrend).toFixed(1)}% vs last month`,
+        details: [],
+        isEmpty: kpis.monthExpenses === 0
+      }
+    }
+  },
+  'finance.profitTrend': {
+    category: 'finance',
+    async execute(_params, sym) {
+      const kpis = await getDashboardKpis()
+      return {
+        headline: `This month's estimated profit: ${formatAmountForSpeech(kpis.estimatedProfit, sym)}, ${kpis.profitTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.profitTrend).toFixed(1)}% vs last month`,
+        details: [],
+        isEmpty: false
+      }
+    }
+  },
+  'staff.totalSalaryPaidThisMonth': {
+    category: 'staff',
+    async execute(_params, sym) {
+      const now = new Date()
+      const res = await listPayrollForPeriod({ year: now.getFullYear(), month: now.getMonth() + 1 })
+      const records = res.data?.records ?? []
+      const paid = records.filter((r) => r.status === 'PAID')
+      const total = paid.reduce((s, r) => s + r.netPayable, 0)
+      return {
+        headline: `Total salary paid this month: ${formatAmountForSpeech(total, sym)}`,
+        details: [`${paid.length} of ${records.length} payroll records marked paid`],
+        isEmpty: records.length === 0
+      }
+    }
+  },
+  'staff.bestWorstAttendance': {
+    category: 'staff',
+    async execute(params, _sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generateAttendanceReport({ dateFrom, dateTo })
+      if (report.byEmployee.length === 0) return { headline: '', details: [], isEmpty: true }
+      const best = report.byEmployee[0]
+      const worst = report.byEmployee[report.byEmployee.length - 1]
+      return {
+        headline: `Best attendance this period: ${best.employeeName} at ${best.attendanceRate}%`,
+        details: report.byEmployee.length > 1 ? [`Lowest attendance: ${worst.employeeName} at ${worst.attendanceRate}%`] : [],
+        isEmpty: false
+      }
+    }
+  },
+  'staff.activeHeadcount': {
+    category: 'staff',
+    async execute(_params, _sym) {
+      const db = getPrisma()
+      const count = await db.employee.count({ where: { isActive: true } })
+      return {
+        headline: `You have ${count} active employees`,
+        details: [],
+        isEmpty: count === 0
+      }
+    }
+  },
+  'documents.openQuotationsValue': {
+    category: 'documents',
+    async execute(_params, sym) {
+      const [draft, sent] = await Promise.all([
+        quotationService.list({ status: 'DRAFT', limit: 1000 }),
+        quotationService.list({ status: 'SENT', limit: 1000 })
+      ])
+      const draftQuotations = (draft.data as { quotations?: Array<{ totalAmount: number }> } | undefined)?.quotations ?? []
+      const sentQuotations = (sent.data as { quotations?: Array<{ totalAmount: number }> } | undefined)?.quotations ?? []
+      const totalValue = [...draftQuotations, ...sentQuotations].reduce((s, q) => s + q.totalAmount, 0)
+      const count = draftQuotations.length + sentQuotations.length
+      return {
+        headline: `${count} open quotations worth ${formatAmountForSpeech(totalValue, sym)}`,
+        details: [],
+        isEmpty: count === 0
+      }
+    }
+  },
+  'documents.quotationConversionRate': {
+    category: 'documents',
+    async execute(params, _sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const from = new Date(dateFrom)
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      const [total, converted] = await Promise.all([
+        db.quotation.count({ where: { createdAt: { gte: from, lte: to } } }),
+        db.quotation.count({ where: { createdAt: { gte: from, lte: to }, invoice: { isNot: null } } })
+      ])
+      const rate = total > 0 ? (converted / total) * 100 : 0
+      return {
+        headline: `${rate.toFixed(0)}% of quotations converted to an invoice this period`,
+        details: [`${converted} of ${total} quotations converted`],
+        isEmpty: total === 0
+      }
+    }
+  },
+  'documents.overduePurchaseOrders': {
+    category: 'documents',
+    async execute(_params, sym) {
+      const db = getPrisma()
+      const now = new Date()
+      const orders = await db.purchaseOrder.findMany({
+        where: { status: 'APPROVED', expectedDate: { lt: now } },
+        select: { poNumber: true, totalAmount: true, expectedDate: true, supplier: { select: { supplierName: true } } },
+        orderBy: { expectedDate: 'asc' }
+      })
+      const totalValue = orders.reduce((s, o) => s + o.totalAmount, 0)
+      return {
+        headline: `${orders.length} purchase orders are overdue for receipt, worth ${formatAmountForSpeech(totalValue, sym)}`,
+        details: orders.slice(0, 10).map((o) => `${o.poNumber} — ${o.supplier.supplierName}, expected ${o.expectedDate ? toLocalISODate(o.expectedDate) : 'unknown'}`),
+        isEmpty: orders.length === 0
       }
     }
   }
