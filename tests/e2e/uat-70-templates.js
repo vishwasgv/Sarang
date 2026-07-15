@@ -81,7 +81,7 @@ async function main() {
     console.log('[SEED] Universal done:', Object.keys(u).length, 'refs')
 
     console.log('\n[SEED] Vertical fixtures (all 17 business types)...')
-    const v = seedVerticals(adminId)
+    seedVerticals(adminId)
     console.log('[SEED] Vertical done')
 
     // Real bug in THIS SCRIPT found live (2026-07-15): every date value
@@ -663,7 +663,6 @@ function cleanupUat70() {
     const caseIds = ids('LegalCase', 'caseTitle')
     const projectIds = [...ids('ServiceProject', 'projectName')]
     const batchIds = ids('CoachingBatch', 'batchName')
-    const enrollmentIds = db.prepare(`SELECT id FROM CoachingBatchEnrollment WHERE batchId IN (${batchIds.map(() => '?').join(',') || "''"})`).all(...batchIds).map((r) => r.id)
     const packageIds = ids('DrivingPackage', 'packageName')
     const petIds = db.prepare(`SELECT id FROM Pet WHERE petName LIKE ?`).all(like).map((r) => r.id)
     const productIds = ids('Product', 'productName')

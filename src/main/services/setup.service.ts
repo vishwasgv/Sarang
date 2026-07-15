@@ -4,6 +4,7 @@ import { seedDefaultData } from '../database/seed'
 import { logAction } from './audit.service'
 import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.service'
 import { seedDefaultServicesForTemplate } from './service-catalog.service'
+import { logger } from '../utils/logger'
 import type { ApiResponse, SetupPayload } from '../ipc/channels'
 
 export async function isSetupComplete(): Promise<ApiResponse<boolean>> {
@@ -94,7 +95,7 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
 
     return { success: true }
   } catch (err) {
-    console.error('[Setup] completeSetup error:', err)
+    logger.error('[Setup] completeSetup error:', err instanceof Error ? (err.stack ?? err.message) : String(err))
     return { success: false, error: { code: 'SYS-001', message: 'Setup could not be completed. Please try again.' } }
   }
 }

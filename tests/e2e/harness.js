@@ -103,15 +103,30 @@ async function shot(page, label) {
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
+// Real race found live 2026-07-15 (Section 3 suite-12 work): window.api is
+// injected by the preload script regardless of login state, so waiting on
+// it alone doesn't confirm the main process actually registered the
+// session (getCurrentSession()) before the caller's first IPC call fires.
+// Reproduced 100% (3/3) as every IPC call in a run failing with AUTH-003,
+// self-healing on a fresh relaunch+relogin — a real timing race, not app
+// flakiness. Almost certainly also the cause of the "flaky" first-run
+// failures seen earlier that session on suites 06 and 09 (both looked like
+// cold-start jitter and self-resolved on a bare rerun, which is consistent
+// with this same race resolving by luck). Poll the real session state and
+// re-submit the form if needed, instead of trusting one fixed wait.
 async function login(page, username = 'admin', password = UAT_PASSWORD) {
-  const userInput = page.locator('input[name="username"]')
-  if (await userInput.count()) {
-    await userInput.fill(username)
-    await page.locator('input[name="password"]').fill(password)
-    await page.locator('button[type="submit"]').click()
-    await page.waitForTimeout(1800)
-  }
   await page.waitForFunction(() => !!window.api, { timeout: 15000 })
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const who = await page.evaluate(async () => window.api.auth.getCurrentUser()).catch(() => null)
+    if (who?.success) return
+    const userInput = page.locator('input[name="username"]')
+    if (await userInput.count()) {
+      await userInput.fill(username)
+      await page.locator('input[name="password"]').fill(password)
+      await page.locator('button[type="submit"]').click()
+    }
+    await page.waitForTimeout(1500)
+  }
 }
 
 function withDb(fn) {

@@ -11,6 +11,17 @@ vi.mock('../../utils/branding', () => ({
   aszurexBrandSuffixHtml: vi.fn().mockResolvedValue('Aszurex | www.aszurex.com')
 }))
 
+// Real bug fix 2026-07-15 gave print.service.ts a real DB dependency for the
+// first time (fetching number_format/decimal_places/currency_symbol_position
+// Settings for locale-aware amount formatting — see that file's own fix
+// comment). No real Prisma connection exists in this unit-test environment,
+// so this mock returns an empty settings list, which getPrintFormatSettings
+// falls back to defaults for (numberFormat 'IN', decimals 2, prefix) —
+// matching this test file's existing fixtures/assertions exactly.
+vi.mock('../../database/db', () => ({
+  getPrisma: () => ({ setting: { findMany: vi.fn().mockResolvedValue([]) } })
+}))
+
 import { printService, logoToBase64DataUri } from '../print.service'
 
 // Minimal but realistic invoice/receipt fixtures, matching what

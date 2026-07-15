@@ -57,7 +57,8 @@ export async function listWorkLogs(payload: {
     const totalHours = logs.reduce((s, l) => s + l.hours, 0)
     return { success: true, data: { logs, totalHours } }
   } catch (e: any) {
-    return { success: false, error: { code: 'LOG_LIST_FAIL', message: e.message } }
+    console.error('[LOG_LIST_FAIL]', e)
+    return { success: false, error: { code: 'LOG_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -96,7 +97,8 @@ export async function createWorkLog(payload: {
     })
     return { success: true, data: toRecord(row) }
   } catch (e: any) {
-    return { success: false, error: { code: 'LOG_CREATE_FAIL', message: e.message } }
+    console.error('[LOG_CREATE_FAIL]', e)
+    return { success: false, error: { code: 'LOG_CREATE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -107,6 +109,7 @@ export async function deleteWorkLog(id: string, userId?: string): Promise<{ succ
     if (userId) await logAction(userId, 'DELETE', 'WORK_LOG', id, row, null)
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'LOG_DELETE_FAIL', message: e.message } }
+    console.error('[LOG_DELETE_FAIL]', e)
+    return { success: false, error: { code: 'LOG_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }

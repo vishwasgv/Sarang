@@ -151,7 +151,8 @@ export async function listEmployees(payload?: {
 
     return { success: true, data: { employees: employees.map(toEmployee), total } }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-001', message: e.message } }
+    console.error('[HR-001]', e)
+    return { success: false, error: { code: 'HR-001', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -161,7 +162,8 @@ export async function getEmployee(id: string): Result<EmployeeRecord> {
     const e = await prisma.employee.findUniqueOrThrow({ where: { id } })
     return { success: true, data: toEmployee(e) }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-002', message: e.message } }
+    console.error('[HR-002]', e)
+    return { success: false, error: { code: 'HR-002', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -200,7 +202,8 @@ export async function createEmployee(payload: {
     return { success: true, data: toEmployee(e) }
   } catch (e: any) {
     if (e.code === 'P2002') return { success: false, error: { code: 'HR-003', message: 'Employee number already exists.' } }
-    return { success: false, error: { code: 'HR-004', message: e.message } }
+    console.error('[HR-004]', e)
+    return { success: false, error: { code: 'HR-004', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -242,7 +245,8 @@ export async function updateEmployee(payload: {
     const e = await prisma.employee.update({ where: { id: payload.id }, data })
     return { success: true, data: toEmployee(e) }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-005', message: e.message } }
+    console.error('[HR-005]', e)
+    return { success: false, error: { code: 'HR-005', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -252,7 +256,8 @@ export async function deactivateEmployee(id: string): Result<void> {
     await prisma.employee.update({ where: { id }, data: { isActive: false, exitDate: new Date() } })
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-006', message: e.message } }
+    console.error('[HR-006]', e)
+    return { success: false, error: { code: 'HR-006', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -291,7 +296,8 @@ export async function markAttendance(payload: {
     })
     return { success: true, data: toAttendance(a) }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-010', message: e.message } }
+    console.error('[HR-010]', e)
+    return { success: false, error: { code: 'HR-010', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -315,7 +321,8 @@ export async function bulkMarkAttendance(payload: {
     }
     return { success: true, data: { count } }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-011', message: e.message } }
+    console.error('[HR-011]', e)
+    return { success: false, error: { code: 'HR-011', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -339,7 +346,8 @@ export async function getMonthAttendance(payload: {
     })
     return { success: true, data: { records: records.map(toAttendance) } }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-012', message: e.message } }
+    console.error('[HR-012]', e)
+    return { success: false, error: { code: 'HR-012', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -424,7 +432,8 @@ export async function getMonthlySummaries(payload: {
 
     return { success: true, data: { summaries } }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-013', message: e.message } }
+    console.error('[HR-013]', e)
+    return { success: false, error: { code: 'HR-013', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -447,7 +456,8 @@ export async function listLeaveTypes(): Result<{ leaveTypes: LeaveTypeRecord[] }
       }
     }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-020', message: e.message } }
+    console.error('[HR-020]', e)
+    return { success: false, error: { code: 'HR-020', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -468,7 +478,8 @@ export async function createLeaveType(payload: {
     return { success: true, data: { id: lt.id, name: lt.name, maxDays: lt.maxDays, isPaid: lt.isPaid, isActive: lt.isActive } }
   } catch (e: any) {
     if (e.code === 'P2002') return { success: false, error: { code: 'HR-021', message: 'Leave type name already exists.' } }
-    return { success: false, error: { code: 'HR-022', message: e.message } }
+    console.error('[HR-022]', e)
+    return { success: false, error: { code: 'HR-022', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -536,7 +547,8 @@ export async function listLeaveRequests(payload?: {
       }
     }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-030', message: e.message } }
+    console.error('[HR-030]', e)
+    return { success: false, error: { code: 'HR-030', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -584,7 +596,8 @@ export async function createLeaveRequest(payload: {
       }
     }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-031', message: e.message } }
+    console.error('[HR-031]', e)
+    return { success: false, error: { code: 'HR-031', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -607,7 +620,8 @@ export async function updateLeaveStatus(payload: {
     })
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-032', message: e.message } }
+    console.error('[HR-032]', e)
+    return { success: false, error: { code: 'HR-032', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -638,6 +652,7 @@ export async function getLeaveBalance(payload: {
 
     return { success: true, data: { balances } }
   } catch (e: any) {
-    return { success: false, error: { code: 'HR-033', message: e.message } }
+    console.error('[HR-033]', e)
+    return { success: false, error: { code: 'HR-033', message: 'Something went wrong. Please try again.' } }
   }
 }

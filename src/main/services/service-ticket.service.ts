@@ -75,7 +75,8 @@ export async function listTickets(payload?: {
     })
     return { success: true, data: { tickets: rows.map(toRecord), total: rows.length } }
   } catch (e: any) {
-    return { success: false, error: { code: 'TKT_LIST_FAIL', message: e.message } }
+    console.error('[TKT_LIST_FAIL]', e)
+    return { success: false, error: { code: 'TKT_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -156,7 +157,8 @@ export async function updateTicket(payload: {
     if (userId) await logAction(userId, 'UPDATE', 'SERVICE_TICKET', payload.id, old, data)
     return { success: true, data: toRecord(row) }
   } catch (e: any) {
-    return { success: false, error: { code: 'TKT_UPDATE_FAIL', message: e.message } }
+    console.error('[TKT_UPDATE_FAIL]', e)
+    return { success: false, error: { code: 'TKT_UPDATE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -171,6 +173,7 @@ export async function deleteTicket(id: string, userId?: string): Promise<{ succe
     if (userId) await logAction(userId, 'DELETE', 'SERVICE_TICKET', id, row, null)
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'TKT_DELETE_FAIL', message: e.message } }
+    console.error('[TKT_DELETE_FAIL]', e)
+    return { success: false, error: { code: 'TKT_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }

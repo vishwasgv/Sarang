@@ -2,6 +2,8 @@ import QRCode from 'qrcode'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { aszurexFooterHtml, aszurexBrandSuffixHtml } from '../utils/branding'
+import { getPrisma } from '../database/db'
+import { formatAmount as formatAmountLocaleAware } from './currency.service'
 
 // Phase 38: jsbarcode's minified browser bundle, inlined as a <script> block into
 // generated label HTML rather than referenced by file:// path — this guarantees it
@@ -178,17 +180,45 @@ function formatDate(d: string | Date): string {
   return new Date(d).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// Real bug found+fixed 2026-07-15: this used to be `${symbol}${amount.toFixed(2)}`
+// with no digit grouping at all — every printed invoice/receipt/report showed
+// e.g. "₹14568.00" instead of "₹14,568.00" for any amount over 999, completely
+// ignoring the `number_format`/`currency_symbol_position` Settings that the
+// renderer's own currency.util.ts already respects correctly (confirmed via a
+// real print-preview HTML inspection, not just reading the code). Fixed by
+// routing through currency.service.ts's already-correct, locale-aware
+// `formatAmount` (Intl.NumberFormat-based) instead of reimplementing it here
+// a second, naive time.
+async function getPrintFormatSettings(): Promise<{ numberFormat: string; decimals: number; symbolPosition: 'prefix' | 'suffix' }> {
+  const db = getPrisma()
+  const rows = await db.setting.findMany({ where: { settingKey: { in: ['number_format', 'decimal_places', 'currency_symbol_position'] } } })
+  const map = new Map(rows.map(r => [r.settingKey, r.settingValue]))
+  const numberFormat = map.get('number_format') ?? 'IN'
+  const decimalsRaw = map.get('decimal_places')
+  const decimals = decimalsRaw !== undefined ? parseInt(decimalsRaw, 10) : 2
+  const symbolPosition = map.get('currency_symbol_position') === 'suffix' ? 'suffix' : 'prefix'
+  return { numberFormat, decimals: Number.isFinite(decimals) ? decimals : 2, symbolPosition }
+}
+
 // Exported so other main-process code building printable content (e.g. Phase
 // 38's label price text) formats currency the same way every print template
 // in this file already does, instead of re-implementing the same string.
-export function formatAmount(amount: number, symbol = '₹'): string {
-  return `${symbol}${Math.abs(amount).toFixed(2)}`
+// Locale-aware: fetches the same Settings the print templates below use.
+export async function formatAmount(amount: number, symbol = '₹'): Promise<string> {
+  const { numberFormat, decimals, symbolPosition } = await getPrintFormatSettings()
+  return formatAmountLocaleAware(Math.abs(amount), symbol, numberFormat, decimals, symbolPosition)
 }
 
 export const printService = {
   async generateInvoiceHtml(invoice: Invoice, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
 
     let qrHtml = ''
     if (canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
@@ -357,6 +387,12 @@ export const printService = {
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     const periodLabel = `${monthNames[payslip.periodMonth - 1] ?? payslip.periodMonth} ${payslip.periodYear}`
 
@@ -458,6 +494,12 @@ export const printService = {
   async generateReceiptHtml(invoice: Invoice, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     // 58mm paper is narrower — tighten font
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
@@ -558,6 +600,12 @@ export const printService = {
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(quotation.customer?.customerName ?? quotation.customerName ?? 'Walk-in Customer')
     const validUntilStr = quotation.validUntil ? formatDate(quotation.validUntil as string | Date) : 'No expiry'
 
@@ -684,6 +732,12 @@ export const printService = {
   }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(quotation.customer?.customerName ?? quotation.customerName ?? 'Walk-in Customer')
     const validUntilStr = quotation.validUntil ? formatDate(quotation.validUntil as string | Date) : 'No expiry'
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
@@ -761,6 +815,12 @@ export const printService = {
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(cn.customer?.customerName ?? 'Walk-in Customer')
 
     return `<!DOCTYPE html>
@@ -851,6 +911,12 @@ export const printService = {
   }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(cn.customer?.customerName ?? 'Walk-in Customer')
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
@@ -902,6 +968,12 @@ export const printService = {
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const supplierDisplay = escHtml(dn.supplier?.supplierName ?? 'Supplier')
 
     return `<!DOCTYPE html>
@@ -990,6 +1062,12 @@ export const printService = {
   }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
+    // Locale-aware formatting settings, fetched once per document and
+    // shadowed as a synchronous local so the many unqualified `formatAmount(...)`
+    // calls below (inside template literals, which can't `await`) all pick
+    // this up automatically without individually being rewritten.
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const supplierDisplay = escHtml(dn.supplier?.supplierName ?? 'Supplier')
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'

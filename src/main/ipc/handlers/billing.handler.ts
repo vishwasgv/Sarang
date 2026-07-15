@@ -2,7 +2,8 @@ import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { billingService } from '../../services/billing.service'
-import { printService, formatAmount } from '../../services/print.service'
+import { printService } from '../../services/print.service'
+import { formatAmount as formatAmountLocaleAware } from '../../services/currency.service'
 import { requirePermission, requireSession, hasPermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { logAction } from '../../services/audit.service'
@@ -216,11 +217,24 @@ export function register(handle: HandleFn): void {
       return { ok: false, res: { success: false, error: { code: 'BCD-011', message: 'Every selected product needs a barcode before printing labels — use "Generate Missing Barcodes" first.' } } }
     }
 
-    const [profile, widthSetting, heightSetting] = await Promise.all([
+    const [profile, widthSetting, heightSetting, fmtSettingRows] = await Promise.all([
       db.businessProfile.findFirst(),
       db.setting.findUnique({ where: { settingKey: 'label_width_mm' } }),
-      db.setting.findUnique({ where: { settingKey: 'label_height_mm' } })
+      db.setting.findUnique({ where: { settingKey: 'label_height_mm' } }),
+      db.setting.findMany({ where: { settingKey: { in: ['number_format', 'decimal_places', 'currency_symbol_position'] } } })
     ])
+    // Real bug found+fixed 2026-07-15: label prices used to be formatted with
+    // print.service.ts's old naive formatAmount (no digit grouping at all,
+    // e.g. "₹14568" instead of "₹14,568") — see that file's own fix comment
+    // for the full story. Fixed the same way here: route through
+    // currency.service.ts's already-correct, locale-aware formatter.
+    const fmtMap = new Map(fmtSettingRows.map(r => [r.settingKey, r.settingValue]))
+    const numberFormat = fmtMap.get('number_format') ?? 'IN'
+    const decimalsRaw = fmtMap.get('decimal_places')
+    const decimals = decimalsRaw !== undefined ? parseInt(decimalsRaw, 10) : 2
+    const symbolPosition = fmtMap.get('currency_symbol_position') === 'suffix' ? 'suffix' : 'prefix'
+    const formatAmount = (amount: number, symbol = profile?.currencySymbol ?? '₹'): string =>
+      formatAmountLocaleAware(Math.abs(amount), symbol, numberFormat, Number.isFinite(decimals) ? decimals : 2, symbolPosition)
 
     // Tracks the price actually printed for each *regular batch* line (not the
     // weigh-and-print ad-hoc flow, which already has its own LabelPrintLog

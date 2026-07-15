@@ -94,7 +94,8 @@ export async function listProjects(payload?: {
     })
     return { success: true, data: { projects: rows.map(toRecord), total: rows.length } }
   } catch (e: any) {
-    return { success: false, error: { code: 'PRJ_LIST_FAIL', message: e.message } }
+    console.error('[PRJ_LIST_FAIL]', e)
+    return { success: false, error: { code: 'PRJ_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -105,7 +106,8 @@ export async function getProject(id: string): Promise<{ success: boolean; data?:
     if (!row) return { success: false, error: { code: 'PRJ_NOT_FOUND', message: 'Project not found' } }
     return { success: true, data: toRecord(row) }
   } catch (e: any) {
-    return { success: false, error: { code: 'PRJ_GET_FAIL', message: e.message } }
+    console.error('[PRJ_GET_FAIL]', e)
+    return { success: false, error: { code: 'PRJ_GET_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -201,7 +203,8 @@ export async function updateProject(payload: {
     if (userId) await logAction(userId, 'UPDATE', 'PROJECT', payload.id, old, data)
     return { success: true, data: toRecord(row) }
   } catch (e: any) {
-    return { success: false, error: { code: 'PRJ_UPDATE_FAIL', message: e.message } }
+    console.error('[PRJ_UPDATE_FAIL]', e)
+    return { success: false, error: { code: 'PRJ_UPDATE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -216,7 +219,8 @@ export async function deleteProject(id: string, userId?: string): Promise<{ succ
     if (userId) await logAction(userId, 'DELETE', 'PROJECT', id, row, null)
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'PRJ_DELETE_FAIL', message: e.message } }
+    console.error('[PRJ_DELETE_FAIL]', e)
+    return { success: false, error: { code: 'PRJ_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -240,7 +244,8 @@ export async function listProjectTasks(projectId: string): Promise<{ success: bo
     }))
     return { success: true, data: { tasks } }
   } catch (e: any) {
-    return { success: false, error: { code: 'TASK_LIST_FAIL', message: e.message } }
+    console.error('[TASK_LIST_FAIL]', e)
+    return { success: false, error: { code: 'TASK_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -276,7 +281,8 @@ export async function createProjectTask(payload: {
       }
     }
   } catch (e: any) {
-    return { success: false, error: { code: 'TASK_CREATE_FAIL', message: e.message } }
+    console.error('[TASK_CREATE_FAIL]', e)
+    return { success: false, error: { code: 'TASK_CREATE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -313,7 +319,8 @@ export async function updateProjectTask(payload: {
       }
     }
   } catch (e: any) {
-    return { success: false, error: { code: 'TASK_UPDATE_FAIL', message: e.message } }
+    console.error('[TASK_UPDATE_FAIL]', e)
+    return { success: false, error: { code: 'TASK_UPDATE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 
@@ -325,6 +332,7 @@ export async function deleteProjectTask(id: string, userId?: string): Promise<{ 
     if (userId && row) await logAction(userId, 'DELETE', 'PROJECT_TASK', id, row, null)
     return { success: true }
   } catch (e: any) {
-    return { success: false, error: { code: 'TASK_DELETE_FAIL', message: e.message } }
+    console.error('[TASK_DELETE_FAIL]', e)
+    return { success: false, error: { code: 'TASK_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }

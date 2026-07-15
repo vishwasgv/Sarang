@@ -36,8 +36,12 @@ async function run() {
       // client-side before the real check even runs.
       const rolesRes = await page.evaluate(async () => window.api.roles.list())
       const roles = rolesRes?.data || []
-      const staffRole = roles.find((rl) => /staff/i.test(rl.name)) || roles[0]
-      r.log('real-role-available-for-test', !!staffRole, JSON.stringify(staffRole?.name))
+      // Real bug found+fixed 2026-07-15: this used to filter on `rl.name`,
+      // but the actual Prisma Role field is `roleName` — the filter always
+      // silently missed and fell through to the `|| roles[0]` fallback,
+      // so this "found the Staff role" check never actually verified that.
+      const staffRole = roles.find((rl) => /staff/i.test(rl.roleName)) || roles[0]
+      r.log('real-role-available-for-test', !!staffRole, JSON.stringify(staffRole?.roleName))
 
       const res = await page.evaluate(async (roleId) => window.api.users.create({
         fullName: 'E2E Trust Weak Pw User', username: `e2etrust${Date.now()}`,
@@ -122,7 +126,19 @@ async function run() {
     h.withDb((db) => {
       const userIds = db.prepare("SELECT id FROM User WHERE fullName LIKE 'E2E Trust%'").all().map((r2) => r2.id)
       for (const uid of userIds) {
-        try { db.prepare('DELETE FROM User WHERE id = ?').run(uid) } catch { db.prepare('UPDATE User SET isActive = 0 WHERE id = ?').run(uid) }
+        // Real bug found+fixed 2026-07-15: a hard DELETE here "succeeds"
+        // (no FK error to catch) because AuditLog.userId is ON DELETE SET
+        // NULL, not RESTRICT — but that cascade silently mutates any
+        // historical AuditLog row this user ever appeared in (e.g. their
+        // own USER_LOGIN row), which verifyAuditLogChain's hash covers,
+        // producing a genuine hash_mismatch on data that was never
+        // tampered with. The real app itself never hard-deletes a user
+        // (`users:deactivate` is the only handler — no `users:delete`
+        // exists), so this was purely a test-cleanup artifact, not a
+        // product bug. Soft-delete unconditionally instead — these
+        // suite-created usernames are timestamped/unique per run anyway,
+        // so nothing depends on the row actually being gone.
+        db.prepare('UPDATE User SET isActive = 0 WHERE id = ?').run(uid)
       }
       console.log('extra cleanup: users', userIds.length)
     })

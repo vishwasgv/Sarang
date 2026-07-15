@@ -18,9 +18,28 @@ const config: Configuration = {
   files: [
     'out/**/*',
     '!out/**/*.map',
-    // Generated Prisma client (not in dependencies — must be explicit)
-    'node_modules/.prisma/client/**/*',
-    '!node_modules/.prisma/client/*.tmp*',
+    // Generated Prisma client (not in dependencies — must be explicit).
+    // REAL BUG found+fixed 2026-07-15: a plain glob string here selects
+    // NOTHING at all (confirmed empirically — not even the .node file gets
+    // as far as asarUnpack when this directory is referenced as a bare
+    // string pattern). The object-copy-rule form (`{from, to, filter}`)
+    // DOES select these files, but writing them directly into the asar
+    // still silently drops every plain JS/JSON file while keeping only
+    // `.node` binaries (confirmed via `npx @electron/asar list app.asar`
+    // showing zero `.prisma\client` entries after a build using only this
+    // object form) — some step specific to writing this dot-directory into
+    // the asar archive itself is lossy, separate from file *selection*.
+    // Every install crashed on launch with "Cannot find module
+    // '.prisma/client/default'" as an uncaught main-process exception,
+    // before any window ever rendered — undetected until now because the
+    // crashed process's sub-processes stay resident and "Responding: True"
+    // in Task Manager, which reads as healthy unless you specifically check
+    // for an actual visible window. Fix: use the object form to select the
+    // files (this comment), AND force the whole directory through
+    // `asarUnpack` below (physically copied to app.asar.unpacked/, never
+    // written into the asar at all) — combining both was required; neither
+    // alone was sufficient.
+    { from: 'node_modules/.prisma/client', to: 'node_modules/.prisma/client', filter: ['**/*', '!*.tmp*'] },
     // @prisma/client ships WASM query engines + compilers for every database
     // Prisma supports (cockroachdb, postgresql, mysql, sqlserver, sqlite) —
     // ~54MB uncompressed. db.ts sets PRISMA_QUERY_ENGINE_LIBRARY to force the
@@ -45,7 +64,12 @@ const config: Configuration = {
 
   // Unpack native addons from the ASAR — Node.js cannot dlopen() from inside
   // an ASAR archive. The DLL ends up in app.asar.unpacked/ at runtime.
-  asarUnpack: ['**/*.node'],
+  // The whole `.prisma/client` directory is also forced through here (not
+  // just its `.node` file) — see the long comment on that `files` entry
+  // above for why: writing this directory's plain JS/JSON files directly
+  // into the asar silently drops them, but physically unpacking them
+  // (this mechanism, already proven to work for the `.node` file) does not.
+  asarUnpack: ['**/*.node', 'node_modules/.prisma/client/**/*'],
 
   // ── Extra resources (copied to process.resourcesPath) ───────────────────────
   extraResources: [
