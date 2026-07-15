@@ -4,8 +4,23 @@ import { getPrisma } from '../database/db'
 // clone) cannot serialize a Decimal instance and throws "An object could not
 // be cloned" on every response that includes one. Applied to every function
 // below that returns a filing.
-function serializeFiling<T extends { govtFee: unknown }>(f: T): T {
-  return { ...f, govtFee: f.govtFee == null ? null : Number(f.govtFee) }
+//
+// dueDate/filedOn/createdAt/updatedAt are Prisma DateTime fields — structured
+// clone DOES preserve these as real Date instances across IPC (unlike
+// Decimal, which throws), so this half was never caught by a clone error; it
+// shipped as a live renderer crash instead (ROCFilingsScreen.tsx's edit-form
+// populators call `f.dueDate.slice(0, 10)` / `f.filedOn.slice(0, 10)`
+// assuming an ISO string — see the identical bug fixed in
+// compliance-task.service.ts's serializeTask for the full writeup).
+function serializeFiling<T extends { govtFee: unknown; dueDate: Date | null; filedOn: Date | null; createdAt: Date; updatedAt: Date }>(f: T): T {
+  return {
+    ...f,
+    govtFee: f.govtFee == null ? null : Number(f.govtFee),
+    dueDate: (f.dueDate ? f.dueDate.toISOString() : null) as unknown as Date,
+    filedOn: (f.filedOn ? f.filedOn.toISOString() : null) as unknown as Date,
+    createdAt: f.createdAt.toISOString() as unknown as Date,
+    updatedAt: f.updatedAt.toISOString() as unknown as Date,
+  }
 }
 
 export async function listROCFilings(filters?: {

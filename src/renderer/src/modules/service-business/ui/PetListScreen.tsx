@@ -138,8 +138,15 @@ export function PetListScreen() {
   useEffect(() => {
     api.customers.list({ limit: 200 }).then((res) => {
       if (res.success && res.data) {
-        const d = res.data as { items: { id: string; customerName: string }[] }
-        setCustomers(d.items ?? (res.data as { id: string; customerName: string }[]))
+        // customer.service.ts's listCustomers() returns { customers, total,
+        // page, limit, pages } — the array key is "customers", not "items".
+        // The old fallback (`d.items ?? res.data`) always resolved to the
+        // whole response object (never a real array) since `items` never
+        // existed, crashing this screen's Owner <select> with
+        // "customers.map is not a function" every time the Add Patient
+        // modal opened.
+        const d = res.data as { customers: { id: string; customerName: string }[] }
+        setCustomers(d.customers ?? [])
       }
     })
   }, [])

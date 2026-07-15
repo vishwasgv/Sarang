@@ -235,8 +235,10 @@ export function PetProfileScreen() {
   useEffect(() => {
     api.customers.list({ limit: 200 }).then((res) => {
       if (res.success && res.data) {
-        const d = res.data as { items: { id: string; customerName: string }[] }
-        setCustomers(d.items ?? (res.data as { id: string; customerName: string }[]))
+        // Same fix as PetListScreen.tsx — listCustomers() returns
+        // { customers, total, ... }, not { items }.
+        const d = res.data as { customers: { id: string; customerName: string }[] }
+        setCustomers(d.customers ?? [])
       }
     })
   }, [])

@@ -266,26 +266,24 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   CONSULTANT: ['projects', 'project_tasks', 'work_tracking', 'customer_history'],
   REPAIR:     ['job_cards', 'service_tickets', 'work_tracking', 'customer_history'],
   // Phase 22 — Clinical; Phase 23 adds vet_patients; Phase 24 adds visit_notes + token_queue
-  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients'],
+  // 'token_queue' (2026-07-15, final testing pass): extended to ALL 6 clinic-shaped
+  // verticals, not just GP_CLINIC/SPECIALIST_CLINIC — walk-in token queues are just as
+  // common at vet, dental, physio, and diagnostic-lab front desks in practice as at GP
+  // clinics (the earlier Phase 50 rationale for adding it to SPECIALIST_CLINIC applies
+  // equally here). TokenQueueScreen.tsx/its IPC layer were already fully generic (no
+  // business-type-specific logic), so this is purely a module-flag change.
+  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'token_queue'],
   GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue'],
   // 'specialist_referral' (Phase 46) is the flag distinguishing this vertical's extra
   // referral fields on the visit note — GP_CLINIC/PHYSIO_CLINIC also have 'visit_notes'
   // but not this, since referral-in/referral-out fields are specialist-specific.
-  // 'token_queue' (Phase 50) — walk-in token queues are just as common at specialist
-  // outpatient practices (ENT, eye, dermatology camps, etc.) as at GP clinics; previously
-  // only GP_CLINIC had it, which narrowed SPECIALIST_CLINIC's "any specialty" coverage
-  // for a real, common workflow. This had to be a TEMPLATE_DEFAULTS change rather than
-  // an in-app Settings toggle, since seedDefaultTemplates()'s backfill mechanism is what
-  // propagates a new default module to already-installed businesses of this type
-  // (IndustrySettingsScreen's TEMPLATES array does now list all 41 business types,
-  // including all 5 clinic types — confirmed current as of the 2026-07-12 fresh audit).
   SPECIALIST_CLINIC:  [...SERVICE_BASE_MODULES, 'visit_notes', 'specialist_referral', 'token_queue'],
-  DENTAL_CLINIC:      [...SERVICE_BASE_MODULES, 'dental_chart', 'dental_recall'],
-  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs'],
+  DENTAL_CLINIC:      [...SERVICE_BASE_MODULES, 'dental_chart', 'dental_recall', 'token_queue'],
+  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs', 'token_queue'],
   // Phase 50 — Diagnostic & Pathology Labs. Test/panel catalog reuses
   // service_catalog (already in SERVICE_BASE_MODULES) rather than a parallel
   // catalog module.
-  DIAGNOSTIC_LAB:     [...SERVICE_BASE_MODULES, 'lab_orders'],
+  DIAGNOSTIC_LAB:     [...SERVICE_BASE_MODULES, 'lab_orders', 'token_queue'],
   // Phase 22 — Wellness (Phase 27 adds template-specific modules)
   // 'multi_service_booking' (Phase 46) replaces a hardcoded `businessType === 'BEAUTY_SALON'`
   // check in AppointmentsScreen.tsx that gated actual save-time validation/payload shape.

@@ -1,5 +1,24 @@
 import { getPrisma } from '../database/db'
 
+// Prisma returns DateTime columns as real Date instances, which structured
+// clone (Electron's IPC boundary) preserves as-is — not the ISO strings the
+// renderer's ComplianceTask type (and its direct `.dueDate.slice(0, 10)`
+// calls, e.g. ComplianceScreen.tsx's overdue/due-today KPI counts) assumes.
+// Unlike a Prisma Decimal, a bare Date doesn't throw crossing that boundary,
+// so this was never caught by a serialization error — it silently shipped
+// as a live crash instead. Serialize here, the same place Decimal fields
+// already get sanitized elsewhere in this codebase (see legal-case.service.ts's
+// serializeCase), rather than patching every renderer call site.
+function serializeTask<T extends { dueDate: Date; filedOn: Date | null; createdAt: Date; updatedAt: Date }>(t: T): T {
+  return {
+    ...t,
+    dueDate: t.dueDate.toISOString() as unknown as Date,
+    filedOn: (t.filedOn ? t.filedOn.toISOString() : null) as unknown as Date,
+    createdAt: t.createdAt.toISOString() as unknown as Date,
+    updatedAt: t.updatedAt.toISOString() as unknown as Date,
+  }
+}
+
 async function scheduleComplianceNotifications(taskId: string, title: string, dueDate: Date) {
   try {
     const db = getPrisma()
@@ -64,7 +83,7 @@ export async function listComplianceTasks(filters?: {
       },
       orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
     })
-    return { success: true, data: tasks }
+    return { success: true, data: tasks.map(serializeTask) }
   } catch (err) {
     return { success: false, error: { code: 'CT29-001', message: err instanceof Error ? err.message : 'Could not list compliance tasks.' } }
   }
@@ -102,7 +121,7 @@ export async function createComplianceTask(payload: {
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ComplianceTask', entityId: task.id, newValue: JSON.stringify({ title: task.title }) } }).catch(() => {})
     scheduleComplianceNotifications(task.id, task.title, task.dueDate).catch(() => {})
-    return { success: true, data: task }
+    return { success: true, data: serializeTask(task) }
   } catch (err) {
     return { success: false, error: { code: 'CT29-002', message: err instanceof Error ? err.message : 'Could not create compliance task.' } }
   }
@@ -140,7 +159,7 @@ export async function updateComplianceTask(payload: {
     if (task.status !== 'FILED' && task.status !== 'DONE') {
       scheduleComplianceNotifications(task.id, task.title, task.dueDate).catch(() => {})
     }
-    return { success: true, data: task }
+    return { success: true, data: serializeTask(task) }
   } catch (err) {
     return { success: false, error: { code: 'CT29-003', message: err instanceof Error ? err.message : 'Could not update compliance task.' } }
   }
