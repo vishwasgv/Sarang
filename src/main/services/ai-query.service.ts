@@ -116,6 +116,13 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // "best-sell..." phrase regardless of the quantity qualifier).
   { template: 'inventory.topSellingByQuantity', patterns: [/(top|best)[\s-]sell.*quantity/i, /quantity.*(top|best)[\s-]sell/i] },
   { template: 'inventory.topRevenueProducts', patterns: [/(top|best)[\s-]sell/i, /(top|best)\s+products?\b/i] },
+  // Real gap found live 2026-07-16 (full 109-template packaged-app battery,
+  // not hypothetical): "What are my worst-selling products?" fell through to
+  // the LLM classify call and was misrouted to inventory.topRevenueProducts
+  // — this template had zero fast-path coverage before this fix, unlike its
+  // "top" counterpart above. Same fix shape as every other live-caught
+  // classification gap in this file.
+  { template: 'inventory.bottomRevenueProducts', patterns: [/worst[\s-]sell/i, /bottom\s+(revenue|sell)/i, /least\s+sell/i, /slow(est)?[\s-]sell/i] },
   { template: 'credit.whoOwesMe', patterns: [/who owes me/i, /^who owes\b/i] },
   { template: 'credit.totalReceivable', patterns: [/total\s+(receivable|owed to me|amount owed)/i] },
   // Checked BEFORE finance.profitAndLoss below — its own `/\bprofit\b/i`
@@ -133,6 +140,12 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // suppliers. Same fix shape as every other live-caught misclassification
   // this session: a specific deterministic pattern wins over model judgment.
   { template: 'suppliers.topByPurchaseVolume', patterns: [/buy the most from/i, /top\s+suppliers?\b/i, /biggest\s+suppliers?\b/i, /buy.*most.*from/i] },
+  // Real gap found live 2026-07-16 (full 109-template packaged-app battery):
+  // "What payments are pending to suppliers?" fell through to the LLM
+  // classify call and was misrouted to credit.whoOwesMe — a genuine
+  // direction confusion (money I owe vs. money owed to me). Zero fast-path
+  // coverage existed for this template before this fix.
+  { template: 'suppliers.pendingPayments', patterns: [/pending.*(payment|suppliers?)/i, /suppliers?.*pending/i, /payments?\s+(due|owed)\s+to\s+suppliers?/i] },
   // Vertical-template fast-path patterns, added 2026-07-13 alongside the
   // vertical-coverage expansion. Real bug found live: the model
   // misclassified "How is production going this month?" as
@@ -145,6 +158,14 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'hotel.occupancy', patterns: [/room[s]?\s+(occupied|occupancy|available)/i, /occupancy/i] },
   { template: 'jewellery.stockAndSales', patterns: [/(gold|silver|metal|jewellery)\s+stock/i, /making[\s-]charge/i] },
   { template: 'rental.status', patterns: [/(checked\s+out|rented\s+out|overdue\s+rental)/i] },
+  // Real gap found live 2026-07-16 (full 109-template packaged-app battery):
+  // "What's my rental revenue this month?" fell through to the LLM classify
+  // call and was misrouted to finance.profitAndLoss — plausible since both
+  // discuss money, but rental.revenue is the correct, more specific answer.
+  // Checked BEFORE finance.profitAndLoss's own bare `/\bprofit\b/i`-adjacent
+  // patterns aren't actually triggered by the word "revenue" alone, so no
+  // ordering conflict, but placed here for category grouping regardless.
+  { template: 'rental.revenue', patterns: [/rental\s+revenue/i, /revenue.*rental/i] },
   { template: 'lab.throughput', patterns: [/test\s+orders?/i, /(lab|sample)\s+(throughput|turnaround)/i] },
   { template: 'bloodBank.stock', patterns: [/blood\s+(stock|units|group)/i] },
   { template: 'restaurant.foodCost', patterns: [/(food|ingredient)\s+cost/i] },
@@ -160,7 +181,13 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'service.appointmentUtilisation', patterns: [/appointments?\s+(this|today|utilisation|utilization)/i] },
   { template: 'service.clientRetention', patterns: [/client\s+retention/i, /(new|returning)\s+clients?/i] },
   { template: 'service.commission', patterns: [/staff\s+commission/i, /\bcommission\b/i] },
-  { template: 'logistics.summary', patterns: [/shipments?/i, /deliver(y|ies)\s+rate/i] },
+  // "logistics summary" itself (the most natural phrasing, matching the
+  // template's own name) was missing from this pattern — real gap found live
+  // 2026-07-16 re-verification: even with the correct business type
+  // (DISTRIBUTOR/HARDWARE), "What's my logistics summary this month?" still
+  // fell through to the LLM and was misrouted, since neither existing
+  // pattern below covers that direct phrasing.
+  { template: 'logistics.summary', patterns: [/shipments?/i, /deliver(y|ies)\s+rate/i, /logistics\s+summary/i, /\blogistics\b/i] },
   { template: 'placement.summary', patterns: [/candidates?\s+placed/i, /job\s+orders?/i, /placements?\s+this/i] },
   // meta.* templates, added to answer "what can this thing even do" and
   // "what should I look at" questions — deliberately phrased WITHOUT the
@@ -203,6 +230,13 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'customers.highestSinglePurchase', patterns: [/highest single purchase/i, /biggest single purchase/i] },
   { template: 'customers.averageSpend', patterns: [/average.*customer spend/i, /customer spend/i] },
   { template: 'customers.repeatPurchaseRate', patterns: [/repeat purchase rate/i, /repeat buyers?/i] },
+  // Real gaps found live 2026-07-16 (full 109-template packaged-app
+  // battery): both fell through to the LLM classify call, which has no
+  // fast-path competitor for sales.compareToPreviousPeriod either (it has
+  // zero deterministic patterns of its own) — confirming these two just had
+  // no coverage at all rather than losing to a specific competing pattern.
+  { template: 'customers.byCity', patterns: [/(what\s+)?cit(y|ies).*customers?/i, /customers?.*(cities|located)/i, /where.*customers?.*located/i] },
+  { template: 'customers.newThisWeek', patterns: [/new\s+customers?.*this\s+week/i, /how many new customers/i] },
   { template: 'suppliers.inactive', patterns: [/suppliers?.*(haven'?t|not).*order/i, /inactive suppliers?/i] },
   { template: 'suppliers.averageDeliveryLeadTime', patterns: [/delivery lead time/i, /supplier.*lead time/i] },
   { template: 'suppliers.totalPurchaseValueThisMonth', patterns: [/purchase value.*suppliers?/i, /total purchase value/i] },
