@@ -30,6 +30,7 @@ import { ImportWizardScreen } from '@modules/import/ui/ImportWizardScreen'
 import { RestaurantTablesScreen } from '@modules/restaurant/ui/RestaurantTablesScreen'
 import { KOTScreen } from '@modules/restaurant/ui/KOTScreen'
 import { RecipesScreen } from '@modules/restaurant/ui/RecipesScreen'
+import { KitchenDisplayBoardScreen } from '@modules/restaurant/ui/KitchenDisplayBoardScreen'
 import { ReturnScreen } from '@modules/retail/ui/ReturnScreen'
 import { IndustrySettingsScreen } from '@modules/industry/ui/IndustrySettingsScreen'
 import { AboutScreen } from '@modules/settings/ui/AboutScreen'
@@ -203,6 +204,9 @@ export function AppRouter() {
 
   return (
     <Routes>
+      {/* Sibling of AppLayout, deliberately — this is a full-screen wall
+          board (second-monitor Kitchen Display), no sidebar/chrome. */}
+      <Route path="/kitchen-display" element={<ProtectedRoute permission="restaurant.viewKOT"><KitchenDisplayBoardScreen /></ProtectedRoute>} />
       <Route element={<AppLayout />}>
         {/* Dashboard — all authenticated users */}
         <Route index element={<ProtectedRoute permission="analytics.viewDashboard"><DashboardScreen /></ProtectedRoute>} />

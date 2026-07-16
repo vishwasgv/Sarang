@@ -153,11 +153,26 @@ async function run() {
       const issueIds = db.prepare("SELECT id FROM BloodIssue WHERE recipientName LIKE 'E2E Blood%'").all().map((r2) => r2.id)
       for (const id of issueIds) { try { db.prepare('DELETE FROM BloodIssue WHERE id = ?').run(id) } catch { /* noop */ } }
       const donorIds = db.prepare("SELECT id FROM Donor WHERE fullName LIKE 'E2E Blood%'").all().map((r2) => r2.id)
+      // A screening-PASSED donation creates a real ProductBatch row (see
+      // blood-bank.service.ts's updateScreeningStatus) keyed on
+      // (productId, batchNumber=donationNumber). Deleting only the
+      // DonationRecord orphaned that batch row — donationNumber is derived
+      // from a live COUNT of existing records (nextNumber()), so the next
+      // test run recomputes the exact same "DON-<yyyymm>-0001" and collides
+      // with the batch this same suite's own PREVIOUS unclean run left
+      // behind, a real bug found 2026-07-16 (BB-018 unique constraint
+      // failure). Not reachable by an actual customer — the app exposes no
+      // donation-record delete at all — but must clean up its own mess here.
+      let batchesRemoved = 0
       for (const id of donorIds) {
+        const batchIds = db.prepare('SELECT productBatchId FROM DonationRecord WHERE donorId = ? AND productBatchId IS NOT NULL').all(id).map((r2) => r2.productBatchId)
         try { db.prepare('DELETE FROM DonationRecord WHERE donorId = ?').run(id) } catch { /* noop */ }
+        for (const batchId of batchIds) {
+          try { db.prepare('DELETE FROM ProductBatch WHERE id = ?').run(batchId); batchesRemoved++ } catch { /* noop */ }
+        }
         try { db.prepare('DELETE FROM Donor WHERE id = ?').run(id) } catch { /* noop */ }
       }
-      console.log('extra cleanup: issues', issueIds.length, 'donors', donorIds.length)
+      console.log('extra cleanup: issues', issueIds.length, 'donors', donorIds.length, 'batches', batchesRemoved)
     })
   }
 

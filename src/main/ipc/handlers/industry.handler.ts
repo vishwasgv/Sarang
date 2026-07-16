@@ -5,6 +5,10 @@ import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { ensureQrOrderServerState, getServerStatus } from '../../server/qr-order-server'
 import {
+  ensureKitchenDisplayServerState, getKitchenDisplayServerStatus,
+  getOrCreateKitchenDisplayToken, regenerateKitchenDisplayToken
+} from '../../server/kitchen-display-server'
+import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
   DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
   AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema,
@@ -27,7 +31,7 @@ export function register(handle: HandleFn): void {
     const parsed = ChangeBusinessTypeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
-    if (result.success) await ensureQrOrderServerState()
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState() }
     return result
   })
 
@@ -38,7 +42,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
     // Phase 47: a business-type switch changes which enabledModules apply —
     // resync the QR-ordering server's running state either way.
-    if (result.success) await ensureQrOrderServerState()
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState() }
     return result
   })
 
@@ -49,7 +53,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.updateEnabledModules(parsed.data.modules as industryService.TemplateModule[], getCurrentSession()?.userId)
     // Phase 47: toggling qr_table_ordering on/off must take effect immediately —
     // starts/stops the local HTTP server without requiring an app restart.
-    if (result.success) await ensureQrOrderServerState()
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState() }
     return result
   })
 
@@ -180,5 +184,33 @@ export function register(handle: HandleFn): void {
     const QRCode = await import('qrcode')
     const qrDataUrl = await QRCode.toDataURL(orderUrl, { margin: 1, width: 320 })
     return { success: true, data: { qrDataUrl, orderUrl } }
+  })
+
+  // ── Kitchen Display (phone/laptop, LAN) ─────────────────────────────────────
+
+  handle('restaurant:getKitchenDisplayStatus', async () => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const status = getKitchenDisplayServerStatus()
+    const token = status.running ? await getOrCreateKitchenDisplayToken() : null
+    return { success: true, data: { ...status, token } }
+  })
+
+  handle('restaurant:regenerateKitchenDisplayToken', async () => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const token = await regenerateKitchenDisplayToken()
+    return { success: true, data: { token } }
+  })
+
+  handle('restaurant:generateKitchenDisplayQr', async () => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const status = getKitchenDisplayServerStatus()
+    if (!status.running || status.lanUrls.length === 0) {
+      return { success: false, error: { code: 'KDS-001', message: 'Kitchen Display is not currently running. Enable it in Settings first.' } }
+    }
+    const token = await getOrCreateKitchenDisplayToken()
+    const boardUrl = `${status.lanUrls[0]}/kitchen/${token}`
+    const QRCode = await import('qrcode')
+    const qrDataUrl = await QRCode.toDataURL(boardUrl, { margin: 1, width: 320 })
+    return { success: true, data: { qrDataUrl, boardUrl } }
   })
 }

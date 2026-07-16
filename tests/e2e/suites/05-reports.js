@@ -1,11 +1,16 @@
 /**
  * Suite 5 — Reports (Section 2.2 item 5). Representative sweep across
  * chart-bearing and non-chart report categories, confirming each renders
- * real data without crashing. Runs against whatever business type is
- * currently active (no switch needed) — MANUFACTURING at the time this
- * suite was written, which conveniently exercises both a universal report
- * (Sales, Inventory, Outstanding) and a vertical-specific one (Production,
- * gated on the `production_orders` module).
+ * real data without crashing. Sales/Inventory/Outstanding are universal
+ * reports, checked against whatever business type is already active.
+ * Production Report is gated on the `production_orders` module (only
+ * MANUFACTURING has it by default — see TEMPLATE_DEFAULTS in
+ * industry-template.service.ts), so it explicitly switches business type
+ * first rather than assuming ambient state — real bug found 2026-07-16:
+ * this suite used to rely on "MANUFACTURING happens to be left active by
+ * whatever ran before it", which silently broke once suite ordering/count
+ * changed and the ambient business type was no longer MANUFACTURING by the
+ * time this suite ran.
  *
  * The 2 GST reports (HSN-Wise Summary, GSTR-3B Reconciliation Preview)
  * are already covered by Suite 6 (06-trust-compliance.js) — not repeated
@@ -40,6 +45,8 @@ async function run() {
   h.resetAdminPasswordForSuite()
   const app = await h.launchApp()
 
+  const originalBusinessType = h.getBusinessType()
+
   try {
     const page = await h.getMainWindow(app)
     await h.login(page)
@@ -47,8 +54,19 @@ async function run() {
     await r.step('sales-report', () => generateReport(page, r, 'Sales Report', { needsDateRange: true }))
     await r.step('inventory-report', () => generateReport(page, r, 'Inventory Report', { needsDateRange: false }))
     await r.step('outstanding-report', () => generateReport(page, r, 'Outstanding Report', { needsDateRange: false }))
+
+    await r.step('switch-to-manufacturing-for-production-report', async () => {
+      const sw = await h.switchBusinessType(page, 'Manufacturing')
+      r.log('switched-to-manufacturing', sw.to === 'MANUFACTURING', JSON.stringify(sw))
+    })
     await r.step('production-report', () => generateReport(page, r, 'Production Report', { needsDateRange: true }))
   } finally {
+    if (originalBusinessType) {
+      try {
+        const winPage = (await app.windows())[0]
+        if (winPage) await winPage.evaluate((bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
+      } catch { /* app may already be closing */ }
+    }
     await h.closeApp(app)
     h.randomizeAdminPassword()
   }

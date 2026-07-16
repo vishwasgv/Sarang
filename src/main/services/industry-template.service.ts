@@ -103,6 +103,13 @@ export type TemplateModule =
   // server only when explicitly enabled in Settings (see qr-order-server.ts), same
   // zero-footprint-when-off convention as the Phase 38 opt-in modules.
   | 'qr_table_ordering'
+  // Kitchen Display (phone/laptop, LAN) module — RESTAURANT only. Opt-in,
+  // deliberately never added to TEMPLATE_DEFAULTS below, same zero-footprint-
+  // when-off convention as qr_table_ordering directly above — starts a
+  // second local LAN HTTP server (see kitchen-display-server.ts) only when
+  // explicitly enabled. Additive to KOT printing and the second-monitor
+  // Kitchen Display window, never a replacement for either.
+  | 'kitchen_display_web'
   // Phase 50 module — Diagnostic & Pathology Labs order/sample/result/report
   // workflow. Bundles order creation, sample collection, result entry, and
   // report finalization under one flag (same convention as vet_patients

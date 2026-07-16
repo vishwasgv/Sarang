@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
   Info, Shield, Plus, Edit2, Trash2, Check, X, Star, Layers, RefreshCw, Globe, Moon, Printer,
-  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles
+  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode
 } from 'lucide-react'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useTranslation } from 'react-i18next'
@@ -1305,10 +1305,14 @@ function AppearanceSection() {
   const { isDark, toggleTheme } = useThemeStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const getSetting = useBusinessStore(s => s.getSetting)
+  const profile = useBusinessStore(s => s.profile)
   // getSetting() already returns its own default ('') when the key is missing,
   // so a trailing `?? 'A4'` here never fires — the empty string isn't nullish.
   // Pass the fallback straight into getSetting instead.
   const [printType, setPrintType] = useState<string>(() => getSetting('print_type', 'A4'))
+  const [kotPrinter, setKotPrinter] = useState<string>(() => getSetting('kot_printer_name', ''))
+  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string; isDefault: boolean }>>([])
+  const [printersLoading, setPrintersLoading] = useState(false)
 
   async function savePrintType(value: string) {
     const previous = printType
@@ -1324,6 +1328,81 @@ function AppearanceSection() {
     } catch {
       setPrintType(previous)
       toastError('Error', 'Failed to save print type.')
+    }
+  }
+
+  // Restaurant-only — KOT is a Restaurant-business-type feature (see
+  // business__restaurant.md), so this picker would be dead UI for anyone else.
+  const isRestaurant = profile?.businessType === 'RESTAURANT'
+
+  useEffect(() => {
+    if (!isRestaurant) return
+    setPrintersLoading(true)
+    window.api.print.listPrinters()
+      .then(res => { if (res.success && res.data) setPrinters(res.data) })
+      .finally(() => setPrintersLoading(false))
+  }, [isRestaurant])
+
+  // Second-monitor Kitchen Display (Feature A) — a BrowserWindow on a
+  // secondary display, additive to the printer above, not a replacement.
+  const [displays, setDisplays] = useState<Array<{ id: number; label: string; isPrimary: boolean }>>([])
+  const [kdWindowStatus, setKdWindowStatus] = useState<{ open: boolean; displayId: number | null }>({ open: false, displayId: null })
+  const [kdBusy, setKdBusy] = useState(false)
+
+  const refreshKitchenDisplayWindowState = useCallback(async () => {
+    const [displaysRes, statusRes] = await Promise.all([
+      window.api.kitchenDisplay.listDisplays(),
+      window.api.kitchenDisplay.getStatus()
+    ])
+    if (displaysRes.success && displaysRes.data) setDisplays(displaysRes.data)
+    if (statusRes.success && statusRes.data) setKdWindowStatus(statusRes.data)
+  }, [])
+
+  useEffect(() => {
+    if (!isRestaurant) return
+    refreshKitchenDisplayWindowState()
+  }, [isRestaurant, refreshKitchenDisplayWindowState])
+
+  async function openKitchenDisplay(displayId?: number) {
+    setKdBusy(true)
+    try {
+      const res = await window.api.kitchenDisplay.open(displayId !== undefined ? { displayId } : undefined)
+      if (res.success) toastSuccess('Kitchen Display opened')
+      else toastError('Error', res.error?.message ?? 'Could not open Kitchen Display.')
+    } catch {
+      toastError('Error', 'Could not open Kitchen Display.')
+    } finally {
+      setKdBusy(false)
+      refreshKitchenDisplayWindowState()
+    }
+  }
+
+  async function closeKitchenDisplay() {
+    setKdBusy(true)
+    try {
+      await window.api.kitchenDisplay.close()
+    } finally {
+      setKdBusy(false)
+      refreshKitchenDisplayWindowState()
+    }
+  }
+
+  const secondaryDisplays = displays.filter(d => !d.isPrimary)
+
+  async function saveKotPrinter(value: string) {
+    const previous = kotPrinter
+    setKotPrinter(value)
+    try {
+      const res = await window.api.settings.set({ key: 'kot_printer_name', value })
+      if (res.success) {
+        toastSuccess('Kitchen printer saved')
+      } else {
+        setKotPrinter(previous)
+        toastError('Error', res.error?.message ?? 'Failed to save kitchen printer.')
+      }
+    } catch {
+      setKotPrinter(previous)
+      toastError('Error', 'Failed to save kitchen printer.')
     }
   }
 
@@ -1382,9 +1461,198 @@ function AppearanceSection() {
             ))}
           </div>
         </div>
+        {isRestaurant && (
+          <div className="px-5 py-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Printer size={18} className="text-slate-400" />
+              <div>
+                <p className="text-sm font-semibold text-dark dark:text-slate-100">Kitchen Printer</p>
+                <p className="text-xs text-slate-400 mt-0.5">Kitchen Order Tickets print silently — pick a printer here so they don't just go to whatever your Windows default printer is</p>
+              </div>
+            </div>
+            <Select
+              value={kotPrinter}
+              onChange={e => saveKotPrinter(e.target.value)}
+              disabled={printersLoading}
+            >
+              <option value="">Use Windows default printer</option>
+              {printers.map(p => (
+                <option key={p.name} value={p.name}>{p.displayName || p.name}{p.isDefault ? ' (Windows default)' : ''}</option>
+              ))}
+            </Select>
+            {printersLoading && <p className="text-xs text-slate-400 mt-1">Loading printers…</p>}
+            {!printersLoading && printers.length === 0 && (
+              <p className="text-xs text-slate-400 mt-1">No printers found. Make sure your kitchen printer is installed in Windows.</p>
+            )}
+          </div>
+        )}
+        {isRestaurant && (
+          <div className="px-5 py-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Monitor size={18} className="text-slate-400" />
+              <div>
+                <p className="text-sm font-semibold text-dark dark:text-slate-100">Kitchen Display — second monitor</p>
+                <p className="text-xs text-slate-400 mt-0.5">Shows a live, big-text KOT board on a second monitor plugged into this PC. Works with an ordinary mouse — no touchscreen needed.</p>
+              </div>
+            </div>
+            {secondaryDisplays.length === 0 ? (
+              <p className="text-xs text-slate-400">No second monitor detected. Plug one in (extend, not duplicate, in Windows Display settings) and reopen Settings.</p>
+            ) : (
+              <div className="space-y-2">
+                {secondaryDisplays.map(d => (
+                  <div key={d.id} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-sm text-dark dark:text-slate-100">{d.label}</span>
+                    {kdWindowStatus.open && kdWindowStatus.displayId === d.id ? (
+                      <button onClick={closeKitchenDisplay} disabled={kdBusy}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
+                        Close
+                      </button>
+                    ) : (
+                      <button onClick={() => openKitchenDisplay(d.id)} disabled={kdBusy}
+                        className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
+                        Open Kitchen Display
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
+      {isRestaurant && <KitchenDisplayWebSection />}
       <p className="text-xs text-slate-400">Your preference is saved automatically and will be remembered next time you open Sarang.</p>
     </div>
+  )
+}
+
+// Kitchen Display (phone/laptop, LAN) — Settings-side twin of
+// RestaurantTablesScreen.tsx's QR Table Ordering block (same toggle-via-
+// updateEnabledModules mechanism, same qrStatus-style polling), just for the
+// kitchen_display_web module and its own LAN server (kitchen-display-server.ts,
+// port 8421 — separate from the customer-ordering server on 8420, no shared
+// routes or secrets between the two).
+function KitchenDisplayWebSection() {
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { enabledModules, updateEnabledModules } = useIndustryStore()
+  const kdWebEnabled = enabledModules.includes('kitchen_display_web')
+  const [toggling, setToggling] = useState(false)
+  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null } | null>(null)
+  const [qr, setQr] = useState<{ qrDataUrl: string; boardUrl: string } | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+
+  const loadStatus = useCallback(async () => {
+    const res = await window.api.restaurant.getKitchenDisplayStatus()
+    if (res.success && res.data) setStatus(res.data)
+  }, [])
+
+  useEffect(() => { loadStatus() }, [loadStatus])
+
+  async function toggle(on: boolean) {
+    setToggling(true)
+    try {
+      const next = on ? [...enabledModules, 'kitchen_display_web'] : enabledModules.filter(m => m !== 'kitchen_display_web')
+      const res = await updateEnabledModules(next as typeof enabledModules)
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update Kitchen Display setting.')
+      await loadStatus()
+      setQr(null)
+      setShowQr(false)
+    } catch {
+      toastError('Error', 'Could not update Kitchen Display setting.')
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function loadQr() {
+    setShowQr(true)
+    setQrLoading(true)
+    try {
+      const res = await window.api.restaurant.generateKitchenDisplayQr()
+      if (res.success && res.data) setQr(res.data)
+      else toastError('Error', res.error?.message ?? 'Could not generate QR code.')
+    } catch {
+      toastError('Error', 'Could not generate QR code.')
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
+  async function regenerate() {
+    setRegenerating(true)
+    try {
+      const res = await window.api.restaurant.regenerateKitchenDisplayToken()
+      if (res.success) {
+        toastSuccess('Access code regenerated', 'Old Kitchen Display links/QR codes no longer work.')
+        setQr(null)
+        await loadStatus()
+        if (showQr) await loadQr()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not regenerate access code.')
+      }
+    } catch {
+      toastError('Error', 'Could not regenerate access code.')
+    } finally {
+      setRegenerating(false)
+      setConfirmRegenerate(false)
+    }
+  }
+
+  return (
+    <Card padding="lg" className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><Smartphone size={16} /> Kitchen Display — phone / laptop</h3>
+          <p className="text-xs text-slate-400 mt-1">Lets any phone or laptop on your shop WiFi open a live KOT board in its browser — no app to install, no touchscreen needed on the billing PC's own monitors.</p>
+        </div>
+        <button
+          onClick={() => toggle(!kdWebEnabled)}
+          disabled={toggling}
+          className={cn('px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 shrink-0',
+            kdWebEnabled ? 'bg-success/10 text-success border border-success/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
+          {toggling ? 'Updating…' : kdWebEnabled ? 'Enabled' : 'Enable'}
+        </button>
+      </div>
+      {kdWebEnabled && (
+        status?.running ? (
+          <div className="space-y-2">
+            <p className="text-xs text-success">Running — open one of these on a phone/laptop's browser, or scan the QR code:</p>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+              {status.lanUrls.map(u => <li key={u} className="font-mono">{u}/kitchen/{status.token}</li>)}
+            </ul>
+            <div className="flex gap-2 pt-1">
+              <button onClick={loadQr} disabled={qrLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors disabled:opacity-50">
+                <QrCode size={13} /> {qrLoading ? 'Generating…' : 'Show QR code'}
+              </button>
+              <button onClick={() => setConfirmRegenerate(true)} disabled={regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
+                <RefreshCw size={13} /> Regenerate access code
+              </button>
+            </div>
+            {showQr && qr && (
+              <div className="pt-2">
+                <img src={qr.qrDataUrl} alt="Kitchen Display QR code" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-warning">Enabled but not yet running — check that another app isn't already using the same port, or try refreshing.</p>
+        )
+      )}
+      <ConfirmDialog
+        open={confirmRegenerate}
+        onClose={() => setConfirmRegenerate(false)}
+        onConfirm={regenerate}
+        loading={regenerating}
+        title="Regenerate access code?"
+        message="Every phone/laptop currently using the Kitchen Display link or QR code will stop working immediately. You'll need to re-share the new one."
+        confirmLabel="Regenerate"
+      />
+    </Card>
   )
 }
 

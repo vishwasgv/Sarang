@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Kitchen Display</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A;
+  }
+  header { background: #0F172A; color: #fff; padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 0; font-size: 12px; color: #94A3B8; }
+  main { padding: 12px; display: flex; flex-direction: column; gap: 20px; }
+  @media (min-width: 700px) { main { flex-direction: row; align-items: flex-start; } }
+  .column { flex: 1; min-width: 0; }
+  .column-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+  .column-head.pending { background: rgba(245,158,11,0.12); color: #B45309; }
+  .column-head.progress { background: rgba(0,174,239,0.12); color: #0369A1; }
+  .column-head.done { background: rgba(34,197,94,0.12); color: #15803D; }
+  .empty { text-align: center; color: #94A3B8; font-size: 13px; padding: 24px 0; }
+  .ticket { background: #fff; border-radius: 14px; border: 2px solid #E2E8F0; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .ticket .title { font-weight: 700; font-size: 17px; }
+  .ticket .time { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+  .ticket .items { margin: 10px 0; }
+  .ticket .item-row { display: flex; justify-content: space-between; font-size: 15px; padding: 2px 0; }
+  .ticket .item-row b { font-weight: 700; }
+  .ticket button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #00AEEF; color: #fff; font-weight: 700; font-size: 15px; }
+  .ticket button:disabled { opacity: 0.5; }
+  .state-screen { padding: 60px 20px; text-align: center; color: #64748B; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Kitchen Display</h1>
+    <p>Live KOT board</p>
+  </div>
+  <p id="updated-label">Loading…</p>
+</header>
+<main id="board-root">
+  <div class="state-screen">Loading tickets…</div>
+</main>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean)
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+  var POLL_MS = 5000
+  var MAX_DONE_SHOWN = 6
+  var NEXT_STATUS = { PENDING: 'IN_PROGRESS', IN_PROGRESS: 'DONE' }
+  var NEXT_LABEL = { PENDING: 'Start Cooking', IN_PROGRESS: 'Mark Done' }
+  var busyId = null
+
+  function escapeHtml(s) {
+    var div = document.createElement('div'); div.textContent = s == null ? '' : String(s); return div.innerHTML
+  }
+
+  function fmtTime(iso) {
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } catch (e) { return '' }
+  }
+
+  function ticketHtml(kot) {
+    var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) || (kot.invoice && kot.invoice.invoiceNumber) || 'Order'
+    var items = ((kot.invoice && kot.invoice.items) || []).map(function (it) {
+      return '<div class="item-row"><span>' + escapeHtml(it.product ? it.product.productName : '') + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
+    }).join('')
+    var next = NEXT_STATUS[kot.status]
+    var btn = next
+      ? '<button data-kot="' + escapeHtml(kot.id) + '" data-next="' + escapeHtml(next) + '"' + (busyId === kot.id ? ' disabled' : '') + '>' +
+        (busyId === kot.id ? 'Updating…' : escapeHtml(NEXT_LABEL[kot.status])) + '</button>'
+      : ''
+    return '<div class="ticket"><div class="title">' + escapeHtml(title) + '</div>' +
+      '<div class="time">' + fmtTime(kot.createdAt) + '</div>' +
+      '<div class="items">' + items + '</div>' + btn + '</div>'
+  }
+
+  function columnHtml(cls, label, kots) {
+    var body = kots.length === 0
+      ? '<div class="empty">Nothing here</div>'
+      : kots.map(ticketHtml).join('')
+    return '<div class="column"><div class="column-head ' + cls + '"><span>' + label + '</span><span>' + kots.length + '</span></div>' + body + '</div>'
+  }
+
+  function render(kots) {
+    var pending = kots.filter(function (k) { return k.status === 'PENDING' })
+    var inProgress = kots.filter(function (k) { return k.status === 'IN_PROGRESS' })
+    var done = kots.filter(function (k) { return k.status === 'DONE' }).slice(0, MAX_DONE_SHOWN)
+    document.getElementById('board-root').innerHTML =
+      columnHtml('pending', 'Pending', pending) +
+      columnHtml('progress', 'In Progress', inProgress) +
+      columnHtml('done', 'Recently Done', done)
+
+    var buttons = document.querySelectorAll('button[data-kot]')
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].onclick = function () {
+        advance(this.getAttribute('data-kot'), this.getAttribute('data-next'))
+      }
+    }
+  }
+
+  function advance(kotId, nextStatus) {
+    busyId = kotId
+    fetch('/api/kitchen/' + token + '/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kotId: kotId, status: nextStatus })
+    }).then(function () { busyId = null; load() }).catch(function () { busyId = null; load() })
+  }
+
+  function load() {
+    if (!token) {
+      document.getElementById('board-root').innerHTML = '<div class="state-screen">Kitchen Display link is invalid. Ask a staff member to re-share it from Settings.</div>'
+      return
+    }
+    fetch('/api/kitchen/' + token + '/board').then(function (r) { return r.json() }).then(function (res) {
+      if (res.success) {
+        render(res.data)
+        document.getElementById('updated-label').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      } else {
+        document.getElementById('board-root').innerHTML = '<div class="state-screen">Could not load tickets. Ask a staff member for help.</div>'
+      }
+    }).catch(function () {
+      document.getElementById('updated-label').textContent = 'Connection issue — retrying…'
+    })
+  }
+
+  load()
+  setInterval(load, POLL_MS)
+})()
+</script>
+</body>
+</html>

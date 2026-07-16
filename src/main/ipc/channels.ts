@@ -297,6 +297,10 @@ export interface IpcChannels {
     invoice: (payload: { invoiceId: string }) => Promise<ApiResponse>
     receipt: (payload: { invoiceId: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
     kot: (payload: { kotId: string }) => Promise<ApiResponse>
+    // Lists Windows-registered printers so Settings can offer a "Kitchen Printer"
+    // picker — KOT tickets print silently (no OS dialog), so without this the
+    // silent print always lands on whatever the OS default printer happens to be.
+    listPrinters: () => Promise<ApiResponse<Array<{ name: string; displayName: string; isDefault: boolean }>>>
     previewInvoice: (payload: { invoiceId: string }) => Promise<ApiResponse<string>>
     previewReceipt: (payload: { invoiceId: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse<string>>
     // Phase 38: barcode/price label printing — routes through the same HTML + OS print-dialog
@@ -341,6 +345,19 @@ export interface IpcChannels {
     acceptOrderRequest: (payload: { requestId: string; paymentMethod: string; customerId?: string }) => Promise<ApiResponse>
     rejectOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
     generateTableQr: (payload: { tableId: string }) => Promise<ApiResponse>
+    // Kitchen Display (phone/laptop, LAN) — additive to KOT printing and the
+    // second-monitor board, same qr-order-server.ts LAN-trust model.
+    getKitchenDisplayStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
+    regenerateKitchenDisplayToken: () => Promise<ApiResponse<{ token: string }>>
+    generateKitchenDisplayQr: () => Promise<ApiResponse<{ qrDataUrl: string; boardUrl: string }>>
+  }
+  // Kitchen Display (second monitor, same billing PC) — opens/closes a
+  // BrowserWindow showing the #/kitchen-display board on a chosen display.
+  kitchenDisplay: {
+    listDisplays: () => Promise<ApiResponse<Array<{ id: number; label: string; isPrimary: boolean }>>>
+    open: (payload?: { displayId?: number }) => Promise<ApiResponse>
+    close: () => Promise<ApiResponse>
+    getStatus: () => Promise<ApiResponse<{ open: boolean; displayId: number | null }>>
   }
   returns: {
     create: (payload: { originalInvoiceId: string; items: Array<{ productId: string; quantity: number }>; reason: string }) => Promise<ApiResponse>

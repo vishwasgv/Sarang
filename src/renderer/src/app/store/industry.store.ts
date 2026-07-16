@@ -48,6 +48,9 @@ export type TemplateModule =
   | 'multi_service_booking' | 'specialist_referral'
   // Phase 47 — QR-code customer table ordering (RESTAURANT only, opt-in).
   | 'qr_table_ordering'
+  // Kitchen Display (phone/laptop, LAN) — RESTAURANT only, opt-in. Separate
+  // LAN server/port from qr_table_ordering above, see kitchen-display-server.ts.
+  | 'kitchen_display_web'
   // Phase 50 — Diagnostic & Pathology Labs order/sample/result/report workflow.
   | 'lab_orders'
   // Phase 51 — Blood Bank donor/donation/stock/issue workflow.

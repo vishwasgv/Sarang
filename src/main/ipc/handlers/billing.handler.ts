@@ -156,13 +156,16 @@ export function register(handle: HandleFn): void {
     const { kotId } = payload as { kotId: string }
     const bad = validateId(kotId, 'KOT ID'); if (bad) return bad
     const db = getPrisma()
-    const kot = await db.kOT.findUnique({
-      where: { id: kotId },
-      include: {
-        table: { select: { tableNumber: true, tableName: true } },
-        invoice: { include: { items: { include: { product: { select: { productName: true } } } } } }
-      }
-    })
+    const [kot, kotPrinterSetting] = await Promise.all([
+      db.kOT.findUnique({
+        where: { id: kotId },
+        include: {
+          table: { select: { tableNumber: true, tableName: true } },
+          invoice: { include: { items: { include: { product: { select: { productName: true } } } } } }
+        }
+      }),
+      db.setting.findUnique({ where: { settingKey: 'kot_printer_name' } })
+    ])
     if (!kot) return { success: false, error: { code: 'RST-015', message: 'KOT not found.' } }
     const profile = await db.businessProfile.findFirst()
     const html = await printService.generateKOTHtml({
@@ -177,17 +180,34 @@ export function register(handle: HandleFn): void {
     })
     const tmpPath = join(app.getPath('temp'), `sarang_kot_${Date.now()}.html`)
     await writeFile(tmpPath, html, 'utf-8')
+    // Empty string means "no kitchen printer chosen" — fall back to silent
+    // print's normal behaviour (the OS default printer) rather than passing
+    // deviceName: '', which Electron would reject as an unknown device.
+    const kotDeviceName = kotPrinterSetting?.settingValue || undefined
     return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
       const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
       win.loadFile(tmpPath)
       win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: true, printBackground: false }, (success: boolean) => {
+        win.webContents.print({ silent: true, printBackground: false, ...(kotDeviceName ? { deviceName: kotDeviceName } : {}) }, (success: boolean) => {
           win.close()
           unlink(tmpPath).catch(() => {})
           resolve({ success, data: { printed: success } })
         })
       })
     })
+  })
+
+  handle('print:listPrinters', async () => {
+    // Gated the same as the setting itself (settings:set uses settings.modify)
+    // since this only exists to populate the Kitchen Printer picker in Settings.
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    // Reuses the already-open app window rather than spawning a hidden one
+    // (unlike the print:* jobs above) — printer enumeration needs no loaded
+    // page content, and Settings is only reachable with the main window open.
+    const win = BrowserWindow.getAllWindows()[0]
+    if (!win) return { success: true, data: [] }
+    const printers = await win.webContents.getPrintersAsync()
+    return { success: true, data: printers.map(p => ({ name: p.name, displayName: p.displayName, isDefault: p.isDefault })) }
   })
 
   // Phase 38: barcode/price label printing. Builds the same params shape for

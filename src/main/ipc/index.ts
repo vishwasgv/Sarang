@@ -125,6 +125,7 @@ import { registerLogisticsGrnHandlers } from './handlers/logistics-grn.handler'
 import { registerLogisticsChallanHandlers } from './handlers/logistics-challan.handler'
 import { registerLogisticsFreightHandlers } from './handlers/logistics-freight.handler'
 import { registerLogisticsAnalyticsHandlers } from './handlers/logistics-analytics.handler'
+import { register as registerKitchenDisplay } from './handlers/kitchen-display.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -267,6 +268,7 @@ export function registerAllIpcHandlers(): void {
   registerLabTestOrders(h)
   // Phase 51 — Blood Bank
   registerBloodBank(h)
+  registerKitchenDisplay(h)
 
   console.log('[IPC] All handlers registered')
 }

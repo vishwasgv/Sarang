@@ -14,6 +14,20 @@ A KOT is the kitchen's copy of an order. After ringing up an order in **Billing*
 
 Marking a KOT **Done** is what triggers ingredient stock deduction (see below) and frees up the table it belonged to, once no other active ticket is using that table.
 
+## Kitchen hardware options
+
+Beyond the in-app Kitchen Order Tickets screen, Sarang offers three ways to get tickets in front of kitchen staff — all three can run at once (printing a paper ticket, showing a wall monitor, and letting a phone or tablet control it are not mutually exclusive). Set these up from **Settings → Appearance**, restaurant businesses only.
+
+**Kitchen printer.** By default, printing a KOT goes to whatever your Windows default printer is. If your kitchen printer is a different physical device than your billing counter's receipt printer, pick it from the **Kitchen Printer** dropdown — every KOT print job goes straight there from then on, no print dialog, no manual picking. Leave it on "Use Windows default printer" if you only have one printer.
+
+**Kitchen Display — second monitor.** Turns any second monitor plugged into the billing PC into a live, large-text KOT board (Pending / In Progress / Recently Done), operated with an ordinary mouse — no touchscreen required. Under **Kitchen Display — second monitor**, pick a detected display and tap **Open Kitchen Display**; it opens full-screen there and refreshes automatically. A few physical setup notes:
+- The mouse just needs to reach the PC, not the screen — if the kitchen is more than a couple of metres from the billing PC, use a **wireless mouse** (its USB receiver plugs into the billing PC) rather than a wired one, since a wired mouse's cable won't reach.
+- The monitor's video cable has the same distance problem, usually worse — a plain HDMI cable starts losing signal past roughly 10-15 metres. If your kitchen is a separate room or across the restaurant (say 10-30m, possibly through a wall), use an **HDMI-over-Ethernet extender kit** (a cheap sender/receiver pair connected by a standard network cable) rather than a single long HDMI cable.
+- In Windows Display settings, make sure the second monitor is set to **Extend these displays**, not Duplicate — that's what lets your one mouse cursor move across onto it.
+- If running a cable that far turns out to be impractical, use the phone/tablet/laptop option below instead — it needs no cabling at all.
+
+**Kitchen Display — phone / tablet / laptop.** Lets any phone, tablet, or laptop connected to your shop's WiFi open a live KOT board in its own browser — no app to install, a tablet propped up in the kitchen works exactly the same way as a phone or laptop here. Turn it on under **Kitchen Display — phone / laptop**, then either read out the LAN address(es) shown or tap **Show QR code** and have the device scan it. This works entirely over your own WiFi, no internet required, and is completely separate from the customer-facing QR table ordering feature below (different server, different port, and a random access code that's only ever shown here in Settings — a customer who scans their table's ordering QR code has no way to reach the kitchen board). If access ever needs to be revoked (e.g. a phone with the link is lost), tap **Regenerate access code** — every previously shared link/QR code stops working immediately.
+
 ## Recipes and ingredient tracking
 
 Open **Recipes** to link a menu item (e.g. "Masala Chai") to the raw ingredients it consumes and how much of each — search for the menu product, name the recipe, then add ingredient rows (each ingredient can only appear once per recipe; combine quantities instead of adding a duplicate row). Every recipe's ingredient list is shown expanded in the list view.

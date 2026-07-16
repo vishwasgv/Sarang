@@ -105,6 +105,13 @@ const config: Configuration = {
       from: 'resources/qr-menu',
       to: 'qr-menu'
     },
+    // Kitchen Display (phone/laptop) — customer-facing sibling of qr-menu
+    // above, same "static HTML served by a local LAN server" mechanism, see
+    // kitchen-display-server.ts
+    {
+      from: 'resources/kitchen-display',
+      to: 'kitchen-display'
+    },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
     // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,

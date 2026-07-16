@@ -124,9 +124,13 @@ async function run() {
     })
 
     await r.step('add-charge-and-check-out-via-real-ui', async () => {
-      const row = page.locator('tr', { hasText: 'E2E Hotel Guest' }).first()
-      await row.click()
-      await page.waitForTimeout(500)
+      // No row click here — handleCheckIn's onChanged() refreshes the
+      // already-open modal in place (see HotelBookingsScreen.tsx) rather
+      // than closing it, so it's still open with Add Charge/Check Out
+      // buttons now that the booking is CHECKED_IN. Re-clicking the table
+      // row was always wrong: the still-open modal backdrop covers it,
+      // which is exactly why that click used to hang until Playwright's
+      // 30s actionability timeout — a test bug, not a product bug.
       const modal = h.topModal(page)
 
       await modal.getByPlaceholder('Description').fill('E2E Room Service')
@@ -149,9 +153,8 @@ async function run() {
     })
 
     await r.step('generate-bill-via-real-ui', async () => {
-      const row = page.locator('tr', { hasText: 'E2E Hotel Guest' }).first()
-      await row.click()
-      await page.waitForTimeout(500)
+      // Same reasoning as the previous step — handleCheckOut's onChanged()
+      // also refreshes in place rather than closing the modal.
       const modal = h.topModal(page)
 
       const billBtn = modal.getByRole('button', { name: 'Generate Bill' })

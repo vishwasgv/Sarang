@@ -229,6 +229,7 @@ const api: IpcChannels = {
     invoice: (p) => invoke('print:invoice', p),
     receipt: (p) => invoke('print:receipt', p),
     kot: (p) => invoke('print:kot', p),
+    listPrinters: () => invoke('print:listPrinters'),
     previewInvoice: (p) => invoke('print:previewInvoice', p),
     previewReceipt: (p) => invoke('print:previewReceipt', p),
     labels: (p) => invoke('print:labels', p),
@@ -262,6 +263,15 @@ const api: IpcChannels = {
     acceptOrderRequest: (p) => invoke('restaurant:acceptOrderRequest', p),
     rejectOrderRequest: (p) => invoke('restaurant:rejectOrderRequest', p),
     generateTableQr: (p) => invoke('restaurant:generateTableQr', p),
+    getKitchenDisplayStatus: () => invoke('restaurant:getKitchenDisplayStatus'),
+    regenerateKitchenDisplayToken: () => invoke('restaurant:regenerateKitchenDisplayToken'),
+    generateKitchenDisplayQr: () => invoke('restaurant:generateKitchenDisplayQr'),
+  },
+  kitchenDisplay: {
+    listDisplays: () => invoke('kitchenDisplay:listDisplays'),
+    open: (p) => invoke('kitchenDisplay:open', p),
+    close: () => invoke('kitchenDisplay:close'),
+    getStatus: () => invoke('kitchenDisplay:getStatus'),
   },
   returns: {
     create: (p) => invoke('returns:create', p),

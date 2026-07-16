@@ -14,6 +14,20 @@ Sebuah KOT adalah salinan dapur dari sebuah pesanan. Setelah membuat pesanan di 
 
 Menandai sebuah KOT **Done** adalah yang memicu pengurangan stok bahan (lihat di bawah) dan membebaskan meja yang dimilikinya, begitu tidak ada tiket aktif lain yang menggunakan meja tersebut.
 
+## Opsi perangkat keras dapur
+
+Selain layar Kitchen Order Tickets di dalam aplikasi, Sarang menawarkan tiga cara untuk menampilkan tiket ke staf dapur — ketiganya bisa berjalan sekaligus (mencetak tiket kertas, menampilkan di monitor dinding, dan membiarkan ponsel atau tablet mengendalikannya tidak saling meniadakan). Atur ini dari **Settings → Appearance**, khusus bisnis restoran.
+
+**Kitchen Printer.** Secara default, mencetak KOT akan menuju printer default Windows Anda. Jika printer dapur Anda adalah perangkat fisik yang berbeda dari printer struk di meja kasir, pilih dari dropdown **Kitchen Printer** — sejak saat itu setiap pekerjaan cetak KOT langsung menuju ke sana, tanpa dialog cetak, tanpa pemilihan manual. Biarkan pada "Use Windows default printer" jika Anda hanya punya satu printer.
+
+**Kitchen Display — second monitor.** Mengubah monitor kedua mana pun yang tersambung ke PC kasir menjadi papan KOT langsung berteks besar (Pending / In Progress / Recently Done), dioperasikan dengan mouse biasa — tidak perlu layar sentuh. Di bawah **Kitchen Display — second monitor**, pilih display yang terdeteksi dan ketuk **Open Kitchen Display**; layar tersebut akan terbuka penuh di sana dan menyegarkan diri secara otomatis. Beberapa catatan pemasangan fisik:
+- Mouse hanya perlu menjangkau PC, bukan layarnya — jika dapur lebih dari beberapa meter dari PC kasir, gunakan **mouse nirkabel** (penerima USB-nya dicolokkan ke PC kasir) alih-alih mouse berkabel, karena kabel mouse berkabel tidak akan sampai.
+- Kabel video monitor punya masalah jarak yang sama, biasanya lebih parah — kabel HDMI biasa mulai kehilangan sinyal setelah sekitar 10-15 meter. Jika dapur Anda berada di ruangan terpisah atau di seberang restoran (katakanlah 10-30m, mungkin melewati dinding), gunakan **kit extender HDMI-over-Ethernet** (sepasang pengirim/penerima murah yang tersambung dengan kabel jaringan biasa) alih-alih satu kabel HDMI panjang.
+- Di pengaturan Windows Display, pastikan monitor kedua diatur ke **Extend these displays**, bukan Duplicate — itulah yang memungkinkan satu kursor mouse Anda berpindah ke sana.
+- Jika memasang kabel sejauh itu ternyata tidak praktis, gunakan opsi ponsel/tablet/laptop di bawah ini — tidak perlu pengkabelan sama sekali.
+
+**Kitchen Display — phone / laptop.** Memungkinkan ponsel, tablet, atau laptop mana pun yang tersambung ke WiFi toko Anda membuka papan KOT langsung di browsernya sendiri — tanpa perlu instal aplikasi, tablet yang diletakkan di dapur bekerja persis sama seperti ponsel atau laptop di sini. Aktifkan di bawah **Kitchen Display — phone / laptop**, lalu bacakan alamat LAN yang ditampilkan atau ketuk **Show QR code** dan minta perangkat memindainya. Ini bekerja sepenuhnya lewat WiFi Anda sendiri, tanpa perlu internet, dan sepenuhnya terpisah dari fitur pemesanan meja QR yang menghadap pelanggan di bawah (server berbeda, port berbeda, dan kode akses acak yang hanya pernah ditampilkan di sini di Settings — pelanggan yang memindai kode QR pemesanan mejanya sendiri tidak punya cara untuk mencapai papan dapur). Jika akses perlu dicabut sewaktu-waktu (misalnya ponsel dengan tautan itu hilang), ketuk **Regenerate access code** — setiap tautan/kode QR yang pernah dibagikan langsung berhenti berfungsi.
+
 ## Recipes dan pelacakan bahan
 
 Buka **Recipes** untuk menautkan sebuah item menu (misalnya "Masala Chai") ke bahan mentah yang dikonsumsinya dan berapa banyak masing-masing — cari produk menu, beri nama resep, lalu tambahkan baris bahan (setiap bahan hanya bisa muncul satu kali per resep; gabungkan kuantitas alih-alih menambahkan baris duplikat). Daftar bahan setiap resep ditampilkan terbuka dalam tampilan daftar.
