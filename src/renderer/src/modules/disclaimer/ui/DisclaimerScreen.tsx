@@ -35,15 +35,15 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
   }
 
   return (
-    <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
       >
-        {/* Header */}
-        <div className="bg-brand px-8 py-6 text-white text-center">
+        {/* Header — pinned, never scrolls */}
+        <div className="bg-brand px-8 py-6 text-white text-center shrink-0">
           <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
             <Shield size={36} className="text-white" />
           </div>
@@ -53,8 +53,14 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
           </p>
         </div>
 
-        {/* Body */}
-        <div className="px-8 py-6 space-y-5">
+        {/* Body — the only scrollable region. On short/small screens the
+            checkbox and Start button used to be pushed below the fold with
+            no way to reach them at all (no scrollbar anywhere) — a real
+            user-reported install-blocking bug, 2026-07-16. Same
+            header/scrollable-body/pinned-footer structure Modal.tsx already
+            uses, so the accept action is always reachable regardless of
+            window height. */}
+        <div className="px-8 py-6 space-y-5 overflow-y-auto">
           <p className="text-lg font-semibold text-slate-800 text-center">
             Please read before you begin
           </p>
@@ -83,8 +89,10 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
               {t('disclaimer.legalNotice')}
             </p>
           </div>
+        </div>
 
-          {/* Checkbox */}
+        {/* Checkbox + accept button — pinned, always visible/reachable */}
+        <div className="px-8 py-6 space-y-5 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <label className="flex items-start gap-4 cursor-pointer select-none group">
             <div className="mt-0.5 shrink-0">
               <input
@@ -110,8 +118,8 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
           </Button>
         </div>
 
-        {/* Footer */}
-        <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 text-center">
+        {/* Footer — pinned, never scrolls */}
+        <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 text-center shrink-0">
           <p className="text-sm text-slate-400 inline-flex items-center justify-center gap-1.5 w-full">
             Built by <span className="text-brand font-semibold">Aszurex</span> <AszurexMark width={14} /> · Trust Beyond Limits
           </p>

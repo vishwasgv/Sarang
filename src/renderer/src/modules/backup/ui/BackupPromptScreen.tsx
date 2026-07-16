@@ -60,7 +60,9 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
   }
 
   return (
-    <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-6">
+    // overflow-y-auto — same install-blocking bug class fixed in
+    // DisclaimerScreen.tsx (2026-07-16, real user report).
+    <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}

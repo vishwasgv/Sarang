@@ -65,7 +65,11 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-slate-900 flex flex-col items-center justify-center p-6">
+    // overflow-y-auto — same install-blocking bug class fixed in
+    // DisclaimerScreen.tsx (2026-07-16, real user report): without it, a
+    // window shorter than the card's rendered height cuts off the sign-in
+    // button with no way to scroll to it.
+    <div className="min-h-screen bg-surface dark:bg-slate-900 flex flex-col items-center justify-center p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

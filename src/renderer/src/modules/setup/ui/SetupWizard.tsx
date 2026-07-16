@@ -211,7 +211,12 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const isCompletionStep = step === TOTAL_ACTIVE_STEPS
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4">
+    // overflow-y-auto — same install-blocking bug class fixed in
+    // DisclaimerScreen.tsx (2026-07-16, real user report): without it, a
+    // step whose content is taller than the window (e.g. Business Info,
+    // Tax Configuration) pushes Continue below the fold with no way to
+    // reach it on a small/short display.
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-lg">
         {/* Header — icon mark + text, not the wordmark image: the wordmark's
             text is light-colored for the dark splash screen and washes out
