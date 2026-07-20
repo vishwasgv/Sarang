@@ -152,6 +152,37 @@ async function run() {
       r.log('oversell-variant-rejected', saleRes?.success === false, JSON.stringify(saleRes?.error || saleRes))
     })
 
+    await r.step('return-one-variant-restores-its-own-stock', async () => {
+      // Real bug fix 2026-07-16: returns previously restored only the parent
+      // Inventory.quantity total, never the specific ProductVariant.stockQty
+      // it was sold from. Verifies the fix end-to-end through the real UI's
+      // IPC surface (not just the unit-test mock) — sell was M/Blue, so
+      // returning it must bump M/Blue specifically, leaving L/Red untouched.
+      const beforeRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const beforeVariants = beforeRes?.data || []
+      const mBlueBefore = beforeVariants.find((v) => v.size === 'M' && v.color === 'Blue')
+      const lRedBefore = beforeVariants.find((v) => v.size === 'L' && v.color === 'Red')
+      r.log('pre-return-m-blue-stock-is-19', mBlueBefore?.stockQty === 19, `stockQty=${mBlueBefore?.stockQty}`)
+
+      const returnRes = await page.evaluate(async ({ originalInvoiceId, productId, variantId }) => window.api.returns.create({
+        originalInvoiceId,
+        items: [{ productId, variantId, quantity: 1 }],
+        reason: 'E2E wrong size return',
+      }), { originalInvoiceId: invoiceId, productId, variantId: mBlueBefore?.id })
+      r.log('return-created-successfully', returnRes?.success === true, JSON.stringify(returnRes?.error || ''))
+
+      const afterRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const afterVariants = afterRes?.data || []
+      const mBlueAfter = afterVariants.find((v) => v.size === 'M' && v.color === 'Blue')
+      const lRedAfter = afterVariants.find((v) => v.size === 'L' && v.color === 'Red')
+      r.log('m-blue-stock-restored-to-20', mBlueAfter?.stockQty === 20, `stockQty=${mBlueAfter?.stockQty}`)
+      r.log('l-red-stock-untouched-by-other-variant-return', lRedAfter?.stockQty === lRedBefore?.stockQty, `before=${lRedBefore?.stockQty} after=${lRedAfter?.stockQty}`)
+
+      const invRes = await page.evaluate(async (pid) => window.api.products.get(pid), productId)
+      const qty = invRes?.data?.inventory?.quantity
+      r.log('aggregate-inventory-restored-to-35', qty === 35, `quantity=${qty}`)
+    })
+
     await r.step('variant-stock-report-renders', async () => {
       await h.gotoHash(page, '#/reports')
       await page.waitForTimeout(700)

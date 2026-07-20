@@ -6,11 +6,13 @@ Placement Agency is built on Sarang's shared service-business foundation — app
 
 ## Candidates
 
-A candidate record carries full name, contact details, current job title and employer, total years of experience, skills and preferred locations (both freely tagged), an education summary and resume notes, current and expected salary, availability date, source (Walk-In, Referral, LinkedIn, Website, Other), and status (Active, Placed, On Hold, Blacklisted).
+A candidate record carries full name, contact details, current job title and employer, total years of experience, skills and preferred locations (both freely tagged), an education summary and resume notes, current and expected salary, availability date, source (Walk-In, Referral, LinkedIn, Website, Other), and status (Active, Placed, On Hold, Blacklisted). Attach the candidate's actual resume/CV file from their edit form — it's just a click away whenever you need to send it to a client.
+
+Also from the candidate's edit form, track **Interview Rounds** against any job order they're being considered for — round type (Phone Screen, Technical, HR, Final, Other), scheduled date, interviewer, and status (Scheduled, Completed, Passed, Rejected, No Show), with a real client-feedback note per round. Rounds are numbered automatically per candidate-and-job-order pairing, so you always know whether you're looking at Round 1 or Round 3.
 
 ## Job Orders
 
-A job order is an open requirement from a hiring company (one of your Sarang customers): job title and description, required skills, an experience range, a salary budget range, location, number of positions, a target date, and status (Open, In Progress, On Hold, Closed, Cancelled). Each job order also sets your **commission** — either a percentage of the candidate's annual salary, or a fixed amount — which Sarang uses to work out what you're owed once someone is placed against it.
+A job order is an open requirement from a hiring company (one of your Sarang customers): job title and description, required skills, an experience range, a salary budget range, location, number of positions, a target date, and status (Open, In Progress, On Hold, Closed, Cancelled). Each job order also sets your **commission** — either a percentage of the candidate's annual salary, or a fixed amount — which Sarang uses to work out what you're owed once someone is placed against it. Record your **fee agreement terms** (free text — e.g. payment timing) and a **replacement guarantee** period in days; once a placement joins, the Placements list shows exactly how long that guarantee runs.
 
 ## Placements
 

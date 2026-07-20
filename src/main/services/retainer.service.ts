@@ -221,6 +221,46 @@ export async function generateInvoiceForRetainer(retainerId: string, period?: st
   }
 }
 
+// Phase 58 §1 (2026-07-17) — "hoursPerMonth is actually decremented against
+// logged time" for an HOURLY_BUCKET retainer. Deliberately a derived sum
+// over TimeEntry rows for the target period, not a mutable running counter
+// on RetainerAgreement itself — a stored counter needs a monthly-reset job
+// that can silently fail to run (exactly the kind of drift bug this
+// codebase's other "expiring"/"usage" reports already avoid by computing
+// on-demand instead of maintaining state). period defaults to the current
+// calendar month, matching generateInvoiceForRetainer's own default.
+export async function getRetainerHoursUsage(retainerId: string, period?: string) {
+  try {
+    const db = getPrisma()
+    const retainer = await db.retainerAgreement.findUnique({ where: { id: retainerId }, select: { hoursPerMonth: true } })
+    if (!retainer) return { success: false, error: { code: 'RT30-008', message: 'Retainer not found.' } }
+
+    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    const [year, month] = targetPeriod.split('-').map(Number)
+    const periodStart = new Date(year, month - 1, 1)
+    const periodEnd = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const entries = await db.timeEntry.findMany({
+      where: { retainerId, date: { gte: periodStart, lte: periodEnd } },
+      select: { hours: true },
+    })
+    const hoursUsed = entries.reduce((s, e) => s + Number(e.hours), 0)
+    const hoursPerMonth = retainer.hoursPerMonth == null ? null : Number(retainer.hoursPerMonth)
+
+    return {
+      success: true,
+      data: {
+        period: targetPeriod,
+        hoursPerMonth,
+        hoursUsed,
+        hoursRemaining: hoursPerMonth == null ? null : Math.max(0, hoursPerMonth - hoursUsed),
+      },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'RT30-009', message: err instanceof Error ? err.message : 'Could not get retainer hours usage.' } }
+  }
+}
+
 export async function deleteRetainer(id: string) {
   try {
     const db = getPrisma()

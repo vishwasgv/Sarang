@@ -13,6 +13,7 @@ export function serializeTimeEntry<T extends { hours: unknown; ratePerHour: unkn
 export async function listTimeEntries(filters?: {
   caseId?: string
   projectId?: string
+  retainerId?: string
   employeeId?: string
   isBilled?: boolean
   fromDate?: string
@@ -23,6 +24,7 @@ export async function listTimeEntries(filters?: {
     const where: Record<string, unknown> = {}
     if (filters?.caseId) where.caseId = filters.caseId
     if (filters?.projectId) where.projectId = filters.projectId
+    if (filters?.retainerId) where.retainerId = filters.retainerId
     if (filters?.employeeId) where.employeeId = filters.employeeId
     if (filters?.isBilled !== undefined) where.isBilled = filters.isBilled
     if (filters?.fromDate || filters?.toDate) {
@@ -38,6 +40,7 @@ export async function listTimeEntries(filters?: {
         employee: { select: { id: true, fullName: true } },
         case: { select: { id: true, caseNumber: true, caseTitle: true } },
         project: { select: { id: true, projectName: true } },
+        retainer: { select: { id: true, title: true } },
       },
       orderBy: { date: 'desc' },
     })
@@ -50,6 +53,7 @@ export async function listTimeEntries(filters?: {
 export async function createTimeEntry(payload: {
   caseId?: string
   projectId?: string
+  retainerId?: string
   employeeId?: string
   date: string
   description: string
@@ -64,6 +68,7 @@ export async function createTimeEntry(payload: {
       data: {
         caseId: payload.caseId ?? null,
         projectId: payload.projectId ?? null,
+        retainerId: payload.retainerId ?? null,
         employeeId: payload.employeeId ?? null,
         date: new Date(payload.date),
         description: payload.description.trim(),
@@ -76,6 +81,7 @@ export async function createTimeEntry(payload: {
         employee: { select: { id: true, fullName: true } },
         case: { select: { id: true, caseNumber: true, caseTitle: true } },
         project: { select: { id: true, projectName: true } },
+        retainer: { select: { id: true, title: true } },
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'TimeEntry', entityId: entry.id, newValue: JSON.stringify({ hours: entry.hours, amount: entry.amount }) } }).catch(() => {})

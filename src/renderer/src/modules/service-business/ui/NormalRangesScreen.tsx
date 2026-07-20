@@ -15,9 +15,16 @@ interface NormalRange {
   unit: string | null
   minValue: number | null
   maxValue: number | null
+  // Phase 58 §2 — Diagnostic Lab panic-value tier, distinct from min/max.
+  criticalLow: number | null
+  criticalHigh: number | null
   gender: string
+  // Phase 58 §2 — Vet Clinic species dimension, "ALL" = generic/human.
+  species: string
   notes: string | null
 }
+
+const SPECIES_OPTIONS = ['ALL', 'Dog', 'Cat', 'Bird', 'Rabbit', 'Reptile', 'Other']
 
 // A doctor or lab saves "what's normal for this test" exactly once here —
 // VisitNoteScreen's vitals and LabOrdersScreen's result entry both look this
@@ -37,7 +44,10 @@ export function NormalRangesScreen() {
   const [unit, setUnit] = useState('')
   const [minValue, setMinValue] = useState('')
   const [maxValue, setMaxValue] = useState('')
+  const [criticalLow, setCriticalLow] = useState('')
+  const [criticalHigh, setCriticalHigh] = useState('')
   const [gender, setGender] = useState<'ALL' | 'MALE' | 'FEMALE'>('ALL')
+  const [species, setSpecies] = useState('ALL')
   const [notes, setNotes] = useState('')
 
   const [deleteTarget, setDeleteTarget] = useState<NormalRange | null>(null)
@@ -59,7 +69,7 @@ export function NormalRangesScreen() {
   useEffect(() => { load() }, [load])
 
   function resetForm(): void {
-    setTestName(''); setUnit(''); setMinValue(''); setMaxValue(''); setGender('ALL'); setNotes('')
+    setTestName(''); setUnit(''); setMinValue(''); setMaxValue(''); setCriticalLow(''); setCriticalHigh(''); setGender('ALL'); setSpecies('ALL'); setNotes('')
   }
 
   async function handleSave(): Promise<void> {
@@ -71,7 +81,10 @@ export function NormalRangesScreen() {
         unit: unit.trim() || undefined,
         minValue: minValue !== '' ? Number(minValue) : undefined,
         maxValue: maxValue !== '' ? Number(maxValue) : undefined,
+        criticalLow: criticalLow !== '' ? Number(criticalLow) : undefined,
+        criticalHigh: criticalHigh !== '' ? Number(criticalHigh) : undefined,
         gender,
+        species,
         notes: notes.trim() || undefined,
       })
       if (res.success) { setShowForm(false); resetForm(); load() }
@@ -128,6 +141,15 @@ export function NormalRangesScreen() {
                 <option value="FEMALE">Female</option>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Critical Low (panic value, optional)" type="number" value={criticalLow} onChange={(e) => setCriticalLow(e.target.value)} placeholder="e.g. 40 — below Min" />
+              <Input label="Critical High (panic value, optional)" type="number" value={criticalHigh} onChange={(e) => setCriticalHigh(e.target.value)} placeholder="e.g. 400 — above Max" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Select label="Species (Vet Clinic only — leave as All for a human/generic range)" value={species} onChange={(e) => setSpecies(e.target.value)}>
+                {SPECIES_OPTIONS.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All species' : s}</option>)}
+              </Select>
+            </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
@@ -154,7 +176,9 @@ export function NormalRangesScreen() {
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Test / Vital</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Normal Range</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Critical (Panic)</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Applies To</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Species</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -165,7 +189,13 @@ export function NormalRangesScreen() {
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                       {r.minValue ?? '—'}–{r.maxValue ?? '—'} {r.unit ?? ''}
                     </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
+                      {r.criticalLow == null && r.criticalHigh == null ? '—' : (
+                        <span className="text-danger font-medium">{r.criticalLow != null ? `<${r.criticalLow}` : ''}{r.criticalLow != null && r.criticalHigh != null ? ' or ' : ''}{r.criticalHigh != null ? `>${r.criticalHigh}` : ''}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.gender === 'ALL' ? 'Everyone' : r.gender}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.species === 'ALL' ? '—' : r.species}</td>
                     <td className="px-4 py-3 text-right">
                       {canWrite && (
                         <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">

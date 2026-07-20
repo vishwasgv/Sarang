@@ -22,6 +22,9 @@ interface BatchRow {
   unitCost: number
   supplierName: string | null
   daysToExpiry: number
+  // Phase 58 §2 — this batch's product's own expiry-alert lead time (falls
+  // back to the generic 30-day default when the product hasn't set one).
+  expiryAlertLeadDays: number
 }
 
 interface BatchFormState {
@@ -41,11 +44,13 @@ interface EditFormState {
   unitCost: string
 }
 
-function ExpiryBadge({ days }: { days: number }) {
+// Phase 58 §2 — leadDays is per-product (product.expiryAlertLeadDays, falling
+// back to 30), not a single hardcoded medicine-shaped cutoff for every item.
+function ExpiryBadge({ days, leadDays }: { days: number; leadDays: number }) {
   if (days < 0) {
     return <Badge variant="danger" icon={<AlertTriangle size={12} />}>Expired</Badge>
   }
-  if (days <= 30) {
+  if (days <= leadDays) {
     return <Badge variant="warning" icon={<Clock size={12} />}>{days}d</Badge>
   }
   return <Badge variant="success" icon={<CheckCircle2 size={12} />}>{days}d</Badge>
@@ -80,6 +85,14 @@ export function BatchManagementScreen() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
+      // Phase 58 §2 scope note: this tab is a manual, explicit "what expires
+      // in the next 30 days regardless of category" query, deliberately kept
+      // as a flat window — different from the automatic per-product-lead-time
+      // alerting getExpiryAlerts() now does (used by the Reorder/Dashboard
+      // alerts). The ExpiryBadge column above already shows each row's real
+      // per-product threshold either way, so a longer-lead-time item (e.g. a
+      // seed batch 45 days out) can show a warning badge in the "All" tab
+      // without necessarily appearing under this specific 30-day tab filter.
       const payload =
         filter === 'expiring' ? { expiringSoonDays: 30 } :
         filter === 'expired' ? { expired: true } :
@@ -244,7 +257,7 @@ export function BatchManagementScreen() {
       cell: ({ row }) => (
         <div>
           <p className="text-base text-dark dark:text-slate-100">{formatDate(row.original.expiryDate)}</p>
-          <ExpiryBadge days={row.original.daysToExpiry} />
+          <ExpiryBadge days={row.original.daysToExpiry} leadDays={row.original.expiryAlertLeadDays} />
         </div>
       )
     },

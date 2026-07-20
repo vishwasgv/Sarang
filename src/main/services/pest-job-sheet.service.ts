@@ -1,6 +1,8 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
+import { inventoryService } from './inventory.service'
+import { logAction } from './audit.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -240,4 +242,119 @@ export async function generatePestJobInvoice(id: string) {
   }
 
   return { success: true, data: { invoiceId: invoice.id } }
+}
+
+// Phase 58 §2 — Pest Control: structured pesticide dosage/quantity per
+// visit, replacing the single free-text pesticideUsed field for anything
+// that needs a real quantity (safety/compliance record-keeping, and real
+// stock deduction when the chemical is tracked as an Inventory Product). A
+// visit commonly uses more than one chemical across different areas, so
+// this is an add/remove ledger (mirrors Repair's JobCardPart), not a
+// set-once field.
+
+export async function listJobSheetPesticides(jobSheetId: string) {
+  try {
+    const db = getPrisma()
+    const lines = await db.pestJobSheetPesticide.findMany({
+      where: { jobSheetId },
+      include: { product: { select: { productName: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+    return { success: true, data: lines }
+  } catch (e: any) {
+    console.error('[PJP_LIST_FAIL]', e)
+    return { success: false, error: { code: 'PJP_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
+}
+
+export async function addJobSheetPesticide(payload: {
+  jobSheetId: string
+  productId?: string
+  pesticideName: string
+  quantityUsed: number
+  unit?: string
+  dosageNote?: string
+  targetPest?: string
+}, userId?: string) {
+  try {
+    if (!payload.pesticideName?.trim()) return { success: false, error: { code: 'PJS-005', message: 'Pesticide name is required.' } }
+    if (payload.quantityUsed <= 0) return { success: false, error: { code: 'PJS-006', message: 'Quantity used must be greater than zero.' } }
+    const db = getPrisma()
+
+    const sheet = await db.pestJobSheet.findUnique({ where: { id: payload.jobSheetId }, select: { id: true, jobNumber: true } })
+    if (!sheet) return { success: false, error: { code: 'PJS-001', message: 'Job sheet not found.' } }
+
+    if (payload.productId) {
+      const product = await db.product.findUnique({ where: { id: payload.productId }, select: { id: true } })
+      if (!product) return { success: false, error: { code: 'PJS-007', message: 'Pesticide product not found.' } }
+    }
+
+    try {
+      const line = await db.$transaction(async (tx) => {
+        if (payload.productId) {
+          await inventoryService.reduceStockTx(
+            tx, payload.productId, payload.quantityUsed,
+            `Used on pest job sheet ${sheet.jobNumber}`, 'PEST_JOB_SHEET', sheet.jobNumber, userId
+          )
+        }
+        return tx.pestJobSheetPesticide.create({
+          data: {
+            jobSheetId: payload.jobSheetId,
+            productId: payload.productId ?? null,
+            pesticideName: payload.pesticideName.trim(),
+            quantityUsed: payload.quantityUsed,
+            unit: payload.unit ?? 'ML',
+            dosageNote: payload.dosageNote ?? null,
+            targetPest: payload.targetPest ?? null,
+          },
+          include: { product: { select: { productName: true } } },
+        })
+      })
+      if (userId) await logAction(userId, 'CREATE', 'PEST_JOB_SHEET_PESTICIDE', line.id, null, { jobSheetId: payload.jobSheetId, pesticideName: line.pesticideName, quantityUsed: line.quantityUsed })
+      return { success: true, data: line }
+    } catch (e: any) {
+      if (e?.code === 'INV-002') return { success: false, error: { code: 'PJS-008', message: e.message } }
+      throw e
+    }
+  } catch (e: any) {
+    console.error('[PJP_ADD_FAIL]', e)
+    return { success: false, error: { code: 'PJP_ADD_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
+}
+
+export async function removeJobSheetPesticide(id: string, userId?: string) {
+  try {
+    const db = getPrisma()
+    const line = await db.pestJobSheetPesticide.findUnique({ where: { id } })
+    if (!line) return { success: false, error: { code: 'PJS-009', message: 'Pesticide usage record not found.' } }
+
+    const sheet = await db.pestJobSheet.findUnique({ where: { id: line.jobSheetId }, select: { jobNumber: true } })
+
+    await db.$transaction(async (tx) => {
+      if (line.productId) {
+        await tx.inventoryMovement.create({
+          data: {
+            productId: line.productId,
+            movementType: 'PEST_RETURN',
+            quantity: line.quantityUsed,
+            referenceType: 'PEST_JOB_SHEET',
+            referenceId: sheet?.jobNumber ?? line.jobSheetId,
+            remarks: `Removed from pest job sheet ${sheet?.jobNumber ?? line.jobSheetId}`,
+            createdById: userId ?? null,
+          },
+        })
+        await tx.inventory.update({
+          where: { productId: line.productId },
+          data: { quantity: { increment: line.quantityUsed } },
+        })
+      }
+      await tx.pestJobSheetPesticide.delete({ where: { id } })
+    })
+
+    if (userId) await logAction(userId, 'DELETE', 'PEST_JOB_SHEET_PESTICIDE', id, line, null)
+    return { success: true, data: { id } }
+  } catch (e: any) {
+    console.error('[PJP_REMOVE_FAIL]', e)
+    return { success: false, error: { code: 'PJP_REMOVE_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
 }

@@ -27,6 +27,9 @@ interface InventoryItem {
     unit: string
     isActive: boolean
     category?: Category | null
+    sellByPack?: boolean
+    packUnit?: string | null
+    unitsPerPack?: number | null
   }
 }
 
@@ -34,7 +37,7 @@ export function InventoryScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { hasPermission } = useAuthStore()
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -43,6 +46,8 @@ export function InventoryScreen() {
   const [page, setPage] = useState(1)
   const [lowStockCount, setLowStockCount] = useState(0)
   const [outOfStockCount, setOutOfStockCount] = useState(0)
+  // Phase 58 §2 — reorder automation
+  const [generatingReorderPOs, setGeneratingReorderPOs] = useState(false)
   const limit = 50
 
   const canAdjust = hasPermission('inventory.adjustStock')
@@ -51,6 +56,8 @@ export function InventoryScreen() {
   // gate it on the same permission that actually guards that route (.view), not
   // .create, so staff who can only view/receive POs still get the shortcut.
   const canViewPOs = hasPermission('purchaseOrders.view')
+  // Phase 58 §2 — reorder automation, same permission the manual "Create PO" flow needs
+  const canGenerateReorderPOs = hasPermission('purchaseOrders.create')
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -83,6 +90,35 @@ export function InventoryScreen() {
   }, [lowStockOnly, page, toastError, t])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Phase 58 §2 — reorder automation: drafts a PO per supplier for every
+  // low-stock product that has a default supplier configured. Never fully
+  // silent — every PO it creates is DRAFT, same starting point a manually
+  // created one has, awaiting the normal review/approve flow.
+  async function handleGenerateReorderPOs() {
+    setGeneratingReorderPOs(true)
+    try {
+      const res = await window.api.purchaseOrders.generateReorderDraftPOs()
+      if (res.success && res.data) {
+        const { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO } = res.data
+        if (created.length === 0 && skippedNoDefaultSupplier === 0 && skippedAlreadyOnOpenPO === 0) {
+          toastSuccess(t('inventory.reorder.title'), t('inventory.reorder.nothingToOrder'))
+        } else {
+          const parts = [t('inventory.reorder.created', { count: created.length })]
+          if (skippedNoDefaultSupplier > 0) parts.push(t('inventory.reorder.skippedNoSupplier', { count: skippedNoDefaultSupplier }))
+          if (skippedAlreadyOnOpenPO > 0) parts.push(t('inventory.reorder.skippedOpenPO', { count: skippedAlreadyOnOpenPO }))
+          toastSuccess(t('inventory.reorder.title'), parts.join(' · '))
+        }
+        navigate('/purchase-orders')
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setGeneratingReorderPOs(false)
+    }
+  }
 
   const columns: ColumnDef<InventoryItem, unknown>[] = [
     {
@@ -213,6 +249,11 @@ export function InventoryScreen() {
               <AlertTriangle size={14} className="text-warning" />
               <span className="text-sm font-medium text-warning">{lowStockCount} {t('inventory.lowStock')}</span>
             </div>
+          )}
+          {lowStockCount > 0 && canGenerateReorderPOs && (
+            <Button variant="secondary" size="sm" onClick={handleGenerateReorderPOs} loading={generatingReorderPOs}>
+              {t('inventory.reorder.generateButton')}
+            </Button>
           )}
         </div>
       )}

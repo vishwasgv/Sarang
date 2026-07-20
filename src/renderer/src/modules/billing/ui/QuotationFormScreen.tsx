@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, ChevronLeft, Save, Search } from 'lucide-react'
+import { Plus, Trash2, ChevronLeft, Save, Search, Ruler } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useBusinessStore } from '@app/store/business.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { Button } from '@shared/ui/atoms/Button'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
@@ -97,6 +98,14 @@ export function QuotationFormScreen() {
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  // Phase 58 §2 — Hardware's area-pricing calculator, mirroring
+  // BillingScreen.tsx's identical L×W-sets-quantity feature (same module
+  // flag gates both — the calculator works on any product type, not just
+  // AREA_BASED, per that file's own established convention). Quotations has
+  // no cart-key concept, so this is keyed by array index instead.
+  const { isModuleEnabled } = useIndustryStore()
+  const areaPricingEnabled = isModuleEnabled('area_pricing')
+  const [areaCalc, setAreaCalc] = useState<Record<number, { l: string; w: string; open: boolean }>>({})
 
   const [customerName, setCustomerName] = useState('')
   const [validUntil, setValidUntil] = useState('')
@@ -225,8 +234,60 @@ export function QuotationFormScreen() {
               placeholder={t('quotations.productSearch')}
               onSelect={(p, name) => selectProduct(i, p, name)}
             />
-            <input type="number" min="0" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)}
-              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+            <div className="relative">
+              <input type="number" min="0" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)}
+                className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+              {areaPricingEnabled && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAreaCalc(prev => ({
+                      ...prev,
+                      [i]: { l: prev[i]?.l ?? '', w: prev[i]?.w ?? '', open: !(prev[i]?.open ?? false) }
+                    }))}
+                    title={t('billing.areaCalculator') as string}
+                    className="mt-0.5 flex items-center gap-1 text-xs text-brand/70 hover:text-brand transition-colors">
+                    <Ruler size={10} /> {t('billing.areaLabel')}
+                  </button>
+                  {areaCalc[i]?.open && (
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg p-3 w-40 space-y-2">
+                      <p className="text-xs font-semibold text-dark dark:text-slate-100 text-center">{t('billing.areaFormula')}</p>
+                      <div className="flex gap-1 items-center">
+                        <input
+                          type="number" min="0" step="0.01" placeholder="L"
+                          value={areaCalc[i]?.l ?? ''}
+                          onChange={e => setAreaCalc(prev => ({ ...prev, [i]: { ...prev[i], l: e.target.value } }))}
+                          className="w-14 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded focus:outline-none focus:border-brand text-center"
+                        />
+                        <span className="text-xs text-slate-400">×</span>
+                        <input
+                          type="number" min="0" step="0.01" placeholder="W"
+                          value={areaCalc[i]?.w ?? ''}
+                          onChange={e => setAreaCalc(prev => ({ ...prev, [i]: { ...prev[i], w: e.target.value } }))}
+                          className="w-14 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded focus:outline-none focus:border-brand text-center"
+                        />
+                      </div>
+                      {(() => {
+                        const l = parseFloat(areaCalc[i]?.l ?? '0')
+                        const w = parseFloat(areaCalc[i]?.w ?? '0')
+                        const area = l > 0 && w > 0 ? parseFloat((l * w).toFixed(3)) : null
+                        return area !== null ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateItem(i, 'quantity', area)
+                              setAreaCalc(prev => ({ ...prev, [i]: { ...prev[i], open: false } }))
+                            }}
+                            className="w-full py-1 text-xs bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors font-semibold">
+                            {t('billing.useAreaSq', { area })}
+                          </button>
+                        ) : null
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <input type="number" min="0" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)}
               className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
             <input type="number" min="0" max="100" value={item.discount} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)}

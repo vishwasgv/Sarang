@@ -214,6 +214,111 @@ export async function adjustRawMaterialStock(payload: {
   }
 }
 
+// Phase 58 §2 — raw-material lot/batch traceability. Receiving stock with a
+// batch/lot number creates a RawMaterialBatch row (an ADDITIONAL ledger,
+// same relationship ProductBatch has to Inventory.quantity) alongside the
+// existing currentStock increment + RawMaterialMovement audit trail —
+// neither of those two pre-existing mechanisms is touched or duplicated,
+// this is purely additive.
+export interface RawMaterialBatchRecord {
+  id: string
+  rawMaterialId: string
+  materialName: string
+  batchNumber: string
+  receivedDate: string
+  quantityReceived: number
+  quantityRemaining: number
+  unitCost: number
+  supplierId: string | null
+  supplierName: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export async function receiveRawMaterialBatch(payload: {
+  rawMaterialId: string
+  batchNumber: string
+  quantity: number
+  unitCost?: number
+  supplierId?: string
+}, userId?: string): Promise<{ success: boolean; data?: RawMaterialBatchRecord; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const mat = await db.rawMaterial.findUnique({ where: { id: payload.rawMaterialId } })
+    if (!mat) return { success: false, error: { code: 'RM-003', message: 'Raw material not found.' } }
+    if (payload.quantity <= 0) return { success: false, error: { code: 'RM-009', message: 'Quantity must be greater than zero.' } }
+
+    const result = await db.$transaction(async (tx) => {
+      const batch = await tx.rawMaterialBatch.create({
+        data: {
+          rawMaterialId: payload.rawMaterialId,
+          batchNumber: payload.batchNumber.trim().toUpperCase(),
+          quantityReceived: payload.quantity,
+          quantityRemaining: payload.quantity,
+          unitCost: payload.unitCost ?? mat.unitCost,
+          supplierId: payload.supplierId ?? null
+        },
+        include: { rawMaterial: { select: { name: true } }, supplier: { select: { supplierName: true } } }
+      })
+      const updated = await tx.rawMaterial.update({
+        where: { id: payload.rawMaterialId },
+        data: { currentStock: { increment: payload.quantity } },
+        select: { currentStock: true }
+      })
+      await tx.rawMaterialMovement.create({
+        data: {
+          rawMaterialId: payload.rawMaterialId,
+          type: 'PURCHASE',
+          quantity: payload.quantity,
+          balanceAfter: updated.currentStock,
+          reference: batch.batchNumber,
+          unitCost: payload.unitCost ?? mat.unitCost,
+          notes: `Received as lot ${batch.batchNumber}`,
+          createdById: userId ?? null
+        }
+      })
+      return batch
+    })
+
+    await logAction(userId, 'RAW_MATERIAL_BATCH_RECEIVED', 'RawMaterialBatch', result.id, undefined, { rawMaterialId: payload.rawMaterialId, batchNumber: result.batchNumber, quantity: payload.quantity })
+    return {
+      success: true,
+      data: {
+        id: result.id, rawMaterialId: result.rawMaterialId, materialName: result.rawMaterial.name,
+        batchNumber: result.batchNumber, receivedDate: result.receivedDate.toISOString(),
+        quantityReceived: result.quantityReceived, quantityRemaining: result.quantityRemaining,
+        unitCost: result.unitCost, supplierId: result.supplierId, supplierName: result.supplier?.supplierName ?? null,
+        isActive: result.isActive, createdAt: result.createdAt.toISOString()
+      }
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'RM-010', message: err instanceof Error ? err.message : 'Failed to receive batch.' } }
+  }
+}
+
+export async function listRawMaterialBatches(payload?: { rawMaterialId?: string }): Promise<{ success: boolean; data?: RawMaterialBatchRecord[] }> {
+  try {
+    const db = getPrisma()
+    const rows = await db.rawMaterialBatch.findMany({
+      where: { isActive: true, ...(payload?.rawMaterialId ? { rawMaterialId: payload.rawMaterialId } : {}) },
+      orderBy: { receivedDate: 'asc' },
+      include: { rawMaterial: { select: { name: true } }, supplier: { select: { supplierName: true } } }
+    })
+    return {
+      success: true,
+      data: rows.map(b => ({
+        id: b.id, rawMaterialId: b.rawMaterialId, materialName: b.rawMaterial.name,
+        batchNumber: b.batchNumber, receivedDate: b.receivedDate.toISOString(),
+        quantityReceived: b.quantityReceived, quantityRemaining: b.quantityRemaining,
+        unitCost: b.unitCost, supplierId: b.supplierId, supplierName: b.supplier?.supplierName ?? null,
+        isActive: b.isActive, createdAt: b.createdAt.toISOString()
+      }))
+    }
+  } catch {
+    return { success: true, data: [] }
+  }
+}
+
 export async function getRawMaterialMovements(rawMaterialId: string, limit = 50): Promise<{ success: boolean; data?: RawMaterialMovementRecord[] }> {
   try {
     const db = getPrisma()

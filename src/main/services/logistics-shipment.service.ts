@@ -55,7 +55,15 @@ function toDetail(r: any) {
     items: (r.items ?? []).map((i: any) => ({
       id: i.id, productId: i.productId, productName: i.productName,
       quantity: i.quantity, unit: i.unit, unitValue: i.unitValue, totalValue: i.totalValue,
-      batchNumber: i.batchNumber, serialNumber: i.serialNumber, notes: i.notes,
+      batchNumber: i.batchNumber, serialNumber: i.serialNumber, notes: i.notes, stopId: i.stopId,
+    })),
+    // Phase 58 §2 — Distributor route/beat planning. Ordered by
+    // sequenceNumber (add-order) so the UI can render the run's stop
+    // sequence directly without re-sorting.
+    stops: (r.stops ?? []).sort((a: any, b: any) => a.sequenceNumber - b.sequenceNumber).map((s: any) => ({
+      id: s.id, sequenceNumber: s.sequenceNumber, customerId: s.customerId, customerName: s.customerName,
+      destinationAddress: s.destinationAddress, status: s.status,
+      deliveredAt: s.deliveredAt?.toISOString() ?? null, notes: s.notes,
     })),
   }
 }
@@ -64,6 +72,7 @@ const INCLUDE = {
   carrier: { select: { id: true, name: true, type: true, ratePerKg: true, ratePerKm: true } },
   vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true, driverName: true } },
   items: true,
+  stops: true,
 }
 
 export async function listShipments(payload?: { status?: string; shipmentType?: string; search?: string; fromDate?: string; toDate?: string; offset?: number; limit?: number }) {
@@ -341,5 +350,72 @@ export async function updateShipmentStatus(payload: { id: string; status: string
   } catch (err: any) {
     if (err?.code === 'P2025') return { success: false, error: { code: 'NF-001', message: 'Shipment not found.' } }
     return { success: false, error: { code: 'LOG-024', message: err instanceof Error ? err.message : 'Failed to update shipment status.' } }
+  }
+}
+
+// ── Phase 58 §2 — Distributor route/beat planning ──────────────────────────
+// A stop is an ADDITIVE beat point on top of the shipment's own primary
+// destinationAddress/customerId (unchanged, still the "first" stop for
+// every pre-existing single-destination shipment). Stops never touch
+// Vehicle.status/inventory themselves — a vehicle stays "in transit" for
+// the whole run, matching updateShipmentStatus's existing behavior above.
+
+export async function addShipmentStop(payload: {
+  shipmentId: string; customerId?: string; customerName?: string; destinationAddress: string; notes?: string
+}, userId?: string) {
+  try {
+    const db = getPrisma()
+    if (!payload.destinationAddress?.trim()) return { success: false, error: { code: 'VAL-001', message: 'Destination address is required.' } }
+    const shipment = await db.shipment.findUnique({ where: { id: payload.shipmentId } })
+    if (!shipment) return { success: false, error: { code: 'NF-001', message: 'Shipment not found.' } }
+    if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(shipment.status))
+      return { success: false, error: { code: 'VAL-002', message: 'Cannot add a stop to a terminal shipment.' } }
+
+    const maxSeq = await db.shipmentStop.aggregate({ where: { shipmentId: payload.shipmentId }, _max: { sequenceNumber: true } })
+    const stop = await db.shipmentStop.create({
+      data: {
+        shipmentId: payload.shipmentId,
+        sequenceNumber: (maxSeq._max.sequenceNumber ?? 0) + 1,
+        customerId: payload.customerId ?? null,
+        customerName: payload.customerName?.trim() || null,
+        destinationAddress: payload.destinationAddress.trim(),
+        notes: payload.notes?.trim() || null,
+      }
+    })
+    await logAction({ userId, action: 'CREATE', entityType: 'ShipmentStop', entityId: stop.id, newValue: { shipmentId: payload.shipmentId } })
+    return { success: true, data: stop }
+  } catch (err) {
+    return { success: false, error: { code: 'LOG-026', message: err instanceof Error ? err.message : 'Failed to add stop.' } }
+  }
+}
+
+export async function updateShipmentStopStatus(payload: { id: string; status: 'DELIVERED' | 'SKIPPED' | 'PENDING' }, userId?: string) {
+  try {
+    const db = getPrisma()
+    const existing = await db.shipmentStop.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'NF-001', message: 'Stop not found.' } }
+    const stop = await db.shipmentStop.update({
+      where: { id: payload.id },
+      data: { status: payload.status, deliveredAt: payload.status === 'DELIVERED' ? new Date() : existing.deliveredAt }
+    })
+    await logAction({ userId, action: 'STATUS_CHANGE', entityType: 'ShipmentStop', entityId: payload.id, oldValue: { status: existing.status }, newValue: { status: payload.status } })
+    return { success: true, data: stop }
+  } catch (err: any) {
+    if (err?.code === 'P2025') return { success: false, error: { code: 'NF-001', message: 'Stop not found.' } }
+    return { success: false, error: { code: 'LOG-027', message: err instanceof Error ? err.message : 'Failed to update stop status.' } }
+  }
+}
+
+export async function deleteShipmentStop(id: string, userId?: string) {
+  try {
+    const db = getPrisma()
+    const existing = await db.shipmentStop.findUnique({ where: { id } })
+    if (!existing) return { success: false, error: { code: 'NF-001', message: 'Stop not found.' } }
+    await db.shipmentStop.delete({ where: { id } })
+    await logAction({ userId, action: 'DELETE', entityType: 'ShipmentStop', entityId: id, oldValue: { shipmentId: existing.shipmentId } })
+    return { success: true }
+  } catch (err: any) {
+    if (err?.code === 'P2025') return { success: false, error: { code: 'NF-001', message: 'Stop not found.' } }
+    return { success: false, error: { code: 'LOG-028', message: err instanceof Error ? err.message : 'Failed to delete stop.' } }
   }
 }

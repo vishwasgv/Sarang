@@ -1,6 +1,9 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
+import { inventoryService } from './inventory.service'
+import { createAppointment } from './appointment.service'
+import { createAppointmentReminder } from './notification-queue.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -225,4 +228,152 @@ export async function getTailoringKPIs() {
     db.tailoringOrder.count({ where: { status: 'DELIVERED', deliveredDate: { gte: monthStart, lte: monthEnd } } }),
   ])
   return { success: true, data: { activeOrders, readyForPickup, deliveredThisMonth } }
+}
+
+// Phase 58 §2 — Tailor Boutique: a real trial/fitting Appointment, riding
+// the SAME 24h/2h WhatsApp reminder pipeline every other appointment type
+// already uses — no new reminder mechanism invented. trialDate is kept in
+// sync (denormalized) for any existing reader that only ever expected a
+// bare date (e.g. reports).
+export async function scheduleTrialAppointment(payload: {
+  orderId: string
+  providerId?: string
+  scheduledDate: string
+  scheduledTime: string
+  durationMinutes?: number
+}) {
+  const db = getPrisma()
+  try {
+    const order = await db.tailoringOrder.findUnique({
+      where: { id: payload.orderId },
+      select: { id: true, clientId: true, garmentType: true, orderNumber: true, trialAppointmentId: true },
+    })
+    if (!order) return { success: false, error: { code: 'TO-005', message: 'Tailoring order not found.' } }
+    if (order.trialAppointmentId) return { success: false, error: { code: 'TO-006', message: 'A trial appointment is already scheduled for this order.' } }
+
+    const apptResult = await createAppointment({
+      customerId: order.clientId,
+      providerId: payload.providerId,
+      serviceTitle: `Trial / Fitting — ${order.garmentType} (${order.orderNumber})`,
+      scheduledDate: payload.scheduledDate,
+      scheduledTime: payload.scheduledTime,
+      durationMinutes: payload.durationMinutes ?? 30,
+      createdBy: 'system',
+    })
+    if (!apptResult.success) return apptResult
+
+    const appointment = apptResult.data as { id: string }
+    const order2 = await db.tailoringOrder.update({
+      where: { id: payload.orderId },
+      data: {
+        trialAppointmentId: appointment.id,
+        trialDate: new Date(payload.scheduledDate),
+        status: 'TRIAL_SCHEDULED',
+      },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        measurement: { select: { id: true, recordDate: true } },
+        assignedTo: { select: { id: true, fullName: true } },
+      },
+    })
+
+    // Reuses the existing appointment-reminder pipeline as-is — a genuine
+    // WhatsApp delivery failure or missing phone number is expected/handled
+    // there already, so a failure here shouldn't fail the whole action.
+    await createAppointmentReminder(appointment.id).catch(() => {})
+
+    await db.auditLog.create({ data: { action: 'TRIAL_SCHEDULED', entityType: 'TailoringOrder', entityId: payload.orderId, newValue: JSON.stringify({ appointmentId: appointment.id }) } }).catch(() => {})
+    return { success: true, data: serializeTailoringOrder(order2) }
+  } catch (err) {
+    return { success: false, error: { code: 'TO-007', message: err instanceof Error ? err.message : 'Could not schedule trial appointment.' } }
+  }
+}
+
+// Phase 58 §2 — Tailor Boutique: fabric-stock deduction when the shop
+// supplies the material. Real inventory deduction (reuses the same
+// inventoryService.reduceStockTx helper Repair's parts-tracking and
+// billing/logistics/quotation already use) — set-once-then-clear-to-change,
+// mirroring the add/remove pair pattern used for Repair's JobCardPart,
+// rather than a plain mutable field (changing it after stock is deducted
+// needs an explicit restore step first, not a silent overwrite).
+export async function setOrderFabric(payload: {
+  orderId: string
+  fabricProductId: string
+  fabricQuantity: number
+}) {
+  const db = getPrisma()
+  try {
+    if (payload.fabricQuantity <= 0) return { success: false, error: { code: 'TOF-001', message: 'Fabric quantity must be greater than zero.' } }
+
+    const order = await db.tailoringOrder.findUnique({ where: { id: payload.orderId }, select: { id: true, orderNumber: true, fabricProductId: true } })
+    if (!order) return { success: false, error: { code: 'TOF-002', message: 'Tailoring order not found.' } }
+    if (order.fabricProductId) return { success: false, error: { code: 'TOF-003', message: 'This order already has fabric linked — clear it first before setting a different one.' } }
+
+    const product = await db.product.findUnique({ where: { id: payload.fabricProductId }, select: { id: true } })
+    if (!product) return { success: false, error: { code: 'TOF-004', message: 'Fabric product not found.' } }
+
+    try {
+      const updated = await db.$transaction(async (tx) => {
+        await inventoryService.reduceStockTx(
+          tx, payload.fabricProductId, payload.fabricQuantity,
+          `Fabric supplied for tailoring order ${order.orderNumber}`, 'TAILORING_ORDER', order.orderNumber
+        )
+        return tx.tailoringOrder.update({
+          where: { id: payload.orderId },
+          data: { fabricProductId: payload.fabricProductId, fabricQuantity: payload.fabricQuantity, fabricSupplied: 'SHOP' },
+          include: {
+            client: { select: { id: true, customerName: true, phone: true } },
+            measurement: { select: { id: true, recordDate: true } },
+            assignedTo: { select: { id: true, fullName: true } },
+          },
+        })
+      })
+      await db.auditLog.create({ data: { action: 'FABRIC_SET', entityType: 'TailoringOrder', entityId: payload.orderId, newValue: JSON.stringify({ fabricProductId: payload.fabricProductId, fabricQuantity: payload.fabricQuantity }) } }).catch(() => {})
+      return { success: true, data: serializeTailoringOrder(updated) }
+    } catch (e: any) {
+      if (e?.code === 'INV-002') return { success: false, error: { code: 'TOF-005', message: e.message } }
+      throw e
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'TOF-006', message: err instanceof Error ? err.message : 'Could not set fabric.' } }
+  }
+}
+
+export async function clearOrderFabric(orderId: string) {
+  const db = getPrisma()
+  try {
+    const order = await db.tailoringOrder.findUnique({ where: { id: orderId }, select: { id: true, orderNumber: true, fabricProductId: true, fabricQuantity: true } })
+    if (!order) return { success: false, error: { code: 'TOF-002', message: 'Tailoring order not found.' } }
+    if (!order.fabricProductId || order.fabricQuantity == null) return { success: false, error: { code: 'TOF-007', message: 'No fabric is currently linked to this order.' } }
+
+    const updated = await db.$transaction(async (tx) => {
+      await tx.inventoryMovement.create({
+        data: {
+          productId: order.fabricProductId!,
+          movementType: 'TAILORING_RETURN',
+          quantity: order.fabricQuantity!,
+          referenceType: 'TAILORING_ORDER',
+          referenceId: order.orderNumber,
+          remarks: `Fabric unlinked from tailoring order ${order.orderNumber}`,
+        },
+      })
+      await tx.inventory.update({
+        where: { productId: order.fabricProductId! },
+        data: { quantity: { increment: order.fabricQuantity! } },
+      })
+      return tx.tailoringOrder.update({
+        where: { id: orderId },
+        data: { fabricProductId: null, fabricQuantity: null, fabricSupplied: 'CLIENT' },
+        include: {
+          client: { select: { id: true, customerName: true, phone: true } },
+          measurement: { select: { id: true, recordDate: true } },
+          assignedTo: { select: { id: true, fullName: true } },
+        },
+      })
+    })
+    await db.auditLog.create({ data: { action: 'FABRIC_CLEARED', entityType: 'TailoringOrder', entityId: orderId } }).catch(() => {})
+    return { success: true, data: serializeTailoringOrder(updated) }
+  } catch (err) {
+    return { success: false, error: { code: 'TOF-008', message: err instanceof Error ? err.message : 'Could not clear fabric.' } }
+  }
 }

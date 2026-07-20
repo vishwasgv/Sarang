@@ -21,11 +21,17 @@ Opening a project's detail screen gives you two more things:
 
 ## Job Cards (Repair, Service via the generic model)
 
-A job card is built for a physical item a customer drops off: a title, item description, priority, estimated cost, and received/expected/delivered dates. It has its own seven-stage lifecycle — **Received → Diagnosing → In Repair → (optionally Pending Parts) → Ready → Delivered**, or **Cancelled** at any point before delivery. The detail view shows this as a visual stage tracker and always surfaces the single next action button (e.g. "Mark In Repair"), plus a dedicated "Waiting for Parts" action while a card is in repair. Delivering a job card is where you enter the actual final cost, separate from the original estimate.
+A job card is built for a physical item a customer drops off: a title, item description, priority, estimated cost, and received/expected/delivered dates. It has its own seven-stage lifecycle — **Received → Diagnosing → In Repair → (optionally Pending Parts) → Ready → Delivered**, or **Cancelled** at any point before delivery. The detail view shows this as a visual stage tracker and always surfaces the single next action button (e.g. "Mark In Repair"), plus a dedicated "Waiting for Parts" action while a card is in repair. Delivering a job card is where you enter the actual final cost, separate from the original estimate — **Generate Invoice** turns that final cost into a real invoice once the job's been delivered.
+
+Add real **parts used** to a job card from its detail view — search a product, set the quantity, and Sarang deducts it from your actual inventory (not a free-text note); removing a part restores the stock. Set a **warranty period** in days on delivery, and a real Under Warranty / Expired badge shows automatically from that point on. If the same item comes back for a warranty issue, start a new job card and link it as a **warranty claim** against the original — the original's live warranty status shows right there in the new job card's form.
 
 ## Service Tickets (Service, Repair)
 
-A ticket is a lighter-weight support request: title, description, priority, an optional category tag, and an optional customer/assignee. It moves through **Open → In Progress → Resolved → Closed**, and resolving one lets you attach a resolution note. Urgent, unresolved tickets are called out with a red-flag indicator on the list so they don't get buried.
+A ticket is a lighter-weight support request: title, description, priority, an optional category tag, and an optional customer/assignee. It moves through **Open → In Progress → Resolved → Closed**, and resolving one lets you attach a resolution note. Urgent, unresolved tickets are called out with a red-flag indicator on the list so they don't get buried. Enter an amount and **Generate Invoice** to bill a resolved ticket.
+
+## Appointments and Projects billing
+
+All three of these business types also get **Appointments** (booking, provider schedules, and reminders — see the *Billing* and universal chapters) for scheduling client meetings or drop-off slots, and a Project can be billed directly with **Generate Invoice** once it's ready, the same way a Job Card or Ticket can.
 
 ## Work Tracking
 

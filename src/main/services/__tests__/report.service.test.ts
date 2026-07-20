@@ -2077,10 +2077,15 @@ describe('reportService.generateRentalRevenueReport', () => {
   })
 })
 
-// ─── Project Report (fresh-audit fix, 2026-07-12) — closes the zero-report ──
-// gap for SERVICE/CONSULTANT business types ────────────────────────────────
+// ─── Service Project Report (fresh-audit fix, 2026-07-12; renamed + kept ────
+// unchanged in the 2026-07-16 real-bug-fix split) — for the six ServiceProject
+// -using verticals (Independent Consultant/Architect/Civil Engineer/Marketing
+// Agency/Software Agency/Real Estate), gated on the `service_projects` module.
+// This was formerly called generateProjectReport but was wired to the wrong
+// tile gate (`projects`, the legacy SERVICE/CONSULTANT module) — see
+// generateProjectReport below for the corrected legacy-model report.
 
-describe('reportService.generateProjectReport', () => {
+describe('reportService.generateServiceProjectReport', () => {
   function makeProjectRow(overrides: Record<string, unknown> = {}) {
     return {
       projectName: 'Website Revamp', status: 'ACTIVE', projectType: 'GENERAL',
@@ -2103,7 +2108,7 @@ describe('reportService.generateProjectReport', () => {
     }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    const result = await reportService.generateProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
+    const result = await reportService.generateServiceProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
 
     expect(result.summary.totalProjects).toBe(3)
     expect(result.summary.active).toBe(1)
@@ -2118,7 +2123,7 @@ describe('reportService.generateProjectReport', () => {
     }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    const result = await reportService.generateProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
+    const result = await reportService.generateServiceProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
 
     expect(result.summary.totalContractValue).toBe(0)
     expect(result.rows[0].totalContractValue).toBeNull()
@@ -2128,9 +2133,71 @@ describe('reportService.generateProjectReport', () => {
     const db = { serviceProject: { findMany: vi.fn().mockResolvedValue([makeProjectRow()]) } }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
+    const result = await reportService.generateServiceProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
+
+    expect(result.rows[0].clientName).toBe('Acme Pvt Ltd')
+  })
+})
+
+// ─── Project Report (real bug fix, 2026-07-16) — for the legacy SERVICE/ ────
+// CONSULTANT `Project` model, gated on the `projects` module. Previously this
+// name/gate pointed at ServiceProject data (see above) and was permanently
+// empty for these two business types; now genuinely queries `db.project`.
+
+describe('reportService.generateProjectReport', () => {
+  function makeLegacyProjectRow(overrides: Record<string, unknown> = {}) {
+    return {
+      title: 'Website Revamp', status: 'OPEN', priority: 'MEDIUM',
+      estimatedAmount: 50000,
+      startDate: new Date('2026-01-05'), dueDate: new Date('2026-03-05'), completedDate: null,
+      customer: { customerName: 'Acme Pvt Ltd' },
+      ...overrides,
+    }
+  }
+
+  it('summarizes projects by status and total estimated amount', async () => {
+    const db = {
+      project: {
+        findMany: vi.fn().mockResolvedValue([
+          makeLegacyProjectRow(),
+          makeLegacyProjectRow({ title: 'Brand Refresh', status: 'COMPLETED', estimatedAmount: 20000 }),
+          makeLegacyProjectRow({ title: 'Paused Project', status: 'ON_HOLD', estimatedAmount: 10000 }),
+          makeLegacyProjectRow({ title: 'Kickoff Pending', status: 'IN_PROGRESS', estimatedAmount: 5000 }),
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
+
+    expect(result.summary.totalProjects).toBe(4)
+    expect(result.summary.open).toBe(1)
+    expect(result.summary.inProgress).toBe(1)
+    expect(result.summary.completed).toBe(1)
+    expect(result.summary.onHold).toBe(1)
+    expect(result.summary.totalEstimatedAmount).toBe(85000)
+  })
+
+  it('treats a project with no linked customer (freestanding) without crashing', async () => {
+    const db = {
+      project: { findMany: vi.fn().mockResolvedValue([makeLegacyProjectRow({ customer: null })]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
+
+    expect(result.rows[0].clientName).toBeNull()
+  })
+
+  it('reads the client name from the optional customer relation when present', async () => {
+    const db = { project: { findMany: vi.fn().mockResolvedValue([makeLegacyProjectRow()]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
     const result = await reportService.generateProjectReport({ dateFrom: '2026-01-01', dateTo: '2026-12-31' })
 
     expect(result.rows[0].clientName).toBe('Acme Pvt Ltd')
+    expect(result.rows[0].title).toBe('Website Revamp')
+    expect(result.rows[0].priority).toBe('MEDIUM')
   })
 })
 
@@ -2194,5 +2261,331 @@ describe('reportService.generateJobCardReport', () => {
     const result = await reportService.generateJobCardReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
     expect(result.rows[0].customerName).toBeNull()
+  })
+})
+
+// ─── Phase 58 §1 — 10 new reports (2026-07-17) ────────────────────────────
+
+describe('reportService.generateCarJobCardReport', () => {
+  it('fans out technicianIds (JSON array) so a job with 2 techs counts once per tech', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-1', client: { customerName: 'Ravi' }, vehicleNumber: 'MH01AB1234', vehicleMake: 'Maruti', vehicleModel: 'Swift', status: 'DELIVERED', laborTotal: 500, partsTotal: 200, technicianIds: JSON.stringify(['emp-1', 'emp-2']), createdAt: new Date('2026-01-05'), deliveredDate: new Date('2026-01-06') },
+          { jobNumber: 'CJ-2', client: { customerName: 'Sana' }, vehicleNumber: 'MH02CD5678', vehicleMake: 'Hyundai', vehicleModel: 'i20', status: 'IN_PROGRESS', laborTotal: 300, partsTotal: 100, technicianIds: JSON.stringify(['emp-1']), createdAt: new Date('2026-01-10'), deliveredDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarJobCardReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalJobs).toBe(2)
+    expect(result.summary.delivered).toBe(1)
+    expect(result.summary.totalLaborRevenue).toBe(800)
+    expect(result.summary.totalPartsRevenue).toBe(300)
+    const emp1 = result.byTechnician.find(t => t.technicianId === 'emp-1')
+    const emp2 = result.byTechnician.find(t => t.technicianId === 'emp-2')
+    expect(emp1?.jobCount).toBe(2)
+    expect(emp2?.jobCount).toBe(1)
+  })
+
+  it('treats an unparsable technicianIds value as no technicians rather than crashing', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-3', client: { customerName: 'X' }, vehicleNumber: 'MH03', vehicleMake: 'M', vehicleModel: 'X', status: 'RECEIVED', laborTotal: 0, partsTotal: 0, technicianIds: 'not-json', createdAt: new Date('2026-01-05'), deliveredDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarJobCardReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.byTechnician).toEqual([])
+  })
+})
+
+describe('reportService.generateTailoringOrderReport', () => {
+  it('aggregates count and total amount per garment type', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { orderNumber: 'TO-1', client: { customerName: 'A' }, garmentType: 'SHIRT', status: 'DELIVERED', quantity: 1, totalAmount: 800, createdAt: new Date('2026-01-05'), deliveryDate: new Date('2026-01-10') },
+          { orderNumber: 'TO-2', client: { customerName: 'B' }, garmentType: 'SHIRT', status: 'READY', quantity: 2, totalAmount: 1600, createdAt: new Date('2026-01-06'), deliveryDate: null },
+          { orderNumber: 'TO-3', client: { customerName: 'C' }, garmentType: 'SUIT', status: 'IN_CUTTING', quantity: 1, totalAmount: 5000, createdAt: new Date('2026-01-07'), deliveryDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTailoringOrderReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalOrders).toBe(3)
+    expect(result.summary.delivered).toBe(1)
+    const shirt = result.byGarmentType.find(g => g.garmentType === 'SHIRT')
+    expect(shirt).toEqual({ garmentType: 'SHIRT', count: 2, totalAmount: 2400 })
+  })
+})
+
+describe('reportService.generatePestContractReport', () => {
+  it('flags only contracts with endDate within the next 30 days as expiring', async () => {
+    const now = Date.now()
+    const in10Days = new Date(now + 10 * 86400000)
+    const in60Days = new Date(now + 60 * 86400000)
+    const db = {
+      pestServiceContract: {
+        findMany: vi.fn().mockResolvedValue([
+          { contractNumber: 'PC-1', client: { customerName: 'Soon' }, pestTypes: JSON.stringify(['RODENTS']), endDate: in10Days, contractValue: 12000 },
+          { contractNumber: 'PC-2', client: { customerName: 'Later' }, pestTypes: JSON.stringify(['TERMITES']), endDate: in60Days, contractValue: 20000 },
+        ]),
+      },
+      pestJobSheet: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePestContractReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.activeContracts).toBe(2)
+    expect(result.summary.expiringWithin30Days).toBe(1)
+    expect(result.expiring[0].contractNumber).toBe('PC-1')
+  })
+
+  it('attributes a completed visit\'s revenue to every pest type listed on its parent contract', async () => {
+    const db = {
+      pestServiceContract: { findMany: vi.fn().mockResolvedValue([]) },
+      pestJobSheet: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobAmount: 1000, contract: { pestTypes: JSON.stringify(['COCKROACHES', 'ANTS']) } },
+          { jobAmount: 500, contract: { pestTypes: JSON.stringify(['COCKROACHES']) } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePestContractReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const cockroaches = result.byPestType.find(p => p.pestType === 'COCKROACHES')
+    const ants = result.byPestType.find(p => p.pestType === 'ANTS')
+    expect(cockroaches).toEqual({ pestType: 'COCKROACHES', revenue: 1500, visitCount: 2 })
+    expect(ants).toEqual({ pestType: 'ANTS', revenue: 1000, visitCount: 1 })
+  })
+})
+
+describe('reportService.generateRealEstatePipelineReport', () => {
+  it('only counts REGISTERED deals toward brokerage earned, and IN_PROGRESS toward the pipeline count', async () => {
+    const db = {
+      property: { findMany: vi.fn().mockResolvedValue([{ status: 'AVAILABLE' }, { status: 'SOLD' }]) },
+      propertyInquiry: { findMany: vi.fn().mockResolvedValue([{ status: 'SHORTLISTED' }, { status: 'SHORTLISTED' }, { status: 'NEGOTIATION' }]) },
+      propertyDeal: {
+        findMany: vi.fn().mockResolvedValue([
+          { property: { location: 'A' }, buyer: { customerName: 'B1' }, seller: { customerName: 'S1' }, dealValue: 5000000, brokerageAmount: 50000, status: 'REGISTERED', createdAt: new Date('2026-01-05') },
+          { property: { location: 'B' }, buyer: { customerName: 'B2' }, seller: { customerName: 'S2' }, dealValue: 3000000, brokerageAmount: 30000, status: 'IN_PROGRESS', createdAt: new Date('2026-01-06') },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRealEstatePipelineReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalListings).toBe(2)
+    expect(result.summary.availableListings).toBe(1)
+    expect(result.summary.dealsInProgress).toBe(1)
+    expect(result.summary.totalBrokerageEarned).toBe(50000)
+    const shortlisted = result.byInquiryStage.find(s => s.stage === 'SHORTLISTED')
+    expect(shortlisted?.count).toBe(2)
+  })
+})
+
+describe('reportService.generateRetainerReport', () => {
+  it('derives targetPeriod from dateTo and flags only retainers invoiced for that exact period', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { title: 'Billed', client: { customerName: 'C1' }, status: 'ACTIVE', monthlyAmount: 15000, lastInvoicedPeriod: '2026-03' },
+          { title: 'Not billed yet', client: { customerName: 'C2' }, status: 'ACTIVE', monthlyAmount: 20000, lastInvoicedPeriod: '2026-02' },
+          { title: 'Paused', client: { customerName: 'C3' }, status: 'PAUSED', monthlyAmount: 10000, lastInvoicedPeriod: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerReport({ dateFrom: '2026-03-01', dateTo: '2026-03-31' })
+
+    expect(result.targetPeriod).toBe('2026-03')
+    expect(result.summary.activeRetainers).toBe(2) // PAUSED excluded from "active"
+    expect(result.summary.totalMRR).toBe(35000) // sum of ACTIVE only
+    expect(result.summary.billedThisPeriodCount).toBe(1)
+    expect(result.summary.billedThisPeriodAmount).toBe(15000)
+    expect(result.rows.find(r => r.title === 'Billed')?.billedThisPeriod).toBe(true)
+    expect(result.rows.find(r => r.title === 'Not billed yet')?.billedThisPeriod).toBe(false)
+  })
+})
+
+describe('reportService.generateShootBookingReport', () => {
+  it('treats a null finalAmount as zero in the revenue total without crashing', async () => {
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { client: { customerName: 'A' }, shootType: 'WEDDING', shootDate: new Date('2026-01-10'), status: 'DELIVERED', finalAmount: 50000 },
+          { client: { customerName: 'B' }, shootType: 'WEDDING', shootDate: new Date('2026-01-15'), status: 'INQUIRY', finalAmount: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateShootBookingReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalRevenue).toBe(50000)
+    expect(result.rows.find(r => r.clientName === 'B')?.finalAmount).toBeNull()
+    expect(result.byShootType.find(s => s.shootType === 'WEDDING')?.count).toBe(2)
+  })
+})
+
+describe('reportService.generateEventBookingReport', () => {
+  it('groups bookings by status and sums revenue treating null finalAmount as zero', async () => {
+    const db = {
+      eventBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { client: { customerName: 'A' }, eventName: 'Wedding A', eventType: 'WEDDING', eventDate: new Date('2026-01-10'), status: 'COMPLETED', finalAmount: 200000 },
+          { client: { customerName: 'B' }, eventName: 'Corp B', eventType: 'CORPORATE', eventDate: new Date('2026-01-12'), status: 'INQUIRY', finalAmount: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateEventBookingReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalBookings).toBe(2)
+    expect(result.summary.completed).toBe(1)
+    expect(result.summary.totalRevenue).toBe(200000)
+    expect(result.byStatus.find(s => s.status === 'INQUIRY')?.count).toBe(1)
+  })
+})
+
+describe('reportService.generatePlacementReport', () => {
+  it('counts both JOINED and INVOICED as "joined", but only INVOICED as "invoiced"', async () => {
+    const db = {
+      placement: {
+        findMany: vi.fn().mockResolvedValue([
+          { placementNumber: 'PL-1', candidate: { fullName: 'Cand A' }, jobOrder: { jobTitle: 'Dev' }, client: { customerName: 'Client A' }, status: 'JOINED', joiningDate: new Date('2026-01-05'), offeredSalary: 800000, commissionAmount: 80000 },
+          { placementNumber: 'PL-2', candidate: { fullName: 'Cand B' }, jobOrder: { jobTitle: 'QA' }, client: { customerName: 'Client B' }, status: 'INVOICED', joiningDate: new Date('2026-01-10'), offeredSalary: 600000, commissionAmount: 60000 },
+          { placementNumber: 'PL-3', candidate: { fullName: 'Cand C' }, jobOrder: { jobTitle: 'PM' }, client: { customerName: 'Client C' }, status: 'CANCELLED', joiningDate: new Date('2026-01-12'), offeredSalary: 900000, commissionAmount: 0 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePlacementReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalPlacements).toBe(3)
+    expect(result.summary.joined).toBe(2)
+    expect(result.summary.invoiced).toBe(1)
+    expect(result.summary.totalCommission).toBe(140000)
+  })
+})
+
+describe('reportService.generateDrawingRegisterReport', () => {
+  it('reads the project name via the nested project relation and groups by status', async () => {
+    const db = {
+      drawingRevision: {
+        findMany: vi.fn().mockResolvedValue([
+          { drawingNumber: 'DWG-1', title: 'Ground Floor', project: { projectName: 'Villa Project' }, discipline: 'ARCHITECTURAL', revisionNumber: 'A', status: 'APPROVED', issuedDate: new Date('2026-01-05') },
+          { drawingNumber: 'DWG-2', title: 'First Floor', project: { projectName: 'Villa Project' }, discipline: 'ARCHITECTURAL', revisionNumber: 'B', status: 'ISSUED_FOR_REVIEW', issuedDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDrawingRegisterReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalDrawings).toBe(2)
+    expect(result.summary.approved).toBe(1)
+    expect(result.summary.pendingReview).toBe(1)
+    expect(result.rows[0].projectName).toBe('Villa Project')
+  })
+})
+
+describe('reportService.generateSiteVisitLogReport', () => {
+  it('filters by visitDate (not createdAt) and groups by visit type', async () => {
+    const db = {
+      siteVisit: {
+        findMany: vi.fn().mockResolvedValue([
+          { project: { projectName: 'Bridge Project' }, visitDate: new Date('2026-01-10'), visitType: 'INSPECTION', recordedBy: { fullName: 'Eng A' }, findings: 'All good' },
+          { project: { projectName: 'Bridge Project' }, visitDate: new Date('2026-01-15'), visitType: 'INSPECTION', recordedBy: null, findings: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSiteVisitLogReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+    const call = (db.siteVisit.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
+
+    expect(call.where).toHaveProperty('visitDate')
+    expect(result.summary.totalVisits).toBe(2)
+    expect(result.byVisitType.find(v => v.visitType === 'INSPECTION')?.count).toBe(2)
+    expect(result.rows[1].recordedByName).toBeNull()
+  })
+})
+
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register.
+// Sourced from InvoiceItem's prescription snapshot (captured at sale time
+// by billing.service.ts) filtered to isPrescriptionRequired products only,
+// excluding cancelled invoices.
+describe('reportService.generatePrescriptionDrugSalesReport', () => {
+  it('filters to isPrescriptionRequired products and excludes cancelled invoices in the query', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: { customerName: 'Ravi Kumar' } },
+            productName: 'Amoxicillin 500mg', quantity: 10,
+            prescriptionPatientName: 'Ravi Kumar', prescriptionDoctorName: 'Dr. Mehta',
+            prescriptionDate: new Date('2026-01-09'), lineTotal: 250,
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+    const call = (db.invoiceItem.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
+
+    expect(call.where.product).toEqual({ isPrescriptionRequired: true })
+    expect(call.where.invoice).toEqual({ status: { not: 'CANCELLED' } })
+    expect(result.summary.totalSales).toBe(1)
+    expect(result.summary.totalAmount).toBe(250)
+    expect(result.rows[0]).toMatchObject({
+      invoiceNumber: 'INV-001', productName: 'Amoxicillin 500mg', quantity: 10,
+      patientName: 'Ravi Kumar', doctorName: 'Dr. Mehta', customerName: 'Ravi Kumar', lineTotal: 250,
+    })
+  })
+
+  it('flags rows missing patient/doctor details in the summary without excluding them from the register', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: null }, productName: 'Drug A', quantity: 1, prescriptionPatientName: 'Patient A', prescriptionDoctorName: 'Doc A', prescriptionDate: null, lineTotal: 100 },
+          { invoice: { invoiceNumber: 'INV-002', createdAt: new Date('2026-01-11'), customer: null }, productName: 'Drug B', quantity: 1, prescriptionPatientName: null, prescriptionDoctorName: null, prescriptionDate: null, lineTotal: 50 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalSales).toBe(2)
+    expect(result.summary.missingPrescriptionDetails).toBe(1)
+    expect(result.rows[1].patientName).toBeNull()
+  })
+
+  it('returns a zero-value summary and empty rows when there are no prescription sales in range', async () => {
+    const db = { invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary).toEqual({ totalSales: 0, totalAmount: 0, missingPrescriptionDetails: 0 })
+    expect(result.rows).toEqual([])
   })
 })

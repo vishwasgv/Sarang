@@ -6,7 +6,8 @@ import {
   Table, RefreshCw, Calendar, HardDrive, Utensils,
   Activity, UserCheck, Award, QrCode, PackageSearch, FlaskConical, Droplet,
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp,
-  Briefcase, Wrench, BedDouble
+  Briefcase, Wrench, BedDouble, FolderOpen,
+  Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area
@@ -139,13 +140,69 @@ interface BloodStockReport { generatedAt: string; summary: { totalAvailable: num
 interface JewelleryStockRow { metalType: string; purity: string; netWeightGrams: number; ratePerGram: number | null; valuationAmount: number }
 // Fresh-audit fix (2026-07-12) — SERVICE/CONSULTANT/REPAIR previously had
 // zero vertical-specific reports at all.
-interface ProjectReportRow { projectName: string; clientName: string; status: string; projectType: string; totalContractValue: number | null; startDate: string | null; expectedEndDate: string | null; completedDate: string | null }
+// Real bug fix 2026-07-16: this report was wired to ServiceProject data
+// (wrong model for SERVICE/CONSULTANT, who use the legacy `Project` model)
+// — see report.service.ts's generateProjectReport for the full writeup.
+// Split into two reports: this one now matches the legacy `Project` shape;
+// ServiceProjectReport below covers the true ServiceProject-using verticals.
+interface ProjectReportRow { title: string; clientName: string | null; status: string; priority: string; estimatedAmount: number; startDate: string | null; dueDate: string | null; completedDate: string | null }
 interface ProjectReportByStatus { status: string; count: number }
 interface ProjectReport {
   dateFrom: string; dateTo: string
-  summary: { totalProjects: number; active: number; completed: number; onHold: number; cancelled: number; totalContractValue: number }
+  summary: { totalProjects: number; open: number; inProgress: number; completed: number; onHold: number; cancelled: number; totalEstimatedAmount: number }
   byStatus: ProjectReportByStatus[]; rows: ProjectReportRow[]
 }
+
+interface ServiceProjectReportRow { projectName: string; clientName: string; status: string; projectType: string; totalContractValue: number | null; startDate: string | null; expectedEndDate: string | null; completedDate: string | null }
+interface ServiceProjectReportByStatus { status: string; count: number }
+interface ServiceProjectReport {
+  dateFrom: string; dateTo: string
+  summary: { totalProjects: number; active: number; completed: number; onHold: number; cancelled: number; totalContractValue: number }
+  byStatus: ServiceProjectReportByStatus[]; rows: ServiceProjectReportRow[]
+}
+
+// Phase 58 §1 — 10 new reports for verticals with zero dedicated report before this.
+interface CarJobCardReportRow { jobNumber: string; customerName: string; vehicleNumber: string; vehicleMake: string; vehicleModel: string; status: string; laborTotal: number; partsTotal: number; createdAt: string; deliveredDate: string | null }
+interface CarJobCardTechnicianStat { technicianId: string; jobCount: number }
+interface CarJobCardReport { dateFrom: string; dateTo: string; summary: { totalJobs: number; delivered: number; totalLaborRevenue: number; totalPartsRevenue: number }; byTechnician: CarJobCardTechnicianStat[]; rows: CarJobCardReportRow[] }
+
+interface TailoringOrderReportRow { orderNumber: string; customerName: string; garmentType: string; status: string; quantity: number; totalAmount: number; createdAt: string; deliveryDate: string | null }
+interface TailoringOrderByGarment { garmentType: string; count: number; totalAmount: number }
+interface TailoringOrderReport { dateFrom: string; dateTo: string; summary: { totalOrders: number; delivered: number; totalAmount: number }; byGarmentType: TailoringOrderByGarment[]; rows: TailoringOrderReportRow[] }
+
+interface PestContractExpiringRow { contractNumber: string; customerName: string; pestTypes: string[]; endDate: string; daysUntilExpiry: number }
+interface PestRevenueByType { pestType: string; revenue: number; visitCount: number }
+interface PestContractReport { dateFrom: string; dateTo: string; summary: { activeContracts: number; expiringWithin30Days: number; totalContractValue: number }; expiring: PestContractExpiringRow[]; byPestType: PestRevenueByType[] }
+
+interface RealEstatePipelineByStage { stage: string; count: number; value: number }
+interface RealEstateDealRow { propertyLocation: string; buyerName: string; sellerName: string; dealValue: number; brokerageAmount: number; status: string; createdAt: string }
+interface RealEstatePipelineReport { dateFrom: string; dateTo: string; summary: { totalListings: number; availableListings: number; dealsInProgress: number; totalBrokerageEarned: number }; byInquiryStage: RealEstatePipelineByStage[]; deals: RealEstateDealRow[] }
+
+interface RetainerReportRow { title: string; clientName: string; status: string; monthlyAmount: number; billedThisPeriod: boolean }
+interface RetainerReport { dateFrom: string; dateTo: string; targetPeriod: string; summary: { activeRetainers: number; totalMRR: number; billedThisPeriodCount: number; billedThisPeriodAmount: number }; rows: RetainerReportRow[] }
+
+interface ShootBookingReportRow { clientName: string; shootType: string; shootDate: string; status: string; finalAmount: number | null }
+interface ShootBookingByType { shootType: string; count: number }
+interface ShootBookingReport { dateFrom: string; dateTo: string; summary: { totalBookings: number; delivered: number; totalRevenue: number }; byShootType: ShootBookingByType[]; rows: ShootBookingReportRow[] }
+
+interface EventBookingReportRow { clientName: string; eventName: string; eventType: string; eventDate: string; status: string; finalAmount: number | null }
+interface EventBookingByStatus { status: string; count: number }
+interface EventBookingReport { dateFrom: string; dateTo: string; summary: { totalBookings: number; completed: number; totalRevenue: number }; byStatus: EventBookingByStatus[]; rows: EventBookingReportRow[] }
+
+interface PlacementReportRow { placementNumber: string; candidateName: string; jobTitle: string; clientName: string; status: string; joiningDate: string; offeredSalary: number; commissionAmount: number }
+interface PlacementReport { dateFrom: string; dateTo: string; summary: { totalPlacements: number; joined: number; invoiced: number; totalCommission: number }; rows: PlacementReportRow[] }
+
+interface DrawingRegisterRow { drawingNumber: string; title: string; projectName: string; discipline: string; revisionNumber: string; status: string; issuedDate: string | null }
+interface DrawingRegisterByStatus { status: string; count: number }
+interface DrawingRegisterReport { dateFrom: string; dateTo: string; summary: { totalDrawings: number; approved: number; pendingReview: number }; byStatus: DrawingRegisterByStatus[]; rows: DrawingRegisterRow[] }
+
+interface SiteVisitLogRow { projectName: string; visitDate: string; visitType: string; recordedByName: string | null; findings: string | null }
+interface SiteVisitLogByType { visitType: string; count: number }
+interface SiteVisitLogReport { dateFrom: string; dateTo: string; summary: { totalVisits: number }; byVisitType: SiteVisitLogByType[]; rows: SiteVisitLogRow[] }
+
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register
+interface PrescriptionDrugSalesRow { invoiceNumber: string; invoiceDate: string; productName: string; quantity: number; patientName: string | null; doctorName: string | null; prescriptionDate: string | null; customerName: string | null; lineTotal: number }
+interface PrescriptionDrugSalesReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }; rows: PrescriptionDrugSalesRow[] }
 
 interface JobCardReportRow { jobNumber: string; title: string; customerName: string | null; status: string; priority: string; estimatedCost: number; actualCost: number; receivedDate: string; expectedDate: string | null; deliveredDate: string | null }
 interface JobCardReportByStatus { status: string; count: number }
@@ -246,7 +303,9 @@ type ReportType =
   | 'orderVolume' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
   | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'variantStock'
   | 'testScores' | 'complianceTasks'
-  | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'jobCards'
+  | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'serviceProjects' | 'jobCards'
+  | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
+  | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
   | 'hotelOccupancy' | 'hotelGuestRegister'
 
 interface ReportDef {
@@ -255,9 +314,14 @@ interface ReportDef {
   requiresEntity?: 'customer' | 'supplier'
   permission: string
   requiredModule?: TemplateModule
+  // Phase 58 §2 — Pharmacy Schedule H/H1 register: no dedicated module flag
+  // exists for this (isPrescriptionRequired is a plain Product field, not a
+  // TemplateModule), so gate directly on businessType instead, same
+  // reasoning as isRestaurant/isDistributor elsewhere in this codebase.
+  requiredBusinessType?: string
 }
 
-const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule }[] = [
+const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule; requiredBusinessType?: string }[] = [
   { id: 'sales', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'inventory', icon: <Package size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory' },
   { id: 'tax', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax' },
@@ -295,7 +359,19 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'hotelOccupancy', icon: <BedDouble size={18} />, category: 'hotel', requiresDateRange: false, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'hotelGuestRegister', icon: <Users size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'projects', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
+  { id: 'serviceProjects', icon: <FolderOpen size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   { id: 'jobCards', icon: <Wrench size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
+  { id: 'carJobCards', icon: <Car size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
+  { id: 'tailoringOrders', icon: <Scissors size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
+  { id: 'pestContracts', icon: <Bug size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
+  { id: 'realEstatePipeline', icon: <Home size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'properties' },
+  { id: 'retainers', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'retainers' },
+  { id: 'shootBookings', icon: <Camera size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
+  { id: 'eventBookings', icon: <PartyPopper size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'event_bookings' },
+  { id: 'placements', icon: <UsersRound size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
+  { id: 'siteVisitLog', icon: <HardHat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'site_visit_log' },
+  { id: 'prescriptionDrugSales', icon: <Pill size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PHARMACY' },
 ]
 
 const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel']
@@ -305,8 +381,24 @@ const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers',
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeFmt(_sym: string) { return (n: number) => formatCurrency(n) }
-function today() { return new Date().toISOString().slice(0, 10) }
-function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10) }
+// Phase 58 §1 (fixed 2026-07-18) — real bug: both of these used to build
+// their date string via .toISOString(), which is UTC-based. In a timezone
+// ahead of UTC (e.g. IST, UTC+5:30), within the first ~5.5 hours after
+// local midnight, .toISOString() still reports the PREVIOUS UTC day —
+// today() silently returned "yesterday" as the default dateTo, and the
+// report backend's own `to.setHours(23,59,59,999)` (parsing that
+// UTC-midnight string, then applying LOCAL hours) computed an upper bound
+// hours *before* the true current moment, excluding same-day rows from
+// every date-ranged report's default view during that window. Building
+// from the Date object's own local getFullYear()/getMonth()/getDate()
+// avoids the UTC round-trip entirely — matches the local wall-clock date
+// a user actually expects "today" to mean.
+function localDateString(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+function today() { return localDateString(new Date()) }
+function monthStart() { const d = new Date(); d.setDate(1); return localDateString(d) }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ReportsScreen
@@ -315,7 +407,7 @@ function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString
 export function ReportsScreen() {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
-  const { isModuleEnabled } = useIndustryStore()
+  const { isModuleEnabled, businessType } = useIndustryStore()
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
   const hasPermission = useAuthStore(s => s.hasPermission)
 
@@ -502,8 +594,44 @@ export function ReportsScreen() {
         case 'projects':
           res = await window.api.reports.projects({ dateFrom, dateTo })
           break
+        case 'serviceProjects':
+          res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
+          break
         case 'jobCards':
           res = await window.api.reports.jobCards({ dateFrom, dateTo })
+          break
+        case 'carJobCards':
+          res = await window.api.reports.carJobCards({ dateFrom, dateTo })
+          break
+        case 'tailoringOrders':
+          res = await window.api.reports.tailoringOrders({ dateFrom, dateTo })
+          break
+        case 'pestContracts':
+          res = await window.api.reports.pestContracts({ dateFrom, dateTo })
+          break
+        case 'realEstatePipeline':
+          res = await window.api.reports.realEstatePipeline({ dateFrom, dateTo })
+          break
+        case 'retainers':
+          res = await window.api.reports.retainers({ dateFrom, dateTo })
+          break
+        case 'shootBookings':
+          res = await window.api.reports.shootBookings({ dateFrom, dateTo })
+          break
+        case 'eventBookings':
+          res = await window.api.reports.eventBookings({ dateFrom, dateTo })
+          break
+        case 'placements':
+          res = await window.api.reports.placements({ dateFrom, dateTo })
+          break
+        case 'drawingRegister':
+          res = await window.api.reports.drawingRegister({ dateFrom, dateTo })
+          break
+        case 'siteVisitLog':
+          res = await window.api.reports.siteVisitLog({ dateFrom, dateTo })
+          break
+        case 'prescriptionDrugSales':
+          res = await window.api.reports.prescriptionDrugSales({ dateFrom, dateTo })
           break
         case 'logistics':
           res = await window.api.reports.logistics({ dateFrom, dateTo })
@@ -811,6 +939,13 @@ export function ReportsScreen() {
       case 'projects': {
         const d = reportData as ProjectReport
         return {
+          headers: [t('reports.col.projectTitle'), t('reports.col.client'), t('common.status'), t('reports.col.priority'), `${t('service.estimatedAmount')} (${currencySymbol})`, t('reports.col.startDate'), t('reports.col.dueDate')],
+          rows: d.rows.map(r => [r.title, r.clientName, r.status, r.priority, r.estimatedAmount, r.startDate, r.dueDate])
+        }
+      }
+      case 'serviceProjects': {
+        const d = reportData as ServiceProjectReport
+        return {
           headers: [t('reports.col.projectName'), t('reports.col.client'), t('common.status'), t('reports.col.projectType'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.startDate'), t('reports.col.expectedEndDate')],
           rows: d.rows.map(r => [r.projectName, r.clientName, r.status, r.projectType, r.totalContractValue, r.startDate, r.expectedEndDate])
         }
@@ -820,6 +955,83 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.jobNumber'), t('common.description'), t('reports.col.customer'), t('common.status'), t('reports.col.priority'), t('reports.col.estimatedCost'), t('reports.col.actualCost'), t('reports.col.receivedDate')],
           rows: d.rows.map(r => [r.jobNumber, r.title, r.customerName, r.status, r.priority, r.estimatedCost, r.actualCost, r.receivedDate])
+        }
+      }
+      case 'carJobCards': {
+        const d = reportData as CarJobCardReport
+        return {
+          headers: ['Job #', t('reports.col.customer'), 'Vehicle #', 'Make', 'Model', t('common.status'), 'Labor', 'Parts', 'Created'],
+          rows: d.rows.map(r => [r.jobNumber, r.customerName, r.vehicleNumber, r.vehicleMake, r.vehicleModel, r.status, r.laborTotal, r.partsTotal, r.createdAt])
+        }
+      }
+      case 'tailoringOrders': {
+        const d = reportData as TailoringOrderReport
+        return {
+          headers: ['Order #', t('reports.col.customer'), 'Garment Type', t('common.status'), 'Qty', t('common.amount')],
+          rows: d.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.quantity, r.totalAmount])
+        }
+      }
+      case 'pestContracts': {
+        const d = reportData as PestContractReport
+        return {
+          headers: ['Contract #', t('reports.col.customer'), 'Pest Types', 'Expires', 'Days Until Expiry'],
+          rows: d.expiring.map(r => [r.contractNumber, r.customerName, r.pestTypes.join(', '), r.endDate, r.daysUntilExpiry])
+        }
+      }
+      case 'realEstatePipeline': {
+        const d = reportData as RealEstatePipelineReport
+        return {
+          headers: ['Property', 'Buyer', 'Seller', 'Deal Value', 'Brokerage', t('common.status'), t('common.date')],
+          rows: d.deals.map(r => [r.propertyLocation, r.buyerName, r.sellerName, r.dealValue, r.brokerageAmount, r.status, r.createdAt])
+        }
+      }
+      case 'retainers': {
+        const d = reportData as RetainerReport
+        return {
+          headers: ['Title', t('reports.col.client'), t('common.status'), 'Monthly Amount', 'Billed This Period'],
+          rows: d.rows.map(r => [r.title, r.clientName, r.status, r.monthlyAmount, r.billedThisPeriod ? 'Yes' : 'No'])
+        }
+      }
+      case 'shootBookings': {
+        const d = reportData as ShootBookingReport
+        return {
+          headers: [t('reports.col.client'), 'Shoot Type', 'Shoot Date', t('common.status'), t('common.amount')],
+          rows: d.rows.map(r => [r.clientName, r.shootType, r.shootDate, r.status, r.finalAmount])
+        }
+      }
+      case 'eventBookings': {
+        const d = reportData as EventBookingReport
+        return {
+          headers: [t('reports.col.client'), 'Event Name', 'Event Type', 'Event Date', t('common.status'), t('common.amount')],
+          rows: d.rows.map(r => [r.clientName, r.eventName, r.eventType, r.eventDate, r.status, r.finalAmount])
+        }
+      }
+      case 'placements': {
+        const d = reportData as PlacementReport
+        return {
+          headers: ['Placement #', 'Candidate', 'Job Title', t('reports.col.client'), t('common.status'), 'Joining Date', 'Offered Salary', 'Commission'],
+          rows: d.rows.map(r => [r.placementNumber, r.candidateName, r.jobTitle, r.clientName, r.status, r.joiningDate, r.offeredSalary, r.commissionAmount])
+        }
+      }
+      case 'drawingRegister': {
+        const d = reportData as DrawingRegisterReport
+        return {
+          headers: ['Drawing #', 'Title', 'Project', 'Discipline', 'Revision', t('common.status'), 'Issued Date'],
+          rows: d.rows.map(r => [r.drawingNumber, r.title, r.projectName, r.discipline, r.revisionNumber, r.status, r.issuedDate])
+        }
+      }
+      case 'prescriptionDrugSales': {
+        const d = reportData as PrescriptionDrugSalesReport
+        return {
+          headers: ['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Prescription Date', t('reports.col.customer'), t('common.amount')],
+          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName, r.doctorName, r.prescriptionDate, r.customerName, r.lineTotal])
+        }
+      }
+      case 'siteVisitLog': {
+        const d = reportData as SiteVisitLogReport
+        return {
+          headers: ['Project', 'Visit Date', 'Visit Type', 'Recorded By', 'Findings'],
+          rows: d.rows.map(r => [r.projectName, r.visitDate, r.visitType, r.recordedByName, r.findings])
         }
       }
       case 'logistics': {
@@ -1128,6 +1340,15 @@ export function ReportsScreen() {
         const d = reportData as ProjectReport
         return [
           { label: t('reports.summary.totalProjects'), value: String(d.summary.totalProjects) },
+          { label: t('reports.summary.completed'), value: String(d.summary.completed) },
+          { label: t('reports.summary.pendingJobs'), value: String(d.summary.open + d.summary.inProgress) },
+          { label: t('service.estimatedAmount'), value: fmt(d.summary.totalEstimatedAmount) }
+        ]
+      }
+      case 'serviceProjects': {
+        const d = reportData as ServiceProjectReport
+        return [
+          { label: t('reports.summary.totalProjects'), value: String(d.summary.totalProjects) },
           { label: t('reports.summary.active'), value: String(d.summary.active) },
           { label: t('reports.summary.completed'), value: String(d.summary.completed) },
           { label: t('reports.summary.totalContractValue'), value: fmt(d.summary.totalContractValue) }
@@ -1140,6 +1361,95 @@ export function ReportsScreen() {
           { label: t('reports.summary.delivered'), value: String(d.summary.delivered) },
           { label: t('reports.summary.pendingJobs'), value: String(d.summary.pending) },
           { label: t('reports.summary.totalActualCost'), value: fmt(d.summary.totalActualCost) }
+        ]
+      }
+      case 'carJobCards': {
+        const d = reportData as CarJobCardReport
+        return [
+          { label: t('reports.summary.totalJobs'), value: String(d.summary.totalJobs) },
+          { label: t('reports.summary.delivered'), value: String(d.summary.delivered) },
+          { label: 'Labor Revenue', value: fmt(d.summary.totalLaborRevenue) },
+          { label: 'Parts Revenue', value: fmt(d.summary.totalPartsRevenue) }
+        ]
+      }
+      case 'tailoringOrders': {
+        const d = reportData as TailoringOrderReport
+        return [
+          { label: 'Total Orders', value: String(d.summary.totalOrders) },
+          { label: t('reports.summary.delivered'), value: String(d.summary.delivered) },
+          { label: t('common.amount'), value: fmt(d.summary.totalAmount) }
+        ]
+      }
+      case 'pestContracts': {
+        const d = reportData as PestContractReport
+        return [
+          { label: 'Active Contracts', value: String(d.summary.activeContracts) },
+          { label: 'Expiring (30 days)', value: String(d.summary.expiringWithin30Days) },
+          { label: 'Total Contract Value', value: fmt(d.summary.totalContractValue) }
+        ]
+      }
+      case 'realEstatePipeline': {
+        const d = reportData as RealEstatePipelineReport
+        return [
+          { label: 'Total Listings', value: String(d.summary.totalListings) },
+          { label: 'Available', value: String(d.summary.availableListings) },
+          { label: 'Deals In Progress', value: String(d.summary.dealsInProgress) },
+          { label: 'Brokerage Earned', value: fmt(d.summary.totalBrokerageEarned) }
+        ]
+      }
+      case 'retainers': {
+        const d = reportData as RetainerReport
+        return [
+          { label: 'Active Retainers', value: String(d.summary.activeRetainers) },
+          { label: 'Total MRR', value: fmt(d.summary.totalMRR) },
+          { label: 'Billed This Period', value: `${d.summary.billedThisPeriodCount} (${fmt(d.summary.billedThisPeriodAmount)})` }
+        ]
+      }
+      case 'shootBookings': {
+        const d = reportData as ShootBookingReport
+        return [
+          { label: 'Total Bookings', value: String(d.summary.totalBookings) },
+          { label: t('reports.summary.delivered'), value: String(d.summary.delivered) },
+          { label: t('common.amount'), value: fmt(d.summary.totalRevenue) }
+        ]
+      }
+      case 'eventBookings': {
+        const d = reportData as EventBookingReport
+        return [
+          { label: 'Total Bookings', value: String(d.summary.totalBookings) },
+          { label: t('reports.summary.completed'), value: String(d.summary.completed) },
+          { label: t('common.amount'), value: fmt(d.summary.totalRevenue) }
+        ]
+      }
+      case 'placements': {
+        const d = reportData as PlacementReport
+        return [
+          { label: 'Total Placements', value: String(d.summary.totalPlacements) },
+          { label: 'Joined', value: String(d.summary.joined) },
+          { label: 'Invoiced', value: String(d.summary.invoiced) },
+          { label: 'Total Commission', value: fmt(d.summary.totalCommission) }
+        ]
+      }
+      case 'drawingRegister': {
+        const d = reportData as DrawingRegisterReport
+        return [
+          { label: 'Total Drawings', value: String(d.summary.totalDrawings) },
+          { label: 'Approved', value: String(d.summary.approved) },
+          { label: 'Pending Review', value: String(d.summary.pendingReview) }
+        ]
+      }
+      case 'siteVisitLog': {
+        const d = reportData as SiteVisitLogReport
+        return [
+          { label: 'Total Visits', value: String(d.summary.totalVisits) }
+        ]
+      }
+      case 'prescriptionDrugSales': {
+        const d = reportData as PrescriptionDrugSalesReport
+        return [
+          { label: 'Total Sales', value: String(d.summary.totalSales) },
+          { label: t('common.amount'), value: fmt(d.summary.totalAmount) },
+          { label: 'Missing Details', value: String(d.summary.missingPrescriptionDetails) }
         ]
       }
       case 'logistics': {
@@ -1390,10 +1700,45 @@ export function ReportsScreen() {
         if (d.byStatus.length === 0) return []
         return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
       }
+      case 'serviceProjects': {
+        const d = reportData as ServiceProjectReport
+        if (d.byStatus.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
+      }
       case 'jobCards': {
         const d = reportData as JobCardReport
         if (d.byStatus.length === 0) return []
         return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
+      }
+      case 'tailoringOrders': {
+        const d = reportData as TailoringOrderReport
+        if (d.byGarmentType.length === 0) return []
+        return [{ type: 'bar', title: 'Orders by Garment Type', data: d.byGarmentType.map(g => ({ label: g.garmentType, value: g.count })) }]
+      }
+      case 'pestContracts': {
+        const d = reportData as PestContractReport
+        if (d.byPestType.length === 0) return []
+        return [{ type: 'bar', title: 'Revenue by Pest Type', data: d.byPestType.map(p => ({ label: p.pestType, value: p.revenue })), valueIsCurrency: true }]
+      }
+      case 'shootBookings': {
+        const d = reportData as ShootBookingReport
+        if (d.byShootType.length === 0) return []
+        return [{ type: 'bar', title: 'Bookings by Shoot Type', data: d.byShootType.map(s => ({ label: s.shootType, value: s.count })) }]
+      }
+      case 'eventBookings': {
+        const d = reportData as EventBookingReport
+        if (d.byStatus.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
+      }
+      case 'drawingRegister': {
+        const d = reportData as DrawingRegisterReport
+        if (d.byStatus.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
+      }
+      case 'siteVisitLog': {
+        const d = reportData as SiteVisitLogReport
+        if (d.byVisitType.length === 0) return []
+        return [{ type: 'bar', title: 'Visits by Type', data: d.byVisitType.map(v => ({ label: v.visitType, value: v.count })) }]
       }
       case 'logistics': {
         const d = reportData as LogisticsReport
@@ -1460,6 +1805,7 @@ export function ReportsScreen() {
             const defs = REPORT_DEFS.filter(r => {
               if (r.category === 'gst' && taxModel !== 'GST') return false
               if (r.requiredModule && !isModuleEnabled(r.requiredModule)) return false
+              if (r.requiredBusinessType && businessType !== r.requiredBusinessType) return false
               if (r.permission && !hasPermission(r.permission)) return false
               return r.category === cat
             })
@@ -1779,7 +2125,19 @@ function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChang
     case 'bloodStock': return <BloodStockView data={data as BloodStockReport} />
     case 'jewellery': return <JewelleryView data={data as JewelleryReport} fmt={fmt} />
     case 'projects': return <ProjectReportView data={data as ProjectReport} fmt={fmt} />
+    case 'serviceProjects': return <ServiceProjectReportView data={data as ServiceProjectReport} fmt={fmt} />
     case 'jobCards': return <JobCardReportView data={data as JobCardReport} fmt={fmt} />
+    case 'carJobCards': return <CarJobCardReportView data={data as CarJobCardReport} fmt={fmt} />
+    case 'tailoringOrders': return <TailoringOrderReportView data={data as TailoringOrderReport} fmt={fmt} />
+    case 'pestContracts': return <PestContractReportView data={data as PestContractReport} fmt={fmt} />
+    case 'realEstatePipeline': return <RealEstatePipelineReportView data={data as RealEstatePipelineReport} fmt={fmt} />
+    case 'retainers': return <RetainerReportView data={data as RetainerReport} fmt={fmt} />
+    case 'shootBookings': return <ShootBookingReportView data={data as ShootBookingReport} fmt={fmt} />
+    case 'eventBookings': return <EventBookingReportView data={data as EventBookingReport} fmt={fmt} />
+    case 'placements': return <PlacementReportView data={data as PlacementReport} fmt={fmt} />
+    case 'drawingRegister': return <DrawingRegisterReportView data={data as DrawingRegisterReport} fmt={fmt} />
+    case 'siteVisitLog': return <SiteVisitLogReportView data={data as SiteVisitLogReport} fmt={fmt} />
+    case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
     case 'logistics': return <LogisticsView data={data as LogisticsReport} fmt={fmt} />
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
@@ -2811,6 +3169,48 @@ function ProjectReportView({ data, fmt }: { data: ProjectReport; fmt: (n: number
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: t('reports.summary.totalProjects'), value: String(s.totalProjects) },
+        { label: t('reports.summary.completed'), value: String(s.completed) },
+        { label: t('reports.summary.pendingJobs'), value: String(s.open + s.inProgress) },
+        { label: t('service.estimatedAmount'), value: fmt(s.totalEstimatedAmount) }
+      ]} />
+      {data.byStatus.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byOrderStatus')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byStatus} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="status" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.projectDetails')}</h3>
+        <DataTable
+          headers={[t('reports.col.projectTitle'), t('reports.col.client'), t('common.status'), t('reports.col.priority'), t('common.amount'), t('reports.col.startDate'), t('reports.col.dueDate')]}
+          rows={data.rows.map(r => [r.title, r.clientName ?? '—', r.status, r.priority, fmt(r.estimatedAmount), r.startDate ?? '—', r.dueDate ?? '—'])}
+          emptyText={t('reports.empty.projects')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Real bug fix 2026-07-16 — was previously the only "projects" report, wired
+// to ServiceProject data but gated (in the tile list) behind the unrelated
+// legacy `projects` module. Now correctly scoped to the six ServiceProject-
+// using verticals (Independent Consultant/Architect/Civil Engineer/Marketing
+// Agency/Software Agency/Real Estate) via the `service_projects` module gate.
+function ServiceProjectReportView({ data, fmt }: { data: ServiceProjectReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalProjects'), value: String(s.totalProjects) },
         { label: t('reports.summary.active'), value: String(s.active) },
         { label: t('reports.summary.completed'), value: String(s.completed) },
         { label: t('reports.summary.totalContractValue'), value: fmt(s.totalContractValue) }
@@ -2834,7 +3234,7 @@ function ProjectReportView({ data, fmt }: { data: ProjectReport; fmt: (n: number
         <DataTable
           headers={[t('reports.col.projectName'), t('reports.col.client'), t('common.status'), t('reports.col.projectType'), t('common.amount'), t('reports.col.startDate'), t('reports.col.expectedEndDate')]}
           rows={data.rows.map(r => [r.projectName, r.clientName, r.status, r.projectType, r.totalContractValue != null ? fmt(r.totalContractValue) : '—', r.startDate ?? '—', r.expectedEndDate ?? '—'])}
-          emptyText={t('reports.empty.projects')}
+          emptyText={t('reports.empty.serviceProjects')}
         />
       </div>
     </div>
@@ -2872,6 +3272,367 @@ function JobCardReportView({ data, fmt }: { data: JobCardReport; fmt: (n: number
           headers={[t('reports.col.jobNumber'), t('common.description'), t('reports.col.customer'), t('common.status'), t('reports.col.priority'), t('reports.col.estimatedCost'), t('reports.col.actualCost')]}
           rows={data.rows.map(r => [r.jobNumber, r.title, r.customerName ?? '—', r.status, r.priority, fmt(r.estimatedCost), fmt(r.actualCost)])}
           emptyText={t('reports.empty.jobCards')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 58 §1 — 10 new report views for verticals with zero dedicated report
+// before this (2026-07-17).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CarJobCardReportView({ data, fmt }: { data: CarJobCardReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalJobs'), value: String(s.totalJobs) },
+        { label: t('reports.summary.delivered'), value: String(s.delivered) },
+        { label: 'Labor Revenue', value: fmt(s.totalLaborRevenue) },
+        { label: 'Parts Revenue', value: fmt(s.totalPartsRevenue) }
+      ]} />
+      {data.byTechnician.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Technician Productivity</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byTechnician} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="technicianId" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="jobCount" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Job Details</h3>
+        <DataTable
+          headers={['Job #', t('reports.col.customer'), 'Vehicle', t('common.status'), 'Labor', 'Parts']}
+          rows={data.rows.map(r => [r.jobNumber, r.customerName, `${r.vehicleMake} ${r.vehicleModel} (${r.vehicleNumber})`, r.status, fmt(r.laborTotal), fmt(r.partsTotal)])}
+          emptyText={t('reports.empty.carJobCards')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function TailoringOrderReportView({ data, fmt }: { data: TailoringOrderReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Orders', value: String(s.totalOrders) },
+        { label: t('reports.summary.delivered'), value: String(s.delivered) },
+        { label: t('common.amount'), value: fmt(s.totalAmount) }
+      ]} />
+      {data.byGarmentType.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Orders by Garment Type</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byGarmentType} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="garmentType" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Order Details</h3>
+        <DataTable
+          headers={['Order #', t('reports.col.customer'), 'Garment', t('common.status'), 'Qty', t('common.amount')]}
+          rows={data.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.quantity, fmt(r.totalAmount)])}
+          emptyText={t('reports.empty.tailoringOrders')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PestContractReportView({ data, fmt }: { data: PestContractReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Active Contracts', value: String(s.activeContracts) },
+        { label: 'Expiring (30 days)', value: String(s.expiringWithin30Days) },
+        { label: 'Total Contract Value', value: fmt(s.totalContractValue) }
+      ]} />
+      {data.byPestType.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Revenue by Pest Type</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byPestType} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="pestType" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="revenue" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Contracts Expiring Soon</h3>
+        <DataTable
+          headers={['Contract #', t('reports.col.customer'), 'Pest Types', 'Expires', 'Days Left']}
+          rows={data.expiring.map(r => [r.contractNumber, r.customerName, r.pestTypes.join(', '), r.endDate, r.daysUntilExpiry])}
+          emptyText={t('reports.empty.pestContracts')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function RealEstatePipelineReportView({ data, fmt }: { data: RealEstatePipelineReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Listings', value: String(s.totalListings) },
+        { label: 'Available', value: String(s.availableListings) },
+        { label: 'Deals In Progress', value: String(s.dealsInProgress) },
+        { label: 'Brokerage Earned', value: fmt(s.totalBrokerageEarned) }
+      ]} />
+      {data.byInquiryStage.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Inquiries by Stage</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byInquiryStage} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="stage" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Deals</h3>
+        <DataTable
+          headers={['Property', 'Buyer', 'Seller', 'Deal Value', 'Brokerage', t('common.status')]}
+          rows={data.deals.map(r => [r.propertyLocation, r.buyerName, r.sellerName, fmt(r.dealValue), fmt(r.brokerageAmount), r.status])}
+          emptyText={t('reports.empty.realEstatePipeline')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function RetainerReportView({ data, fmt }: { data: RetainerReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Active Retainers', value: String(s.activeRetainers) },
+        { label: 'Total MRR', value: fmt(s.totalMRR) },
+        { label: 'Billed This Period', value: `${s.billedThisPeriodCount} (${fmt(s.billedThisPeriodAmount)})` }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Retainers ({data.targetPeriod})</h3>
+        <DataTable
+          headers={['Title', t('reports.col.client'), t('common.status'), 'Monthly Amount', 'Billed This Period']}
+          rows={data.rows.map(r => [r.title, r.clientName, r.status, fmt(r.monthlyAmount), r.billedThisPeriod ? 'Yes' : 'No'])}
+          emptyText={t('reports.empty.retainers')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ShootBookingReportView({ data, fmt }: { data: ShootBookingReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Bookings', value: String(s.totalBookings) },
+        { label: t('reports.summary.delivered'), value: String(s.delivered) },
+        { label: t('common.amount'), value: fmt(s.totalRevenue) }
+      ]} />
+      {data.byShootType.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Bookings by Shoot Type</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byShootType} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="shootType" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Booking Details</h3>
+        <DataTable
+          headers={[t('reports.col.client'), 'Shoot Type', 'Shoot Date', t('common.status'), t('common.amount')]}
+          rows={data.rows.map(r => [r.clientName, r.shootType, r.shootDate, r.status, r.finalAmount != null ? fmt(r.finalAmount) : '—'])}
+          emptyText={t('reports.empty.shootBookings')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function EventBookingReportView({ data, fmt }: { data: EventBookingReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Bookings', value: String(s.totalBookings) },
+        { label: t('reports.summary.completed'), value: String(s.completed) },
+        { label: t('common.amount'), value: fmt(s.totalRevenue) }
+      ]} />
+      {data.byStatus.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byOrderStatus')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byStatus} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="status" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Booking Details</h3>
+        <DataTable
+          headers={[t('reports.col.client'), 'Event Name', 'Event Type', 'Event Date', t('common.status'), t('common.amount')]}
+          rows={data.rows.map(r => [r.clientName, r.eventName, r.eventType, r.eventDate, r.status, r.finalAmount != null ? fmt(r.finalAmount) : '—'])}
+          emptyText={t('reports.empty.eventBookings')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PlacementReportView({ data, fmt }: { data: PlacementReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Placements', value: String(s.totalPlacements) },
+        { label: 'Joined', value: String(s.joined) },
+        { label: 'Invoiced', value: String(s.invoiced) },
+        { label: 'Total Commission', value: fmt(s.totalCommission) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Placement Details</h3>
+        <DataTable
+          headers={['Placement #', 'Candidate', 'Job Title', t('reports.col.client'), t('common.status'), 'Commission']}
+          rows={data.rows.map(r => [r.placementNumber, r.candidateName, r.jobTitle, r.clientName, r.status, fmt(r.commissionAmount)])}
+          emptyText={t('reports.empty.placements')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function DrawingRegisterReportView({ data }: { data: DrawingRegisterReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Drawings', value: String(s.totalDrawings) },
+        { label: 'Approved', value: String(s.approved) },
+        { label: 'Pending Review', value: String(s.pendingReview) }
+      ]} />
+      {data.byStatus.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byOrderStatus')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byStatus} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="status" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Drawing Register</h3>
+        <DataTable
+          headers={['Drawing #', 'Title', 'Project', 'Discipline', 'Rev', t('common.status')]}
+          rows={data.rows.map(r => [r.drawingNumber, r.title, r.projectName, r.discipline, r.revisionNumber, r.status])}
+          emptyText={t('reports.empty.drawingRegister')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SiteVisitLogReportView({ data }: { data: SiteVisitLogReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Visits', value: String(s.totalVisits) }
+      ]} />
+      {data.byVisitType.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Visits by Type</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.byVisitType} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="visitType" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Site Visit Log</h3>
+        <DataTable
+          headers={['Project', 'Visit Date', 'Visit Type', 'Recorded By', 'Findings']}
+          rows={data.rows.map(r => [r.projectName, r.visitDate, r.visitType, r.recordedByName ?? '—', r.findings ?? '—'])}
+          emptyText={t('reports.empty.siteVisitLog')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register
+function PrescriptionDrugSalesReportView({ data, fmt }: { data: PrescriptionDrugSalesReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Sales', value: String(s.totalSales) },
+        { label: t('common.amount'), value: fmt(s.totalAmount) },
+        { label: 'Missing Details', value: String(s.missingPrescriptionDetails) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Prescription Drug Sales Register</h3>
+        <DataTable
+          headers={['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Rx Date', t('reports.col.customer'), t('common.amount')]}
+          rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName ?? '—', r.doctorName ?? '—', r.prescriptionDate ?? '—', r.customerName ?? '—', fmt(r.lineTotal)])}
+          emptyText={t('reports.empty.prescriptionDrugSales')}
         />
       </div>
     </div>

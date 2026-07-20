@@ -4,11 +4,13 @@ import {
   updateRawMaterial,
   deleteRawMaterial,
   adjustRawMaterialStock,
-  getRawMaterialMovements
+  getRawMaterialMovements,
+  receiveRawMaterialBatch,
+  listRawMaterialBatches
 } from '../../services/raw-material.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateRawMaterialSchema, UpdateRawMaterialSchema, RawMaterialIdSchema, AdjustRawMaterialStockSchema } from '../../validation/raw-material.validation'
+import { CreateRawMaterialSchema, UpdateRawMaterialSchema, RawMaterialIdSchema, AdjustRawMaterialStockSchema, ReceiveRawMaterialBatchSchema, ListRawMaterialBatchesSchema } from '../../validation/raw-material.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -50,5 +52,19 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('inventory.view'); if (deny) return deny
     const p = (payload ?? {}) as { rawMaterialId: string; limit?: number }
     return getRawMaterialMovements(p.rawMaterialId, p.limit)
+  })
+
+  handle('rawMaterials:receiveBatch', async (payload) => {
+    const deny = await requirePermission('inventory.manage'); if (deny) return deny
+    const parsed = ReceiveRawMaterialBatchSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return receiveRawMaterialBatch(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('rawMaterials:listBatches', async (payload) => {
+    const deny = await requirePermission('inventory.view'); if (deny) return deny
+    const parsed = ListRawMaterialBatchesSchema.safeParse(payload ?? {})
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listRawMaterialBatches(parsed.data)
   })
 }

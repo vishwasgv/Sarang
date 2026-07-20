@@ -14,6 +14,7 @@ export async function upsertDeliveryTracker(payload: {
   albumProofSentDate?: string | null
   finalDeliveredDate?: string | null
   deliveryFormat?: string | null
+  deliveredPhotosCount?: number | null
   notes?: string | null
 }) {
   const db = getPrisma()
@@ -26,6 +27,7 @@ export async function upsertDeliveryTracker(payload: {
     ...(rest.albumProofSentDate !== undefined ? { albumProofSentDate: rest.albumProofSentDate ? new Date(rest.albumProofSentDate) : null } : {}),
     ...(rest.finalDeliveredDate !== undefined ? { finalDeliveredDate: rest.finalDeliveredDate ? new Date(rest.finalDeliveredDate) : null } : {}),
     ...(rest.deliveryFormat !== undefined ? { deliveryFormat: rest.deliveryFormat } : {}),
+    ...(rest.deliveredPhotosCount !== undefined ? { deliveredPhotosCount: rest.deliveredPhotosCount } : {}),
     ...(rest.notes !== undefined ? { notes: rest.notes } : {}),
   }
 

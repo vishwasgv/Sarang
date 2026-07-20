@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Smartphone, Package, CheckCircle2, XCircle, RotateCcw, AlertCircle, Upload, ChevronDown } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Search, Smartphone, Package, CheckCircle2, XCircle, RotateCcw, AlertCircle, Upload, ChevronDown, Wrench } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { DataTable } from '@shared/ui/organisms/DataTable'
@@ -101,11 +102,16 @@ interface SerialFormState {
 
 export function SerialTrackingScreen() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   // IMEI is phone/mobile-specific — not every business type that enables serial_tracking
   // (e.g. Phase 49 Agricultural Inputs equipment) also enables imei_tracking. Gate all
   // IMEI-specific UI on the module flag rather than assuming it's always relevant.
   const imeiEnabled = useIndustryStore(s => s.isModuleEnabled('imei_tracking'))
+  // Phase 58 §2 — Electronics repair/RMA. Not every serial_tracking business
+  // wants the repair workflow (e.g. Phase 49 Agri equipment) — gate the
+  // per-row entry point on the module flag, same convention as imeiEnabled.
+  const repairRmaEnabled = useIndustryStore(s => s.isModuleEnabled('repair_rma'))
   const [serials, setSerials] = useState<SerialRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -297,12 +303,23 @@ export function SerialTrackingScreen() {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <button
-          onClick={() => { setStatusTarget(row.original); setNewStatus(row.original.status) }}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-brand hover:text-brand transition-colors"
-        >
-          Status <ChevronDown size={12} />
-        </button>
+        <div className="flex items-center gap-2">
+          {repairRmaEnabled && row.original.status === 'SOLD' && (
+            <button
+              onClick={() => navigate(`/electronics/repair-tickets?serialId=${row.original.id}`)}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-brand hover:text-brand transition-colors"
+              title={t('inventory.repairTicket')}
+            >
+              <Wrench size={12} /> {t('inventory.repairTicket')}
+            </button>
+          )}
+          <button
+            onClick={() => { setStatusTarget(row.original); setNewStatus(row.original.status) }}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-brand hover:text-brand transition-colors"
+          >
+            Status <ChevronDown size={12} />
+          </button>
+        </div>
       )
     }
   ]

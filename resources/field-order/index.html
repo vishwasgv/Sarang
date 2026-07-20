@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Field Order</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A; padding-bottom: 96px;
+  }
+  header { background: #00AEEF; color: #fff; padding: 20px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+  main { padding: 12px 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: #64748B; margin: 16px 0 6px; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #E2E8F0; background: #fff;
+    font-size: 15px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .category { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #64748B; margin: 20px 0 8px; }
+  .item { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .item-name { font-size: 15px; font-weight: 600; }
+  .item-price { font-size: 13px; color: #64748B; margin-top: 2px; }
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid #E2E8F0; background: #F8FAFC; font-size: 18px; font-weight: 700; color: #00AEEF; }
+  .stepper span { min-width: 20px; text-align: center; font-weight: 700; }
+  .add-btn { padding: 8px 16px; border-radius: 10px; border: none; background: #00AEEF; color: #fff; font-weight: 700; font-size: 14px; }
+  footer.cart-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; background: #0F172A; color: #fff;
+    padding: 14px 16px; display: none; align-items: center; justify-content: space-between;
+  }
+  footer.cart-bar.visible { display: flex; }
+  footer.cart-bar button { background: #00AEEF; color: #fff; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 15px; }
+  footer.cart-bar button:disabled { opacity: 0.5; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 24px 16px 8px; }
+  .state-screen { padding: 60px 20px; text-align: center; }
+  .state-screen h2 { font-size: 18px; }
+  .state-screen p { color: #64748B; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="business-name">Loading…</h1>
+  <p>Field order capture</p>
+</header>
+<main id="app-root">
+  <label for="rep-name">Your name</label>
+  <input type="text" id="rep-name" placeholder="Rep name" autocomplete="off">
+
+  <label for="customer-select">Customer</label>
+  <select id="customer-select">
+    <option value="">Walk-in / no customer on file</option>
+  </select>
+
+  <div id="catalog-root"></div>
+
+  <label for="notes">Notes (optional)</label>
+  <textarea id="notes" placeholder="Delivery instructions, etc."></textarea>
+</main>
+<footer class="cart-bar" id="cart-bar">
+  <span id="cart-summary">0 items</span>
+  <button id="submit-btn">Submit order</button>
+</footer>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean)
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+  var currencySymbol = '₹'
+  var cart = {} // productId -> quantity
+  var products = []
+  var customerId = ''
+
+  function fmt(amount) { return currencySymbol + Number(amount).toFixed(2) }
+
+  function escapeHtml(s) {
+    var div = document.createElement('div'); div.textContent = s == null ? '' : String(s); return div.innerHTML
+  }
+
+  function renderCatalog() {
+    var root = document.getElementById('catalog-root')
+    root.innerHTML = ''
+    var byCategory = {}
+    products.forEach(function (p) {
+      var cat = p.categoryName || 'Products'
+      if (!byCategory[cat]) byCategory[cat] = []
+      byCategory[cat].push(p)
+    })
+    Object.keys(byCategory).forEach(function (cat) {
+      var h = document.createElement('div')
+      h.className = 'category'
+      h.textContent = cat
+      root.appendChild(h)
+      byCategory[cat].forEach(function (p) {
+        var row = document.createElement('div')
+        row.className = 'item'
+        var qty = cart[p.id] || 0
+        row.innerHTML =
+          '<div><div class="item-name">' + escapeHtml(p.productName) + '</div>' +
+          '<div class="item-price">' + fmt(p.price) + '</div></div>' +
+          '<div class="qty-slot"></div>'
+        var slot = row.querySelector('.qty-slot')
+        renderQtyControl(slot, p.id, qty)
+        root.appendChild(row)
+      })
+    })
+  }
+
+  function renderQtyControl(slot, productId, qty) {
+    slot.innerHTML = ''
+    if (qty > 0) {
+      var wrap = document.createElement('div')
+      wrap.className = 'stepper'
+      var minus = document.createElement('button'); minus.textContent = '−'
+      var count = document.createElement('span'); count.textContent = qty
+      var plus = document.createElement('button'); plus.textContent = '+'
+      minus.onclick = function () { setQty(productId, qty - 1) }
+      plus.onclick = function () { setQty(productId, qty + 1) }
+      wrap.appendChild(minus); wrap.appendChild(count); wrap.appendChild(plus)
+      slot.appendChild(wrap)
+    } else {
+      var btn = document.createElement('button')
+      btn.className = 'add-btn'
+      btn.textContent = 'Add'
+      btn.onclick = function () { setQty(productId, 1) }
+      slot.appendChild(btn)
+    }
+  }
+
+  function setQty(productId, qty) {
+    if (qty <= 0) { delete cart[productId] } else { cart[productId] = Math.min(qty, 9999) }
+    renderCatalog()
+    updateCartBar()
+  }
+
+  function updateCartBar() {
+    var bar = document.getElementById('cart-bar')
+    var total = Object.values(cart).reduce(function (a, b) { return a + b }, 0)
+    document.getElementById('cart-summary').textContent = total + (total === 1 ? ' item' : ' items')
+    bar.classList.toggle('visible', total > 0)
+  }
+
+  function showState(title, message) {
+    document.getElementById('app-root').innerHTML =
+      '<div class="state-screen"><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) + '</p></div>'
+    document.getElementById('cart-bar').classList.remove('visible')
+  }
+
+  function loadCatalog() {
+    var qs = customerId ? ('?customerId=' + encodeURIComponent(customerId)) : ''
+    fetch('/api/field-order/' + token + '/catalog' + qs).then(function (r) { return r.json() }).then(function (res) {
+      if (res.success) { products = res.data; renderCatalog() }
+    }).catch(function () {})
+  }
+
+  if (!token) {
+    showState('Link is invalid', 'Ask the office to re-share the field order link.')
+    return
+  }
+
+  fetch('/api/field-order/' + token + '/business').then(function (r) { return r.json() }).then(function (res) {
+    if (res.success) {
+      document.getElementById('business-name').textContent = res.data.businessName
+      currencySymbol = res.data.currencySymbol || '₹'
+    }
+  }).catch(function () {})
+
+  fetch('/api/field-order/' + token + '/customers').then(function (r) { return r.json() }).then(function (res) {
+    if (res.success) {
+      var select = document.getElementById('customer-select')
+      res.data.forEach(function (c) {
+        var opt = document.createElement('option')
+        opt.value = c.id
+        opt.textContent = c.customerName + (c.phone ? ' (' + c.phone + ')' : '')
+        select.appendChild(opt)
+      })
+    }
+  }).catch(function () {})
+
+  document.getElementById('customer-select').onchange = function () {
+    customerId = this.value
+    loadCatalog()
+  }
+
+  loadCatalog()
+
+  document.getElementById('submit-btn').onclick = function () {
+    var repName = document.getElementById('rep-name').value.trim()
+    if (!repName) { alert('Please enter your name.'); return }
+    var items = Object.keys(cart).map(function (id) { return { productId: id, quantity: cart[id] } })
+    if (items.length === 0) return
+    var customerSelect = document.getElementById('customer-select')
+    var customerName = customerId ? customerSelect.options[customerSelect.selectedIndex].textContent : ''
+    var notes = document.getElementById('notes').value.trim()
+
+    document.getElementById('submit-btn').disabled = true
+    document.getElementById('submit-btn').textContent = 'Sending…'
+    fetch('/api/field-order/' + token + '/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repName: repName, customerId: customerId || undefined, customerName: customerName, items: items, notes: notes })
+    }).then(function (r) { return r.json() }).then(function (res) {
+      if (res.success) {
+        showState('Order sent!', 'The office will confirm and bill this order shortly.')
+      } else {
+        showState('Could not send order', (res.error && res.error.message) || 'Please try again or contact the office.')
+      }
+    }).catch(function () {
+      showState('Connection error', 'Could not send the order. Please check your connection and try again.')
+    })
+  }
+})()
+</script>
+</body>
+</html>

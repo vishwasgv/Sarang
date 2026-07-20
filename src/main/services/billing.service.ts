@@ -87,6 +87,67 @@ async function getMaxDiscountPercent(): Promise<number | null> {
 }
 
 export const billingService = {
+  // Phase 58 §2 (2026-07-17) — Restaurant's "tip / service charge line on
+  // invoices". There is no ad-hoc (non-Product) invoice-line path anywhere
+  // in this app — productId is a hard, non-nullable FK threaded through
+  // inventory/serial/batch/variant deduction in createInvoice below — so
+  // this follows the same lookup-or-create generic-Product pattern already
+  // proven in time-entry.service.ts/placement.service.ts/etc., not a schema
+  // change. taxRate 0 by default (a voluntary tip/gratuity is not
+  // consideration for a taxable supply under Indian GST; an owner who
+  // wants to tax a mandatory service charge can edit the resulting
+  // Product's tax rate afterward like any other product) and productType
+  // SERVICE so it never shows up in inventory-quantity screens. Not
+  // Restaurant-specific in the API — any vertical can use the same button.
+  async getOrCreateTipProduct() {
+    const db = getPrisma()
+    // Looked up by name, not hsnCode like the other lookup-or-create
+    // helpers elsewhere in this codebase — a tip/gratuity has no real HSN/
+    // SAC code to key off (those are numeric GST classification codes;
+    // fabricating one here would misrepresent it on a printed GST invoice
+    // or the HSN Summary report). hsnCode stays null/blank, matching a
+    // genuinely out-of-scope-of-GST line item.
+    let product = await db.product.findFirst({ where: { productName: 'Tip / Service Charge', isActive: true } })
+    if (!product) {
+      product = await db.product.create({
+        data: { productName: 'Tip / Service Charge', productType: 'SERVICE', sellingPrice: 0, taxRate: 0, unit: 'NOS', isActive: true },
+      })
+    }
+    return { success: true, data: product }
+  },
+
+  // Phase 58 §2 — Retail's "fast favorites/frequently-sold grid" on
+  // Billing. Ranked by units sold (not revenue) across every non-returned
+  // active invoice ever recorded — a genuine walk-up POS convenience
+  // ranking, not a financial report, so unlike analytics.service.ts's
+  // getTopProducts() this doesn't bother correcting for the RETURN-invoice
+  // positive-quantity storage convention; excluding invoiceType 'RETURN'
+  // rows outright already keeps the ranking sane for this purpose. Returns
+  // full Product fields (not just aggregate stats) so a tile tap can call
+  // addToCart() directly with zero follow-up fetch.
+  async getFrequentlySoldProducts(limit = 12) {
+    const db = getPrisma()
+    const grouped = await db.invoiceItem.groupBy({
+      by: ['productId'],
+      where: { invoice: { status: 'ACTIVE', invoiceType: { not: 'RETURN' } } },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: limit,
+    })
+    const productIds = grouped.map((g) => g.productId)
+    if (productIds.length === 0) return { success: true, data: { products: [] } }
+
+    const products = await db.product.findMany({
+      where: { id: { in: productIds }, isActive: true },
+      include: { category: { select: { id: true, name: true } }, inventory: { select: { quantity: true, reorderLevel: true, reorderQuantity: true } } },
+    })
+    const byId = new Map(products.map((p) => [p.id, p]))
+    // Preserve the groupBy's quantity-sold order — findMany's `id: {in:}`
+    // does not guarantee result order.
+    const ordered = productIds.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p)
+    return { success: true, data: { products: ordered } }
+  },
+
   async generateInvoiceNumber() {
     // PREVIEW ONLY — reads current sequence without incrementing, so no sequence gaps on cancel
     const db = getPrisma()
@@ -137,7 +198,9 @@ export const billingService = {
       weightUnit: string | null
       jewelleryMetalType: string | null; jewelleryPurity: string | null
       jewelleryNetWeight: number | null; jewelleryRatePerGram: number | null
-      jewelleryMakingCharge: number | null
+      jewelleryMakingCharge: number | null; jewelleryHallmarkNumber: string | null
+      prescriptionPatientName: string | null; prescriptionDoctorName: string | null
+      prescriptionDate: Date | null
     }
     const validatedItems: ValidatedItem[] = []
 
@@ -148,6 +211,14 @@ export const billingService = {
       })
       if (!product) return { success: false, error: { code: 'PRD-001', message: `Product not found.` } }
       if (!product.isActive) return { success: false, error: { code: 'PRD-005', message: `Product "${product.productName}" is archived and cannot be sold.` } }
+      // Phase 58 §2 — Pharmacy Schedule H/H1: a prescription-flagged product
+      // cannot be sold without a patient + doctor name captured on this line.
+      // Enforced here (server-side), not just a UI prompt — matches the
+      // "never trust the client for a compliance-relevant fact" stance used
+      // throughout billing.service.ts.
+      if (product.isPrescriptionRequired && (!item.prescriptionPatientName?.trim() || !item.prescriptionDoctorName?.trim())) {
+        return { success: false, error: { code: 'RX-001', message: `"${product.productName}" is a prescription-only item — patient and doctor name are required to sell it.` } }
+      }
       // RULE B003: Quantity > 0 enforced by Zod; double-check
       if (item.quantity <= 0) return { success: false, error: { code: 'INVOC-007', message: 'Quantity must be greater than zero.' } }
       // RULE B004: Unit price cannot be negative
@@ -246,8 +317,29 @@ export const billingService = {
         jewelleryPurity: item.jewelleryPurity ?? null,
         jewelleryNetWeight: item.jewelleryNetWeight ?? null,
         jewelleryRatePerGram: item.jewelleryRatePerGram ?? null,
-        jewelleryMakingCharge: item.jewelleryMakingCharge ?? null
+        jewelleryMakingCharge: item.jewelleryMakingCharge ?? null,
+        jewelleryHallmarkNumber: item.jewelleryHallmarkNumber?.trim() || null,
+        prescriptionPatientName: product.isPrescriptionRequired ? (item.prescriptionPatientName?.trim() ?? null) : null,
+        prescriptionDoctorName: product.isPrescriptionRequired ? (item.prescriptionDoctorName?.trim() ?? null) : null,
+        prescriptionDate: product.isPrescriptionRequired && item.prescriptionDate ? new Date(item.prescriptionDate) : null
       })
+    }
+
+    // Phase 58 §2 — Jewellery old-metal exchange, applied atomically. Fetched
+    // and validated BEFORE the totals below (its valueGiven folds into the
+    // discount), and re-claimed with a conditional update INSIDE the
+    // transaction further down — the same "read outside, claim atomically
+    // inside" shape generateInvoiceNumber/generateSequenceNumber already use,
+    // so two concurrent invoices can never both apply the same exchange.
+    let metalExchangeDiscount = 0
+    if (payload.metalExchangeId) {
+      const exchange = await db.metalExchange.findUnique({ where: { id: payload.metalExchangeId } })
+      if (!exchange) return { success: false, error: { code: 'INVOC-012', message: 'Metal exchange not found.' } }
+      if (exchange.invoiceId) return { success: false, error: { code: 'INVOC-013', message: 'This metal exchange is already linked to another invoice.' } }
+      if (exchange.customerId && payload.customerId && exchange.customerId !== payload.customerId) {
+        return { success: false, error: { code: 'INVOC-014', message: 'This metal exchange belongs to a different customer.' } }
+      }
+      metalExchangeDiscount = exchange.valueGiven
     }
 
     // Compute invoice-level totals. Summed via Decimal (sumCurrency), not a
@@ -256,7 +348,7 @@ export const billingService = {
     // across a multi-line invoice.
     const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
     const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
-    const globalDiscount = payload.globalDiscount ?? 0
+    const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount
     const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
     const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax), currencyDecimals)
     const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
@@ -331,6 +423,7 @@ export const billingService = {
             paymentStatus,
             gstType: payload.gstType ?? 'CGST_SGST',
             buyerState: payload.buyerState ?? null,
+            dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
             notes: customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
               : (payload.notes ?? null),
@@ -338,6 +431,21 @@ export const billingService = {
             status: 'ACTIVE'
           }
         })
+
+        // Atomically claim the metal exchange for this invoice — a
+        // conditional update (not a plain unconditional one) so a second
+        // concurrent invoice that read the same "still unlinked" exchange
+        // before this transaction committed gets rejected here instead of
+        // silently double-applying the same trade-in credit.
+        if (payload.metalExchangeId) {
+          const claim = await tx.metalExchange.updateMany({
+            where: { id: payload.metalExchangeId, invoiceId: null },
+            data: { invoiceId: inv.id }
+          })
+          if (claim.count === 0) {
+            throw new ServiceError('INVOC-013', 'This metal exchange is already linked to another invoice.')
+          }
+        }
 
         // Create invoice items — productName snapshotted at time of sale (RULE: historical invoices must show original name)
         for (const item of validatedItems) {
@@ -361,7 +469,11 @@ export const billingService = {
               jewelleryPurity: item.jewelleryPurity,
               jewelleryNetWeight: item.jewelleryNetWeight,
               jewelleryRatePerGram: item.jewelleryRatePerGram,
-              jewelleryMakingCharge: item.jewelleryMakingCharge
+              jewelleryMakingCharge: item.jewelleryMakingCharge,
+              jewelleryHallmarkNumber: item.jewelleryHallmarkNumber,
+              prescriptionPatientName: item.prescriptionPatientName,
+              prescriptionDoctorName: item.prescriptionDoctorName,
+              prescriptionDate: item.prescriptionDate
             }
           })
         }

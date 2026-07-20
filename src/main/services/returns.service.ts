@@ -3,10 +3,34 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { ServiceError } from '../errors/service-error'
 import { restoreBatchStockFIFO } from './batch.service'
+import { restoreVariantStockTx } from './variant.service'
 
 export interface ReturnItem {
   productId: string
   quantity: number
+  // Real bug found 2026-07-16: without this, a product sold as two distinct
+  // variants (e.g. Black-M and Red-L of the same T-shirt) on one invoice
+  // was indistinguishable here — matching/already-returned tracking was
+  // productId-only, so returns could match the wrong line and never
+  // restored the specific variant's stock at all. Optional: absent for
+  // products with no variants, exactly like InvoiceItem.variantId itself.
+  variantId?: string
+}
+
+// Composite key so same-product-different-variant lines never collide —
+// undefined variantId (non-variant products) still keys uniquely per product.
+function itemKey(productId: string, variantId?: string | null): string {
+  return `${productId}|${variantId ?? ''}`
+}
+
+// A real bug in this very fix, caught by its own unit tests: Prisma's
+// InvoiceItem.variantId comes back as `null` for a non-variant line, but a
+// plain-JS test/caller object with no variantId property at all reads as
+// `undefined` — `null === undefined` is false, so a naive `===` comparison
+// silently failed to match every non-variant return. Normalize both sides
+// through this instead of comparing raw fields directly.
+function sameLine(item: { productId: string; variantId?: string | null }, productId: string, variantId?: string | null): boolean {
+  return item.productId === productId && (item.variantId ?? null) === (variantId ?? null)
 }
 
 export async function createReturn(
@@ -33,7 +57,7 @@ export async function createReturn(
     // isn't subject to a meaningful race).
     for (const ri of items) {
       if (ri.quantity <= 0) return { success: false, error: { code: 'RET-005', message: 'Return quantity must be greater than zero.' } }
-      if (!original.items.find(i => i.productId === ri.productId)) {
+      if (!original.items.find(i => sameLine(i, ri.productId, ri.variantId))) {
         return { success: false, error: { code: 'RET-006', message: `Product not found in original invoice.` } }
       }
     }
@@ -56,14 +80,16 @@ export async function createReturn(
       const alreadyReturned = new Map<string, number>()
       for (const pr of priorReturns) {
         for (const it of pr.items) {
-          alreadyReturned.set(it.productId, (alreadyReturned.get(it.productId) ?? 0) + it.quantity)
+          const key = itemKey(it.productId, it.variantId)
+          alreadyReturned.set(key, (alreadyReturned.get(key) ?? 0) + it.quantity)
         }
       }
       for (const ri of items) {
-        const origItem = original.items.find(i => i.productId === ri.productId)!
-        const remaining = origItem.quantity - (alreadyReturned.get(ri.productId) ?? 0)
+        const origItem = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
+        const key = itemKey(ri.productId, ri.variantId)
+        const remaining = origItem.quantity - (alreadyReturned.get(key) ?? 0)
         if (ri.quantity > remaining) {
-          throw new ServiceError('RET-007', `Return quantity (${ri.quantity}) exceeds remaining returnable quantity (${remaining}) for "${origItem.product.productName}" — ${alreadyReturned.get(ri.productId) ?? 0} of ${origItem.quantity} already returned.`)
+          throw new ServiceError('RET-007', `Return quantity (${ri.quantity}) exceeds remaining returnable quantity (${remaining}) for "${origItem.product.productName}${origItem.variantInfo ? ` (${origItem.variantInfo})` : ''}" — ${alreadyReturned.get(key) ?? 0} of ${origItem.quantity} already returned.`)
         }
       }
 
@@ -96,7 +122,7 @@ export async function createReturn(
       // subtotal - discountAmount + taxAmount = totalAmount invariant used
       // everywhere else in the app).
       const returnItems = items.map(ri => {
-        const orig = original.items.find(i => i.productId === ri.productId)!
+        const orig = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
         const discountReversed = orig.discountAmount * (ri.quantity / orig.quantity)
         const lineTotal = -(ri.quantity * orig.unitPrice - discountReversed)
         const lineTax = lineTotal * (orig.taxRate / 100)
@@ -107,7 +133,12 @@ export async function createReturn(
           discountAmount: discountReversed,
           taxRate: orig.taxRate,
           taxAmount: Math.abs(lineTax),
-          lineTotal // negative
+          lineTotal, // negative
+          // Carried onto the return's own InvoiceItem so the return record
+          // itself stays traceable to the exact variant, matching how the
+          // original sale's line was recorded.
+          variantId: orig.variantId,
+          variantInfo: orig.variantInfo
         }
       })
 
@@ -146,7 +177,7 @@ export async function createReturn(
 
       // Restore inventory — one movement per returned item
       for (const ri of items) {
-        const orig = original.items.find(i => i.productId === ri.productId)!
+        const orig = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
         if (orig.product.productType === 'STANDARD') {
           await tx.inventoryMovement.create({
             data: {
@@ -164,6 +195,15 @@ export async function createReturn(
             create: { productId: ri.productId, quantity: ri.quantity },
             update: { quantity: { increment: ri.quantity } }
           })
+          // Real bug found 2026-07-16: the parent Inventory.quantity above
+          // was always restored, but a variant-sold item's specific
+          // ProductVariant.stockQty (size/colour) never was — silently
+          // drifting per-variant stock low on every Clothing/Footwear
+          // return. Mirrors decrementVariantStockTx's use at sale time in
+          // billing.service.ts exactly, just in the increment direction.
+          if (orig.variantId) {
+            await restoreVariantStockTx(tx, orig.variantId, ri.quantity)
+          }
           // Restore batch quantityRemaining (Pharmacy/Agri Inputs) — mirrors
           // billing.service.ts's own invoice-cancellation path; without this,
           // aggregate Inventory.quantity went back up on a return but the

@@ -1,7 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { getPatientChart, upsertTooth } from '../../services/tooth-record.service'
-import { UpsertToothSchema } from '../../validation/tooth-record.validation'
+import { getPatientChart, upsertTooth, getToothHistory } from '../../services/tooth-record.service'
+import { UpsertToothSchema, GetToothHistorySchema } from '../../validation/tooth-record.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -23,5 +23,12 @@ export function register(handle: HandleFn): void {
     const parsed = UpsertToothSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return upsertTooth({ ...parsed.data, recordedById: undefined, userId: session?.userId })
+  })
+
+  handle('toothRecord:getHistory', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
+    const parsed = GetToothHistorySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return getToothHistory(parsed.data.patientId, parsed.data.toothNumber)
   })
 }

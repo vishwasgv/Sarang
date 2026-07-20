@@ -12,6 +12,18 @@ Open **Bulk Order Entry** from the sidebar to build a large wholesale order quic
 
 The highest tier the line qualifies for applies; ordinary small quantities get no discount. Search for and attach a wholesale customer to the order (required if you choose Credit as the payment method — Cash, UPI, and Card orders don't need a customer), optionally note an order reference and delivery notes, and submit — this creates a normal invoice you'll find afterward in Invoices, tagged with the bulk order reference in its notes.
 
+## Negotiated customer pricing
+
+Group customers into a **customer class** (from their record in Customers — e.g. "Wholesaler", "Retailer") and set class-specific prices per product from the new **Customer Pricing** screen. Once set, Bulk Order Entry (and a field rep's order below) automatically prices that customer's cart at their negotiated rate instead of the regular selling price — a customer with no class price on file simply bills at list price as before.
+
+## Route / beat planning
+
+A shipment can carry multiple **stops** instead of just its one destination address — open a shipment's detail and add each stop along the route with its own address and delivery status, so a single multi-drop run is tracked as the real route it is, not one destination with everything else assumed delivered at once.
+
+## Field-rep order capture
+
+Turn on **Field Order Capture** to let your sales reps submit orders from their own phone while out visiting customers, over your shop's WiFi — no app to install. Open **Field Orders** to see the LAN link/QR code to share with reps, and to **Accept** or **Reject** incoming requests. A rep only ever picks products and quantities — Sarang always re-checks the customer's real negotiated price (and your credit limit) at the moment you accept, not whatever the rep's phone estimated, so the invoice that's actually created is always priced correctly.
+
 ## Outstanding Analytics
 
 Open **Outstanding Analytics** to see your total credit exposure across every wholesale customer with an unpaid balance: total outstanding, how many customers are currently over their credit limit, and the average outstanding balance per customer. An **aging** breakdown shows how long each rupee has been outstanding — Current, 1–30 days, 31–60 days, 61–90 days, 90+ days — so you can see not just how much is owed but how overdue it is. The customer list below shows each one's credit limit, current outstanding balance (with a progress bar toward their limit), and their 90+ days figure, and is sorted so anyone over their limit stands out in red. Tap any customer to jump to their full record.

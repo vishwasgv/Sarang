@@ -139,7 +139,8 @@
     "of": "இல்",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "கையிருப்பில்"
   },
   "auth": {
     "username": "பயனர் பெயர்",
@@ -229,6 +230,8 @@
     "percentDiscount": "% தள்.",
     "invoiceDate": "வி.தேதி",
     "dueDate": "செலுத்தும் தேதி",
+    "dueOn": "செலுத்த வேண்டிய தேதி {{date}}",
+    "overdueSince": "{{date}} முதல் தாமதம்",
     "notes": "குறிப்புகள்",
     "rounding": "சுற்றல்",
     "invoiceCreated": "பில் உருவாக்கப்பட்டது",
@@ -286,7 +289,40 @@
     "batchLabel": "தொகுதி {{batchNumber}} · {{status}}",
     "batchExpired": "காலாவதியானது",
     "batchExpiresToday": "இன்று காலாவதியாகும்",
-    "batchExpiresIn": "{{days}} நாட்களில் காலாவதியாகும்"
+    "batchExpiresIn": "{{days}} நாட்களில் காலாவதியாகும்",
+    "addTipOrServiceCharge": "டிப் / சேவைக் கட்டணம் சேர்",
+    "tipAmountLabel": "தொகை",
+    "tipAmountInvalid": "பூஜ்ஜியத்தை விட அதிகமான தொகையை உள்ளிடவும்.",
+    "confirmAddToCart": "கார்ட்டில் சேர்",
+    "unavailableToday": "இன்று கிடைக்கவில்லை",
+    "unavailableTodayMessage": "{{productName}} இன்று கிடைக்காதது என குறிக்கப்பட்டுள்ளது.",
+    "holdSale": "விற்பனையை நிறுத்திவை",
+    "resumeSale": "விற்பனையை மீண்டும் தொடங்கு",
+    "heldSales": "நிறுத்திவைக்கப்பட்ட விற்பனைகள்",
+    "noHeldSales": "நிறுத்திவைக்கப்பட்ட விற்பனைகள் இல்லை.",
+    "holdSaleLabel": "குறிப்பு (விருப்பத்தேர்வு)",
+    "holdSaleLabelPlaceholder": "எ.கா. ராகுல் - நீல சட்டை",
+    "confirmHold": "நிறுத்திவை",
+    "holdSaleSuccess": "விற்பனை நிறுத்திவைக்கப்பட்டது.",
+    "resumeSaleAction": "மீண்டும் தொடங்கு",
+    "abandonHeldSale": "நீக்கு",
+    "confirmAbandonHeldSale": "இந்த நிறுத்திவைக்கப்பட்ட விற்பனையை நீக்கவா? இதை மீட்டெடுக்க முடியாது.",
+    "emptyCartCannotHold": "கார்ட் காலியாக உள்ளது — நிறுத்திவைக்க எதுவும் இல்லை.",
+    "frequentlySold": "அடிக்கடி விற்பனையானவை",
+    "mrpLabel": "MRP",
+    "areaCalculator": "பரப்பளவு கால்குலேட்டர் (நீளம் × அகலம்)",
+    "areaLabel": "பரப்பளவு",
+    "areaFormula": "நீளம் × அகலம் = பரப்பளவு",
+    "useAreaSq": "{{area}} சதுரத்தைப் பயன்படுத்து",
+    "rx": {
+      "title": "மருந்துச் சீட்டு விவரங்கள்",
+      "description": "இது மருந்துச் சீட்டு மட்டுமே பொருள் (அட்டவணை H/H1) — இதை விற்க நோயாளி மற்றும் மருத்துவரின் பெயர் தேவை.",
+      "patientName": "நோயாளியின் பெயர் *",
+      "doctorName": "மருத்துவரின் பெயர் *",
+      "date": "மருந்துச் சீட்டு தேதி (விருப்பம்)",
+      "addToCart": "கார்ட்டில் சேர்க்கவும்",
+      "required": "நோயாளியின் பெயரும் மருத்துவரின் பெயரும் தேவை."
+    }
   },
   "products": {
     "title": "பொருட்கள்",
@@ -298,6 +334,7 @@
     "unit": "அலகு",
     "sellingPrice": "விற்.விலை",
     "costPrice": "செ.விலை",
+    "mrp": "MRP (விருப்பத்தேர்வு)",
     "taxRate": "வரி விகிதம் (%)",
     "stock": "சரக்கு",
     "lowStockAlert": "குறை சரக்கு எச்சரிக்கை",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "மறு ஆர்டர் PO உருவாக்கு",
+      "title": "மறு ஆர்டர் PO உருவாக்கப்பட்டது",
+      "nothingToOrder": "தற்போது குறைந்த இருப்பு உள்ள எந்த பொருளும் மறு ஆர்டர் செய்ய தேவையில்லை.",
+      "created": "வரைவு PO உருவாக்கப்பட்டது: {{count}}",
+      "skippedNoSupplier": "தவிர்க்கப்பட்டது (இயல்புநிலை சப்ளையர் இல்லை): {{count}}",
+      "skippedOpenPO": "தவிர்க்கப்பட்டது (ஏற்கனவே திறந்த PO இல்): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "கொள்முதல் ஆர்டர்",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "மருந்துச் சீட்டு மருந்து விற்பனை",
+        "description": "மருந்துச் சீட்டு மட்டுமே கிடைக்கும் மருந்துகளின் (அட்டவணை H/H1) விற்பனை பதிவேடு, நோயாளி மற்றும் மருத்துவர் பெயர்களுடன்."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "இந்த காலகட்டத்தில் ஆவணங்கள் எதுவும் வழங்கப்படவில்லை.",
       "jewelleryStock": "இதுவரை உலோக எடை பதிவு செய்யப்பட்ட நகை பொருட்கள் இல்லை.",
       "projects": "இந்த காலகட்டத்தில் திட்டங்கள் இல்லை.",
-      "jobCards": "இந்த காலகட்டத்தில் ஜாப் கார்டுகள் இல்லை."
+      "jobCards": "இந்த காலகட்டத்தில் ஜாப் கார்டுகள் இல்லை.",
+      "prescriptionDrugSales": "இந்த தேதி வரம்பில் மருந்துச் சீட்டு மருந்து விற்பனை இல்லை."
     },
     "col": {
       "invoiceNo": "பில் #",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "வகை",
+    "subAssembly": "துணை-அசெம்பிளி",
+    "searchSubAssembly": "தயாரிப்பைத் தேடு (துணை-அசெம்பிளி)…",
+    "subAssemblyTag": "(துணை-அசெம்பிளி)",
+    "selfReferenceError": "ஒரு தயாரிப்பு அதன் சொந்த BOM இன் கூறாக இருக்க முடியாது.",
+    "lotsUsed": "பயன்படுத்திய லாட்டுகள்",
+    "qcCheckpointTag": "(QC சோதனை புள்ளி)",
+    "qcNotesLabel": "QC குறிப்புகள்",
+    "qcPass": "தேர்ச்சி",
+    "qcFail": "தோல்வி",
+    "qcResultTitle": "QC முடிவைப் பதிவு செய்யவும்",
+    "markAsQcStep": "QC சோதனை புள்ளி",
+    "scrapQtyLabel": "ஸ்க்ராப் / நிராகரிக்கப்பட்ட அளவு",
+    "laborCostLabel": "தொழிலாளர் செலவு",
+    "batchNumber": "தொகுதி / லாட் எண்",
+    "receiveBatch": "லாட் பெறவும்",
+    "receiveBatchTitle": "மூல பொருள் லாட் பெறவும்",
+    "batchReceived": "லாட் பெறப்பட்டது.",
+    "noBatchesYet": "இந்த பொருளுக்கு இதுவரை லாட்டுகள் எதுவும் பெறப்படவில்லை.",
+    "remainingQty": "மீதம்"
   },
   "service": {
     "projects": "திட்டங்கள்",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "பயன்படுத்தப்பட்ட பாகங்கள்",
+    "addPart": "பாகத்தைச் சேர்",
+    "searchProduct": "தயாரிப்பைத் தேடு...",
+    "partsTotal": "பாகங்களின் மொத்தம்",
+    "noPartsUsed": "இதுவரை பாகங்கள் எதுவும் பயன்படுத்தப்படவில்லை",
+    "removePart": "பாகத்தை அகற்று",
+    "invalidQuantity": "செல்லுபடியாகும் அளவை உள்ளிடவும்.",
+    "couldNotAddPart": "பாகத்தைச் சேர்க்க முடியவில்லை.",
+    "couldNotRemovePart": "பாகத்தை அகற்ற முடியவில்லை.",
+    "warranty": "உத்தரவாதம்",
+    "warrantyDays": "உத்தரவாதம் (நாட்கள்)",
+    "warrantyUntil": "வரை",
+    "underWarranty": "உத்தரவாதத்தில்",
+    "warrantyExpired": "உத்தரவாதம் காலாவதியானது",
+    "saveWarranty": "சேமி",
+    "warrantySaved": "உத்தரவாதம் சேமிக்கப்பட்டது.",
+    "invalidWarrantyDays": "செல்லுபடியாகும் உத்தரவாத நாட்களை உள்ளிடவும்.",
+    "couldNotSaveWarranty": "உத்தரவாதத்தைச் சேமிக்க முடியவில்லை.",
+    "warrantyAppliesOnDelivery": "உத்தரவாதக் காலம் விநியோகத் தேதியிலிருந்து கணக்கிடப்படுகிறது.",
+    "warrantyClaimAgainst": "உத்தரவாத உரிமைகோரல் இதற்கு எதிராக",
+    "notAWarrantyClaim": "உத்தரவாத உரிமைகோரல் அல்ல",
+    "originalUnderWarranty": "அசல் வேலை இன்னும் உத்தரவாதத்தில் உள்ளது",
+    "originalWarrantyExpired": "அசல் வேலையின் உத்தரவாதம் காலாவதியானது"
   },
   "setup": {
     "welcome": "சாரங்கிற்கு வரவேற்கிறோம்",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "தகுதியான சேவைகள்",
+    "qualifiedServicesHint": "இந்த ஊழியர் செய்யக்கூடிய சேவைகள். எந்த சேவையையும் அனுமதிக்க காலியாக விடவும் (இயல்புநிலை).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "மதிப்பு {{symbol}}",
       "itemNotesPlaceholder": "பொருள் குறிப்புகள் (விருப்பம்)",
       "deleteConfirm": "அனுப்புகை {{number}} ஐ நீக்கவா? இதைச் செயல்தவிர்க்க முடியாது.",
-      "destinationRequired": "சேருமிட முகவரி தேவை."
+      "destinationRequired": "சேருமிட முகவரி தேவை.",
+      "stops": {
+        "title": "நிறுத்தங்கள்",
+        "addStop": "நிறுத்தத்தைச் சேர்க்கவும்",
+        "customerName": "வாடிக்கையாளர் பெயர் (விருப்பத்திற்குரியது)",
+        "destinationAddress": "சேருமிடம் முகவரி",
+        "notes": "குறிப்புகள் (விருப்பத்திற்குரியது)",
+        "markDelivered": "வழங்கப்பட்டதாகக் குறிக்கவும்",
+        "skip": "தவிர்க்கவும்",
+        "delete": "நீக்கு",
+        "empty": "இதுவரை கூடுதல் நிறுத்தங்கள் எதுவும் சேர்க்கப்படவில்லை.",
+        "primaryHint": "மேலே உள்ள சேருமிடம் எப்போதும் முதல் நிறுத்தமாகும் — பல-நிறுத்த வழித்தடத்திற்கு கீழே மேலும் சேர்க்கவும்.",
+        "saveFirst": "முதலில் அனுப்புகையைச் சேமிக்கவும், பின்னர் நிறுத்தங்களைச் சேர்க்கவும்."
+      }
     },
     "grn": {
       "title": "பொருள் பெறுதல் குறிப்புகள் (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "இன்வாய்ஸ் உருவாக்கு",
       "invoicing": "...",
-      "invoiced": "இன்வாய்ஸ் ஆனது"
+      "invoiced": "இன்வாய்ஸ் ஆனது",
+      "scheduleTrial": "டிரையல் திட்டமிடு",
+      "trial": "டிரையல்",
+      "trialScheduled": "டிரையல் நேரம் திட்டமிடப்பட்டது",
+      "setFabric": "துணியை அமை",
+      "fabricLinked": "துணி ✓",
+      "clearFabric": "துணி இணைப்பை அகற்று (இருப்பை மீட்டமைக்கிறது)"
     },
     "invoiceBanner": {
       "success": "இன்வாய்ஸ் உருவாக்கப்பட்டது (SAC 998821, 5% GST).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "சேமிக்க முடியவில்லை.",
       "deleteOrderFailed": "ஆர்டரை நீக்க முடியவில்லை.",
       "deleteMeasurementFailed": "அளவை நீக்க முடியவில்லை.",
-      "updateStatusFailed": "நிலையை புதுப்பிக்க முடியவில்லை."
+      "updateStatusFailed": "நிலையை புதுப்பிக்க முடியவில்லை.",
+      "trialDateRequired": "டிரையல் தேதி தேவை.",
+      "fabricQuantityInvalid": "செல்லுபடியாகும் அளவை உள்ளிடவும்."
     },
     "measurements": {
       "selectClient": "வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்",
@@ -2325,6 +2441,20 @@
       "saving": "சேமிக்கப்படுகிறது...",
       "updateOrder": "ஆர்டரைப் புதுப்பி",
       "createOrder": "ஆர்டரை உருவாக்கு"
+    },
+    "trial": {
+      "title": "டிரையல் / பொருத்தம் திட்டமிடு",
+      "hint": "வாடிக்கையாளருக்கு மற்ற எந்த சந்திப்பையும் போலவே அதே வாட்ஸ்அப் நினைவூட்டல்கள் கிடைக்கும்.",
+      "date": "தேதி",
+      "time": "நேரம்",
+      "schedule": "திட்டமிடு"
+    },
+    "fabric": {
+      "title": "துணியை அமை",
+      "hint": "அமைக்கும்போது உண்மையான சரக்கு கழிக்கப்படும்.",
+      "searchPlaceholder": "சரக்கில் துணியைத் தேடு…",
+      "quantity": "அளவு",
+      "set": "துணியை அமை"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "வாடிக்கையாளர்",
       "items": "பொருட்கள்",
       "item": "பொருள்",
-      "period": "காலம்"
+      "period": "காலம்",
+      "service": "சேவை"
     },
     "confirmCancel": "இந்த முன்பதிவை ரத்து செய்யவா? இதை மாற்ற முடியாது.",
     "lateFee": "தாமத கட்டணம்",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "தற்போது எதுவும் வழங்கப்படவில்லை.",
       "revenue": "இந்த காலத்தில் வாடகை வருவாய் இல்லை."
-    }
+    },
+    "serviceIntervalRentals": "சேவை இடைவெளி (வாடகைகள்)",
+    "serviceIntervalDays": "சேவை இடைவெளி (நாட்கள்)",
+    "dueForService": "சேவை தேவை",
+    "markServiced": "சேவை செய்யப்பட்டதாகக் குறிக்கவும்",
+    "lastServiced": "கடைசியாக சேவை செய்யப்பட்டது",
+    "neverServiced": "ஒருபோதும் இல்லை",
+    "addItem": "உருப்படியைச் சேர்",
+    "removeItem": "அகற்று",
+    "recurringRental": "மீண்டும் நிகழும் வாடகை",
+    "repeatEveryDays": "ஒவ்வொரு (நாட்கள்) மீண்டும் செய்யவும்",
+    "createNextCycle": "அடுத்த சுழற்சியை உருவாக்கு",
+    "nextCycleCreated": "அடுத்த வாடகைச் சுழற்சி உருவாக்கப்பட்டது.",
+    "conditionOutLabel": "செக்-அவுட்டில் நிலை",
+    "conditionInLabel": "திரும்பும்போது நிலை",
+    "itemDamageCharge": "சேத கட்டணம் (இந்த உருப்படி)",
+    "photos": "புகைப்படங்கள்"
   },
   "jewellery": {
     "metalRates": "உலோக விலைகள்",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "{{metalType}} {{purity}} க்கு விலை அமைக்கப்படவில்லை. நகைகள் → உலோக விலைகளில் இன்றைய விலையை அமைக்கவும், பின்னர் இந்த பொருளை மீண்டும் சேர்க்கவும்.",
     "computeErrorDesc": "நகையின் விலையை கணக்கிட முடியவில்லை. தயவுசெய்து விலையை சரிபார்த்து இந்த பொருளை மீண்டும் சேர்க்கவும்.",
     "priceNotSetTitle": "நகை விலை அமைக்கப்படவில்லை",
-    "priceNotSetDesc": "{{productName}} க்கு இன்னும் விலை இல்லை — நகைகள் → உலோக விலைகளில் இன்றைய விலையை அமைக்கவும், பின்னர் இந்த பொருளை அகற்றி மீண்டும் சேர்க்கவும்."
+    "priceNotSetDesc": "{{productName}} க்கு இன்னும் விலை இல்லை — நகைகள் → உலோக விலைகளில் இன்றைய விலையை அமைக்கவும், பின்னர் இந்த பொருளை அகற்றி மீண்டும் சேர்க்கவும்.",
+    "makingCharge": "செய்கூலி",
+    "makingChargeOverrideHint": "இந்த விற்பனைக்கு மட்டும் செய்கூலியை மேலெழுதவும் — தயாரிப்பின் சொந்த அமைப்பு மாறாது.",
+    "applyExchange": "பழைய உலோக பரிமாற்றத்தை பயன்படுத்தவும்",
+    "applyExchangeDesc": "விற்பனையை முடிக்கும்போது இணைக்கப்படாத பரிமாற்றத்தின் கடனை இந்த விலைப்பட்டியலில் தானாக தள்ளுபடியாக பயன்படுத்துகிறது.",
+    "exchangeSearchPlaceholder": "பரிமாற்ற எண்ணால் தேடவும்...",
+    "noUnlinkedExchanges": "இந்த வாடிக்கையாளருக்கு இணைக்கப்படாத பரிமாற்றங்கள் எதுவும் இல்லை.",
+    "exchangeApplied": "பரிமாற்றம் {{number}} — செக்அவுட்டில் {{amount}} கடன் பயன்படுத்தப்படும்.",
+    "removeExchange": "அகற்று"
   },
   "manual": {
     "yourType": "உங்கள் வகை",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "உலகளாவிய அம்சங்கள்",
     "groupAi": "AI உதவியாளர்",
     "groupBusiness": "வணிக வகைகள்"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "களப் பணிகள் ஆர்டர்கள்",
+      "subtitle": "களத்தில் உள்ள பிரதிநிதிகளால் சமர்ப்பிக்கப்பட்ட ஆர்டர்கள், உறுதிப்படுத்தலுக்காகக் காத்திருக்கின்றன",
+      "refresh": "புதுப்பிக்கவும்",
+      "linkTitle": "களப் பணி ஆர்டர் இணைப்பு",
+      "linkDescription": "இந்த இணைப்பை (அல்லது QR குறியீட்டை) உங்கள் களப் பணி பிரதிநிதிகளுடன் பகிரவும் — கடையின் வைஃபையில் அவர்களின் சொந்த மொபைலிலிருந்து ஆர்டர்களைப் பதிவு செய்யலாம்.",
+      "showQr": "QR குறியீட்டைக் காட்டு",
+      "regenerateLink": "இணைப்பை மீண்டும் உருவாக்கு",
+      "openDirectly": "அல்லது நேரடியாகத் திற:",
+      "copied": "நகலெடுக்கப்பட்டது",
+      "linkCopied": "இணைப்பு கிளிப்போர்டில் நகலெடுக்கப்பட்டது.",
+      "notRunning": "களப் பணி ஆர்டர் பதிவு தற்போது இயங்கவில்லை. பிரதிநிதிகள் தங்கள் சொந்த மொபைலிலிருந்து ஆர்டர்களை அனுப்ப அமைப்புகளில் \"களப் பணி ஆர்டர் பதிவு\" இயக்கவும்.",
+      "pendingTitle": "நிலுவையிலுள்ள களப் பணி ஆர்டர்கள்",
+      "loading": "ஏற்றுகிறது…",
+      "empty": "உறுதிப்படுத்தலுக்காகக் காத்திருக்கும் களப் பணி ஆர்டர்கள் இல்லை.",
+      "noCustomer": "(வாடிக்கையாளர் தேர்ந்தெடுக்கப்படவில்லை)",
+      "accept": "ஏற்கவும்",
+      "reject": "நிராகரி",
+      "acceptTitle": "ஆர்டரை ஏற்கவும் — {{repName}}",
+      "paymentMethod": "கட்டண முறை",
+      "acceptHint": "உறுதிப்படுத்தும் போது விலைகள் மீண்டும் சரிபார்க்கப்படும் (ஏதேனும் ஒப்புக்கொள்ளப்பட்ட வாடிக்கையாளர் விலை உட்பட), மற்றும் ஒரு விலைப்பட்டியல் உருவாக்கப்படும்.",
+      "confirmBill": "உறுதிசெய்து பில் செய்யவும்",
+      "creating": "உருவாக்குகிறது…",
+      "cancel": "ரத்துசெய்",
+      "orderAccepted": "ஆர்டர் ஏற்கப்பட்டது",
+      "invoiceCreated": "இந்த களப் பணி ஆர்டரிலிருந்து விலைப்பட்டியல் உருவாக்கப்பட்டது.",
+      "error": "பிழை",
+      "couldNotLoad": "வரும் களப் பணி ஆர்டர்களை ஏற்ற முடியவில்லை.",
+      "couldNotAccept": "ஆர்டரை ஏற்க முடியவில்லை.",
+      "couldNotReject": "ஆர்டரை நிராகரிக்க முடியவில்லை.",
+      "couldNotGenerateQr": "QR குறியீட்டை உருவாக்க முடியவில்லை.",
+      "regenerated": "மீண்டும் உருவாக்கப்பட்டது",
+      "regeneratedMessage": "ஒரு புதிய களப் பணி ஆர்டர் இணைப்பு உருவாக்கப்பட்டது.",
+      "couldNotRegenerate": "இணைப்பை மீண்டும் உருவாக்க முடியவில்லை.",
+      "regenerateConfirm": "மீண்டும் உருவாக்குவது உங்கள் பிரதிநிதிகளுடன் ஏற்கனவே பகிரப்பட்ட எந்த இணைப்பு/QR குறியீட்டையும் செல்லுபடியற்றதாக்கும் — அவர்களுக்கு புதியது தேவைப்படும். தொடரவா?"
+    },
+    "pricing": {
+      "title": "வாடிக்கையாளர் வகை விலை நிர்ணயம்",
+      "subtitle": "ஒவ்வொரு வாடிக்கையாளர் வகைக்கும் (எ.கா. சில்லறை, மொத்த, VIP) ஒப்புக்கொள்ளப்பட்ட விலைகளை அமைக்கவும் — அந்த வகையின் எந்த வாடிக்கையாளருக்கும் பட்டியல் விலையை மாற்றுகிறது.",
+      "addTitle": "விலையைச் சேர் / புதுப்பி",
+      "searchProduct": "தயாரிப்பைத் தேடு…",
+      "classPlaceholder": "வாடிக்கையாளர் வகை, எ.கா. சில்லறை",
+      "pricePlaceholder": "விலை",
+      "save": "விலையைச் சேமி",
+      "saving": "சேமிக்கிறது…",
+      "columnProduct": "தயாரிப்பு",
+      "columnClass": "வகை",
+      "columnListPrice": "பட்டியல் விலை",
+      "columnPrice": "விலை",
+      "empty": "இதுவரை வாடிக்கையாளர்-வகை விலைகள் எதுவும் அமைக்கப்படவில்லை.",
+      "loading": "ஏற்றுகிறது…",
+      "noProduct": "தயாரிப்பு இல்லை",
+      "noProductMessage": "முதலில் ஒரு தயாரிப்பைத் தேர்ந்தெடுக்கவும்.",
+      "noClass": "வாடிக்கையாளர் வகை இல்லை",
+      "noClassMessage": "வாடிக்கையாளர் வகையை உள்ளிடவும், எ.கா. சில்லறை.",
+      "invalidPrice": "தவறான விலை",
+      "invalidPriceMessage": "சரியான, எதிர்மறையற்ற விலையை உள்ளிடவும்.",
+      "priceSet": "விலை அமைக்கப்பட்டது",
+      "priceSetMessage": "{{productName}} க்கு {{customerClass}} விலை அமைக்கப்பட்டது.",
+      "error": "பிழை",
+      "couldNotSave": "விலையைச் சேமிக்க முடியவில்லை.",
+      "couldNotLoad": "விலைப் பட்டியலை ஏற்ற முடியவில்லை.",
+      "removed": "அகற்றப்பட்டது",
+      "removedMessage": "விலை அகற்றப்பட்டது.",
+      "couldNotRemove": "விலையை அகற்ற முடியவில்லை."
+    }
   }
 }

@@ -52,6 +52,22 @@ export const UpdateCarJobCardSchema = z.object({
   invoiceId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   internalNotes: z.string().nullable().optional(),
+  nextServiceDueDate: z.string().nullable().optional(),
+  nextServiceDueKm: z.number().int().nonnegative('Next service due KM cannot be negative').nullable().optional(),
+})
+
+// Phase 58 §2 — Car Service Center
+export const VehicleServiceHistorySchema = z.object({
+  vehicleNumber: z.string().min(1, 'Vehicle number is required'),
+})
+
+export const ScheduleNextServiceReminderSchema = z.object({
+  jobCardId: z.string().min(1, 'Job card ID is required'),
+  daysBefore: z.number().int().positive().optional(),
+})
+
+export const ListVehiclesDueForServiceSchema = z.object({
+  dueSoonDays: z.number().int().positive().optional(),
 })
 
 export type CreateCarJobCardPayload = z.infer<typeof CreateCarJobCardSchema>

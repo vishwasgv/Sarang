@@ -10,6 +10,7 @@ import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -60,6 +61,16 @@ interface Patient {
   id: string
   customerName: string
   phone: string | null
+}
+
+// Phase 58 §2 — per-tooth chronological history
+interface ToothHistoryEntry {
+  id: string
+  condition: ToothCondition
+  surface: string
+  notes: string | null
+  recordedDate: string
+  recordedBy: { id: string; fullName: string } | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,6 +203,10 @@ export function DentalPatientScreen() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Phase 58 §2 — per-tooth chronological history
+  const [toothHistory, setToothHistory] = useState<ToothHistoryEntry[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+
   // Treatment plan modal
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [editingPlan, setEditingPlan] = useState<TreatmentPlan | null>(null)
@@ -254,11 +269,19 @@ export function DentalPatientScreen() {
     setEditCondition(existing?.condition as ToothCondition ?? 'SOUND')
     setEditNotes(existing?.notes ?? '')
     setSaveError(null)
+    setShowHistory(false)
+    setToothHistory([])
     try {
       setEditSurfaces(existing ? JSON.parse(existing.surface) : [])
     } catch {
       setEditSurfaces([])
     }
+  }
+
+  async function loadToothHistory(num: number) {
+    if (!patientId) return
+    const res = await api.toothRecord.getHistory({ patientId, toothNumber: num })
+    if (res.success) setToothHistory((res.data as ToothHistoryEntry[]) ?? [])
   }
 
   async function handleToothSave() {
@@ -280,6 +303,8 @@ export function DentalPatientScreen() {
     const chartRes = await api.toothRecord.getChart({ patientId })
     if (chartRes.success && chartRes.data) setToothRecords(chartRes.data as ToothRecord[])
     setSelectedTooth(null)
+    setShowHistory(false)
+    setToothHistory([])
   }
 
   async function handleRecallSave() {
@@ -380,6 +405,13 @@ export function DentalPatientScreen() {
             onNotesChange={setEditNotes}
             onSave={handleToothSave}
             onCancel={() => setSelectedTooth(null)}
+            showHistory={showHistory}
+            toothHistory={toothHistory}
+            onToggleHistory={() => {
+              const next = !showHistory
+              setShowHistory(next)
+              if (next && selectedTooth !== null) loadToothHistory(selectedTooth)
+            }}
           />
         )}
         {tab === 'plans' && (
@@ -462,6 +494,7 @@ function ToothBtn({ num, selectedTooth, toothRecords, canWrite, getToothConditio
 function ToothChartTab({
   toothRecords, selectedTooth, editCondition, editSurfaces, editNotes, saving, saveError, canWrite,
   getToothCondition, onToothClick, onConditionChange, onSurfacesChange, onNotesChange, onSave, onCancel,
+  showHistory, toothHistory, onToggleHistory,
 }: {
   toothRecords: ToothRecord[]
   selectedTooth: number | null
@@ -478,6 +511,9 @@ function ToothChartTab({
   onNotesChange: (v: string) => void
   onSave: () => void
   onCancel: () => void
+  showHistory: boolean
+  toothHistory: ToothHistoryEntry[]
+  onToggleHistory: () => void
 }) {
   const toothProps = { selectedTooth, toothRecords, canWrite, getToothCondition, onToothClick }
 
@@ -603,14 +639,56 @@ function ToothChartTab({
               />
             </div>
 
-            <button
-              onClick={onSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
-            >
-              <Save size={14} />
-              {saving ? 'Saving...' : 'Update Tooth'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onSave}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
+              >
+                <Save size={14} />
+                {saving ? 'Saving...' : 'Update Tooth'}
+              </button>
+              {/* Phase 58 §2 — per-tooth chronological history: every save
+                  appends a row rather than overwriting, so a tooth's
+                  progression across visits is visible instead of only its
+                  current state. */}
+              <button
+                onClick={onToggleHistory}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Calendar size={14} /> {showHistory ? 'Hide History' : 'History'}
+              </button>
+            </div>
+
+            {showHistory && (
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Chronological History</p>
+                {toothHistory.length === 0 ? (
+                  <p className="text-xs text-slate-400">No history recorded yet — this tooth's first save will appear here.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {toothHistory.map((h) => {
+                      const cfg = CONDITION_CONFIG[h.condition]
+                      let surfaces: string[] = []
+                      try { surfaces = JSON.parse(h.surface) } catch { /* legacy/blank */ }
+                      return (
+                        <div key={h.id} className="flex items-start gap-3 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+                          <span className="text-slate-400 shrink-0 w-24">
+                            {new Date(h.recordedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <div className="flex-1">
+                            <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cfg.bg, cfg.color)}>{cfg.label}</span>
+                            {surfaces.length > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{surfaces.join(', ')}</span>}
+                            {h.notes && <p className="mt-1 text-slate-600 dark:text-slate-300">{h.notes}</p>}
+                            {h.recordedBy && <p className="mt-0.5 text-slate-400">by {h.recordedBy.fullName}</p>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -989,6 +1067,8 @@ function TreatmentPlanModal({ patientId, plan, currSym, onClose, onSaved }: {
               className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
             />
           </div>
+
+          {plan && <DocumentPanel entityType="TREATMENT_PLAN" entityId={plan.id} compact />}
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">

@@ -150,3 +150,48 @@ describe('job-order.service — Decimal serialization', () => {
     expect('salaryBudgetMin' in result).toBe(false)
   })
 })
+
+// Phase 58 §2 — Placement Agency: fee-agreement/replacement-guarantee terms.
+// Plain String/Int fields (deliberately not Decimal — see schema comment),
+// so no serializer changes needed; just confirm they pass through untouched.
+
+describe('job-order.service — fee-agreement/replacement-guarantee terms', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createJobOrder persists feeAgreementTerms and replacementGuaranteeDays', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobOrder({
+      clientId: 'cust-1', jobTitle: 'Senior Engineer',
+      feeAgreementTerms: '15% of annual CTC, payable within 30 days of joining',
+      replacementGuaranteeDays: 90,
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.jobOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ feeAgreementTerms: '15% of annual CTC, payable within 30 days of joining', replacementGuaranteeDays: 90 }),
+    }))
+  })
+
+  it('createJobOrder defaults both to null when omitted', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createJobOrder({ clientId: 'cust-1', jobTitle: 'Senior Engineer' })
+
+    expect(db.jobOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ feeAgreementTerms: null, replacementGuaranteeDays: null }),
+    }))
+  })
+
+  it('updateJobOrder can clear replacementGuaranteeDays back to null', async () => {
+    const db = makeMockDb(makeJobOrder({ replacementGuaranteeDays: 90 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateJobOrder({ id: 'jo-1', replacementGuaranteeDays: null })
+
+    expect(res.success).toBe(true)
+    expect(db.jobOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ replacementGuaranteeDays: null }) }))
+  })
+})

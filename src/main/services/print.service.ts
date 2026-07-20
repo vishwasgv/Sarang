@@ -131,6 +131,10 @@ interface InvoiceItem {
   jewelleryNetWeight?: number | null
   jewelleryRatePerGram?: number | null
   jewelleryMakingCharge?: number | null
+  // Phase 58 §2 — hallmark/HUID number (BIS HUID in India, or equivalent),
+  // printed on the invoice so the compliance mark travels with the sale
+  // record, not only the physical piece.
+  jewelleryHallmarkNumber?: string | null
 }
 
 function jewelleryDetailLine(item: InvoiceItem, sym: string): string {
@@ -139,7 +143,8 @@ function jewelleryDetailLine(item: InvoiceItem, sym: string): string {
   const weight = item.jewelleryNetWeight != null ? `${item.jewelleryNetWeight.toFixed(3)}g` : ''
   const rate = item.jewelleryRatePerGram != null ? `@ ${formatAmount(item.jewelleryRatePerGram, sym)}/g` : ''
   const making = item.jewelleryMakingCharge ? `+ ${formatAmount(item.jewelleryMakingCharge, sym)} making` : ''
-  return [metal, weight, rate, making].filter(Boolean).join(' ')
+  const hallmark = item.jewelleryHallmarkNumber ? `HUID: ${item.jewelleryHallmarkNumber}` : ''
+  return [metal, weight, rate, making, hallmark].filter(Boolean).join(' ')
 }
 
 interface Invoice {

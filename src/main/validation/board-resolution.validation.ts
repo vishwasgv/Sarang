@@ -2,7 +2,8 @@ import { z } from 'zod'
 
 export const CreateBoardResolutionSchema = z.object({
   boardMeetingId: z.string().min(1, 'Board meeting is required'),
-  resolutionNumber: z.string().min(1, 'Resolution number is required'),
+  // Optional — auto-sequenced server-side (per client/company) when omitted.
+  resolutionNumber: z.string().min(1).optional(),
   resolutionType: z.string().optional(),
   resolutionText: z.string().min(1, 'Resolution text is required'),
   passedUnanimously: z.boolean().optional(),

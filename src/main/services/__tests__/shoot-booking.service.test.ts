@@ -116,7 +116,7 @@ describe('shoot-booking.service — Decimal serialization', () => {
 function makeBookingForInvoice(overrides: Record<string, unknown> = {}) {
   return {
     id: 'shoot-1', clientId: 'cust-1', shootType: 'WEDDING', shootLocation: 'Test Venue',
-    finalAmount: 50000, invoiceId: null,
+    finalAmount: 50000, invoiceId: null, addOnItems: [],
     ...overrides,
   }
 }
@@ -126,6 +126,7 @@ function makeInvoiceMockDb(booking: ReturnType<typeof makeBookingForInvoice> | n
   // matches (and only "wins") when the booking exists and isn't already
   // invoiced/claimed.
   const canClaim = !!booking && !booking.invoiceId
+  let productSeq = 0
   return {
     shootBooking: {
       updateMany: vi.fn().mockResolvedValue({ count: canClaim ? 1 : 0 }),
@@ -134,7 +135,9 @@ function makeInvoiceMockDb(booking: ReturnType<typeof makeBookingForInvoice> | n
     },
     product: {
       findFirst: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockResolvedValue({ id: 'product-1', hsnCode: '998314' }),
+      create: vi.fn().mockImplementation(({ data }: { data: { productName: string } }) =>
+        Promise.resolve({ id: `product-${++productSeq}`, hsnCode: '998314', productName: data.productName })
+      ),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
@@ -208,5 +211,45 @@ describe('shoot-booking.service — generateShootInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('SHT-004')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Phase 58 §2 — Photo Studio: itemized add-ons feed into the invoice as
+  // their own lines, alongside (not instead of) the base package fee.
+  it('adds each itemized add-on as its own invoice line, in addition to the base package line', async () => {
+    const db = makeInvoiceMockDb(makeBookingForInvoice({
+      addOnItems: [
+        { id: 'addon-1', description: 'Extra prints (6x4)', quantity: 20, unitPrice: 15 },
+        { id: 'addon-2', description: 'Leather album copy', quantity: 1, unitPrice: 3000 },
+      ],
+    }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    const res = await generateShootInvoice('shoot-1')
+
+    expect(res.success).toBe(true)
+    expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
+      items: [
+        expect.objectContaining({ productId: 'product-1', unitPrice: 50000, quantity: 1 }),
+        expect.objectContaining({ unitPrice: 15, quantity: 20, taxRate: 18 }),
+        expect.objectContaining({ unitPrice: 3000, quantity: 1, taxRate: 18 }),
+      ],
+    }))
+    // Each add-on gets looked up/created by its OWN description text, not
+    // folded into the base product or a single generic "add-on" line.
+    expect(db.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ productName: 'Extra prints (6x4)' }) }))
+    expect(db.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ productName: 'Leather album copy' }) }))
+  })
+
+  it('generates an invoice with only the base line when there are no add-ons', async () => {
+    const db = makeInvoiceMockDb(makeBookingForInvoice({ addOnItems: [] }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    await generateShootInvoice('shoot-1')
+
+    expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ unitPrice: 50000 })],
+    }))
   })
 })

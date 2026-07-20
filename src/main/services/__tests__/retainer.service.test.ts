@@ -5,7 +5,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listRetainers, createRetainer, updateRetainer, generateInvoiceForRetainer } from '../retainer.service'
+import { listRetainers, createRetainer, updateRetainer, generateInvoiceForRetainer, getRetainerHoursUsage } from '../retainer.service'
 
 // Regression coverage for two Phase 30 re-audit findings on
 // retainer.service.ts:
@@ -219,6 +219,81 @@ describe('retainer.service — generateInvoiceForRetainer', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await generateInvoiceForRetainer('ret-missing', '2026-07')
+
+    expect(res.success).toBe(false)
+  })
+})
+
+// ─── Phase 58 §1 (2026-07-17) — getRetainerHoursUsage ──────────────────────
+// "hoursPerMonth is actually decremented against logged time" — verifies the
+// derived (not stored-counter) sum-over-TimeEntry approach: period-boundary
+// correctness, hoursRemaining floors at zero, and the FIXED_FEE/no-hours case.
+
+describe('retainer.service.getRetainerHoursUsage', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeDbForUsage(retainer: { hoursPerMonth: unknown } | null, entries: Array<{ hours: unknown }>) {
+    const db: Record<string, any> = {
+      retainerAgreement: { findUnique: vi.fn().mockResolvedValue(retainer) },
+      timeEntry: { findMany: vi.fn().mockResolvedValue(entries) },
+    }
+    return db
+  }
+
+  it('sums only TimeEntry rows within the target period, ignoring rows outside it', async () => {
+    const db = makeDbForUsage({ hoursPerMonth: new FakeDecimal(10) as unknown as number }, [{ hours: new FakeDecimal(3) }, { hours: new FakeDecimal(2.5) }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRetainerHoursUsage('ret-abc123', '2026-07')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { hoursUsed: number } }).data.hoursUsed).toBe(5.5)
+    // Local-date components, not toISOString (UTC) — period boundaries are
+    // built via `new Date(year, month-1, 1)` local-time construction, same
+    // as a real user's own calendar month, so a UTC-offset machine would
+    // otherwise see the previous/next day here (real bug hit earlier this
+    // session with a report's own date-range boundary — see PHASE_58 plan).
+    const call = db.timeEntry.findMany.mock.calls[0][0]
+    const gte: Date = call.where.date.gte
+    const lte: Date = call.where.date.lte
+    expect(`${gte.getFullYear()}-${gte.getMonth() + 1}-${gte.getDate()}`).toBe('2026-7-1')
+    expect(`${lte.getFullYear()}-${lte.getMonth() + 1}-${lte.getDate()}`).toBe('2026-7-31')
+  })
+
+  it('floors hoursRemaining at zero when logged hours exceed the monthly bucket', async () => {
+    const db = makeDbForUsage({ hoursPerMonth: new FakeDecimal(10) as unknown as number }, [{ hours: new FakeDecimal(15) }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRetainerHoursUsage('ret-abc123', '2026-07')
+
+    expect((res as { data: { hoursUsed: number; hoursRemaining: number } }).data).toEqual({ period: '2026-07', hoursPerMonth: 10, hoursUsed: 15, hoursRemaining: 0 })
+  })
+
+  it('returns null hoursPerMonth/hoursRemaining for a retainer with no hour bucket set (e.g. FIXED_FEE)', async () => {
+    const db = makeDbForUsage({ hoursPerMonth: null }, [])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRetainerHoursUsage('ret-abc123', '2026-07')
+
+    expect((res as { data: { hoursPerMonth: null; hoursRemaining: null } }).data.hoursPerMonth).toBeNull()
+    expect((res as { data: { hoursPerMonth: null; hoursRemaining: null } }).data.hoursRemaining).toBeNull()
+  })
+
+  it('defaults to the current calendar month when no period is given', async () => {
+    const db = makeDbForUsage({ hoursPerMonth: new FakeDecimal(10) as unknown as number }, [])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRetainerHoursUsage('ret-abc123')
+
+    const expectedPeriod = new Date().toISOString().slice(0, 7)
+    expect((res as { data: { period: string } }).data.period).toBe(expectedPeriod)
+  })
+
+  it('returns an error when the retainer does not exist', async () => {
+    const db = makeDbForUsage(null, [])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRetainerHoursUsage('ret-missing', '2026-07')
 
     expect(res.success).toBe(false)
   })

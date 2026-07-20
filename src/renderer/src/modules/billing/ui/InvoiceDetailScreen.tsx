@@ -30,6 +30,9 @@ interface Invoice {
   id: string; invoiceNumber: string; invoiceType: string; status: string; createdAt: string
   subtotal: number; discountAmount: number; taxAmount: number; roundingAmount: number
   totalAmount: number; paidAmount: number; balanceAmount: number; paymentStatus: string
+  // Phase 58 §2 — optional payment due date on CREDIT sales (e.g. Agri
+  // Inputs' harvest-tied credit terms).
+  dueDate?: string | null
   notes?: string | null
   gstType?: string | null
   customer: { id: string; customerName: string; phone?: string | null; customerCode?: string | null } | null
@@ -249,6 +252,11 @@ export function InvoiceDetailScreen() {
               <h1 className="text-xl font-bold text-dark">{invoice.invoiceNumber}</h1>
               <Badge variant={PAYMENT_STATUS_VARIANT[invoice.paymentStatus] ?? 'neutral'} size="sm">{invoice.paymentStatus}</Badge>
               {isCancelled && <Badge variant="neutral" size="sm">CANCELLED</Badge>}
+              {invoice.dueDate && invoice.balanceAmount > 0.01 && (
+                <Badge variant={new Date(invoice.dueDate) < new Date() ? 'danger' : 'neutral'} size="sm">
+                  {new Date(invoice.dueDate) < new Date() ? t('billing.overdueSince', { date: formatDate(invoice.dueDate) }) : t('billing.dueOn', { date: formatDate(invoice.dueDate) })}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">{formatDate(invoice.createdAt)}{invoice.createdBy ? ` · ${t('billing.createdBy')} ${invoice.createdBy.fullName}` : ''}</p>
           </div>

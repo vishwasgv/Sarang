@@ -21,9 +21,10 @@ function makeResolution(overrides: Record<string, unknown> = {}) {
 
 function makeMockDb(overrides: Record<string, unknown> = {}) {
   const db: Record<string, any> = {
-    boardMeeting: { findUnique: vi.fn().mockResolvedValue({ id: 'bm-1' }) },
+    boardMeeting: { findUnique: vi.fn().mockResolvedValue({ id: 'bm-1', clientId: 'cust-1' }) },
     boardResolution: {
       findMany: vi.fn().mockResolvedValue([makeResolution()]),
+      count: vi.fn().mockResolvedValue(0),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(makeResolution({ id: 'res-new', ...data }))),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(makeResolution({ ...data }))),
       delete: vi.fn().mockResolvedValue({}),
@@ -113,5 +114,50 @@ describe('board-resolution.service', () => {
 
     expect(res.success).toBe(true)
     expect(db.boardResolution.delete).toHaveBeenCalledWith({ where: { id: 'res-1' } })
+  })
+})
+
+// Phase 58 §2 — Company Secretary: auto-sequenced resolution numbering,
+// scoped per client (company), when the caller omits resolutionNumber.
+
+describe('board-resolution.service — auto-sequenced numbering', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('auto-assigns "1" for a client with no prior resolutions', async () => {
+    const db = makeMockDb({ boardResolution: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve(makeResolution({ id: 'res-new', ...data }))) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBoardResolution({ boardMeetingId: 'bm-1', resolutionText: 'RESOLVED THAT...' })
+
+    expect(res.success).toBe(true)
+    expect(db.boardResolution.count).toHaveBeenCalledWith({ where: { boardMeeting: { clientId: 'cust-1' } } })
+    expect(db.boardResolution.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ resolutionNumber: '1' }),
+    }))
+  })
+
+  it('auto-assigns the next number after the client\'s existing resolution count', async () => {
+    const db = makeMockDb({ boardResolution: { count: vi.fn().mockResolvedValue(4), create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve(makeResolution({ id: 'res-new', ...data }))) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBoardResolution({ boardMeetingId: 'bm-1', resolutionText: 'RESOLVED THAT...' })
+
+    expect(res.success).toBe(true)
+    expect(db.boardResolution.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ resolutionNumber: '5' }),
+    }))
+  })
+
+  it('honors an explicitly provided resolutionNumber instead of auto-sequencing', async () => {
+    const db = makeMockDb({ boardResolution: { count: vi.fn(), create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve(makeResolution({ id: 'res-new', ...data }))) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBoardResolution({ boardMeetingId: 'bm-1', resolutionNumber: '2024-03', resolutionText: 'RESOLVED THAT...' })
+
+    expect(res.success).toBe(true)
+    expect(db.boardResolution.count).not.toHaveBeenCalled()
+    expect(db.boardResolution.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ resolutionNumber: '2024-03' }),
+    }))
   })
 })

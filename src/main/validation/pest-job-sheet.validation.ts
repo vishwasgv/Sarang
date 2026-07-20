@@ -34,5 +34,16 @@ export const UpdatePestJobSheetSchema = z.object({
 
 export const PestJobSheetIdSchema = z.string().min(1, 'Job sheet ID is required')
 
+export const AddJobSheetPesticideSchema = z.object({
+  jobSheetId: z.string().min(1, 'Job sheet is required'),
+  productId: z.string().min(1).optional(),
+  pesticideName: z.string().min(1, 'Pesticide name is required'),
+  quantityUsed: z.number().positive('Quantity used must be greater than zero').finite(),
+  unit: z.string().optional(),
+  dosageNote: z.string().optional(),
+  targetPest: z.string().optional(),
+})
+
 export type CreatePestJobSheetPayload = z.infer<typeof CreatePestJobSheetSchema>
 export type UpdatePestJobSheetPayload = z.infer<typeof UpdatePestJobSheetSchema>
+export type AddJobSheetPesticidePayload = z.infer<typeof AddJobSheetPesticideSchema>

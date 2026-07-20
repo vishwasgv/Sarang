@@ -11,12 +11,14 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { LabReportPrint } from './LabReportPrint'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
 type LabOrderStatus = 'ORDERED' | 'SAMPLE_COLLECTED' | 'IN_PROCESS' | 'REPORTED' | 'DELIVERED' | 'CANCELLED'
 type LabItemStatus = 'PENDING' | 'COLLECTED' | 'RESULT_READY' | 'REPORTED'
 type SampleType = 'BLOOD' | 'URINE' | 'STOOL' | 'SWAB' | 'IMAGING' | 'OTHER'
 
-interface ResultParameter { parameter: string; value: string; unit?: string; referenceRange?: string; flag?: 'LOW' | 'NORMAL' | 'HIGH' | 'ABNORMAL' }
+// Phase 58 §2 — CRITICAL is a real panic-value tier, distinct from HIGH/LOW.
+interface ResultParameter { parameter: string; value: string; unit?: string; referenceRange?: string; flag?: 'LOW' | 'NORMAL' | 'HIGH' | 'ABNORMAL' | 'CRITICAL' }
 
 interface LabTestOrderItem {
   id: string
@@ -27,6 +29,10 @@ interface LabTestOrderItem {
   status: LabItemStatus
   resultParameters: string
   resultSummary: string | null
+  // Phase 58 §2 — critical/panic-value escalation workflow
+  hasCriticalResult: boolean
+  criticalNotifiedAt: string | null
+  criticalNotifiedNotes: string | null
 }
 
 interface LabTestOrder {
@@ -93,6 +99,12 @@ export function LabOrdersScreen() {
   const [cancelling, setCancelling] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deletingOrder, setDeletingOrder] = useState(false)
+
+  // Phase 58 §2 — critical/panic-value escalation: recording that the
+  // referring doctor was actually called, not just flagging it.
+  const [acknowledgingFor, setAcknowledgingFor] = useState<string | null>(null)
+  const [acknowledgeNotes, setAcknowledgeNotes] = useState('')
+  const [acknowledging, setAcknowledging] = useState(false)
 
   // Phase 54B — once a lab has saved a normal range for a test name (Settings
   // > Normal Ranges), typing that same test + a value here auto-fills the
@@ -237,6 +249,26 @@ export function LabOrdersScreen() {
     }
   }
 
+  // Phase 58 §2 — deliberately does NOT pass notifiedById from a User
+  // session: criticalNotifiedById is FK'd to Employee, not User (the exact
+  // same trap the Phase 25 ToothRecord.recordedById fix already documents
+  // elsewhere in this codebase) — free-text notes are captured instead.
+  async function handleAcknowledgeCritical() {
+    if (!acknowledgingFor || !detail) return
+    setAcknowledging(true)
+    const res = await api.labTestOrders.acknowledgeCritical({ itemId: acknowledgingFor, notes: acknowledgeNotes.trim() || undefined })
+    setAcknowledging(false)
+    if (res.success) {
+      toastSuccess('Recorded', 'Critical result escalation recorded.')
+      setAcknowledgingFor(null)
+      setAcknowledgeNotes('')
+      refreshDetail(detail.id)
+      load()
+    } else {
+      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record escalation.')
+    }
+  }
+
   async function handleFinalize(id: string) {
     const res = await api.labTestOrders.finalizeReport({ id })
     if (res.success) { toastSuccess('Report Finalized', 'Report finalized successfully.'); refreshDetail(id); load() }
@@ -331,6 +363,9 @@ export function LabOrdersScreen() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs text-text-secondary">{o.orderNumber}</span>
                       <Badge variant={STATUS_VARIANT[o.status]} size="sm">{STATUS_LABEL[o.status]}</Badge>
+                      {o.items.some((i) => i.hasCriticalResult && !i.criticalNotifiedAt) && (
+                        <Badge variant="danger" size="sm">Critical — Not Notified</Badge>
+                      )}
                     </div>
                     <p className="mt-1 font-semibold text-text-primary">{o.patientName}</p>
                     <p className="text-sm text-text-secondary truncate">{o.items.map((i) => i.testName).join(', ')}</p>
@@ -454,6 +489,9 @@ export function LabOrdersScreen() {
                         <p className="text-xs text-text-secondary">{item.sampleType} · {formatCurrency(item.price)}</p>
                       </div>
                       <div className="flex items-center gap-2">
+                        {item.hasCriticalResult && (
+                          <Badge variant="danger" size="sm">{item.criticalNotifiedAt ? 'Critical — Notified' : 'Critical'}</Badge>
+                        )}
                         <Badge variant={ITEM_STATUS_VARIANT[item.status]} size="sm">{item.status.replace('_', ' ')}</Badge>
                         {canManage && detail.status !== 'ORDERED' && detail.status !== 'CANCELLED' && detail.status !== 'DELIVERED' && (
                           <button onClick={() => openResultEditor(item)} className="text-xs text-brand font-semibold hover:underline">
@@ -462,6 +500,36 @@ export function LabOrdersScreen() {
                         )}
                       </div>
                     </div>
+
+                    {/* Phase 58 §2 — escalation workflow: a critical result
+                        needs the referring doctor called, and this records
+                        that it actually happened (not just that it should). */}
+                    {item.hasCriticalResult && !item.criticalNotifiedAt && canManage && acknowledgingFor !== item.id && (
+                      <div className="mt-2 pt-2 border-t border-danger/20 flex items-center justify-between gap-2">
+                        <p className="text-xs text-danger font-medium">Critical result — referring doctor not yet notified.</p>
+                        <button onClick={() => setAcknowledgingFor(item.id)} className="text-xs font-semibold text-danger hover:underline shrink-0">
+                          Record Doctor Notified
+                        </button>
+                      </div>
+                    )}
+                    {acknowledgingFor === item.id && (
+                      <div className="mt-2 pt-2 border-t border-danger/20 space-y-2">
+                        <textarea value={acknowledgeNotes} onChange={(e) => setAcknowledgeNotes(e.target.value)} rows={2}
+                          placeholder="Who was called, when, and their response (optional)"
+                          className="w-full px-3 py-2 rounded-lg border border-border text-xs resize-none" />
+                        <div className="flex gap-2">
+                          <button onClick={() => { setAcknowledgingFor(null); setAcknowledgeNotes('') }} className="flex-1 h-9 rounded-lg border border-border text-xs font-semibold">Cancel</button>
+                          <button onClick={handleAcknowledgeCritical} disabled={acknowledging} className="flex-1 h-9 rounded-lg bg-danger text-white text-xs font-semibold disabled:opacity-50">
+                            {acknowledging ? 'Saving...' : 'Confirm Doctor Notified'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {item.hasCriticalResult && item.criticalNotifiedAt && (
+                      <p className="mt-2 pt-2 border-t border-border text-xs text-text-secondary">
+                        Doctor notified {formatDate(item.criticalNotifiedAt)}{item.criticalNotifiedNotes ? ` — ${item.criticalNotifiedNotes}` : ''}
+                      </p>
+                    )}
 
                     {editingResultFor === item.id && (
                       <div className="mt-3 pt-3 border-t border-border space-y-2">
@@ -478,7 +546,7 @@ export function LabOrdersScreen() {
                               placeholder="Reference range" className="col-span-3 h-9 px-2 rounded-md border border-border text-xs" />
                             <select value={p.flag ?? 'NORMAL'} onChange={(e) => setResultParams((prev) => prev.map((x, i) => i === pIdx ? { ...x, flag: e.target.value as ResultParameter['flag'] } : x))}
                               className="col-span-1 h-9 px-1 rounded-md border border-border text-xs bg-white dark:bg-slate-900">
-                              {(['LOW', 'NORMAL', 'HIGH', 'ABNORMAL'] as const).map((f) => <option key={f} value={f}>{f[0]}</option>)}
+                              {(['LOW', 'NORMAL', 'HIGH', 'ABNORMAL', 'CRITICAL'] as const).map((f) => <option key={f} value={f}>{f === 'CRITICAL' ? 'CRIT' : f[0]}</option>)}
                             </select>
                             <button onClick={() => setResultParams((prev) => prev.filter((_, i) => i !== pIdx))} className="col-span-1 h-9 flex items-center justify-center text-red-500">
                               <Trash2 size={12} />
@@ -504,6 +572,8 @@ export function LabOrdersScreen() {
                 <span className="text-text-secondary">Total</span>
                 <span className="font-semibold text-text-primary">{formatCurrency(detail.totalAmount)}</span>
               </div>
+
+              <DocumentPanel entityType="LAB_TEST_ORDER" entityId={detail.id} compact />
 
               {/* Front-desk actions (Cashier-reachable, labOrders.create) — routine
                   registration/billing/handover, not lab-technician-level trust. */}

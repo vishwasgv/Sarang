@@ -1,6 +1,6 @@
 import { requirePermission } from '../permission-guard'
-import { getActivePack, listPacks, listAllActivePacks, createPack, deductSession, listSessionLogs, generateSessionPackInvoice } from '../../services/session-pack.service'
-import { CreatePackSchema, DeductSessionSchema, GenerateSessionPackInvoiceSchema } from '../../validation/session-pack.validation'
+import { getActivePack, listPacks, listAllActivePacks, createPack, deductSession, listSessionLogs, generateSessionPackInvoice, assignPackTrainer } from '../../services/session-pack.service'
+import { CreatePackSchema, DeductSessionSchema, GenerateSessionPackInvoiceSchema, AssignPackTrainerSchema } from '../../validation/session-pack.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -47,5 +47,12 @@ export function register(handle: HandleFn): void {
     const parsed = GenerateSessionPackInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateSessionPackInvoice(parsed.data.id)
+  })
+
+  handle('sessionPack:assignTrainer', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = AssignPackTrainerSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return assignPackTrainer(parsed.data.packId, parsed.data.trainerId)
   })
 }

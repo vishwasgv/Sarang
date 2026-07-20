@@ -139,7 +139,8 @@
     "of": "లో",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "స్టాక్‌లో"
   },
   "auth": {
     "username": "వినియోగదారు పేరు",
@@ -229,6 +230,8 @@
     "percentDiscount": "% తగ్గింపు",
     "invoiceDate": "ఇ.తేదీ",
     "dueDate": "చె.తేదీ",
+    "dueOn": "గడువు {{date}}",
+    "overdueSince": "{{date}} నుండి బకాయి",
     "notes": "గమనికలు",
     "rounding": "రౌండింగ్",
     "invoiceCreated": "ఇన్వాయిస్ సృష్టించారు",
@@ -286,7 +289,40 @@
     "batchLabel": "బ్యాచ్ {{batchNumber}} · {{status}}",
     "batchExpired": "గడువు ముగిసింది",
     "batchExpiresToday": "ఈరోజు గడువు ముగుస్తుంది",
-    "batchExpiresIn": "{{days}} రోజుల్లో గడువు ముగుస్తుంది"
+    "batchExpiresIn": "{{days}} రోజుల్లో గడువు ముగుస్తుంది",
+    "addTipOrServiceCharge": "టిప్ / సర్వీస్ ఛార్జ్ జోడించండి",
+    "tipAmountLabel": "మొత్తం",
+    "tipAmountInvalid": "సున్నా కంటే ఎక్కువ మొత్తాన్ని నమోదు చేయండి.",
+    "confirmAddToCart": "కార్ట్‌కు జోడించండి",
+    "unavailableToday": "ఈరోజు అందుబాటులో లేదు",
+    "unavailableTodayMessage": "{{productName}} ఈరోజు అందుబాటులో లేదని గుర్తించబడింది.",
+    "holdSale": "అమ్మకాన్ని హోల్డ్ చేయండి",
+    "resumeSale": "అమ్మకాన్ని పునఃప్రారంభించండి",
+    "heldSales": "హోల్డ్ చేసిన అమ్మకాలు",
+    "noHeldSales": "హోల్డ్ చేసిన అమ్మకాలు లేవు.",
+    "holdSaleLabel": "గమనిక (ఐచ్ఛికం)",
+    "holdSaleLabelPlaceholder": "ఉదా. రాహుల్ - నీలం చొక్కా",
+    "confirmHold": "హోల్డ్ చేయండి",
+    "holdSaleSuccess": "అమ్మకం హోల్డ్ చేయబడింది.",
+    "resumeSaleAction": "పునఃప్రారంభించండి",
+    "abandonHeldSale": "తొలగించు",
+    "confirmAbandonHeldSale": "ఈ హోల్డ్ అమ్మకాన్ని తొలగించాలా? దీన్ని రద్దు చేయలేరు.",
+    "emptyCartCannotHold": "కార్ట్ ఖాళీగా ఉంది — హోల్డ్ చేయడానికి ఏమీ లేదు.",
+    "frequentlySold": "తరచుగా అమ్ముడైనవి",
+    "mrpLabel": "MRP",
+    "areaCalculator": "వైశాల్యం కాలిక్యులేటర్ (పొడవు × వెడల్పు)",
+    "areaLabel": "వైశాల్యం",
+    "areaFormula": "పొడవు × వెడల్పు = వైశాల్యం",
+    "useAreaSq": "{{area}} చ. ఉపయోగించండి",
+    "rx": {
+      "title": "ప్రిస్క్రిప్షన్ వివరాలు",
+      "description": "ఇది ప్రిస్క్రిప్షన్ మాత్రమే ఉన్న వస్తువు (షెడ్యూల్ H/H1) — దీన్ని విక్రయించడానికి రోగి మరియు వైద్యుని పేరు అవసరం.",
+      "patientName": "రోగి పేరు *",
+      "doctorName": "వైద్యుని పేరు *",
+      "date": "ప్రిస్క్రిప్షన్ తేదీ (ఐచ్ఛికం)",
+      "addToCart": "కార్ట్‌కు జోడించండి",
+      "required": "రోగి పేరు మరియు వైద్యుని పేరు అవసరం."
+    }
   },
   "products": {
     "title": "ఉత్పత్తులు",
@@ -298,6 +334,7 @@
     "unit": "యూనిట్",
     "sellingPrice": "అమ్.ధర",
     "costPrice": "ఖ.ధర",
+    "mrp": "MRP (ఐచ్ఛికం)",
     "taxRate": "పన్ను రేటు (%)",
     "stock": "నిల్వ",
     "lowStockAlert": "తక్కువ నిల్వ హెచ్చరిక",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "రీఆర్డర్ PO లు రూపొందించండి",
+      "title": "రీఆర్డర్ PO లు రూపొందించబడ్డాయి",
+      "nothingToOrder": "ప్రస్తుతం తక్కువ-స్టాక్ ఉత్పత్తులు ఏవీ రీఆర్డర్ అవసరం లేదు.",
+      "created": "డ్రాఫ్ట్ PO లు సృష్టించబడ్డాయి: {{count}}",
+      "skippedNoSupplier": "దాటవేయబడింది (డిఫాల్ట్ సరఫరాదారు లేదు): {{count}}",
+      "skippedOpenPO": "దాటవేయబడింది (ఇప్పటికే తెరిచిన PO లో): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "కొనుగోలు ఆర్డర్లు",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "ప్రిస్క్రిప్షన్ మందుల అమ్మకాలు",
+        "description": "ప్రిస్క్రిప్షన్ మాత్రమే ఉన్న మందుల (షెడ్యూల్ H/H1) అమ్మకాల రిజిస్టర్, రోగి మరియు వైద్యుని పేర్లతో."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "ఈ వ్యవధిలో పత్రాలు జారీ చేయబడలేదు.",
       "jewelleryStock": "ఇంకా లోహం బరువు నమోదు చేసిన ఆభరణాల ఉత్పత్తులు లేవు.",
       "projects": "ఈ కాలంలో ప్రాజెక్టులు లేవు.",
-      "jobCards": "ఈ కాలంలో జాబ్ కార్డులు లేవు."
+      "jobCards": "ఈ కాలంలో జాబ్ కార్డులు లేవు.",
+      "prescriptionDrugSales": "ఈ తేదీ పరిధిలో ప్రిస్క్రిప్షన్ మందుల అమ్మకాలు లేవు."
     },
     "col": {
       "invoiceNo": "బిల్లు #",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "రకం",
+    "subAssembly": "సబ్-అసెంబ్లీ",
+    "searchSubAssembly": "ఉత్పత్తిని వెతకండి (సబ్-అసెంబ్లీ)…",
+    "subAssemblyTag": "(సబ్-అసెంబ్లీ)",
+    "selfReferenceError": "ఒక ఉత్పత్తి దాని స్వంత BOM లో భాగం కాకూడదు.",
+    "lotsUsed": "ఉపయోగించిన లాట్‌లు",
+    "qcCheckpointTag": "(QC తనిఖీ పాయింట్)",
+    "qcNotesLabel": "QC గమనికలు",
+    "qcPass": "పాస్",
+    "qcFail": "ఫెయిల్",
+    "qcResultTitle": "QC ఫలితాన్ని నమోదు చేయండి",
+    "markAsQcStep": "QC తనిఖీ పాయింట్",
+    "scrapQtyLabel": "స్క్రాప్ / తిరస్కరించిన పరిమాణం",
+    "laborCostLabel": "కూలీ ఖర్చు",
+    "batchNumber": "బ్యాచ్ / లాట్ నంబర్",
+    "receiveBatch": "లాట్ స్వీకరించండి",
+    "receiveBatchTitle": "ముడి పదార్థం లాట్ స్వీకరించండి",
+    "batchReceived": "లాట్ స్వీకరించబడింది.",
+    "noBatchesYet": "ఈ మెటీరియల్ కోసం ఇంకా లాట్‌లు స్వీకరించబడలేదు.",
+    "remainingQty": "మిగిలినది"
   },
   "service": {
     "projects": "ప్రాజెక్టులు",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "వాడిన భాగాలు",
+    "addPart": "భాగం జోడించండి",
+    "searchProduct": "ఉత్పత్తిని వెతకండి...",
+    "partsTotal": "భాగాల మొత్తం",
+    "noPartsUsed": "ఇంకా భాగాలు ఏమీ వాడలేదు",
+    "removePart": "భాగాన్ని తొలగించండి",
+    "invalidQuantity": "చెల్లుబాటు అయ్యే పరిమాణాన్ని నమోదు చేయండి.",
+    "couldNotAddPart": "భాగాన్ని జోడించడం సాధ్యం కాలేదు.",
+    "couldNotRemovePart": "భాగాన్ని తొలగించడం సాధ్యం కాలేదు.",
+    "warranty": "వారంటీ",
+    "warrantyDays": "వారంటీ (రోజులు)",
+    "warrantyUntil": "వరకు",
+    "underWarranty": "వారంటీలో ఉంది",
+    "warrantyExpired": "వారంటీ గడువు ముగిసింది",
+    "saveWarranty": "సేవ్ చేయండి",
+    "warrantySaved": "వారంటీ సేవ్ చేయబడింది.",
+    "invalidWarrantyDays": "చెల్లుబాటు అయ్యే వారంటీ రోజుల సంఖ్యను నమోదు చేయండి.",
+    "couldNotSaveWarranty": "వారంటీని సేవ్ చేయడం సాధ్యం కాలేదు.",
+    "warrantyAppliesOnDelivery": "వారంటీ వ్యవధిని డెలివరీ తేదీ నుండి లెక్కిస్తారు.",
+    "warrantyClaimAgainst": "వారంటీ క్లెయిమ్ దీనికి వ్యతిరేకంగా",
+    "notAWarrantyClaim": "వారంటీ క్లెయిమ్ కాదు",
+    "originalUnderWarranty": "అసలు పని ఇప్పటికీ వారంటీలో ఉంది",
+    "originalWarrantyExpired": "అసలు పని వారంటీ గడువు ముగిసింది"
   },
   "setup": {
     "welcome": "సారంగ్‌కు స్వాగతం",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "అర్హత గల సేవలు",
+    "qualifiedServicesHint": "ఈ ఉద్యోగి చేయగల సేవలు. ఏదైనా సేవను అనుమతించడానికి ఖాళీగా ఉంచండి (డిఫాల్ట్).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "విలువ {{symbol}}",
       "itemNotesPlaceholder": "వస్తువు గమనికలు (ఐచ్ఛికం)",
       "deleteConfirm": "రవాణా {{number}} తొలగించాలా? ఈ చర్యను రద్దు చేయలేరు.",
-      "destinationRequired": "గమ్యస్థాన చిరునామా అవసరం."
+      "destinationRequired": "గమ్యస్థాన చిరునామా అవసరం.",
+      "stops": {
+        "title": "స్టాప్‌లు",
+        "addStop": "స్టాప్ జోడించండి",
+        "customerName": "కస్టమర్ పేరు (ఐచ్ఛికం)",
+        "destinationAddress": "గమ్యస్థాన చిరునామా",
+        "notes": "గమనికలు (ఐచ్ఛికం)",
+        "markDelivered": "డెలివరీ అయినట్లు గుర్తించండి",
+        "skip": "దాటవేయి",
+        "delete": "తొలగించు",
+        "empty": "ఇంకా ఎలాంటి అదనపు స్టాప్‌లు జోడించబడలేదు.",
+        "primaryHint": "పైన ఉన్న గమ్యస్థానం ఎల్లప్పుడూ మొదటి స్టాప్ — బహుళ-స్టాప్ మార్గం కోసం క్రింద మరిన్ని జోడించండి.",
+        "saveFirst": "ముందుగా షిప్‌మెంట్‌ను సేవ్ చేయండి, తర్వాత స్టాప్‌లను జోడించండి."
+      }
     },
     "grn": {
       "title": "సరుకు స్వీకరణ నోట్‌లు (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "ఇన్వాయిస్ సృష్టించు",
       "invoicing": "...",
-      "invoiced": "ఇన్వాయిస్ చేయబడింది"
+      "invoiced": "ఇన్వాయిస్ చేయబడింది",
+      "scheduleTrial": "ట్రయల్ షెడ్యూల్ చేయండి",
+      "trial": "ట్రయల్",
+      "trialScheduled": "ట్రయల్ అపాయింట్‌మెంట్ షెడ్యూల్ చేయబడింది",
+      "setFabric": "ఫాబ్రిక్ సెట్ చేయండి",
+      "fabricLinked": "ఫాబ్రిక్ ✓",
+      "clearFabric": "ఫాబ్రిక్ లింక్‌ను క్లియర్ చేయండి (స్టాక్‌ను పునరుద్ధరిస్తుంది)"
     },
     "invoiceBanner": {
       "success": "ఇన్వాయిస్ సృష్టించబడింది (SAC 998821, 5% GST).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "సేవ్ చేయడం విఫలమైంది.",
       "deleteOrderFailed": "ఆర్డర్ తొలగించడం విఫలమైంది.",
       "deleteMeasurementFailed": "కొలత తొలగించడం విఫలమైంది.",
-      "updateStatusFailed": "స్థితిని నవీకరించడం విఫలమైంది."
+      "updateStatusFailed": "స్థితిని నవీకరించడం విఫలమైంది.",
+      "trialDateRequired": "ట్రయల్ తేదీ అవసరం.",
+      "fabricQuantityInvalid": "చెల్లుబాటు అయ్యే పరిమాణాన్ని నమోదు చేయండి."
     },
     "measurements": {
       "selectClient": "కస్టమర్‌ను ఎంచుకోండి",
@@ -2325,6 +2441,20 @@
       "saving": "సేవ్ అవుతోంది...",
       "updateOrder": "ఆర్డర్‌ను నవీకరించండి",
       "createOrder": "ఆర్డర్‌ను సృష్టించండి"
+    },
+    "trial": {
+      "title": "ట్రయల్ / ఫిట్టింగ్ షెడ్యూల్ చేయండి",
+      "hint": "క్లయింట్‌కు ఇతర ఏ అపాయింట్‌మెంట్ లాగానే అదే వాట్సాప్ రిమైండర్‌లు లభిస్తాయి.",
+      "date": "తేదీ",
+      "time": "సమయం",
+      "schedule": "షెడ్యూల్ చేయండి"
+    },
+    "fabric": {
+      "title": "ఫాబ్రిక్ సెట్ చేయండి",
+      "hint": "సెట్ చేసినప్పుడు నిజమైన ఇన్వెంటరీ తగ్గించబడుతుంది.",
+      "searchPlaceholder": "ఇన్వెంటరీలో ఫాబ్రిక్‌ను వెతకండి…",
+      "quantity": "పరిమాణం",
+      "set": "ఫాబ్రిక్ సెట్ చేయండి"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "కస్టమర్",
       "items": "వస్తువులు",
       "item": "వస్తువు",
-      "period": "కాలం"
+      "period": "కాలం",
+      "service": "సేవ"
     },
     "confirmCancel": "ఈ రిజర్వేషన్‌ను రద్దు చేయాలా? దీన్ని రద్దు చేయలేరు.",
     "lateFee": "ఆలస్య రుసుము",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "ప్రస్తుతం ఏమీ చెక్-అవుట్ కాలేదు.",
       "revenue": "ఈ కాలంలో అద్దె ఆదాయం లేదు."
-    }
+    },
+    "serviceIntervalRentals": "సేవా విరామం (అద్దెలు)",
+    "serviceIntervalDays": "సేవా విరామం (రోజులు)",
+    "dueForService": "సర్వీసింగ్ అవసరం",
+    "markServiced": "సర్వీస్ చేయబడినట్లు గుర్తించండి",
+    "lastServiced": "చివరిసారి సర్వీస్ చేయబడింది",
+    "neverServiced": "ఎప్పుడూ లేదు",
+    "addItem": "అంశం జోడించండి",
+    "removeItem": "తొలగించు",
+    "recurringRental": "పునరావృత అద్దె",
+    "repeatEveryDays": "ప్రతి (రోజులు) పునరావృతం చేయండి",
+    "createNextCycle": "తదుపరి చక్రాన్ని సృష్టించండి",
+    "nextCycleCreated": "తదుపరి అద్దె చక్రం సృష్టించబడింది.",
+    "conditionOutLabel": "చెక్-అవుట్ వద్ద పరిస్థితి",
+    "conditionInLabel": "రిటర్న్ వద్ద పరిస్థితి",
+    "itemDamageCharge": "నష్ట రుసుము (ఈ అంశం)",
+    "photos": "ఫోటోలు"
   },
   "jewellery": {
     "metalRates": "లోహ ధరలు",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "{{metalType}} {{purity}} కోసం ధర సెట్ చేయలేదు. ఆభరణాలు → లోహ ధరలలో నేటి ధరను సెట్ చేయండి, తర్వాత ఈ వస్తువును మళ్లీ జోడించండి.",
     "computeErrorDesc": "ఆభరణాల ధరను లెక్కించడం సాధ్యం కాలేదు. దయచేసి ధరను తనిఖీ చేసి ఈ వస్తువును మళ్లీ జోడించండి.",
     "priceNotSetTitle": "ఆభరణాల ధర సెట్ చేయలేదు",
-    "priceNotSetDesc": "{{productName}} కు ఇంకా ధర లేదు — ఆభరణాలు → లోహ ధరలలో నేటి ధరను సెట్ చేయండి, తర్వాత ఈ వస్తువును తీసివేసి మళ్లీ జోడించండి."
+    "priceNotSetDesc": "{{productName}} కు ఇంకా ధర లేదు — ఆభరణాలు → లోహ ధరలలో నేటి ధరను సెట్ చేయండి, తర్వాత ఈ వస్తువును తీసివేసి మళ్లీ జోడించండి.",
+    "makingCharge": "మేకింగ్ చార్జ్",
+    "makingChargeOverrideHint": "ఈ అమ్మకానికి మాత్రమే మేకింగ్ చార్జ్‌ని మార్చండి — ఉత్పత్తి యొక్క సొంత కాన్ఫిగరేషన్ మారదు.",
+    "applyExchange": "పాత లోహ మార్పిడిని వర్తింపజేయండి",
+    "applyExchangeDesc": "అమ్మకం పూర్తయినప్పుడు లింక్ చేయని మార్పిడి క్రెడిట్‌ను ఈ ఇన్‌వాయిస్‌పై స్వయంచాలకంగా తగ్గింపుగా వర్తింపజేస్తుంది.",
+    "exchangeSearchPlaceholder": "మార్పిడి సంఖ్య ద్వారా వెతకండి...",
+    "noUnlinkedExchanges": "ఈ కస్టమర్ కోసం లింక్ చేయని మార్పిడులు కనుగొనబడలేదు.",
+    "exchangeApplied": "మార్పిడి {{number}} — చెక్అవుట్‌లో {{amount}} క్రెడిట్ వర్తింపజేయబడుతుంది.",
+    "removeExchange": "తీసివేయండి"
   },
   "manual": {
     "yourType": "మీది",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "సార్వత్రిక లక్షణాలు",
     "groupAi": "AI సహాయకుడు",
     "groupBusiness": "వ్యాపార రకాలు"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "ఫీల్డ్ ఆర్డర్లు",
+      "subtitle": "ఫీల్డ్‌లో ఉన్న ప్రతినిధులు సమర్పించిన ఆర్డర్లు, నిర్ధారణ కోసం వేచి ఉన్నాయి",
+      "refresh": "రిఫ్రెష్ చేయండి",
+      "linkTitle": "ఫీల్డ్ ఆర్డర్ లింక్",
+      "linkDescription": "ఈ లింక్‌ను (లేదా QR కోడ్‌ను) మీ ఫీల్డ్ ప్రతినిధులతో పంచుకోండి — వారు షాప్ వైఫైలో వారి స్వంత ఫోన్ నుండి ఆర్డర్లను నమోదు చేయవచ్చు.",
+      "showQr": "QR కోడ్ చూపించు",
+      "regenerateLink": "లింక్‌ను తిరిగి సృష్టించండి",
+      "openDirectly": "లేదా నేరుగా తెరవండి:",
+      "copied": "కాపీ చేయబడింది",
+      "linkCopied": "లింక్ క్లిప్‌బోర్డ్‌కు కాపీ చేయబడింది.",
+      "notRunning": "ఫీల్డ్ ఆర్డర్ క్యాప్చర్ ప్రస్తుతం నడవడం లేదు. ప్రతినిధులు వారి స్వంత ఫోన్ నుండి ఆర్డర్లు పంపడానికి సెట్టింగ్‌లలో \"ఫీల్డ్ ఆర్డర్ క్యాప్చర్\"ని ప్రారంభించండి.",
+      "pendingTitle": "పెండింగ్ ఫీల్డ్ ఆర్డర్లు",
+      "loading": "లోడ్ అవుతోంది…",
+      "empty": "నిర్ధారణ కోసం ఎదురుచూస్తున్న ఫీల్డ్ ఆర్డర్లు లేవు.",
+      "noCustomer": "(కస్టమర్ ఎంపిక చేయబడలేదు)",
+      "accept": "ఆమోదించండి",
+      "reject": "తిరస్కరించండి",
+      "acceptTitle": "ఆర్డర్‌ను ఆమోదించండి — {{repName}}",
+      "paymentMethod": "చెల్లింపు పద్ధతి",
+      "acceptHint": "నిర్ధారణ సమయంలో ధరలు మళ్లీ తనిఖీ చేయబడతాయి (ఏదైనా అంగీకరించిన కస్టమర్ ధరతో సహా), మరియు ఇన్‌వాయిస్ సృష్టించబడుతుంది.",
+      "confirmBill": "నిర్ధారించి బిల్ చేయండి",
+      "creating": "సృష్టిస్తోంది…",
+      "cancel": "రద్దు చేయండి",
+      "orderAccepted": "ఆర్డర్ ఆమోదించబడింది",
+      "invoiceCreated": "ఈ ఫీల్డ్ ఆర్డర్ నుండి ఇన్‌వాయిస్ సృష్టించబడింది.",
+      "error": "లోపం",
+      "couldNotLoad": "వస్తున్న ఫీల్డ్ ఆర్డర్లను లోడ్ చేయలేకపోయింది.",
+      "couldNotAccept": "ఆర్డర్‌ను ఆమోదించలేకపోయింది.",
+      "couldNotReject": "ఆర్డర్‌ను తిరస్కరించలేకపోయింది.",
+      "couldNotGenerateQr": "QR కోడ్‌ను సృష్టించలేకపోయింది.",
+      "regenerated": "తిరిగి సృష్టించబడింది",
+      "regeneratedMessage": "కొత్త ఫీల్డ్ ఆర్డర్ లింక్ సృష్టించబడింది.",
+      "couldNotRegenerate": "లింక్‌ను తిరిగి సృష్టించలేకపోయింది.",
+      "regenerateConfirm": "తిరిగి సృష్టించడం వల్ల మీ ప్రతినిధులతో ఇప్పటికే పంచుకున్న ఏదైనా లింక్/QR కోడ్ చెల్లదు — వారికి కొత్తది అవసరం అవుతుంది. కొనసాగించాలా?"
+    },
+    "pricing": {
+      "title": "కస్టమర్ క్లాస్ ధర నిర్ణయం",
+      "subtitle": "ప్రతి కస్టమర్ క్లాస్‌కు (ఉదా. రిటైలర్, హోల్‌సేలర్, VIP) అంగీకరించిన ధరలను సెట్ చేయండి — ఆ క్లాస్‌లోని ఏ కస్టమర్‌కైనా జాబితా ధరను భర్తీ చేస్తుంది.",
+      "addTitle": "ధరను జోడించండి / నవీకరించండి",
+      "searchProduct": "ఉత్పత్తిని శోధించండి…",
+      "classPlaceholder": "కస్టమర్ క్లాస్, ఉదా. రిటైలర్",
+      "pricePlaceholder": "ధర",
+      "save": "ధరను సేవ్ చేయండి",
+      "saving": "సేవ్ చేస్తోంది…",
+      "columnProduct": "ఉత్పత్తి",
+      "columnClass": "క్లాస్",
+      "columnListPrice": "జాబితా ధర",
+      "columnPrice": "ధర",
+      "empty": "ఇంకా ఎలాంటి కస్టమర్-క్లాస్ ధరలు సెట్ చేయబడలేదు.",
+      "loading": "లోడ్ అవుతోంది…",
+      "noProduct": "ఉత్పత్తి లేదు",
+      "noProductMessage": "ముందుగా ఉత్పత్తిని ఎంచుకోండి.",
+      "noClass": "కస్టమర్ క్లాస్ లేదు",
+      "noClassMessage": "కస్టమర్ క్లాస్‌ను నమోదు చేయండి, ఉదా. రిటైలర్.",
+      "invalidPrice": "చెల్లని ధర",
+      "invalidPriceMessage": "చెల్లుబాటు అయ్యే, ఋణాత్మకం కాని ధరను నమోదు చేయండి.",
+      "priceSet": "ధర సెట్ చేయబడింది",
+      "priceSetMessage": "{{productName}} కోసం {{customerClass}} ధర సెట్ చేయబడింది.",
+      "error": "లోపం",
+      "couldNotSave": "ధరను సేవ్ చేయలేకపోయింది.",
+      "couldNotLoad": "ధరల జాబితాను లోడ్ చేయలేకపోయింది.",
+      "removed": "తీసివేయబడింది",
+      "removedMessage": "ధర తీసివేయబడింది.",
+      "couldNotRemove": "ధరను తీసివేయలేకపోయింది."
+    }
   }
 }

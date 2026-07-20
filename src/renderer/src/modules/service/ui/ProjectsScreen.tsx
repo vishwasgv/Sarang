@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, Plus, RefreshCw, ChevronRight, CheckCircle2, CircleDashed, PauseCircle, XCircle } from 'lucide-react'
+import { Briefcase, Plus, RefreshCw, ChevronRight, CheckCircle2, CircleDashed, PauseCircle, XCircle, Receipt } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -19,7 +19,7 @@ interface Project {
   status: string; priority: string; customerId: string | null; customerName: string | null
   assignedToId: string | null; assignedToName: string | null
   estimatedHours: number; estimatedAmount: number; dueDate: string | null
-  totalTasks: number; doneTasks: number; totalLoggedHours: number; createdAt: string
+  totalTasks: number; doneTasks: number; totalLoggedHours: number; invoiceId: string | null; createdAt: string
 }
 
 const STATUS_TABS = ['ALL', 'OPEN', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED']
@@ -58,6 +58,7 @@ export function ProjectsScreen() {
   const [editStatus, setEditStatus] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -138,6 +139,20 @@ export function ProjectsScreen() {
       setProjects(prev => prev.filter(p => p.id !== projectId))
     } else {
       toastError((res.error as any)?.message ?? 'Could not delete project')
+    }
+  }
+
+  async function handleGenerateInvoice(projectId: string) {
+    setGeneratingInvoice(true)
+    const res = await api.projects.generateInvoice({ id: projectId })
+    setGeneratingInvoice(false)
+    if (res.success) {
+      const data = res.data as { invoiceId: string }
+      toastSuccess('Invoice generated')
+      setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, invoiceId: data.invoiceId } : p))
+    } else {
+      toastError((res.error as any)?.message ?? 'Could not generate invoice')
     }
   }
 
@@ -378,7 +393,19 @@ export function ProjectsScreen() {
                 {t('service.openProjectDetail')}
               </button>
             </div>
-            <div className="px-6 pb-6">
+            <div className="px-6 pb-6 space-y-2">
+              {detail.customerId && (
+                detail.invoiceId ? (
+                  <span className="w-full h-11 rounded-xl bg-success/10 text-success text-sm font-semibold flex items-center justify-center gap-2">
+                    <Receipt size={14} /> Invoice Generated
+                  </span>
+                ) : (
+                  <button onClick={() => handleGenerateInvoice(detail.id)} disabled={generatingInvoice || detail.estimatedAmount <= 0}
+                    className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    <Receipt size={14} /> {generatingInvoice ? 'Generating...' : 'Generate Invoice'}
+                  </button>
+                )
+              )}
               <button onClick={() => setConfirmDelete(true)}
                 className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                 {t('service.deleteProject')}

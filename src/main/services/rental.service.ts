@@ -74,17 +74,47 @@ export interface RentalUnitRecord {
   conditionNotes: string | null
   purchaseDate: string | null
   unitCost: number
+  serviceIntervalRentals: number | null
+  serviceIntervalDays: number | null
+  rentalCountSinceService: number
+  lastServicedAt: string | null
+  dueForService: boolean
   createdAt: string
   updatedAt: string
 }
 
-function serializeUnit(u: { id: string; productId: string; unitLabel: string; status: string; conditionNotes: string | null; purchaseDate: Date | null; unitCost: number; createdAt: Date; updatedAt: Date; product: { productName: string } }): RentalUnitRecord {
+type UnitRow = {
+  id: string; productId: string; unitLabel: string; status: string; conditionNotes: string | null
+  purchaseDate: Date | null; unitCost: number
+  serviceIntervalRentals: number | null; serviceIntervalDays: number | null
+  rentalCountSinceService: number; lastServicedAt: Date | null
+  createdAt: Date; updatedAt: Date; product: { productName: string }
+}
+
+function serializeUnit(u: UnitRow): RentalUnitRecord {
   return {
     id: u.id, productId: u.productId, productName: u.product.productName, unitLabel: u.unitLabel,
     status: u.status as RentalUnitRecord['status'], conditionNotes: u.conditionNotes,
     purchaseDate: u.purchaseDate ? u.purchaseDate.toISOString() : null, unitCost: u.unitCost,
+    serviceIntervalRentals: u.serviceIntervalRentals, serviceIntervalDays: u.serviceIntervalDays,
+    rentalCountSinceService: u.rentalCountSinceService,
+    lastServicedAt: u.lastServicedAt ? u.lastServicedAt.toISOString() : null,
+    dueForService: isUnitDueForService(u),
     createdAt: u.createdAt.toISOString(), updatedAt: u.updatedAt.toISOString(),
   }
+}
+
+// Whether this unit has crossed either configured maintenance threshold —
+// shared by returnBooking() (which acts on it) and the UI (which just
+// displays it), so the two can never disagree about what "due" means.
+function isUnitDueForService(u: { serviceIntervalRentals: number | null; serviceIntervalDays: number | null; rentalCountSinceService: number; lastServicedAt: Date | null; createdAt: Date }): boolean {
+  if (u.serviceIntervalRentals != null && u.rentalCountSinceService >= u.serviceIntervalRentals) return true
+  if (u.serviceIntervalDays != null) {
+    const since = u.lastServicedAt ?? u.createdAt
+    const daysSince = (Date.now() - since.getTime()) / (24 * 3_600_000)
+    if (daysSince >= u.serviceIntervalDays) return true
+  }
+  return false
 }
 
 export async function listRentalUnits(filters?: { productId?: string; status?: string }): Promise<{ success: boolean; data?: { units: RentalUnitRecord[] }; error?: { code: string; message: string } }> {
@@ -101,9 +131,11 @@ export async function listRentalUnits(filters?: { productId?: string; status?: s
   }
 }
 
-export async function createRentalUnit(payload: { productId: string; unitLabel: string; conditionNotes?: string; purchaseDate?: string; unitCost?: number }): Promise<{ success: boolean; data?: RentalUnitRecord; error?: { code: string; message: string } }> {
+export async function createRentalUnit(payload: { productId: string; unitLabel: string; conditionNotes?: string; purchaseDate?: string; unitCost?: number; serviceIntervalRentals?: number; serviceIntervalDays?: number }): Promise<{ success: boolean; data?: RentalUnitRecord; error?: { code: string; message: string } }> {
   try {
     if (!payload.unitLabel?.trim()) return { success: false, error: { code: 'RENT-028', message: 'Unit label is required.' } }
+    if (payload.serviceIntervalRentals !== undefined && payload.serviceIntervalRentals <= 0) return { success: false, error: { code: 'RENT-036', message: 'Service interval (rentals) must be greater than zero.' } }
+    if (payload.serviceIntervalDays !== undefined && payload.serviceIntervalDays <= 0) return { success: false, error: { code: 'RENT-036', message: 'Service interval (days) must be greater than zero.' } }
     const db = getPrisma()
     const product = await db.product.findUnique({ where: { id: payload.productId } })
     if (!product || !product.isRentable) return { success: false, error: { code: 'RENT-001', message: 'Product not found or not marked as rentable.' } }
@@ -115,6 +147,8 @@ export async function createRentalUnit(payload: { productId: string; unitLabel: 
         conditionNotes: payload.conditionNotes?.trim() || null,
         purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : null,
         unitCost: payload.unitCost ?? 0,
+        serviceIntervalRentals: payload.serviceIntervalRentals ?? null,
+        serviceIntervalDays: payload.serviceIntervalDays ?? null,
       },
       include: { product: { select: { productName: true } } },
     })
@@ -125,7 +159,7 @@ export async function createRentalUnit(payload: { productId: string; unitLabel: 
   }
 }
 
-export async function updateRentalUnit(payload: { id: string; unitLabel?: string; status?: 'AVAILABLE' | 'MAINTENANCE' | 'RETIRED'; conditionNotes?: string }): Promise<{ success: boolean; data?: RentalUnitRecord; error?: { code: string; message: string } }> {
+export async function updateRentalUnit(payload: { id: string; unitLabel?: string; status?: 'AVAILABLE' | 'MAINTENANCE' | 'RETIRED'; conditionNotes?: string; serviceIntervalRentals?: number | null; serviceIntervalDays?: number | null }): Promise<{ success: boolean; data?: RentalUnitRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
     const existing = await db.rentalUnit.findUnique({ where: { id: payload.id } })
@@ -133,12 +167,16 @@ export async function updateRentalUnit(payload: { id: string; unitLabel?: string
     if (existing.status === 'RENTED' && payload.status && payload.status !== 'AVAILABLE') {
       return { success: false, error: { code: 'RENT-032', message: 'Cannot change the status of a unit that is currently rented out — it will return to Available automatically when its booking is returned.' } }
     }
+    if (payload.serviceIntervalRentals != null && payload.serviceIntervalRentals <= 0) return { success: false, error: { code: 'RENT-036', message: 'Service interval (rentals) must be greater than zero.' } }
+    if (payload.serviceIntervalDays != null && payload.serviceIntervalDays <= 0) return { success: false, error: { code: 'RENT-036', message: 'Service interval (days) must be greater than zero.' } }
     const unit = await db.rentalUnit.update({
       where: { id: payload.id },
       data: {
         unitLabel: payload.unitLabel?.trim() || undefined,
         status: existing.status === 'RENTED' ? undefined : payload.status,
         conditionNotes: payload.conditionNotes !== undefined ? (payload.conditionNotes.trim() || null) : undefined,
+        serviceIntervalRentals: payload.serviceIntervalRentals,
+        serviceIntervalDays: payload.serviceIntervalDays,
       },
       include: { product: { select: { productName: true } } },
     })
@@ -146,6 +184,32 @@ export async function updateRentalUnit(payload: { id: string; unitLabel?: string
     return { success: true, data: serializeUnit(unit) }
   } catch (e) {
     return { success: false, error: { code: 'RENT-033', message: e instanceof Error ? e.message : 'Could not update rental unit.' } }
+  }
+}
+
+// Clears the maintenance trigger — resets the counters, and if the unit was
+// sitting in MAINTENANCE specifically because it was due (not because a
+// staff member manually parked it there for an unrelated reason — but this
+// codebase doesn't distinguish those, matching how "Mark Serviced" already
+// reads as an unconditional "back in service" action to a real front desk),
+// restores it to AVAILABLE.
+export async function markUnitServiced(id: string, userId?: string): Promise<{ success: boolean; data?: RentalUnitRecord; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const existing = await db.rentalUnit.findUnique({ where: { id } })
+    if (!existing) return { success: false, error: { code: 'RENT-031', message: 'Rental unit not found.' } }
+    const unit = await db.rentalUnit.update({
+      where: { id },
+      data: {
+        rentalCountSinceService: 0, lastServicedAt: new Date(),
+        status: existing.status === 'MAINTENANCE' ? 'AVAILABLE' : undefined,
+      },
+      include: { product: { select: { productName: true } } },
+    })
+    await logAction({ userId, action: 'RENTAL_UNIT_SERVICED', entityType: 'RentalUnit', entityId: id })
+    return { success: true, data: serializeUnit(unit) }
+  } catch (e) {
+    return { success: false, error: { code: 'RENT-037', message: e instanceof Error ? e.message : 'Could not mark unit serviced.' } }
   }
 }
 
@@ -266,6 +330,7 @@ export interface RentalBookingItemRecord {
   lineTotal: number
   conditionOut: string | null
   conditionIn: string | null
+  damageChargeAmount: number
 }
 
 export interface RentalBookingRecord {
@@ -288,6 +353,9 @@ export interface RentalBookingRecord {
   cancelledAt: string | null
   invoiceId: string | null
   notes: string | null
+  recurrenceIntervalDays: number | null
+  parentBookingId: string | null
+  nextCycleGenerated: boolean
   items: RentalBookingItemRecord[]
   createdAt: string
   updatedAt: string
@@ -301,12 +369,13 @@ type BookingRow = {
   checkoutNotes: string | null; returnNotes: string | null
   checkedOutAt: Date | null; returnedAt: Date | null; cancelledAt: Date | null
   invoiceId: string | null; notes: string | null
+  recurrenceIntervalDays: number | null; parentBookingId: string | null; nextCycleGenerated: boolean
   createdAt: Date; updatedAt: Date
   customer: { customerName: string }
   items: Array<{
     id: string; productId: string; rentalUnitId: string | null; quantity: number
     rateBasis: string; rateAmount: number; lineTotal: number
-    conditionOut: string | null; conditionIn: string | null
+    conditionOut: string | null; conditionIn: string | null; damageChargeAmount: number
     product: { productName: string }
     rentalUnit: { unitLabel: string } | null
   }>
@@ -335,6 +404,9 @@ function serializeBooking(b: BookingRow): RentalBookingRecord {
     cancelledAt: b.cancelledAt ? b.cancelledAt.toISOString() : null,
     invoiceId: b.invoiceId,
     notes: b.notes,
+    recurrenceIntervalDays: b.recurrenceIntervalDays,
+    parentBookingId: b.parentBookingId,
+    nextCycleGenerated: b.nextCycleGenerated,
     items: b.items.map((i) => ({
       id: i.id,
       productId: i.productId,
@@ -347,6 +419,7 @@ function serializeBooking(b: BookingRow): RentalBookingRecord {
       lineTotal: i.lineTotal,
       conditionOut: i.conditionOut,
       conditionIn: i.conditionIn,
+      damageChargeAmount: i.damageChargeAmount,
     })),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
@@ -390,6 +463,8 @@ export async function createBooking(payload: {
   securityDepositCollected?: number
   notes?: string
   createdById?: string
+  recurrenceIntervalDays?: number
+  parentBookingId?: string
   items: Array<{ productId: string; rateBasis: RateBasis; quantity?: number }>
 }): Promise<{ success: boolean; data?: RentalBookingRecord; error?: { code: string; message: string } }> {
   try {
@@ -398,6 +473,7 @@ export async function createBooking(payload: {
     const end = new Date(payload.endDateTime)
     if (end <= start) return { success: false, error: { code: 'RENT-002', message: 'End date/time must be after start date/time.' } }
     if (!payload.items || payload.items.length === 0) return { success: false, error: { code: 'RENT-007', message: 'At least one item is required.' } }
+    if (payload.recurrenceIntervalDays !== undefined && payload.recurrenceIntervalDays <= 0) return { success: false, error: { code: 'RENT-038', message: 'Recurrence interval must be greater than zero days.' } }
 
     const result = await db.$transaction(async (tx): Promise<
       | { ok: true; bookingId: string }
@@ -420,6 +496,8 @@ export async function createBooking(payload: {
           securityDepositCollected: payload.securityDepositCollected ?? 0,
           notes: payload.notes?.trim() || null,
           createdById: payload.createdById ?? null,
+          recurrenceIntervalDays: payload.recurrenceIntervalDays ?? null,
+          parentBookingId: payload.parentBookingId ?? null,
         },
       })
 
@@ -481,7 +559,7 @@ export async function createBooking(payload: {
   }
 }
 
-export async function checkoutBooking(payload: { id: string; checkoutNotes?: string; userId?: string }): Promise<{ success: boolean; data?: RentalBookingRecord; error?: { code: string; message: string } }> {
+export async function checkoutBooking(payload: { id: string; checkoutNotes?: string; itemConditions?: Array<{ itemId: string; conditionOut: string }>; userId?: string }): Promise<{ success: boolean; data?: RentalBookingRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
     const booking = await db.rentalBooking.findUnique({ where: { id: payload.id }, include: { items: true } })
@@ -492,6 +570,9 @@ export async function checkoutBooking(payload: { id: string; checkoutNotes?: str
 
     await db.$transaction(async (tx) => {
       await tx.rentalBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_OUT', checkedOutAt: new Date(), checkoutNotes: payload.checkoutNotes?.trim() || null } })
+      for (const c of payload.itemConditions ?? []) {
+        await tx.rentalBookingItem.update({ where: { id: c.itemId }, data: { conditionOut: c.conditionOut } })
+      }
       const unitIds = booking.items.map((i) => i.rentalUnitId).filter((id): id is string => !!id)
       if (unitIds.length > 0) {
         await tx.rentalUnit.updateMany({ where: { id: { in: unitIds } }, data: { status: 'RENTED' } })
@@ -510,7 +591,7 @@ export async function returnBooking(payload: {
   returnNotes?: string
   damageChargeAmount?: number
   securityDepositRefunded?: number
-  itemConditions?: Array<{ itemId: string; conditionIn: string }>
+  itemConditions?: Array<{ itemId: string; conditionIn?: string; damageChargeAmount?: number }>
   userId?: string
 }): Promise<{ success: boolean; data?: RentalBookingRecord; error?: { code: string; message: string } }> {
   try {
@@ -521,7 +602,19 @@ export async function returnBooking(payload: {
       return { success: false, error: { code: 'RENT-014', message: `Cannot return a booking with status ${booking.status}. Only a CHECKED_OUT booking can be returned.` } }
     }
 
-    const damageCharge = payload.damageChargeAmount ?? 0
+    for (const c of payload.itemConditions ?? []) {
+      if (c.damageChargeAmount !== undefined && c.damageChargeAmount < 0) {
+        return { success: false, error: { code: 'RENT-015', message: 'Damage charge cannot be negative.' } }
+      }
+    }
+    // Item-level damage (itemized per unit, item 4) takes over as the
+    // source of truth for the booking-level aggregate the moment any item
+    // has one set — otherwise fall back to the pre-existing single
+    // whole-booking damageChargeAmount field for a BULK item (no single
+    // physical unit to attribute it to) or a plain manual entry.
+    const itemDamageTotal = (payload.itemConditions ?? []).reduce((s, c) => s + (c.damageChargeAmount ?? 0), 0)
+    const usingItemizedDamage = (payload.itemConditions ?? []).some((c) => c.damageChargeAmount !== undefined && c.damageChargeAmount > 0)
+    const damageCharge = usingItemizedDamage ? roundCurrency(itemDamageTotal) : (payload.damageChargeAmount ?? 0)
     if (damageCharge < 0) return { success: false, error: { code: 'RENT-015', message: 'Damage charge cannot be negative.' } }
 
     const depositRefunded = payload.securityDepositRefunded ?? Math.max(0, booking.securityDepositCollected - damageCharge)
@@ -556,11 +649,24 @@ export async function returnBooking(payload: {
         },
       })
       for (const c of payload.itemConditions ?? []) {
-        await tx.rentalBookingItem.update({ where: { id: c.itemId }, data: { conditionIn: c.conditionIn } })
+        await tx.rentalBookingItem.update({
+          where: { id: c.itemId },
+          data: { conditionIn: c.conditionIn, damageChargeAmount: c.damageChargeAmount ?? undefined },
+        })
       }
+
+      // Each involved unit's rental count goes up by one on every return —
+      // then, independently per unit, a due-for-service unit is routed to
+      // MAINTENANCE instead of AVAILABLE, blocking re-rental until a real
+      // "Mark Serviced" action clears it (see markUnitServiced).
       const unitIds = booking.items.map((i) => i.rentalUnitId).filter((id): id is string => !!id)
-      if (unitIds.length > 0) {
-        await tx.rentalUnit.updateMany({ where: { id: { in: unitIds } }, data: { status: 'AVAILABLE' } })
+      for (const unitId of unitIds) {
+        const unit = await tx.rentalUnit.update({
+          where: { id: unitId },
+          data: { rentalCountSinceService: { increment: 1 } },
+        })
+        const dueNow = isUnitDueForService(unit)
+        await tx.rentalUnit.update({ where: { id: unitId }, data: { status: dueNow ? 'MAINTENANCE' : 'AVAILABLE' } })
       }
     })
 
@@ -643,6 +749,70 @@ export async function cancelBooking(payload: { id: string; reason?: string; user
   }
 }
 
+// A staff-triggered "Create Next Cycle" action, not a background scheduler —
+// matches this codebase's established recurrence pattern (e.g.
+// ServiceRetainerAgreement/PestServiceContract's lastInvoicedPeriod claim
+// key) since no cron/timer infra for business logic exists anywhere here.
+// nextCycleGenerated is the atomic claim, same reasoning generateRentalInvoice's
+// invoiceId sentinel already documents: two clicks moments apart must not
+// both succeed.
+export async function createNextRentalCycle(bookingId: string, userId?: string): Promise<{ success: boolean; data?: RentalBookingRecord; error?: { code: string; message: string } }> {
+  const db = getPrisma()
+  try {
+    const claim = await db.rentalBooking.updateMany({ where: { id: bookingId, nextCycleGenerated: false }, data: { nextCycleGenerated: true } })
+    if (claim.count === 0) {
+      return { success: false, error: { code: 'RENT-039', message: 'The next cycle has already been created for this booking.' } }
+    }
+
+    try {
+      const booking = await db.rentalBooking.findUnique({ where: { id: bookingId }, include: { items: true } })
+      if (!booking) {
+        await db.rentalBooking.update({ where: { id: bookingId }, data: { nextCycleGenerated: false } })
+        return { success: false, error: { code: 'RENT-005', message: 'Booking not found.' } }
+      }
+      if (!booking.recurrenceIntervalDays) {
+        await db.rentalBooking.update({ where: { id: bookingId }, data: { nextCycleGenerated: false } })
+        return { success: false, error: { code: 'RENT-040', message: 'This booking is not set up as a recurring rental.' } }
+      }
+      if (booking.status !== 'CHECKED_OUT' && booking.status !== 'RETURNED') {
+        await db.rentalBooking.update({ where: { id: bookingId }, data: { nextCycleGenerated: false } })
+        return { success: false, error: { code: 'RENT-041', message: 'Create the next cycle once this booking has been checked out or returned.' } }
+      }
+
+      // The new cycle starts exactly where this one ends and runs the same
+      // duration — a weekly standing rental stays weekly even if this
+      // particular cycle was extended, since the interval is the contract,
+      // not a re-derivation of "how long did the LAST cycle actually run".
+      const durationMs = booking.endDateTime.getTime() - booking.startDateTime.getTime()
+      const newStart = new Date(booking.endDateTime.getTime())
+      const newEnd = new Date(newStart.getTime() + durationMs)
+
+      const result = await createBooking({
+        customerId: booking.customerId,
+        startDateTime: newStart.toISOString(),
+        endDateTime: newEnd.toISOString(),
+        securityDepositCollected: booking.securityDepositCollected,
+        notes: booking.notes ?? undefined,
+        createdById: userId,
+        recurrenceIntervalDays: booking.recurrenceIntervalDays,
+        parentBookingId: booking.id,
+        items: booking.items.map((i) => ({ productId: i.productId, rateBasis: i.rateBasis as RateBasis, quantity: i.quantity })),
+      })
+      if (!result.success) {
+        await db.rentalBooking.update({ where: { id: bookingId }, data: { nextCycleGenerated: false } })
+        return result
+      }
+      await logAction({ userId, action: 'RENTAL_NEXT_CYCLE_CREATED', entityType: 'RentalBooking', entityId: bookingId, newValue: { nextBookingId: result.data?.id } })
+      return result
+    } catch (err) {
+      await db.rentalBooking.update({ where: { id: bookingId }, data: { nextCycleGenerated: false } }).catch(() => {})
+      throw err
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'RENT-042', message: e instanceof Error ? e.message : 'Could not create next rental cycle.' } }
+  }
+}
+
 // ─── Invoicing ───────────────────────────────────────────────────────────────
 
 const RENTAL_LATE_FEE_PRODUCT_NAME = 'Rental Late Fee'
@@ -692,7 +862,7 @@ export async function generateRentalInvoice(bookingId: string): Promise<{ succes
     }
 
     try {
-      const booking = await db.rentalBooking.findUnique({ where: { id: bookingId }, include: { items: { include: { product: true } } } })
+      const booking = await db.rentalBooking.findUnique({ where: { id: bookingId }, include: { items: { include: { product: true, rentalUnit: true } } } })
       if (!booking) {
         await db.rentalBooking.update({ where: { id: bookingId }, data: { invoiceId: null } })
         return { success: false, error: { code: 'RENT-005', message: 'Booking not found.' } }
@@ -708,7 +878,20 @@ export async function generateRentalInvoice(bookingId: string): Promise<{ succes
         const lateFeeProduct = await findOrCreatePlaceholderProduct(RENTAL_LATE_FEE_PRODUCT_NAME)
         invoiceItems.push({ productId: lateFeeProduct.id, quantity: 1, unitPrice: booking.lateFeeAmount, taxRate: 0 })
       }
-      if (booking.damageChargeAmount > 0) {
+      // Itemized per unit when any line has its own damage charge (a
+      // multi-unit booking where only one unit came back damaged should
+      // never bill it as one anonymous lump sum against the whole booking)
+      // — falls back to the single legacy aggregate line otherwise, for a
+      // BULK item (no single unit to attribute damage to) or a booking
+      // returned before this field existed.
+      const itemsWithDamage = booking.items.filter((i) => i.damageChargeAmount > 0)
+      if (itemsWithDamage.length > 0) {
+        for (const item of itemsWithDamage) {
+          const label = item.rentalUnit ? `${RENTAL_DAMAGE_CHARGE_PRODUCT_NAME} — ${item.product.productName} (${item.rentalUnit.unitLabel})` : `${RENTAL_DAMAGE_CHARGE_PRODUCT_NAME} — ${item.product.productName}`
+          const damageProduct = await findOrCreatePlaceholderProduct(label)
+          invoiceItems.push({ productId: damageProduct.id, quantity: 1, unitPrice: item.damageChargeAmount, taxRate: 0 })
+        }
+      } else if (booking.damageChargeAmount > 0) {
         const damageProduct = await findOrCreatePlaceholderProduct(RENTAL_DAMAGE_CHARGE_PRODUCT_NAME)
         invoiceItems.push({ productId: damageProduct.id, quantity: 1, unitPrice: booking.damageChargeAmount, taxRate: 0 })
       }
@@ -771,8 +954,10 @@ export const rentalService = {
   extendBooking,
   cancelBooking,
   generateRentalInvoice,
+  createNextRentalCycle,
   listRentalUnits,
   createRentalUnit,
   updateRentalUnit,
   deleteRentalUnit,
+  markUnitServiced,
 }

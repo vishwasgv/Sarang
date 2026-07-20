@@ -32,6 +32,26 @@ export type DocumentEntityType =
   // attachment system built for other entity types.
   | 'DRAWING_REVISION'
   | 'SITE_VISIT'
+  // Phase 58 §1 (2026-07-17) — extends the same generic attachment system to
+  // the remaining entities that had zero way to attach a real file (agreement
+  // PDF, filing acknowledgement, X-ray/scan image, etc.) despite the app
+  // already having this infrastructure built and proven on 8 other types.
+  | 'LEGAL_CASE'
+  | 'COMPLIANCE_TASK'
+  | 'ENGAGEMENT'
+  | 'ROC_FILING'
+  | 'BOARD_MEETING'
+  | 'VISIT_NOTE'
+  | 'TREATMENT_PLAN'
+  | 'LAB_TEST_ORDER'
+  // Phase 58 §2 (2026-07-17) — condition-out/condition-in photo evidence on a
+  // rental line item. Keyed to RentalBookingItem.id (not RentalBooking.id) so
+  // a multi-unit booking's photos attribute correctly to the specific unit.
+  | 'RENTAL_BOOKING_ITEM'
+  // Phase 58 §2 — Beauty Salon before/after photo attachment per appointment.
+  | 'APPOINTMENT'
+  // Phase 58 §2 — Placement Agency resume/CV attachment.
+  | 'CANDIDATE'
 
 function getDocDir(): string {
   return join(app.getPath('userData'), 'documents')

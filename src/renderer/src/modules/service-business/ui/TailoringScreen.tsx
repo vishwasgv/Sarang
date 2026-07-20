@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, X, Scissors, Ruler, Receipt, FileText, Search } from 'lucide-react'
+import { Plus, Pencil, X, Scissors, Ruler, Receipt, FileText, Search, CalendarClock, Shirt } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -63,11 +63,15 @@ interface TailoringOrder {
   invoiceId?: string | null
   specialInstructions?: string | null
   notes?: string | null
+  trialAppointmentId?: string | null
+  fabricProductId?: string | null
+  fabricQuantity?: number | null
   createdAt: string
 }
 
 interface Customer { id: string; customerName: string; phone: string | null }
 interface Employee { id: string; fullName: string }
+interface FabricProduct { id: string; productName: string; sellingPrice: number; inventory?: { quantity: number } | null }
 
 const GARMENT_TYPES = ['SHIRT', 'PANT', 'SUIT', 'KURTA', 'SALWAR_KAMEEZ', 'BLOUSE', 'LEHENGA', 'SAREE_BLOUSE', 'JACKET', 'OTHER']
 const STATUS_STEPS = ['RECEIVED', 'IN_CUTTING', 'IN_STITCHING', 'TRIAL_SCHEDULED', 'ALTERATIONS', 'READY', 'DELIVERED']
@@ -154,6 +158,88 @@ export default function TailoringScreen() {
   const [deletingOrder, setDeletingOrder] = useState(false)
   const [deleteMeasId, setDeleteMeasId] = useState<string | null>(null)
   const [deletingMeas, setDeletingMeas] = useState(false)
+
+  // Trial appointment (Phase 58 §2)
+  const [trialOrderId, setTrialOrderId] = useState<string | null>(null)
+  const [trialForm, setTrialForm] = useState({ scheduledDate: '', scheduledTime: '10:00', providerId: '' })
+  const [trialSaving, setTrialSaving] = useState(false)
+  const [trialError, setTrialError] = useState('')
+
+  // Fabric-stock deduction (Phase 58 §2)
+  const [fabricOrderId, setFabricOrderId] = useState<string | null>(null)
+  const [fabricSearch, setFabricSearch] = useState('')
+  const [fabricResults, setFabricResults] = useState<FabricProduct[]>([])
+  const [pickedFabric, setPickedFabric] = useState<FabricProduct | null>(null)
+  const [fabricQty, setFabricQty] = useState('1')
+  const [fabricSaving, setFabricSaving] = useState(false)
+  const [fabricError, setFabricError] = useState('')
+
+  useEffect(() => {
+    if (!fabricSearch.trim()) { setFabricResults([]); return }
+    const timer = setTimeout(async () => {
+      const res = await api.products.search(fabricSearch.trim())
+      if (res.success && res.data) setFabricResults(res.data as FabricProduct[])
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [fabricSearch])
+
+  function openTrialModal(orderId: string) {
+    setTrialOrderId(orderId)
+    setTrialForm({ scheduledDate: '', scheduledTime: '10:00', providerId: '' })
+    setTrialError('')
+  }
+
+  async function handleScheduleTrial() {
+    if (!trialOrderId) return
+    if (!trialForm.scheduledDate) { setTrialError(t('tailoring.errors.trialDateRequired')); return }
+    setTrialSaving(true)
+    setTrialError('')
+    const res = await api.tailoringOrder.scheduleTrialAppointment({
+      orderId: trialOrderId,
+      scheduledDate: trialForm.scheduledDate,
+      scheduledTime: trialForm.scheduledTime,
+      providerId: trialForm.providerId || undefined,
+    })
+    setTrialSaving(false)
+    if (res.success) {
+      setTrialOrderId(null)
+      await loadOrders(statusFilter || undefined, search || undefined)
+    } else {
+      setTrialError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    }
+  }
+
+  function openFabricModal(orderId: string) {
+    setFabricOrderId(orderId)
+    setFabricSearch('')
+    setFabricResults([])
+    setPickedFabric(null)
+    setFabricQty('1')
+    setFabricError('')
+  }
+
+  async function handleSetFabric() {
+    if (!fabricOrderId || !pickedFabric) return
+    const qty = parseFloat(fabricQty)
+    if (!qty || qty <= 0) { setFabricError(t('tailoring.errors.fabricQuantityInvalid')); return }
+    setFabricSaving(true)
+    setFabricError('')
+    const res = await api.tailoringOrder.setFabric({ orderId: fabricOrderId, fabricProductId: pickedFabric.id, fabricQuantity: qty })
+    setFabricSaving(false)
+    if (res.success) {
+      setFabricOrderId(null)
+      await loadOrders(statusFilter || undefined, search || undefined)
+    } else {
+      setFabricError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    }
+  }
+
+  async function handleClearFabric(orderId: string) {
+    setActionError(null)
+    const res = await api.tailoringOrder.clearFabric(orderId)
+    if (res.success) await loadOrders(statusFilter || undefined, search || undefined)
+    else setActionError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+  }
 
   const statusLabel = (s: string) => t(`tailoring.status.${s}`, STATUS_LABELS_FALLBACK[s] ?? s)
   const garmentLabel = (g: string) => t(`tailoring.garmentTypes.${g}`, g.replace(/_/g, ' '))
@@ -523,6 +609,28 @@ export default function TailoringScreen() {
                                   </button>
                                 )}
                                 {order.invoiceId && <span className="text-xs px-2 py-1 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 flex items-center gap-1"><FileText size={10} /> {t('tailoring.actions.invoiced')}</span>}
+                                {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                                  order.trialAppointmentId ? (
+                                    <span title={t('tailoring.actions.trialScheduled')} className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                                      <CalendarClock size={10} /> {t('tailoring.actions.trial')}
+                                    </span>
+                                  ) : (
+                                    <button onClick={() => openTrialModal(order.id)} className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 flex items-center gap-1">
+                                      <CalendarClock size={10} /> {t('tailoring.actions.scheduleTrial')}
+                                    </button>
+                                  )
+                                )}
+                                {order.fabricSupplied === 'SHOP' && (
+                                  order.fabricProductId ? (
+                                    <button onClick={() => handleClearFabric(order.id)} title={t('tailoring.actions.clearFabric')} className="text-xs px-2 py-1 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1">
+                                      <Shirt size={10} /> {t('tailoring.actions.fabricLinked')}
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => openFabricModal(order.id)} className="text-xs px-2 py-1 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1">
+                                      <Shirt size={10} /> {t('tailoring.actions.setFabric')}
+                                    </button>
+                                  )
+                                )}
                                 <button onClick={() => openEditOrder(order)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={13} /></button>
                                 <button onClick={() => setDeleteOrderId(order.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500"><X size={13} /></button>
                               </div>
@@ -733,6 +841,84 @@ export default function TailoringScreen() {
               <button onClick={() => setShowMeasForm(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800">{t('tailoring.form.cancel')}</button>
               <button onClick={handleSaveMeas} disabled={measSaving} className="px-5 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg disabled:opacity-50">
                 {measSaving ? t('tailoring.form.saving') : editMeas ? t('tailoring.measurements.update') : t('tailoring.measurements.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Trial Appointment modal (Phase 58 §2) */}
+      {trialOrderId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">{t('tailoring.trial.title')}</h2>
+              <button onClick={() => setTrialOrderId(null)} className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              {trialError && <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2">{trialError}</div>}
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('tailoring.trial.hint')}</p>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">{t('tailoring.trial.date')}</label>
+                <input type="date" value={trialForm.scheduledDate} onChange={e => setTrialForm(f => ({ ...f, scheduledDate: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">{t('tailoring.trial.time')}</label>
+                <input type="time" value={trialForm.scheduledTime} onChange={e => setTrialForm(f => ({ ...f, scheduledTime: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+              <Select label={t('tailoring.form.assignedTailor')} value={trialForm.providerId} onChange={e => setTrialForm(f => ({ ...f, providerId: e.target.value }))}>
+                <option value="">{t('tailoring.form.unassigned')}</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+              </Select>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 dark:border-slate-700">
+              <button onClick={() => setTrialOrderId(null)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800">{t('tailoring.form.cancel')}</button>
+              <button onClick={handleScheduleTrial} disabled={trialSaving} className="px-5 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg disabled:opacity-50">
+                {trialSaving ? t('tailoring.form.saving') : t('tailoring.trial.schedule')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Fabric modal (Phase 58 §2) */}
+      {fabricOrderId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">{t('tailoring.fabric.title')}</h2>
+              <button onClick={() => setFabricOrderId(null)} className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              {fabricError && <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2">{fabricError}</div>}
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('tailoring.fabric.hint')}</p>
+              <div className="relative">
+                <input
+                  value={pickedFabric ? pickedFabric.productName : fabricSearch}
+                  onChange={e => { setPickedFabric(null); setFabricSearch(e.target.value) }}
+                  placeholder={t('tailoring.fabric.searchPlaceholder')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                />
+                {!pickedFabric && fabricResults.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {fabricResults.map(p => (
+                      <button key={p.id} type="button" onClick={() => { setPickedFabric(p); setFabricResults([]) }} className="w-full text-left px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
+                        <span className="text-gray-800 dark:text-slate-200">{p.productName}</span>
+                        <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatCurrency(p.sellingPrice)} · stock {p.inventory?.quantity ?? 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">{t('tailoring.fabric.quantity')}</label>
+                <input type="number" min="0" step="0.25" value={fabricQty} onChange={e => setFabricQty(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 dark:border-slate-700">
+              <button onClick={() => setFabricOrderId(null)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800">{t('tailoring.form.cancel')}</button>
+              <button onClick={handleSetFabric} disabled={fabricSaving || !pickedFabric} className="px-5 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg disabled:opacity-50">
+                {fabricSaving ? t('tailoring.form.saving') : t('tailoring.fabric.set')}
               </button>
             </div>
           </div>

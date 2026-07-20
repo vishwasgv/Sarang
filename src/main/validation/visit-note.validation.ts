@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 const vitalsShape = {
   painScore: z.number().nonnegative('Pain score cannot be negative').nullable().optional(),
+  // Phase 58 §2 — Physio Clinic: structured functional outcome measure, 0-100
+  functionalScore: z.number().nonnegative('Functional score cannot be negative').nullable().optional(),
   bpSystolic: z.number().nonnegative('Systolic BP cannot be negative').nullable().optional(),
   bpDiastolic: z.number().nonnegative('Diastolic BP cannot be negative').nullable().optional(),
   pulseRate: z.number().nonnegative('Pulse rate cannot be negative').nullable().optional(),
@@ -63,7 +65,30 @@ export const ReferToProviderSchema = z.object({
   reason: z.string().optional(),
 })
 
+// Phase 58 §2 — GP/Specialist Clinic: structured prescription
+const prescriptionItemShape = z.object({
+  drugName: z.string().min(1, 'Drug name is required'),
+  dosage: z.string().optional(),
+  frequency: z.string().optional(),
+  duration: z.string().optional(),
+  instructions: z.string().optional(),
+})
+
+export const SavePrescriptionItemsSchema = z.object({
+  visitNoteId: z.string().min(1, 'Visit note is required'),
+  items: z.array(prescriptionItemShape).max(50, 'Too many prescription items'),
+})
+
+export const ListPrescriptionItemsSchema = z.object({
+  visitNoteId: z.string().min(1, 'Visit note is required'),
+})
+
+export const GetVitalsTrendSchema = z.object({
+  appointmentId: z.string().min(1, 'Appointment is required'),
+})
+
 export type CreateVisitNotePayload = z.infer<typeof CreateVisitNoteSchema>
 export type UpdateVisitNotePayload = z.infer<typeof UpdateVisitNoteSchema>
 export type FinalizeVisitNotePayload = z.infer<typeof FinalizeVisitNoteSchema>
 export type ReferToProviderPayload = z.infer<typeof ReferToProviderSchema>
+export type SavePrescriptionItemsPayload = z.infer<typeof SavePrescriptionItemsSchema>

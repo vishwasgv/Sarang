@@ -13,6 +13,8 @@ import {
   cancelLabTestOrder,
   deleteLabTestOrder,
   generateLabTestOrderInvoice,
+  acknowledgeCriticalResult,
+  listPendingCriticalEscalations,
 } from '../lab-test-order.service'
 
 function makeOrder(overrides: Record<string, unknown> = {}) {
@@ -188,6 +190,96 @@ describe('lab-test-order.service', () => {
       vi.mocked(getPrisma).mockReturnValue(db as never)
       const res = await updateTestResult({ itemId: 'item-1', resultParameters: [{ parameter: 'Hemoglobin', value: '9.5' }] })
       expect(res.success).toBe(false)
+    })
+
+    // Phase 58 §2 — critical/panic-value tier: hasCriticalResult is a
+    // derived, cached flag recomputed from resultParameters on every save.
+    it('sets hasCriticalResult=true when any parameter is flagged CRITICAL', async () => {
+      const { db, orderStore } = makeMockDb(makeOrder({ status: 'SAMPLE_COLLECTED', items: makeOrder().items.map((i) => ({ ...i, status: 'COLLECTED' })) }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const res = await updateTestResult({
+        itemId: 'item-1',
+        resultParameters: [
+          { parameter: 'Potassium', value: '7.2', flag: 'CRITICAL' },
+          { parameter: 'Sodium', value: '140', flag: 'NORMAL' },
+        ],
+      })
+      expect(res.success).toBe(true)
+      expect((orderStore.current?.items as any[])?.find((i) => i.id === 'item-1').hasCriticalResult).toBe(true)
+    })
+
+    it('sets hasCriticalResult=false when no parameter is CRITICAL', async () => {
+      const { db, orderStore } = makeMockDb(makeOrder({ status: 'SAMPLE_COLLECTED', items: makeOrder().items.map((i) => ({ ...i, status: 'COLLECTED' })) }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await updateTestResult({ itemId: 'item-1', resultParameters: [{ parameter: 'Sodium', value: '140', flag: 'NORMAL' }] })
+      expect((orderStore.current?.items as any[])?.find((i) => i.id === 'item-1').hasCriticalResult).toBe(false)
+    })
+
+    it('leaves hasCriticalResult untouched on a resultSummary-only edit (resultParameters omitted)', async () => {
+      const { db, orderStore } = makeMockDb(makeOrder({
+        status: 'SAMPLE_COLLECTED',
+        items: makeOrder().items.map((i) => ({ ...i, status: 'RESULT_READY', hasCriticalResult: true })),
+      }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await updateTestResult({ itemId: 'item-1', resultSummary: 'Repeat sample requested' })
+      expect((orderStore.current?.items as any[])?.find((i) => i.id === 'item-1').hasCriticalResult).toBe(true)
+    })
+  })
+
+  describe('acknowledgeCriticalResult — escalation workflow', () => {
+    it('records the doctor-notified stamp on an item that actually has a critical result', async () => {
+      const { db, orderStore } = makeMockDb(makeOrder({
+        items: makeOrder().items.map((i) => (i.id === 'item-1' ? { ...i, hasCriticalResult: true } : i)),
+      }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await acknowledgeCriticalResult({ itemId: 'item-1', notes: 'Called Dr. Rao, advised admission' })
+
+      expect(res.success).toBe(true)
+      const item = (orderStore.current?.items as any[])?.find((i) => i.id === 'item-1')
+      expect(item.criticalNotifiedAt).toBeInstanceOf(Date)
+      expect(item.criticalNotifiedNotes).toBe('Called Dr. Rao, advised admission')
+    })
+
+    it('refuses to acknowledge an item that has no critical result', async () => {
+      const { db } = makeMockDb(makeOrder())
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await acknowledgeCriticalResult({ itemId: 'item-1', notes: 'x' })
+
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('LAB-020')
+    })
+
+    it('returns not-found for a nonexistent item', async () => {
+      const { db } = makeMockDb(makeOrder())
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await acknowledgeCriticalResult({ itemId: 'missing', notes: 'x' })
+
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('LAB-019')
+    })
+  })
+
+  describe('listPendingCriticalEscalations', () => {
+    it('returns only items with an unacknowledged critical result', async () => {
+      const db = {
+        labTestOrderItem: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'item-1', testName: 'Potassium', hasCriticalResult: true, criticalNotifiedAt: null, labTestOrder: { orderNumber: 'LAB-1', patientName: 'A' } },
+          ]),
+        },
+      }
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await listPendingCriticalEscalations()
+
+      expect(res.success).toBe(true)
+      expect(db.labTestOrderItem.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { hasCriticalResult: true, criticalNotifiedAt: null },
+      }))
+      expect((res.data as unknown[])).toHaveLength(1)
     })
   })
 

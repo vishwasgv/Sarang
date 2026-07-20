@@ -18,11 +18,13 @@ Once a sample is drawn (blood, urine, stool, swab, imaging, or another type), ma
 
 ## Result entry
 
-For each test on the order, enter its result: a set of named parameters (value, unit, reference range, and a flag of Low / Normal / High / Abnormal), plus an optional overall summary. Entering the first result on an order automatically moves it from Sample Collected to In Process, so front-desk staff can see at a glance that work has actually started without waiting for every test to finish.
+For each test on the order, enter its result: a set of named parameters (value, unit, reference range, and a flag of Low / Normal / High / Abnormal — or **Critical**, when a value falls into the panic-value range set up for that test). Entering the first result on an order automatically moves it from Sample Collected to In Process, so front-desk staff can see at a glance that work has actually started without waiting for every test to finish.
+
+A **Critical** result puts a red badge on the order (and on the specific item) immediately, and the order can't be considered handled until you use **Record Doctor Notified** to log that you actually called the referring doctor, with a note — this is a genuine record that the escalation happened, not just that the number was flagged.
 
 ## Finalizing the report
 
-Once every test on the order has a result entered, **Finalize Report** locks the whole order — its status becomes Reported and every item is marked Reported. A finalized report's results can no longer be edited; if a correction is genuinely needed, that has to happen before finalization. After the report is finalized, mark it **Delivered** once the patient or referring clinic has actually received it.
+Once every test on the order has a result entered, **Finalize Report** locks the whole order — its status becomes Reported and every item is marked Reported. A finalized report's results can no longer be edited; if a correction is genuinely needed, that has to happen before finalization. After the report is finalized, mark it **Delivered** once the patient or referring clinic has actually received it. Attach real scan/image files to an order from its detail view.
 
 ## Billing
 

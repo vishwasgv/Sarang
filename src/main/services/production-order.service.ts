@@ -2,6 +2,8 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 
+type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
+
 export interface ProductionOrderRecord {
   id: string
   orderNumber: string
@@ -10,6 +12,10 @@ export interface ProductionOrderRecord {
   bomId: string
   plannedQty: number
   producedQty: number
+  // Phase 58 §2 — units attempted but failed QC/rejected, consumed
+  // material+labor but added zero inventory value.
+  scrapQty: number
+  laborCost: number
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   startDate: string | null
   completedDate: string | null
@@ -21,13 +27,33 @@ export interface ProductionOrderRecord {
 
 export interface MaterialUsageRecord {
   id: string
-  rawMaterialId: string
-  materialName: string
-  materialUnit: string
+  rawMaterialId: string | null
+  materialName: string | null
+  materialUnit: string | null
+  // Phase 58 §2 — multi-level BOM: set instead of the material* fields when
+  // this usage row was generated from a component-Product BOM line.
+  componentProductId: string | null
+  componentProductName: string | null
   quantityPlanned: number
   quantityActual: number
   unitCost: number
+  // Phase 58 §2 — which raw-material lot(s) were actually drawn on to cover
+  // this usage row, empty for a component-product row or a raw material
+  // with no batch records at all (same "batches are an optional additional
+  // ledger" convention ProductBatch already established).
+  batchConsumption: Array<{ batchId: string; batchNumber: string; quantityConsumed: number }>
 }
+
+const ORDER_INCLUDE = {
+  product: { select: { productName: true } },
+  materialUsage: {
+    include: {
+      rawMaterial: { select: { name: true, unit: true, unitCost: true } },
+      componentProduct: { select: { productName: true, costPrice: true } },
+      batchConsumption: { include: { rawMaterialBatch: { select: { batchNumber: true } } } }
+    }
+  }
+} as const
 
 export async function listProductionOrders(payload?: {
   status?: string
@@ -44,12 +70,7 @@ export async function listProductionOrders(payload?: {
       where,
       orderBy: { createdAt: 'desc' },
       take: payload?.limit ?? 200,
-      include: {
-        product: { select: { productName: true } },
-        materialUsage: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-        }
-      }
+      include: ORDER_INCLUDE
     })
     return { success: true, data: { orders: rows.map(toRecord), total: rows.length } }
   } catch (err) {
@@ -60,15 +81,7 @@ export async function listProductionOrders(payload?: {
 export async function getProductionOrder(id: string): Promise<{ success: boolean; data?: ProductionOrderRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const row = await db.productionOrder.findUnique({
-      where: { id },
-      include: {
-        product: { select: { productName: true } },
-        materialUsage: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-        }
-      }
-    })
+    const row = await db.productionOrder.findUnique({ where: { id }, include: ORDER_INCLUDE })
     if (!row) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
     return { success: true, data: toRecord(row) }
   } catch (err) {
@@ -87,9 +100,7 @@ export async function createProductionOrder(payload: {
     const bom = await db.billOfMaterial.findUnique({
       where: { productId: payload.productId },
       include: {
-        items: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true, currentStock: true } } }
-        },
+        items: true,
         product: { select: { productName: true } }
       }
     })
@@ -121,27 +132,22 @@ export async function createProductionOrder(payload: {
         }
       })
 
-      // Create material usage rows with planned quantities
+      // Create material usage rows with planned quantities — one per BOM
+      // line, whether it's a raw material or a component-product
+      // sub-assembly (Phase 58 §2 multi-level BOM).
       const materialUsageData = bom.items.map(item => {
         const effectiveQty = item.quantityNeeded * (1 + item.wastagePercent / 100)
         return {
           productionOrderId: order.id,
           rawMaterialId: item.rawMaterialId,
+          componentProductId: item.componentProductId,
           quantityPlanned: effectiveQty * (payload.plannedQty / bom.outputQty),
           quantityActual: 0
         }
       })
       await tx.productionMaterialUsage.createMany({ data: materialUsageData })
 
-      return tx.productionOrder.findUnique({
-        where: { id: order.id },
-        include: {
-          product: { select: { productName: true } },
-          materialUsage: {
-            include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-          }
-        }
-      })
+      return tx.productionOrder.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
     })
 
     await logAction(userId, 'PRODUCTION_ORDER_CREATED', 'ProductionOrder', result!.id, undefined, { orderNumber: result!.orderNumber, productId: payload.productId, plannedQty: payload.plannedQty })
@@ -151,6 +157,43 @@ export async function createProductionOrder(payload: {
   }
 }
 
+// Phase 58 §2 — FIFO-draws a raw material usage row from its RawMaterialBatch
+// lots (oldest receivedDate first), recording exactly which lot(s) covered
+// it via ProductionMaterialBatchConsumption. A material with no batch
+// records at all (never lot-tracked) is a no-op here — same "batches are an
+// optional additional ledger" convention batch.service.ts's deductBatchStockFIFO
+// already established for finished-good sales.
+async function consumeRawMaterialBatchesFIFO(tx: TxClient, usageId: string, rawMaterialId: string, quantity: number): Promise<void> {
+  let remaining = quantity
+  const batches = await tx.rawMaterialBatch.findMany({
+    where: { rawMaterialId, isActive: true, quantityRemaining: { gt: 0 } },
+    orderBy: { receivedDate: 'asc' }
+  })
+  for (const batch of batches) {
+    if (remaining <= 0) break
+    const draw = Math.min(batch.quantityRemaining, remaining)
+    await tx.rawMaterialBatch.update({ where: { id: batch.id }, data: { quantityRemaining: { decrement: draw } } })
+    await tx.productionMaterialBatchConsumption.create({
+      data: { productionMaterialUsageId: usageId, rawMaterialBatchId: batch.id, quantityConsumed: draw }
+    })
+    remaining -= draw
+  }
+  // Whatever isn't covered by tracked lots (untracked pre-existing stock, or
+  // batches simply running short) is drawn from the material's aggregate
+  // currentStock anyway — the caller already validated total availability
+  // against currentStock, batches are traceability, not a second gate.
+}
+
+// Reverse of consumeRawMaterialBatchesFIFO — restores each consumed lot's
+// quantityRemaining and removes the consumption records, called on cancel.
+async function restoreRawMaterialBatchesForUsage(tx: TxClient, usageId: string): Promise<void> {
+  const consumption = await tx.productionMaterialBatchConsumption.findMany({ where: { productionMaterialUsageId: usageId } })
+  for (const c of consumption) {
+    await tx.rawMaterialBatch.update({ where: { id: c.rawMaterialBatchId }, data: { quantityRemaining: { increment: c.quantityConsumed } } })
+  }
+  await tx.productionMaterialBatchConsumption.deleteMany({ where: { productionMaterialUsageId: usageId } })
+}
+
 export async function startProductionOrder(id: string, userId?: string): Promise<{ success: boolean; data?: ProductionOrderRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
@@ -158,45 +201,73 @@ export async function startProductionOrder(id: string, userId?: string): Promise
       where: { id },
       include: {
         materialUsage: {
-          include: { rawMaterial: true }
+          include: { rawMaterial: true, componentProduct: { include: { inventory: true } } }
         }
       }
     })
     if (!order) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
     if (order.status !== 'DRAFT') return { success: false, error: { code: 'PO-007', message: `Cannot start: order is ${order.status}.` } }
 
-    // Check raw material availability
+    // Check raw material AND component-product availability
     const shortfalls: string[] = []
     for (const usage of order.materialUsage) {
-      if (usage.rawMaterial.currentStock < usage.quantityPlanned) {
-        shortfalls.push(`${usage.rawMaterial.name}: need ${usage.quantityPlanned} ${usage.rawMaterial.unit}, have ${usage.rawMaterial.currentStock}`)
+      if (usage.rawMaterial) {
+        if (usage.rawMaterial.currentStock < usage.quantityPlanned) {
+          shortfalls.push(`${usage.rawMaterial.name}: need ${usage.quantityPlanned} ${usage.rawMaterial.unit}, have ${usage.rawMaterial.currentStock}`)
+        }
+      } else if (usage.componentProduct) {
+        const available = usage.componentProduct.inventory?.quantity ?? 0
+        if (available < usage.quantityPlanned) {
+          shortfalls.push(`${usage.componentProduct.productName} (sub-assembly): need ${usage.quantityPlanned}, have ${available}`)
+        }
       }
     }
     if (shortfalls.length > 0) {
-      return { success: false, error: { code: 'PO-008', message: `Insufficient raw materials:\n${shortfalls.join('\n')}` } }
+      return { success: false, error: { code: 'PO-008', message: `Insufficient stock:\n${shortfalls.join('\n')}` } }
     }
 
     const result = await db.$transaction(async (tx) => {
-      // Deduct raw materials atomically and create movement records
       for (const usage of order.materialUsage) {
-        // Use decrement — atomic, no TOCTOU race, returns updated row for balanceAfter
-        const updated = await tx.rawMaterial.update({
-          where: { id: usage.rawMaterialId },
-          data: { currentStock: { decrement: usage.quantityPlanned } },
-          select: { currentStock: true }
-        })
-        await tx.rawMaterialMovement.create({
-          data: {
-            rawMaterialId: usage.rawMaterialId,
-            type: 'CONSUMED',
-            quantity: usage.quantityPlanned,
-            balanceAfter: updated.currentStock,
-            reference: order.orderNumber,
-            unitCost: usage.rawMaterial.unitCost,
-            notes: `Consumed for production order ${order.orderNumber}`,
-            createdById: userId ?? null
-          }
-        })
+        if (usage.rawMaterial) {
+          const updated = await tx.rawMaterial.update({
+            where: { id: usage.rawMaterialId! },
+            data: { currentStock: { decrement: usage.quantityPlanned } },
+            select: { currentStock: true }
+          })
+          await tx.rawMaterialMovement.create({
+            data: {
+              rawMaterialId: usage.rawMaterialId!,
+              type: 'CONSUMED',
+              quantity: usage.quantityPlanned,
+              balanceAfter: updated.currentStock,
+              reference: order.orderNumber,
+              unitCost: usage.rawMaterial.unitCost,
+              notes: `Consumed for production order ${order.orderNumber}`,
+              createdById: userId ?? null
+            }
+          })
+          await consumeRawMaterialBatchesFIFO(tx, usage.id, usage.rawMaterialId!, usage.quantityPlanned)
+        } else if (usage.componentProduct) {
+          // Sub-assembly consumption — same weighted-average-preserving
+          // decrement inventory.service.ts's reduceStockTx uses for a sale,
+          // hand-rolled here so the InventoryMovement reads as production
+          // consumption, not a SALE.
+          await tx.inventory.update({
+            where: { productId: usage.componentProductId! },
+            data: { quantity: { decrement: usage.quantityPlanned } }
+          })
+          await tx.inventoryMovement.create({
+            data: {
+              productId: usage.componentProductId!,
+              movementType: 'PRODUCTION_OUT',
+              quantity: -usage.quantityPlanned,
+              referenceType: 'PRODUCTION_ORDER',
+              referenceId: order.orderNumber,
+              remarks: `Consumed as a sub-assembly for production order ${order.orderNumber}`,
+              createdById: userId ?? null
+            }
+          })
+        }
         // Record actual as planned when starting
         await tx.productionMaterialUsage.update({
           where: { id: usage.id },
@@ -207,12 +278,7 @@ export async function startProductionOrder(id: string, userId?: string): Promise
       return tx.productionOrder.update({
         where: { id },
         data: { status: 'IN_PROGRESS', startDate: new Date() },
-        include: {
-          product: { select: { productName: true } },
-          materialUsage: {
-            include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-          }
-        }
+        include: ORDER_INCLUDE
       })
     })
 
@@ -226,6 +292,13 @@ export async function startProductionOrder(id: string, userId?: string): Promise
 export async function completeProductionOrder(payload: {
   id: string
   producedQty: number
+  // Phase 58 §2 — units attempted but rejected/scrapped (material+labor
+  // spent, zero inventory value added). Optional, defaults to 0 (unchanged
+  // behavior for every existing caller that doesn't pass it).
+  scrapQty?: number
+  // Phase 58 §2 — folded into the produced unit's cost basis alongside
+  // material cost. Optional, defaults to 0.
+  laborCost?: number
   notes?: string
 }, userId?: string): Promise<{ success: boolean; data?: ProductionOrderRecord; error?: { code: string; message: string } }> {
   try {
@@ -234,30 +307,34 @@ export async function completeProductionOrder(payload: {
       where: { id: payload.id },
       include: {
         product: { select: { productName: true } },
-        materialUsage: { include: { rawMaterial: { select: { unitCost: true } } } }
+        materialUsage: { include: { rawMaterial: { select: { unitCost: true } }, componentProduct: { include: { inventory: true } } } }
       }
     })
     if (!order) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
     if (order.status !== 'IN_PROGRESS') return { success: false, error: { code: 'PO-010', message: `Cannot complete: order is ${order.status}.` } }
     if (payload.producedQty <= 0) return { success: false, error: { code: 'PO-011', message: 'Produced quantity must be greater than 0.' } }
+    const scrapQty = Math.max(0, payload.scrapQty ?? 0)
+    const laborCost = Math.max(0, payload.laborCost ?? 0)
 
-    // Cost basis for the finished good comes from the raw materials actually
-    // consumed (quantityActual, set to quantityPlanned when the order was
-    // started), spread across the produced quantity.
-    const totalMaterialCost = order.materialUsage.reduce((sum, u) => sum + u.quantityActual * u.rawMaterial.unitCost, 0)
-    const producedUnitCost = totalMaterialCost / payload.producedQty
+    // Cost basis for the finished good comes from the raw materials AND
+    // component products actually consumed (quantityActual, set to
+    // quantityPlanned when the order was started) plus labor cost — all
+    // spread across producedQty only (not producedQty+scrapQty): a scrapped
+    // unit still consumed real material and labor, but adds zero inventory
+    // value, so its cost is absorbed into the good units' unit cost, same
+    // "the batch's real cost lands on what actually sold/shipped" reasoning
+    // this codebase already applies to weighted-average inventory costing
+    // elsewhere.
+    const totalMaterialCost = order.materialUsage.reduce((sum, u) => {
+      const unitCost = u.rawMaterial?.unitCost ?? u.componentProduct?.inventory?.averageCost ?? 0
+      return sum + u.quantityActual * unitCost
+    }, 0)
+    const totalCost = totalMaterialCost + laborCost
+    const producedUnitCost = totalCost / payload.producedQty
 
     const result = await db.$transaction(async (tx) => {
       // Add produced quantity to product inventory, updating averageCost via
-      // the same weighted-average formula every other stock-in path uses
-      // (inventoryService.addStockTx) — previously this only incremented
-      // quantity and left averageCost untouched, so manufactured goods
-      // carried a stale/zero cost basis that silently corrupted inventory
-      // valuation reports. Duplicated here rather than calling addStockTx
-      // directly because addStockTx assumes the Inventory row already
-      // exists (throws if not); a finished good's very first production run
-      // can be its first-ever stock movement, so the create path still needs
-      // handling here.
+      // the same weighted-average formula every other stock-in path uses.
       const existingInventory = await tx.inventory.findUnique({ where: { productId: order.productId } })
       if (existingInventory) {
         const totalValue = (existingInventory.quantity * existingInventory.averageCost) + (payload.producedQty * producedUnitCost)
@@ -281,7 +358,9 @@ export async function completeProductionOrder(payload: {
           quantity: payload.producedQty,
           referenceType: 'PRODUCTION_ORDER',
           referenceId: order.orderNumber,
-          remarks: `Produced from order ${order.orderNumber}`,
+          remarks: scrapQty > 0
+            ? `Produced from order ${order.orderNumber} (${scrapQty} scrapped)`
+            : `Produced from order ${order.orderNumber}`,
           createdById: userId ?? null
         }
       })
@@ -291,19 +370,16 @@ export async function completeProductionOrder(payload: {
         data: {
           status: 'COMPLETED',
           producedQty: payload.producedQty,
+          scrapQty,
+          laborCost,
           completedDate: new Date(),
           ...(payload.notes ? { notes: payload.notes } : {})
         },
-        include: {
-          product: { select: { productName: true } },
-          materialUsage: {
-            include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-          }
-        }
+        include: ORDER_INCLUDE
       })
     })
 
-    await logAction(userId, 'PRODUCTION_ORDER_COMPLETED', 'ProductionOrder', payload.id, undefined, { producedQty: payload.producedQty })
+    await logAction(userId, 'PRODUCTION_ORDER_COMPLETED', 'ProductionOrder', payload.id, undefined, { producedQty: payload.producedQty, scrapQty, laborCost })
     return { success: true, data: toRecord(result) }
   } catch (err) {
     return { success: false, error: { code: 'PO-012', message: err instanceof Error ? err.message : 'Failed to complete production order.' } }
@@ -320,7 +396,7 @@ export async function cancelProductionOrder(payload: {
       where: { id: payload.id },
       include: {
         materialUsage: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true, currentStock: true } } }
+          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true, currentStock: true } }, componentProduct: { select: { productName: true } } }
         }
       }
     })
@@ -330,27 +406,46 @@ export async function cancelProductionOrder(payload: {
     }
 
     await db.$transaction(async (tx) => {
-      // If IN_PROGRESS, return raw materials to stock atomically
+      // If IN_PROGRESS, return raw materials / component products to stock atomically
       if (order.status === 'IN_PROGRESS') {
         for (const usage of order.materialUsage) {
           if (usage.quantityActual <= 0) continue
-          const updated = await tx.rawMaterial.update({
-            where: { id: usage.rawMaterialId },
-            data: { currentStock: { increment: usage.quantityActual } },
-            select: { currentStock: true }
-          })
-          await tx.rawMaterialMovement.create({
-            data: {
-              rawMaterialId: usage.rawMaterialId,
-              type: 'RETURN',
-              quantity: usage.quantityActual,
-              balanceAfter: updated.currentStock,
-              reference: order.orderNumber,
-              unitCost: usage.rawMaterial.unitCost,
-              notes: `Returned from cancelled order ${order.orderNumber}`,
-              createdById: userId ?? null
-            }
-          })
+          if (usage.rawMaterial) {
+            const updated = await tx.rawMaterial.update({
+              where: { id: usage.rawMaterialId! },
+              data: { currentStock: { increment: usage.quantityActual } },
+              select: { currentStock: true }
+            })
+            await tx.rawMaterialMovement.create({
+              data: {
+                rawMaterialId: usage.rawMaterialId!,
+                type: 'RETURN',
+                quantity: usage.quantityActual,
+                balanceAfter: updated.currentStock,
+                reference: order.orderNumber,
+                unitCost: usage.rawMaterial.unitCost,
+                notes: `Returned from cancelled order ${order.orderNumber}`,
+                createdById: userId ?? null
+              }
+            })
+            await restoreRawMaterialBatchesForUsage(tx, usage.id)
+          } else if (usage.componentProduct) {
+            await tx.inventory.update({
+              where: { productId: usage.componentProductId! },
+              data: { quantity: { increment: usage.quantityActual } }
+            })
+            await tx.inventoryMovement.create({
+              data: {
+                productId: usage.componentProductId!,
+                movementType: 'PRODUCTION_RETURN',
+                quantity: usage.quantityActual,
+                referenceType: 'PRODUCTION_ORDER',
+                referenceId: order.orderNumber,
+                remarks: `Returned from cancelled order ${order.orderNumber}`,
+                createdById: userId ?? null
+              }
+            })
+          }
         }
       }
 
@@ -374,6 +469,8 @@ type OrderRow = {
   bomId: string
   plannedQty: number
   producedQty: number
+  scrapQty: number
+  laborCost: number
   status: string
   startDate: Date | null
   completedDate: Date | null
@@ -382,10 +479,13 @@ type OrderRow = {
   product: { productName: string }
   materialUsage: Array<{
     id: string
-    rawMaterialId: string
+    rawMaterialId: string | null
+    componentProductId: string | null
     quantityPlanned: number
     quantityActual: number
-    rawMaterial: { name: string; unit: string; unitCost: number }
+    rawMaterial: { name: string; unit: string; unitCost: number } | null
+    componentProduct: { productName: string; costPrice: number } | null
+    batchConsumption: Array<{ rawMaterialBatchId: string; quantityConsumed: number; rawMaterialBatch: { batchNumber: string } }>
   }>
 }
 
@@ -393,11 +493,14 @@ function toRecord(o: OrderRow): ProductionOrderRecord {
   const materialUsage: MaterialUsageRecord[] = o.materialUsage.map(u => ({
     id: u.id,
     rawMaterialId: u.rawMaterialId,
-    materialName: u.rawMaterial.name,
-    materialUnit: u.rawMaterial.unit,
+    materialName: u.rawMaterial?.name ?? null,
+    materialUnit: u.rawMaterial?.unit ?? null,
+    componentProductId: u.componentProductId,
+    componentProductName: u.componentProduct?.productName ?? null,
     quantityPlanned: u.quantityPlanned,
     quantityActual: u.quantityActual,
-    unitCost: u.rawMaterial.unitCost
+    unitCost: u.rawMaterial?.unitCost ?? u.componentProduct?.costPrice ?? 0,
+    batchConsumption: u.batchConsumption.map(c => ({ batchId: c.rawMaterialBatchId, batchNumber: c.rawMaterialBatch.batchNumber, quantityConsumed: c.quantityConsumed }))
   }))
   const totalMaterialCost = materialUsage.reduce((sum, u) => sum + u.quantityActual * u.unitCost, 0)
   return {
@@ -408,6 +511,8 @@ function toRecord(o: OrderRow): ProductionOrderRecord {
     bomId: o.bomId,
     plannedQty: o.plannedQty,
     producedQty: o.producedQty,
+    scrapQty: o.scrapQty,
+    laborCost: o.laborCost,
     status: o.status as ProductionOrderRecord['status'],
     startDate: o.startDate?.toISOString() ?? null,
     completedDate: o.completedDate?.toISOString() ?? null,

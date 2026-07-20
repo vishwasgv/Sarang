@@ -5,7 +5,10 @@ import {
   CreateRoomSchema, UpdateRoomSchema, HotelRoomIdSchema,
   CheckAvailabilitySchema, ListAvailableRoomsSchema,
   CreateHotelBookingSchema, CheckInBookingSchema, HotelBookingIdSchema, CancelHotelBookingSchema,
-  AddExtraChargeSchema, RemoveExtraChargeSchema, GenerateHotelInvoiceSchema, GuestRegisterSchema,
+  AddExtraChargeSchema, RemoveExtraChargeSchema, GenerateHotelInvoiceSchema, GenerateGroupHotelInvoiceSchema, GuestRegisterSchema,
+  CreateRateCalendarEntrySchema, RateCalendarEntryIdSchema,
+  HousekeepingTaskListSchema, CreateHousekeepingTaskSchema, AssignHousekeepingTaskSchema, UpdateHousekeepingTaskStatusSchema, HousekeepingTaskIdSchema,
+  CustomerStayHistorySchema,
 } from '../../validation/hotel.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -137,5 +140,77 @@ export function register(handle: HandleFn): void {
     const parsed = GuestRegisterSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return hotelService.getGuestRegister(parsed.data)
+  })
+
+  handle('hotel:generateGroupInvoice', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = GenerateGroupHotelInvoiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return hotelService.generateGroupHotelInvoice(parsed.data.bookingIds, session?.userId)
+  })
+
+  handle('hotel:listRateCalendar', async () => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    return hotelService.listRateCalendar()
+  })
+
+  handle('hotel:createRateCalendarEntry', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = CreateRateCalendarEntrySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return hotelService.createRateCalendarEntry({ ...parsed.data, createdById: session?.userId })
+  })
+
+  handle('hotel:deleteRateCalendarEntry', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = RateCalendarEntryIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return hotelService.deleteRateCalendarEntry(parsed.data.id, session?.userId)
+  })
+
+  handle('hotel:listHousekeepingTasks', async (payload) => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    const parsed = HousekeepingTaskListSchema.safeParse(payload ?? {})
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.listHousekeepingTasks(parsed.data)
+  })
+
+  handle('hotel:createHousekeepingTask', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = CreateHousekeepingTaskSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.createHousekeepingTask(parsed.data)
+  })
+
+  handle('hotel:assignHousekeepingTask', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = AssignHousekeepingTaskSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.assignHousekeepingTask(parsed.data)
+  })
+
+  handle('hotel:updateHousekeepingTaskStatus', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = UpdateHousekeepingTaskStatusSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return hotelService.updateHousekeepingTaskStatus({ ...parsed.data, userId: session?.userId })
+  })
+
+  handle('hotel:deleteHousekeepingTask', async (payload) => {
+    const deny = await requirePermission('hotel.manage'); if (deny) return deny
+    const parsed = HousekeepingTaskIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.deleteHousekeepingTask(parsed.data.id)
+  })
+
+  handle('hotel:getCustomerStayHistory', async (payload) => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    const parsed = CustomerStayHistorySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.getCustomerStayHistory(parsed.data.customerId)
   })
 }

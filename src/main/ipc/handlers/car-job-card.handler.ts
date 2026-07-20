@@ -1,9 +1,13 @@
 import {
   listCarJobCards, getCarJobCard, createCarJobCard, updateCarJobCard,
-  deleteCarJobCard, generateCarJobInvoice, getCarJobCardKPIs
+  deleteCarJobCard, generateCarJobInvoice, getCarJobCardKPIs,
+  getVehicleServiceHistory, listVehiclesDueForService, scheduleNextServiceReminder
 } from '../../services/car-job-card.service'
 import { requirePermission } from '../permission-guard'
-import { CarJobCardIdSchema, CreateCarJobCardSchema, UpdateCarJobCardSchema } from '../../validation/car-job-card.validation'
+import {
+  CarJobCardIdSchema, CreateCarJobCardSchema, UpdateCarJobCardSchema,
+  VehicleServiceHistorySchema, ListVehiclesDueForServiceSchema, ScheduleNextServiceReminderSchema
+} from '../../validation/car-job-card.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -49,5 +53,26 @@ export function registerCarJobCard(handle: HandleFn): void {
   handle('carJobCard:kpis', async () => {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     return getCarJobCardKPIs()
+  })
+
+  handle('carJobCard:vehicleHistory', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = VehicleServiceHistorySchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return getVehicleServiceHistory(parsed.data.vehicleNumber)
+  })
+
+  handle('carJobCard:vehiclesDueForService', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = ListVehiclesDueForServiceSchema.safeParse(raw ?? {})
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listVehiclesDueForService(parsed.data.dueSoonDays)
+  })
+
+  handle('carJobCard:scheduleServiceReminder', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = ScheduleNextServiceReminderSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return scheduleNextServiceReminder(parsed.data.jobCardId, parsed.data.daysBefore)
   })
 }

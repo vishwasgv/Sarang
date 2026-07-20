@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, X, LogIn, LogOut, Ban, Receipt, Trash2, Hotel as HotelIcon, UserX } from 'lucide-react'
+import { Plus, X, LogIn, LogOut, Ban, Receipt, Trash2, Hotel as HotelIcon, UserX, Repeat, Users } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
@@ -40,6 +40,8 @@ interface HotelBooking {
   extraChargesTotal: number
   estimatedTotal: number
   status: 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
+  channel: string
+  bookingType: 'OVERNIGHT' | 'DAY_USE'
   advanceAmount: number
   advancePaymentMethod: string
   cancelReason: string | null
@@ -47,7 +49,17 @@ interface HotelBooking {
   guests: HotelGuest[]
   charges: HotelCharge[]
 }
-interface HotelRoom { id: string; roomNumber: string; roomType: string; baseRate: number; maxOccupancy: number; status: string }
+interface HotelRoom { id: string; roomNumber: string; roomType: string; baseRate: number; dayUseRate: number | null; maxOccupancy: number; status: string }
+
+const CHANNELS = [
+  { value: 'WALK_IN', label: 'Walk-In' },
+  { value: 'BOOKING_COM', label: 'Booking.com' },
+  { value: 'MAKEMYTRIP', label: 'MakeMyTrip' },
+  { value: 'AGODA', label: 'Agoda' },
+  { value: 'EXPEDIA', label: 'Expedia' },
+  { value: 'OTHER', label: 'Other' },
+]
+function channelLabel(v: string) { return CHANNELS.find((c) => c.value === v)?.label ?? v }
 
 // Only Aadhaar is India-specific here; every other document (Passport,
 // Driving License) is genuinely valid ID in most countries, so it's kept in
@@ -76,7 +88,7 @@ function getIdTypesForCountry(country?: string | null) {
 
 export function HotelBookingsScreen() {
   const hasPermission = useAuthStore((s) => s.hasPermission)
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const canManage = hasPermission('hotel.manage')
 
   const [bookings, setBookings] = useState<HotelBooking[]>([])
@@ -84,6 +96,24 @@ export function HotelBookingsScreen() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<HotelBooking | null>(null)
   const [showNewBooking, setShowNewBooking] = useState(false)
+  const [checkedIds, setCheckedIds] = useState<string[]>([])
+  const [combining, setCombining] = useState(false)
+
+  function toggleChecked(id: string) {
+    setCheckedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  async function handleCombineInvoice() {
+    if (checkedIds.length < 2) return
+    setCombining(true)
+    try {
+      const res = await api.hotel.generateGroupInvoice({ bookingIds: checkedIds })
+      if (res.success) { toastSuccess('Combined bill generated', `${checkedIds.length} bookings`); setCheckedIds([]); await load() }
+      else toastError('Error', res.error?.message ?? 'Could not generate combined bill.')
+    } finally {
+      setCombining(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -113,11 +143,18 @@ export function HotelBookingsScreen() {
           <h1 className="text-2xl font-bold text-dark dark:text-slate-100">Hotel Bookings</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Reservations, check-in/out, and guest folios</p>
         </div>
-        {canManage && (
-          <Button onClick={() => setShowNewBooking(true)}>
-            <Plus size={16} className="mr-1.5" /> New Booking
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {checkedIds.length >= 2 && (
+            <Button variant="secondary" onClick={handleCombineInvoice} loading={combining}>
+              <Users size={16} className="mr-1.5" /> Generate Combined Bill ({checkedIds.length})
+            </Button>
+          )}
+          {canManage && (
+            <Button onClick={() => setShowNewBooking(true)}>
+              <Plus size={16} className="mr-1.5" /> New Booking
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -128,6 +165,7 @@ export function HotelBookingsScreen() {
           </button>
         ))}
       </div>
+      {checkedIds.length === 1 && <p className="text-xs text-slate-400">Select another checked-out, uninvoiced booking for the same customer to combine into one bill.</p>}
 
       {loading ? (
         <div className="flex justify-center py-8"><div className="w-7 h-7 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
@@ -141,21 +179,31 @@ export function HotelBookingsScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
+                <th className="w-8 px-4 py-3"></th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Booking</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Guest</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Room</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Stay</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Channel</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Est. Total</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {bookings.map((b) => (
+              {bookings.map((b) => {
+                const combinable = b.status === 'CHECKED_OUT' && !b.invoiceId
+                return (
                 <tr key={b.id} onClick={() => setSelected(b)} className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
-                  <td className="px-4 py-3 font-medium text-dark dark:text-slate-100">{b.bookingNumber}</td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {combinable && (
+                      <input type="checkbox" checked={checkedIds.includes(b.id)} onChange={() => toggleChecked(b.id)} aria-label={`Select ${b.bookingNumber} for combined bill`} />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-dark dark:text-slate-100">{b.bookingNumber}{b.bookingType === 'DAY_USE' && <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">Day Use</span>}</td>
                   <td className="px-4 py-3">{b.guestName}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{b.roomNumber} · {b.roomType}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{new Date(b.checkInDate).toLocaleDateString()} → {new Date(b.checkOutDate).toLocaleDateString()} ({b.nights}n)</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{channelLabel(b.channel)}</td>
                   <td className="px-4 py-3 text-right font-medium">{formatCurrency(b.estimatedTotal)}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={b.status === 'CHECKED_IN' ? 'brand' : b.status === 'CHECKED_OUT' ? 'success' : b.status === 'CANCELLED' || b.status === 'NO_SHOW' ? 'neutral' : 'warning'}>
@@ -163,7 +211,8 @@ export function HotelBookingsScreen() {
                     </Badge>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </Card>
@@ -339,8 +388,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-dark dark:text-slate-100">{booking.bookingNumber} · Room {booking.roomNumber}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{booking.guestName} · {booking.numberOfGuests} guest(s)</p>
+            <p className="font-semibold text-dark dark:text-slate-100">{booking.bookingNumber} · Room {booking.roomNumber}{booking.bookingType === 'DAY_USE' && <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand align-middle">Day Use</span>}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{booking.guestName} · {booking.numberOfGuests} guest(s) · {channelLabel(booking.channel)}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={18} /></button>
         </div>
@@ -475,10 +524,13 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
 function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { error: toastError } = useNotificationStore()
   const [customer, setCustomer] = useState<CustomerLite | null>(null)
+  const [stayHistory, setStayHistory] = useState<{ stayCount: number; lastStayCheckOut: string | null } | null>(null)
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [numberOfGuests, setNumberOfGuests] = useState('1')
+  const [bookingType, setBookingType] = useState<'OVERNIGHT' | 'DAY_USE'>('OVERNIGHT')
+  const [channel, setChannel] = useState('WALK_IN')
   const [checkInDate, setCheckInDate] = useState('')
   const [checkOutDate, setCheckOutDate] = useState('')
   const [roomId, setRoomId] = useState('')
@@ -491,13 +543,32 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [error, setError] = useState<string | null>(null)
 
   const selectedRoom = availableRooms.find((r) => r.id === roomId)
+  // A DAY_USE booking always reserves the full calendar day server-side (see
+  // hotel.service.ts's createBooking) — the availability check mirrors that
+  // exact +1-day range so the room picker shows the same rooms the server
+  // would actually accept.
+  const effectiveCheckOutDate = bookingType === 'DAY_USE' && checkInDate
+    ? new Date(new Date(checkInDate).getTime() + 86_400_000).toISOString().slice(0, 10)
+    : checkOutDate
+
+  async function handleCustomerChange(c: CustomerLite | null) {
+    setCustomer(c)
+    if (c) {
+      if (!guestName) setGuestName(c.customerName)
+      if (!guestPhone && c.phone) setGuestPhone(c.phone)
+      const res = await api.hotel.getCustomerStayHistory({ customerId: c.id })
+      if (res.success && res.data) setStayHistory(res.data as { stayCount: number; lastStayCheckOut: string | null })
+    } else {
+      setStayHistory(null)
+    }
+  }
 
   async function handleCheckAvailability() {
-    if (!checkInDate || !checkOutDate) return
+    if (!checkInDate || !effectiveCheckOutDate) return
     setChecking(true)
     setRoomId('')
     try {
-      const res = await api.hotel.listAvailableRooms({ checkInDate, checkOutDate })
+      const res = await api.hotel.listAvailableRooms({ checkInDate, checkOutDate: effectiveCheckOutDate })
       if (res.success && res.data) setAvailableRooms((res.data as { rooms: HotelRoom[] }).rooms)
       else toastError('Error', res.error?.message ?? 'Could not check availability.')
     } finally {
@@ -507,12 +578,15 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
   function selectRoom(id: string) {
     setRoomId(id)
-    const room = availableRooms.find((r) => r.id === id)
-    if (room) setRatePerNight(String(room.baseRate))
+    // Deliberately NOT prefilled with room.baseRate — leaving it blank lets
+    // the server consult the seasonal rate calendar (see resolveNightlyRate)
+    // for this exact stay. Typing a value here is a genuine manual override
+    // that bypasses the calendar entirely, matching the field's own label.
+    setRatePerNight('')
   }
 
   async function handleCreate() {
-    if (!guestName.trim() || !roomId || !checkInDate || !checkOutDate) {
+    if (!guestName.trim() || !roomId || !checkInDate || (bookingType === 'OVERNIGHT' && !checkOutDate)) {
       setError('Guest name, room, and dates are required.')
       return
     }
@@ -522,7 +596,8 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
       roomId, customerId: customer?.id, guestName: guestName.trim(),
       guestPhone: guestPhone.trim() || undefined, guestEmail: guestEmail.trim() || undefined,
       numberOfGuests: Number(numberOfGuests) || 1,
-      checkInDate, checkOutDate,
+      checkInDate, checkOutDate: bookingType === 'DAY_USE' ? undefined : checkOutDate,
+      bookingType, channel,
       ratePerNight: ratePerNight ? Number(ratePerNight) : undefined,
       advanceAmount: Number(advanceAmount) || 0,
       advancePaymentMethod: advanceMethod as 'CASH' | 'UPI' | 'CARD' | 'WALLET',
@@ -542,7 +617,14 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
         <div className="p-6 space-y-4">
           {error && <div className="bg-danger/10 text-danger text-sm rounded-lg px-3 py-2">{error}</div>}
 
-          <CustomerPicker value={customer} onChange={(c) => { setCustomer(c); if (c && !guestName) setGuestName(c.customerName) }} label="Customer (optional, for billing)" />
+          <CustomerPicker value={customer} onChange={handleCustomerChange} label="Customer (optional, for billing)" />
+          {stayHistory && stayHistory.stayCount > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-brand bg-brand/5 rounded-lg px-3 py-2">
+              <Repeat size={12} />
+              Returning guest — {stayHistory.stayCount} previous stay{stayHistory.stayCount === 1 ? '' : 's'}
+              {stayHistory.lastStayCheckOut && ` · last visited ${new Date(stayHistory.lastStayCheckOut).toLocaleDateString()}`}
+            </div>
+          )}
           <Input label="Guest Name" value={guestName} onChange={(e) => setGuestName(e.target.value)} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Guest Phone" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} />
@@ -551,26 +633,42 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <Input label="Guest Email" type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} />
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Check-In Date" type="date" value={checkInDate} onChange={(e) => { setCheckInDate(e.target.value); setAvailableRooms([]) }} />
-            <Input label="Check-Out Date" type="date" value={checkOutDate} onChange={(e) => { setCheckOutDate(e.target.value); setAvailableRooms([]) }} />
+            <Select label="Stay Type" value={bookingType} onChange={(e) => { setBookingType(e.target.value as 'OVERNIGHT' | 'DAY_USE'); setAvailableRooms([]) }}>
+              <option value="OVERNIGHT">Overnight</option>
+              <option value="DAY_USE">Day Use</option>
+            </Select>
+            <Select label="Booking Source" value={channel} onChange={(e) => setChannel(e.target.value)}>
+              {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </Select>
           </div>
-          <Button variant="secondary" onClick={handleCheckAvailability} disabled={checking || !checkInDate || !checkOutDate} className="w-full">
+
+          <div className={bookingType === 'DAY_USE' ? '' : 'grid grid-cols-2 gap-3'}>
+            <Input label={bookingType === 'DAY_USE' ? 'Date' : 'Check-In Date'} type="date" value={checkInDate} onChange={(e) => { setCheckInDate(e.target.value); setAvailableRooms([]) }} />
+            {bookingType === 'OVERNIGHT' && (
+              <Input label="Check-Out Date" type="date" value={checkOutDate} onChange={(e) => { setCheckOutDate(e.target.value); setAvailableRooms([]) }} />
+            )}
+          </div>
+          <Button variant="secondary" onClick={handleCheckAvailability} disabled={checking || !checkInDate || !effectiveCheckOutDate} className="w-full">
             {checking ? '…' : 'Check Available Rooms'}
           </Button>
 
           {availableRooms.length > 0 && (
             <Select label="Room" value={roomId} onChange={(e) => selectRoom(e.target.value)}>
               <option value="">Select a room</option>
-              {availableRooms.map((r) => <option key={r.id} value={r.id}>{r.roomNumber} — {r.roomType} ({formatCurrency(r.baseRate)}/night, max {r.maxOccupancy})</option>)}
+              {availableRooms.map((r) => <option key={r.id} value={r.id}>{r.roomNumber} — {r.roomType} ({formatCurrency(bookingType === 'DAY_USE' ? (r.dayUseRate ?? r.baseRate / 2) : r.baseRate)}/{bookingType === 'DAY_USE' ? 'day-use' : 'night'}, max {r.maxOccupancy})</option>)}
             </Select>
           )}
-          {availableRooms.length === 0 && checkInDate && checkOutDate && !checking && (
+          {availableRooms.length === 0 && checkInDate && effectiveCheckOutDate && !checking && (
             <p className="text-xs text-slate-400">Click "Check Available Rooms" to see rooms free for these dates.</p>
           )}
 
           {selectedRoom && (
             <>
-              <Input label="Rate per Night (override)" type="number" value={ratePerNight} onChange={(e) => setRatePerNight(e.target.value)} />
+              <Input
+                label="Rate per Night (override)" type="number" value={ratePerNight}
+                onChange={(e) => setRatePerNight(e.target.value)}
+                placeholder={bookingType === 'DAY_USE' ? `Day-use rate: ${formatCurrency(selectedRoom.dayUseRate ?? selectedRoom.baseRate / 2)}` : `Uses seasonal rate calendar if set, else ${formatCurrency(selectedRoom.baseRate)}/night`}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Advance Amount" type="number" min="0" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                 <Select label="Advance Method" value={advanceMethod} onChange={(e) => setAdvanceMethod(e.target.value)}>

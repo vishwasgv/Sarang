@@ -161,6 +161,7 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           taxExempt: payload.taxExempt ?? false,
           taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
           creditLimit: payload.creditLimit ?? 0,
+          customerClass: payload.customerClass?.trim() || null,
           notes: payload.notes
         }
       })
@@ -199,6 +200,7 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         taxExempt: payload.taxExempt ?? false,
         taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
         creditLimit: payload.creditLimit ?? existing.creditLimit,
+        customerClass: payload.customerClass?.trim() || null,
         notes: payload.notes
       }
     })

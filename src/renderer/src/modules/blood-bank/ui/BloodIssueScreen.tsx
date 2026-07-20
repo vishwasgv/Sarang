@@ -13,7 +13,7 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 
 interface Customer { id: string; customerName: string; phone: string | null }
 interface StockUnit { donationRecordId: string; donationNumber: string; bloodGroup: string; componentType: string; expiryDate: string; isExpired: boolean }
-interface BloodIssueItem { id: string; bloodGroup: string; componentType: string; price: number; compatibilityNote: string | null }
+interface BloodIssueItem { id: string; bloodGroup: string; componentType: string; price: number; compatibilityNote: string | null; overrideReason: string | null }
 interface BloodIssue {
   id: string
   issueNumber: string
@@ -48,6 +48,13 @@ export function BloodIssueScreen() {
   const [incompatibleUnits, setIncompatibleUnits] = useState<{ donationRecordId: string; note: string }[]>([])
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+
+  // Phase 58 §2 — the compatibility check now BLOCKS issuance by default;
+  // this is the explicit, documented emergency-release override, not a
+  // silent bypass. Reset whenever the incompatible set changes, so a stale
+  // override reason can't silently carry over onto a DIFFERENT incompatible unit.
+  const [overrideIncompatibility, setOverrideIncompatibility] = useState(false)
+  const [overrideReason, setOverrideReason] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,6 +108,8 @@ export function BloodIssueScreen() {
         }
         const results = res.data as Array<{ donationRecordId: string; compatible: boolean; note: string }>
         setIncompatibleUnits(results.filter((r) => !r.compatible).map((r) => ({ donationRecordId: r.donationRecordId, note: r.note })))
+        setOverrideIncompatibility(false)
+        setOverrideReason('')
       })
       .catch(() => {
         if (!cancelled) toastError('Failed', 'Could not verify blood compatibility.')
@@ -111,6 +120,18 @@ export function BloodIssueScreen() {
   async function handleCreate() {
     if (!form.recipientName.trim()) { toastError('Missing Recipient', "Enter the recipient's name."); return }
     if (selectedUnitIds.length === 0) { toastError('No Units Selected', 'Select at least one unit to issue.'); return }
+    // Phase 58 §2 — client-side mirror of the server-side block, so the
+    // cashier gets an immediate, specific message instead of a generic
+    // "Could not issue units." after a round-trip. The server enforces this
+    // regardless — this is a UX improvement, not the actual safety gate.
+    if (incompatibleUnits.length > 0 && !overrideIncompatibility) {
+      toastError('Incompatible Units Selected', 'Check "Override — emergency release" and document a reason to proceed.')
+      return
+    }
+    if (incompatibleUnits.length > 0 && overrideIncompatibility && !overrideReason.trim()) {
+      toastError('Reason Required', 'Enter a documented reason for the emergency-release override.')
+      return
+    }
     setSaving(true)
     const res = await api.bloodBank.createIssue({
       customerId: pickedCustomer?.id || undefined,
@@ -119,6 +140,8 @@ export function BloodIssueScreen() {
       purpose: form.purpose || undefined,
       donationRecordIds: selectedUnitIds,
       price: form.price ? Number(form.price) : undefined,
+      overrideIncompatibility: incompatibleUnits.length > 0 ? overrideIncompatibility : undefined,
+      overrideReason: incompatibleUnits.length > 0 ? overrideReason.trim() || undefined : undefined,
     })
     setSaving(false)
     if (res.success) {
@@ -127,6 +150,8 @@ export function BloodIssueScreen() {
       setForm({ ...BLANK_FORM })
       setPickedCustomer(null)
       setSelectedUnitIds([])
+      setOverrideIncompatibility(false)
+      setOverrideReason('')
       load()
     } else {
       toastError('Failed', (res.error as { message: string })?.message ?? 'Could not issue units.')
@@ -281,19 +306,36 @@ export function BloodIssueScreen() {
                 </div>
               </div>
 
+              {/* Phase 58 §2 — this now BLOCKS issuance by default (it used
+                  to be advisory-only, with nothing actually stopping an
+                  incompatible unit from going out). An explicit, documented
+                  override is required for the rare legitimate emergency
+                  case — never a silent bypass. */}
               {incompatibleUnits.length > 0 && (
-                <div className="bg-warning/5 border border-warning/20 rounded-xl p-3 flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
-                  <div className="text-xs text-text-secondary space-y-1">
-                    <p><strong>Compatibility warning</strong> — this is an advisory check only, not a substitute for a real crossmatch test. Verify before transfusion:</p>
-                    {incompatibleUnits.map((u) => <p key={u.donationRecordId}>{u.note}</p>)}
+                <div className="bg-danger/5 border border-danger/20 rounded-xl p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="text-danger shrink-0 mt-0.5" />
+                    <div className="text-xs text-text-secondary space-y-1">
+                      <p><strong className="text-danger">Incompatible unit(s) — issuance blocked.</strong> Not a substitute for a real crossmatch test:</p>
+                      {incompatibleUnits.map((u) => <p key={u.donationRecordId}>{u.note}</p>)}
+                    </div>
                   </div>
+                  <label className="flex items-center gap-2 text-xs font-medium text-text-primary pl-6">
+                    <input type="checkbox" checked={overrideIncompatibility} onChange={(e) => setOverrideIncompatibility(e.target.checked)} />
+                    Override — emergency release (documented reason required)
+                  </label>
+                  {overrideIncompatibility && (
+                    <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} rows={2}
+                      placeholder="Why this incompatible unit is being issued anyway (e.g. life-threatening emergency, no compatible unit in stock, physician's order)..."
+                      className="w-full px-3 py-2 ml-6 rounded-lg border border-border text-xs resize-none" style={{ width: 'calc(100% - 1.5rem)' }} />
+                  )}
                 </div>
               )}
             </div>
             <div className="px-6 pb-6 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary font-semibold hover:bg-surface-hover transition-colors">Cancel</button>
-              <button onClick={handleCreate} disabled={saving || selectedUnitIds.length === 0}
+              <button onClick={handleCreate}
+                disabled={saving || selectedUnitIds.length === 0 || (incompatibleUnits.length > 0 && (!overrideIncompatibility || !overrideReason.trim()))}
                 className="flex-1 h-12 rounded-xl bg-brand text-white font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
                 {saving ? 'Issuing…' : 'Issue Units'}
               </button>
@@ -320,7 +362,8 @@ export function BloodIssueScreen() {
                 {detail.items.map((it) => (
                   <div key={it.id} className="border border-border rounded-lg p-3">
                     <div className="flex items-center gap-2"><Badge variant="brand" size="sm">{it.bloodGroup}</Badge><span className="text-xs text-text-secondary">{it.componentType.replace('_', ' ')}</span><span className="ml-auto text-xs font-semibold">{formatCurrency(it.price)}</span></div>
-                    {it.compatibilityNote && <p className="text-xs text-text-secondary mt-1">{it.compatibilityNote}</p>}
+                    {it.compatibilityNote && <p className={`text-xs mt-1 ${it.overrideReason ? 'text-danger' : 'text-text-secondary'}`}>{it.compatibilityNote}</p>}
+                    {it.overrideReason && <p className="text-xs text-text-secondary mt-0.5"><strong>Override reason:</strong> {it.overrideReason}</p>}
                   </div>
                 ))}
               </div>

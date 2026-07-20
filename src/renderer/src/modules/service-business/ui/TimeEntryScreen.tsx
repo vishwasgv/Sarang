@@ -14,6 +14,7 @@ interface TimeEntry {
   employeeId: string | null
   caseId: string | null
   projectId: string | null
+  retainerId: string | null
   date: string
   description: string
   hours: number
@@ -23,6 +24,7 @@ interface TimeEntry {
   employee: { id: string; fullName: string } | null
   case: { id: string; caseNumber: string; caseTitle: string } | null
   project: { id: string; projectName: string } | null
+  retainer: { id: string; title: string } | null
 }
 
 interface Employee {
@@ -33,6 +35,15 @@ interface Employee {
 interface ServiceProject {
   id: string
   projectName: string
+}
+
+// Phase 58 §1 — only HOURLY_BUCKET retainers are relevant here; FIXED_FEE/
+// DELIVERABLE_BASED retainers have nothing for a logged hour to count against.
+interface HourlyRetainer {
+  id: string
+  title: string
+  retainerType: string
+  client: { customerName: string }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,6 +78,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
   const [kpiEntries, setKpiEntries] = useState<TimeEntry[]>([])
   const [staff, setStaff] = useState<Employee[]>([])
   const [projects, setProjects] = useState<ServiceProject[]>([])
+  const [hourlyRetainers, setHourlyRetainers] = useState<HourlyRetainer[]>([])
   const [loading, setLoading] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
@@ -90,6 +102,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
   const [formDate, setFormDate] = useState('')
   const [formStaffId, setFormStaffId] = useState('')
   const [formProjectId, setFormProjectId] = useState('')
+  const [formRetainerId, setFormRetainerId] = useState('')
   const [formDesc, setFormDesc] = useState('')
   const [formHours, setFormHours] = useState('')
   const [formRate, setFormRate] = useState('')
@@ -121,16 +134,21 @@ export default function TimeEntryScreen(): React.JSX.Element {
 
   const loadStaticData = useCallback(async () => {
     try {
-      const [staffRes, projRes] = await Promise.all([
+      const [staffRes, projRes, retainerRes] = await Promise.all([
         api.hr.listEmployees({ isActive: true }),
         api.serviceProject.list({}),
+        api.retainer.list({ status: 'ACTIVE' }),
       ])
       if (staffRes.success) setStaff((staffRes.data as { employees: Employee[] }).employees ?? [])
       if (projRes.success) {
         const raw = projRes.data as ServiceProject[] | { projects?: ServiceProject[] }
         setProjects(Array.isArray(raw) ? raw : (raw.projects ?? []))
       }
-    } catch { /* staff/project pickers are supplementary — entries list itself already surfaces errors */ }
+      if (retainerRes.success) {
+        const all = retainerRes.data as HourlyRetainer[]
+        setHourlyRetainers(all.filter((r) => r.retainerType === 'HOURLY_BUCKET'))
+      }
+    } catch { /* staff/project/retainer pickers are supplementary — entries list itself already surfaces errors */ }
   }, [])
 
   useEffect(() => {
@@ -158,6 +176,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
     setFormDate(todayStr())
     setFormStaffId('')
     setFormProjectId('')
+    setFormRetainerId('')
     setFormDesc('')
     setFormHours('')
     setFormRate('')
@@ -170,6 +189,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
     setFormDate(e.date.slice(0, 10))
     setFormStaffId(e.employeeId ?? '')
     setFormProjectId(e.projectId ?? '')
+    setFormRetainerId(e.retainerId ?? '')
     setFormDesc(e.description)
     setFormHours(String(e.hours))
     setFormRate(String(e.ratePerHour))
@@ -196,6 +216,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
         res = await api.timeEntry.create({
           employeeId: formStaffId || undefined,
           projectId: formProjectId || undefined,
+          retainerId: formRetainerId || undefined,
           date: formDate,
           description: formDesc.trim(),
           hours,
@@ -396,6 +417,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
                     <div>{entry.description}</div>
                     {entry.case && <div className="text-xs text-gray-400 dark:text-slate-500">{entry.case.caseNumber} — {entry.case.caseTitle}</div>}
                     {entry.project && <div className="text-xs text-gray-400 dark:text-slate-500">{entry.project.projectName}</div>}
+                    {entry.retainer && <div className="text-xs text-indigo-500 dark:text-indigo-400">Retainer: {entry.retainer.title}</div>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 dark:text-slate-100">{Number(entry.hours).toFixed(1)}h</td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-600 dark:text-slate-400">₹{Number(entry.ratePerHour).toLocaleString('en-IN')}</td>
@@ -475,6 +497,15 @@ export default function TimeEntryScreen(): React.JSX.Element {
                   <Select label="Project" value={formProjectId} onChange={(e) => setFormProjectId(e.target.value)}>
                     <option value="">— No Project —</option>
                     {projects.map((p) => <option key={p.id} value={p.id}>{p.projectName}</option>)}
+                  </Select>
+                </div>
+              )}
+
+              {hourlyRetainers.length > 0 && !editEntry && (
+                <div>
+                  <Select label="Retainer (Hourly Bucket)" value={formRetainerId} onChange={(e) => setFormRetainerId(e.target.value)}>
+                    <option value="">— No Retainer —</option>
+                    {hourlyRetainers.map((r) => <option key={r.id} value={r.id}>{r.title} — {r.client.customerName}</option>)}
                   </Select>
                 </div>
               )}

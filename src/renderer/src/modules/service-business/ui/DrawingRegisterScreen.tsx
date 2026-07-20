@@ -15,6 +15,10 @@ interface DrawingRevision {
   id: string; projectId: string; drawingNumber: string; title: string
   discipline: string; revisionNumber: string; status: string
   issuedDate: string | null; notes: string | null
+  createdAt: string
+  supersedesId: string | null
+  approvedByName: string | null
+  approvedDate: string | null
 }
 
 const DISCIPLINES = ['ARCHITECTURAL', 'STRUCTURAL', 'MEP', 'LANDSCAPE', 'INTERIOR']
@@ -47,8 +51,21 @@ export function DrawingRegisterScreen(): React.JSX.Element {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [historyOpenFor, setHistoryOpenFor] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DrawingRevision | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Phase 58 §2 — issue-new-revision form (per drawing)
+  const [newRevisionFor, setNewRevisionFor] = useState<DrawingRevision | null>(null)
+  const [nextRevisionNumber, setNextRevisionNumber] = useState('')
+  const [nextRevisionNotes, setNextRevisionNotes] = useState('')
+  const [issuingRevision, setIssuingRevision] = useState(false)
+  const [revisionError, setRevisionError] = useState('')
+
+  // Phase 58 §2 — client approval/sign-off prompt (status -> APPROVED)
+  const [approvePromptFor, setApprovePromptFor] = useState<DrawingRevision | null>(null)
+  const [approverName, setApproverName] = useState('')
+  const [approving, setApproving] = useState(false)
 
   useEffect(() => {
     window.api.serviceProject.list().then((res) => {
@@ -103,9 +120,64 @@ export function DrawingRegisterScreen(): React.JSX.Element {
   }
 
   async function handleStatusChange(item: DrawingRevision, next: string) {
+    // Approval needs a real signer name, not just a status flip — prompt
+    // instead of firing the update directly, unless a name is already on
+    // record (re-saving other fields on an already-approved revision).
+    if (next === 'APPROVED' && !item.approvedByName) {
+      setApprovePromptFor(item)
+      setApproverName('')
+      return
+    }
     const res = await window.api.drawingRevision.update({ id: item.id, status: next })
     if (res.success) await load(projectId)
     else toastError('Error', res.error?.message ?? 'Could not update status.')
+  }
+
+  async function handleConfirmApproval() {
+    if (!approvePromptFor || !approverName.trim()) return
+    setApproving(true)
+    try {
+      const res = await window.api.drawingRevision.update({ id: approvePromptFor.id, status: 'APPROVED', approvedByName: approverName.trim() })
+      if (res.success) {
+        toastSuccess('Approved', `${approvePromptFor.drawingNumber} Rev ${approvePromptFor.revisionNumber} marked approved.`)
+        setApprovePromptFor(null)
+        await load(projectId)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not record approval.')
+      }
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  function openNewRevisionForm(current: DrawingRevision) {
+    setNewRevisionFor(current)
+    setNextRevisionNumber('')
+    setNextRevisionNotes('')
+    setRevisionError('')
+  }
+
+  async function handleIssueNewRevision() {
+    if (!newRevisionFor) return
+    if (!nextRevisionNumber.trim()) { setRevisionError('Revision number is required.'); return }
+    setIssuingRevision(true)
+    setRevisionError('')
+    try {
+      const res = await window.api.drawingRevision.issueNewRevision({
+        previousRevisionId: newRevisionFor.id,
+        revisionNumber: nextRevisionNumber.trim(),
+        notes: nextRevisionNotes.trim() || undefined,
+      })
+      if (res.success) {
+        toastSuccess('New Revision Issued', `${newRevisionFor.drawingNumber} Rev ${nextRevisionNumber.trim()} created — Rev ${newRevisionFor.revisionNumber} is now superseded.`)
+        setNewRevisionFor(null)
+        await load(projectId)
+      } else {
+        setRevisionError(res.error?.message ?? 'Could not issue new revision.')
+      }
+    } finally {
+      setIssuingRevision(false)
+    }
   }
 
   async function handleDelete() {
@@ -119,6 +191,21 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       setDeleting(false)
     }
   }
+
+  // Group flat rows by drawingNumber — the CURRENT revision (newest by
+  // createdAt) is the primary row; everything else is real, independently
+  // comparable HISTORY, revealed via the History toggle. All rows already
+  // loaded in one call — no extra round-trip needed.
+  const groups = new Map<string, DrawingRevision[]>()
+  for (const item of items) {
+    const list = groups.get(item.drawingNumber) ?? []
+    list.push(item)
+    groups.set(item.drawingNumber, list)
+  }
+  const drawingGroups = Array.from(groups.entries()).map(([drawingNumber, revisions]) => {
+    const sorted = [...revisions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    return { drawingNumber, current: sorted[sorted.length - 1], history: sorted.slice(0, -1) }
+  }).sort((a, b) => a.drawingNumber.localeCompare(b.drawingNumber))
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
@@ -172,7 +259,7 @@ export function DrawingRegisterScreen(): React.JSX.Element {
         <Card padding="lg" className="text-center py-12">
           <p className="text-sm text-slate-500">Select a project to view its drawing register.</p>
         </Card>
-      ) : items.length === 0 ? (
+      ) : drawingGroups.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <FileStack size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No drawings recorded yet for this project</p>
@@ -180,8 +267,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       ) : (
         <Card padding="none" className="overflow-hidden">
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
-            {items.map((d) => (
-              <div key={d.id}>
+            {drawingGroups.map(({ drawingNumber, current: d, history }) => (
+              <div key={drawingNumber}>
                 <div className="px-5 py-4 flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -192,13 +279,22 @@ export function DrawingRegisterScreen(): React.JSX.Element {
                     </div>
                     <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{d.title}</div>
                     {d.issuedDate && <div className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">Issued {new Date(d.issuedDate).toLocaleDateString()}</div>}
+                    {d.approvedByName && <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">Approved by {d.approvedByName}{d.approvedDate ? ` on ${new Date(d.approvedDate).toLocaleDateString()}` : ''}</div>}
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                    {history.length > 0 && (
+                      <button onClick={() => setHistoryOpenFor(historyOpenFor === drawingNumber ? null : drawingNumber)} className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-500 dark:text-slate-400 hover:text-brand rounded-lg hover:bg-brand/5">
+                        History ({history.length}) {historyOpenFor === drawingNumber ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    )}
                     <button onClick={() => setExpandedId(expandedId === d.id ? null : d.id)} className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-500 dark:text-slate-400 hover:text-brand rounded-lg hover:bg-brand/5">
                       <Paperclip size={13} /> Files {expandedId === d.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
                     {canManage && (
                       <>
+                        {d.status !== 'SUPERSEDED' && (
+                          <button onClick={() => openNewRevisionForm(d)} className="px-2 py-1.5 text-xs font-medium text-brand border border-brand/30 rounded-lg hover:bg-brand/5">New Revision</button>
+                        )}
                         <Select value={d.status} onChange={(e) => void handleStatusChange(d, e.target.value)} className="!h-9 !py-0 text-xs">
                           {STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
                         </Select>
@@ -207,6 +303,19 @@ export function DrawingRegisterScreen(): React.JSX.Element {
                     )}
                   </div>
                 </div>
+                {historyOpenFor === drawingNumber && (
+                  <div className="px-5 pb-4 -mt-1 space-y-2">
+                    {history.map((h) => (
+                      <div key={h.id} className="flex items-center gap-2 flex-wrap text-xs bg-gray-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+                        <span className="font-semibold text-gray-700 dark:text-slate-300">Rev {h.revisionNumber}</span>
+                        <Badge variant={STATUS_VARIANT[h.status] ?? 'neutral'} size="sm">{h.status.replace(/_/g, ' ')}</Badge>
+                        <span className="text-gray-600 dark:text-slate-400">{h.title}</span>
+                        {h.issuedDate && <span className="text-gray-400 dark:text-slate-500">Issued {new Date(h.issuedDate).toLocaleDateString()}</span>}
+                        {h.approvedByName && <span className="text-green-600 dark:text-green-400">Approved by {h.approvedByName}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {expandedId === d.id && (
                   <div className="px-5 pb-4 -mt-1">
                     <DocumentPanel entityType="DRAWING_REVISION" entityId={d.id} compact />
@@ -227,6 +336,38 @@ export function DrawingRegisterScreen(): React.JSX.Element {
         message={`Delete drawing revision record "${deleteTarget?.drawingNumber}"?`}
         confirmLabel="Delete"
       />
+
+      {/* New Revision modal (Phase 58 §2) */}
+      {newRevisionFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-3">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-slate-100">New Revision — {newRevisionFor.drawingNumber}</h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Rev {newRevisionFor.revisionNumber} will be marked Superseded once this is created.</p>
+            {revisionError && <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{revisionError}</div>}
+            <Input label="New Revision Number *" value={nextRevisionNumber} onChange={(e) => setNextRevisionNumber(e.target.value)} placeholder="e.g. B" />
+            <Input label="Notes" value={nextRevisionNotes} onChange={(e) => setNextRevisionNotes(e.target.value)} placeholder="What changed in this revision" />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setNewRevisionFor(null)}>Cancel</Button>
+              <Button size="sm" onClick={() => void handleIssueNewRevision()} loading={issuingRevision}>Issue Revision</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval sign-off prompt (Phase 58 §2) */}
+      {approvePromptFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-3">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-slate-100">Approve {approvePromptFor.drawingNumber} — Rev {approvePromptFor.revisionNumber}</h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400">A real signer name is required for the approval trail.</p>
+            <Input label="Approved By *" value={approverName} onChange={(e) => setApproverName(e.target.value)} placeholder="Client / authorized signer name" />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setApprovePromptFor(null)}>Cancel</Button>
+              <Button size="sm" onClick={() => void handleConfirmApproval()} loading={approving} disabled={!approverName.trim()}>Approve</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

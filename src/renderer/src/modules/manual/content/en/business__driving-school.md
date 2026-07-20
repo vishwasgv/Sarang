@@ -21,9 +21,11 @@ The Sessions tab filters by Today, All, Scheduled, or Completed.
 
 The school's own instructional-vehicle fleet: registration number, make/model, vehicle class (LMV, two-wheeler, HMV), an assigned instructor, and a status (Active, Maintenance, Retired). Only vehicles marked Active can be picked when scheduling a new session.
 
+Set a **service interval** on a vehicle — by number of sessions or by odometer distance — and Sarang flags it Due for Service once either threshold is crossed, based on real completed sessions and the odometer reading you log. Open **Maintenance** on a vehicle to log a completed service (odometer, service type, cost) and see its full service history.
+
 ## Tests
 
-Tracks a learner's actual test bookings — learner's-license test or driving test — with a test date, test center, and a result: Pending, Passed, or Failed, with an optional retest date if they don't pass the first time.
+Tracks a learner's actual test bookings — learner's-license test or driving test — with a test date, test center, and a result: Pending, Passed, or Failed, with an optional retest date if they don't pass the first time. Record which **instructor** taught the learner, and a **Pass Rate by Instructor** summary card shows each instructor's real pass/fail track record.
 
 ## Packages
 

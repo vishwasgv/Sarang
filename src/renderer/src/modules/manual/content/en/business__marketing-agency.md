@@ -18,6 +18,13 @@ Marketing Agency is built on Sarang's shared service-business foundation — app
 
 Each project can still carry **Milestones** for deliverable-based billing (with one-click invoice generation once an amount is set) and optional **Sprints** for structuring the work into cycles.
 
+## Campaign Performance and Content Calendar
+
+Every project also gets two dedicated tabs:
+
+- **Performance** — log real campaign numbers period by period: impressions, clicks, conversions, and actual spend. Sarang totals these across every entry and computes click-through rate, conversion rate, and cost-per-conversion automatically — a rate only ever shows once its real denominator is present (e.g. no CTR until you've logged real impressions), never a guessed or misleading 0%. Click **Client Summary** for a KPI-card view of the totals, and **Print for Client** to hand over a clean printed report.
+- **Content Calendar** — a lightweight content plan per project: date, content type (Social Post, Blog, Email, Ad Creative, Video, Other), title, and platform, with a status you move through Planned → In Progress → Published (or Cancelled) as each piece goes out.
+
 ## Language
 
 Marketing Agency is one of Sarang's 24 dedicated service-business templates, and like nearly all of them its interface is **English only**, regardless of which language you've set elsewhere in Sarang.

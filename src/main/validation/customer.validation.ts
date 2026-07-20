@@ -12,6 +12,11 @@ export const CreateCustomerSchema = z.object({
   taxExempt: z.boolean().default(false),
   taxExemptReason: z.string().max(200).optional(),
   creditLimit: z.number().min(0, 'Credit limit cannot be negative').default(0),
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text,
+  // not a Prisma enum — matches this schema's own convention (see
+  // taxExemptReason above) of validating category-style fields as plain
+  // strings rather than a DB-level enum.
+  customerClass: z.string().max(50).optional(),
   notes: z.string().max(500).optional()
 })
 
@@ -28,6 +33,11 @@ export const UpdateCustomerSchema = z.object({
   taxExempt: z.boolean().default(false),
   taxExemptReason: z.string().max(200).optional(),
   creditLimit: z.number().min(0, 'Credit limit cannot be negative').default(0),
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text,
+  // not a Prisma enum — matches this schema's own convention (see
+  // taxExemptReason above) of validating category-style fields as plain
+  // strings rather than a DB-level enum.
+  customerClass: z.string().max(50).optional(),
   notes: z.string().max(500).optional()
 })
 

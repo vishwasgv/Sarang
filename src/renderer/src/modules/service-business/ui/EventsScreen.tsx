@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { api } from '@renderer/services/ipc-client'
-import { PartyPopper, Plus, X, ChevronDown, ChevronRight, Pencil, Receipt } from 'lucide-react'
+import { PartyPopper, Plus, X, ChevronDown, ChevronRight, Pencil, Receipt, List, Calendar as CalendarIcon, Clock, Trash2, ChevronLeft } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -18,11 +18,22 @@ interface EventVendorBooking {
   eventId: string
   vendorId: string
   vendorCategory: string
+  pricingType: string
+  perHeadRate: number | null
   quotedAmount: number
   advancePaid: number
   status: string
   notes: string | null
   vendor: Supplier
+}
+interface EventRunOfShowItem {
+  id: string
+  eventId: string
+  scheduledTime: string
+  activity: string
+  responsibleParty: string | null
+  isDone: boolean
+  notes: string | null
 }
 interface EventBooking {
   id: string
@@ -236,30 +247,43 @@ function EventForm({
 
 function AddVendorForm({
   eventId,
+  expectedGuestCount,
   suppliers,
   onSave,
   onClose,
 }: {
   eventId: string
+  expectedGuestCount: number | null
   suppliers: Supplier[]
   onSave: () => void
   onClose: () => void
 }) {
-  const [form, setForm] = useState({ vendorId: '', vendorCategory: 'CATERING', quotedAmount: '', advancePaid: '', notes: '' })
+  const [form, setForm] = useState({ vendorId: '', vendorCategory: 'CATERING', pricingType: 'FLAT', quotedAmount: '', perHeadRate: '', advancePaid: '', notes: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  const perHeadPreview = form.pricingType === 'PER_HEAD' && form.perHeadRate && expectedGuestCount
+    ? parseFloat(form.perHeadRate) * expectedGuestCount
+    : null
+
   async function handleSave() {
     if (!form.vendorId) return setError('Select a vendor.')
-    if (!form.quotedAmount || isNaN(parseFloat(form.quotedAmount))) return setError('Quoted amount is required.')
+    if (form.pricingType === 'PER_HEAD') {
+      if (!form.perHeadRate || isNaN(parseFloat(form.perHeadRate))) return setError('Per-head rate is required.')
+      if (!expectedGuestCount) return setError("Set the event's expected guest count first.")
+    } else if (!form.quotedAmount || isNaN(parseFloat(form.quotedAmount))) {
+      return setError('Quoted amount is required.')
+    }
     setSaving(true); setError('')
     const res = await api.eventVendorBooking.create({
       eventId,
       vendorId: form.vendorId,
       vendorCategory: form.vendorCategory,
-      quotedAmount: parseFloat(form.quotedAmount),
+      pricingType: form.pricingType,
+      quotedAmount: form.pricingType === 'FLAT' ? parseFloat(form.quotedAmount) : undefined,
+      perHeadRate: form.pricingType === 'PER_HEAD' ? parseFloat(form.perHeadRate) : undefined,
       advancePaid: form.advancePaid ? parseFloat(form.advancePaid) : undefined,
       notes: form.notes || undefined,
     })
@@ -279,15 +303,175 @@ function AddVendorForm({
         <Select value={form.vendorCategory} onChange={e => set('vendorCategory', e.target.value)}>
           {VENDOR_CATEGORIES.map(r => <option key={r} value={r}>{fmtLabel(r)}</option>)}
         </Select>
-        <input type="number" min="0" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Quoted amount *" value={form.quotedAmount} onChange={e => set('quotedAmount', e.target.value)} />
+        <Select value={form.pricingType} onChange={e => set('pricingType', e.target.value)}>
+          <option value="FLAT">Flat amount</option>
+          <option value="PER_HEAD">Per guest</option>
+        </Select>
+        {form.pricingType === 'PER_HEAD' ? (
+          <input type="number" min="0" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="₹ per guest *" value={form.perHeadRate} onChange={e => set('perHeadRate', e.target.value)} />
+        ) : (
+          <input type="number" min="0" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Quoted amount *" value={form.quotedAmount} onChange={e => set('quotedAmount', e.target.value)} />
+        )}
         <input type="number" min="0" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Advance paid" value={form.advancePaid} onChange={e => set('advancePaid', e.target.value)} />
-        <input type="text" className="h-10 border border-gray-300 rounded-lg px-2 text-sm col-span-2 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} />
+        <input type="text" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} />
       </div>
+      {form.pricingType === 'PER_HEAD' && (
+        <p className="text-xs text-purple-700 dark:text-purple-400">
+          {expectedGuestCount
+            ? `= ₹${(perHeadPreview ?? 0).toLocaleString('en-IN')} for ${expectedGuestCount} guests`
+            : "Set the event's expected guest count first to use per-guest pricing."}
+        </p>
+      )}
       <div className="flex gap-2">
         <button onClick={onClose} className="flex-1 h-9 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-white dark:hover:bg-slate-900 dark:border-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">Cancel</button>
         <button onClick={handleSave} disabled={saving} className="flex-1 h-9 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50">
           {saving ? '...' : 'Add Vendor'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Run of Show Panel ────────────────────────────────────────────────────────
+
+function RunOfShowPanel({ eventId, eventDate }: { eventId: string; eventDate: string }) {
+  const [items, setItems] = useState<EventRunOfShowItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ scheduledTime: '', activity: '', responsibleParty: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    const res = await api.eventRunOfShow.list({ eventId })
+    if (res.success) setItems((res.data as EventRunOfShowItem[]) ?? [])
+    setLoading(false)
+  }, [eventId])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleAdd() {
+    if (!form.scheduledTime || !form.activity.trim()) return setError('Time and activity are required.')
+    setSaving(true); setError('')
+    // Combine the event's own calendar date with the picked time-of-day —
+    // a bare "HH:MM" string from a <input type="time"> is not a parseable
+    // Date on its own.
+    const combined = `${toDateInput(eventDate)}T${form.scheduledTime}:00`
+    const res = await api.eventRunOfShow.create({
+      eventId, scheduledTime: combined, activity: form.activity.trim(),
+      responsibleParty: form.responsibleParty || undefined,
+    })
+    setSaving(false)
+    if (res.success) { setForm({ scheduledTime: '', activity: '', responsibleParty: '' }); load() }
+    else setError(res.error?.message ?? 'Could not add item.')
+  }
+
+  async function handleToggle(item: EventRunOfShowItem) {
+    const res = await api.eventRunOfShow.update({ id: item.id, isDone: !item.isDone })
+    if (res.success) setItems(prev => prev.map(i => i.id === item.id ? { ...i, isDone: !i.isDone } : i))
+  }
+
+  async function handleDelete(id: string) {
+    const res = await api.eventRunOfShow.delete({ id })
+    if (res.success) setItems(prev => prev.filter(i => i.id !== id))
+  }
+
+  if (loading) return <p className="text-xs text-gray-400 dark:text-slate-500">Loading run-of-show...</p>
+
+  return (
+    <div>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+      {items.length === 0 ? (
+        <p className="text-xs text-gray-400 italic dark:text-slate-500 mb-2">No run-of-show items yet — the event-day execution timeline, distinct from vendor booking above.</p>
+      ) : (
+        <div className="space-y-1.5 mb-2">
+          {items.map(item => (
+            <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-gray-100 rounded-lg px-3 py-2 dark:border-slate-800">
+              <input type="checkbox" checked={item.isDone} onChange={() => handleToggle(item)} className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs font-mono text-gray-500 dark:text-slate-400 flex-shrink-0 w-16">
+                {new Date(item.scheduledTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span className={`flex-1 text-sm ${item.isDone ? 'line-through text-gray-400 dark:text-slate-500' : 'text-gray-800 dark:text-slate-200'}`}>{item.activity}</span>
+              {item.responsibleParty && <span className="text-xs text-gray-400 dark:text-slate-500">{item.responsibleParty}</span>}
+              <button onClick={() => handleDelete(item.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-2">
+        <input type="time" className="h-9 border border-gray-300 rounded-lg px-2 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" value={form.scheduledTime} onChange={e => setForm(f => ({ ...f, scheduledTime: e.target.value }))} />
+        <input type="text" className="h-9 border border-gray-300 rounded-lg px-2 text-xs col-span-2 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Activity (e.g. Guests arrive)" value={form.activity} onChange={e => setForm(f => ({ ...f, activity: e.target.value }))} />
+        <input type="text" className="h-9 border border-gray-300 rounded-lg px-2 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Responsible" value={form.responsibleParty} onChange={e => setForm(f => ({ ...f, responsibleParty: e.target.value }))} />
+      </div>
+      <button onClick={handleAdd} disabled={saving || !form.scheduledTime || !form.activity.trim()} className="mt-2 text-xs px-3 h-8 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium flex items-center gap-1">
+        <Plus size={13} /> Add to Timeline
+      </button>
+    </div>
+  )
+}
+
+// ─── Calendar View — across concurrent events ────────────────────────────────
+
+function CalendarView({
+  events, month, onPrevMonth, onNextMonth, onSelectEvent,
+}: {
+  events: EventBooking[]
+  month: Date
+  onPrevMonth: () => void
+  onNextMonth: () => void
+  onSelectEvent: (ev: EventBooking) => void
+}) {
+  const year = month.getFullYear()
+  const monthIdx = month.getMonth()
+  const firstDay = new Date(year, monthIdx, 1)
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate()
+  const startWeekday = firstDay.getDay() // 0=Sun
+
+  function eventsOnDay(day: number): EventBooking[] {
+    const cellStart = new Date(year, monthIdx, day)
+    const cellEnd = new Date(year, monthIdx, day, 23, 59, 59, 999)
+    return events.filter(ev => {
+      const start = new Date(ev.eventDate)
+      const end = ev.eventEndDate ? new Date(ev.eventEndDate) : start
+      return start <= cellEnd && end >= cellStart
+    })
+  }
+
+  const cells: Array<number | null> = [...Array(startWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  const today = new Date()
+  const isToday = (day: number) => today.getFullYear() === year && today.getMonth() === monthIdx && today.getDate() === day
+
+  return (
+    <div className="px-6 pb-6">
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={onPrevMonth} title="Previous month" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400"><ChevronLeft size={16} /></button>
+        <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{month.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
+        <button onClick={onNextMonth} title="Next month" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400"><ChevronRight size={16} /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 dark:text-slate-500 mb-1">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, idx) => (
+          <div key={idx} className={`min-h-[80px] rounded-lg border p-1 ${day == null ? 'border-transparent' : 'border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+            {day != null && (
+              <>
+                <p className={`text-xs mb-1 ${isToday(day) ? 'font-bold text-purple-600' : 'text-gray-400 dark:text-slate-500'}`}>{day}</p>
+                <div className="space-y-0.5">
+                  {eventsOnDay(day).map(ev => (
+                    <button
+                      key={ev.id}
+                      onClick={() => onSelectEvent(ev)}
+                      title={`${ev.eventName} — ${ev.venueName}`}
+                      className={`w-full text-left text-[10px] px-1 py-0.5 rounded truncate block ${STATUS_VARIANT[ev.status] === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'}`}
+                    >
+                      {ev.eventName}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -312,6 +496,8 @@ export default function EventsScreen() {
   const [deleting, setDeleting] = useState(false)
   const [deleteVendorTarget, setDeleteVendorTarget] = useState<{ vendorId: string; eventId: string; vendorName: string } | null>(null)
   const [deletingVendor, setDeletingVendor] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [calendarMonth, setCalendarMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
 
   const loadEvents = useCallback(async (filter?: string) => {
     try {
@@ -431,13 +617,25 @@ export default function EventsScreen() {
           <PartyPopper size={22} className="text-purple-600" />
           <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Events</h1>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 h-10 px-4 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
-        >
-          <Plus size={16} />
-          New Event
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden dark:border-slate-600">
+            <button onClick={() => setViewMode('list')} title="List view"
+              className={`p-2 ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>
+              <List size={16} />
+            </button>
+            <button onClick={() => setViewMode('calendar')} title="Calendar view — see concurrent events"
+              className={`p-2 ${viewMode === 'calendar' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>
+              <CalendarIcon size={16} />
+            </button>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 h-10 px-4 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+          >
+            <Plus size={16} />
+            New Event
+          </button>
+        </div>
       </div>
 
       {/* KPI Bar */}
@@ -469,7 +667,17 @@ export default function EventsScreen() {
         </div>
       )}
 
-      {/* List */}
+      {viewMode === 'calendar' ? (
+        <div className="flex-1 overflow-y-auto">
+          <CalendarView
+            events={events}
+            month={calendarMonth}
+            onPrevMonth={() => setCalendarMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+            onNextMonth={() => setCalendarMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+            onSelectEvent={ev => { setViewMode('list'); setExpandedId(ev.id) }}
+          />
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
         {loading && <p className="text-center text-gray-400 py-8 dark:text-slate-500">Loading...</p>}
         {!loading && events.length === 0 && (
@@ -537,7 +745,11 @@ export default function EventsScreen() {
                           <div key={v.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-gray-100 rounded-lg px-3 py-2 dark:border-slate-800">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{v.vendor.supplierName}</p>
-                              <p className="text-xs text-gray-500 dark:text-slate-400">{fmtLabel(v.vendorCategory)} · Quoted: {fmtCurrency(v.quotedAmount)}{v.advancePaid ? ` · Advance: ${fmtCurrency(v.advancePaid)}` : ''}</p>
+                              <p className="text-xs text-gray-500 dark:text-slate-400">
+                                {fmtLabel(v.vendorCategory)} · Quoted: {fmtCurrency(v.quotedAmount)}
+                                {v.pricingType === 'PER_HEAD' && v.perHeadRate != null && ` (₹${v.perHeadRate}/guest)`}
+                                {v.advancePaid ? ` · Advance: ${fmtCurrency(v.advancePaid)}` : ''}
+                              </p>
                             </div>
                             <select
                               value={v.status}
@@ -552,6 +764,12 @@ export default function EventsScreen() {
                           </div>
                         ))}
                       </div>
+                    )}
+                    {ev.vendorBookings.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2 dark:text-slate-400">
+                        Total vendor cost: <span className="font-semibold text-gray-700 dark:text-slate-300">{fmtCurrency(ev.vendorBookings.reduce((s, v) => s + v.quotedAmount, 0))}</span>
+                        {ev.expectedGuestCount ? ` · ${fmtCurrency(Math.round(ev.vendorBookings.reduce((s, v) => s + v.quotedAmount, 0) / ev.expectedGuestCount))}/guest across ${ev.expectedGuestCount} guests` : ''}
+                      </p>
                     )}
                     {ev.notes && <p className="text-xs text-gray-400 italic mt-3 dark:text-slate-500">{ev.notes}</p>}
 
@@ -575,17 +793,27 @@ export default function EventsScreen() {
                   {showAddVendorFor === ev.id && (
                     <AddVendorForm
                       eventId={ev.id}
+                      expectedGuestCount={ev.expectedGuestCount}
                       suppliers={suppliers}
                       onSave={() => handleVendorAdded(ev.id)}
                       onClose={() => setShowAddVendorFor(null)}
                     />
                   )}
+
+                  {/* Phase 58 §2 — event-day run-of-show, distinct from the vendor procurement checklist above */}
+                  <div className="border-t dark:border-slate-800 px-6 py-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 dark:text-slate-400 flex items-center gap-1.5">
+                      <Clock size={12} /> Run of Show
+                    </p>
+                    <RunOfShowPanel eventId={ev.id} eventDate={ev.eventDate} />
+                  </div>
                 </div>
               )}
             </Card>
           )
         })}
       </div>
+      )}
 
       {(showForm || editEvent) && (
         <EventForm

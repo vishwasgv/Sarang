@@ -7,6 +7,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,11 +42,27 @@ interface Customer {
   id: string
   customerName: string
   phone: string | null
+  lastAgmDate?: string | null
 }
 
 interface Employee {
   id: string
   fullName: string
+}
+
+interface ChecklistItem {
+  id: string
+  clientId: string
+  documentType: string
+  label: string | null
+  status: string
+  collectedDate: string | null
+  notes: string | null
+}
+
+const CHECKLIST_DOCUMENT_TYPES = ['PAN', 'AADHAAR', 'BANK_STATEMENT', 'GST_CERTIFICATE', 'OTHER']
+const CHECKLIST_TYPE_LABELS: Record<string, string> = {
+  PAN: 'PAN Card', AADHAAR: 'Aadhaar Card', BANK_STATEMENT: 'Bank Statement', GST_CERTIFICATE: 'GST Certificate', OTHER: 'Other',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -139,6 +156,19 @@ export default function ComplianceScreen(): React.JSX.Element {
   const [updateFiledOn, setUpdateFiledOn] = useState('')
   const [updateAckNo, setUpdateAckNo] = useState('')
   const [updateSaving, setUpdateSaving] = useState(false)
+
+  // Clients modal (Phase 58 §2) — AGM date capture (feeds AGM-relative ROC
+  // event auto-generation) + per-client document checklist.
+  const [showClientsModal, setShowClientsModal] = useState(false)
+  const [clientSearch, setClientSearch] = useState('')
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null)
+  const [agmDateInput, setAgmDateInput] = useState('')
+  const [agmSaving, setAgmSaving] = useState(false)
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
+  const [checklistLoading, setChecklistLoading] = useState(false)
+  const [newChecklistType, setNewChecklistType] = useState('PAN')
+  const [checklistSaving, setChecklistSaving] = useState(false)
+  const [checklistError, setChecklistError] = useState('')
 
   const loadTasks = useCallback(async () => {
     setLoading(true)
@@ -307,6 +337,88 @@ export default function ComplianceScreen(): React.JSX.Element {
     }
   }
 
+  // ── Clients modal handlers (Phase 58 §2) ────────────────────────────────
+
+  async function loadChecklist(clientId: string): Promise<void> {
+    setChecklistLoading(true)
+    try {
+      const res = await api.clientDocumentChecklist.list({ clientId })
+      if (res.success) setChecklistItems(res.data as ChecklistItem[])
+      else toastError('Error', res.error?.message ?? 'Could not load checklist.')
+    } catch {
+      toastError('Error', 'Could not load checklist.')
+    } finally {
+      setChecklistLoading(false)
+    }
+  }
+
+  function toggleClientExpanded(c: Customer): void {
+    if (expandedClientId === c.id) {
+      setExpandedClientId(null)
+      return
+    }
+    setExpandedClientId(c.id)
+    setAgmDateInput(c.lastAgmDate ? c.lastAgmDate.slice(0, 10) : '')
+    setChecklistError('')
+    void loadChecklist(c.id)
+  }
+
+  async function handleSaveAgmDate(clientId: string): Promise<void> {
+    setAgmSaving(true)
+    try {
+      const res = await api.complianceEvent.setClientAgmDate({ clientId, agmDate: agmDateInput || null })
+      if (res.success) {
+        await loadClients()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not save AGM date.')
+      }
+    } catch {
+      toastError('Error', 'Could not save AGM date.')
+    } finally {
+      setAgmSaving(false)
+    }
+  }
+
+  async function handleAddChecklistItem(clientId: string): Promise<void> {
+    setChecklistSaving(true)
+    setChecklistError('')
+    try {
+      const res = await api.clientDocumentChecklist.add({ clientId, documentType: newChecklistType })
+      if (res.success) await loadChecklist(clientId)
+      else setChecklistError(res.error?.message ?? 'Could not add checklist item.')
+    } catch {
+      setChecklistError('Could not add checklist item.')
+    } finally {
+      setChecklistSaving(false)
+    }
+  }
+
+  async function handleSeedStandardChecklist(clientId: string): Promise<void> {
+    setChecklistSaving(true)
+    setChecklistError('')
+    try {
+      const res = await api.clientDocumentChecklist.seedStandard({ clientId })
+      if (res.success) await loadChecklist(clientId)
+      else setChecklistError(res.error?.message ?? 'Could not seed checklist.')
+    } catch {
+      setChecklistError('Could not seed checklist.')
+    } finally {
+      setChecklistSaving(false)
+    }
+  }
+
+  async function handleToggleChecklistStatus(item: ChecklistItem): Promise<void> {
+    const res = await api.clientDocumentChecklist.update({ id: item.id, status: item.status === 'COLLECTED' ? 'PENDING' : 'COLLECTED' })
+    if (res.success) await loadChecklist(item.clientId)
+    else toastError('Error', res.error?.message ?? 'Could not update checklist item.')
+  }
+
+  async function handleRemoveChecklistItem(item: ChecklistItem): Promise<void> {
+    const res = await api.clientDocumentChecklist.remove({ id: item.id })
+    if (res.success) await loadChecklist(item.clientId)
+    else toastError('Error', res.error?.message ?? 'Could not remove checklist item.')
+  }
+
   const filtered = tasks.filter((t) => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -341,6 +453,9 @@ export default function ComplianceScreen(): React.JSX.Element {
           <div className="flex items-center gap-2">
             <button onClick={() => void loadTasks()} className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
               <RefreshCw className="w-4 h-4" />
+            </button>
+            <button onClick={() => { setShowClientsModal(true); setExpandedClientId(null); setClientSearch('') }} className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" style={{ minHeight: 44 }}>
+              Clients &amp; Checklists
             </button>
             <button onClick={openAddForm} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors" style={{ minHeight: 44 }}>
               <Plus className="w-4 h-4" />
@@ -576,6 +691,8 @@ export default function ComplianceScreen(): React.JSX.Element {
                   </div>
                 </>
               )}
+
+              <DocumentPanel entityType="COMPLIANCE_TASK" entityId={updateTask.id} compact />
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-5">
@@ -583,6 +700,106 @@ export default function ComplianceScreen(): React.JSX.Element {
               <button onClick={() => void handleUpdateStatus()} disabled={updateSaving} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors" style={{ minHeight: 44 }}>
                 {updateSaving ? 'Saving...' : 'Update'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Clients & Checklists modal (Phase 58 §2) ─────────────────────── */}
+      {showClientsModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Clients & Checklists</h2>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Capture each company client's AGM date to auto-generate MGT-7/AOC-4/ADT-1 tasks, and track document collection.</p>
+              </div>
+              <button onClick={() => setShowClientsModal(false)} className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-slate-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  style={{ minHeight: 44 }}
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
+              {clients
+                .filter((c) => !clientSearch.trim() || c.customerName.toLowerCase().includes(clientSearch.toLowerCase()))
+                .map((c) => (
+                  <div key={c.id} className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleClientExpanded(c)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{c.customerName}</span>
+                        {c.lastAgmDate && <span className="ml-2 text-xs text-gray-400 dark:text-slate-500">AGM: {fmtDate(c.lastAgmDate)}</span>}
+                      </div>
+                      <span className="text-xs text-indigo-600">{expandedClientId === c.id ? 'Hide' : 'Manage'}</span>
+                    </button>
+
+                    {expandedClientId === c.id && (
+                      <div className="px-3 py-3 border-t border-gray-100 dark:border-slate-800 space-y-4 bg-gray-50/50 dark:bg-slate-950/40">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Last AGM Date</label>
+                          <div className="flex items-center gap-2">
+                            <input type="date" value={agmDateInput} onChange={(e) => setAgmDateInput(e.target.value)} className="flex-1 h-9 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                            <button onClick={() => void handleSaveAgmDate(c.id)} disabled={agmSaving} className="h-9 px-3 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-50">
+                              {agmSaving ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">MGT-7 (+60d), AOC-4 (+30d), and ADT-1 (+15d) tasks are auto-generated from this date.</p>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Document Checklist</label>
+                            <button onClick={() => void handleSeedStandardChecklist(c.id)} disabled={checklistSaving} className="text-xs text-indigo-600 hover:underline disabled:opacity-50">Add Standard Checklist</button>
+                          </div>
+                          {checklistError && <div className="text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-1.5 mb-2">{checklistError}</div>}
+                          {checklistLoading ? (
+                            <div className="text-xs text-gray-400 dark:text-slate-500">Loading...</div>
+                          ) : checklistItems.length === 0 ? (
+                            <div className="text-xs text-gray-400 dark:text-slate-500">No checklist items yet.</div>
+                          ) : (
+                            <div className="space-y-1">
+                              {checklistItems.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded px-2.5 py-1.5">
+                                  <span className="text-gray-800 dark:text-slate-200">{CHECKLIST_TYPE_LABELS[item.documentType] ?? item.documentType}{item.label ? ` — ${item.label}` : ''}</span>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => void handleToggleChecklistStatus(item)}
+                                      className={cn('px-2 py-0.5 rounded-full text-xs font-medium border', item.status === 'COLLECTED' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800')}
+                                    >
+                                      {item.status === 'COLLECTED' ? 'Collected' : 'Pending'}
+                                    </button>
+                                    <button onClick={() => void handleRemoveChecklistItem(item)} className="text-gray-400 hover:text-red-600"><X size={12} /></button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Select value={newChecklistType} onChange={(e) => setNewChecklistType(e.target.value)} className="flex-1 h-9 text-xs">
+                              {CHECKLIST_DOCUMENT_TYPES.map((dt) => <option key={dt} value={dt}>{CHECKLIST_TYPE_LABELS[dt]}</option>)}
+                            </Select>
+                            <button onClick={() => void handleAddChecklistItem(c.id)} disabled={checklistSaving} className="h-9 px-3 rounded-lg border border-gray-300 dark:border-slate-600 text-xs font-medium hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-50">
+                              {checklistSaving ? 'Adding...' : 'Add'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
         </div>

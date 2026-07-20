@@ -22,6 +22,9 @@ export const CreateDrivingVehicleSchema = z.object({
   vehicleClass: z.string().min(1, 'Vehicle class is required'),
   instructorId: z.string().optional(),
   status: z.string().max(50).optional(),
+  odometerKm: z.number().finite().nonnegative('Odometer cannot be negative').optional(),
+  serviceIntervalKm: z.number().finite().positive('Service interval (km) must be greater than zero').optional(),
+  serviceIntervalSessions: z.number().finite().positive('Service interval (sessions) must be greater than zero').optional(),
 })
 
 export const UpdateDrivingVehicleSchema = z.object({
@@ -32,10 +35,27 @@ export const UpdateDrivingVehicleSchema = z.object({
   vehicleClass: z.string().min(1).optional(),
   instructorId: z.string().nullable().optional(),
   status: z.string().max(50).optional(),
+  odometerKm: z.number().finite().nonnegative('Odometer cannot be negative').optional(),
+  serviceIntervalKm: z.number().finite().positive('Service interval (km) must be greater than zero').optional(),
+  serviceIntervalSessions: z.number().finite().positive('Service interval (sessions) must be greater than zero').optional(),
 })
 
 export const DeleteDrivingVehicleSchema = z.object({
   id: z.string().min(1, 'Vehicle ID is required'),
+})
+
+// Phase 58 §2 — Driving School: vehicle maintenance log
+export const LogVehicleMaintenanceSchema = z.object({
+  vehicleId: z.string().min(1, 'Vehicle is required'),
+  serviceDate: z.string().optional(),
+  odometerKm: z.number().finite().nonnegative('Odometer cannot be negative'),
+  serviceType: z.string().min(1, 'Service type is required').max(200),
+  cost: z.number().finite().nonnegative('Cost cannot be negative').optional(),
+  notes: z.string().max(2000).optional(),
+})
+
+export const ListVehicleMaintenanceLogsSchema = z.object({
+  vehicleId: z.string().min(1, 'Vehicle is required'),
 })
 
 // ── DrivingSession ────────────────────────────────────────────────────────────
@@ -76,6 +96,7 @@ export const CreateDrivingTestSchema = z.object({
   testDate: z.string().min(1, 'Test date is required'),
   testCenter: z.string().min(1, 'Test center is required'),
   notes: z.string().max(2000).optional(),
+  instructorId: z.string().optional(),
 })
 
 export const UpdateDrivingTestSchema = z.object({
@@ -83,6 +104,7 @@ export const UpdateDrivingTestSchema = z.object({
   result: z.string().max(50).optional(),
   retestDate: z.string().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  instructorId: z.string().nullable().optional(),
 })
 
 // ── DrivingPackage ────────────────────────────────────────────────────────────

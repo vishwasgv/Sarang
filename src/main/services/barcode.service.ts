@@ -80,28 +80,45 @@ function buildEAN13(prefix: string, body10: string): string {
 // legacy "20…"-prefixed manufacturer/in-store code typed into a product's
 // barcode field, and folding that into the sequence would either corrupt the
 // numbering (jumping far ahead) or spuriously trip the capacity cap.
+//
+// Phase 58 §2 — Clothing/Footwear variant barcode generation shares this SAME
+// counter/collision space with Product, not a separate one: Product.barcode
+// and ProductVariant.barcode are two independently-unique-constrained
+// columns in different tables, so nothing at the DB level stops the same
+// 13-digit string being assigned to a Product AND an unrelated Product's
+// variant. Scanning/checking against BOTH tables here (and in
+// generateUniquePlainBarcode below) makes that collision structurally
+// impossible instead of merely unlikely.
 async function maxPlainItemCode(tx?: Prisma.TransactionClient): Promise<number> {
   const db = tx ?? getPrisma()
-  const existing = await db.product.findMany({
-    where: { barcode: { startsWith: PLAIN_PREFIX }, barcodeSource: 'GENERATED' },
-    select: { barcode: true }
-  })
+  const [products, variants] = await Promise.all([
+    db.product.findMany({
+      where: { barcode: { startsWith: PLAIN_PREFIX }, barcodeSource: 'GENERATED' },
+      select: { barcode: true }
+    }),
+    db.productVariant.findMany({
+      where: { barcode: { startsWith: PLAIN_PREFIX }, barcodeSource: 'GENERATED' },
+      select: { barcode: true }
+    })
+  ])
   let max = 0
-  for (const p of existing) {
-    if (!p.barcode || p.barcode.length !== 13) continue
-    const n = parseInt(p.barcode.slice(2, 12), 10)
+  for (const row of [...products, ...variants]) {
+    if (!row.barcode || row.barcode.length !== 13) continue
+    const n = parseInt(row.barcode.slice(2, 12), 10)
     if (!isNaN(n)) max = Math.max(max, n)
   }
   return max
 }
 
-// Shared by generateBarcode and bulkGenerateMissingBarcodes (previously two
-// copies of the same 8-line retry loop). Takes a mutable in-memory counter
-// rather than re-deriving the max from a table scan on every attempt — the
-// caller computes the starting point once (via maxPlainItemCode) and this
-// function only does cheap, indexed collision checks from there. Bulk backfill
-// on a large catalog previously re-scanned the whole barcoded-product table on
-// every retry attempt of every product, effectively O(n²) work.
+// Shared by generateBarcode/bulkGenerateMissingBarcodes and their variant
+// counterparts below (previously two copies of the same 8-line retry loop).
+// Takes a mutable in-memory counter rather than re-deriving the max from a
+// table scan on every attempt — the caller computes the starting point once
+// (via maxPlainItemCode) and this function only does cheap, indexed collision
+// checks from there. Bulk backfill on a large catalog previously re-scanned
+// the whole barcoded-product table on every retry attempt of every product,
+// effectively O(n²) work. Checks BOTH Product and ProductVariant for a
+// collision — see maxPlainItemCode's comment for why this must be shared.
 async function generateUniquePlainBarcode(tx: Prisma.TransactionClient, counter: { value: number }): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     counter.value += 1
@@ -109,8 +126,11 @@ async function generateUniquePlainBarcode(tx: Prisma.TransactionClient, counter:
       throw new ServiceError('BCD-002', 'Internal barcode capacity reached. Contact support.')
     }
     const candidate = buildEAN13(PLAIN_PREFIX, String(counter.value).padStart(10, '0'))
-    const clash = await tx.product.findUnique({ where: { barcode: candidate } })
-    if (!clash) return candidate
+    const [clashProduct, clashVariant] = await Promise.all([
+      tx.product.findUnique({ where: { barcode: candidate } }),
+      tx.productVariant.findUnique({ where: { barcode: candidate } })
+    ])
+    if (!clashProduct && !clashVariant) return candidate
   }
   throw new ServiceError('BCD-005', 'Could not generate a unique barcode. Try again.')
 }
@@ -189,6 +209,74 @@ export async function bulkGenerateMissingBarcodes(): Promise<ApiResponse> {
     }
 
     await logAction({ userId: getCurrentSession()?.userId, action: 'BARCODES_BULK_GENERATED', entityType: 'Product', newValue: { count: generated } })
+    return { success: true, data: { generated, totalMissing: missing.length } }
+  } catch {
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 58 §2 — Clothing/Footwear variant-aware barcode generation. Mirrors
+// generateBarcode/bulkGenerateMissingBarcodes exactly, just targeting
+// ProductVariant instead of Product, sharing the same counter/collision
+// space (see maxPlainItemCode's comment above) so a variant's barcode can
+// never collide with any product's — or any other variant's — barcode.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function generateVariantBarcode(variantId: string): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    const barcode = await db.$transaction(async (tx) => {
+      const variant = await tx.productVariant.findUnique({ where: { id: variantId } })
+      if (!variant) throw new ServiceError('VAR-001', 'Variant not found.')
+      if (variant.barcode) throw new ServiceError('BCD-004', 'This variant already has a barcode.')
+
+      const counter = { value: await maxPlainItemCode(tx) }
+      const code = await generateUniquePlainBarcode(tx, counter)
+
+      await tx.productVariant.update({ where: { id: variantId }, data: { barcode: code, barcodeSource: 'GENERATED' } })
+      return code
+    })
+
+    await logAction({ userId: getCurrentSession()?.userId, action: 'VARIANT_BARCODE_GENERATED', entityType: 'ProductVariant', entityId: variantId, newValue: { barcode } })
+    return { success: true, data: { barcode } }
+  } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+export async function bulkGenerateMissingVariantBarcodes(productId: string): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    const missing = await db.productVariant.findMany({ where: { productId, barcode: null, isActive: true }, select: { id: true } })
+
+    let generated = 0
+    const BATCH_SIZE = 200
+    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+      const batch = missing.slice(i, i + BATCH_SIZE)
+      await db.$transaction(async (tx) => {
+        const counter = { value: await maxPlainItemCode(tx) }
+        for (const { id } of batch) {
+          // Re-check inside the transaction — a variant could have been given a
+          // barcode by a concurrent action between the initial query and now.
+          const current = await tx.productVariant.findUnique({ where: { id }, select: { barcode: true } })
+          if (current?.barcode) continue
+
+          let code: string
+          try {
+            code = await generateUniquePlainBarcode(tx, counter)
+          } catch {
+            continue // skip this one, don't fail the whole batch — surfaced via the count being lower than expected
+          }
+
+          await tx.productVariant.update({ where: { id }, data: { barcode: code, barcodeSource: 'GENERATED' } })
+          generated++
+        }
+      })
+    }
+
+    await logAction({ userId: getCurrentSession()?.userId, action: 'VARIANT_BARCODES_BULK_GENERATED', entityType: 'Product', entityId: productId, newValue: { count: generated } })
     return { success: true, data: { generated, totalMissing: missing.length } }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }

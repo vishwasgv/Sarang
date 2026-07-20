@@ -152,12 +152,19 @@ export async function createProduct(payload: CreateProductPayload): Promise<ApiR
           unit: payload.unit,
           costPrice: payload.costPrice,
           sellingPrice: payload.sellingPrice,
+          mrp: payload.mrp ?? null,
           taxRate: payload.taxRate,
           imagePath: payload.imagePath || null,
           gender: payload.gender ?? null,
+          isPrescriptionRequired: payload.isPrescriptionRequired ?? false,
+          defaultSupplierId: payload.defaultSupplierId || null,
+          expiryAlertLeadDays: payload.expiryAlertLeadDays || null,
           sellByWeight: payload.sellByWeight,
           weightUnit: payload.sellByWeight ? payload.weightUnit : null,
           pricePerWeightUnit: payload.sellByWeight ? payload.pricePerWeightUnit : null,
+          sellByPack: payload.sellByPack ?? false,
+          packUnit: payload.sellByPack ? payload.packUnit : null,
+          unitsPerPack: payload.sellByPack ? payload.unitsPerPack : null,
           barcodeSource: payload.barcode ? 'MANUAL' : null,
           isRentable: payload.isRentable ?? false,
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,
@@ -267,12 +274,19 @@ export async function updateProduct(payload: UpdateProductPayload): Promise<ApiR
           unit: payload.unit,
           costPrice: payload.costPrice,
           sellingPrice: payload.sellingPrice,
+          mrp: payload.mrp ?? null,
           taxRate: payload.taxRate,
           imagePath: payload.imagePath || null,
           gender: payload.gender ?? null,
+          isPrescriptionRequired: payload.isPrescriptionRequired ?? false,
+          defaultSupplierId: payload.defaultSupplierId || null,
+          expiryAlertLeadDays: payload.expiryAlertLeadDays || null,
           sellByWeight: payload.sellByWeight,
           weightUnit: payload.sellByWeight ? payload.weightUnit : null,
           pricePerWeightUnit: payload.sellByWeight ? payload.pricePerWeightUnit : null,
+          sellByPack: payload.sellByPack ?? false,
+          packUnit: payload.sellByPack ? payload.packUnit : null,
+          unitsPerPack: payload.sellByPack ? payload.unitsPerPack : null,
           barcodeSource: payload.barcode && payload.barcode !== existing.barcode ? 'MANUAL' : existing.barcodeSource,
           isRentable: payload.isRentable ?? false,
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,
@@ -308,6 +322,101 @@ export async function updateProduct(payload: UpdateProductPayload): Promise<ApiR
 
     await logAction({ userId: getCurrentSession()?.userId, action: 'PRODUCT_UPDATED', entityType: 'Product', entityId: payload.id, newValue: { productName: payload.productName } })
     return { success: true, data: updated }
+  } catch {
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// Phase 58 §2 (2026-07-17) — Restaurant's "86 today": a menu item
+// temporarily unavailable, distinct from archiveProduct's permanent
+// deactivation above. `unavailableUntil` set to end-of-today marks it 86'd;
+// clearing it back to null (not "set to a past date") makes it available
+// again immediately — the field self-expires naturally at midnight since
+// every read-side check compares against "now", so there's no reset job to
+// forget to run.
+export async function setProductAvailability(id: string, unavailableUntil: string | null): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    const product = await db.product.update({ where: { id }, data: { unavailableUntil: unavailableUntil ? new Date(unavailableUntil) : null } })
+    await logAction({ userId: getCurrentSession()?.userId, action: unavailableUntil ? 'PRODUCT_86D' : 'PRODUCT_AVAILABILITY_RESTORED', entityType: 'Product', entityId: id })
+    return { success: true, data: product }
+  } catch {
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// Phase 58 §2 — Distributor customer-class/negotiated pricing. Resolved
+// fresh server-side at every add-to-cart/accept site (BillingScreen,
+// QuotationFormScreen, BulkOrderScreen, the field-rep accept flow) — never
+// trusted from the client, exactly the same principle as
+// Product.sellingPrice itself. Falls back to the product's own sellingPrice
+// when the customer has no customerClass set, or no price is on file for
+// that (productId, customerClass) pair — a class price is an override, not
+// a requirement.
+export async function resolveCustomerPrice(productId: string, customerId?: string | null): Promise<number> {
+  const db = getPrisma()
+  const product = await db.product.findUnique({ where: { id: productId }, select: { sellingPrice: true } })
+  if (!product) throw new ServiceError('PRD-005', 'Product not found.')
+  if (!customerId) return product.sellingPrice
+
+  const customer = await db.customer.findUnique({ where: { id: customerId }, select: { customerClass: true } })
+  if (!customer?.customerClass) return product.sellingPrice
+
+  const classPrice = await db.customerClassPrice.findUnique({
+    where: { productId_customerClass: { productId, customerClass: customer.customerClass } }
+  })
+  return classPrice ? classPrice.price : product.sellingPrice
+}
+
+export async function resolveCustomerPriceForUi(productId: string, customerId?: string | null): Promise<ApiResponse> {
+  try {
+    const price = await resolveCustomerPrice(productId, customerId)
+    return { success: true, data: { price } }
+  } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+export async function listCustomerClassPrices(productId?: string): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    const prices = await db.customerClassPrice.findMany({
+      where: productId ? { productId } : {},
+      include: { product: { select: { productName: true, sellingPrice: true } } },
+      orderBy: [{ productId: 'asc' }, { customerClass: 'asc' }]
+    })
+    return { success: true, data: prices }
+  } catch {
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+export async function upsertCustomerClassPrice(payload: { productId: string; customerClass: string; price: number }): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    const product = await db.product.findUnique({ where: { id: payload.productId }, select: { id: true } })
+    if (!product) return { success: false, error: { code: 'PRD-005', message: 'Product not found.' } }
+    if (payload.price < 0) return { success: false, error: { code: 'VAL-002', message: 'Price cannot be negative.' } }
+
+    const record = await db.customerClassPrice.upsert({
+      where: { productId_customerClass: { productId: payload.productId, customerClass: payload.customerClass } },
+      create: { productId: payload.productId, customerClass: payload.customerClass, price: payload.price },
+      update: { price: payload.price }
+    })
+    await logAction({ userId: getCurrentSession()?.userId, action: 'CUSTOMER_CLASS_PRICE_SET', entityType: 'CustomerClassPrice', entityId: record.id })
+    return { success: true, data: record }
+  } catch {
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+export async function deleteCustomerClassPrice(id: string): Promise<ApiResponse> {
+  try {
+    const db = getPrisma()
+    await db.customerClassPrice.delete({ where: { id } })
+    await logAction({ userId: getCurrentSession()?.userId, action: 'CUSTOMER_CLASS_PRICE_DELETED', entityType: 'CustomerClassPrice', entityId: id })
+    return { success: true }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }

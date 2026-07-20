@@ -10,6 +10,13 @@ export const CreatePackSchema = z.object({
   taxRate: z.number().nonnegative('Tax rate cannot be negative').finite().optional(),
   sacCode: z.string().optional(),
   notes: z.string().optional(),
+  // Phase 58 §2 — Gym/Studio: standing trainer for this PT package.
+  assignedTrainerId: z.string().optional(),
+})
+
+export const AssignPackTrainerSchema = z.object({
+  packId: z.string().min(1, 'packId is required'),
+  trainerId: z.string().nullable(),
 })
 
 export const DeductSessionSchema = z.object({

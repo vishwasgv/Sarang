@@ -5,7 +5,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { createPack, getActivePack, listPacks, listAllActivePacks, deductSession, generateSessionPackInvoice } from '../session-pack.service'
+import { createPack, getActivePack, listPacks, listAllActivePacks, deductSession, generateSessionPackInvoice, assignPackTrainer } from '../session-pack.service'
 
 // Regression coverage for the Phase 26 re-audit findings:
 //  1. ClientSessionPack.pricePerPack is a Prisma Decimal — Electron's IPC
@@ -261,5 +261,59 @@ describe('session-pack.service — generateSessionPackInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('SP-009')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 58 §2 — Gym/Studio: assignPackTrainer
+
+function makeTrainerMockDb(pack: Record<string, unknown> | null) {
+  return {
+    clientSessionPack: {
+      findUnique: vi.fn().mockResolvedValue(pack ? { id: pack.id } : null),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ ...pack, ...data, assignedTrainer: data.assignedTrainerId ? { id: data.assignedTrainerId, fullName: 'Coach Rahul' } : null })
+      ),
+    },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
+  }
+}
+
+describe('session-pack.service — assignPackTrainer', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a missing pack', async () => {
+    const db = makeTrainerMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await assignPackTrainer('pack-missing', 'emp-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SP-012')
+  })
+
+  it('assigns a trainer and returns the serialized pack with the relation populated', async () => {
+    const db = makeTrainerMockDb(makePackForInvoice())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await assignPackTrainer('pack-1', 'emp-1')
+
+    expect(res.success).toBe(true)
+    expect(db.clientSessionPack.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'pack-1' },
+      data: { assignedTrainerId: 'emp-1' },
+    }))
+    const data = (res as { data: { assignedTrainerId: string; assignedTrainer: { fullName: string } } }).data
+    expect(data.assignedTrainerId).toBe('emp-1')
+    expect(data.assignedTrainer.fullName).toBe('Coach Rahul')
+  })
+
+  it('clears a trainer assignment when passed null', async () => {
+    const db = makeTrainerMockDb(makePackForInvoice({ assignedTrainerId: 'emp-1' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await assignPackTrainer('pack-1', null)
+
+    expect(res.success).toBe(true)
+    expect(db.clientSessionPack.update).toHaveBeenCalledWith(expect.objectContaining({ data: { assignedTrainerId: null } }))
+    expect((res as { data: { assignedTrainer: unknown } }).data.assignedTrainer).toBeNull()
   })
 })

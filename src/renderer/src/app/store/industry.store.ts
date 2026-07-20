@@ -43,6 +43,8 @@ export type TemplateModule =
   // Phase 38 — Barcode System + Loose/Weight Billing (opt-in, defaulted OFF for
   // every business type — see TEMPLATE_DEFAULTS in industry-template.service.ts)
   | 'barcode_generation' | 'barcode_printing' | 'loose_billing'
+  // Phase 58 §2 — carton/box-to-loose-piece unit conversion (opt-in, same convention as loose_billing above)
+  | 'pack_billing'
   // Phase 46 — replacing two hardcoded business-type checks the audit found in
   // AppointmentsScreen.tsx/VisitNoteScreen.tsx with real, config-driven flags.
   | 'multi_service_booking' | 'specialist_referral'
@@ -74,6 +76,15 @@ export type TemplateModule =
   // Phase 57 — AI Assistant, cross-cutting opt-in, see
   // industry-template.service.ts's header comment.
   | 'ai_assistant'
+  // Phase 58 §2 — Distributor field-rep order capture, a DISTRIBUTOR
+  // default (not opt-in), see industry-template.service.ts's header comment.
+  | 'field_order_capture'
+  // Phase 58 §2 — Electronics repair/RMA workflow, an ELECTRONICS default
+  // (not opt-in), see industry-template.service.ts's header comment.
+  | 'repair_rma'
+  // Phase 58 §2 — Agri Inputs combined consumables+equipment dashboard, an
+  // AGRI_INPUTS default, see industry-template.service.ts's header comment.
+  | 'agri_dashboard'
 
 interface IndustryState {
   businessType: string

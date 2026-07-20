@@ -41,6 +41,30 @@ function refineLooseBilling<T extends { sellByWeight?: boolean; weightUnit?: str
   }
 }
 
+// Phase 58 §2 — Hardware's carton/box-to-loose-piece conversion. This is
+// purely a STOCK RECEIVING convenience (how many base `unit`s a purchased
+// pack contains) — the product is still stocked and sold in `unit` at all
+// times, so no product-type or inventory-quantity meaning changes.
+const packBillingFields = {
+  sellByPack: z.boolean().default(false),
+  packUnit: z.string().max(20).optional().nullable(),
+  unitsPerPack: z.number().positive('Units per pack must be greater than zero').optional().nullable()
+}
+
+function refinePackBilling<T extends { sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null }>(
+  data: T,
+  ctx: z.RefinementCtx
+): void {
+  if (data.sellByPack) {
+    if (!data.packUnit?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['packUnit'], message: 'Name the pack unit (e.g. BOX, CARTON) for pack-based receiving.' })
+    }
+    if (data.unitsPerPack === null || data.unitsPerPack === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['unitsPerPack'], message: `Set how many ${data.packUnit || 'pack'} units convert to 1 base unit.` })
+    }
+  }
+}
+
 // Phase 54G — rental. Sent as a structured array over IPC (not pre-
 // stringified by the renderer) — product.service.ts JSON.stringifies it at
 // the DB-write boundary, same "structured over IPC, stringify at the
@@ -108,17 +132,33 @@ export const CreateProductSchema = z
     unit: z.string().min(1).max(20).default('PCS'),
     costPrice: z.number().min(0, 'Cost price cannot be negative').default(0),
     sellingPrice: z.number().min(0, 'Selling price cannot be negative'),
+    mrp: z.number().min(0, 'MRP cannot be negative').optional().nullable(),
     taxRate: z.number().min(0, 'Tax rate cannot be negative').max(100).default(0),
     imagePath: z.string().optional(),
     reorderLevel: z.number().min(0).default(0),
     reorderQuantity: z.number().min(0).default(0),
+    // Phase 58 §2 — generic reorder-automation supplier link
+    defaultSupplierId: z.string().optional().nullable(),
     openingQuantity: z.number().min(0).default(0),
     gender: GENDER,
+    // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag
+    isPrescriptionRequired: z.boolean().optional(),
+    // Phase 58 §2 — Agri Inputs category-specific expiry alert lead time.
+    // Null means "use the generic default (30 days)" — a seed/fertilizer
+    // shop needs a much longer heads-up window than a pharmacy's 30-day
+    // medicine cutoff (germination/potency starts degrading well before a
+    // hard expiry date), while a pesticide might want the pharmacy default.
+    // Not Agri-specific in the schema — any expiry_tracking business can set
+    // it, same "generic field, motivated by one vertical" precedent as
+    // defaultSupplierId.
+    expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
     ...rentalFields,
     ...looseBillingFields,
+    ...packBillingFields,
     ...jewelleryFields
   })
   .superRefine(refineLooseBilling)
+  .superRefine(refinePackBilling)
   .superRefine(refineJewellery)
 
 export const UpdateProductSchema = z
@@ -134,22 +174,31 @@ export const UpdateProductSchema = z
     unit: z.string().min(1).max(20).default('PCS'),
     costPrice: z.number().min(0, 'Cost price cannot be negative').default(0),
     sellingPrice: z.number().min(0, 'Selling price cannot be negative'),
+    mrp: z.number().min(0, 'MRP cannot be negative').optional().nullable(),
     taxRate: z.number().min(0, 'Tax rate cannot be negative').max(100).default(0),
     imagePath: z.string().optional().nullable(),
     reorderLevel: z.number().min(0).default(0),
     reorderQuantity: z.number().min(0).default(0),
+    defaultSupplierId: z.string().optional().nullable(),
     gender: GENDER,
+    isPrescriptionRequired: z.boolean().optional(),
+    expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
     ...rentalFields,
     ...looseBillingFields,
+    ...packBillingFields,
     ...jewelleryFields
   })
   .superRefine(refineLooseBilling)
+  .superRefine(refinePackBilling)
   .superRefine(refineJewellery)
 
 // Phase 38: barcode/label-printing action payloads
 export const GenerateBarcodeSchema = z.object({ productId: z.string().min(1) })
 export const BulkGenerateMissingBarcodesSchema = z.object({})
 export const GetByScannedBarcodeSchema = z.object({ code: z.string().min(1).max(50) })
+// Phase 58 §2 — Clothing/Footwear variant barcode generation
+export const GenerateVariantBarcodeSchema = z.object({ variantId: z.string().min(1) })
+export const BulkGenerateMissingVariantBarcodesSchema = z.object({ productId: z.string().min(1) })
 export const GenerateWeightLabelSchema = z.object({
   productId: z.string().min(1),
   // Whole grams only, minimum 1 — the barcode's weight field is a 5-digit
@@ -159,6 +208,10 @@ export const GenerateWeightLabelSchema = z.object({
 export const PrintLabelsSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1),
+    // Phase 58 §2 — when set, prints THIS specific variant's own barcode/price
+    // (size/colour combination), not the parent product's generic barcode —
+    // see billing.handler.ts's buildLabelHtml.
+    variantId: z.string().min(1).optional(),
     copies: z.number().int().positive().max(500),
     // Phase 38: a weight-embedded label carries a fresh ad-hoc barcode (weight
     // baked in) that is NOT the product's own Product.barcode — when set, this

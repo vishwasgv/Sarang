@@ -112,6 +112,12 @@ const config: Configuration = {
       from: 'resources/kitchen-display',
       to: 'kitchen-display'
     },
+    // Phase 58 §2 — Distributor field-rep order capture, another sibling of
+    // qr-menu above, served by field-order-server.ts
+    {
+      from: 'resources/field-order',
+      to: 'field-order'
+    },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
     // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,

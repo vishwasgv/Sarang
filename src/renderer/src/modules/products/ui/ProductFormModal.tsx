@@ -21,16 +21,31 @@ const schema = z.object({
   unit: z.string().min(1, 'Unit is required').max(20),
   costPrice: z.coerce.number().min(0),
   sellingPrice: z.coerce.number().min(0),
+  mrp: z.coerce.number().min(0).optional(),
   taxRate: z.coerce.number().min(0).max(100),
   reorderLevel: z.coerce.number().min(0).optional(),
   reorderQuantity: z.coerce.number().min(0).optional(),
+  // Phase 58 §2 — generic reorder automation: which supplier to draft a PO
+  // against when this product runs low. Not Pharmacy-specific, but shown
+  // near Reorder Level/Quantity since that's what it acts on.
+  defaultSupplierId: z.string().optional(),
   openingQuantity: z.coerce.number().min(0).optional(),
   imagePath: z.string().optional(),
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag.
+  isPrescriptionRequired: z.boolean().default(false),
+  // Phase 58 §2 — category-specific expiry alert lead time (e.g. Agri Inputs
+  // seed/fertilizer needing a much longer heads-up than a pharmacy's 30-day
+  // medicine cutoff). Empty means "use the generic 30-day default."
+  expiryAlertLeadDays: z.coerce.number().int().min(1).max(1000).optional(),
   // Phase 38: loose/weight-based billing — a product is sold loose OR in fixed
   // packs, never both, in this version (see PHASE_38_TECHNICAL_SPEC.md §1.1).
   sellByWeight: z.boolean().default(false),
   weightUnit: z.enum(['kg', 'g', 'L', 'mL']).optional(),
   pricePerWeightUnit: z.coerce.number().min(0).optional(),
+  // Phase 58 §2 — carton/box-to-loose-piece unit conversion.
+  sellByPack: z.boolean().default(false),
+  packUnit: z.string().max(20).optional(),
+  unitsPerPack: z.coerce.number().positive().optional(),
   // Phase 48: apparel gender, surfaced only when variant_tracking is on.
   gender: z.enum(['MENS', 'WOMENS', 'UNISEX']).optional(),
   // Phase 54G: rental. rentalRates (an array of {basis, amount} pairs) is
@@ -57,6 +72,10 @@ const schema = z.object({
     if (!data.weightUnit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['weightUnit'], message: 'Select a unit for loose/weight-based selling.' })
     if (data.pricePerWeightUnit === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerWeightUnit'], message: 'Set a price per unit.' })
   }
+  if (data.sellByPack) {
+    if (!data.packUnit?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['packUnit'], message: 'Name the pack unit (e.g. BOX, CARTON).' })
+    if (data.unitsPerPack === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['unitsPerPack'], message: 'Set how many base units are in 1 pack.' })
+  }
   if (data.isRentable && !data.rentalTrackingType) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalTrackingType'], message: 'Select how this item is tracked (individual units, or bulk quantity).' })
   }
@@ -73,9 +92,12 @@ type FormValues = z.infer<typeof schema>
 
 interface Category { id: string; name: string }
 interface Product {
-  id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
+  id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
+  sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null
   gender?: string | null
+  isPrescriptionRequired?: boolean; defaultSupplierId?: string | null
+  expiryAlertLeadDays?: number | null
   isRentable?: boolean; rentalTrackingType?: 'UNIT' | 'BULK' | null; rentalRates?: { basis: string; amount: number }[]; rentalSecurityDeposit?: number | null
   metalType?: string | null; purity?: string | null; hallmarkNumber?: string | null
   grossWeight?: number | null; stoneWeight?: number | null; netWeight?: number | null
@@ -104,6 +126,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   // Phase 38: opt-in, off by default for every business type — see
   // TEMPLATE_DEFAULTS in industry-template.service.ts.
   const looseBillingEnabled = isModuleEnabled('loose_billing')
+  const packBillingEnabled = isModuleEnabled('pack_billing')
   const barcodeGenerationEnabled = isModuleEnabled('barcode_generation')
   // Phase 48 — same flag CLOTHING/FOOTWEAR already default to, no new flag needed.
   const variantTrackingEnabled = isModuleEnabled('variant_tracking')
@@ -111,6 +134,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   const rentalEnabled = isModuleEnabled('rental_bookings')
   // Fresh-audit build (2026-07-12) — Jewellery business type only.
   const jewelleryEnabled = isModuleEnabled('jewellery_pricing')
+  const expiryTrackingEnabled = isModuleEnabled('expiry_tracking')
   const isEdit = !!product
   const [imagePickerLoading, setImagePickerLoading] = useState(false)
   const [generatingBarcode, setGeneratingBarcode] = useState(false)
@@ -129,12 +153,23 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false }
+    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false }
   })
+  const { businessType } = useIndustryStore()
+  const isPharmacy = businessType === 'PHARMACY'
+  const [suppliers, setSuppliers] = useState<{ id: string; supplierName: string }[]>([])
+  useEffect(() => {
+    if (open) {
+      window.api.suppliers.list({ limit: 200 }).then((res) => {
+        if (res.success && res.data) setSuppliers(((res.data as { suppliers?: unknown[] }).suppliers ?? res.data) as { id: string; supplierName: string }[])
+      }).catch(() => {})
+    }
+  }, [open])
 
   const productType = watch('productType')
   const imagePath = watch('imagePath')
   const sellByWeight = watch('sellByWeight')
+  const sellByPack = watch('sellByPack')
   const currentBarcode = watch('barcode')
   const isRentable = watch('isRentable')
   const rentalTrackingType = watch('rentalTrackingType')
@@ -176,13 +211,20 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           unit: product.unit,
           costPrice: product.costPrice,
           sellingPrice: product.sellingPrice,
+          mrp: product.mrp ?? undefined,
           taxRate: product.taxRate,
           imagePath: product.imagePath ?? undefined,
           reorderLevel: product.inventory?.reorderLevel ?? 5,
           reorderQuantity: product.inventory?.reorderQuantity ?? 10,
+          defaultSupplierId: product.defaultSupplierId ?? undefined,
+          isPrescriptionRequired: product.isPrescriptionRequired ?? false,
+          expiryAlertLeadDays: product.expiryAlertLeadDays ?? undefined,
           sellByWeight: product.sellByWeight ?? false,
           weightUnit: (product.weightUnit as FormValues['weightUnit']) ?? undefined,
           pricePerWeightUnit: product.pricePerWeightUnit ?? undefined,
+          sellByPack: product.sellByPack ?? false,
+          packUnit: product.packUnit ?? undefined,
+          unitsPerPack: product.unitsPerPack ?? undefined,
           gender: (product.gender as FormValues['gender']) ?? undefined,
           isRentable: product.isRentable ?? false,
           rentalTrackingType: (product.rentalTrackingType as FormValues['rentalTrackingType']) ?? undefined,
@@ -197,7 +239,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         })
         setRateLines(product.rentalRates ?? [])
       } else {
-        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, isRentable: false })
+        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false })
         setRateLines([])
       }
     }
@@ -343,9 +385,10 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         </div>
 
         {/* Pricing */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <Input label="Cost Price *" type="number" step="0.01" min="0" {...register('costPrice')} error={errors.costPrice?.message} />
           <Input label="Selling Price *" type="number" step="0.01" min="0" {...register('sellingPrice')} error={errors.sellingPrice?.message} />
+          <Input label="MRP (optional)" type="number" step="0.01" min="0" {...register('mrp')} error={errors.mrp?.message} />
           <div>
             <Input label="Tax Rate %" type="number" step="0.5" min="0" max="100" {...register('taxRate')} error={errors.taxRate?.message} />
             {taxConfigs.length > 0 && (
@@ -388,6 +431,26 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                   </Select>
                 </div>
                 <Input label="Price per Unit *" type="number" step="0.01" min="0" placeholder="e.g. 80 for ₹80/kg" {...register('pricePerWeightUnit')} error={errors.pricePerWeightUnit?.message} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Phase 58 §2 — carton/box-to-loose-piece unit conversion. Stock
+            and sale are always in the base unit above; this only records
+            how many base units a purchased pack contains, as a Stock
+            Adjustment convenience when receiving a shipment. */}
+        {packBillingEnabled && productType === 'STANDARD' && (
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" {...register('sellByPack')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Received in cartons/boxes, sold as individual pieces</span>
+            </label>
+            <p className="text-xs text-slate-400 mt-1 ml-6">e.g. a box of 50 screws — stock stays tracked in the unit above, this just converts pack quantity to pieces when receiving stock.</p>
+            {sellByPack && (
+              <div className="grid grid-cols-2 gap-4 mt-3 ml-6">
+                <Input label="Pack Unit *" placeholder="e.g. BOX, CARTON" {...register('packUnit')} error={errors.packUnit?.message} />
+                <Input label="Units per Pack *" type="number" step="1" min="1" placeholder="e.g. 50" {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
               </div>
             )}
           </div>
@@ -487,10 +550,39 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
         {/* Reorder (physical only) */}
         {productType === 'STANDARD' && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Input label="Reorder Level" type="number" min="0" {...register('reorderLevel')} error={errors.reorderLevel?.message} />
             <Input label="Reorder Quantity" type="number" min="0" {...register('reorderQuantity')} error={errors.reorderQuantity?.message} />
+            <div>
+              <Select label="Default Supplier" {...register('defaultSupplierId')}>
+                <option value="">Not set</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName}</option>)}
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">Used to auto-draft a reorder PO when stock runs low.</p>
+            </div>
           </div>
+        )}
+
+        {/* Phase 58 §2 — category-specific expiry alert lead time. Generic,
+            gated on expiry_tracking (not agri-specific — motivated by Agri
+            Inputs' seed/fertilizer needing a much longer heads-up window
+            than the pharmacy-shaped 30-day default). */}
+        {expiryTrackingEnabled && productType === 'STANDARD' && (
+          <div>
+            <Input label="Expiry Alert Lead Time (days)" type="number" min="1" placeholder="30 (default)" {...register('expiryAlertLeadDays')} error={errors.expiryAlertLeadDays?.message} />
+            <p className="text-xs text-slate-400 mt-1">How many days before the expiry date to start flagging this item. Leave blank to use the default (30 days) — set higher for items like seeds/fertilizer whose quality can decline well before the hard expiry date.</p>
+          </div>
+        )}
+
+        {/* Phase 58 §2 — Pharmacy Schedule H/H1. Not gated by a module flag —
+            checked directly against businessType, same as isRestaurant/
+            isDistributor elsewhere, since this is a regulatory classification
+            specific to one vertical, not a cross-cutting feature toggle. */}
+        {isPharmacy && productType === 'STANDARD' && (
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+            <input type="checkbox" {...register('isPrescriptionRequired')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+            Prescription Required (Schedule H / H1)
+          </label>
         )}
 
         {/* Opening stock — first-time-only; later changes go through Adjust Stock */}

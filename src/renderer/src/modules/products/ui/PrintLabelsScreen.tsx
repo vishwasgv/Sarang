@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Trash2, Printer, Barcode, Scale, XCircle } from 'lucide-react'
+import { Search, Trash2, Printer, Barcode, Scale, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -11,7 +11,9 @@ interface Product {
   id: string; productName: string; sku?: string | null; barcode?: string | null
   sellingPrice: number; sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
 }
-interface LabelLine { product: Product; copies: number }
+// Phase 58 §2 — Clothing/Footwear variant-aware label printing
+interface Variant { id: string; size: string | null; color: string | null; barcode: string | null; additionalPrice: number; isActive?: boolean }
+interface LabelLine { product: Product; variant?: Variant; copies: number }
 
 // Phase 38: Print Labels — batch barcode/price label printing (5.3/5.4) and the
 // weigh-and-print flow for loose-billed products (5.6). Everything here is only
@@ -27,6 +29,12 @@ export function PrintLabelsScreen() {
   const [outputMode, setOutputMode] = useState<'THERMAL_LABEL' | 'A4_SHEET'>('A4_SHEET')
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Phase 58 §2 — variant picker shown after adding a product that has
+  // variants: staff picks the SPECIFIC size/colour to print (its own
+  // barcode/price), rather than the ambiguous parent product barcode.
+  const [variantPicker, setVariantPicker] = useState<{ product: Product; variants: Variant[] } | null>(null)
+  const [generatingVariantBarcodes, setGeneratingVariantBarcodes] = useState(false)
 
   // Weigh-and-print
   const [looseQuery, setLooseQuery] = useState('')
@@ -63,33 +71,84 @@ export function PrintLabelsScreen() {
     return () => clearTimeout(t)
   }, [looseQuery, toastError])
 
-  function addLine(product: Product) {
-    setLines(prev => {
-      const existing = prev.find(l => l.product.id === product.id)
-      if (existing) return prev.map(l => l.product.id === product.id ? { ...l, copies: Math.min(l.copies + 1, 500) } : l)
-      return [...prev, { product, copies: 1 }]
-    })
-    setQuery('')
-    setResults([])
+  // A variant-tracked product's OWN barcode (if it even has one) doesn't
+  // correspond to any specific physical unit — so adding one first checks
+  // for variants and, if any exist, opens a picker instead of adding a
+  // line directly; picking "no variant" from there falls back to the old
+  // plain-product-line behavior.
+  async function addLine(product: Product) {
+    try {
+      const res = await window.api.variants.list({ productId: product.id })
+      const variants = res.success ? (res.data as Variant[]).filter(v => v.isActive !== false) : []
+      if (variants.length > 0) {
+        setVariantPicker({ product, variants })
+        setQuery(''); setResults([])
+        return
+      }
+    } catch {
+      // variant lookup failing must never block plain product-level printing
+    }
+    addPlainProductLine(product)
   }
 
-  function updateCopies(productId: string, copies: number) {
-    if (copies <= 0) { setLines(prev => prev.filter(l => l.product.id !== productId)); return }
+  function addPlainProductLine(product: Product) {
+    setLines(prev => {
+      const existing = prev.find(l => l.product.id === product.id && !l.variant)
+      if (existing) return prev.map(l => l === existing ? { ...l, copies: Math.min(l.copies + 1, 500) } : l)
+      return [...prev, { product, copies: 1 }]
+    })
+    setQuery(''); setResults([])
+    setVariantPicker(null)
+  }
+
+  function addVariantLine(product: Product, variant: Variant) {
+    setLines(prev => {
+      const existing = prev.find(l => l.variant?.id === variant.id)
+      if (existing) return prev.map(l => l === existing ? { ...l, copies: Math.min(l.copies + 1, 500) } : l)
+      return [...prev, { product, variant, copies: 1 }]
+    })
+  }
+
+  async function handleGenerateMissingVariantBarcodes() {
+    if (!variantPicker) return
+    setGeneratingVariantBarcodes(true)
+    try {
+      const res = await window.api.variants.bulkGenerateMissingBarcodes({ productId: variantPicker.product.id })
+      if (res.success && res.data) {
+        toastSuccess('Barcodes Generated', `${(res.data as { generated: number }).generated} variant barcode(s) generated.`)
+        const refreshed = await window.api.variants.list({ productId: variantPicker.product.id })
+        if (refreshed.success) setVariantPicker(v => v ? { ...v, variants: (refreshed.data as Variant[]).filter(x => x.isActive !== false) } : v)
+      } else {
+        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not generate barcodes.')
+      }
+    } catch {
+      toastError('Failed', 'Could not generate barcodes.')
+    } finally {
+      setGeneratingVariantBarcodes(false)
+    }
+  }
+
+  function lineKey(l: LabelLine): string {
+    return l.variant?.id ?? l.product.id
+  }
+
+  function updateCopies(key: string, copies: number) {
+    if (copies <= 0) { setLines(prev => prev.filter(l => lineKey(l) !== key)); return }
     // The input's max="500" HTML attribute only affects the spinner arrows —
     // typing/pasting a larger number bypasses it. Matches the server-side cap
     // in PrintLabelsSchema (products.validation.ts).
     const clamped = Math.min(copies, 500)
-    setLines(prev => prev.map(l => l.product.id === productId ? { ...l, copies: clamped } : l))
+    setLines(prev => prev.map(l => lineKey(l) === key ? { ...l, copies: clamped } : l))
   }
 
   function buildPayload() {
-    const withoutBarcode = lines.filter(l => !l.product.barcode)
+    const withoutBarcode = lines.filter(l => l.variant ? !l.variant.barcode : !l.product.barcode)
     if (withoutBarcode.length > 0) {
       toastError('Missing Barcodes', `${withoutBarcode.map(l => l.product.productName).join(', ')} — generate a barcode for these first (Products screen or Settings → Generate Missing Barcodes).`)
       return null
     }
     return {
-      items: lines.map(l => ({ productId: l.product.id, copies: l.copies })),
+      items: lines.map(l => ({ productId: l.product.id, variantId: l.variant?.id, copies: l.copies })),
       outputMode,
       fields: { showPrice: true, showBarcode: true, showName: true }
     }
@@ -201,19 +260,52 @@ export function PrintLabelsScreen() {
           )}
         </div>
 
+        {/* Phase 58 §2 — variant picker: shown after adding a product that
+            has variants, so a specific size/colour (with its OWN barcode)
+            can be selected instead of the ambiguous parent product line. */}
+        {variantPicker && (
+          <Card padding="md" className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-dark dark:text-slate-100">{variantPicker.product.productName} — choose a variant</p>
+              <button onClick={() => setVariantPicker(null)} className="text-slate-400 hover:text-danger transition-colors"><XCircle size={16} /></button>
+            </div>
+            <button onClick={() => addPlainProductLine(variantPicker.product)} className="text-xs text-slate-500 hover:underline">
+              Print the whole product's own barcode instead (no variant)
+            </button>
+            {variantPicker.variants.some(v => !v.barcode) && (
+              <button onClick={handleGenerateMissingVariantBarcodes} disabled={generatingVariantBarcodes}
+                className="flex items-center gap-1.5 text-xs text-brand hover:underline disabled:opacity-50">
+                {generatingVariantBarcodes ? <RefreshCw size={12} className="animate-spin" /> : null}
+                Generate missing barcodes for these variants
+              </button>
+            )}
+            <div className="space-y-1 max-h-56 overflow-y-auto">
+              {variantPicker.variants.map(v => (
+                <button key={v.id} onClick={() => addVariantLine(variantPicker.product, v)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
+                  <span>{[v.size, v.color].filter(Boolean).join(' / ') || '(unnamed variant)'}</span>
+                  <span className="text-xs text-slate-400">{v.barcode ?? 'No barcode yet'}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {lines.length > 0 && (
           <Card padding="none" className="divide-y divide-slate-100 dark:divide-slate-800">
             {lines.map(l => (
-              <div key={l.product.id} className="flex items-center justify-between px-4 py-3">
+              <div key={lineKey(l)} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-dark dark:text-slate-100">{l.product.productName}</p>
-                  <p className="text-xs text-slate-400">{l.product.barcode ?? 'No barcode — will fail to print'}</p>
+                  <p className="text-sm font-semibold text-dark dark:text-slate-100">
+                    {l.product.productName}{l.variant ? ` — ${[l.variant.size, l.variant.color].filter(Boolean).join(' / ')}` : ''}
+                  </p>
+                  <p className="text-xs text-slate-400">{(l.variant ? l.variant.barcode : l.product.barcode) ?? 'No barcode — will fail to print'}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="number" min="1" max="500" value={l.copies}
-                    onChange={e => updateCopies(l.product.id, parseInt(e.target.value) || 0)}
+                    onChange={e => updateCopies(lineKey(l), parseInt(e.target.value) || 0)}
                     className="w-16 h-8 text-center text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" />
-                  <button onClick={() => updateCopies(l.product.id, 0)} className="text-slate-400 hover:text-danger transition-colors">
+                  <button onClick={() => updateCopies(lineKey(l), 0)} className="text-slate-400 hover:text-danger transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>

@@ -44,7 +44,7 @@ export async function listPlacements(filters?: { status?: string; candidateId?: 
     where,
     include: {
       candidate: { select: { id: true, candidateNumber: true, fullName: true, phone: true } },
-      jobOrder: { select: { id: true, orderNumber: true, jobTitle: true } },
+      jobOrder: { select: { id: true, orderNumber: true, jobTitle: true, replacementGuaranteeDays: true } },
       client: { select: { id: true, customerName: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -91,7 +91,7 @@ export async function createPlacement(payload: {
       },
       include: {
         candidate: { select: { id: true, candidateNumber: true, fullName: true, phone: true } },
-        jobOrder: { select: { id: true, orderNumber: true, jobTitle: true } },
+        jobOrder: { select: { id: true, orderNumber: true, jobTitle: true, replacementGuaranteeDays: true } },
         client: { select: { id: true, customerName: true } },
       },
     })
@@ -132,7 +132,7 @@ export async function updatePlacement(payload: {
     data,
     include: {
       candidate: { select: { id: true, candidateNumber: true, fullName: true, phone: true } },
-      jobOrder: { select: { id: true, orderNumber: true, jobTitle: true } },
+      jobOrder: { select: { id: true, orderNumber: true, jobTitle: true, replacementGuaranteeDays: true } },
       client: { select: { id: true, customerName: true } },
     },
   })

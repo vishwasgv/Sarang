@@ -24,3 +24,11 @@ export const DeleteSprintSchema = z.object({
 export type CreateSprintPayload = z.infer<typeof CreateSprintSchema>
 export type UpdateSprintPayload = z.infer<typeof UpdateSprintSchema>
 export type DeleteSprintPayload = z.infer<typeof DeleteSprintSchema>
+
+// Phase 58 §2 — Software Agency: burndown/velocity
+
+export const SprintIdSchema = z.object({ sprintId: z.string().min(1, 'Sprint ID is required') })
+export const ProjectVelocitySchema = z.object({
+  projectId: z.string().min(1, 'Project ID is required'),
+  limit: z.number().int().positive().max(24).optional(),
+})

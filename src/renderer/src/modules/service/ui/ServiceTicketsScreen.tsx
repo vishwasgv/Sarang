@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Headphones, Plus, RefreshCw, AlertCircle } from 'lucide-react'
+import { Headphones, Plus, RefreshCw, AlertCircle, Receipt } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -18,6 +18,7 @@ interface Ticket {
   customerId: string | null; customerName: string | null
   assignedToId: string | null; assignedToName: string | null
   resolvedAt: string | null; closedAt: string | null; resolution: string | null
+  invoiceId: string | null
   createdAt: string
 }
 
@@ -60,6 +61,8 @@ export function ServiceTicketsScreen() {
   const [savingRes, setSavingRes] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [invoiceAmount, setInvoiceAmount] = useState('')
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -148,6 +151,23 @@ export function ServiceTicketsScreen() {
       setTickets(prev => prev.filter(t => t.id !== ticketId))
     } else {
       toastError((res.error as any)?.message ?? 'Could not delete ticket')
+    }
+  }
+
+  async function handleGenerateInvoice(ticketId: string) {
+    const amount = Number(invoiceAmount)
+    if (!amount || amount <= 0) { toastError('Enter a billable amount greater than zero.'); return }
+    setGeneratingInvoice(true)
+    const res = await api.tickets.generateInvoice({ id: ticketId, amount })
+    setGeneratingInvoice(false)
+    if (res.success) {
+      const data = res.data as { invoiceId: string }
+      toastSuccess('Invoice generated')
+      setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, invoiceId: data.invoiceId } : t))
+      setInvoiceAmount('')
+    } else {
+      toastError((res.error as any)?.message ?? 'Could not generate invoice')
     }
   }
 
@@ -353,7 +373,24 @@ export function ServiceTicketsScreen() {
                 </div>
               )}
             </div>
-            <div className="px-6 pb-6">
+            <div className="px-6 pb-6 space-y-2">
+              {detail.customerId && (
+                detail.invoiceId ? (
+                  <span className="w-full h-11 rounded-xl bg-success/10 text-success text-sm font-semibold flex items-center justify-center gap-2">
+                    <Receipt size={14} /> Invoice Generated
+                  </span>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="number" value={invoiceAmount} onChange={e => setInvoiceAmount(e.target.value)}
+                      placeholder="Billable amount" min="0"
+                      className="flex-1 h-11 px-3 rounded-xl border border-border text-sm focus:outline-none focus:border-brand" />
+                    <button onClick={() => handleGenerateInvoice(detail.id)} disabled={generatingInvoice}
+                      className="h-11 px-4 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
+                      <Receipt size={14} /> {generatingInvoice ? '...' : 'Invoice'}
+                    </button>
+                  </div>
+                )
+              )}
               <button onClick={() => setConfirmDelete(true)}
                 className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
                 {t('service.deleteTicket')}

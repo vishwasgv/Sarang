@@ -68,6 +68,9 @@ export const CreateBloodIssueSchema = z.object({
   purpose: z.string().optional(),
   donationRecordIds: z.array(z.string().min(1)).min(1, 'Select at least one blood unit to issue'),
   price: z.number().nonnegative('Price cannot be negative').optional(),
+  // Phase 58 §2 — documented emergency-release override for an incompatible unit.
+  overrideIncompatibility: z.boolean().optional(),
+  overrideReason: z.string().max(2000).optional(),
 })
 
 export const BloodIssueIdSchema = z.object({

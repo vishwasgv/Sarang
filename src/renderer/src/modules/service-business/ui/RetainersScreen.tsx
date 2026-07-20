@@ -94,6 +94,10 @@ export default function RetainersScreen(): React.ReactElement {
   const [deleting, setDeleting] = useState(false)
   const [invoiceTarget, setInvoiceTarget] = useState<RetainerAgreement | null>(null)
 
+  // Phase 58 §1 — HOURLY_BUCKET hours-used/remaining, derived on-demand from
+  // logged TimeEntry rows (see retainer.service.ts's getRetainerHoursUsage).
+  const [hoursUsage, setHoursUsage] = useState<Record<string, { hoursPerMonth: number | null; hoursUsed: number; hoursRemaining: number | null }>>({})
+
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
@@ -117,6 +121,23 @@ export default function RetainersScreen(): React.ReactElement {
   }, [filterStatus, toastError])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  useEffect(() => {
+    const bucketRetainers = retainers.filter((r) => r.retainerType === 'HOURLY_BUCKET')
+    if (bucketRetainers.length === 0) return
+    let cancelled = false
+    Promise.all(bucketRetainers.map((r) => api.retainer.getHoursUsage({ id: r.id }))).then((results) => {
+      if (cancelled) return
+      setHoursUsage((prev) => {
+        const next = { ...prev }
+        results.forEach((res, i) => {
+          if (res.success && res.data) next[bucketRetainers[i].id] = res.data as { hoursPerMonth: number | null; hoursUsed: number; hoursRemaining: number | null }
+        })
+        return next
+      })
+    })
+    return () => { cancelled = true }
+  }, [retainers])
 
   function resetForm(): void {
     setFClient(null); setFAssignedToId(''); setFTitle(''); setFType('FIXED_FEE')
@@ -282,6 +303,7 @@ export default function RetainersScreen(): React.ReactElement {
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Client</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Type</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Monthly</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Hours</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Billing Day</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Status</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Period</th>
@@ -298,6 +320,23 @@ export default function RetainersScreen(): React.ReactElement {
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.client.customerName}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{TYPE_LABELS[r.retainerType] ?? r.retainerType}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-slate-100">{fmtAmount(r.monthlyAmount)}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
+                      {r.retainerType === 'HOURLY_BUCKET' && r.hoursPerMonth != null ? (
+                        hoursUsage[r.id] ? (
+                          <div className="min-w-[90px]">
+                            <p className={cn('text-xs font-medium', hoursUsage[r.id].hoursRemaining === 0 ? 'text-red-600' : 'text-gray-700 dark:text-slate-300')}>
+                              {hoursUsage[r.id].hoursUsed.toFixed(1)}h / {r.hoursPerMonth}h
+                            </p>
+                            <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1">
+                              <div
+                                className={cn('h-full rounded-full', hoursUsage[r.id].hoursRemaining === 0 ? 'bg-red-500' : 'bg-indigo-500')}
+                                style={{ width: `${Math.min(100, (hoursUsage[r.id].hoursUsed / r.hoursPerMonth) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : <span className="text-xs text-gray-400">…</span>
+                      ) : <span className="text-xs text-gray-400 dark:text-slate-500">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">Day {r.billingDay}</td>
                     <td className="px-4 py-3">
                       <Badge variant={STATUS_VARIANT[r.status] ?? 'neutral'} size="sm">{r.status}</Badge>

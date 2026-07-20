@@ -52,6 +52,10 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       aggregate: vi.fn().mockResolvedValue({ _sum: { quantityRemaining: null } }),
     },
     productSerial: { findUnique: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    metalExchange: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   }
   // listInvoices uses the array form db.$transaction([...]) instead of the
   // callback form createInvoice/cancelInvoice use — support both.
@@ -375,6 +379,201 @@ describe('billingService.createInvoice', () => {
   })
 })
 
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture. A prescription-
+// flagged product must never be sold without a patient + doctor name
+// captured on the line — enforced server-side, never trusting the UI alone.
+describe('billingService.createInvoice — Pharmacy Schedule H/H1 prescription capture', () => {
+  it('rejects a prescription-required product with no prescription details at all', async () => {
+    const db = makeMockDb({ isPrescriptionRequired: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RX-001')
+    expect(db.invoiceItem.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects when only the patient name is provided (doctor name still missing)', async () => {
+    const db = makeMockDb({ isPrescriptionRequired: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 0, prescriptionPatientName: 'Ravi Kumar' }],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RX-001')
+  })
+
+  it('rejects when patient/doctor names are present but whitespace-only', async () => {
+    const db = makeMockDb({ isPrescriptionRequired: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 0, prescriptionPatientName: '   ', prescriptionDoctorName: '   ' }],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RX-001')
+  })
+
+  it('accepts and snapshots the prescription details onto the InvoiceItem when both names are provided', async () => {
+    const db = makeMockDb({ isPrescriptionRequired: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 0, prescriptionPatientName: ' Ravi Kumar ', prescriptionDoctorName: ' Dr. Mehta ', prescriptionDate: '2026-07-10' }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoiceItem.create).mock.calls[0][0] as { data: { prescriptionPatientName: string; prescriptionDoctorName: string; prescriptionDate: Date } }
+    // Trimmed, not stored with surrounding whitespace
+    expect(createCall.data.prescriptionPatientName).toBe('Ravi Kumar')
+    expect(createCall.data.prescriptionDoctorName).toBe('Dr. Mehta')
+    expect(createCall.data.prescriptionDate).toEqual(new Date('2026-07-10'))
+  })
+
+  it('never requires or stores prescription details for a normal (non-flagged) product', async () => {
+    const db = makeMockDb() // isPrescriptionRequired defaults to undefined/false
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload) // no prescription fields sent at all
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoiceItem.create).mock.calls[0][0] as { data: { prescriptionPatientName: string | null; prescriptionDoctorName: string | null } }
+    expect(createCall.data.prescriptionPatientName).toBeNull()
+    expect(createCall.data.prescriptionDoctorName).toBeNull()
+  })
+
+  it('ignores a prescriptionPatientName/DoctorName sent for a non-flagged product (never trusts an unnecessary client-sent value)', async () => {
+    const db = makeMockDb() // isPrescriptionRequired false
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 0, prescriptionPatientName: 'Someone', prescriptionDoctorName: 'Dr. Someone' }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoiceItem.create).mock.calls[0][0] as { data: { prescriptionPatientName: string | null; prescriptionDoctorName: string | null } }
+    expect(createCall.data.prescriptionPatientName).toBeNull()
+    expect(createCall.data.prescriptionDoctorName).toBeNull()
+  })
+})
+
+describe('billingService.createInvoice — Phase 58 §2 credit-terms due date', () => {
+  it('stores the provided dueDate on the Invoice', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1', dueDate: '2026-12-01' })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
+    expect(createCall.data.dueDate).toEqual(new Date('2026-12-01'))
+  })
+
+  it('leaves dueDate null when not provided', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
+    expect(createCall.data.dueDate).toBeNull()
+  })
+})
+
+describe('billingService.createInvoice — Jewellery hallmark snapshot + atomic old-metal exchange', () => {
+  it('snapshots jewelleryHallmarkNumber onto the InvoiceItem when provided', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 100, discountAmount: 0, taxRate: 0, jewelleryHallmarkNumber: ' HUID123456 ' }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoiceItem.create).mock.calls[0][0] as { data: { jewelleryHallmarkNumber: string | null } }
+    expect(createCall.data.jewelleryHallmarkNumber).toBe('HUID123456')
+  })
+
+  it('leaves jewelleryHallmarkNumber null when not provided', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoiceItem.create).mock.calls[0][0] as { data: { jewelleryHallmarkNumber: string | null } }
+    expect(createCall.data.jewelleryHallmarkNumber).toBeNull()
+  })
+
+  it('rejects a metalExchangeId that does not exist', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, metalExchangeId: 'mex-missing' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-012')
+  })
+
+  it('rejects a metalExchangeId that is already linked to another invoice', async () => {
+    const db = makeMockDb()
+    db.metalExchange.findUnique.mockResolvedValue({ id: 'mex-1', valueGiven: 5000, customerId: null, invoiceId: 'inv-other' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, metalExchangeId: 'mex-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-013')
+  })
+
+  it('rejects a metalExchange belonging to a different customer', async () => {
+    const db = makeMockDb()
+    db.metalExchange.findUnique.mockResolvedValue({ id: 'mex-1', valueGiven: 5000, customerId: 'cust-OTHER', invoiceId: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, customerId: 'cust-1', metalExchangeId: 'mex-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-014')
+  })
+
+  it('folds a valid unlinked exchange into the discount and atomically claims it', async () => {
+    const db = makeMockDb()
+    db.metalExchange.findUnique.mockResolvedValue({ id: 'mex-1', valueGiven: 50, customerId: null, invoiceId: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // subtotal 200 (2 x 100), exchange credit 50 -> discountAmount 50, total 150
+    const res = await billingService.createInvoice({ ...basePayload, metalExchangeId: 'mex-1' })
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { discountAmount: number; totalAmount: number } }
+    expect(invoiceCreateCall.data.discountAmount).toBe(50)
+    expect(invoiceCreateCall.data.totalAmount).toBe(150)
+    expect(db.metalExchange.updateMany).toHaveBeenCalledWith({
+      where: { id: 'mex-1', invoiceId: null },
+      data: { invoiceId: 'inv-1' }
+    })
+  })
+
+  it('rolls back the whole invoice if the exchange claim loses a concurrent race', async () => {
+    const db = makeMockDb()
+    db.metalExchange.findUnique.mockResolvedValue({ id: 'mex-1', valueGiven: 50, customerId: null, invoiceId: null })
+    db.metalExchange.updateMany.mockResolvedValue({ count: 0 }) // another invoice claimed it first, inside the transaction
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, metalExchangeId: 'mex-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-013')
+  })
+})
+
 describe('billingService.listInvoices', () => {
   it('includes full millisecond precision on the dateTo boundary', async () => {
     const db = makeMockDb()
@@ -401,5 +600,79 @@ describe('billingService.listInvoices', () => {
     expect(call.where.OR).toEqual(expect.arrayContaining([
       { customer: { phone: { contains: '9876543210' } } },
     ]))
+  })
+})
+
+describe('billingService.getOrCreateTipProduct', () => {
+  it('creates the Tip / Service Charge product on first call when none exists yet', async () => {
+    const product = { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue(makeProduct({ id: 'tip-1', productName: 'Tip / Service Charge', productType: 'SERVICE', sellingPrice: 0, taxRate: 0 })) }
+    vi.mocked(getPrisma).mockReturnValue({ product } as never)
+
+    const res = await billingService.getOrCreateTipProduct()
+
+    expect(res.success).toBe(true)
+    expect(product.findFirst).toHaveBeenCalledWith({ where: { productName: 'Tip / Service Charge', isActive: true } })
+    expect(product.create).toHaveBeenCalledTimes(1)
+    expect((res as { data: { productName: string } }).data.productName).toBe('Tip / Service Charge')
+  })
+
+  it('reuses the existing Tip / Service Charge product on subsequent calls instead of creating a duplicate', async () => {
+    const existing = makeProduct({ id: 'tip-1', productName: 'Tip / Service Charge', productType: 'SERVICE', sellingPrice: 0, taxRate: 0 })
+    const product = { findFirst: vi.fn().mockResolvedValue(existing), create: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue({ product } as never)
+
+    const res = await billingService.getOrCreateTipProduct()
+
+    expect(res.success).toBe(true)
+    expect(product.create).not.toHaveBeenCalled()
+    expect((res as { data: { id: string } }).data.id).toBe('tip-1')
+  })
+})
+
+describe('billingService.getFrequentlySoldProducts', () => {
+  it('returns an empty list without querying products when nothing has ever been sold', async () => {
+    const invoiceItem = { groupBy: vi.fn().mockResolvedValue([]) }
+    const product = { findMany: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue({ invoiceItem, product } as never)
+
+    const res = await billingService.getFrequentlySoldProducts()
+    expect(res.success).toBe(true)
+    expect((res as { data: { products: unknown[] } }).data.products).toEqual([])
+    expect(product.findMany).not.toHaveBeenCalled()
+  })
+
+  it('excludes RETURN invoices from the ranking', async () => {
+    const invoiceItem = { groupBy: vi.fn().mockResolvedValue([{ productId: 'p1', _sum: { quantity: 5 } }]) }
+    const product = { findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget' }]) }
+    vi.mocked(getPrisma).mockReturnValue({ invoiceItem, product } as never)
+
+    await billingService.getFrequentlySoldProducts(10)
+
+    expect(invoiceItem.groupBy).toHaveBeenCalledWith(expect.objectContaining({
+      where: { invoice: { status: 'ACTIVE', invoiceType: { not: 'RETURN' } } },
+    }))
+  })
+
+  it('preserves the quantity-sold order from groupBy, not findMany\'s arbitrary id-list order', async () => {
+    const invoiceItem = { groupBy: vi.fn().mockResolvedValue([{ productId: 'p2', _sum: { quantity: 9 } }, { productId: 'p1', _sum: { quantity: 5 } }]) }
+    // findMany returns them in a DIFFERENT order than requested — a real
+    // risk with `id: { in: [...] }` queries, which don't guarantee order.
+    const product = { findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget' }, { id: 'p2', productName: 'Gadget' }]) }
+    vi.mocked(getPrisma).mockReturnValue({ invoiceItem, product } as never)
+
+    const res = await billingService.getFrequentlySoldProducts()
+    const products = (res as { data: { products: Array<{ id: string }> } }).data.products
+    expect(products.map((p) => p.id)).toEqual(['p2', 'p1'])
+  })
+
+  it('silently drops a ranked product that has since been deactivated or deleted', async () => {
+    const invoiceItem = { groupBy: vi.fn().mockResolvedValue([{ productId: 'p1', _sum: { quantity: 5 } }, { productId: 'p-deleted', _sum: { quantity: 3 } }]) }
+    const product = { findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget' }]) } // p-deleted is now inactive, excluded by the isActive:true filter
+    vi.mocked(getPrisma).mockReturnValue({ invoiceItem, product } as never)
+
+    const res = await billingService.getFrequentlySoldProducts()
+    const products = (res as { data: { products: Array<{ id: string }> } }).data.products
+    expect(products).toHaveLength(1)
+    expect(products[0].id).toBe('p1')
   })
 })

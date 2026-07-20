@@ -95,6 +95,7 @@ export interface IpcChannels {
     create: (payload: unknown) => Promise<ApiResponse>
     update: (payload: unknown) => Promise<ApiResponse>
     archive: (id: string) => Promise<ApiResponse>
+    setAvailability: (payload: { id: string; unavailableUntil: string | null }) => Promise<ApiResponse>
     search: (query: string) => Promise<ApiResponse>
     getByBarcode: (barcode: string) => Promise<ApiResponse>
     // Phase 38: barcode generation + loose/weight billing
@@ -102,6 +103,11 @@ export interface IpcChannels {
     bulkGenerateMissingBarcodes: () => Promise<ApiResponse>
     getByScannedBarcode: (payload: { code: string }) => Promise<ApiResponse>
     generateWeightLabel: (payload: { productId: string; weightGrams: number }) => Promise<ApiResponse>
+    // Phase 58 §2 — Distributor customer-class/negotiated pricing
+    resolveCustomerPrice: (payload: { productId: string; customerId?: string | null }) => Promise<ApiResponse<{ price: number }>>
+    listCustomerClassPrices: (payload?: { productId?: string }) => Promise<ApiResponse>
+    upsertCustomerClassPrice: (payload: { productId: string; customerClass: string; price: number }) => Promise<ApiResponse>
+    deleteCustomerClassPrice: (payload: string) => Promise<ApiResponse>
   }
   categories: {
     list: () => Promise<ApiResponse>
@@ -144,6 +150,8 @@ export interface IpcChannels {
     approve: (id: string) => Promise<ApiResponse>
     receive: (id: string) => Promise<ApiResponse>
     cancel: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — reorder automation triggered from low-stock alerts
+    generateReorderDraftPOs: () => Promise<ApiResponse<{ created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number }>>
   }
   billing: {
     createInvoice: (payload: unknown) => Promise<ApiResponse>
@@ -151,6 +159,14 @@ export interface IpcChannels {
     listInvoices: (payload?: unknown) => Promise<ApiResponse>
     cancelInvoice: (payload: { invoiceId: string; reason: string }) => Promise<ApiResponse>
     generateInvoiceNumber: () => Promise<ApiResponse<string>>
+    getOrCreateTipProduct: () => Promise<ApiResponse>
+    getFrequentlySoldProducts: (payload?: { limit?: number }) => Promise<ApiResponse>
+  }
+  heldSale: {
+    hold: (payload: { cartJson: string; itemCount: number; totalAmount: number; label?: string; customerId?: string }) => Promise<ApiResponse>
+    list: () => Promise<ApiResponse>
+    resume: (payload: { id: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   payments: {
     record: (payload: unknown) => Promise<ApiResponse>
@@ -204,7 +220,19 @@ export interface IpcChannels {
     bloodStock: () => Promise<ApiResponse>
     jewellery: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     projects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    serviceProjects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     jobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    carJobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    tailoringOrders: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    pestContracts: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    realEstatePipeline: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    retainers: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    shootBookings: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    eventBookings: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    placements: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    drawingRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    siteVisitLog: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    prescriptionDrugSales: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     logistics: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     attendance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     production: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -306,12 +334,12 @@ export interface IpcChannels {
     // Phase 38: barcode/price label printing — routes through the same HTML + OS print-dialog
     // mechanism as invoice/receipt printing (see print.service.ts), not a raw ZPL/TSPL path.
     labels: (payload: {
-      items: Array<{ productId: string; copies: number; barcodeOverride?: string; priceTextOverride?: string }>
+      items: Array<{ productId: string; variantId?: string; copies: number; barcodeOverride?: string; priceTextOverride?: string }>
       outputMode: 'THERMAL_LABEL' | 'A4_SHEET'
       fields?: { showPrice?: boolean; showBarcode?: boolean; showName?: boolean }
     }) => Promise<ApiResponse>
     previewLabels: (payload: {
-      items: Array<{ productId: string; copies: number; barcodeOverride?: string; priceTextOverride?: string }>
+      items: Array<{ productId: string; variantId?: string; copies: number; barcodeOverride?: string; priceTextOverride?: string }>
       outputMode: 'THERMAL_LABEL' | 'A4_SHEET'
       fields?: { showPrice?: boolean; showBarcode?: boolean; showName?: boolean }
     }) => Promise<ApiResponse<string>>
@@ -329,6 +357,7 @@ export interface IpcChannels {
     listTables: () => Promise<ApiResponse>
     createTable: (payload: { tableNumber: string; tableName?: string }) => Promise<ApiResponse>
     updateTableStatus: (payload: { tableId: string; status: string }) => Promise<ApiResponse>
+    assignWaiter: (payload: { tableId: string; waiterId: string | null }) => Promise<ApiResponse>
     deleteTable: (payload: { tableId: string }) => Promise<ApiResponse>
     listKOTs: (payload?: { status?: string; tableId?: string }) => Promise<ApiResponse>
     createKOT: (payload: { invoiceId: string; tableId?: string }) => Promise<ApiResponse>
@@ -359,6 +388,25 @@ export interface IpcChannels {
     close: () => Promise<ApiResponse>
     getStatus: () => Promise<ApiResponse<{ open: boolean; displayId: number | null }>>
   }
+  // Phase 58 §2 — Distributor field-rep order capture (phone/laptop, LAN),
+  // same qr-order-server.ts/kitchen-display-server.ts LAN-trust model.
+  distributor: {
+    getFieldOrderStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
+    regenerateFieldOrderToken: () => Promise<ApiResponse<{ token: string }>>
+    generateFieldOrderQr: () => Promise<ApiResponse<{ qrDataUrl: string; captureUrl: string }>>
+    listFieldOrderRequests: (payload?: { status?: string }) => Promise<ApiResponse>
+    acceptFieldOrderRequest: (payload: { requestId: string; paymentMethod: string }) => Promise<ApiResponse>
+    rejectFieldOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
+  }
+  // Phase 58 §2 — Electronics repair/RMA workflow, linked to a specific
+  // ProductSerial/IMEI.
+  repairTickets: {
+    create: (payload: { serialId: string; customerId?: string; issueDescription: string; vendorId?: string; notes?: string }) => Promise<ApiResponse<{ id: string; claimNumber: string }>>
+    list: (payload?: { status?: string; productId?: string; customerId?: string; search?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    serviceHistory: (payload: { serialId: string }) => Promise<ApiResponse<{ tickets: unknown[]; replacedOnTicket: { id: string; claimNumber: string } | null; serial: { id: string; serialNumber: string; imeiNumber: string | null; status: string; productId: string; productName: string } | null }>>
+    updateStatus: (payload: { id: string; status: string; vendorId?: string; vendorRmaNumber?: string; replacementSerialId?: string; repairCost?: number; notes?: string }) => Promise<ApiResponse>
+  }
   returns: {
     create: (payload: { originalInvoiceId: string; items: Array<{ productId: string; quantity: number }>; reason: string }) => Promise<ApiResponse>
     list: (payload?: { originalInvoiceId?: string }) => Promise<ApiResponse>
@@ -385,6 +433,9 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     adjustStock: (payload: { variantId: string; quantityDelta: number }) => Promise<ApiResponse>
     summary: (payload: { productId: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — Clothing/Footwear variant barcode generation
+    generateBarcode: (payload: { variantId: string }) => Promise<ApiResponse<{ barcode: string }>>
+    bulkGenerateMissingBarcodes: (payload: { productId: string }) => Promise<ApiResponse<{ generated: number; totalMissing: number }>>
   }
   // Phase 3 — Manufacturing Lite
   rawMaterials: {
@@ -394,11 +445,16 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     adjustStock: (payload: { id: string; type: 'PURCHASE' | 'ADJUSTMENT' | 'RETURN'; quantity: number; unitCost?: number; reference?: string; notes?: string }) => Promise<ApiResponse>
     movements: (payload: { rawMaterialId: string; limit?: number }) => Promise<ApiResponse>
+    // Phase 58 §2 — raw-material lot/batch traceability
+    receiveBatch: (payload: { rawMaterialId: string; batchNumber: string; quantity: number; unitCost?: number; supplierId?: string }) => Promise<ApiResponse>
+    listBatches: (payload?: { rawMaterialId?: string }) => Promise<ApiResponse>
   }
   bom: {
     list: (payload?: { isActive?: boolean }) => Promise<ApiResponse>
     get: (payload: { productId: string }) => Promise<ApiResponse>
-    upsert: (payload: { productId: string; description?: string; outputQty?: number; items: Array<{ rawMaterialId: string; quantityNeeded: number; wastagePercent?: number }> }) => Promise<ApiResponse>
+    // Phase 58 §2 — multi-level BOM: a line is either a raw material or a
+    // component Product (sub-assembly), never both.
+    upsert: (payload: { productId: string; description?: string; outputQty?: number; items: Array<{ rawMaterialId?: string; componentProductId?: string; quantityNeeded: number; wastagePercent?: number }> }) => Promise<ApiResponse>
     delete: (payload: { productId: string }) => Promise<ApiResponse>
   }
   production: {
@@ -406,13 +462,15 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { productId: string; plannedQty: number; notes?: string }) => Promise<ApiResponse>
     start: (payload: { id: string }) => Promise<ApiResponse>
-    complete: (payload: { id: string; producedQty: number; notes?: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — scrapQty/laborCost folded into produced-unit cost basis
+    complete: (payload: { id: string; producedQty: number; scrapQty?: number; laborCost?: number; notes?: string }) => Promise<ApiResponse>
     cancel: (payload: { id: string; notes?: string }) => Promise<ApiResponse>
   }
   workOrders: {
     list: (payload: { productionOrderId: string }) => Promise<ApiResponse>
-    upsert: (payload: { productionOrderId: string; steps: Array<{ id?: string; stepNumber: number; taskName: string; notes?: string }> }) => Promise<ApiResponse>
-    updateStatus: (payload: { id: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED' }) => Promise<ApiResponse>
+    // Phase 58 §2 — isQcStep flags a QC/inspection checkpoint
+    upsert: (payload: { productionOrderId: string; steps: Array<{ id?: string; stepNumber: number; taskName: string; notes?: string; isQcStep?: boolean }> }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'; qcResult?: 'PASS' | 'FAIL'; qcNotes?: string }) => Promise<ApiResponse>
   }
   dispatch: {
     list: (payload?: { status?: string; productId?: string; limit?: number }) => Promise<ApiResponse>
@@ -426,6 +484,7 @@ export interface IpcChannels {
     create: (payload: { title: string; description?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedHours?: number; estimatedAmount?: number; startDate?: string; dueDate?: string; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; title?: string; description?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedHours?: number; estimatedAmount?: number; startDate?: string | null; dueDate?: string | null; notes?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
     tasks: {
       list: (payload: { projectId: string }) => Promise<ApiResponse>
       create: (payload: { projectId: string; title: string; description?: string; priority?: string; estimatedHours?: number; dueDate?: string }) => Promise<ApiResponse>
@@ -438,12 +497,17 @@ export interface IpcChannels {
     create: (payload: { title: string; description?: string; priority?: string; category?: string; customerId?: string; assignedToId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; title?: string; description?: string; status?: string; priority?: string; category?: string; customerId?: string | null; assignedToId?: string | null; resolution?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string; amount: number }) => Promise<ApiResponse>
   }
   jobCards: {
     list: (payload?: { status?: string; customerId?: string; limit?: number }) => Promise<ApiResponse>
-    create: (payload: { title: string; itemDescription?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedCost?: number; expectedDate?: string; notes?: string; internalNotes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; title?: string; itemDescription?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedCost?: number; actualCost?: number; expectedDate?: string | null; notes?: string; internalNotes?: string }) => Promise<ApiResponse>
+    create: (payload: { title: string; itemDescription?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedCost?: number; expectedDate?: string; notes?: string; internalNotes?: string; warrantyClaimAgainstId?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; title?: string; itemDescription?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedCost?: number; actualCost?: number; expectedDate?: string | null; notes?: string; internalNotes?: string; warrantyDays?: number | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    listParts: (payload: { jobCardId: string }) => Promise<ApiResponse>
+    addPart: (payload: { jobCardId: string; productId: string; quantity: number }) => Promise<ApiResponse>
+    removePart: (payload: { id: string }) => Promise<ApiResponse>
   }
   workLogs: {
     list: (payload: { projectId?: string; ticketId?: string; jobCardId?: string; limit?: number }) => Promise<ApiResponse>
@@ -488,27 +552,29 @@ export interface IpcChannels {
     checkAvailability: (payload: { productId: string; startDateTime: string; endDateTime: string; quantity?: number; excludeBookingId?: string }) => Promise<ApiResponse>
     listBookings: (payload?: { status?: string; customerId?: string }) => Promise<ApiResponse>
     getBooking: (payload: { id: string }) => Promise<ApiResponse>
-    createBooking: (payload: { customerId: string; startDateTime: string; endDateTime: string; securityDepositCollected?: number; notes?: string; items: Array<{ productId: string; rateBasis: string; quantity?: number }> }) => Promise<ApiResponse>
-    checkoutBooking: (payload: { id: string; checkoutNotes?: string }) => Promise<ApiResponse>
-    returnBooking: (payload: { id: string; returnNotes?: string; damageChargeAmount?: number; securityDepositRefunded?: number; itemConditions?: Array<{ itemId: string; conditionIn: string }> }) => Promise<ApiResponse>
+    createBooking: (payload: { customerId: string; startDateTime: string; endDateTime: string; securityDepositCollected?: number; notes?: string; recurrenceIntervalDays?: number; parentBookingId?: string; items: Array<{ productId: string; rateBasis: string; quantity?: number }> }) => Promise<ApiResponse>
+    checkoutBooking: (payload: { id: string; checkoutNotes?: string; itemConditions?: Array<{ itemId: string; conditionOut: string }> }) => Promise<ApiResponse>
+    returnBooking: (payload: { id: string; returnNotes?: string; damageChargeAmount?: number; securityDepositRefunded?: number; itemConditions?: Array<{ itemId: string; conditionIn?: string; damageChargeAmount?: number }> }) => Promise<ApiResponse>
     extendBooking: (payload: { id: string; newEndDateTime: string }) => Promise<ApiResponse>
     cancelBooking: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { bookingId: string }) => Promise<ApiResponse>
+    createNextCycle: (payload: { bookingId: string }) => Promise<ApiResponse>
     listUnits: (payload?: { productId?: string; status?: string }) => Promise<ApiResponse>
-    createUnit: (payload: { productId: string; unitLabel: string; conditionNotes?: string; purchaseDate?: string; unitCost?: number }) => Promise<ApiResponse>
-    updateUnit: (payload: { id: string; unitLabel?: string; status?: string; conditionNotes?: string }) => Promise<ApiResponse>
+    createUnit: (payload: { productId: string; unitLabel: string; conditionNotes?: string; purchaseDate?: string; unitCost?: number; serviceIntervalRentals?: number; serviceIntervalDays?: number }) => Promise<ApiResponse>
+    updateUnit: (payload: { id: string; unitLabel?: string; status?: string; conditionNotes?: string; serviceIntervalRentals?: number | null; serviceIntervalDays?: number | null }) => Promise<ApiResponse>
     deleteUnit: (payload: { id: string }) => Promise<ApiResponse>
+    markUnitServiced: (payload: { id: string }) => Promise<ApiResponse>
   }
   hotel: {
     listRooms: (payload?: { status?: string; roomType?: string; includeInactive?: boolean }) => Promise<ApiResponse>
-    createRoom: (payload: { roomNumber: string; roomType: string; floor?: string; maxOccupancy?: number; baseRate?: number; amenities?: string; notes?: string }) => Promise<ApiResponse>
-    updateRoom: (payload: { id: string; roomType?: string; floor?: string; maxOccupancy?: number; baseRate?: number; status?: string; amenities?: string; notes?: string; isActive?: boolean }) => Promise<ApiResponse>
+    createRoom: (payload: { roomNumber: string; roomType: string; floor?: string; maxOccupancy?: number; baseRate?: number; dayUseRate?: number; amenities?: string; notes?: string }) => Promise<ApiResponse>
+    updateRoom: (payload: { id: string; roomType?: string; floor?: string; maxOccupancy?: number; baseRate?: number; dayUseRate?: number | null; status?: string; amenities?: string; notes?: string; isActive?: boolean }) => Promise<ApiResponse>
     deleteRoom: (payload: { id: string }) => Promise<ApiResponse>
     checkAvailability: (payload: { roomId: string; checkInDate: string; checkOutDate: string; excludeBookingId?: string }) => Promise<ApiResponse>
     listAvailableRooms: (payload: { checkInDate: string; checkOutDate: string; roomType?: string }) => Promise<ApiResponse>
     listBookings: (payload?: { status?: string; roomId?: string; customerId?: string }) => Promise<ApiResponse>
     getBooking: (payload: { id: string }) => Promise<ApiResponse>
-    createBooking: (payload: { roomId: string; customerId?: string; guestName: string; guestPhone?: string; guestEmail?: string; numberOfGuests?: number; checkInDate: string; checkOutDate: string; ratePerNight?: number; advanceAmount?: number; advancePaymentMethod?: string; notes?: string }) => Promise<ApiResponse>
+    createBooking: (payload: { roomId: string; customerId?: string; guestName: string; guestPhone?: string; guestEmail?: string; numberOfGuests?: number; checkInDate: string; checkOutDate?: string; ratePerNight?: number; channel?: string; bookingType?: string; advanceAmount?: number; advancePaymentMethod?: string; notes?: string }) => Promise<ApiResponse>
     checkIn: (payload: { id: string; guests: Array<{ guestName: string; idType: string; idNumber: string; nationality?: string; address?: string; isPrimary?: boolean }> }) => Promise<ApiResponse>
     checkOut: (payload: { id: string }) => Promise<ApiResponse>
     cancelBooking: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
@@ -516,8 +582,18 @@ export interface IpcChannels {
     addExtraCharge: (payload: { bookingId: string; description: string; quantity?: number; unitPrice: number }) => Promise<ApiResponse>
     removeExtraCharge: (payload: { chargeId: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { bookingId: string }) => Promise<ApiResponse>
+    generateGroupInvoice: (payload: { bookingIds: string[] }) => Promise<ApiResponse>
     occupancyReport: () => Promise<ApiResponse>
     guestRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    listRateCalendar: () => Promise<ApiResponse>
+    createRateCalendarEntry: (payload: { roomType?: string; startDate: string; endDate: string; rate: number; label?: string }) => Promise<ApiResponse>
+    deleteRateCalendarEntry: (payload: { id: string }) => Promise<ApiResponse>
+    listHousekeepingTasks: (payload?: { status?: string; roomId?: string }) => Promise<ApiResponse>
+    createHousekeepingTask: (payload: { roomId: string; taskLabel: string; bookingId?: string; notes?: string }) => Promise<ApiResponse>
+    assignHousekeepingTask: (payload: { id: string; assignedToId: string | null }) => Promise<ApiResponse>
+    updateHousekeepingTaskStatus: (payload: { id: string; status: string }) => Promise<ApiResponse>
+    deleteHousekeepingTask: (payload: { id: string }) => Promise<ApiResponse>
+    getCustomerStayHistory: (payload: { customerId: string }) => Promise<ApiResponse>
   }
   metalRate: {
     list: () => Promise<ApiResponse>
@@ -534,13 +610,34 @@ export interface IpcChannels {
   drawingRevision: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>
     create: (payload: { projectId: string; drawingNumber: string; title: string; discipline?: string; revisionNumber?: string; status?: string; issuedDate?: string; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; drawingNumber?: string; title?: string; discipline?: string; revisionNumber?: string; status?: string; issuedDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    update: (payload: { id: string; drawingNumber?: string; title?: string; discipline?: string; revisionNumber?: string; status?: string; issuedDate?: string | null; notes?: string | null; approvedByName?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    issueNewRevision: (payload: { previousRevisionId: string; revisionNumber: string; title?: string; discipline?: string; issuedDate?: string; notes?: string }) => Promise<ApiResponse>
+    getHistory: (payload: { projectId: string; drawingNumber: string }) => Promise<ApiResponse>
   }
   siteVisit: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>
-    create: (payload: { projectId: string; visitDate: string; visitType?: string; findings?: string; weatherConditions?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; visitDate?: string; visitType?: string; findings?: string | null; weatherConditions?: string | null }) => Promise<ApiResponse>
+    create: (payload: { projectId: string; visitDate: string; visitType?: string; findings?: string; weatherConditions?: string; latitude?: number; longitude?: number; locationAccuracy?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; visitDate?: string; visitType?: string; findings?: string | null; weatherConditions?: string | null; latitude?: number | null; longitude?: number | null; locationAccuracy?: number | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  materialTestResult: {
+    list: (payload: { siteVisitId: string }) => Promise<ApiResponse>
+    add: (payload: { siteVisitId: string; testType: string; materialDescription?: string; testValue?: number; unit?: string; requiredMinValue?: number; testedDate?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; testType?: string; materialDescription?: string | null; testValue?: number | null; unit?: string | null; requiredMinValue?: number | null; result?: string; testedDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  campaignPerformance: {
+    list: (payload: { projectId: string }) => Promise<ApiResponse>
+    add: (payload: { projectId: string; periodStart: string; periodEnd: string; impressions?: number; clicks?: number; conversions?: number; actualSpend?: number; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; periodStart?: string; periodEnd?: string; impressions?: number | null; clicks?: number | null; conversions?: number | null; actualSpend?: number | null; notes?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    summary: (payload: { projectId: string }) => Promise<ApiResponse>
+  }
+  contentCalendar: {
+    list: (payload: { projectId: string }) => Promise<ApiResponse>
+    create: (payload: { projectId: string; scheduledDate: string; contentType?: string; title: string; platform?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; scheduledDate?: string; contentType?: string; title?: string; platform?: string | null; status?: string; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   quotations: {
@@ -576,12 +673,14 @@ export interface IpcChannels {
     list: (payload?: { providerId?: string; customerId?: string; status?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     getByDate: (payload: { date: string }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; customerName?: string; providerId?: string; serviceCatalogId?: string; serviceTitle: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number; notes?: string; totalAmount?: number; depositPaid?: number; chairAssignment?: string; createdBy?: string; services?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; customerId?: string | null; customerName?: string | null; providerId?: string | null; serviceCatalogId?: string | null; serviceTitle?: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; notes?: string | null; privateNotes?: string | null; totalAmount?: number; depositPaid?: number; chairAssignment?: string | null }) => Promise<ApiResponse>
+    // Phase 58 §2 — petId: which pet a vet visit is for (Vet Clinic only, harmless elsewhere)
+    create: (payload: { customerId?: string; customerName?: string; providerId?: string; serviceCatalogId?: string; serviceTitle: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number; notes?: string; totalAmount?: number; depositPaid?: number; chairAssignment?: string; createdBy?: string; services?: string; petId?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; customerId?: string | null; customerName?: string | null; providerId?: string | null; serviceCatalogId?: string | null; serviceTitle?: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; notes?: string | null; privateNotes?: string | null; totalAmount?: number; depositPaid?: number; chairAssignment?: string | null; petId?: string | null }) => Promise<ApiResponse>
     updateStatus: (payload: { id: string; status: string; cancellationReason?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     stats: () => Promise<ApiResponse>
-    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — Beauty Salon: unify a retail product upsell + a real payment-method choice into the same appointment checkout
+    generateInvoice: (payload: { id: string; retailItems?: Array<{ productId: string; quantity: number }>; paymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT' }) => Promise<ApiResponse>
     generateBatchInvoice: (payload: { ids: string[] }) => Promise<ApiResponse>
   }
   serviceCatalog: {
@@ -614,15 +713,20 @@ export interface IpcChannels {
   visitNotes: {
     list: (payload?: { search?: string; isFinalized?: boolean; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (payload: { appointmentId: string }) => Promise<ApiResponse>
-    create: (payload: { appointmentId: string; patientName: string; patientAge?: string; chiefComplaint?: string; subjective?: string; objective?: string; assessment?: string; plan?: string; followUpDate?: string; followUpNotes?: string; referredBy?: string; referralDate?: string; referralReason?: string; treatmentDone?: string; painScore?: number | null; treatmentGiven?: string; bpSystolic?: number | null; bpDiastolic?: number | null; pulseRate?: number | null; temperatureF?: number | null; heightCm?: number | null; weightKg?: number | null }) => Promise<ApiResponse>
-    update: (payload: { id: string; patientName?: string; patientAge?: string | null; chiefComplaint?: string | null; subjective?: string | null; objective?: string | null; assessment?: string | null; plan?: string | null; followUpDate?: string | null; followUpNotes?: string | null; referredBy?: string | null; referralDate?: string | null; referralReason?: string | null; treatmentDone?: string | null; painScore?: number | null; treatmentGiven?: string | null; bpSystolic?: number | null; bpDiastolic?: number | null; pulseRate?: number | null; temperatureF?: number | null; heightCm?: number | null; weightKg?: number | null }) => Promise<ApiResponse>
+    create: (payload: { appointmentId: string; patientName: string; patientAge?: string; chiefComplaint?: string; subjective?: string; objective?: string; assessment?: string; plan?: string; followUpDate?: string; followUpNotes?: string; referredBy?: string; referralDate?: string; referralReason?: string; treatmentDone?: string; painScore?: number | null; functionalScore?: number | null; treatmentGiven?: string; bpSystolic?: number | null; bpDiastolic?: number | null; pulseRate?: number | null; temperatureF?: number | null; heightCm?: number | null; weightKg?: number | null }) => Promise<ApiResponse>
+    update: (payload: { id: string; patientName?: string; patientAge?: string | null; chiefComplaint?: string | null; subjective?: string | null; objective?: string | null; assessment?: string | null; plan?: string | null; followUpDate?: string | null; followUpNotes?: string | null; referredBy?: string | null; referralDate?: string | null; referralReason?: string | null; treatmentDone?: string | null; painScore?: number | null; functionalScore?: number | null; treatmentGiven?: string | null; bpSystolic?: number | null; bpDiastolic?: number | null; pulseRate?: number | null; temperatureF?: number | null; heightCm?: number | null; weightKg?: number | null }) => Promise<ApiResponse>
     finalize: (payload: { id: string }) => Promise<ApiResponse>
     referToProvider: (payload: { visitNoteId: string; providerId: string; serviceCatalogId?: string; serviceTitle?: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number; reason?: string }) => Promise<ApiResponse>
     listReferrals: (payload: { visitNoteId: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — GP/Specialist Clinic: structured prescription + vitals trend
+    listPrescriptionItems: (payload: { visitNoteId: string }) => Promise<ApiResponse>
+    savePrescriptionItems: (payload: { visitNoteId: string; items: Array<{ drugName: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }> }) => Promise<ApiResponse>
+    getVitalsTrend: (payload: { appointmentId: string }) => Promise<ApiResponse>
   }
   normalRange: {
     list: (payload?: { testName?: string }) => Promise<ApiResponse>
-    save: (payload: { testName: string; unit?: string | null; minValue?: number | null; maxValue?: number | null; gender?: 'ALL' | 'MALE' | 'FEMALE'; notes?: string | null }) => Promise<ApiResponse>
+    // Phase 58 §2 — species dimension (Vet Clinic), free text, defaults to "ALL" (generic/human); criticalLow/criticalHigh (Diagnostic Lab panic-value tier)
+    save: (payload: { testName: string; unit?: string | null; minValue?: number | null; maxValue?: number | null; criticalLow?: number | null; criticalHigh?: number | null; gender?: 'ALL' | 'MALE' | 'FEMALE'; species?: string; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     evaluate: (payload: { testName: string; value: number; gender?: 'ALL' | 'MALE' | 'FEMALE' }) => Promise<ApiResponse>
     find: (payload: { testName: string; gender?: 'ALL' | 'MALE' | 'FEMALE' }) => Promise<ApiResponse>
@@ -651,6 +755,9 @@ export interface IpcChannels {
     cancel: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 58 §2 — critical/panic-value escalation workflow
+    acknowledgeCritical: (payload: { itemId: string; notifiedById?: string; notes?: string }) => Promise<ApiResponse>
+    listPendingCriticalEscalations: () => Promise<ApiResponse>
   }
   // Phase 51 — Blood Bank
   bloodBank: {
@@ -667,7 +774,7 @@ export interface IpcChannels {
     updateScreeningStatus: (payload: { id: string; screeningStatus: string; screeningNotes?: string }) => Promise<ApiResponse>
     getBloodStock: () => Promise<ApiResponse>
     checkCompatibilityBatch: (payload: { recipientBloodGroup: string; units: Array<{ donationRecordId: string; bloodGroup: string; componentType: string }> }) => Promise<ApiResponse>
-    createIssue: (payload: { customerId?: string; recipientName: string; recipientBloodGroup?: string; purpose?: string; donationRecordIds: string[]; price?: number }) => Promise<ApiResponse>
+    createIssue: (payload: { customerId?: string; recipientName: string; recipientBloodGroup?: string; purpose?: string; donationRecordIds: string[]; price?: number; overrideIncompatibility?: boolean; overrideReason?: string }) => Promise<ApiResponse>
     listIssues: (payload?: { status?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     getIssue: (payload: { id: string }) => Promise<ApiResponse>
     cancelIssue: (payload: { id: string }) => Promise<ApiResponse>
@@ -677,6 +784,14 @@ export interface IpcChannels {
   toothRecord: {
     getChart: (payload: { patientId: string }) => Promise<ApiResponse>
     upsert: (payload: { patientId: string; toothNumber: number; condition: string; surface?: string; notes?: string | null }) => Promise<ApiResponse>
+    // Phase 58 §2 — per-tooth chronological history
+    getHistory: (payload: { patientId: string; toothNumber: number }) => Promise<ApiResponse>
+  }
+  // Phase 58 §2 — Beauty Salon: stylist skill-matching
+  providerSkills: {
+    listForEmployee: (payload: { employeeId: string }) => Promise<ApiResponse>
+    set: (payload: { employeeId: string; serviceCatalogIds: string[] }) => Promise<ApiResponse>
+    listQualified: (payload: { serviceCatalogId: string }) => Promise<ApiResponse>
   }
   treatmentPlan: {
     list: (payload: { patientId: string }) => Promise<ApiResponse>
@@ -725,10 +840,11 @@ export interface IpcChannels {
     getActive: (payload: { customerId: string }) => Promise<ApiResponse>
     list: (payload: { customerId: string }) => Promise<ApiResponse>
     listAll: () => Promise<ApiResponse>
-    create: (payload: { customerId: string; packName: string; totalSessions: number; purchaseDate?: string; expiryDate?: string | null; pricePerPack?: number; taxRate?: number; sacCode?: string; notes?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId: string; packName: string; totalSessions: number; purchaseDate?: string; expiryDate?: string | null; pricePerPack?: number; taxRate?: number; sacCode?: string; notes?: string; assignedTrainerId?: string }) => Promise<ApiResponse>
     deduct: (payload: { customerId: string; appointmentId?: string }) => Promise<ApiResponse>
     logs: (payload: { clientSessionPackId: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    assignTrainer: (payload: { packId: string; trainerId: string | null }) => Promise<ApiResponse>
   }
   // Phase 27 — Salon, Gym/Studio, Driving School
   staffCommission: {
@@ -753,6 +869,8 @@ export interface IpcChannels {
     attendance: (payload: { membershipId: string; dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     expiring: (payload?: { daysAhead?: number }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    freeze: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
+    resume: (payload: { id: string }) => Promise<ApiResponse>
   }
   batchClass: {
     list: (payload?: { status?: string; instructorId?: string }) => Promise<ApiResponse>
@@ -770,18 +888,21 @@ export interface IpcChannels {
   }
   drivingVehicle: {
     list: (payload?: { status?: string }) => Promise<ApiResponse>
-    create: (payload: { registrationNumber: string; make: string; model: string; vehicleClass: string; instructorId?: string; status?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; registrationNumber?: string; make?: string; model?: string; vehicleClass?: string; instructorId?: string | null; status?: string }) => Promise<ApiResponse>
+    create: (payload: { registrationNumber: string; make: string; model: string; vehicleClass: string; instructorId?: string; status?: string; odometerKm?: number; serviceIntervalKm?: number; serviceIntervalSessions?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; registrationNumber?: string; make?: string; model?: string; vehicleClass?: string; instructorId?: string | null; status?: string; odometerKm?: number; serviceIntervalKm?: number; serviceIntervalSessions?: number }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    logMaintenance: (payload: { vehicleId: string; serviceDate?: string; odometerKm: number; serviceType: string; cost?: number; notes?: string }) => Promise<ApiResponse>
+    listMaintenanceLogs: (payload: { vehicleId: string }) => Promise<ApiResponse>
   }
   drivingSession: {
     list: (payload?: { learnerId?: string; instructorId?: string; date?: string; status?: string }) => Promise<ApiResponse>
     create: (payload: { learnerId: string; instructorId: string; vehicleId: string; sessionDate: string; sessionTime: string; durationMinutes?: number; pickupPoint?: string; sessionNumber?: number; sessionFee?: number; packageEnrollmentId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; status?: string; instructorNotes?: string; sessionDate?: string; sessionTime?: string; durationMinutes?: number; pickupPoint?: string | null; sessionFee?: number | null }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
-    listTests: (payload?: { learnerId?: string; testType?: string; result?: string }) => Promise<ApiResponse>
-    createTest: (payload: { learnerId: string; testType: string; testDate: string; testCenter: string; notes?: string }) => Promise<ApiResponse>
-    updateTest: (payload: { id: string; result?: string; retestDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    listTests: (payload?: { learnerId?: string; testType?: string; result?: string; instructorId?: string }) => Promise<ApiResponse>
+    createTest: (payload: { learnerId: string; testType: string; testDate: string; testCenter: string; notes?: string; instructorId?: string }) => Promise<ApiResponse>
+    updateTest: (payload: { id: string; result?: string; retestDate?: string | null; notes?: string | null; instructorId?: string | null }) => Promise<ApiResponse>
+    instructorPassRates: () => Promise<ApiResponse>
   }
   drivingPackage: {
     list: (payload?: { isActive?: boolean }) => Promise<ApiResponse>
@@ -799,9 +920,10 @@ export interface IpcChannels {
   legalCase: {
     list: (payload?: { status?: string; clientId?: string; advocateId?: string; search?: string }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
-    create: (payload: { caseNumber: string; caseTitle: string; caseType?: string; courtName: string; courtDistrict?: string; courtState?: string; eCourtId?: string; clientId: string; advocateId?: string; filingDate?: string; feeAgreed?: number; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; caseNumber?: string; caseTitle?: string; caseType?: string; courtName?: string; courtDistrict?: string | null; courtState?: string | null; eCourtId?: string | null; advocateId?: string | null; status?: string; filingDate?: string | null; nextHearingDate?: string | null; feeAgreed?: number | null; feeCollected?: number; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { caseNumber: string; caseTitle: string; caseType?: string; courtName: string; courtDistrict?: string; courtState?: string; eCourtId?: string; clientId: string; advocateId?: string; filingDate?: string; opposingPartyName?: string; limitationDate?: string; feeAgreed?: number; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; caseNumber?: string; caseTitle?: string; caseType?: string; courtName?: string; courtDistrict?: string | null; courtState?: string | null; eCourtId?: string | null; advocateId?: string | null; status?: string; filingDate?: string | null; nextHearingDate?: string | null; opposingPartyName?: string | null; limitationDate?: string | null; feeAgreed?: number | null; feeCollected?: number; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    checkConflict: (payload: { clientId?: string; opposingPartyName?: string; excludeCaseId?: string }) => Promise<ApiResponse>
   }
   hearing: {
     list: (payload?: { caseId?: string; status?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
@@ -810,8 +932,8 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   timeEntry: {
-    list: (payload?: { caseId?: string; projectId?: string; employeeId?: string; isBilled?: boolean; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
-    create: (payload: { caseId?: string; projectId?: string; employeeId?: string; date: string; description: string; hours: number; ratePerHour: number }) => Promise<ApiResponse>
+    list: (payload?: { caseId?: string; projectId?: string; retainerId?: string; employeeId?: string; isBilled?: boolean; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
+    create: (payload: { caseId?: string; projectId?: string; retainerId?: string; employeeId?: string; date: string; description: string; hours: number; ratePerHour: number }) => Promise<ApiResponse>
     update: (payload: { id: string; date?: string; description?: string; hours?: number; ratePerHour?: number }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     markBilled: (payload: { ids: string[] }) => Promise<ApiResponse>
@@ -819,6 +941,14 @@ export interface IpcChannels {
   }
   complianceEvent: {
     list: (payload?: { category?: string; isActive?: boolean }) => Promise<ApiResponse>
+    setClientAgmDate: (payload: { clientId: string; agmDate: string | null }) => Promise<ApiResponse>
+  }
+  clientDocumentChecklist: {
+    list: (payload: { clientId: string }) => Promise<ApiResponse>
+    add: (payload: { clientId: string; documentType: string; label?: string; notes?: string }) => Promise<ApiResponse>
+    seedStandard: (payload: { clientId: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; status?: string; notes?: string | null }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
   }
   complianceTask: {
     list: (payload?: { clientId?: string; staffId?: string; status?: string; category?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
@@ -838,6 +968,7 @@ export interface IpcChannels {
     create: (payload: { clientId: string; staffId?: string; formType: string; financialYear?: string; purpose?: string; dueDate?: string; govtFee?: number; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; staffId?: string | null; formType?: string; financialYear?: string | null; purpose?: string | null; dueDate?: string | null; filedOn?: string | null; srn?: string | null; status?: string; govtFee?: number | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    complianceRollup: (payload: { financialYear: string }) => Promise<ApiResponse>
   }
   boardMeeting: {
     list: (payload?: { clientId?: string; meetingType?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
@@ -847,7 +978,7 @@ export interface IpcChannels {
   }
   boardResolution: {
     list: (payload: { boardMeetingId: string }) => Promise<ApiResponse>
-    create: (payload: { boardMeetingId: string; resolutionNumber: string; resolutionType?: string; resolutionText: string; passedUnanimously?: boolean }) => Promise<ApiResponse>
+    create: (payload: { boardMeetingId: string; resolutionNumber?: string; resolutionType?: string; resolutionText: string; passedUnanimously?: boolean }) => Promise<ApiResponse>
     update: (payload: { id: string; resolutionNumber?: string; resolutionType?: string; resolutionText?: string; passedUnanimously?: boolean }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
@@ -878,11 +1009,23 @@ export interface IpcChannels {
     update: (payload: { id: string; assignedToId?: string | null; title?: string; retainerType?: string; monthlyAmount?: number; billingDay?: number | null; hoursPerMonth?: number | null; deliverables?: string | null; status?: string; startDate?: string; endDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string; period?: string }) => Promise<ApiResponse>
+    getHoursUsage: (payload: { id: string; period?: string }) => Promise<ApiResponse>
   }
   issue: {
     list: (payload?: { projectId?: string; status?: string; priority?: string; assignedToId?: string; sprintId?: string }) => Promise<ApiResponse>
-    create: (payload: { projectId: string; title: string; description?: string; priority?: string; status?: string; assignedToId?: string; sprintId?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; title?: string; description?: string | null; priority?: string; status?: string; assignedToId?: string | null; sprintId?: string | null; resolvedDate?: string | null }) => Promise<ApiResponse>
+    create: (payload: { projectId: string; title: string; description?: string; priority?: string; status?: string; assignedToId?: string; sprintId?: string; storyPoints?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; title?: string; description?: string | null; priority?: string; status?: string; assignedToId?: string | null; sprintId?: string | null; resolvedDate?: string | null; storyPoints?: number | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  issueComment: {
+    list: (payload: { issueId: string }) => Promise<ApiResponse>
+    add: (payload: { issueId: string; body: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  issueSubtask: {
+    list: (payload: { issueId: string }) => Promise<ApiResponse>
+    create: (payload: { issueId: string; title: string }) => Promise<ApiResponse>
+    toggle: (payload: { id: string; isDone: boolean }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   sprint: {
@@ -890,6 +1033,8 @@ export interface IpcChannels {
     create: (payload: { projectId: string; name?: string; goal?: string; startDate: string; endDate: string }) => Promise<ApiResponse>
     update: (payload: { id: string; name?: string | null; goal?: string | null; startDate?: string; endDate?: string; status?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    burndown: (payload: { sprintId: string }) => Promise<ApiResponse>
+    velocity: (payload: { projectId: string; limit?: number }) => Promise<ApiResponse>
   }
   // Phase 31 — Coaching Institute
   student: {
@@ -912,6 +1057,7 @@ export interface IpcChannels {
     create: (payload: { batchId: string; studentId: string; discountType?: string; discountAmount?: number; effectiveFee: number; enrolledDate?: string; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; status?: string; discountType?: string; discountAmount?: number; effectiveFee?: number; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    promoteFromWaitlist: (payload: { id: string }) => Promise<ApiResponse>
   }
   coachingAttendance: {
     get: (payload: { batchId: string; date: string }) => Promise<ApiResponse>
@@ -923,6 +1069,17 @@ export interface IpcChannels {
     list: (payload: { month?: string; status?: string; batchId?: string; studentId?: string }) => Promise<ApiResponse>
     kpis: (payload: { month: string }) => Promise<ApiResponse>
     update: (payload: { id: string; amountReceived?: number; status?: string; paidDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
+  }
+  // Phase 58 §2 — Coaching Institute
+  syllabusTopic: {
+    list: (payload: { batchId: string }) => Promise<ApiResponse>
+    create: (payload: { batchId: string; topicName: string; sequenceOrder?: number; plannedDate?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; topicName?: string; sequenceOrder?: number; plannedDate?: string | null; status?: string; notes?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    progress: (payload: { batchId: string }) => Promise<ApiResponse>
+  }
+  coachingProgress: {
+    getReport: (payload: { studentId: string }) => Promise<ApiResponse>
   }
   performance: {
     list: (payload: { batchId?: string }) => Promise<ApiResponse>
@@ -948,7 +1105,19 @@ export interface IpcChannels {
   }
   deliveryTracker: {
     get: (payload: string) => Promise<ApiResponse>
-    upsert: (payload: { shootBookingId: string; proofsSentDate?: string | null; selectionReceivedDate?: string | null; editingStartedDate?: string | null; albumProofSentDate?: string | null; finalDeliveredDate?: string | null; deliveryFormat?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    upsert: (payload: { shootBookingId: string; proofsSentDate?: string | null; selectionReceivedDate?: string | null; editingStartedDate?: string | null; albumProofSentDate?: string | null; finalDeliveredDate?: string | null; deliveryFormat?: string | null; deliveredPhotosCount?: number | null; notes?: string | null }) => Promise<ApiResponse>
+  }
+  shootChecklist: {
+    list: (payload: { shootBookingId: string }) => Promise<ApiResponse>
+    add: (payload: { shootBookingId: string; label: string; category?: string }) => Promise<ApiResponse>
+    toggle: (payload: { id: string; isDone: boolean }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  shootAddOn: {
+    list: (payload: { shootBookingId: string }) => Promise<ApiResponse>
+    add: (payload: { shootBookingId: string; description: string; quantity?: number; unitPrice: number }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    total: (payload: { shootBookingId: string }) => Promise<ApiResponse>
   }
   eventBooking: {
     list: (payload: { status?: string; search?: string }) => Promise<ApiResponse>
@@ -960,9 +1129,15 @@ export interface IpcChannels {
   }
   eventVendorBooking: {
     list: (payload: string) => Promise<ApiResponse>
-    create: (payload: { eventId: string; vendorId: string; vendorCategory: string; quotedAmount: number; advancePaid?: number; status?: string; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; vendorCategory?: string; quotedAmount?: number; advancePaid?: number; status?: string; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { eventId: string; vendorId: string; vendorCategory: string; pricingType?: string; quotedAmount?: number; perHeadRate?: number; advancePaid?: number; status?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; vendorCategory?: string; pricingType?: string; quotedAmount?: number; perHeadRate?: number; advancePaid?: number; status?: string; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
+  }
+  eventRunOfShow: {
+    list: (payload: { eventId: string }) => Promise<ApiResponse>
+    create: (payload: { eventId: string; scheduledTime: string; activity: string; responsibleParty?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; scheduledTime?: string; activity?: string; responsibleParty?: string | null; isDone?: boolean; notes?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   property: {
     list: (payload: { status?: string; listingType?: string; search?: string }) => Promise<ApiResponse>
@@ -978,10 +1153,16 @@ export interface IpcChannels {
     update: (payload: { id: string; status?: string; notes?: string | null; nextFollowUpDate?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
   }
+  propertySiteVisit: {
+    list: (payload: { inquiryId: string }) => Promise<ApiResponse>
+    schedule: (payload: { inquiryId: string; scheduledDate: string; scheduledTime?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; scheduledDate?: string; scheduledTime?: string | null; status?: string; feedback?: string | null; interestLevel?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
   propertyDeal: {
     list: (payload: { status?: string; propertyId?: string }) => Promise<ApiResponse>
-    create: (payload: { propertyId: string; buyerClientId: string; sellerClientId: string; dealValue: number; brokeragePercent: number; expectedRegistrationDate?: string; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; dealValue?: number; brokeragePercent?: number; expectedRegistrationDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { propertyId: string; buyerClientId: string; sellerClientId: string; dealValue: number; brokeragePercent: number; expectedRegistrationDate?: string; notes?: string; coBrokerName?: string; coBrokerSharePercent?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; dealValue?: number; brokeragePercent?: number; expectedRegistrationDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null; coBrokerName?: string | null; coBrokerSharePercent?: number | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
     generateInvoice: (payload: string) => Promise<ApiResponse>
   }
@@ -990,10 +1171,13 @@ export interface IpcChannels {
     list: (payload?: { status?: string; clientId?: string; search?: string }) => Promise<ApiResponse>
     get: (payload: string) => Promise<ApiResponse>
     create: (payload: { clientId: string; vehicleNumber: string; vehicleMake: string; vehicleModel: string; vehicleYear?: number; vehicleType?: string; kmIn?: number; serviceAdvisorId?: string; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; estimatedDelivery?: string; notes?: string; internalNotes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; vehicleNumber?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number | null; vehicleType?: string; kmIn?: number | null; kmOut?: number | null; serviceAdvisorId?: string | null; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; estimatedDelivery?: string | null; deliveredDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null; internalNotes?: string | null }) => Promise<ApiResponse>
+    update: (payload: { id: string; vehicleNumber?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number | null; vehicleType?: string; kmIn?: number | null; kmOut?: number | null; serviceAdvisorId?: string | null; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; estimatedDelivery?: string | null; deliveredDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null; internalNotes?: string | null; nextServiceDueDate?: string | null; nextServiceDueKm?: number | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
     generateInvoice: (payload: string) => Promise<ApiResponse>
     kpis: () => Promise<ApiResponse>
+    vehicleHistory: (payload: { vehicleNumber: string }) => Promise<ApiResponse>
+    vehiclesDueForService: (payload?: { dueSoonDays?: number }) => Promise<ApiResponse>
+    scheduleServiceReminder: (payload: { jobCardId: string; daysBefore?: number }) => Promise<ApiResponse>
   }
   measurementRecord: {
     list: (payload: string) => Promise<ApiResponse>
@@ -1010,6 +1194,9 @@ export interface IpcChannels {
     delete: (payload: string) => Promise<ApiResponse>
     generateInvoice: (payload: string) => Promise<ApiResponse>
     kpis: () => Promise<ApiResponse>
+    scheduleTrialAppointment: (payload: { orderId: string; providerId?: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number }) => Promise<ApiResponse>
+    setFabric: (payload: { orderId: string; fabricProductId: string; fabricQuantity: number }) => Promise<ApiResponse>
+    clearFabric: (payload: string) => Promise<ApiResponse>
   }
   pestContract: {
     list: (payload?: { status?: string; clientId?: string; search?: string }) => Promise<ApiResponse>
@@ -1026,6 +1213,9 @@ export interface IpcChannels {
     update: (payload: { id: string; visitDate?: string; scheduledTime?: string | null; technicianIds?: string[]; pesticideUsed?: string | null; areasServiced?: string[]; treatmentType?: string; jobAmount?: number; status?: string; completedDate?: string | null; followUpDate?: string | null; clientSignature?: boolean; invoiceId?: string | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
     generateInvoice: (payload: string) => Promise<ApiResponse>
+    listPesticides: (payload: string) => Promise<ApiResponse>
+    addPesticide: (payload: { jobSheetId: string; productId?: string; pesticideName: string; quantityUsed: number; unit?: string; dosageNote?: string; targetPest?: string }) => Promise<ApiResponse>
+    removePesticide: (payload: string) => Promise<ApiResponse>
   }
   // Phase 34 — Placement Agency
   candidate: {
@@ -1038,9 +1228,15 @@ export interface IpcChannels {
   jobOrder: {
     list: (payload?: { status?: string; clientId?: string; search?: string }) => Promise<ApiResponse>
     get: (payload: string) => Promise<ApiResponse>
-    create: (payload: { clientId: string; jobTitle: string; jobDescription?: string; requiredSkills?: string[]; experienceMin?: number; experienceMax?: number; salaryBudgetMin?: number; salaryBudgetMax?: number; location?: string; numberOfPositions?: number; targetDate?: string; commissionType?: string; commissionValue?: number; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; jobTitle?: string; jobDescription?: string | null; requiredSkills?: string[]; experienceMin?: number | null; experienceMax?: number | null; salaryBudgetMin?: number | null; salaryBudgetMax?: number | null; location?: string | null; numberOfPositions?: number; targetDate?: string | null; status?: string; commissionType?: string; commissionValue?: number; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { clientId: string; jobTitle: string; jobDescription?: string; requiredSkills?: string[]; experienceMin?: number; experienceMax?: number; salaryBudgetMin?: number; salaryBudgetMax?: number; location?: string; numberOfPositions?: number; targetDate?: string; commissionType?: string; commissionValue?: number; feeAgreementTerms?: string; replacementGuaranteeDays?: number; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; jobTitle?: string; jobDescription?: string | null; requiredSkills?: string[]; experienceMin?: number | null; experienceMax?: number | null; salaryBudgetMin?: number | null; salaryBudgetMax?: number | null; location?: string | null; numberOfPositions?: number; targetDate?: string | null; status?: string; commissionType?: string; commissionValue?: number; feeAgreementTerms?: string | null; replacementGuaranteeDays?: number | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
+  }
+  interviewRound: {
+    list: (payload?: { candidateId?: string; jobOrderId?: string }) => Promise<ApiResponse>
+    create: (payload: { candidateId: string; jobOrderId: string; roundNumber?: number; roundType?: string; scheduledDate?: string; interviewerName?: string; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; roundType?: string; scheduledDate?: string | null; status?: string; interviewerName?: string | null; clientFeedback?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   placement: {
     list: (payload?: { status?: string; candidateId?: string; jobOrderId?: string; search?: string }) => Promise<ApiResponse>
@@ -1073,6 +1269,10 @@ export interface IpcChannels {
     update: (payload: { id: string; shipmentType?: string; referenceType?: string; referenceNumber?: string; originAddress?: string; destinationAddress?: string; customerId?: string; customerName?: string; supplierId?: string; supplierName?: string; carrierId?: string | null; vehicleId?: string | null; trackingNumber?: string; freightAmount?: number; freightPaidBy?: string; weight?: number; packages?: number; scheduledDate?: string; expectedDelivery?: string; challanNumber?: string; ewayBillNumber?: string; notes?: string; items?: Array<{ productId?: string; productName: string; quantity: number; unit?: string; unitValue?: number; batchNumber?: string; serialNumber?: string; notes?: string }> }) => Promise<ApiResponse>
     updateStatus: (payload: { id: string; status: string }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
+    // Phase 58 §2 — Distributor route/beat planning (multi-stop shipments)
+    addStop: (payload: { shipmentId: string; customerId?: string; customerName?: string; destinationAddress: string; notes?: string }) => Promise<ApiResponse>
+    updateStopStatus: (payload: { id: string; status: 'DELIVERED' | 'SKIPPED' | 'PENDING' }) => Promise<ApiResponse>
+    deleteStop: (payload: string) => Promise<ApiResponse>
   }
   logisticsGrn: {
     list: (payload?: { status?: string; supplierId?: string; fromDate?: string; toDate?: string; offset?: number; limit?: number }) => Promise<ApiResponse>

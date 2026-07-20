@@ -41,6 +41,7 @@ export async function createIssue(payload: {
   status?: string
   assignedToId?: string
   sprintId?: string
+  storyPoints?: number
 }) {
   try {
     const db = getPrisma()
@@ -53,6 +54,7 @@ export async function createIssue(payload: {
         status:       payload.status ?? 'OPEN',
         assignedToId: payload.assignedToId ?? null,
         sprintId:     payload.sprintId ?? null,
+        storyPoints:  payload.storyPoints ?? null,
       },
       include: {
         assignedTo: { select: { id: true, fullName: true } },
@@ -76,6 +78,7 @@ export async function updateIssue(payload: {
   assignedToId?: string | null
   sprintId?: string | null
   resolvedDate?: string | null
+  storyPoints?: number | null
 }) {
   try {
     const db = getPrisma()

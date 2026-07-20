@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const CreateTimeEntrySchema = z.object({
   caseId: z.string().optional(),
   projectId: z.string().optional(),
+  retainerId: z.string().optional(),
   employeeId: z.string().optional(),
   date: z.string().min(1, 'Date is required'),
   description: z.string().min(1, 'Description is required'),

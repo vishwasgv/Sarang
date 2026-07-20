@@ -32,7 +32,11 @@ export async function getBusinessDisplayInfo(): Promise<{ businessName: string; 
 export async function listMenuProducts(): Promise<MenuProduct[]> {
   const db = getPrisma()
   const products = await db.product.findMany({
-    where: { isActive: true },
+    // Phase 58 §2 — a "86'd" item (unavailableUntil in the future) must
+    // never appear on the customer-facing QR menu, same as isActive:false —
+    // a customer scanning the table QR shouldn't be able to order something
+    // the kitchen has explicitly marked out for today.
+    where: { isActive: true, OR: [{ unavailableUntil: null }, { unavailableUntil: { lte: new Date() } }] },
     select: {
       id: true, productName: true, sellingPrice: true, imagePath: true,
       category: { select: { name: true } }

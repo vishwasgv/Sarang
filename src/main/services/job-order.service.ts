@@ -85,6 +85,8 @@ export async function createJobOrder(payload: {
   targetDate?: string
   commissionType?: string
   commissionValue?: number
+  feeAgreementTerms?: string
+  replacementGuaranteeDays?: number
   notes?: string
 }) {
   const db = getPrisma()
@@ -106,6 +108,8 @@ export async function createJobOrder(payload: {
         targetDate: payload.targetDate ? new Date(payload.targetDate) : null,
         commissionType: payload.commissionType ?? 'PERCENTAGE',
         commissionValue: payload.commissionValue ?? 0,
+        feeAgreementTerms: payload.feeAgreementTerms ?? null,
+        replacementGuaranteeDays: payload.replacementGuaranteeDays ?? null,
         notes: payload.notes ?? null,
       },
       include: {
@@ -135,6 +139,8 @@ export async function updateJobOrder(payload: {
   status?: string
   commissionType?: string
   commissionValue?: number
+  feeAgreementTerms?: string | null
+  replacementGuaranteeDays?: number | null
   notes?: string | null
 }) {
   const db = getPrisma()

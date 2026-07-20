@@ -228,6 +228,7 @@ interface BPProfile {
   showLogoOnDashboard?: boolean | null
   enableDocumentWatermark?: boolean | null
   clinicSpecialty?: string | null
+  drugLicenseNumber?: string | null
 }
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
@@ -249,7 +250,8 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     logoPath: profile?.logoPath ?? '',
     showLogoOnDashboard: profile?.showLogoOnDashboard ?? false,
     enableDocumentWatermark: profile?.enableDocumentWatermark ?? false,
-    clinicSpecialty: profile?.clinicSpecialty ?? ''
+    clinicSpecialty: profile?.clinicSpecialty ?? '',
+    drugLicenseNumber: profile?.drugLicenseNumber ?? ''
   })
   const setProfile = useBusinessStore((s) => s.setProfile)
   const { error: toastError, success: toastSuccess } = useNotificationStore()
@@ -270,7 +272,8 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
       logoPath: profile?.logoPath ?? '',
       showLogoOnDashboard: profile?.showLogoOnDashboard ?? false,
       enableDocumentWatermark: profile?.enableDocumentWatermark ?? false,
-      clinicSpecialty: profile?.clinicSpecialty ?? ''
+      clinicSpecialty: profile?.clinicSpecialty ?? '',
+      drugLicenseNumber: profile?.drugLicenseNumber ?? ''
     })
     setError(null)
     setEditing(true)
@@ -305,7 +308,8 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         logoPath: form.logoPath || null,
         showLogoOnDashboard: form.showLogoOnDashboard,
         enableDocumentWatermark: form.enableDocumentWatermark,
-        ...(profile?.businessType === 'SPECIALIST_CLINIC' ? { clinicSpecialty: form.clinicSpecialty.trim() || null } : {})
+        ...(profile?.businessType === 'SPECIALIST_CLINIC' ? { clinicSpecialty: form.clinicSpecialty.trim() || null } : {}),
+        ...(profile?.businessType === 'PHARMACY' ? { drugLicenseNumber: form.drugLicenseNumber.trim() || null } : {})
       })
       if (res.success) {
         const freshRes = await window.api.businessProfile.get()
@@ -393,6 +397,13 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
                   placeholder="e.g. Pediatrics, Orthopedics, ENT, Ophthalmology" className={inputCls} />
               </div>
             )}
+            {profile?.businessType === 'PHARMACY' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Drug License Number</label>
+                <input value={form.drugLicenseNumber} onChange={e => setForm(f => ({ ...f, drugLicenseNumber: e.target.value }))}
+                  placeholder="e.g. 20B / 21B license number" className={inputCls} />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} />
@@ -448,6 +459,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             { label: 'Business Type', value: profile?.businessType },
             { label: 'Owner Name', value: profile?.ownerName },
             ...(profile?.businessType === 'SPECIALIST_CLINIC' ? [{ label: 'Specialty', value: profile?.clinicSpecialty }] : []),
+            ...(profile?.businessType === 'PHARMACY' ? [{ label: 'Drug License Number', value: profile?.drugLicenseNumber }] : []),
             { label: 'Country', value: profile?.country },
             { label: 'Currency', value: profile?.currencyCode ? `${profile.currencySymbol} (${profile.currencyCode})` : undefined },
             { label: 'Tax Model', value: profile?.taxModel },
@@ -1334,6 +1346,9 @@ function AppearanceSection() {
   // Restaurant-only — KOT is a Restaurant-business-type feature (see
   // business__restaurant.md), so this picker would be dead UI for anyone else.
   const isRestaurant = profile?.businessType === 'RESTAURANT'
+  // Phase 58 §2 — field_order_capture is a DISTRIBUTOR default, same
+  // "dead UI for anyone else" reasoning as isRestaurant above.
+  const isDistributor = profile?.businessType === 'DISTRIBUTOR'
 
   useEffect(() => {
     if (!isRestaurant) return
@@ -1521,6 +1536,7 @@ function AppearanceSection() {
         )}
       </Card>
       {isRestaurant && <KitchenDisplayWebSection />}
+      {isDistributor && <FieldOrderCaptureSection />}
       <p className="text-xs text-slate-400">Your preference is saved automatically and will be remembered next time you open Sarang.</p>
     </div>
   )
@@ -1656,6 +1672,136 @@ function KitchenDisplayWebSection() {
   )
 }
 
+// Phase 58 §2 — Distributor field-rep order capture (phone/laptop, LAN) —
+// Settings-side twin of KitchenDisplayWebSection above (same toggle-via-
+// updateEnabledModules mechanism, same status-polling/QR/regenerate UI),
+// just for the field_order_capture module and its own LAN server
+// (field-order-server.ts, port 8422 — separate from qr-order-server.ts's
+// 8420 and kitchen-display-server.ts's 8421).
+function FieldOrderCaptureSection() {
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { enabledModules, updateEnabledModules } = useIndustryStore()
+  const focEnabled = enabledModules.includes('field_order_capture')
+  const [toggling, setToggling] = useState(false)
+  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null } | null>(null)
+  const [qr, setQr] = useState<{ qrDataUrl: string; captureUrl: string } | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+
+  const loadStatus = useCallback(async () => {
+    const res = await window.api.distributor.getFieldOrderStatus()
+    if (res.success && res.data) setStatus(res.data)
+  }, [])
+
+  useEffect(() => { loadStatus() }, [loadStatus])
+
+  async function toggle(on: boolean) {
+    setToggling(true)
+    try {
+      const next = on ? [...enabledModules, 'field_order_capture'] : enabledModules.filter(m => m !== 'field_order_capture')
+      const res = await updateEnabledModules(next as typeof enabledModules)
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update Field Order Capture setting.')
+      await loadStatus()
+      setQr(null)
+      setShowQr(false)
+    } catch {
+      toastError('Error', 'Could not update Field Order Capture setting.')
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function loadQr() {
+    setShowQr(true)
+    setQrLoading(true)
+    try {
+      const res = await window.api.distributor.generateFieldOrderQr()
+      if (res.success && res.data) setQr(res.data)
+      else toastError('Error', res.error?.message ?? 'Could not generate QR code.')
+    } catch {
+      toastError('Error', 'Could not generate QR code.')
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
+  async function regenerate() {
+    setRegenerating(true)
+    try {
+      const res = await window.api.distributor.regenerateFieldOrderToken()
+      if (res.success) {
+        toastSuccess('Access code regenerated', 'Old field order links/QR codes no longer work.')
+        setQr(null)
+        await loadStatus()
+        if (showQr) await loadQr()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not regenerate access code.')
+      }
+    } catch {
+      toastError('Error', 'Could not regenerate access code.')
+    } finally {
+      setRegenerating(false)
+      setConfirmRegenerate(false)
+    }
+  }
+
+  return (
+    <Card padding="lg" className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><Smartphone size={16} /> Field Order Capture — phone / laptop</h3>
+          <p className="text-xs text-slate-400 mt-1">Lets a field rep submit an order from their own phone on your shop WiFi — the office confirms and bills it from Distributor → Field Orders.</p>
+        </div>
+        <button
+          onClick={() => toggle(!focEnabled)}
+          disabled={toggling}
+          className={cn('px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 shrink-0',
+            focEnabled ? 'bg-success/10 text-success border border-success/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
+          {toggling ? 'Updating…' : focEnabled ? 'Enabled' : 'Enable'}
+        </button>
+      </div>
+      {focEnabled && (
+        status?.running ? (
+          <div className="space-y-2">
+            <p className="text-xs text-success">Running — open one of these on a rep's phone/laptop browser, or scan the QR code:</p>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+              {status.lanUrls.map(u => <li key={u} className="font-mono">{u}/field-order/{status.token}</li>)}
+            </ul>
+            <div className="flex gap-2 pt-1">
+              <button onClick={loadQr} disabled={qrLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors disabled:opacity-50">
+                <QrCode size={13} /> {qrLoading ? 'Generating…' : 'Show QR code'}
+              </button>
+              <button onClick={() => setConfirmRegenerate(true)} disabled={regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
+                <RefreshCw size={13} /> Regenerate access code
+              </button>
+            </div>
+            {showQr && qr && (
+              <div className="pt-2">
+                <img src={qr.qrDataUrl} alt="Field order QR code" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-warning">Enabled but not yet running — check that another app isn't already using the same port, or try refreshing.</p>
+        )
+      )}
+      <ConfirmDialog
+        open={confirmRegenerate}
+        onClose={() => setConfirmRegenerate(false)}
+        onConfirm={regenerate}
+        loading={regenerating}
+        title="Regenerate access code?"
+        message="Every phone/laptop currently using the field order link or QR code will stop working immediately. You'll need to re-share the new one."
+        confirmLabel="Regenerate"
+      />
+    </Card>
+  )
+}
+
 // Hybrid Business Operations phase — the Industry Template picker
 // (IndustrySettingsScreen.tsx) is a single-select radio button: choosing
 // "Distributor / Wholesale" replaces a Retail business's module set rather
@@ -1676,12 +1822,13 @@ function BusinessFeaturesSection() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState<string | null>(null)
 
-  const MODULES: Array<{ key: 'returns' | 'area_pricing' | 'credit_limit_enforcement' | 'bulk_orders' | 'outstanding_analytics'; label: string; desc: string }> = [
+  const MODULES: Array<{ key: 'returns' | 'area_pricing' | 'credit_limit_enforcement' | 'bulk_orders' | 'outstanding_analytics' | 'time_entries'; label: string; desc: string }> = [
     { key: 'returns', label: 'Returns Workflow', desc: 'Accept product returns with automatic inventory and ledger reversal (Retail default)' },
     { key: 'area_pricing', label: 'Area Pricing Calculator', desc: 'Price by area (sq ft / sq m) for products like glass, plywood, or tiles (Hardware default)' },
     { key: 'credit_limit_enforcement', label: 'Credit Limit Enforcement', desc: "Block a credit sale once a customer's outstanding balance would exceed their credit limit. Only applies to customers who have a credit limit set — walk-in customers are never affected (Hardware/Distributor default)" },
     { key: 'bulk_orders', label: 'Bulk Order Workflow', desc: 'A separate bulk-order screen with volume-based discount tiers for wholesale/dealer customers (Distributor default)' },
     { key: 'outstanding_analytics', label: 'Outstanding Analytics', desc: 'Extra reporting on customer outstanding balances and aging (Distributor default)' },
+    { key: 'time_entries', label: 'Billable Time Tracking', desc: 'Log billable hours against a project or retainer, then invoice logged time (Lawyer/CA Firm/Architect and similar time-billed professions default on)' },
   ]
 
   // Fresh-audit fix (2026-07-12): LOGISTICS_MODULES (Fleet/Carriers/
@@ -1803,10 +1950,11 @@ function BarcodeSection() {
   const [backfilling, setBackfilling] = useState(false)
   const [backfillResult, setBackfillResult] = useState<string | null>(null)
 
-  const MODULES: Array<{ key: 'barcode_generation' | 'barcode_printing' | 'loose_billing'; label: string; desc: string }> = [
+  const MODULES: Array<{ key: 'barcode_generation' | 'barcode_printing' | 'loose_billing' | 'pack_billing'; label: string; desc: string }> = [
     { key: 'barcode_generation', label: 'Barcode Generation & Scanning', desc: 'Auto-generate barcodes for products, and scan barcodes at checkout and stock lookup' },
     { key: 'barcode_printing', label: 'Barcode Label Printing', desc: 'Print barcode + price labels — thermal label printer or a regular A4/letter printer' },
-    { key: 'loose_billing', label: 'Loose / Weight-Based Billing', desc: 'Sell products loose by weight (e.g. per kg) instead of, or alongside, fixed packs' }
+    { key: 'loose_billing', label: 'Loose / Weight-Based Billing', desc: 'Sell products loose by weight (e.g. per kg) instead of, or alongside, fixed packs' },
+    { key: 'pack_billing', label: 'Carton / Box Unit Conversion', desc: 'Stock in cartons or boxes (e.g. a box of 50 screws) but sell and bill in individual pieces' }
   ]
 
   async function toggle(key: string, on: boolean) {

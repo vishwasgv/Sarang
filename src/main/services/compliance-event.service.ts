@@ -27,10 +27,14 @@ const SEEDED_EVENTS = [
   { title: 'TDS Return — Q4 (Jan–Mar)', category: 'TDS', frequency: 'QUARTERLY', applicableTo: 'ALL', description: 'Form 24Q/26Q — due 31 May', dueMonth: 5, dueDay: 31 },
   // ROC / MCA
   { title: 'DIR-3 KYC (Director KYC)', category: 'MCA', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due 30 September each year for all directors with DIN', dueMonth: 9, dueDay: 30 },
-  { title: 'MGT-7 Annual Return', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 60 days of AGM', dueMonth: null, dueDay: null },
-  { title: 'AOC-4 Financial Statements', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 30 days of AGM', dueMonth: null, dueDay: null },
-  { title: 'ADT-1 Auditor Appointment', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 15 days of AGM', dueMonth: null, dueDay: null },
-  { title: 'AGM — Annual General Meeting', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Must be held within 6 months of FY end (by 30 September)', dueMonth: null, dueDay: null },
+  // Phase 58 §2 — agmOffsetDays now makes these 3 genuinely generate-able
+  // once a client's lastAgmDate is captured (see generateAgmRelativeTasksForAllClients
+  // below). The AGM event itself deliberately stays un-auto-computable (see
+  // the ComplianceEvent.agmOffsetDays schema comment for why).
+  { title: 'MGT-7 Annual Return', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 60 days of AGM', dueMonth: null, dueDay: null, agmOffsetDays: 60 },
+  { title: 'AOC-4 Financial Statements', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 30 days of AGM', dueMonth: null, dueDay: null, agmOffsetDays: 30 },
+  { title: 'ADT-1 Auditor Appointment', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Due within 15 days of AGM', dueMonth: null, dueDay: null, agmOffsetDays: 15 },
+  { title: 'AGM — Annual General Meeting', category: 'ROC', frequency: 'ANNUAL', applicableTo: 'COMPANY', description: 'Must be held within 6 months of FY end (by 30 September)', dueMonth: null, dueDay: null, agmOffsetDays: null },
 ]
 
 export async function listComplianceEvents(filters?: { category?: string; isActive?: boolean }) {
@@ -55,12 +59,12 @@ export async function seedComplianceEvents(): Promise<void> {
     const existing = await db.complianceEvent.findFirst({ where: { title: ev.title } })
     if (!existing) {
       await db.complianceEvent.create({ data: ev })
-    } else if (existing.dueMonth !== ev.dueMonth || existing.dueDay !== ev.dueDay) {
-      // Backfills dueMonth/dueDay onto rows seeded by an already-installed
-      // database before this phase — without this, auto-generation
-      // (generateComplianceTasksForAllClients) would silently skip every
-      // pre-existing event since it only reads events with dueDay set.
-      await db.complianceEvent.update({ where: { id: existing.id }, data: { dueMonth: ev.dueMonth, dueDay: ev.dueDay } })
+    } else if (existing.dueMonth !== ev.dueMonth || existing.dueDay !== ev.dueDay || existing.agmOffsetDays !== ev.agmOffsetDays) {
+      // Backfills dueMonth/dueDay/agmOffsetDays onto rows seeded by an
+      // already-installed database before this phase — without this,
+      // auto-generation would silently skip every pre-existing event since
+      // it only reads events with dueDay or agmOffsetDays set.
+      await db.complianceEvent.update({ where: { id: existing.id }, data: { dueMonth: ev.dueMonth, dueDay: ev.dueDay, agmOffsetDays: ev.agmOffsetDays } })
     }
   }
 }
@@ -96,30 +100,59 @@ function computeNextDueDate(event: { dueMonth: number | null; dueDay: number }, 
 // the client's actual AGM date is known.
 export async function generateComplianceTasksForAllClients(): Promise<{ created: number }> {
   const db = getPrisma()
-  const events = await db.complianceEvent.findMany({ where: { isActive: true, dueDay: { not: null } } })
-  if (events.length === 0) return { created: 0 }
-
-  const clients = await db.customer.findMany({ where: { isActive: true }, select: { id: true } })
-  if (clients.length === 0) return { created: 0 }
-
-  const now = new Date()
   let created = 0
-  for (const event of events) {
-    const dueDate = computeNextDueDate({ dueMonth: event.dueMonth, dueDay: event.dueDay! }, now)
-    for (const client of clients) {
-      const exists = await db.complianceTask.findFirst({
-        where: { complianceEventId: event.id, clientId: client.id, dueDate },
-        select: { id: true }
-      })
-      if (exists) continue
-      await db.complianceTask.create({
-        data: {
-          complianceEventId: event.id, clientId: client.id,
-          title: event.title, category: event.category, dueDate,
-          status: 'PENDING', priority: 'NORMAL'
-        }
-      })
-      created++
+
+  // Fixed-date events (dueMonth/dueDay set) — independent of the AGM-relative
+  // branch below; an early-out here must NOT skip AGM generation (they read
+  // from a separately-filtered event/client query, so one being empty says
+  // nothing about the other).
+  const events = await db.complianceEvent.findMany({ where: { isActive: true, dueDay: { not: null } } })
+  if (events.length > 0) {
+    const clients = await db.customer.findMany({ where: { isActive: true }, select: { id: true } })
+    const now = new Date()
+    for (const event of events) {
+      const dueDate = computeNextDueDate({ dueMonth: event.dueMonth, dueDay: event.dueDay! }, now)
+      for (const client of clients) {
+        const exists = await db.complianceTask.findFirst({
+          where: { complianceEventId: event.id, clientId: client.id, dueDate },
+          select: { id: true }
+        })
+        if (exists) continue
+        await db.complianceTask.create({
+          data: {
+            complianceEventId: event.id, clientId: client.id,
+            title: event.title, category: event.category, dueDate,
+            status: 'PENDING', priority: 'NORMAL'
+          }
+        })
+        created++
+      }
+    }
+  }
+
+  // AGM-relative events (MGT-7/AOC-4/ADT-1) — only for clients who have a
+  // real lastAgmDate captured; skipped entirely otherwise (never guessed).
+  const agmEvents = await db.complianceEvent.findMany({ where: { isActive: true, agmOffsetDays: { not: null } } })
+  if (agmEvents.length > 0) {
+    const agmClients = await db.customer.findMany({ where: { isActive: true, lastAgmDate: { not: null } }, select: { id: true, lastAgmDate: true } })
+    for (const event of agmEvents) {
+      for (const client of agmClients) {
+        const dueDate = new Date(client.lastAgmDate!)
+        dueDate.setDate(dueDate.getDate() + event.agmOffsetDays!)
+        const exists = await db.complianceTask.findFirst({
+          where: { complianceEventId: event.id, clientId: client.id, dueDate },
+          select: { id: true }
+        })
+        if (exists) continue
+        await db.complianceTask.create({
+          data: {
+            complianceEventId: event.id, clientId: client.id,
+            title: event.title, category: event.category, dueDate,
+            status: 'PENDING', priority: 'NORMAL'
+          }
+        })
+        created++
+      }
     }
   }
 
@@ -127,4 +160,26 @@ export async function generateComplianceTasksForAllClients(): Promise<{ created:
     await logAction({ action: 'COMPLIANCE_TASKS_AUTO_GENERATED', entityType: 'ComplianceTask', entityId: 'bulk', newValue: { created } }).catch(() => {})
   }
   return { created }
+}
+
+// Phase 58 §2 — captures a company client's most recently held/known AGM
+// date. Deliberately a small dedicated mutation (not routed through the
+// generic updateCustomer, which requires resending the full customer record)
+// so a CA can set just this one fact from the Compliance screen without
+// risking an accidental overwrite of unrelated customer fields.
+export async function setClientAgmDate(clientId: string, agmDate: string | null) {
+  try {
+    const db = getPrisma()
+    const customer = await db.customer.findUnique({ where: { id: clientId }, select: { id: true } })
+    if (!customer) return { success: false, error: { code: 'CE29-002', message: 'Client not found.' } }
+    const updated = await db.customer.update({
+      where: { id: clientId },
+      data: { lastAgmDate: agmDate ? new Date(agmDate) : null },
+      select: { id: true, lastAgmDate: true },
+    })
+    await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'Customer', entityId: clientId, newValue: JSON.stringify({ lastAgmDate: agmDate }) } }).catch(() => {})
+    return { success: true, data: updated }
+  } catch (err) {
+    return { success: false, error: { code: 'CE29-003', message: err instanceof Error ? err.message : 'Could not set AGM date.' } }
+  }
 }

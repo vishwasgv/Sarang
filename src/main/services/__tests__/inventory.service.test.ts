@@ -224,6 +224,54 @@ describe('inventoryService.adjustStock', () => {
     expect(db._tx.inventoryMovement.create).not.toHaveBeenCalled()
     expect(db._tx.inventory.update).not.toHaveBeenCalled()
   })
+
+  it('records a DAMAGE movement when reasonCategory is DAMAGE and the adjustment is a decrease', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 90, reason: '10 units dropped and broke', reasonCategory: 'DAMAGE' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'DAMAGE', quantity: -10 }) })
+    )
+  })
+
+  it('never records DAMAGE for an increase, even if reasonCategory is DAMAGE — you cannot damage stock into existence', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 110, reason: 'Miscategorized', reasonCategory: 'DAMAGE' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADJUSTMENT', quantity: 10 }) })
+    )
+  })
+
+  it('defaults to the plain ADJUSTMENT movement when reasonCategory is omitted, unchanged from every pre-existing caller', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 90, reason: 'Recount' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADJUSTMENT' }) })
+    )
+  })
+
+  it('records the plain ADJUSTMENT movement for a non-DAMAGE reasonCategory like RECOUNT', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 90, reason: 'Physical count', reasonCategory: 'RECOUNT' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADJUSTMENT' }) })
+    )
+  })
 })
 
 describe('inventoryService.getInventoryValue', () => {

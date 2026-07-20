@@ -3,13 +3,18 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 
 // Jewellery vertical (fresh-audit build, 2026-07-12). Old-gold/silver
-// exchange (buyback/trade-in) — standalone record-keeping, deliberately NOT
-// atomically wired into billing.service.ts's invoice creation (see the
-// MetalExchange model's own schema comment for why). The computed
-// valueGiven is meant to be applied by staff as an ordinary invoice-level
-// discount on the customer's new-purchase invoice through the
-// already-existing globalDiscount field, then linked back via
-// linkExchangeToInvoice.
+// exchange (buyback/trade-in) — standalone record-keeping.
+//
+// Phase 58 §2: billing.service.ts's createInvoice now applies an unlinked
+// exchange's valueGiven ATOMICALLY as part of the SAME invoice-creation
+// transaction (pass `metalExchangeId` in the payload) — the old two-step
+// "type the same number into globalDiscount, then separately call
+// linkMetalExchangeToInvoice" process is no longer the only path and is
+// error-prone (a mistyped discount, or a forgotten link call, silently
+// leaves the exchange record and the actual applied discount out of sync).
+// linkMetalExchangeToInvoice below is kept for any case that still needs to
+// link an already-created invoice after the fact (e.g. correcting an older
+// invoice), but the normal counter-sale flow should prefer the atomic path.
 
 export async function listMetalExchanges(filters?: { customerId?: string; unlinkedOnly?: boolean }) {
   try {

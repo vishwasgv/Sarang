@@ -43,6 +43,16 @@ interface ShipmentItem {
   id: string; productName: string; quantity: number; unit: string; unitValue: number; totalValue: number; notes: string | null
 }
 
+// Phase 58 §2 — Distributor route/beat planning. A stop is an ADDITIVE beat
+// point on top of the shipment's own primary destinationAddress (unchanged,
+// still the "first" stop for every existing single-destination shipment) —
+// only manageable once the shipment itself exists, so this section only
+// renders in edit mode.
+interface ShipmentStop {
+  id: string; sequenceNumber: number; customerId: string | null; customerName: string | null
+  destinationAddress: string; status: string; deliveredAt: string | null; notes: string | null
+}
+
 const EMPTY_FORM = {
   shipmentType: 'OUTBOUND', originAddress: '', destinationAddress: '', customerName: '', supplierName: '',
   carrierId: '', vehicleId: '', trackingNumber: '', ewayBillNumber: '', freightAmount: '', weight: '', packages: '1',
@@ -64,6 +74,10 @@ export default function ShipmentsScreen() {
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [items, setItems] = useState<typeof EMPTY_ITEM[]>([])
   const [saving, setSaving] = useState(false)
+  const [stops, setStops] = useState<ShipmentStop[]>([])
+  const [newStopAddress, setNewStopAddress] = useState('')
+  const [newStopCustomerName, setNewStopCustomerName] = useState('')
+  const [addingStop, setAddingStop] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [search, setSearch] = useState('')
@@ -125,7 +139,7 @@ export default function ShipmentsScreen() {
   const updateItem = (idx: number, field: string, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
 
-  const openAdd = () => { setForm({ ...EMPTY_FORM }); setItems([]); setEditId(null); setError(null); setShowForm(true) }
+  const openAdd = () => { setForm({ ...EMPTY_FORM }); setItems([]); setStops([]); setEditId(null); setError(null); setShowForm(true) }
 
   const openEdit = async (s: ShipmentListItem) => {
     const res = await window.api.logisticsShipment.get(s.id)
@@ -147,7 +161,39 @@ export default function ShipmentsScreen() {
       productName: i.productName, quantity: i.quantity.toString(),
       unit: i.unit, unitValue: i.unitValue?.toString() ?? '', notes: i.notes ?? '',
     })))
+    setStops((full.stops ?? []) as ShipmentStop[])
+    setNewStopAddress(''); setNewStopCustomerName('')
     setEditId(s.id); setError(null); setShowForm(true)
+  }
+
+  const handleAddStop = async () => {
+    if (!editId || !newStopAddress.trim()) return
+    setAddingStop(true)
+    try {
+      const res = await window.api.logisticsShipment.addStop({ shipmentId: editId, destinationAddress: newStopAddress.trim(), customerName: newStopCustomerName.trim() || undefined })
+      if (res.success && res.data) {
+        setStops(prev => [...prev, res.data as ShipmentStop])
+        setNewStopAddress(''); setNewStopCustomerName('')
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setAddingStop(false)
+    }
+  }
+
+  const handleStopStatus = async (stopId: string, status: 'DELIVERED' | 'SKIPPED') => {
+    const res = await window.api.logisticsShipment.updateStopStatus({ id: stopId, status })
+    if (res.success && res.data) setStops(prev => prev.map(s => s.id === stopId ? (res.data as ShipmentStop) : s))
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+  }
+
+  const handleDeleteStop = async (stopId: string) => {
+    const res = await window.api.logisticsShipment.deleteStop(stopId)
+    if (res.success) setStops(prev => prev.filter(s => s.id !== stopId))
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
   }
 
   const save = async () => {
@@ -386,6 +432,47 @@ export default function ShipmentsScreen() {
                   <input value={item.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
                 </div>
               ))}
+            </div>
+
+            <div className="space-y-2 border-t border-gray-100 pt-3">
+              <h3 className="text-sm font-semibold text-gray-700">{t('logistics.shipments.stops.title')}</h3>
+              {editId ? (
+                <>
+                  <p className="text-xs text-gray-400">{t('logistics.shipments.stops.primaryHint')}</p>
+                  {stops.length > 0 && (
+                    <div className="space-y-1.5">
+                      {stops.map(stop => (
+                        <div key={stop.id} className="flex items-center justify-between gap-2 border border-gray-100 rounded-lg px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-700 truncate">
+                              #{stop.sequenceNumber} {stop.customerName ? `— ${stop.customerName}` : ''}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">{stop.destinationAddress}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Badge variant={stop.status === 'DELIVERED' ? 'success' : stop.status === 'SKIPPED' ? 'warning' : 'neutral'} size="sm">{stop.status}</Badge>
+                            {stop.status === 'PENDING' && (
+                              <>
+                                <button onClick={() => handleStopStatus(stop.id, 'DELIVERED')} className="text-xs text-blue-600 hover:underline">{t('logistics.shipments.stops.markDelivered')}</button>
+                                <button onClick={() => handleStopStatus(stop.id, 'SKIPPED')} className="text-xs text-gray-500 hover:underline">{t('logistics.shipments.stops.skip')}</button>
+                              </>
+                            )}
+                            <button onClick={() => handleDeleteStop(stop.id)} className="text-xs text-red-500 hover:underline">{t('logistics.shipments.stops.delete')}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {stops.length === 0 && <p className="text-xs text-gray-400">{t('logistics.shipments.stops.empty')}</p>}
+                  <div className="grid grid-cols-12 gap-2 items-center pt-1">
+                    <input value={newStopCustomerName} onChange={e => setNewStopCustomerName(e.target.value)} placeholder={t('logistics.shipments.stops.customerName')} className="col-span-4 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
+                    <input value={newStopAddress} onChange={e => setNewStopAddress(e.target.value)} placeholder={t('logistics.shipments.stops.destinationAddress')} className="col-span-6 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
+                    <button onClick={handleAddStop} disabled={addingStop || !newStopAddress.trim()} className="col-span-2 text-xs text-blue-600 hover:underline disabled:opacity-50">{t('logistics.shipments.stops.addStop')}</button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">{t('logistics.shipments.stops.saveFirst')}</p>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

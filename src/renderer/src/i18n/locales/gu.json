@@ -139,7 +139,8 @@
     "of": "ના",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "સ્ટોકમાં"
   },
   "auth": {
     "username": "વપરાશકર્તા નામ",
@@ -229,6 +230,8 @@
     "percentDiscount": "% ડિ.",
     "invoiceDate": "ઇ.તારીખ",
     "dueDate": "ચૂ.તારીખ",
+    "dueOn": "દેય {{date}}",
+    "overdueSince": "{{date}} થી બાકી",
     "notes": "નૉંધ",
     "rounding": "રાઉન્ડિંગ",
     "invoiceCreated": "બિલ બનાવ્યું",
@@ -286,7 +289,40 @@
     "batchLabel": "બેચ {{batchNumber}} · {{status}}",
     "batchExpired": "સમાપ્ત",
     "batchExpiresToday": "આજે સમાપ્ત થાય છે",
-    "batchExpiresIn": "{{days}} દિવસમાં સમાપ્ત"
+    "batchExpiresIn": "{{days}} દિવસમાં સમાપ્ત",
+    "addTipOrServiceCharge": "ટિપ / સેવા શુલ્ક ઉમેરો",
+    "tipAmountLabel": "રકમ",
+    "tipAmountInvalid": "શૂન્ય કરતાં વધુ રકમ દાખલ કરો.",
+    "confirmAddToCart": "કાર્ટમાં ઉમેરો",
+    "unavailableToday": "આજે અનુપલબ્ધ",
+    "unavailableTodayMessage": "{{productName}} ને આજ માટે અનુપલબ્ધ તરીકે ચિહ્નિત કરવામાં આવ્યું છે.",
+    "holdSale": "વેચાણ હોલ્ડ કરો",
+    "resumeSale": "વેચાણ ફરી શરૂ કરો",
+    "heldSales": "હોલ્ડ કરેલા વેચાણ",
+    "noHeldSales": "કોઈ હોલ્ડ વેચાણ નથી.",
+    "holdSaleLabel": "નોંધ (વૈકલ્પિક)",
+    "holdSaleLabelPlaceholder": "દા.ત. રાહુલ - વાદળી શર્ટ",
+    "confirmHold": "હોલ્ડ કરો",
+    "holdSaleSuccess": "વેચાણ હોલ્ડ કરાયું.",
+    "resumeSaleAction": "ફરી શરૂ કરો",
+    "abandonHeldSale": "કાઢી નાખો",
+    "confirmAbandonHeldSale": "આ હોલ્ડ વેચાણ કાઢી નાખવું છે? આ પૂર્વવત્ કરી શકાશે નહીં.",
+    "emptyCartCannotHold": "કાર્ટ ખાલી છે — હોલ્ડ કરવા માટે કંઈ નથી.",
+    "frequentlySold": "વારંવાર વેચાયેલ",
+    "mrpLabel": "MRP",
+    "areaCalculator": "ક્ષેત્રફળ કેલ્ક્યુલેટર (લંબાઈ × પહોળાઈ)",
+    "areaLabel": "ક્ષેત્રફળ",
+    "areaFormula": "લંબાઈ × પહોળાઈ = ક્ષેત્રફળ",
+    "useAreaSq": "{{area}} ચો. વાપરો",
+    "rx": {
+      "title": "પ્રિસ્ક્રિપ્શન વિગતો",
+      "description": "આ ફક્ત પ્રિસ્ક્રિપ્શન પર મળતી વસ્તુ છે (શેડ્યુલ H/H1) — તેને વેચવા માટે દર્દી અને ડૉક્ટરનું નામ જરૂરી છે.",
+      "patientName": "દર્દીનું નામ *",
+      "doctorName": "ડૉક્ટરનું નામ *",
+      "date": "પ્રિસ્ક્રિપ્શન તારીખ (વૈકલ્પિક)",
+      "addToCart": "કાર્ટમાં ઉમેરો",
+      "required": "દર્દીનું નામ અને ડૉક્ટરનું નામ જરૂરી છે."
+    }
   },
   "products": {
     "title": "ઉત્પાદનો",
@@ -298,6 +334,7 @@
     "unit": "એકમ",
     "sellingPrice": "વે.ભાવ",
     "costPrice": "ખ.ભાવ",
+    "mrp": "MRP (વૈકલ્પિક)",
     "taxRate": "કર દર (%)",
     "stock": "ભંડાર",
     "lowStockAlert": "ઓછ.ભ.ચ.",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "રીઓર્ડર PO જનરેટ કરો",
+      "title": "રીઓર્ડર PO જનરેટ થયા",
+      "nothingToOrder": "હાલમાં કોઈ ઓછા-સ્ટોક ઉત્પાદનને ફરીથી ઓર્ડર કરવાની જરૂર નથી.",
+      "created": "ડ્રાફ્ટ PO બનાવ્યા: {{count}}",
+      "skippedNoSupplier": "છોડ્યા (કોઈ ડિફોલ્ટ સપ્લાયર નથી): {{count}}",
+      "skippedOpenPO": "છોડ્યા (પહેલેથી ખુલ્લા PO પર): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "ખ.ઓ.",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "પ્રિસ્ક્રિપ્શન દવા વેચાણ",
+        "description": "ફક્ત પ્રિસ્ક્રિપ્શન પર મળતી દવાઓ (શેડ્યુલ H/H1)ના વેચાણનું રજિસ્ટર, દર્દી અને ડૉક્ટરના નામ સાથે."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "આ સમયગાળામાં કોઈ દસ્તાવેજ જારી થયા નથી.",
       "jewelleryStock": "હજુ સુધી ધાતુના વજન સાથે કોઈ ઝવેરાત ઉત્પાદન નોંધાયેલ નથી.",
       "projects": "આ સમયગાળામાં કોઈ પ્રોજેક્ટ નથી.",
-      "jobCards": "આ સમયગાળામાં કોઈ જોબ કાર્ડ નથી."
+      "jobCards": "આ સમયગાળામાં કોઈ જોબ કાર્ડ નથી.",
+      "prescriptionDrugSales": "આ તારીખ શ્રેણીમાં કોઈ પ્રિસ્ક્રિપ્શન દવા વેચાણ નથી."
     },
     "col": {
       "invoiceNo": "બિલ #",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "પ્રકાર",
+    "subAssembly": "સબ-એસેમ્બલી",
+    "searchSubAssembly": "ઉત્પાદન શોધો (સબ-એસેમ્બલી)…",
+    "subAssemblyTag": "(સબ-એસેમ્બલી)",
+    "selfReferenceError": "ઉત્પાદન પોતાના BOM નો ઘટક ન હોઈ શકે.",
+    "lotsUsed": "વપરાયેલ લોટ",
+    "qcCheckpointTag": "(QC ચેકપોઇન્ટ)",
+    "qcNotesLabel": "QC નોંધો",
+    "qcPass": "પાસ",
+    "qcFail": "ફેલ",
+    "qcResultTitle": "QC પરિણામ નોંધો",
+    "markAsQcStep": "QC ચેકપોઇન્ટ",
+    "scrapQtyLabel": "સ્ક્રેપ / નકારેલ જથ્થો",
+    "laborCostLabel": "શ્રમ ખર્ચ",
+    "batchNumber": "બેચ / લોટ નંબર",
+    "receiveBatch": "લોટ મેળવો",
+    "receiveBatchTitle": "કાચો માલ લોટ મેળવો",
+    "batchReceived": "લોટ મળ્યો.",
+    "noBatchesYet": "આ સામગ્રી માટે હજુ સુધી કોઈ લોટ મળ્યો નથી.",
+    "remainingQty": "બાકી"
   },
   "service": {
     "projects": "પ.",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "વપરાયેલા ભાગો",
+    "addPart": "ભાગ ઉમેરો",
+    "searchProduct": "ઉત્પાદન શોધો...",
+    "partsTotal": "ભાગોનો કુલ ખર્ચ",
+    "noPartsUsed": "હજુ સુધી કોઈ ભાગ વપરાયો નથી",
+    "removePart": "ભાગ દૂર કરો",
+    "invalidQuantity": "માન્ય જથ્થો દાખલ કરો.",
+    "couldNotAddPart": "ભાગ ઉમેરી શકાયો નથી.",
+    "couldNotRemovePart": "ભાગ દૂર કરી શકાયો નથી.",
+    "warranty": "વોરંટી",
+    "warrantyDays": "વોરંટી (દિવસો)",
+    "warrantyUntil": "સુધી",
+    "underWarranty": "વોરંટી હેઠળ",
+    "warrantyExpired": "વોરંટી સમાપ્ત",
+    "saveWarranty": "સાચવો",
+    "warrantySaved": "વોરંટી સાચવવામાં આવી.",
+    "invalidWarrantyDays": "વોરંટીના માન્ય દિવસો દાખલ કરો.",
+    "couldNotSaveWarranty": "વોરંટી સાચવી શકાઈ નથી.",
+    "warrantyAppliesOnDelivery": "વોરંટી અવધિ ડિલિવરીની તારીખથી ગણવામાં આવે છે.",
+    "warrantyClaimAgainst": "વોરંટી ક્લેમ સામે",
+    "notAWarrantyClaim": "વોરંટી ક્લેમ નથી",
+    "originalUnderWarranty": "મૂળ કામ હજુ વોરંટી હેઠળ છે",
+    "originalWarrantyExpired": "મૂળ કામની વોરંટી સમાપ્ત થઈ ગઈ છે"
   },
   "setup": {
     "welcome": "સારંગ માં સ્વાગત",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "લાયક સેવાઓ",
+    "qualifiedServicesHint": "આ સ્ટાફ સભ્ય જે સેવાઓ કરી શકે છે. કોઈપણ સેવાની મંજૂરી આપવા માટે ખાલી છોડો (ડિફોલ્ટ).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "મૂલ્ય {{symbol}}",
       "itemNotesPlaceholder": "વસ્તુ નોંધ (વૈકલ્પિક)",
       "deleteConfirm": "શિપમેન્ટ {{number}} કાઢી નાખવું? આ ક્રિયા પૂર્વવત્ કરી શકાશે નહીં.",
-      "destinationRequired": "ગંતવ્ય સરનામું જરૂરી છે."
+      "destinationRequired": "ગંતવ્ય સરનામું જરૂરી છે.",
+      "stops": {
+        "title": "સ્ટોપ્સ",
+        "addStop": "સ્ટોપ ઉમેરો",
+        "customerName": "ગ્રાહકનું નામ (વૈકલ્પિક)",
+        "destinationAddress": "ગંતવ્ય સરનામું",
+        "notes": "નોંધ (વૈકલ્પિક)",
+        "markDelivered": "ડિલિવર થયેલ ચિહ્નિત કરો",
+        "skip": "છોડો",
+        "delete": "કાઢી નાખો",
+        "empty": "હજુ સુધી કોઈ વધારાનું સ્ટોપ ઉમેરાયું નથી.",
+        "primaryHint": "ઉપરનું ગંતવ્ય હંમેશા પ્રથમ સ્ટોપ છે — મલ્ટી-સ્ટોપ રૂટ માટે નીચે વધુ ઉમેરો.",
+        "saveFirst": "પહેલા શિપમેન્ટ સેવ કરો, પછી સ્ટોપ ઉમેરો."
+      }
     },
     "grn": {
       "title": "માલ પ્રાપ્તિ નોંધ (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "ઇનવોઇસ બનાવો",
       "invoicing": "...",
-      "invoiced": "ઇનવોઇસ બન્યું"
+      "invoiced": "ઇનવોઇસ બન્યું",
+      "scheduleTrial": "ટ્રાયલ શેડ્યૂલ કરો",
+      "trial": "ટ્રાયલ",
+      "trialScheduled": "ટ્રાયલ એપોઇન્ટમેન્ટ શેડ્યૂલ થયેલ છે",
+      "setFabric": "ફેબ્રિક સેટ કરો",
+      "fabricLinked": "ફેબ્રિક ✓",
+      "clearFabric": "ફેબ્રિક લિંક સાફ કરો (સ્ટોક પુનઃસ્થાપિત કરે છે)"
     },
     "invoiceBanner": {
       "success": "ઇનવોઇસ બન્યું (SAC 998821, 5% GST).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "સેવ કરવામાં નિષ્ફળ.",
       "deleteOrderFailed": "ઓર્ડર કાઢવામાં નિષ્ફળ.",
       "deleteMeasurementFailed": "માપ કાઢવામાં નિષ્ફળ.",
-      "updateStatusFailed": "સ્થિતિ અપડેટ કરવામાં નિષ્ફળ."
+      "updateStatusFailed": "સ્થિતિ અપડેટ કરવામાં નિષ્ફળ.",
+      "trialDateRequired": "ટ્રાયલ તારીખ જરૂરી છે.",
+      "fabricQuantityInvalid": "માન્ય જથ્થો દાખલ કરો."
     },
     "measurements": {
       "selectClient": "ગ્રાહક પસંદ કરો",
@@ -2325,6 +2441,20 @@
       "saving": "સેવ થઈ રહ્યું છે...",
       "updateOrder": "ઓર્ડર અપડેટ કરો",
       "createOrder": "ઓર્ડર બનાવો"
+    },
+    "trial": {
+      "title": "ટ્રાયલ/ફિટિંગ શેડ્યૂલ કરો",
+      "hint": "ક્લાયન્ટને અન્ય કોઈપણ એપોઇન્ટમેન્ટની જેમ જ વોટ્સએપ રિમાઇન્ડર મળશે.",
+      "date": "તારીખ",
+      "time": "સમય",
+      "schedule": "શેડ્યૂલ કરો"
+    },
+    "fabric": {
+      "title": "ફેબ્રિક સેટ કરો",
+      "hint": "સેટ કરવામાં આવે ત્યારે વાસ્તવિક ઇન્વેન્ટરી કપાય છે.",
+      "searchPlaceholder": "ઇન્વેન્ટરીમાં ફેબ્રિક શોધો…",
+      "quantity": "જથ્થો",
+      "set": "ફેબ્રિક સેટ કરો"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "ગ્રાહક",
       "items": "વસ્તુઓ",
       "item": "વસ્તુ",
-      "period": "સમયગાળો"
+      "period": "સમયગાળો",
+      "service": "સેવા"
     },
     "confirmCancel": "આ આરક્ષણ રદ કરવું છે? આ પૂર્વવત્ કરી શકાશે નહીં.",
     "lateFee": "મોડું શુલ્ક",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "હાલમાં કંઈ ચેક-આઉટ નથી.",
       "revenue": "આ સમયગાળામાં કોઈ ભાડા આવક નથી."
-    }
+    },
+    "serviceIntervalRentals": "સેવા અંતરાલ (ભાડાં)",
+    "serviceIntervalDays": "સેવા અંતરાલ (દિવસો)",
+    "dueForService": "સર્વિસ માટે બાકી",
+    "markServiced": "સર્વિસ થયેલ તરીકે ચિહ્નિત કરો",
+    "lastServiced": "છેલ્લે સર્વિસ કરાયું",
+    "neverServiced": "ક્યારેય નહીં",
+    "addItem": "વસ્તુ ઉમેરો",
+    "removeItem": "દૂર કરો",
+    "recurringRental": "પુનરાવર્તિત ભાડું",
+    "repeatEveryDays": "દર (દિવસો) પુનરાવર્તન કરો",
+    "createNextCycle": "આગામી ચક્ર બનાવો",
+    "nextCycleCreated": "આગામી ભાડા ચક્ર બનાવવામાં આવ્યું.",
+    "conditionOutLabel": "ચેક-આઉટ સમયે સ્થિતિ",
+    "conditionInLabel": "પરત સમયે સ્થિતિ",
+    "itemDamageCharge": "નુકસાન ચાર્જ (આ વસ્તુ)",
+    "photos": "ફોટા"
   },
   "jewellery": {
     "metalRates": "ધાતુના ભાવ",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "{{metalType}} {{purity}} માટે કોઈ ભાવ સેટ કરેલ નથી. ઘરેણાં → ધાતુના ભાવ માં આજનો ભાવ સેટ કરો, પછી આ વસ્તુ ફરીથી ઉમેરો.",
     "computeErrorDesc": "ઘરેણાની કિંમતની ગણતરી કરી શકાઈ નથી. કૃપા કરી ભાવ તપાસો અને આ વસ્તુ ફરીથી ઉમેરો.",
     "priceNotSetTitle": "ઘરેણાની કિંમત સેટ નથી",
-    "priceNotSetDesc": "{{productName}} ને હજુ કિંમત નથી — ઘરેણાં → ધાતુના ભાવ માં આજનો ભાવ સેટ કરો, પછી આ વસ્તુ દૂર કરી ફરીથી ઉમેરો."
+    "priceNotSetDesc": "{{productName}} ને હજુ કિંમત નથી — ઘરેણાં → ધાતુના ભાવ માં આજનો ભાવ સેટ કરો, પછી આ વસ્તુ દૂર કરી ફરીથી ઉમેરો.",
+    "makingCharge": "મેકિંગ ચાર્જ",
+    "makingChargeOverrideHint": "ફક્ત આ વેચાણ માટે મેકિંગ ચાર્જ બદલો — ઉત્પાદનની પોતાની ગોઠવણી બદલાતી નથી.",
+    "applyExchange": "જૂનું ધાતુ વિનિમય લાગુ કરો",
+    "applyExchangeDesc": "વેચાણ પૂર્ણ કરતી વખતે લિંક ન થયેલા વિનિમયનું ક્રેડિટ આ ઇન્વોઇસ પર આપોઆપ ડિસ્કાઉન્ટ તરીકે લાગુ કરે છે.",
+    "exchangeSearchPlaceholder": "વિનિમય નંબર દ્વારા શોધો...",
+    "noUnlinkedExchanges": "આ ગ્રાહક માટે કોઈ લિંક ન થયેલ વિનિમય મળ્યું નથી.",
+    "exchangeApplied": "વિનિમય {{number}} — ચેકઆઉટ પર {{amount}} ક્રેડિટ લાગુ થશે.",
+    "removeExchange": "દૂર કરો"
   },
   "manual": {
     "yourType": "તમારો પ્રકાર",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "સાર્વત્રિક સુવિધાઓ",
     "groupAi": "એઆઈ સહાયક",
     "groupBusiness": "વ્યવસાય પ્રકારો"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "ફિલ્ડ ઓર્ડર્સ",
+      "subtitle": "ફિલ્ડમાં રહેલા પ્રતિનિધિઓ દ્વારા સબમિટ કરાયેલા ઓર્ડર, પુષ્ટિની રાહમાં",
+      "refresh": "તાજું કરો",
+      "linkTitle": "ફિલ્ડ ઓર્ડર લિંક",
+      "linkDescription": "આ લિંક (અથવા QR કોડ) તમારા ફિલ્ડ પ્રતિનિધિઓ સાથે શેર કરો — તેઓ દુકાનના WiFi પર પોતાના ફોનથી ઓર્ડર કેપ્ચર કરી શકે છે.",
+      "showQr": "QR કોડ બતાવો",
+      "regenerateLink": "લિંક ફરીથી બનાવો",
+      "openDirectly": "અથવા સીધું ખોલો:",
+      "copied": "કૉપિ થયું",
+      "linkCopied": "લિંક ક્લિપબોર્ડ પર કૉપિ થઈ.",
+      "notRunning": "ફિલ્ડ ઓર્ડર કેપ્ચર હાલમાં ચાલુ નથી. પ્રતિનિધિઓને પોતાના ફોનથી ઓર્ડર મોકલવા દેવા માટે સેટિંગ્સમાં \"ફિલ્ડ ઓર્ડર કેપ્ચર\" સક્ષમ કરો.",
+      "pendingTitle": "બાકી ફિલ્ડ ઓર્ડર્સ",
+      "loading": "લોડ થઈ રહ્યું છે…",
+      "empty": "પુષ્ટિની રાહ જોતો કોઈ ફિલ્ડ ઓર્ડર નથી.",
+      "noCustomer": "(કોઈ ગ્રાહક પસંદ કરેલ નથી)",
+      "accept": "સ્વીકારો",
+      "reject": "નકારો",
+      "acceptTitle": "ઓર્ડર સ્વીકારો — {{repName}}",
+      "paymentMethod": "ચુકવણી પદ્ધતિ",
+      "acceptHint": "પુષ્ટિ સમયે ભાવ ફરીથી ચકાસવામાં આવે છે (કોઈપણ સંમત ગ્રાહક ભાવ સહિત), અને એક ઇન્વોઇસ બનાવવામાં આવે છે.",
+      "confirmBill": "પુષ્ટિ કરો અને બિલ બનાવો",
+      "creating": "બનાવી રહ્યું છે…",
+      "cancel": "રદ કરો",
+      "orderAccepted": "ઓર્ડર સ્વીકારાયો",
+      "invoiceCreated": "આ ફિલ્ડ ઓર્ડરમાંથી ઇન્વોઇસ બનાવવામાં આવ્યું.",
+      "error": "ભૂલ",
+      "couldNotLoad": "આવતા ફિલ્ડ ઓર્ડર્સ લોડ કરી શકાયા નહીં.",
+      "couldNotAccept": "ઓર્ડર સ્વીકારી શકાયો નહીં.",
+      "couldNotReject": "ઓર્ડર નકારી શકાયો નહીં.",
+      "couldNotGenerateQr": "QR કોડ બનાવી શકાયો નહીં.",
+      "regenerated": "ફરીથી બનાવ્યું",
+      "regeneratedMessage": "નવી ફિલ્ડ ઓર્ડર લિંક બનાવવામાં આવી છે.",
+      "couldNotRegenerate": "લિંક ફરીથી બનાવી શકાઈ નહીં.",
+      "regenerateConfirm": "ફરીથી બનાવવાથી તમારા પ્રતિનિધિઓ સાથે પહેલેથી શેર કરેલી કોઈપણ લિંક/QR કોડ અમાન્ય થઈ જશે — તેમને નવાની જરૂર પડશે. ચાલુ રાખવું છે?"
+    },
+    "pricing": {
+      "title": "ગ્રાહક વર્ગ મુજબ ભાવ",
+      "subtitle": "દરેક ગ્રાહક વર્ગ (દા.ત. રિટેલર, હોલસેલર, VIP) માટે સંમત ભાવ સેટ કરો — તે વર્ગના કોઈપણ ગ્રાહક માટે યાદી ભાવને બદલે છે.",
+      "addTitle": "ભાવ ઉમેરો / અપડેટ કરો",
+      "searchProduct": "ઉત્પાદન શોધો…",
+      "classPlaceholder": "ગ્રાહક વર્ગ, દા.ત. રિટેલર",
+      "pricePlaceholder": "ભાવ",
+      "save": "ભાવ સેવ કરો",
+      "saving": "સેવ થઈ રહ્યું છે…",
+      "columnProduct": "ઉત્પાદન",
+      "columnClass": "વર્ગ",
+      "columnListPrice": "યાદી ભાવ",
+      "columnPrice": "ભાવ",
+      "empty": "હજુ સુધી કોઈ ગ્રાહક-વર્ગ ભાવ સેટ કરાયો નથી.",
+      "loading": "લોડ થઈ રહ્યું છે…",
+      "noProduct": "કોઈ ઉત્પાદન નથી",
+      "noProductMessage": "પહેલા એક ઉત્પાદન પસંદ કરો.",
+      "noClass": "કોઈ ગ્રાહક વર્ગ નથી",
+      "noClassMessage": "ગ્રાહક વર્ગ દાખલ કરો, દા.ત. રિટેલર.",
+      "invalidPrice": "અમાન્ય ભાવ",
+      "invalidPriceMessage": "માન્ય, બિન-ઋણ ભાવ દાખલ કરો.",
+      "priceSet": "ભાવ સેટ થયો",
+      "priceSetMessage": "{{productName}} માટે {{customerClass}} ભાવ સેટ કરાયો.",
+      "error": "ભૂલ",
+      "couldNotSave": "ભાવ સેવ કરી શકાયો નહીં.",
+      "couldNotLoad": "ભાવ યાદી લોડ કરી શકાઈ નહીં.",
+      "removed": "દૂર કરાયું",
+      "removedMessage": "ભાવ દૂર કરાયો.",
+      "couldNotRemove": "ભાવ દૂર કરી શકાયો નહીં."
+    }
   }
 }

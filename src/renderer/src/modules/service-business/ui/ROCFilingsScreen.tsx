@@ -7,6 +7,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,16 @@ interface Customer {
 interface Employee {
   id: string
   fullName: string
+}
+
+interface ComplianceRollupRow {
+  clientId: string
+  clientName: string
+  agmHeld: boolean
+  agmDate: string | null
+  mgt7Status: string
+  aoc4Status: string
+  adt1Status: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -171,9 +182,15 @@ ${m.notes ? `<div class="section-title">Notes / Resolutions</div><div class="age
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+function currentFinancialYear(): string {
+  const now = new Date()
+  const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1 // FY starts 1 April
+  return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`
+}
+
 export default function ROCFilingsScreen(): React.JSX.Element {
   const { error: toastError } = useNotificationStore()
-  const [tab, setTab] = useState<'filings' | 'meetings'>('filings')
+  const [tab, setTab] = useState<'filings' | 'meetings' | 'rollup'>('filings')
 
   // ROC Filings state
   const [filings, setFilings] = useState<ROCFiling[]>([])
@@ -236,6 +253,11 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   const [clients, setClients] = useState<Customer[]>([])
   const [staff, setStaff] = useState<Employee[]>([])
 
+  // Compliance rollup (Phase 58 §2) — per-company annual view
+  const [rollupFY, setRollupFY] = useState(currentFinancialYear())
+  const [rollupRows, setRollupRows] = useState<ComplianceRollupRow[]>([])
+  const [rollupLoading, setRollupLoading] = useState(false)
+
   const loadFilings = useCallback(async () => {
     setLoadingFilings(true)
     try {
@@ -296,12 +318,29 @@ export default function ROCFilingsScreen(): React.JSX.Element {
     }
   }, [toastError])
 
+  const loadRollup = useCallback(async (fy: string) => {
+    setRollupLoading(true)
+    try {
+      const res = await api.rocFiling.complianceRollup({ financialYear: fy })
+      if (res.success) setRollupRows(res.data as ComplianceRollupRow[])
+      else toastError('Error', res.error?.message ?? 'Could not load compliance rollup.')
+    } catch {
+      toastError('Error', 'Could not load compliance rollup.')
+    } finally {
+      setRollupLoading(false)
+    }
+  }, [toastError])
+
   useEffect(() => {
     void loadFilings()
     void loadMeetings()
     void loadClients()
     void loadStaff()
   }, [loadFilings, loadMeetings, loadClients, loadStaff])
+
+  useEffect(() => {
+    if (tab === 'rollup') void loadRollup(rollupFY)
+  }, [tab, rollupFY, loadRollup])
 
   // ── Filing form ──────────────────────────────────────────────────────────────
 
@@ -455,11 +494,11 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   }
 
   async function handleAddResolution(): Promise<void> {
-    if (!resolutionMeeting || !resNumber.trim() || !resText.trim()) return
+    if (!resolutionMeeting || !resText.trim()) return
     setResSaving(true)
     try {
       const res = await api.boardResolution.create({
-        boardMeetingId: resolutionMeeting.id, resolutionNumber: resNumber.trim(),
+        boardMeetingId: resolutionMeeting.id, resolutionNumber: resNumber.trim() || undefined,
         resolutionType: resType, resolutionText: resText.trim(), passedUnanimously: resUnanimous,
       })
       if (res.success) {
@@ -548,10 +587,10 @@ export default function ROCFilingsScreen(): React.JSX.Element {
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 border-b border-gray-200 dark:border-slate-700">
-          {[{ key: 'filings', label: 'ROC Filings', icon: FileStack }, { key: 'meetings', label: 'Board Meetings', icon: Calendar }].map(({ key, label, icon: Icon }) => (
+          {[{ key: 'filings', label: 'ROC Filings', icon: FileStack }, { key: 'meetings', label: 'Board Meetings', icon: Calendar }, { key: 'rollup', label: 'Compliance Rollup', icon: CheckSquare }].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key as 'filings' | 'meetings')}
+              onClick={() => setTab(key as 'filings' | 'meetings' | 'rollup')}
               className={cn('flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors', tab === key ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700')}
             >
               <Icon className="w-4 h-4" />
@@ -731,6 +770,58 @@ export default function ROCFilingsScreen(): React.JSX.Element {
         </>
       )}
 
+      {/* ── Compliance Rollup Tab (Phase 58 §2) ──────────────────────────────── */}
+      {tab === 'rollup' && (
+        <>
+          <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 dark:border-slate-700">
+            <label className="text-sm text-gray-600 dark:text-slate-400">Financial Year</label>
+            <input type="text" value={rollupFY} onChange={(e) => setRollupFY(e.target.value)} placeholder="2025-26" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 44 }} />
+            <button onClick={() => void loadRollup(rollupFY)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800" style={{ minHeight: 44 }}>Refresh</button>
+          </div>
+          <div className="flex-1 overflow-auto">
+            {rollupLoading ? (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm dark:text-slate-400">Loading...</div>
+            ) : rollupRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 dark:text-slate-500">
+                <CheckSquare className="w-12 h-12 opacity-30" />
+                <p className="text-sm">No company clients tracked yet (add a ROC filing or board meeting for a client first).</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
+                  <tr>
+                    {['Client', 'AGM Held', 'MGT-7', 'AOC-4', 'ADT-1'].map((h) => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                  {rollupRows.map((row) => (
+                    <tr key={row.clientId} className="hover:bg-gray-50 transition-colors dark:hover:bg-slate-800">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-slate-100">{row.clientName}</td>
+                      <td className="px-4 py-3">
+                        {row.agmHeld ? (
+                          <span className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400"><CheckSquare className="w-4 h-4" />{fmtDate(row.agmDate)}</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500"><Square className="w-4 h-4" />Not held</span>
+                        )}
+                      </td>
+                      {[row.mgt7Status, row.aoc4Status, row.adt1Status].map((status, i) => (
+                        <td key={i} className="px-4 py-3">
+                          <Badge variant={status === 'NOT_STARTED' ? 'neutral' : (ROC_STATUS_VARIANT[status] ?? 'neutral')} size="sm">
+                            {status === 'NOT_STARTED' ? 'Not Started' : (ROC_STATUS_LABELS[status] ?? status)}
+                          </Badge>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
       {/* ── ROC Filing Form Modal ─────────────────────────────────────────────── */}
       {showFilingForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -813,6 +904,8 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                 <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Notes</label>
                 <textarea value={fFormNotes} onChange={(e) => setFFormNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
               </div>
+
+              {editFiling && <DocumentPanel entityType="ROC_FILING" entityId={editFiling.id} compact />}
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-5">
@@ -918,6 +1011,8 @@ export default function ROCFilingsScreen(): React.JSX.Element {
             </div>
             <p className="text-xs text-gray-400 dark:text-slate-500 mb-4">{MEETING_TYPE_LABELS[resolutionMeeting.meetingType] ?? resolutionMeeting.meetingType} — {fmtDate(resolutionMeeting.meetingDate)}</p>
 
+            <DocumentPanel entityType="BOARD_MEETING" entityId={resolutionMeeting.id} compact />
+
             {resolutionsLoading ? (
               <p className="text-sm text-gray-400 py-4">Loading…</p>
             ) : resolutions.length === 0 ? (
@@ -947,7 +1042,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Resolution No.</label>
-                  <input type="text" value={resNumber} onChange={(e) => setResNumber(e.target.value)} placeholder="e.g. 1 or 2026-03" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
+                  <input type="text" value={resNumber} onChange={(e) => setResNumber(e.target.value)} placeholder="Auto-assigned if left blank" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
                 </div>
                 <Select label="Type" value={resType} onChange={(e) => setResType(e.target.value)}>
                   <option value="ORDINARY">Ordinary</option>
@@ -965,7 +1060,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                 <span className="text-sm text-gray-700 dark:text-slate-300">Passed unanimously</span>
               </label>
               <div className="flex justify-end">
-                <button onClick={() => void handleAddResolution()} disabled={resSaving || !resNumber.trim() || !resText.trim()} className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" style={{ minHeight: 44 }}>
+                <button onClick={() => void handleAddResolution()} disabled={resSaving || !resText.trim()} className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" style={{ minHeight: 44 }}>
                   {resSaving ? 'Adding…' : 'Add Resolution'}
                 </button>
               </div>

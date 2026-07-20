@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Search, User, Phone, Briefcase, Calendar, ChevronRight, X, Check } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
@@ -39,6 +40,12 @@ const EMP_TYPE_VARIANT: Record<string, 'success' | 'info' | 'warning' | 'neutral
 export function EmployeesScreen() {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
+  // Phase 58 §2 — Beauty Salon stylist skill-matching (which services this
+  // staff member can perform). Reuses the generic service_catalog module
+  // gate every service vertical already has — not Beauty-Salon-hardcoded.
+  const hasServiceCatalog = useIndustryStore((s) => s.isModuleEnabled('service_catalog'))
+  const [serviceCatalog, setServiceCatalog] = useState<{ id: string; serviceName: string }[]>([])
+  const [skillIds, setSkillIds] = useState<string[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -78,6 +85,13 @@ export function EmployeesScreen() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    if (!hasServiceCatalog) return
+    api.serviceCatalog.list({ isActive: true }).then((res) => {
+      if (res.success && Array.isArray(res.data)) setServiceCatalog(res.data as { id: string; serviceName: string }[])
+    })
+  }, [hasServiceCatalog])
+
   const visible = employees.filter(e =>
     e.fullName.toLowerCase().includes(search.toLowerCase()) ||
     (e.employeeNumber ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -94,6 +108,7 @@ export function EmployeesScreen() {
       salaryType: 'MONTHLY', basicSalary: '', notes: '',
       allowances: []
     })
+    setSkillIds([])
     setNewAllowanceName('')
     setNewAllowanceAmount('')
     setShowForm(true)
@@ -115,6 +130,12 @@ export function EmployeesScreen() {
       notes: e.notes ?? '',
       allowances: [...e.allowances]
     })
+    setSkillIds([])
+    if (hasServiceCatalog) {
+      api.providerSkills.listForEmployee({ employeeId: e.id }).then((res) => {
+        if (res.success && Array.isArray(res.data)) setSkillIds(res.data as string[])
+      })
+    }
     setNewAllowanceName('')
     setNewAllowanceAmount('')
     setShowForm(true)
@@ -154,6 +175,12 @@ export function EmployeesScreen() {
         ? await api.hr.updateEmployee({ id: editing.id, ...payload })
         : await api.hr.createEmployee(payload)
       if (res.success) {
+        // Phase 58 §2 — save the skill checklist as its own call, keyed to
+        // whichever employee id we now have (existing or freshly created).
+        if (hasServiceCatalog) {
+          const employeeId = editing?.id ?? (res.data as { id: string } | undefined)?.id
+          if (employeeId) await api.providerSkills.set({ employeeId, serviceCatalogIds: skillIds })
+        }
         toastSuccess(t(editing ? 'hr.employeeUpdated' : 'hr.employeeAdded'))
         setShowForm(false)
         load()
@@ -344,6 +371,31 @@ export function EmployeesScreen() {
                   </div>
                 </div>
               </div>
+
+              {/* Phase 58 §2 — Beauty Salon stylist skill-matching */}
+              {hasServiceCatalog && serviceCatalog.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('hr.qualifiedServices')}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t('hr.qualifiedServicesHint')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {serviceCatalog.map((s) => {
+                      const active = skillIds.includes(s.id)
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSkillIds((prev) => active ? prev.filter((id) => id !== s.id) : [...prev, s.id])}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                            active ? 'bg-brand/10 text-brand border-brand/30' : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                          }`}
+                        >
+                          {s.serviceName}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('hr.notes')}</label>

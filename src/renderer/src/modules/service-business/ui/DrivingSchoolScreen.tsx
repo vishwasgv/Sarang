@@ -30,6 +30,23 @@ interface DrivingVehicle {
   vehicleClass: string
   status: string
   instructor: { id: string; fullName: string } | null
+  odometerKm: number
+  serviceIntervalKm: number
+  serviceIntervalSessions: number
+  lastServiceOdometerKm: number
+  lastServiceDate: string | null
+  sessionsSinceService: number
+  dueForService: boolean
+}
+
+interface MaintenanceLog {
+  id: string
+  vehicleId: string
+  serviceDate: string
+  odometerKm: number
+  serviceType: string
+  cost: number | null
+  notes: string | null
 }
 
 interface DrivingSession {
@@ -82,10 +99,12 @@ interface DrivingTest {
   retestDate: string | null
   notes: string | null
   learner: { id: string; customerName: string; phone: string | null }
+  instructor: { id: string; fullName: string } | null
 }
 
 interface Employee { id: string; fullName: string }
 interface Customer { id: string; customerName: string; phone: string | null }
+interface InstructorPassRate { instructorId: string; instructorName: string; passed: number; failed: number; total: number; passRate: number }
 
 const SESSION_STATUS_VARIANT: Record<string, 'info' | 'success' | 'neutral' | 'danger'> = {
   SCHEDULED: 'info',
@@ -159,14 +178,22 @@ export function DrivingSchoolScreen() {
   const [vehicles, setVehicles] = useState<DrivingVehicle[]>([])
   const [showVehicleForm, setShowVehicleForm] = useState(false)
   const [editVehicle, setEditVehicle] = useState<DrivingVehicle | null>(null)
-  const [vehicleForm, setVehicleForm] = useState({ registrationNumber: '', make: '', model: '', vehicleClass: 'LMV', instructorId: '', status: 'ACTIVE' })
+  const [vehicleForm, setVehicleForm] = useState({ registrationNumber: '', make: '', model: '', vehicleClass: 'LMV', instructorId: '', status: 'ACTIVE', odometerKm: 0, serviceIntervalKm: 5000, serviceIntervalSessions: 30 })
   const [savingVehicle, setSavingVehicle] = useState(false)
   const [vehicleError, setVehicleError] = useState<string | null>(null)
 
+  // Vehicle maintenance (Phase 58 §2)
+  const [maintenanceVehicle, setMaintenanceVehicle] = useState<DrivingVehicle | null>(null)
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([])
+  const [maintenanceForm, setMaintenanceForm] = useState({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: 0, serviceType: '', cost: '', notes: '' })
+  const [savingMaintenance, setSavingMaintenance] = useState(false)
+  const [maintenanceError, setMaintenanceError] = useState<string | null>(null)
+
   // Tests
   const [tests, setTests] = useState<DrivingTest[]>([])
+  const [passRates, setPassRates] = useState<InstructorPassRate[]>([])
   const [showTestForm, setShowTestForm] = useState(false)
-  const [testForm, setTestForm] = useState({ learnerId: '', testType: 'LL_TEST', testDate: new Date().toISOString().slice(0, 10), testCenter: '', notes: '' })
+  const [testForm, setTestForm] = useState({ learnerId: '', testType: 'LL_TEST', testDate: new Date().toISOString().slice(0, 10), testCenter: '', notes: '', instructorId: '' })
   const [pickedTestLearner, setPickedTestLearner] = useState<Customer | null>(null)
   const [savingTest, setSavingTest] = useState(false)
   const [testError, setTestError] = useState<string | null>(null)
@@ -235,6 +262,11 @@ export function DrivingSchoolScreen() {
     }
   }, [toastError])
 
+  const loadPassRates = useCallback(async () => {
+    const res = await api.drivingSession.instructorPassRates()
+    if (res.success) setPassRates(res.data as InstructorPassRate[])
+  }, [])
+
   const loadPackages = useCallback(async () => {
     try {
       const res = await api.drivingPackage.list()
@@ -260,7 +292,7 @@ export function DrivingSchoolScreen() {
     if (tab === 'learners') loadLearners()
     else if (tab === 'sessions') { loadSessions(); loadEmployees(); loadVehicles(); loadCustomers(); loadPackages(); loadEnrollments() }
     else if (tab === 'vehicles') { loadVehicles(); loadEmployees() }
-    else if (tab === 'tests') { loadTests(); loadCustomers() }
+    else if (tab === 'tests') { loadTests(); loadCustomers(); loadEmployees(); loadPassRates() }
     else if (tab === 'packages') { loadPackages(); loadEnrollments(); loadCustomers() }
   }, [tab, loadLearners, loadSessions, loadVehicles, loadTests, loadEmployees, loadCustomers, loadPackages, loadEnrollments])
 
@@ -387,7 +419,11 @@ export function DrivingSchoolScreen() {
     }
     setSavingVehicle(true)
     setVehicleError(null)
-    const payload = { registrationNumber: vehicleForm.registrationNumber, make: vehicleForm.make, model: vehicleForm.model, vehicleClass: vehicleForm.vehicleClass, instructorId: vehicleForm.instructorId || undefined, status: vehicleForm.status }
+    const payload = {
+      registrationNumber: vehicleForm.registrationNumber, make: vehicleForm.make, model: vehicleForm.model,
+      vehicleClass: vehicleForm.vehicleClass, instructorId: vehicleForm.instructorId || undefined, status: vehicleForm.status,
+      odometerKm: vehicleForm.odometerKm, serviceIntervalKm: vehicleForm.serviceIntervalKm, serviceIntervalSessions: vehicleForm.serviceIntervalSessions,
+    }
     const res = editVehicle
       ? await api.drivingVehicle.update({ id: editVehicle.id, ...payload })
       : await api.drivingVehicle.create(payload)
@@ -397,6 +433,41 @@ export function DrivingSchoolScreen() {
       loadVehicles()
     } else {
       setVehicleError(res.error?.message ?? 'Could not save vehicle.')
+    }
+  }
+
+  // ── Vehicle Maintenance (Phase 58 §2) ───────────────────────────────────────
+
+  async function openMaintenance(v: DrivingVehicle) {
+    setMaintenanceVehicle(v)
+    setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: v.odometerKm, serviceType: '', cost: '', notes: '' })
+    setMaintenanceError(null)
+    const res = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: v.id })
+    if (res.success) setMaintenanceLogs(res.data as MaintenanceLog[])
+    else setMaintenanceLogs([])
+  }
+
+  async function handleLogMaintenance() {
+    if (!maintenanceVehicle) return
+    if (!maintenanceForm.serviceType.trim()) { setMaintenanceError('Service type is required.'); return }
+    setSavingMaintenance(true)
+    setMaintenanceError(null)
+    const res = await api.drivingVehicle.logMaintenance({
+      vehicleId: maintenanceVehicle.id,
+      serviceDate: maintenanceForm.serviceDate,
+      odometerKm: maintenanceForm.odometerKm,
+      serviceType: maintenanceForm.serviceType,
+      cost: maintenanceForm.cost ? Number(maintenanceForm.cost) : undefined,
+      notes: maintenanceForm.notes || undefined,
+    })
+    setSavingMaintenance(false)
+    if (res.success) {
+      loadVehicles()
+      const logsRes = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: maintenanceVehicle.id })
+      if (logsRes.success) setMaintenanceLogs(logsRes.data as MaintenanceLog[])
+      setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: maintenanceForm.odometerKm, serviceType: '', cost: '', notes: '' })
+    } else {
+      setMaintenanceError(res.error?.message ?? 'Could not log maintenance.')
     }
   }
 
@@ -413,6 +484,7 @@ export function DrivingSchoolScreen() {
       testDate: testForm.testDate,
       testCenter: testForm.testCenter,
       notes: testForm.notes || undefined,
+      instructorId: testForm.instructorId || undefined,
     })
     setSavingTest(false)
     if (res.success) {
@@ -426,7 +498,7 @@ export function DrivingSchoolScreen() {
   async function handleUpdateTestResult(id: string, result: string) {
     try {
       const res = await api.drivingSession.updateTest({ id, result })
-      if (res.success) loadTests()
+      if (res.success) { loadTests(); loadPassRates() }
       else toastError('Error', res.error?.message ?? 'Could not update test result.')
     } catch {
       toastError('Error', 'Could not update test result.')
@@ -516,8 +588,8 @@ export function DrivingSchoolScreen() {
         </div>
         <div className="flex items-center gap-2">
           {tab === 'sessions' && <button onClick={() => setShowSessionForm(true)} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Session</button>}
-          {tab === 'vehicles' && <button onClick={() => { setEditVehicle(null); setVehicleForm({ registrationNumber: '', make: '', model: '', vehicleClass: 'LMV', instructorId: '', status: 'ACTIVE' }); setVehicleError(null); setShowVehicleForm(true); loadEmployees() }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Add Vehicle</button>}
-          {tab === 'tests' && <button onClick={() => { setShowTestForm(true); setTestError(null) }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Test</button>}
+          {tab === 'vehicles' && <button onClick={() => { setEditVehicle(null); setVehicleForm({ registrationNumber: '', make: '', model: '', vehicleClass: 'LMV', instructorId: '', status: 'ACTIVE', odometerKm: 0, serviceIntervalKm: 5000, serviceIntervalSessions: 30 }); setVehicleError(null); setShowVehicleForm(true); loadEmployees() }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Add Vehicle</button>}
+          {tab === 'tests' && <button onClick={() => { setShowTestForm(true); setTestError(null); setPickedTestLearner(null); setTestForm({ learnerId: '', testType: 'LL_TEST', testDate: new Date().toISOString().slice(0, 10), testCenter: '', notes: '', instructorId: '' }) }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Test</button>}
           {tab === 'packages' && (
             <>
               <button onClick={() => { setShowEnrollForm(true); setEnrollError(null); loadCustomers() }} className="h-10 px-4 rounded-xl border border-border text-sm font-medium flex items-center gap-2 text-foreground hover:bg-muted/50"><Plus size={16} /> Enroll Learner</button>
@@ -744,17 +816,33 @@ export function DrivingSchoolScreen() {
                     <span className="bg-muted/30 px-2 py-0.5 rounded-full">{v.vehicleClass}</span>
                     {v.instructor && <span>{v.instructor.fullName}</span>}
                   </div>
-                  <button
-                    onClick={() => {
-                      setEditVehicle(v)
-                      setVehicleForm({ registrationNumber: v.registrationNumber, make: v.make, model: v.model, vehicleClass: v.vehicleClass, instructorId: v.instructor?.id ?? '', status: v.status })
-                      setVehicleError(null)
-                      setShowVehicleForm(true)
-                    }}
-                    className="w-full h-8 rounded-lg border border-border text-xs text-foreground hover:bg-muted/50"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{v.odometerKm.toLocaleString('en-IN')} km · {v.sessionsSinceService} sessions since service</span>
+                    {v.dueForService && <Badge variant="warning" size="sm">Due for service</Badge>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditVehicle(v)
+                        setVehicleForm({
+                          registrationNumber: v.registrationNumber, make: v.make, model: v.model, vehicleClass: v.vehicleClass,
+                          instructorId: v.instructor?.id ?? '', status: v.status,
+                          odometerKm: v.odometerKm, serviceIntervalKm: v.serviceIntervalKm, serviceIntervalSessions: v.serviceIntervalSessions,
+                        })
+                        setVehicleError(null)
+                        setShowVehicleForm(true)
+                      }}
+                      className="flex-1 h-8 rounded-lg border border-border text-xs text-foreground hover:bg-muted/50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => openMaintenance(v)}
+                      className="flex-1 h-8 rounded-lg border border-border text-xs text-foreground hover:bg-muted/50"
+                    >
+                      Maintenance
+                    </button>
+                  </div>
                 </Card>
               ))}
               {vehicles.length === 0 && (
@@ -770,7 +858,22 @@ export function DrivingSchoolScreen() {
 
       {/* Tests Tab */}
       {tab === 'tests' && (
-        <Card padding="none" className="overflow-hidden">
+        <div className="space-y-4">
+          {passRates.length > 0 && (
+            <Card padding="lg">
+              <p className="text-sm font-semibold text-foreground mb-3">Pass Rate by Instructor</p>
+              <div className="grid grid-cols-3 gap-3">
+                {passRates.map((r) => (
+                  <div key={r.instructorId} className="border border-border rounded-xl px-3 py-2">
+                    <p className="text-sm font-medium text-foreground">{r.instructorName}</p>
+                    <p className="text-xs text-muted-foreground">{r.passed}/{r.total} passed</p>
+                    <p className={cn('text-lg font-bold', r.passRate >= 70 ? 'text-success' : r.passRate >= 40 ? 'text-warning' : 'text-danger')}>{r.passRate}%</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+          <Card padding="none" className="overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-muted-foreground text-sm">Loading...</div>
           ) : tests.length === 0 ? (
@@ -786,6 +889,7 @@ export function DrivingSchoolScreen() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Test Center</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Instructor</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Result</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -803,6 +907,7 @@ export function DrivingSchoolScreen() {
                       {t.retestDate && <p className="text-xs text-warning">Retest: {formatDate(t.retestDate)}</p>}
                     </td>
                     <td className="px-4 py-3 text-foreground">{t.testCenter}</td>
+                    <td className="px-4 py-3 text-foreground">{t.instructor?.fullName ?? '—'}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={TEST_RESULT_VARIANT[t.result] ?? 'neutral'} size="sm">{t.result}</Badge>
                     </td>
@@ -819,7 +924,8 @@ export function DrivingSchoolScreen() {
               </tbody>
             </table>
           )}
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* Packages Tab (Phase 41) */}
@@ -1048,12 +1154,89 @@ export function DrivingSchoolScreen() {
                   {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Current Odometer (km)</label>
+                <input type="number" min={0} value={vehicleForm.odometerKm} onChange={(e) => setVehicleForm({ ...vehicleForm, odometerKm: Number(e.target.value) || 0 })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Service Every (km)</label>
+                  <input type="number" min={1} value={vehicleForm.serviceIntervalKm} onChange={(e) => setVehicleForm({ ...vehicleForm, serviceIntervalKm: Number(e.target.value) || 1 })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Service Every (sessions)</label>
+                  <input type="number" min={1} value={vehicleForm.serviceIntervalSessions} onChange={(e) => setVehicleForm({ ...vehicleForm, serviceIntervalSessions: Number(e.target.value) || 1 })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" />
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowVehicleForm(false)} className="flex-1 h-11 rounded-xl border border-border text-sm text-foreground hover:bg-muted/50">Cancel</button>
               <button onClick={handleSaveVehicle} disabled={savingVehicle} className="flex-1 h-11 bg-primary text-primary-foreground rounded-xl text-sm font-medium disabled:opacity-50">
                 {savingVehicle ? 'Saving...' : 'Save Vehicle'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Maintenance Modal (Phase 58 §2) */}
+      {maintenanceVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Maintenance — {maintenanceVehicle.registrationNumber}</h2>
+                <p className="text-xs text-muted-foreground">{maintenanceVehicle.odometerKm.toLocaleString('en-IN')} km · {maintenanceVehicle.sessionsSinceService} sessions since last service</p>
+              </div>
+              <button onClick={() => { setMaintenanceVehicle(null); setMaintenanceLogs([]) }} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+            </div>
+            {maintenanceError && <div className="text-sm text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{maintenanceError}</div>}
+            <div className="border border-border rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Log a Service</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Service Date</label>
+                  <input type="date" value={maintenanceForm.serviceDate} onChange={(e) => setMaintenanceForm({ ...maintenanceForm, serviceDate: e.target.value })} className="w-full h-11 px-3 rounded-xl border border-border bg-background text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Odometer (km) *</label>
+                  <input type="number" min={0} value={maintenanceForm.odometerKm} onChange={(e) => setMaintenanceForm({ ...maintenanceForm, odometerKm: Number(e.target.value) || 0 })} className="w-full h-11 px-3 rounded-xl border border-border bg-background text-foreground" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Service Type *</label>
+                <input value={maintenanceForm.serviceType} onChange={(e) => setMaintenanceForm({ ...maintenanceForm, serviceType: e.target.value })} placeholder="e.g. General Service, Brake Pads..." className="w-full h-11 px-3 rounded-xl border border-border bg-background text-foreground" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cost (optional)</label>
+                <input type="number" min={0} value={maintenanceForm.cost} onChange={(e) => setMaintenanceForm({ ...maintenanceForm, cost: e.target.value })} className="w-full h-11 px-3 rounded-xl border border-border bg-background text-foreground" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Notes (optional)</label>
+                <textarea value={maintenanceForm.notes} onChange={(e) => setMaintenanceForm({ ...maintenanceForm, notes: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm resize-none" />
+              </div>
+              <button onClick={handleLogMaintenance} disabled={savingMaintenance} className="w-full h-11 bg-primary text-primary-foreground rounded-xl text-sm font-medium disabled:opacity-50">
+                {savingMaintenance ? 'Saving...' : 'Log Service'}
+              </button>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-2">Service History</p>
+              {maintenanceLogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No service logged yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {maintenanceLogs.map((log) => (
+                    <div key={log.id} className="border border-border rounded-xl px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-foreground">{log.serviceType}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(log.serviceDate)}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{log.odometerKm.toLocaleString('en-IN')} km{log.cost != null ? ` · ₹${log.cost.toLocaleString('en-IN')}` : ''}</p>
+                      {log.notes && <p className="text-xs text-muted-foreground mt-1">{log.notes}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1091,6 +1274,13 @@ export function DrivingSchoolScreen() {
                   <label className="text-xs text-muted-foreground mb-1 block">Test Center *</label>
                   <input value={testForm.testCenter} onChange={(e) => setTestForm({ ...testForm, testCenter: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" placeholder="RTO Office, Mumbai..." />
                 </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Instructor (who taught this learner)</label>
+                <select value={testForm.instructorId} onChange={(e) => setTestForm({ ...testForm, instructorId: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground">
+                  <option value="">Not recorded</option>
+                  {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Notes</label>

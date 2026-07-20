@@ -16,7 +16,11 @@ interface RestaurantTable {
   tableName?: string | null
   status: string
   kots: { id: string; status: string }[]
+  waiterId?: string | null
+  waiter?: { id: string; fullName: string } | null
 }
+
+interface Employee { id: string; fullName: string }
 
 const STATUS_CONFIG = {
   AVAILABLE: { label: 'Available', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
@@ -38,6 +42,8 @@ export function RestaurantTablesScreen() {
   const [deleteTarget, setDeleteTarget] = useState<RestaurantTable | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showDailyCloseConfirm, setShowDailyCloseConfirm] = useState(false)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [assigningWaiterFor, setAssigningWaiterFor] = useState<string | null>(null)
 
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const qrEnabled = enabledModules.includes('qr_table_ordering')
@@ -77,6 +83,25 @@ export function RestaurantTablesScreen() {
   }, [toastError])
 
   useEffect(() => { load(); loadQrStatus() }, [load, loadQrStatus])
+
+  useEffect(() => {
+    api.hr.listEmployees({ isActive: true }).then((res) => {
+      if (res.success && res.data) setEmployees((res.data as { employees: Employee[] }).employees ?? [])
+    }).catch(() => { /* waiter picker is supplementary — table list itself already surfaces errors */ })
+  }, [])
+
+  async function handleAssignWaiter(tableId: string, waiterId: string) {
+    setAssigningWaiterFor(tableId)
+    try {
+      const res = await api.restaurant.assignWaiter({ tableId, waiterId: waiterId || null })
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not assign waiter.')
+      await load()
+    } catch {
+      toastError('Error', 'Could not assign waiter.')
+    } finally {
+      setAssigningWaiterFor(null)
+    }
+  }
 
   async function toggleQrOrdering(on: boolean) {
     setQrToggling(true)
@@ -332,6 +357,19 @@ export function RestaurantTablesScreen() {
                     </button>
                   ))}
                 </div>
+
+                {employees.length > 0 && (
+                  <select
+                    value={table.waiterId ?? ''}
+                    onChange={(e) => handleAssignWaiter(table.id, e.target.value)}
+                    disabled={assigningWaiterFor === table.id}
+                    className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50"
+                    title="Assign waiter for tip pooling"
+                  >
+                    <option value="">— No waiter —</option>
+                    {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                  </select>
+                )}
               </motion.div>
             )
           })}

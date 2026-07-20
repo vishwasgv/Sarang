@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { FolderOpen, Plus, X, Search, RefreshCw, Edit2, Trash2, CheckSquare, Zap, Clock, AlertCircle, Receipt } from 'lucide-react'
+import { FolderOpen, Plus, X, Search, RefreshCw, Edit2, Trash2, CheckSquare, Zap, Clock, AlertCircle, Receipt, BarChart3, CalendarClock, Printer, TrendingUp, LineChart as LineChartIcon } from 'lucide-react'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Card } from '@shared/ui/molecules/Card'
@@ -61,6 +62,33 @@ interface ServiceProject {
 interface Customer { id: string; customerName: string; phone: string | null }
 interface Employee { id: string; fullName: string }
 
+interface CampaignPerformanceEntry {
+  id: string; projectId: string; periodStart: string; periodEnd: string
+  impressions: number | null; clicks: number | null; conversions: number | null
+  actualSpend: number | null; notes: string | null
+}
+interface ContentCalendarItem {
+  id: string; projectId: string; scheduledDate: string; contentType: string
+  title: string; platform: string | null; status: string; notes: string | null
+}
+interface CampaignPerformanceSummary {
+  projectId: string; entryCount: number
+  totalImpressions: number; totalClicks: number; totalConversions: number; totalActualSpend: number
+  ctrPercent: number | null; conversionRatePercent: number | null; costPerConversion: number | null
+  entries: CampaignPerformanceEntry[]
+}
+
+// Phase 58 §2 — Software Agency: sprint burndown/velocity
+interface SprintBurndown {
+  sprintId: string; sprintNumber: number; name: string | null; status: string
+  pointsMode: boolean; totalPoints: number; issueCount: number
+  days: { date: string; remainingPoints: number; idealRemainingPoints: number }[]
+}
+interface ProjectVelocity {
+  projectId: string; pointsMode: boolean; avgVelocity: number
+  sprints: { sprintId: string; sprintNumber: number; name: string | null; totalPoints: number; completedPoints: number }[]
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null): string {
@@ -119,11 +147,16 @@ const PROJECT_TYPES = [
 // fixed enum, same convention as everything else on this generic form.
 const MARKETING_CHANNELS = ['Google Ads', 'Meta Ads', 'SEO', 'Email', 'Social Media', 'Content', 'Influencer', 'Other']
 const MARKETING_DELIVERABLE_TYPES = ['Campaign Launch', 'Creative Asset Set', 'Monthly Report', 'Website', 'Content Calendar', 'Other']
+const CONTENT_TYPES = ['SOCIAL_POST', 'BLOG', 'EMAIL', 'AD_CREATIVE', 'VIDEO', 'OTHER']
+const CONTENT_STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  PLANNED: 'neutral', IN_PROGRESS: 'warning', PUBLISHED: 'success', CANCELLED: 'danger',
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProjectsScreen(): React.ReactElement {
   const isMarketingAgency = useIndustryStore((s) => s.isModuleEnabled('marketing_campaigns'))
+  const isSoftwareAgency = useIndustryStore((s) => s.isModuleEnabled('issues'))
   const { error: toastError } = useNotificationStore()
   const [projects, setProjects]   = useState<ServiceProject[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -137,9 +170,24 @@ export default function ProjectsScreen(): React.ReactElement {
   const [invoiceError, setInvoiceError] = useState('')
 
   // Expand state: 'milestones' | 'sprints' per project
-  const [expandedTab, setExpandedTab] = useState<Record<string, 'milestones' | 'sprints' | null>>({})
+  const [expandedTab, setExpandedTab] = useState<Record<string, 'milestones' | 'sprints' | 'performance' | 'content' | null>>({})
+
+  // Phase 58 §2 — Marketing Agency: campaign performance entries + content calendar
+  const [performanceMap, setPerformanceMap] = useState<Record<string, CampaignPerformanceEntry[]>>({})
+  const [contentMap, setContentMap] = useState<Record<string, ContentCalendarItem[]>>({})
+  const [perfForm, setPerfForm] = useState({ periodStart: '', periodEnd: '', impressions: '', clicks: '', conversions: '', actualSpend: '' })
+  const [perfSaving, setPerfSaving] = useState(false)
+  const [contentForm, setContentForm] = useState({ scheduledDate: '', contentType: 'SOCIAL_POST', title: '', platform: '' })
+  const [contentSaving, setContentSaving] = useState(false)
+  const [summaryFor, setSummaryFor] = useState<string | null>(null)
+  const [summaryData, setSummaryData] = useState<CampaignPerformanceSummary | null>(null)
   // Sprints loaded per project
   const [sprintMap, setSprintMap] = useState<Record<string, Sprint[]>>({})
+
+  // Phase 58 §2 — Software Agency: sprint burndown/velocity
+  const [velocityMap, setVelocityMap] = useState<Record<string, ProjectVelocity | null>>({})
+  const [burndownFor, setBurndownFor] = useState<string | null>(null)
+  const [burndownData, setBurndownData] = useState<SprintBurndown | null>(null)
 
   // KPI
   const [kpiProjects, setKpiProjects] = useState<ServiceProject[]>([])
@@ -238,13 +286,162 @@ export default function ProjectsScreen(): React.ReactElement {
 
   // ── Expand tab toggle ──────────────────────────────────────────────────────
 
-  function toggleTab(projectId: string, tab: 'milestones' | 'sprints'): void {
+  const loadPerformance = useCallback(async (projectId: string) => {
+    try {
+      const res = await api.campaignPerformance.list({ projectId })
+      if (res.success) setPerformanceMap((prev) => ({ ...prev, [projectId]: (res.data as CampaignPerformanceEntry[]) ?? [] }))
+      else toastError('Error', res.error?.message ?? 'Could not load campaign performance.')
+    } catch {
+      toastError('Error', 'Could not load campaign performance.')
+    }
+  }, [toastError])
+
+  const loadContent = useCallback(async (projectId: string) => {
+    try {
+      const res = await api.contentCalendar.list({ projectId })
+      if (res.success) setContentMap((prev) => ({ ...prev, [projectId]: (res.data as ContentCalendarItem[]) ?? [] }))
+      else toastError('Error', res.error?.message ?? 'Could not load content calendar.')
+    } catch {
+      toastError('Error', 'Could not load content calendar.')
+    }
+  }, [toastError])
+
+  const loadVelocity = useCallback(async (projectId: string) => {
+    try {
+      const res = await api.sprint.velocity({ projectId })
+      setVelocityMap((prev) => ({ ...prev, [projectId]: res.success ? (res.data as ProjectVelocity) : null }))
+    } catch {
+      setVelocityMap((prev) => ({ ...prev, [projectId]: null }))
+    }
+  }, [])
+
+  function toggleTab(projectId: string, tab: 'milestones' | 'sprints' | 'performance' | 'content'): void {
     setExpandedTab((prev) => {
       const current = prev[projectId]
       const next = current === tab ? null : tab
-      if (next === 'sprints') loadSprints(projectId)
+      if (next === 'sprints') { loadSprints(projectId); if (isSoftwareAgency) void loadVelocity(projectId) }
+      if (next === 'performance') { setPerfForm({ periodStart: '', periodEnd: '', impressions: '', clicks: '', conversions: '', actualSpend: '' }); void loadPerformance(projectId) }
+      if (next === 'content') { setContentForm({ scheduledDate: '', contentType: 'SOCIAL_POST', title: '', platform: '' }); void loadContent(projectId) }
       return { ...prev, [projectId]: next }
     })
+  }
+
+  async function openBurndown(sprintId: string): Promise<void> {
+    setBurndownFor(sprintId)
+    setBurndownData(null)
+    const res = await api.sprint.burndown({ sprintId })
+    if (res.success) setBurndownData(res.data as SprintBurndown)
+    else toastError('Error', res.error?.message ?? 'Could not load burndown chart.')
+  }
+
+  async function handleAddPerformanceEntry(projectId: string): Promise<void> {
+    if (!perfForm.periodStart || !perfForm.periodEnd) return
+    setPerfSaving(true)
+    try {
+      const res = await api.campaignPerformance.add({
+        projectId, periodStart: perfForm.periodStart, periodEnd: perfForm.periodEnd,
+        impressions: perfForm.impressions ? Number(perfForm.impressions) : undefined,
+        clicks: perfForm.clicks ? Number(perfForm.clicks) : undefined,
+        conversions: perfForm.conversions ? Number(perfForm.conversions) : undefined,
+        actualSpend: perfForm.actualSpend ? Number(perfForm.actualSpend) : undefined,
+      })
+      if (res.success) {
+        setPerfForm({ periodStart: '', periodEnd: '', impressions: '', clicks: '', conversions: '', actualSpend: '' })
+        await loadPerformance(projectId)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not add performance entry.')
+      }
+    } finally {
+      setPerfSaving(false)
+    }
+  }
+
+  async function handleDeletePerformanceEntry(projectId: string, id: string): Promise<void> {
+    const res = await api.campaignPerformance.delete({ id })
+    if (res.success) await loadPerformance(projectId)
+    else toastError('Error', res.error?.message ?? 'Could not remove performance entry.')
+  }
+
+  async function handleAddContentItem(projectId: string): Promise<void> {
+    if (!contentForm.title.trim() || !contentForm.scheduledDate) return
+    setContentSaving(true)
+    try {
+      const res = await api.contentCalendar.create({
+        projectId, scheduledDate: contentForm.scheduledDate, contentType: contentForm.contentType,
+        title: contentForm.title.trim(), platform: contentForm.platform.trim() || undefined,
+      })
+      if (res.success) {
+        setContentForm({ scheduledDate: '', contentType: 'SOCIAL_POST', title: '', platform: '' })
+        await loadContent(projectId)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not add content item.')
+      }
+    } finally {
+      setContentSaving(false)
+    }
+  }
+
+  async function handleUpdateContentStatus(projectId: string, id: string, status: string): Promise<void> {
+    const res = await api.contentCalendar.update({ id, status })
+    if (res.success) await loadContent(projectId)
+    else toastError('Error', res.error?.message ?? 'Could not update content status.')
+  }
+
+  async function handleDeleteContentItem(projectId: string, id: string): Promise<void> {
+    const res = await api.contentCalendar.delete({ id })
+    if (res.success) await loadContent(projectId)
+    else toastError('Error', res.error?.message ?? 'Could not remove content item.')
+  }
+
+  async function openPerformanceSummary(project: ServiceProject): Promise<void> {
+    const res = await api.campaignPerformance.summary({ projectId: project.id })
+    if (res.success) {
+      setSummaryData(res.data as CampaignPerformanceSummary)
+      setSummaryFor(project.id)
+    } else {
+      toastError('Error', res.error?.message ?? 'Could not generate performance summary.')
+    }
+  }
+
+  function printPerformanceSummary(project: ServiceProject, summary: CampaignPerformanceSummary): void {
+    const printedOn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    const fmtPct = (n: number | null) => n == null ? '—' : `${n.toFixed(2)}%`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Campaign Performance Summary</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 32px; color: #1a1a1a; }
+h1 { font-size: 20px; margin-bottom: 4px; }
+.sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e5e5; font-size: 13px; }
+th { background: #f7f7f7; text-transform: uppercase; font-size: 11px; color: #666; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.summary-card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; }
+.summary-card .label { font-size: 11px; color: #666; text-transform: uppercase; }
+.summary-card .value { font-size: 18px; font-weight: bold; margin-top: 4px; }
+</style></head><body>
+<h1>${project.projectName} — Campaign Performance Summary</h1>
+<div class="sub">Client: ${project.client.customerName} · Printed ${printedOn}</div>
+<div class="summary-grid">
+  <div class="summary-card"><div class="label">Impressions</div><div class="value">${summary.totalImpressions.toLocaleString('en-IN')}</div></div>
+  <div class="summary-card"><div class="label">Clicks</div><div class="value">${summary.totalClicks.toLocaleString('en-IN')}</div></div>
+  <div class="summary-card"><div class="label">Conversions</div><div class="value">${summary.totalConversions.toLocaleString('en-IN')}</div></div>
+  <div class="summary-card"><div class="label">Actual Spend</div><div class="value">${fmtAmount(summary.totalActualSpend)}</div></div>
+  <div class="summary-card"><div class="label">CTR</div><div class="value">${fmtPct(summary.ctrPercent)}</div></div>
+  <div class="summary-card"><div class="label">Conversion Rate</div><div class="value">${fmtPct(summary.conversionRatePercent)}</div></div>
+  <div class="summary-card"><div class="label">Cost / Conversion</div><div class="value">${summary.costPerConversion == null ? '—' : fmtAmount(summary.costPerConversion)}</div></div>
+</div>
+<table>
+<thead><tr><th>Period</th><th>Impressions</th><th>Clicks</th><th>Conversions</th><th>Spend</th><th>Notes</th></tr></thead>
+<tbody>
+${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.periodEnd)}</td><td>${e.impressions ?? '—'}</td><td>${e.clicks ?? '—'}</td><td>${e.conversions ?? '—'}</td><td>${e.actualSpend == null ? '—' : fmtAmount(e.actualSpend)}</td><td>${e.notes ?? ''}</td></tr>`).join('')}
+</tbody>
+</table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.print()
   }
 
   // ── Project CRUD ───────────────────────────────────────────────────────────
@@ -582,6 +779,24 @@ export default function ProjectsScreen(): React.ReactElement {
                       <Zap className="w-3.5 h-3.5" />
                       <span>Sprints</span>
                     </button>
+                    {isMarketingAgency && (
+                      <>
+                        <button onClick={() => toggleTab(p.id, 'performance')}
+                          className={cn('flex items-center gap-1 px-2 py-1 rounded text-xs font-medium',
+                            tab === 'performance' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800')}
+                          title="Performance">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          <span>Performance</span>
+                        </button>
+                        <button onClick={() => toggleTab(p.id, 'content')}
+                          className={cn('flex items-center gap-1 px-2 py-1 rounded text-xs font-medium',
+                            tab === 'content' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800')}
+                          title="Content Calendar">
+                          <CalendarClock className="w-3.5 h-3.5" />
+                          <span>Content</span>
+                        </button>
+                      </>
+                    )}
                     <button onClick={() => openEditProject(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500">
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -702,6 +917,11 @@ export default function ProjectsScreen(): React.ReactElement {
                               </td>
                               <td className="py-1.5">
                                 <div className="flex items-center gap-1 justify-end">
+                                  {isSoftwareAgency && (
+                                    <button onClick={() => void openBurndown(s.id)} title="Burndown chart" className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
+                                      <LineChartIcon className="w-3 h-3" />
+                                    </button>
+                                  )}
                                   <button onClick={() => openEditSprint(s)} className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
                                     <Edit2 className="w-3 h-3" />
                                   </button>
@@ -716,6 +936,161 @@ export default function ProjectsScreen(): React.ReactElement {
                         </tbody>
                       </table>
                     )}
+
+                    {/* Phase 58 §2 — Velocity across completed sprints */}
+                    {isSoftwareAgency && velocityMap[p.id] && velocityMap[p.id]!.sprints.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <TrendingUp className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide dark:text-slate-400">
+                            Velocity ({velocityMap[p.id]!.pointsMode ? 'story points' : 'issue count'}) — avg {velocityMap[p.id]!.avgVelocity}/sprint
+                          </span>
+                        </div>
+                        <div style={{ width: '100%', height: 140 }}>
+                          <ResponsiveContainer>
+                            <BarChart data={velocityMap[p.id]!.sprints.map((v) => ({ name: `S${v.sprintNumber}`, Completed: v.completedPoints, Total: v.totalPoints }))}>
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                              <Tooltip />
+                              <Legend wrapperStyle={{ fontSize: 11 }} />
+                              <Bar dataKey="Total" fill="#c7d2fe" />
+                              <Bar dataKey="Completed" fill="#4f46e5" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Phase 58 §2 — Campaign Performance tab */}
+                {tab === 'performance' && (
+                  <div className="border-t border-gray-100 px-4 pb-3 dark:border-slate-800">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide dark:text-slate-400">Campaign Performance</span>
+                      <button onClick={() => void openPerformanceSummary(p)} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                        <Printer className="w-3 h-3" /> Client Summary
+                      </button>
+                    </div>
+                    {(performanceMap[p.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 py-1 dark:text-slate-500">No performance data logged yet.</p>
+                    ) : (
+                      <table className="w-full text-xs mb-2">
+                        <thead>
+                          <tr className="text-gray-500 dark:text-slate-400">
+                            <th className="text-left py-1 pl-2">Period</th>
+                            <th className="text-right py-1">Impr.</th>
+                            <th className="text-right py-1">Clicks</th>
+                            <th className="text-right py-1">Conv.</th>
+                            <th className="text-right py-1 px-3">Spend</th>
+                            <th className="py-1" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {(performanceMap[p.id] ?? []).map((e) => (
+                            <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
+                              <td className="py-1.5 pl-2 text-gray-800 dark:text-slate-200">{fmtDate(e.periodStart)} – {fmtDate(e.periodEnd)}</td>
+                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.impressions ?? '—'}</td>
+                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.clicks ?? '—'}</td>
+                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.conversions ?? '—'}</td>
+                              <td className="py-1.5 text-right px-3 text-gray-700 dark:text-slate-300">{e.actualSpend == null ? '—' : fmtAmount(e.actualSpend)}</td>
+                              <td className="py-1.5">
+                                <button onClick={() => void handleDeletePerformanceEntry(p.id, e.id)} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 className="w-3 h-3" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    <div className="grid grid-cols-6 gap-1.5 items-end">
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Period Start</label>
+                        <input type="date" value={perfForm.periodStart} onChange={(e) => setPerfForm((f) => ({ ...f, periodStart: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Period End</label>
+                        <input type="date" value={perfForm.periodEnd} onChange={(e) => setPerfForm((f) => ({ ...f, periodEnd: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Impressions</label>
+                        <input type="number" min="0" value={perfForm.impressions} onChange={(e) => setPerfForm((f) => ({ ...f, impressions: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Clicks</label>
+                        <input type="number" min="0" value={perfForm.clicks} onChange={(e) => setPerfForm((f) => ({ ...f, clicks: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Conversions</label>
+                        <input type="number" min="0" value={perfForm.conversions} onChange={(e) => setPerfForm((f) => ({ ...f, conversions: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Spend (₹)</label>
+                        <input type="number" min="0" value={perfForm.actualSpend} onChange={(e) => setPerfForm((f) => ({ ...f, actualSpend: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-1.5">
+                      <button onClick={() => void handleAddPerformanceEntry(p.id)} disabled={perfSaving || !perfForm.periodStart || !perfForm.periodEnd} className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                        {perfSaving ? 'Adding…' : 'Add Entry'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Phase 58 §2 — Content Calendar tab */}
+                {tab === 'content' && (
+                  <div className="border-t border-gray-100 px-4 pb-3 dark:border-slate-800">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide dark:text-slate-400">Content Calendar</span>
+                    </div>
+                    {(contentMap[p.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 py-1 dark:text-slate-500">No content items planned yet.</p>
+                    ) : (
+                      <div className="space-y-1 mb-2">
+                        {(contentMap[p.id] ?? []).map((c) => (
+                          <div key={c.id} className="flex items-center justify-between gap-2 flex-wrap text-xs bg-gray-50 dark:bg-slate-800 rounded px-2 py-1.5">
+                            <div>
+                              <span className="font-medium text-gray-700 dark:text-slate-300">{fmtDate(c.scheduledDate)}</span>
+                              <span className="ml-2 text-gray-600 dark:text-slate-400">{c.title}</span>
+                              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-slate-400">{c.contentType.replace(/_/g, ' ')}</span>
+                              {c.platform && <span className="ml-1 text-gray-400 dark:text-slate-500">· {c.platform}</span>}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <select value={c.status} onChange={(e) => void handleUpdateContentStatus(p.id, c.id, e.target.value)} className="text-xs h-6 px-1 border border-gray-200 rounded bg-white dark:bg-slate-900 dark:border-slate-700">
+                                {['PLANNED', 'IN_PROGRESS', 'PUBLISHED', 'CANCELLED'].map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                              </select>
+                              <Badge variant={CONTENT_STATUS_VARIANT[c.status] ?? 'neutral'} size="sm">{c.status.replace(/_/g, ' ')}</Badge>
+                              <button onClick={() => void handleDeleteContentItem(p.id, c.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 gap-1.5 items-end">
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Date</label>
+                        <input type="date" value={contentForm.scheduledDate} onChange={(e) => setContentForm((f) => ({ ...f, scheduledDate: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Type</label>
+                        <select value={contentForm.contentType} onChange={(e) => setContentForm((f) => ({ ...f, contentType: e.target.value }))} className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                          {CONTENT_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Title</label>
+                        <input value={contentForm.title} onChange={(e) => setContentForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Diwali offer post" className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-slate-400">Platform</label>
+                        <input value={contentForm.platform} onChange={(e) => setContentForm((f) => ({ ...f, platform: e.target.value }))} placeholder="e.g. Instagram" className="w-full h-8 px-1.5 border border-gray-300 rounded text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-1.5">
+                      <button onClick={() => void handleAddContentItem(p.id)} disabled={contentSaving || !contentForm.title.trim() || !contentForm.scheduledDate} className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                        {contentSaving ? 'Adding…' : 'Add Content'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </Card>
@@ -915,6 +1290,73 @@ export default function ProjectsScreen(): React.ReactElement {
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {sSaving ? 'Saving...' : editSprint ? 'Update Sprint' : 'Create Sprint'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 58 §2 — Campaign performance client summary modal */}
+      {summaryFor && summaryData && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-slate-100">Campaign Performance Summary</h3>
+              <button onClick={() => { setSummaryFor(null); setSummaryData(null) }} className="text-gray-400 hover:text-gray-700 dark:text-slate-500"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">Impressions</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{summaryData.totalImpressions.toLocaleString('en-IN')}</div></div>
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">Clicks</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{summaryData.totalClicks.toLocaleString('en-IN')}</div></div>
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">Conversions</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{summaryData.totalConversions.toLocaleString('en-IN')}</div></div>
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">Spend</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{fmtAmount(summaryData.totalActualSpend)}</div></div>
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">CTR</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{summaryData.ctrPercent == null ? '—' : `${summaryData.ctrPercent.toFixed(2)}%`}</div></div>
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2"><div className="text-[10px] text-gray-500 uppercase">Conv. Rate</div><div className="text-sm font-bold text-gray-900 dark:text-slate-100">{summaryData.conversionRatePercent == null ? '—' : `${summaryData.conversionRatePercent.toFixed(2)}%`}</div></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setSummaryFor(null); setSummaryData(null) }} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:text-slate-400">Close</button>
+              <button onClick={() => { const proj = projects.find((x) => x.id === summaryFor); if (proj) printPerformanceSummary(proj, summaryData) }} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 flex items-center gap-1.5">
+                <Printer className="w-4 h-4" /> Print for Client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 58 §2 — Sprint burndown modal */}
+      {burndownFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-slate-100">
+                {burndownData ? `Sprint ${burndownData.sprintNumber}${burndownData.name ? ` — ${burndownData.name}` : ''} Burndown` : 'Burndown'}
+              </h3>
+              <button onClick={() => { setBurndownFor(null); setBurndownData(null) }} className="text-gray-400 hover:text-gray-700 dark:text-slate-500"><X className="w-5 h-5" /></button>
+            </div>
+            {!burndownData ? (
+              <div className="text-sm text-gray-500 dark:text-slate-400 py-8 text-center">Loading...</div>
+            ) : burndownData.issueCount === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-slate-500 py-8 text-center">No issues assigned to this sprint yet.</p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
+                  {burndownData.pointsMode ? `${burndownData.totalPoints} story points` : `${burndownData.issueCount} issues (no story points set — counted 1 each)`} across the sprint
+                </p>
+                <div style={{ width: '100%', height: 260 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={burndownData.days.map((d) => ({ date: d.date.slice(5), Remaining: d.remainingPoints, Ideal: d.idealRemainingPoints }))}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="Ideal" stroke="#c7d2fe" strokeDasharray="4 4" dot={false} />
+                      <Line type="monotone" dataKey="Remaining" stroke="#4f46e5" strokeWidth={2} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end">
+              <button onClick={() => { setBurndownFor(null); setBurndownData(null) }} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:text-slate-400">Close</button>
             </div>
           </div>
         </div>

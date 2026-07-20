@@ -13,7 +13,9 @@ import {
   generateBarcode,
   bulkGenerateMissingBarcodes,
   generateWeightEmbeddedLabel,
-  getProductByScannedBarcode
+  getProductByScannedBarcode,
+  generateVariantBarcode,
+  bulkGenerateMissingVariantBarcodes
 } from '../barcode.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -145,6 +147,15 @@ function makeTx(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn().mockResolvedValue({}),
       aggregate: vi.fn().mockResolvedValue({ _max: { looseItemCode: null } })
+    },
+    // Phase 58 §2 — maxPlainItemCode/generateUniquePlainBarcode now scan+check
+    // BOTH Product and ProductVariant (shared counter/collision space, see
+    // barcode.service.ts's comment) — every test touching plain-code
+    // generation needs this present, even ones only about Product.
+    productVariant: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({})
     },
     labelPrintLog: { create: vi.fn().mockResolvedValue({}), findFirst: vi.fn().mockResolvedValue(null) },
     ...overrides
@@ -295,6 +306,154 @@ describe('bulkGenerateMissingBarcodes', () => {
     expect(result.success).toBe(true)
     expect((result.data as { generated: number }).generated).toBe(0)
     expect(tx.product.update).not.toHaveBeenCalled()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 58 §2 — Clothing/Footwear variant barcode generation. Mirrors
+// generateBarcode/bulkGenerateMissingBarcodes' own test coverage, plus a
+// dedicated test proving the shared counter/collision space actually works
+// cross-table (the whole reason maxPlainItemCode/generateUniquePlainBarcode
+// were generalized).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('generateVariantBarcode', () => {
+  it('generates and assigns a unique barcode to a variant with none', async () => {
+    const findUnique = vi.fn().mockImplementation(({ where }: { where: { id?: string; barcode?: string } }) => {
+      if (where.id) return Promise.resolve({ id: 'v1', barcode: null })
+      return Promise.resolve(null)
+    })
+    const tx = makeTx({
+      productVariant: {
+        findUnique,
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn().mockResolvedValue({})
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(makeDb(tx) as never)
+
+    const result = await generateVariantBarcode('v1')
+
+    expect(result.success).toBe(true)
+    const barcode = (result.data as { barcode: string }).barcode
+    expect(barcode).toMatch(/^20\d{11}$/)
+    expect(validateEAN13(barcode)).toBe(true)
+    expect(tx.productVariant.update).toHaveBeenCalledWith({ where: { id: 'v1' }, data: { barcode, barcodeSource: 'GENERATED' } })
+  })
+
+  it('refuses to overwrite a variant that already has a barcode', async () => {
+    const tx = makeTx({ productVariant: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', barcode: '4006381333931' }), findMany: vi.fn(), update: vi.fn() } })
+    vi.mocked(getPrisma).mockReturnValue(makeDb(tx) as never)
+
+    const result = await generateVariantBarcode('v1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('BCD-004')
+  })
+
+  it('returns VAR-001 for a non-existent variant', async () => {
+    const tx = makeTx({ productVariant: { findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn(), update: vi.fn() } })
+    vi.mocked(getPrisma).mockReturnValue(makeDb(tx) as never)
+
+    const result = await generateVariantBarcode('ghost')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('VAR-001')
+  })
+
+  // The core guarantee this whole refactor exists for: a variant's generated
+  // barcode must never collide with a PRODUCT's barcode, even though they're
+  // two independently-unique-constrained columns in different tables.
+  it('shares the counter/collision space with Product — starts past the highest existing code in EITHER table', async () => {
+    const findUnique = vi.fn()
+      .mockResolvedValueOnce({ id: 'v1', barcode: null }) // the variant being generated for
+      .mockResolvedValueOnce(null) // collision check on the candidate — no clash
+    const tx = makeTx({
+      product: {
+        findUnique: vi.fn(), update: vi.fn(), aggregate: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([{ barcode: '2000000000015' }]) // Product's highest is 1
+      },
+      productVariant: {
+        findUnique,
+        findMany: vi.fn().mockResolvedValue([{ barcode: '2000000000237' }]), // a DIFFERENT variant's highest is 23
+        update: vi.fn().mockResolvedValue({})
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(makeDb(tx) as never)
+
+    const result = await generateVariantBarcode('v1')
+
+    expect(result.success).toBe(true)
+    const barcode = (result.data as { barcode: string }).barcode
+    // Must start past 23 (the higher of the two tables' max), not past 1
+    // (Product's own max) — proves the two tables share one counter.
+    expect(barcode.slice(2, 12)).toBe('0000000024')
+    // And the candidate is checked against BOTH tables before being accepted.
+    expect(tx.product.findUnique).toHaveBeenCalledWith({ where: { barcode } })
+    expect(findUnique).toHaveBeenCalledWith({ where: { barcode } })
+  })
+})
+
+describe('bulkGenerateMissingVariantBarcodes', () => {
+  it('generates for exactly the variants of one product missing a barcode, skipping the rest', async () => {
+    const findUnique = vi.fn().mockImplementation(({ where }: { where: { id?: string; barcode?: string } }) => {
+      if (where.id) return Promise.resolve({ barcode: null })
+      return Promise.resolve(null)
+    })
+    const tx = makeTx({
+      productVariant: {
+        findUnique,
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn().mockResolvedValue({})
+      }
+    })
+    const db = {
+      productVariant: { findMany: vi.fn().mockResolvedValue([{ id: 'v1' }, { id: 'v2' }]) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx))
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await bulkGenerateMissingVariantBarcodes('p1')
+
+    expect(result.success).toBe(true)
+    expect((result.data as { generated: number; totalMissing: number }).generated).toBe(2)
+    expect(tx.productVariant.update).toHaveBeenCalledTimes(2)
+    // Scoped to the one product's variants only — not every variant in the DB.
+    expect(db.productVariant.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'p1', barcode: null, isActive: true } }))
+  })
+
+  it('is idempotent — running it again with nothing missing generates zero and does not error', async () => {
+    const db = {
+      productVariant: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn()
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await bulkGenerateMissingVariantBarcodes('p1')
+
+    expect(result.success).toBe(true)
+    expect((result.data as { generated: number }).generated).toBe(0)
+    expect(db.$transaction).not.toHaveBeenCalled()
+  })
+
+  it('skips a variant that already got a barcode from a concurrent action mid-batch', async () => {
+    const tx = makeTx({
+      productVariant: {
+        findUnique: vi.fn().mockResolvedValue({ barcode: '4006381333931' }),
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn().mockResolvedValue({})
+      }
+    })
+    const db = {
+      productVariant: { findMany: vi.fn().mockResolvedValue([{ id: 'v1' }]) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx))
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await bulkGenerateMissingVariantBarcodes('p1')
+
+    expect(result.success).toBe(true)
+    expect((result.data as { generated: number }).generated).toBe(0)
+    expect(tx.productVariant.update).not.toHaveBeenCalled()
   })
 })
 

@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=test') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listCarJobCards, getCarJobCard, createCarJobCard, updateCarJobCard, generateCarJobInvoice } from '../car-job-card.service'
+import {
+  listCarJobCards, getCarJobCard, createCarJobCard, updateCarJobCard, generateCarJobInvoice,
+  getVehicleServiceHistory, listVehiclesDueForService, scheduleNextServiceReminder,
+} from '../car-job-card.service'
 
 // Regression coverage for the Phase 33 re-audit finding: CarJobCard.
 // laborTotal/partsTotal are Prisma Decimal fields, returned unserialized by
@@ -192,5 +196,174 @@ describe('generateCarJobInvoice — catalog-linked parts reach real inventory', 
     expect(call.items).toHaveLength(2)
     expect(call.items).toContainEqual({ productId: 'prod-air-filter', quantity: 1, unitPrice: 350 })
     expect(call.items.find(i => i.productId !== 'prod-air-filter')).toMatchObject({ quantity: 1, unitPrice: 300 })
+  })
+})
+
+// Phase 58 §2 — Car Service Center: next-service-due tracking + grouped
+// vehicle service-history view. There is no separate Vehicle master table,
+// so "the vehicle's current state" is always derived from its MOST RECENT
+// (by createdAt) job card — the real non-trivial logic worth testing here.
+
+describe('car-job-card.service.getVehicleServiceHistory', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('normalizes the registration number the same way createCarJobCard does before querying', async () => {
+    const db = makeMockDb(makeCard())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getVehicleServiceHistory('ka 01  ab 1234')
+
+    expect(db.carJobCard.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { vehicleNumber: 'KA 01 AB 1234' },
+    }))
+  })
+
+  it('returns every job card for that vehicle serialized (no raw Decimal instances)', async () => {
+    const db = makeMockDb(makeCard())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVehicleServiceHistory('KA01AB1234')
+
+    expect(res.success).toBe(true)
+    expect(typeof (res as { data: Array<{ laborTotal: unknown }> }).data[0].laborTotal).toBe('number')
+  })
+})
+
+describe('car-job-card.service.listVehiclesDueForService', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('only takes the MOST RECENT job card per vehicle, not every job card', async () => {
+    const older = makeCard({ id: 'cjc-old', vehicleNumber: 'KA01AB1234', createdAt: new Date('2026-01-01'), nextServiceDueKm: 10000, kmOut: 20000 })
+    const newer = makeCard({ id: 'cjc-new', vehicleNumber: 'KA01AB1234', createdAt: new Date('2026-06-01'), nextServiceDueKm: 60000, kmOut: 55000 })
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([newer, older]) // already ordered desc by createdAt
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listVehiclesDueForService()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: Array<{ vehicleNumber: string; nextServiceDueKm: number }> }).data
+    expect(data).toHaveLength(1)
+    expect(data[0].nextServiceDueKm).toBe(60000) // the newer job's value, not the older
+  })
+
+  it('flags dueForService when the odometer has already crossed nextServiceDueKm', async () => {
+    const card = makeCard({ nextServiceDueKm: 50000, kmOut: 51000, nextServiceDueDate: null })
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([card])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listVehiclesDueForService()
+
+    const data = (res as { data: Array<{ dueForService: boolean; overdue: boolean }> }).data
+    expect(data[0].dueForService).toBe(true)
+    expect(data[0].overdue).toBe(true)
+  })
+
+  it('does not flag a vehicle whose odometer has not yet reached the threshold', async () => {
+    const card = makeCard({ nextServiceDueKm: 50000, kmOut: 40000, nextServiceDueDate: null })
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([card])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listVehiclesDueForService()
+
+    expect((res as { data: Array<{ dueForService: boolean }> }).data[0].dueForService).toBe(false)
+  })
+
+  it('flags dueForService (but not overdue) when the due date falls within the dueSoonDays window', async () => {
+    const inFiveDays = new Date(Date.now() + 5 * 86400000)
+    const card = makeCard({ nextServiceDueDate: inFiveDays, nextServiceDueKm: null })
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([card])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listVehiclesDueForService(14)
+
+    const data = (res as { data: Array<{ dueForService: boolean; overdue: boolean }> }).data
+    expect(data[0].dueForService).toBe(true)
+    expect(data[0].overdue).toBe(false)
+  })
+
+  it('excludes vehicles with neither a due date nor a due-km set', async () => {
+    const card = makeCard({ nextServiceDueDate: null, nextServiceDueKm: null })
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([card])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listVehiclesDueForService()
+
+    expect((res as { data: unknown[] }).data).toHaveLength(0)
+  })
+
+  it('excludes CANCELLED job cards from the query entirely', async () => {
+    const db = makeMockDb()
+    db.carJobCard.findMany = vi.fn().mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await listVehiclesDueForService()
+
+    expect(db.carJobCard.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { not: 'CANCELLED' } },
+    }))
+  })
+})
+
+describe('car-job-card.service.scheduleNextServiceReminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a missing job card', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleNextServiceReminder('missing')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CJC-007')
+  })
+
+  it('rejects when no nextServiceDueDate is set', async () => {
+    const db = makeMockDb(makeCard({ nextServiceDueDate: null, client: { customerName: 'Test', phone: '9999999999' } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleNextServiceReminder('cjc-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CJC-008')
+  })
+
+  it('succeeds with no queued reminder (not an error) when the client has no phone on file', async () => {
+    const futureDate = new Date(Date.now() + 30 * 86400000)
+    const db = makeMockDb(makeCard({ nextServiceDueDate: futureDate, client: { customerName: 'Test', phone: null } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleNextServiceReminder('cjc-1')
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown }).data).toBeNull()
+  })
+
+  it('rejects when daysBefore would schedule the reminder in the past (due date too close)', async () => {
+    const tomorrow = new Date(Date.now() + 1 * 86400000)
+    const db = makeMockDb(makeCard({ nextServiceDueDate: tomorrow, client: { customerName: 'Test', phone: '9999999999' } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleNextServiceReminder('cjc-1', 3) // 3 days before a due date that's only 1 day away
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CJC-009')
+  })
+
+  it('schedules a real notificationQueue entry exactly daysBefore the due date', async () => {
+    const dueDate = new Date(Date.now() + 30 * 86400000)
+    const db = makeMockDb(makeCard({ nextServiceDueDate: dueDate, client: { customerName: 'Test', phone: '9999999999' } }))
+    db.notificationQueue = { create: vi.fn().mockResolvedValue({}) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleNextServiceReminder('cjc-1', 3)
+
+    expect(res.success).toBe(true)
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'CAR_SERVICE_DUE_REMINDER', status: 'PENDING' }),
+    }))
+    const scheduledFor = db.notificationQueue.create.mock.calls[0][0].data.scheduledFor as Date
+    expect(dueDate.getTime() - scheduledFor.getTime()).toBe(3 * 86400000)
   })
 })

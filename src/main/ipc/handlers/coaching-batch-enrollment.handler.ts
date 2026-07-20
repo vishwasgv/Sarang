@@ -5,6 +5,7 @@ import {
   createEnrollment,
   updateEnrollment,
   deleteEnrollment,
+  promoteFromWaitlist,
 } from '../../services/coaching-batch-enrollment.service'
 import { CreateEnrollmentSchema, UpdateEnrollmentSchema, EnrollmentIdSchema } from '../../validation/coaching-batch-enrollment.validation'
 
@@ -42,5 +43,12 @@ export function register(handle: HandleFn): void {
     const parsed = EnrollmentIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteEnrollment(parsed.data.id)
+  })
+
+  handle('enrollment:promoteFromWaitlist', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = EnrollmentIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return promoteFromWaitlist(parsed.data.id)
   })
 }

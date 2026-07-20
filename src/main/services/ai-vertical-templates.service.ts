@@ -307,7 +307,14 @@ export async function executeVerticalTemplate(template: string, params: Record<s
     }
     case 'service.projects': {
       const { dateFrom, dateTo } = thisMonthRange(params)
-      const r = await reportService.generateProjectReport({ dateFrom, dateTo })
+      // PROJECT_BASED_TYPES includes SERVICE/CONSULTANT (legacy `Project`
+      // model) alongside the true ServiceProject-using verticals, but this
+      // capability has only ever queried ServiceProject data (see the real
+      // bug fix note on generateServiceProjectReport in report.service.ts) —
+      // kept as-is here (no behavior change) since giving SERVICE/CONSULTANT
+      // their own AI project capability is tracked separately as part of
+      // modernizing that legacy family (PHASE_58 plan §1).
+      const r = await reportService.generateServiceProjectReport({ dateFrom, dateTo })
       return {
         headline: `${r.summary.totalProjects} projects this period, ${r.summary.active} active`,
         details: [`Completed: ${r.summary.completed}`, `On hold: ${r.summary.onHold}`, `Total contract value: ${formatAmountForSpeech(r.summary.totalContractValue, sym)}`],

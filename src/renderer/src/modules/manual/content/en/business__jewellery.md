@@ -22,9 +22,15 @@ Open **Metal Rates** in the sidebar to set today's rate per gram for each metal-
 
 At billing time, adding a jewellery item to the cart looks up its metal type and purity's current rate, computes metal value (net weight × rate), adds the making charge, and uses that as the line's unit price. If no rate has been set yet for that item's metal/purity combination, Sarang will not let you bill it at zero — you'll be prompted to set today's rate first.
 
+Need to negotiate the making charge for one particular sale without changing the product's own configured rate? Edit it directly on the cart line — the line's price recomputes immediately, and an overridden line is visually flagged so it's obvious at a glance that it's not using the standard charge.
+
+If the item has a **hallmark/HUID number** recorded on the product, it's captured on the sale and printed on the invoice automatically.
+
 ## Old-metal exchange
 
-Open **Old-Metal Exchange** to record a customer trading in old gold or silver against a new purchase. Enter the gross weight, a deduction weight (for any non-metal content), metal type, and purity — Sarang looks up today's rate for that combination and calculates the value to give the customer (net weight × rate). This is standalone record-keeping: the computed value isn't wired automatically into an invoice. Staff apply it manually as a discount on the customer's new-purchase invoice, then link the exchange record back to that invoice afterward so the two stay connected for your records.
+Open **Old-Metal Exchange** to record a customer trading in old gold or silver against a new purchase. Enter the gross weight, a deduction weight (for any non-metal content), metal type, and purity — Sarang looks up today's rate for that combination and calculates the value to give the customer (net weight × rate).
+
+To use it, click **Apply Old-Metal Exchange** while billing that customer — Sarang shows the credit and folds it straight into the invoice's discount as the sale is created, and marks the exchange as used so it can never accidentally be applied a second time to a different invoice.
 
 ## Returns
 

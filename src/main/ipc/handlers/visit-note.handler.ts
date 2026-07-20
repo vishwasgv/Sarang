@@ -8,12 +8,18 @@ import {
   listVisitNotes,
   referToProvider,
   listReferralsForVisitNote,
+  listPrescriptionItems,
+  savePrescriptionItems,
+  getVitalsTrend,
 } from '../../services/visit-note.service'
 import {
   CreateVisitNoteSchema,
   UpdateVisitNoteSchema,
   FinalizeVisitNoteSchema,
   ReferToProviderSchema,
+  SavePrescriptionItemsSchema,
+  ListPrescriptionItemsSchema,
+  GetVitalsTrendSchema,
 } from '../../validation/visit-note.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -66,5 +72,26 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
     const { visitNoteId } = payload as { visitNoteId: string }
     return listReferralsForVisitNote(visitNoteId)
+  })
+
+  handle('visitNotes:listPrescriptionItems', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
+    const parsed = ListPrescriptionItemsSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listPrescriptionItems(parsed.data.visitNoteId)
+  })
+
+  handle('visitNotes:savePrescriptionItems', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.write'); if (deny) return deny
+    const parsed = SavePrescriptionItemsSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return savePrescriptionItems(parsed.data.visitNoteId, parsed.data.items)
+  })
+
+  handle('visitNotes:getVitalsTrend', async (payload) => {
+    const deny = await requirePermission('clinicalNotes.view'); if (deny) return deny
+    const parsed = GetVitalsTrendSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return getVitalsTrend(parsed.data.appointmentId)
   })
 }

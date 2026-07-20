@@ -4,6 +4,7 @@ import {
   createROCFiling,
   updateROCFiling,
   deleteROCFiling,
+  getComplianceRollup,
 } from '../../services/roc-filing.service'
 import { CreateROCFilingSchema, UpdateROCFilingSchema, ROCFilingIdSchema } from '../../validation/roc-filing.validation'
 
@@ -35,5 +36,12 @@ export function register(handle: HandleFn): void {
     const parsed = ROCFilingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteROCFiling(parsed.data.id)
+  })
+
+  handle('rocFiling:complianceRollup', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const payload = raw as { financialYear: string }
+    if (!payload?.financialYear) return { success: false, error: { code: 'VAL-001', message: 'Financial year is required.' } }
+    return getComplianceRollup(payload.financialYear)
   })
 }

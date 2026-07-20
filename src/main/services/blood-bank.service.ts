@@ -98,15 +98,40 @@ function daysUntil(date: Date): number {
   return Math.ceil((date.getTime() - Date.now()) / 86400000)
 }
 
-// Next-eligible-date is a conservative, single 90-day interval for whole-blood
-// donation recovery (a widely used default) — not a substitute for local
-// regulatory/medical guidance, which can vary by donor sex/component type.
+// Phase 58 §2 — cooldown varying by component type and donor sex, replacing
+// the previous flat 90-day interval. A whole-blood/RBC donation depletes red
+// cells, which take materially longer to replenish than a plasma/platelet
+// apheresis donation (only that component is drawn, cells are returned to
+// the donor) — hence the much shorter platelet/plasma intervals. Female
+// donors get a longer whole-blood/RBC interval than male, reflecting
+// commonly-cited guidance on higher iron-loss risk; this is a documented
+// SIMPLIFICATION of real regulatory guidance (which varies by country/blood
+// bank), not a medical claim — same caveat the original flat-90-days comment
+// already carried, now just applied per-component/sex instead of once.
+const COOLDOWN_DAYS: Record<ComponentType, number> = {
+  WHOLE_BLOOD: 90,
+  PACKED_RBC: 90,
+  PLATELETS: 14,
+  PLASMA: 28,
+  CRYOPRECIPITATE: 28,
+}
+const FEMALE_WHOLE_BLOOD_COOLDOWN_DAYS = 120
+
+function cooldownDaysFor(componentType: ComponentType | null, gender: string | null): number {
+  const base = componentType ? (COOLDOWN_DAYS[componentType] ?? 90) : 90
+  const isWholeBloodOrRbc = componentType === 'WHOLE_BLOOD' || componentType === 'PACKED_RBC' || !componentType
+  if (isWholeBloodOrRbc && gender?.toUpperCase() === 'FEMALE') return FEMALE_WHOLE_BLOOD_COOLDOWN_DAYS
+  return base
+}
+
 // Shared by listDonors/getDonor so every caller gets the same enriched shape
 // — previously only listDonors computed this, so refreshing a donor's detail
 // view via getDonor (e.g. right after marking them deferred) silently lost
 // the field and the UI fell back to a wrong "Now" placeholder.
-function computeNextEligibleDate(lastDonationDate: Date | null): string | null {
-  return lastDonationDate ? new Date(lastDonationDate.getTime() + 90 * 86400000).toISOString() : null
+function computeNextEligibleDate(lastDonationDate: Date | null, componentType: string | null, gender: string | null): string | null {
+  if (!lastDonationDate) return null
+  const days = cooldownDaysFor((componentType as ComponentType) ?? null, gender)
+  return new Date(lastDonationDate.getTime() + days * 86400000).toISOString()
 }
 
 async function nextNumber(tx: TxClient, model: 'donor' | 'donationRecord' | 'bloodIssue', field: string, prefix: string): Promise<string> {
@@ -195,7 +220,7 @@ export async function listDonors(payload?: { bloodGroup?: BloodGroup; search?: s
       db.donor.findMany({ where, skip, take: limit, orderBy: { fullName: 'asc' } }),
       db.donor.count({ where }),
     ])
-    const enriched = donors.map((d) => ({ ...d, nextEligibleDate: computeNextEligibleDate(d.lastDonationDate) }))
+    const enriched = donors.map((d) => ({ ...d, nextEligibleDate: computeNextEligibleDate(d.lastDonationDate, d.lastDonationComponentType, d.gender) }))
     return { success: true, data: { donors: enriched, total } }
   } catch (err) {
     return { success: false, error: { code: 'BB-003', message: err instanceof Error ? err.message : 'Could not list donors.' } }
@@ -207,7 +232,7 @@ export async function getDonor(id: string) {
   try {
     const donor = await db.donor.findUnique({ where: { id }, include: { donations: { orderBy: { collectionDate: 'desc' } } } })
     if (!donor) return { success: false, error: { code: 'BB-004', message: 'Donor not found.' } }
-    return { success: true, data: { ...donor, nextEligibleDate: computeNextEligibleDate(donor.lastDonationDate) } }
+    return { success: true, data: { ...donor, nextEligibleDate: computeNextEligibleDate(donor.lastDonationDate, donor.lastDonationComponentType, donor.gender) } }
   } catch (err) {
     return { success: false, error: { code: 'BB-005', message: err instanceof Error ? err.message : 'Could not load donor.' } }
   }
@@ -407,7 +432,7 @@ export async function updateScreeningStatus(payload: { id: string; screeningStat
             unitCost: 0,
           },
         })
-        await tx.donor.update({ where: { id: record.donorId }, data: { lastDonationDate: record.collectionDate } })
+        await tx.donor.update({ where: { id: record.donorId }, data: { lastDonationDate: record.collectionDate, lastDonationComponentType: record.componentType } })
         return tx.donationRecord.update({
           where: { id: payload.id },
           data: { screeningStatus: 'PASSED', screeningNotes: payload.screeningNotes, productBatchId: batch.id },
@@ -482,6 +507,13 @@ export async function createBloodIssue(payload: {
   purpose?: string
   donationRecordIds: string[]
   price?: number
+  // Phase 58 §2 — the compatibility check now BLOCKS issuance by default
+  // (previously advisory-only, `compatibilityNote` was recorded but nothing
+  // ever stopped an incompatible unit from being issued). An explicit,
+  // documented override is required for the rare legitimate emergency-
+  // release case — never a silent bypass.
+  overrideIncompatibility?: boolean
+  overrideReason?: string
 }, userId?: string) {
   const db = getPrisma()
   try {
@@ -496,12 +528,30 @@ export async function createBloodIssue(payload: {
         include: { productBatch: true },
       })
       if (donationRecords.length !== payload.donationRecordIds.length) {
-        throw new Error('One or more selected units could not be found.')
+        throw { code: 'BB-021B', message: 'One or more selected units could not be found.' }
       }
       for (const r of donationRecords) {
         if (r.screeningStatus !== 'PASSED' || r.isIssued || !r.productBatch || r.productBatch.quantityRemaining <= 0) {
-          throw new Error(`Unit ${r.donationNumber} is not available to issue.`)
+          throw { code: 'BB-021C', message: `Unit ${r.donationNumber} is not available to issue.` }
         }
+      }
+
+      const compatResults = payload.recipientBloodGroup
+        ? donationRecords.map((r) => ({
+            r,
+            compat: checkCompatibility(payload.recipientBloodGroup!, r.bloodGroup as BloodGroup, r.componentType as ComponentType),
+          }))
+        : donationRecords.map((r) => ({ r, compat: null }))
+
+      const incompatible = compatResults.filter((x) => x.compat && !x.compat.compatible)
+      if (incompatible.length > 0 && !payload.overrideIncompatibility) {
+        throw {
+          code: 'BB-023',
+          message: `Blocked: ${incompatible.length} incompatible unit(s) selected (${incompatible.map((x) => x.r.donationNumber).join(', ')}). This can only proceed with a documented emergency-release override.`,
+        }
+      }
+      if (incompatible.length > 0 && !payload.overrideReason?.trim()) {
+        throw { code: 'BB-024', message: 'A documented reason is required to override an incompatibility block.' }
       }
 
       const issueNumber = await nextNumber(tx, 'bloodIssue', 'issueNumber', 'BLD')
@@ -516,16 +566,15 @@ export async function createBloodIssue(payload: {
           issuedById: userId,
           createdBy: userId ?? 'system',
           items: {
-            create: donationRecords.map((r) => {
-              const compat = payload.recipientBloodGroup
-                ? checkCompatibility(payload.recipientBloodGroup, r.bloodGroup as BloodGroup, r.componentType as ComponentType)
-                : null
+            create: compatResults.map(({ r, compat }) => {
+              const overridden = compat && !compat.compatible
               return {
                 donationRecordId: r.id,
                 bloodGroup: r.bloodGroup,
                 componentType: r.componentType,
                 price,
-                compatibilityNote: compat?.note,
+                compatibilityNote: overridden ? `${compat!.note} Issued on emergency-release override.` : compat?.note,
+                overrideReason: overridden ? payload.overrideReason!.trim() : null,
               }
             }),
           },
@@ -542,8 +591,14 @@ export async function createBloodIssue(payload: {
     })
 
     await logAction(userId, 'BLOOD_ISSUE_CREATED', 'BloodIssue', issue.id, undefined, { issueNumber: issue.issueNumber })
+    if (issue.items.some((i) => i.overrideReason)) {
+      await logAction(userId, 'BLOOD_ISSUE_INCOMPATIBLE_OVERRIDE', 'BloodIssue', issue.id, undefined, { issueNumber: issue.issueNumber, overrideReason: payload.overrideReason })
+    }
     return { success: true, data: issue }
   } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && 'message' in err) {
+      return { success: false, error: err as { code: string; message: string } }
+    }
     return { success: false, error: { code: 'BB-022', message: err instanceof Error ? err.message : 'Could not issue blood units.' } }
   }
 }

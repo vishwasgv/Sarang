@@ -33,6 +33,17 @@ interface Movement {
   createdAt: string
 }
 
+// Phase 58 §2 — raw-material lot/batch traceability
+interface RawMaterialBatch {
+  id: string
+  batchNumber: string
+  receivedDate: string
+  quantityReceived: number
+  quantityRemaining: number
+  unitCost: number
+  supplierName: string | null
+}
+
 const UNITS = ['kg', 'g', 'litre', 'ml', 'piece', 'box', 'bag', 'metre', 'roll', 'ton']
 
 // tKey only — covers every movement type this screen creates (PURCHASE/
@@ -79,6 +90,13 @@ export function RawMaterialsScreen() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<RawMaterial | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Phase 58 §2 — raw-material lot/batch traceability
+  const [batchTarget, setBatchTarget] = useState<RawMaterial | null>(null)
+  const [batches, setBatches] = useState<RawMaterialBatch[]>([])
+  const [batchesLoading, setBatchesLoading] = useState(false)
+  const [newBatchForm, setNewBatchForm] = useState({ batchNumber: '', quantity: '', unitCost: '' })
+  const [receivingBatch, setReceivingBatch] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -190,6 +208,39 @@ export function RawMaterialsScreen() {
     setMovementsLoading(false)
   }
 
+  // Phase 58 §2 — raw-material lot/batch traceability
+  async function openBatches(m: RawMaterial) {
+    setBatchTarget(m)
+    setNewBatchForm({ batchNumber: '', quantity: '', unitCost: '' })
+    setBatchesLoading(true)
+    const res = await api.rawMaterials.listBatches({ rawMaterialId: m.id })
+    if (res.success && res.data) setBatches(res.data as RawMaterialBatch[])
+    setBatchesLoading(false)
+  }
+
+  async function handleReceiveBatch() {
+    if (!batchTarget) return
+    if (!newBatchForm.batchNumber.trim()) { toastError(t('common.error'), t('manufacturing.batchNumber')); return }
+    const qty = parseFloat(newBatchForm.quantity)
+    if (!qty || qty <= 0) { toastError(t('common.error'), t('common.enterValidQty')); return }
+    setReceivingBatch(true)
+    const res = await api.rawMaterials.receiveBatch({
+      rawMaterialId: batchTarget.id,
+      batchNumber: newBatchForm.batchNumber.trim(),
+      quantity: qty,
+      unitCost: newBatchForm.unitCost ? parseFloat(newBatchForm.unitCost) : undefined
+    })
+    setReceivingBatch(false)
+    if (res.success) {
+      toastSuccess(t('manufacturing.batchReceived'))
+      setNewBatchForm({ batchNumber: '', quantity: '', unitCost: '' })
+      openBatches(batchTarget)
+      loadData()
+    } else {
+      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    }
+  }
+
   const lowStockCount = materials.filter(m => m.isLowStock).length
   const totalStockValue = materials.reduce((sum, m) => sum + m.currentStock * m.unitCost, 0)
 
@@ -283,6 +334,7 @@ export function RawMaterialsScreen() {
                     <td className="px-4 py-3 text-text-secondary">{m.supplierName ?? '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => openBatches(m)} className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors border border-border" title="Lots / Batches">{t('manufacturing.receiveBatch')}</button>
                         <button onClick={() => openMovements(m)} className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors border border-border" title="Movement History">{t('manufacturing.movementHistory')}</button>
                         <button onClick={() => openAdjust(m)} className="px-3 py-1.5 rounded-lg text-xs text-brand hover:bg-brand/5 transition-colors border border-brand/30" title="Adjust Stock">{t('manufacturing.adjustStock')}</button>
                         <button onClick={() => openEdit(m)} className="px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors border border-border">{t('common.edit')}</button>
@@ -477,6 +529,81 @@ export function RawMaterialsScreen() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 58 §2 — Lots / Batches modal (raw-material lot/batch traceability) */}
+      {batchTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
+              <div>
+                <h2 className="text-lg font-semibold text-text-primary">{t('manufacturing.receiveBatchTitle')}</h2>
+                <p className="text-sm text-text-secondary">{batchTarget.name}</p>
+              </div>
+              <button onClick={() => setBatchTarget(null)} className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4 border-b border-border shrink-0">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.batchNumber')}</label>
+                  <input
+                    value={newBatchForm.batchNumber}
+                    onChange={e => setNewBatchForm(p => ({ ...p, batchNumber: e.target.value }))}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="e.g. LOT-2026-01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.quantity')}</label>
+                  <input
+                    type="number" min="0" step="0.001"
+                    value={newBatchForm.quantity}
+                    onChange={e => setNewBatchForm(p => ({ ...p, quantity: e.target.value }))}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.unitCost')} ({t('common.optional')})</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={newBatchForm.unitCost}
+                    onChange={e => setNewBatchForm(p => ({ ...p, unitCost: e.target.value }))}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    placeholder={String(batchTarget.unitCost)}
+                  />
+                </div>
+              </div>
+              <button onClick={handleReceiveBatch} disabled={receivingBatch} className="w-full h-11 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-hover disabled:opacity-50 transition-colors">
+                {receivingBatch ? t('cashClose.saving') : t('manufacturing.receiveBatch')}
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              {batchesLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : batches.length === 0 ? (
+                <p className="text-center text-text-secondary py-10">{t('manufacturing.noBatchesYet')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {batches.map(b => (
+                    <div key={b.id} className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
+                      <div>
+                        <p className="text-sm font-mono font-semibold text-text-primary">{b.batchNumber}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">{formatDateTime(b.receivedDate)}{b.supplierName ? ` · ${b.supplierName}` : ''}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-text-primary">{t('manufacturing.remainingQty')}: {formatNumber(b.quantityRemaining, { maximumFractionDigits: 3 })}</p>
+                        <p className="text-xs text-text-secondary">{t('manufacturing.quantity')}: {formatNumber(b.quantityReceived, { maximumFractionDigits: 3 })}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -41,8 +41,20 @@ export const CheckInMemberSchema = z.object({
   membershipId: z.string().min(1, 'Membership ID is required'),
 })
 
+// Phase 58 §2 — Gym/Studio: real freeze/resume date math (endDate push-out).
+export const FreezeMembershipSchema = z.object({
+  id: z.string().min(1, 'Membership ID is required'),
+  reason: z.string().max(500).optional(),
+})
+
+export const ResumeMembershipSchema = z.object({
+  id: z.string().min(1, 'Membership ID is required'),
+})
+
 export type CreateMembershipPlanPayload = z.infer<typeof CreateMembershipPlanSchema>
 export type UpdateMembershipPlanPayload = z.infer<typeof UpdateMembershipPlanSchema>
 export type CreateMembershipPayload = z.infer<typeof CreateMembershipSchema>
 export type UpdateMembershipPayload = z.infer<typeof UpdateMembershipSchema>
 export type CheckInMemberPayload = z.infer<typeof CheckInMemberSchema>
+export type FreezeMembershipPayload = z.infer<typeof FreezeMembershipSchema>
+export type ResumeMembershipPayload = z.infer<typeof ResumeMembershipSchema>

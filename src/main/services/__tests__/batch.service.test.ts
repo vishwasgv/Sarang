@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock } from '../batch.service'
+
+vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
+
+import { getPrisma } from '../../database/db'
+import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock, getExpiryAlerts } from '../batch.service'
 
 const DAY = 24 * 60 * 60 * 1000
 const now = new Date()
@@ -98,5 +102,83 @@ describe('hasEnoughNonExpiredBatchStock', () => {
       { id: 'b-fresh', quantityRemaining: 3, expiryDate: notExpiredSoon }
     ])
     expect(await hasEnoughNonExpiredBatchStock(tx as never, 'prod-1', 5)).toBe(false)
+  })
+})
+
+describe('getExpiryAlerts — Phase 58 §2 per-product expiry alert lead time', () => {
+  function makeBatch(overrides: Partial<{
+    id: string; productId: string; expiryDate: Date; quantityRemaining: number
+    isActive: boolean; expiryAlertLeadDays: number | null
+  }> = {}) {
+    return {
+      id: overrides.id ?? 'batch-1',
+      productId: overrides.productId ?? 'prod-1',
+      batchNumber: 'B-1',
+      mfgDate: null,
+      expiryDate: overrides.expiryDate ?? notExpiredSoon,
+      quantityReceived: 100,
+      quantityRemaining: overrides.quantityRemaining ?? 100,
+      unitCost: 0,
+      supplierId: null,
+      isActive: overrides.isActive ?? true,
+      createdAt: now,
+      product: { productName: 'Widget', expiryAlertLeadDays: overrides.expiryAlertLeadDays ?? null },
+      supplier: null,
+    }
+  }
+
+  function makeMockDb(batches: ReturnType<typeof makeBatch>[]) {
+    return {
+      productBatch: {
+        findMany: vi.fn(async ({ where }: { where: { isActive: boolean; quantityRemaining: { gt: number } } }) =>
+          batches.filter(b => b.isActive === where.isActive && b.quantityRemaining > where.quantityRemaining.gt)
+        ),
+      },
+    }
+  }
+
+  it('uses the generic 30-day default when a product has no override', async () => {
+    // 45 days out — outside the 30-day default, so NOT flagged as expiring.
+    const farOut = new Date(now.getTime() + 45 * DAY)
+    const db = makeMockDb([makeBatch({ id: 'b-1', expiryDate: farOut, expiryAlertLeadDays: null })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getExpiryAlerts()
+    expect(res.data?.expiring).toHaveLength(0)
+  })
+
+  it('flags a batch as expiring using its OWN product-specific lead time, even far outside the generic default', async () => {
+    // 45 days out — would be invisible under the generic 30-day window, but
+    // this product has a 60-day lead time configured (e.g. seeds).
+    const farOut = new Date(now.getTime() + 45 * DAY)
+    const db = makeMockDb([makeBatch({ id: 'b-seed', expiryDate: farOut, expiryAlertLeadDays: 60 })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getExpiryAlerts()
+    expect(res.data?.expiring).toHaveLength(1)
+    expect(res.data?.expiring[0].id).toBe('b-seed')
+    expect(res.data?.expiring[0].expiryAlertLeadDays).toBe(60)
+  })
+
+  it('two products with different lead times are bucketed independently from the same query', async () => {
+    const in45Days = new Date(now.getTime() + 45 * DAY)
+    const db = makeMockDb([
+      makeBatch({ id: 'b-generic', expiryDate: in45Days, expiryAlertLeadDays: null }), // 30-day default -> NOT expiring
+      makeBatch({ id: 'b-seed', expiryDate: in45Days, expiryAlertLeadDays: 60 }),      // 60-day lead -> expiring
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getExpiryAlerts()
+    const ids = res.data?.expiring.map(b => b.id)
+    expect(ids).toEqual(['b-seed'])
+  })
+
+  it('an already-past expiry date is always "expired", regardless of lead time', async () => {
+    const db = makeMockDb([makeBatch({ id: 'b-old', expiryDate: expired, expiryAlertLeadDays: 180 })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getExpiryAlerts()
+    expect(res.data?.expired).toHaveLength(1)
+    expect(res.data?.expiring).toHaveLength(0)
   })
 })

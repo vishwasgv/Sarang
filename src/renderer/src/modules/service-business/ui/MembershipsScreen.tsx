@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Users, CheckCircle, AlertTriangle, Search, UserCheck, RefreshCw, X, Receipt } from 'lucide-react'
+import { Plus, Users, CheckCircle, AlertTriangle, Search, UserCheck, RefreshCw, X, Receipt, Clock, History } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Card } from '@shared/ui/molecules/Card'
@@ -41,6 +41,20 @@ interface Customer {
   phone: string | null
 }
 
+interface ExpiringMembership {
+  id: string
+  endDate: string
+  client: { id: string; customerName: string; phone: string | null }
+  plan: { id: string; planName: string }
+}
+
+interface AttendanceRecord {
+  id: string
+  checkInTime: string
+  checkOutTime: string | null
+  client: { id: string; customerName: string }
+}
+
 const STATUS_VARIANT: Record<string, 'success' | 'info' | 'neutral' | 'danger'> = {
   ACTIVE: 'success',
   FROZEN: 'info',
@@ -65,7 +79,7 @@ function daysLeft(endDate: string) {
 
 export function MembershipsScreen() {
   const { error: toastError } = useNotificationStore()
-  const [tab, setTab] = useState<'memberships' | 'plans' | 'checkin'>('memberships')
+  const [tab, setTab] = useState<'memberships' | 'plans' | 'checkin' | 'expiring'>('memberships')
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [plans, setPlans] = useState<MembershipPlan[]>([])
   const [statusFilter, setStatusFilter] = useState('ACTIVE')
@@ -76,6 +90,9 @@ export function MembershipsScreen() {
 
   // New membership form
   const [showNewMembership, setShowNewMembership] = useState(false)
+  const [freezeTarget, setFreezeTarget] = useState<string | null>(null)
+  const [freezeReason, setFreezeReason] = useState('')
+  const [freezing, setFreezing] = useState(false)
   const [newForm, setNewForm] = useState({ planId: '', startDate: new Date().toISOString().slice(0, 10), paymentStatus: 'PENDING', notes: '' })
   const [pickedClient, setPickedClient] = useState<Customer | null>(null)
   const [saving, setSaving] = useState(false)
@@ -96,6 +113,16 @@ export function MembershipsScreen() {
   // Invoice generation
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [generatingId, setGeneratingId] = useState<string | null>(null)
+
+  // Expiring memberships (Phase 58 §1 — was a dead backend function with no UI)
+  const [expiring, setExpiring] = useState<ExpiringMembership[]>([])
+  const [loadingExpiring, setLoadingExpiring] = useState(false)
+  const [expiringDays, setExpiringDays] = useState(30)
+
+  // Per-member attendance history (Phase 58 §1 — was a dead backend function with no UI)
+  const [attendanceMembership, setAttendanceMembership] = useState<Membership | null>(null)
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
 
   const loadMemberships = useCallback(async () => {
     setLoading(true)
@@ -138,11 +165,42 @@ export function MembershipsScreen() {
     }
   }, [toastError])
 
+  const loadExpiring = useCallback(async () => {
+    setLoadingExpiring(true)
+    try {
+      const res = await api.membership.expiring({ daysAhead: expiringDays })
+      if (res.success) setExpiring(res.data as ExpiringMembership[])
+      else toastError('Error', res.error?.message ?? 'Could not load expiring memberships.')
+    } catch {
+      toastError('Error', 'Could not load expiring memberships.')
+    } finally {
+      setLoadingExpiring(false)
+    }
+  }, [expiringDays, toastError])
+
   useEffect(() => {
     loadMemberships()
     loadPlans()
     loadMembershipCounts()
   }, [loadMemberships, loadPlans, loadMembershipCounts])
+
+  useEffect(() => {
+    if (tab === 'expiring') loadExpiring()
+  }, [tab, loadExpiring])
+
+  async function openAttendance(membership: Membership) {
+    setAttendanceMembership(membership)
+    setLoadingAttendance(true)
+    try {
+      const res = await api.membership.attendance({ membershipId: membership.id })
+      if (res.success) setAttendanceRecords(res.data as AttendanceRecord[])
+      else toastError('Error', res.error?.message ?? 'Could not load attendance history.')
+    } catch {
+      toastError('Error', 'Could not load attendance history.')
+    } finally {
+      setLoadingAttendance(false)
+    }
+  }
 
   function openNewMembership() {
     setShowNewMembership(true)
@@ -191,6 +249,44 @@ export function MembershipsScreen() {
       }
     } catch {
       toastError('Error', 'Could not update membership status.')
+    }
+  }
+
+  function openFreezeModal(id: string) {
+    setFreezeTarget(id)
+    setFreezeReason('')
+  }
+
+  async function handleFreeze() {
+    if (!freezeTarget) return
+    setFreezing(true)
+    try {
+      const res = await api.membership.freeze({ id: freezeTarget, reason: freezeReason.trim() || undefined })
+      if (res.success) {
+        setFreezeTarget(null)
+        loadMemberships()
+        loadMembershipCounts()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not freeze membership.')
+      }
+    } catch {
+      toastError('Error', 'Could not freeze membership.')
+    } finally {
+      setFreezing(false)
+    }
+  }
+
+  async function handleResume(id: string) {
+    try {
+      const res = await api.membership.resume({ id })
+      if (res.success) {
+        loadMemberships()
+        loadMembershipCounts()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not resume membership.')
+      }
+    } catch {
+      toastError('Error', 'Could not resume membership.')
     }
   }
 
@@ -319,6 +415,7 @@ export function MembershipsScreen() {
           { id: 'memberships', label: 'All Memberships' },
           { id: 'plans', label: 'Plans' },
           { id: 'checkin', label: 'Quick Check-In' },
+          { id: 'expiring', label: 'Expiring Soon' },
         ]}
         active={tab}
         onChange={setTab}
@@ -398,19 +495,21 @@ export function MembershipsScreen() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => openAttendance(m)}
+                              title="Attendance history"
+                              className="p-1.5 text-muted-foreground hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
+                            >
+                              <History size={14} />
+                            </button>
                             {m.status === 'ACTIVE' && (
-                              <select
-                                defaultValue=""
-                                onChange={(e) => { if (e.target.value) handleStatusChange(m.id, e.target.value); e.target.value = '' }}
-                                className="text-xs h-8 border border-border rounded-lg px-2 bg-card text-foreground"
-                              >
-                                <option value="">Change Status</option>
-                                <option value="FROZEN">Freeze</option>
-                                <option value="CANCELLED">Cancel</option>
-                              </select>
+                              <>
+                                <button onClick={() => openFreezeModal(m.id)} className="text-xs text-info border border-info/30 rounded-lg px-2 py-1">Freeze</button>
+                                <button onClick={() => handleStatusChange(m.id, 'CANCELLED')} className="text-xs text-danger border border-danger/30 rounded-lg px-2 py-1">Cancel</button>
+                              </>
                             )}
                             {m.status === 'FROZEN' && (
-                              <button onClick={() => handleStatusChange(m.id, 'ACTIVE')} className="text-xs text-info border border-info/30 rounded-lg px-2 py-1">Unfreeze</button>
+                              <button onClick={() => handleResume(m.id)} className="text-xs text-info border border-info/30 rounded-lg px-2 py-1">Resume</button>
                             )}
                             {m.invoiceId ? (
                               <span className="text-xs text-success font-medium px-1">Invoiced</span>
@@ -514,6 +613,63 @@ export function MembershipsScreen() {
         </div>
       )}
 
+      {/* Expiring Soon Tab */}
+      {tab === 'expiring' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Select label="Show expiring within" value={String(expiringDays)} onChange={(e) => setExpiringDays(Number(e.target.value))}>
+              <option value="7">Next 7 days</option>
+              <option value="14">Next 14 days</option>
+              <option value="30">Next 30 days</option>
+              <option value="60">Next 60 days</option>
+            </Select>
+            <button onClick={loadExpiring} className="h-10 w-10 flex items-center justify-center rounded-xl border border-border hover:bg-muted/50 text-muted-foreground">
+              <RefreshCw size={16} />
+            </button>
+          </div>
+
+          <Card padding="none" className="overflow-hidden">
+            {loadingExpiring ? (
+              <div className="p-12 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : expiring.length === 0 ? (
+              <div className="p-12 text-center">
+                <Clock size={32} className="mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground">No memberships expiring in this window.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/20">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Member</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Plan</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Expires On</th>
+                    <th className="text-center px-4 py-3 font-medium text-muted-foreground">Days Left</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expiring.map((m) => {
+                    const days = daysLeft(m.endDate)
+                    return (
+                      <tr key={m.id} className="border-b border-border/50 hover:bg-muted/20">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{m.client.customerName}</p>
+                          {m.client.phone && <p className="text-xs text-muted-foreground">{m.client.phone}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-foreground">{m.plan.planName}</td>
+                        <td className="px-4 py-3 text-foreground">{formatDate(m.endDate)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={cn('text-xs font-semibold', days <= 7 ? 'text-danger' : 'text-warning')}>{days} days</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* New Membership Modal */}
       {showNewMembership && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -547,6 +703,29 @@ export function MembershipsScreen() {
               <button onClick={() => setShowNewMembership(false)} className="flex-1 h-11 rounded-xl border border-border text-sm text-foreground hover:bg-muted/50">Cancel</button>
               <button onClick={handleCreateMembership} disabled={saving} className="flex-1 h-11 bg-primary text-primary-foreground rounded-xl text-sm font-medium disabled:opacity-50">
                 {saving ? 'Creating...' : 'Create Membership'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Freeze Membership Modal */}
+      {freezeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Freeze Membership</h2>
+              <button onClick={() => setFreezeTarget(null)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-muted-foreground">The member's remaining time is preserved — resuming later pushes their expiry date out by exactly how many days it stayed frozen.</p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Reason (optional)</label>
+              <textarea value={freezeReason} onChange={(e) => setFreezeReason(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm resize-none" placeholder="e.g. Traveling, injury..." />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setFreezeTarget(null)} className="flex-1 h-11 rounded-xl border border-border text-sm text-foreground hover:bg-muted/50">Cancel</button>
+              <button onClick={handleFreeze} disabled={freezing} className="flex-1 h-11 bg-info text-white rounded-xl text-sm font-medium disabled:opacity-50">
+                {freezing ? 'Freezing...' : 'Freeze Membership'}
               </button>
             </div>
           </div>
@@ -592,6 +771,41 @@ export function MembershipsScreen() {
                 {planSaving ? 'Saving...' : 'Save Plan'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance History Modal */}
+      {attendanceMembership && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Attendance History</h2>
+                <p className="text-sm text-muted-foreground">{attendanceMembership.client.customerName} · {attendanceMembership.plan.planName}</p>
+              </div>
+              <button onClick={() => { setAttendanceMembership(null); setAttendanceRecords([]) }} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+            </div>
+            {loadingAttendance ? (
+              <p className="text-center text-sm text-muted-foreground py-8">Loading...</p>
+            ) : attendanceRecords.length === 0 ? (
+              <div className="text-center py-8">
+                <History size={28} className="mx-auto mb-2 text-muted-foreground/40" />
+                <p className="text-muted-foreground text-sm">No check-ins recorded yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {attendanceRecords.map((rec) => (
+                  <div key={rec.id} className="flex items-center justify-between px-3 py-2.5 bg-muted/20 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Clock size={13} className="text-muted-foreground" />
+                      <span className="text-sm text-foreground">{new Date(rec.checkInTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{new Date(rec.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

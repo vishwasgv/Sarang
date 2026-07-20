@@ -186,6 +186,28 @@ export async function decrementVariantStockTx(
   })
 }
 
+// Real bug found 2026-07-16: returns.service.ts restored the parent
+// Inventory.quantity total on every return, but never had a counterpart to
+// decrementVariantStockTx to put stock back into the SPECIFIC variant
+// (size/colour) it was sold from — so a returned item's per-variant stock
+// count silently drifted low forever, even though the shared aggregate
+// looked correct. This is the increment mirror of decrementVariantStockTx
+// above; deliberately does NOT touch Inventory.quantity itself (the caller
+// already does that via tx.inventory.upsert, same "parent handled
+// separately" split billing.service.ts's decrement side already uses).
+export async function restoreVariantStockTx(
+  tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
+  variantId: string,
+  quantity: number
+): Promise<void> {
+  const variant = await tx.productVariant.findUnique({ where: { id: variantId } })
+  if (!variant) return
+  await tx.productVariant.update({
+    where: { id: variantId },
+    data: { stockQty: variant.stockQty + quantity }
+  })
+}
+
 function toRecord(v: { id: string; productId: string; product: { productName: string }; size: string | null; color: string | null; sku: string | null; barcode: string | null; additionalPrice: number; stockQty: number; isActive: boolean; createdAt: Date }): VariantRecord {
   return {
     id: v.id,

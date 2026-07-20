@@ -49,4 +49,11 @@ export function register(handle: HandleFn): void {
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return purchaseOrderService.cancelPO(parsed.data.id, parsed.data.reason)
   })
+
+  // Phase 58 §2 — reorder automation. Same trust level as creating a PO
+  // by hand (this only ever produces DRAFT POs, same starting point).
+  handle('purchaseOrders:generateReorderDraftPOs', async () => {
+    const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
+    return purchaseOrderService.generateReorderDraftPOs(getCurrentSession()?.userId)
+  })
 }

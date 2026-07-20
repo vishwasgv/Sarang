@@ -14,6 +14,8 @@ interface DocRecord {
 }
 
 type EntityType = 'INVOICE' | 'PURCHASE_ORDER' | 'CUSTOMER' | 'SUPPLIER' | 'EXPENSE' | 'PRODUCTION_ORDER' | 'DRAWING_REVISION' | 'SITE_VISIT'
+  | 'LEGAL_CASE' | 'COMPLIANCE_TASK' | 'ENGAGEMENT' | 'ROC_FILING' | 'BOARD_MEETING' | 'VISIT_NOTE' | 'TREATMENT_PLAN' | 'LAB_TEST_ORDER' | 'RENTAL_BOOKING_ITEM'
+  | 'APPOINTMENT' | 'CANDIDATE'
 
 function fileIcon(mimeType: string) {
   if (mimeType.startsWith('image/')) return <Image size={14} className="text-purple-400" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, X, Wrench, Car, FileText, ChevronDown, ChevronUp, Receipt, Search } from 'lucide-react'
+import { Plus, Pencil, X, Wrench, Car, FileText, ChevronDown, ChevronUp, Receipt, Search, History, Bell, Gauge } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -47,7 +47,23 @@ interface CarJobCard {
   invoiceId?: string | null
   notes?: string | null
   internalNotes?: string | null
+  nextServiceDueDate?: string | null
+  nextServiceDueKm?: number | null
   createdAt: string
+}
+
+interface DueVehicle {
+  vehicleNumber: string
+  vehicleMake: string
+  vehicleModel: string
+  client: { id: string; customerName: string; phone: string | null }
+  latestJobCardId: string
+  latestJobNumber: string
+  lastKmOut: number | null
+  nextServiceDueDate: string | null
+  nextServiceDueKm: number | null
+  dueForService: boolean
+  overdue: boolean
 }
 
 interface Customer { id: string; customerName: string; phone: string | null }
@@ -102,6 +118,7 @@ function emptyForm() {
     serviceItems: [] as ServiceItem[], partsItems: [] as PartItem[],
     estimatedDelivery: '', notes: '', internalNotes: '', status: 'RECEIVED',
     kmOut: '', deliveredDate: '',
+    nextServiceDueDate: '', nextServiceDueKm: '',
   }
 }
 
@@ -127,6 +144,54 @@ export default function CarJobCardsScreen() {
   const [partResults, setPartResults] = useState<InventoryProduct[]>([])
   const [deleteTarget, setDeleteTarget] = useState<CarJobCard | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Vehicles view (Phase 58 §2)
+  const [view, setView] = useState<'jobs' | 'vehicles'>('jobs')
+  const [dueVehicles, setDueVehicles] = useState<DueVehicle[]>([])
+  const [dueVehiclesLoading, setDueVehiclesLoading] = useState(false)
+  const [historyVehicle, setHistoryVehicle] = useState<string | null>(null)
+  const [vehicleHistory, setVehicleHistory] = useState<CarJobCard[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [reminderBanners, setReminderBanners] = useState<Record<string, { ok: boolean; msg: string }>>({})
+  const [reminderSending, setReminderSending] = useState<string | null>(null)
+
+  const loadDueVehicles = useCallback(async () => {
+    setDueVehiclesLoading(true)
+    try {
+      const res = await api.carJobCard.vehiclesDueForService({ dueSoonDays: 14 })
+      if (res.success) setDueVehicles(res.data as DueVehicle[])
+    } finally {
+      setDueVehiclesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'vehicles') loadDueVehicles()
+  }, [view, loadDueVehicles])
+
+  async function openVehicleHistory(vehicleNumber: string) {
+    setHistoryVehicle(vehicleNumber)
+    setHistoryLoading(true)
+    try {
+      const res = await api.carJobCard.vehicleHistory({ vehicleNumber })
+      if (res.success) setVehicleHistory(res.data as CarJobCard[])
+      else setVehicleHistory([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  async function handleSendReminder(jobCardId: string) {
+    setReminderSending(jobCardId)
+    setReminderBanners(prev => { const n = { ...prev }; delete n[jobCardId]; return n })
+    const res = await api.carJobCard.scheduleServiceReminder({ jobCardId })
+    setReminderSending(null)
+    if (res.success) {
+      setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: true, msg: 'Reminder scheduled.' } }))
+    } else {
+      setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: false, msg: res.error?.message ?? 'Could not schedule reminder.' } }))
+    }
+  }
 
   // Debounced inventory search for linking a part to a real Product, same
   // pattern BulkOrderScreen uses for its product picker.
@@ -206,6 +271,8 @@ export default function CarJobCardsScreen() {
       notes: card.notes ?? '',
       internalNotes: card.internalNotes ?? '',
       status: card.status,
+      nextServiceDueDate: dateSlice(card.nextServiceDueDate),
+      nextServiceDueKm: card.nextServiceDueKm != null ? String(card.nextServiceDueKm) : '',
     })
     setFormError('')
     setShowForm(true)
@@ -236,6 +303,8 @@ export default function CarJobCardsScreen() {
       notes: form.notes || undefined,
       internalNotes: form.internalNotes || undefined,
       status: form.status,
+      nextServiceDueDate: form.nextServiceDueDate || undefined,
+      nextServiceDueKm: form.nextServiceDueKm ? parseInt(form.nextServiceDueKm) : undefined,
     }
     const res = editCard
       ? await api.carJobCard.update({ id: editCard.id, ...payload })
@@ -325,6 +394,24 @@ export default function CarJobCardsScreen() {
         </button>
       </div>
 
+      {/* View switcher (Phase 58 §2) */}
+      <div className="px-6 pt-4 flex gap-2">
+        <button
+          onClick={() => setView('jobs')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${view === 'jobs' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 border-gray-300 dark:border-slate-600 hover:border-orange-400'}`}
+        >
+          Job Cards
+        </button>
+        <button
+          onClick={() => setView('vehicles')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1.5 ${view === 'vehicles' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 border-gray-300 dark:border-slate-600 hover:border-orange-400'}`}
+        >
+          <Gauge size={14} /> Vehicles
+        </button>
+      </div>
+
+      {view === 'jobs' ? (
+        <>
       {/* KPI bar */}
       <div className="grid grid-cols-3 gap-4 px-6 py-4">
         <KpiCard label="Active Jobs" value={kpis.active} color="warning" />
@@ -431,6 +518,7 @@ export default function CarJobCardsScreen() {
                           <FileText size={12} /> Invoiced
                         </span>
                       )}
+                      <button onClick={() => openVehicleHistory(card.vehicleNumber)} title="Vehicle service history" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><History size={15} /></button>
                       <button onClick={() => openEdit(card)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"><Pencil size={15} /></button>
                       <button onClick={() => setDeleteTarget(card)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><X size={15} /></button>
                       <button onClick={() => setExpandedId(isExpanded ? null : card.id)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200">
@@ -512,6 +600,113 @@ export default function CarJobCardsScreen() {
           </div>
         )}
       </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-auto px-6 py-4">
+          {/* Vehicles view (Phase 58 §2) — grouped by registration number,
+              not a flat search. Each row is that vehicle's MOST RECENT job
+              card, flagged due-for-service by date or odometer. */}
+          {dueVehiclesLoading ? (
+            <div className="text-center py-20 text-gray-400 dark:text-slate-500">Loading...</div>
+          ) : dueVehicles.length === 0 ? (
+            <div className="text-center py-20 text-gray-400 dark:text-slate-500">
+              <Gauge size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No vehicles have a next-service-due date or odometer set yet.</p>
+              <p className="text-xs mt-1">Set one when delivering a job card to start tracking.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {dueVehicles.map(v => {
+                const banner = reminderBanners[v.latestJobCardId]
+                return (
+                  <Card key={v.vehicleNumber} padding="none" className="overflow-hidden">
+                    <div className="px-5 py-4 flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100">{v.vehicleNumber}</span>
+                          {v.overdue && <Badge variant="danger" size="sm">Overdue</Badge>}
+                          {!v.overdue && v.dueForService && <Badge variant="warning" size="sm">Due Soon</Badge>}
+                        </div>
+                        <div className="text-sm text-gray-700 dark:text-slate-300 mt-1">{v.vehicleMake} {v.vehicleModel}</div>
+                        <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
+                          <span>{v.client.customerName}{v.client.phone ? ` · ${v.client.phone}` : ''}</span>
+                          {v.lastKmOut != null && <span>Last KM Out: {v.lastKmOut}</span>}
+                          {v.nextServiceDueDate && <span>Due: {dateSlice(v.nextServiceDueDate)}</span>}
+                          {v.nextServiceDueKm != null && <span>Due at: {v.nextServiceDueKm} KM</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleSendReminder(v.latestJobCardId)}
+                          disabled={reminderSending === v.latestJobCardId || !v.nextServiceDueDate}
+                          title={v.nextServiceDueDate ? 'Schedule a WhatsApp reminder' : 'Set a next-service-due date first'}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 font-medium flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <Bell size={12} /> {reminderSending === v.latestJobCardId ? 'Scheduling...' : 'Remind'}
+                        </button>
+                        <button
+                          onClick={() => openVehicleHistory(v.vehicleNumber)}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 font-medium flex items-center gap-1"
+                        >
+                          <History size={12} /> History
+                        </button>
+                      </div>
+                    </div>
+                    {banner && (
+                      <div className={`mx-5 mb-3 text-xs rounded-lg px-3 py-2 flex items-center justify-between ${banner.ok ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'}`}>
+                        <span>{banner.msg}</span>
+                        <button onClick={() => setReminderBanners(prev => { const n = { ...prev }; delete n[v.latestJobCardId]; return n })} className="opacity-60 hover:opacity-100"><X size={12} /></button>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vehicle Service History Modal (Phase 58 §2) */}
+      {historyVehicle && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100 font-mono">{historyVehicle}</h2>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Full service history for this vehicle</p>
+              </div>
+              <button onClick={() => { setHistoryVehicle(null); setVehicleHistory([]) }} className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"><X size={18} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {historyLoading ? (
+                <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-8">Loading...</p>
+              ) : vehicleHistory.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-8">No service history found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {vehicleHistory.map(job => {
+                    const total = Number(job.laborTotal) + Number(job.partsTotal)
+                    return (
+                      <div key={job.id} className="border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">{job.jobNumber}</span>
+                          <Badge variant={STATUS_VARIANT[job.status] ?? 'neutral'} size="sm">{STATUS_LABELS[job.status]}</Badge>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
+                          <span>{dateSlice(job.createdAt)}</span>
+                          {job.kmIn != null && <span>KM In: {job.kmIn}</span>}
+                          {job.kmOut != null && <span>KM Out: {job.kmOut}</span>}
+                          {total > 0 && <span className="font-medium text-gray-700 dark:text-slate-300">Total: ₹{total.toFixed(2)}</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Form modal */}
       {showForm && (
@@ -577,6 +772,18 @@ export default function CarJobCardsScreen() {
                   <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                     {[...STATUS_STEPS, 'CANCELLED'].map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </Select>
+                )}
+                {editCard && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Next Service Due (Date)</label>
+                      <input type="date" value={form.nextServiceDueDate} onChange={e => setForm(f => ({ ...f, nextServiceDueDate: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Next Service Due (KM)</label>
+                      <input type="number" value={form.nextServiceDueKm} onChange={e => setForm(f => ({ ...f, nextServiceDueKm: e.target.value }))} placeholder="50000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                    </div>
+                  </>
                 )}
               </div>
 

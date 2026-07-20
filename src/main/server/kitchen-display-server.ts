@@ -42,15 +42,27 @@ export function getKitchenDisplayServerStatus(): { running: boolean; port: numbe
   return { running: servers.length > 0, port: activePort, lanUrls: activePort ? getLanUrls(activePort) : [] }
 }
 
+// Same real bug as qr-order-server.ts (this function was copied from it) —
+// a shown/scanned QR code could silently encode a VirtualBox Host-Only
+// Adapter address (192.168.56.x) instead of the real WiFi/Ethernet LAN
+// address, unreachable from any real phone. See that file's comment for
+// the full writeup. Every address is still returned (server still binds
+// every interface) — only the order changes, which is what lanUrls[0]
+// (the QR/shown URL) actually keys off.
+const VIRTUAL_ADAPTER_NAME_PATTERN = /virtualbox|vmware|hyper-v|vethernet|virtual|wsl|docker|loopback|tailscale|zerotier|tap-|npcap/i
+
 function getLanIPv4Addresses(): string[] {
-  const addresses: string[] = []
+  const real: string[] = []
+  const virtual: string[] = []
   const interfaces = networkInterfaces()
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name] ?? []) {
-      if (iface.family === 'IPv4' && !iface.internal) addresses.push(iface.address)
+      if (iface.family === 'IPv4' && !iface.internal) {
+        (VIRTUAL_ADAPTER_NAME_PATTERN.test(name) ? virtual : real).push(iface.address)
+      }
     }
   }
-  return addresses
+  return [...real, ...virtual]
 }
 
 function getLanUrls(port: number): string[] {

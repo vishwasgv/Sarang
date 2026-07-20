@@ -48,6 +48,7 @@ export const inventoryService = {
         product: {
           select: {
             id: true, productName: true, sku: true, barcode: true, unit: true, isActive: true,
+            sellByPack: true, packUnit: true, unitsPerPack: true,
             category: { select: { id: true, name: true } }
           }
         }
@@ -218,10 +219,17 @@ export const inventoryService = {
           where: { productId: payload.productId },
           data: { quantity: payload.quantity, averageCost: newAvgCost }
         })
+        // A damage/breakage write-off is always a decrease — 'DAMAGE' only
+        // ever replaces the generic 'ADJUSTMENT' bucket for a downward
+        // correction, never an increase (you can't "damage" stock into
+        // existence). Omitting reasonCategory entirely preserves the exact
+        // pre-existing movementType:'ADJUSTMENT' behavior for every caller
+        // that predates this field.
+        const movementType = payload.reasonCategory === 'DAMAGE' && difference < 0 ? 'DAMAGE' : 'ADJUSTMENT'
         await tx.inventoryMovement.create({
           data: {
             productId: payload.productId,
-            movementType: 'ADJUSTMENT',
+            movementType,
             quantity: difference,
             referenceType: 'ADJUSTMENT',
             remarks: payload.reason,

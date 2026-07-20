@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler } from 'lucide-react'
+import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -13,13 +13,20 @@ import { splitTaxLines } from '@shared/utils/tax.util'
 
 interface Product {
   id: string; productName: string; sku?: string | null; barcode?: string | null
-  sellingPrice: number; taxRate: number; unit: string; productType: string
+  sellingPrice: number; mrp?: number | null; taxRate: number; unit: string; productType: string
+  unavailableUntil?: string | null
   inventory?: { quantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
   metalType?: string | null; purity?: string | null; netWeight?: number | null
   makingChargeType?: string | null; makingChargeValue?: number | null
+  hallmarkNumber?: string | null
+  isPrescriptionRequired?: boolean
 }
 interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
+interface HeldSaleSummary {
+  id: string; label: string | null; customerId: string | null; customerName: string | null
+  itemCount: number; totalAmount: number; createdAt: string
+}
 interface VariantRecord {
   id: string; size: string | null; color: string | null; sku: string | null
   additionalPrice: number; stockQty: number
@@ -57,7 +64,13 @@ interface CartItem {
   // this line's unitPrice was actually computed from — snapshotted here so
   // it can be sent through to the invoice record and printed, instead of
   // being discarded the moment the cart line's price is resolved.
-  jewelleryDetail?: { metalType: string; purity: string; netWeight: number; ratePerGram: number; makingCharge: number }
+  jewelleryDetail?: { metalType: string; purity: string; netWeight: number; ratePerGram: number; makingCharge: number; metalValue: number; hallmarkNumber: string | null; makingChargeOverridden?: boolean }
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture, required by
+  // billing.service.ts before this line can be sold when the underlying
+  // product is isPrescriptionRequired.
+  prescriptionPatientName?: string
+  prescriptionDoctorName?: string
+  prescriptionDate?: string
 }
 
 const PAYMENT_METHODS = [
@@ -107,6 +120,7 @@ export function BillingScreen() {
   // real, scannable weight-embedded labels that then can't be scanned back in
   // at checkout. Any of the three turns scanning on.
   const barcodeScanEnabled = isModuleEnabled('barcode_generation') || isModuleEnabled('barcode_printing') || isModuleEnabled('loose_billing')
+  const jewelleryPricingEnabled = isModuleEnabled('jewellery_pricing')
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
 
@@ -114,8 +128,25 @@ export function BillingScreen() {
   const [areaCalc, setAreaCalc] = useState<Record<string, { l: string; w: string; open: boolean }>>({})
 
   const [cart, setCart] = useState<CartItem[]>([])
+  // Phase 58 §2 — tip / service-charge quick-add (no ad-hoc-line concept
+  // exists anywhere in this app; this adds a real lookup-or-create generic
+  // "Tip / Service Charge" Product to the cart with a custom price, same as
+  // any other line item, see billingService.getOrCreateTipProduct).
+  const [showTipModal, setShowTipModal] = useState(false)
+  const [tipAmount, setTipAmount] = useState('')
+  const [addingTip, setAddingTip] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [globalDiscount, setGlobalDiscount] = useState(0)
+  // Phase 58 §2 — Jewellery old-metal exchange, applied atomically via
+  // billing.service.ts's createInvoice (metalExchangeId), replacing the old
+  // "type the same number into globalDiscount, then separately link"
+  // two-step manual process.
+  const [selectedExchange, setSelectedExchange] = useState<{ id: string; exchangeNumber: string; valueGiven: number } | null>(null)
+  // Phase 58 §2 — optional payment due date for CREDIT sales
+  const [dueDate, setDueDate] = useState('')
+  const [showExchangePicker, setShowExchangePicker] = useState(false)
+  const [exchangeSearch, setExchangeSearch] = useState('')
+  const [exchangeResults, setExchangeResults] = useState<Array<{ id: string; exchangeNumber: string; valueGiven: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [notes, setNotes] = useState('')
@@ -143,6 +174,13 @@ export function BillingScreen() {
   const [serialPickProduct, setSerialPickProduct] = useState<Product | null>(null)
   const [serialPickList, setSerialPickList] = useState<SerialRecord[]>([])
 
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture, prompted
+  // before a prescription-required product can be added to the cart at all.
+  const [rxPickProduct, setRxPickProduct] = useState<Product | null>(null)
+  const [rxPatientName, setRxPatientName] = useState('')
+  const [rxDoctorName, setRxDoctorName] = useState('')
+  const [rxDate, setRxDate] = useState('')
+
   // Product search
   const [productQuery, setProductQuery] = useState('')
   const [productResults, setProductResults] = useState<Product[]>([])
@@ -162,7 +200,93 @@ export function BillingScreen() {
   const [quickPhone, setQuickPhone] = useState('')
   const [quickAdding, setQuickAdding] = useState(false)
 
-  const totals = useMemo(() => computeTotals(cart, globalDiscount), [cart, globalDiscount])
+  // Folds a selected metal exchange's credit into the discount used for
+  // on-screen totals/split-payment validation — matches exactly what
+  // billing.service.ts's createInvoice computes server-side (globalDiscount
+  // + the exchange's valueGiven), so what the cashier sees before submit is
+  // what actually gets charged.
+  const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0)
+  const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount), [cart, effectiveGlobalDiscount])
+
+  // Phase 58 §2 — Retail's hold/park-sale. Snapshots only the
+  // fiscal/customer-relevant slice of cart state (the same fields the
+  // existing "Clear All" reset button already zeroes out, see below) — not
+  // presentational UI state like discountMode/areaCalc/split-payment-leg
+  // inputs, which re-derive sensible defaults on resume.
+  const [showHoldModal, setShowHoldModal] = useState(false)
+  const [holdLabel, setHoldLabel] = useState('')
+  const [holding, setHolding] = useState(false)
+  const [showResumeModal, setShowResumeModal] = useState(false)
+  const [heldSales, setHeldSales] = useState<HeldSaleSummary[]>([])
+  const [loadingHeldSales, setLoadingHeldSales] = useState(false)
+  const [resumingId, setResumingId] = useState<string | null>(null)
+  const [frequentProducts, setFrequentProducts] = useState<Product[]>([])
+
+  useEffect(() => {
+    window.api.billing.getFrequentlySoldProducts({ limit: 10 }).then((res) => {
+      if (res.success && res.data) setFrequentProducts((res.data as { products: Product[] }).products)
+    }).catch(() => { /* the grid is a convenience shortcut — the search box always still works */ })
+  }, [])
+
+  async function handleHoldSale() {
+    if (cart.length === 0) { toastError(t('common.error'), t('billing.emptyCartCannotHold')); return }
+    setHolding(true)
+    try {
+      const snapshot = { cart, customer, globalDiscount, paymentMethod, notes, referenceNumber, isInterState, buyerState }
+      const res = await window.api.heldSale.hold({
+        cartJson: JSON.stringify(snapshot), itemCount: cart.length, totalAmount: totals.totalAmount,
+        label: holdLabel.trim() || undefined, customerId: customer?.id,
+      })
+      if (res.success) {
+        toastSuccess(t('billing.holdSaleSuccess'), '')
+        setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber('')
+        setIsInterState(false); setBuyerState('')
+        setShowHoldModal(false); setHoldLabel('')
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } finally {
+      setHolding(false)
+    }
+  }
+
+  async function openResumeModal() {
+    setShowResumeModal(true)
+    setLoadingHeldSales(true)
+    try {
+      const res = await window.api.heldSale.list()
+      if (res.success && res.data) setHeldSales((res.data as { sales: HeldSaleSummary[] }).sales)
+    } finally {
+      setLoadingHeldSales(false)
+    }
+  }
+
+  async function handleResumeSale(id: string) {
+    setResumingId(id)
+    try {
+      const res = await window.api.heldSale.resume({ id })
+      if (res.success && res.data) {
+        const snapshot = JSON.parse((res.data as { cartJson: string }).cartJson) as {
+          cart: CartItem[]; customer: Customer | null; globalDiscount: number; paymentMethod: PaymentMethod
+          notes: string; referenceNumber: string; isInterState: boolean; buyerState: string
+        }
+        setCart(snapshot.cart); setCustomer(snapshot.customer); setGlobalDiscount(snapshot.globalDiscount)
+        setPaymentMethod(snapshot.paymentMethod); setNotes(snapshot.notes); setReferenceNumber(snapshot.referenceNumber)
+        setIsInterState(snapshot.isInterState); setBuyerState(snapshot.buyerState)
+        setShowResumeModal(false)
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } finally {
+      setResumingId(null)
+    }
+  }
+
+  async function handleDeleteHeldSale(id: string) {
+    const res = await window.api.heldSale.delete({ id })
+    if (res.success) setHeldSales((prev) => prev.filter((h) => h.id !== id))
+    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+  }
 
   // Product search with debounce
   useEffect(() => {
@@ -258,6 +382,23 @@ export function BillingScreen() {
   }, [customerQuery])
 
   async function addToCart(product: Product) {
+    // Phase 58 §2 — a product 86'd for today (unavailableUntil in the
+    // future) can't be added to a new sale, same intent as isActive:false,
+    // just self-expiring at midnight instead of a permanent deactivation.
+    if (product.unavailableUntil && new Date(product.unavailableUntil) > new Date()) {
+      toastError(t('billing.unavailableToday'), t('billing.unavailableTodayMessage', { productName: product.productName }))
+      return
+    }
+    // Phase 58 §2 — a Schedule H/H1 item can't be added at all until a
+    // patient + doctor name is captured — server-side billing.service.ts
+    // enforces this too, but prompting here avoids a checkout-time rejection.
+    if (product.isPrescriptionRequired) {
+      setRxPickProduct(product)
+      setRxPatientName(''); setRxDoctorName(''); setRxDate('')
+      setProductQuery('')
+      setProductResults([])
+      return
+    }
     try {
       if (variantTrackingEnabled) {
         const res = await window.api.variants.list({ productId: product.id })
@@ -295,7 +436,41 @@ export function BillingScreen() {
     }
   }
 
-  function addToCartDirect(product: Product, variant?: VariantRecord, serial?: SerialRecord) {
+  async function handleConfirmTip() {
+    const amount = Number(tipAmount)
+    if (!amount || amount <= 0) { toastError(t('common.error'), t('billing.tipAmountInvalid')); return }
+    setAddingTip(true)
+    try {
+      const res = await window.api.billing.getOrCreateTipProduct()
+      if (!res.success) {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        return
+      }
+      const tipProduct = res.data as Product
+      // Always its own new line (not merged into an existing tip line) so a
+      // cashier can add a second tip later in the same order without it
+      // silently summing into one opaque number.
+      setCart(prev => [...prev, {
+        productId: tipProduct.id,
+        productName: tipProduct.productName,
+        unit: tipProduct.unit,
+        productType: tipProduct.productType,
+        quantity: 1,
+        unitPrice: amount,
+        discountAmount: 0,
+        taxRate: tipProduct.taxRate ?? 0,
+        availableQty: 0,
+      }])
+      setShowTipModal(false)
+      setTipAmount('')
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setAddingTip(false)
+    }
+  }
+
+  function addToCartDirect(product: Product, variant?: VariantRecord, serial?: SerialRecord, rxDetail?: { patientName: string; doctorName: string; date?: string }) {
     const variantId = variant?.id
     const variantInfo = variant ? [variant.size, variant.color].filter(Boolean).join(' / ') || undefined : undefined
     const serialId = serial?.id
@@ -324,7 +499,10 @@ export function BillingScreen() {
     // an IPC round-trip to read today's MetalRate.
     const isJewellery = !!product.metalType && product.netWeight != null
     setCart(prev => {
-      const existing = !serialId && !isLoose && !isJewellery && prev.find(i => (i.variantId ?? i.productId) === cartKey)
+      // A prescription line always gets its own new cart entry — never
+      // silently merged into an existing one, since two prescriptions for
+      // the same drug shouldn't be combined into one anonymized quantity.
+      const existing = !serialId && !isLoose && !isJewellery && !rxDetail && prev.find(i => (i.variantId ?? i.productId) === cartKey)
       if (existing) {
         return prev.map(i => (i.variantId ?? i.productId) === cartKey ? { ...i, quantity: i.quantity + 1 } : i)
       }
@@ -343,7 +521,10 @@ export function BillingScreen() {
         serialId,
         serialInfo,
         weightUnit: isLoose ? product.weightUnit! : undefined,
-        isJewellery
+        isJewellery,
+        prescriptionPatientName: rxDetail?.patientName,
+        prescriptionDoctorName: rxDetail?.doctorName,
+        prescriptionDate: rxDetail?.date
       }]
     })
     if (isLoose) {
@@ -361,7 +542,17 @@ export function BillingScreen() {
     setVariantPickList([])
     setSerialPickProduct(null)
     setSerialPickList([])
+    setRxPickProduct(null)
     productSearchRef.current?.focus()
+  }
+
+  function handleConfirmRx() {
+    if (!rxPickProduct) return
+    if (!rxPatientName.trim() || !rxDoctorName.trim()) {
+      toastError(t('common.error'), t('billing.rx.required'))
+      return
+    }
+    addToCartDirect(rxPickProduct, undefined, undefined, { patientName: rxPatientName.trim(), doctorName: rxDoctorName.trim(), date: rxDate || undefined })
   }
 
   // Fresh-audit fix (2026-07-12): resolves which batch billing.service.ts's
@@ -408,12 +599,45 @@ export function BillingScreen() {
       else if (product.makingChargeType === 'PERCENTAGE') makingCharge = metalValue * ((product.makingChargeValue ?? 0) / 100)
       const unitPrice = metalValue + makingCharge
       setCart(prev => prev.map(i => (i.serialId ?? i.variantId ?? i.productId) === cartKey
-        ? { ...i, unitPrice, jewelleryDetail: { metalType: product.metalType!, purity: product.purity!, netWeight, ratePerGram: rate.ratePerGram, makingCharge } }
+        ? {
+            ...i, unitPrice,
+            jewelleryDetail: {
+              metalType: product.metalType!, purity: product.purity!, netWeight, ratePerGram: rate.ratePerGram,
+              makingCharge, metalValue, hallmarkNumber: product.hallmarkNumber ?? null
+            }
+          }
         : i))
     } catch {
       toastError(t('common.error'), t('jewellery.computeErrorDesc'))
     }
   }
+
+  // Phase 58 §2 — Jewellery: override the auto-computed making charge for
+  // this ONE transaction only (e.g. a negotiated discount on labour, or a
+  // repeat-customer waiver) — never mutates the product's own global
+  // makingChargeType/Value config, only this cart line's snapshot.
+  function updateMakingChargeOverride(cartKey: string, newMakingCharge: number) {
+    setCart(prev => prev.map(i => {
+      if ((i.serialId ?? i.variantId ?? i.productId) !== cartKey || !i.jewelleryDetail) return i
+      const makingCharge = Math.max(0, newMakingCharge)
+      return {
+        ...i,
+        unitPrice: i.jewelleryDetail.metalValue + makingCharge,
+        jewelleryDetail: { ...i.jewelleryDetail, makingCharge, makingChargeOverridden: true }
+      }
+    }))
+  }
+
+  // Phase 58 §2 — Jewellery old-metal exchange picker: loads every
+  // still-unlinked exchange (not scoped to the current customer alone — a
+  // walk-in exchange has no Customer record to match against) whenever the
+  // picker opens, so staff can search/select one to apply atomically.
+  useEffect(() => {
+    if (!showExchangePicker) return
+    window.api.metalExchange.list({ unlinkedOnly: true }).then(res => {
+      if (res.success && res.data) setExchangeResults(res.data as typeof exchangeResults)
+    })
+  }, [showExchangePicker])
 
   // Phase 38: a scanned weight-embedded label always adds a brand-new line —
   // each label represents one physically weighed-and-priced parcel, so unlike
@@ -537,7 +761,7 @@ export function BillingScreen() {
       const cash = parseFloat(splitCash) || 0
       const upi = parseFloat(splitUpi) || 0
       if (cash <= 0 && upi <= 0) { toastError(t('billing.splitPayment'), t('billing.splitPayment')); return }
-      const total = computeTotals(cart, globalDiscount).totalAmount
+      const total = computeTotals(cart, effectiveGlobalDiscount).totalAmount
       if (Math.abs(cash + upi - total) > 0.05) {
         toastError('Split Payment', `Cash (${formatCurrency(cash)}) + UPI (${formatCurrency(upi)}) must equal the invoice total (${formatCurrency(total)}).`)
         return
@@ -563,13 +787,19 @@ export function BillingScreen() {
           jewelleryPurity: i.jewelleryDetail?.purity,
           jewelleryNetWeight: i.jewelleryDetail?.netWeight,
           jewelleryRatePerGram: i.jewelleryDetail?.ratePerGram,
-          jewelleryMakingCharge: i.jewelleryDetail?.makingCharge
+          jewelleryMakingCharge: i.jewelleryDetail?.makingCharge,
+          jewelleryHallmarkNumber: i.jewelleryDetail?.hallmarkNumber ?? undefined,
+          prescriptionPatientName: i.prescriptionPatientName,
+          prescriptionDoctorName: i.prescriptionDoctorName,
+          prescriptionDate: i.prescriptionDate
         })),
         globalDiscount,
         notes: notes.trim() || undefined,
         referenceNumber: referenceNumber.trim() || undefined,
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
-        buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined
+        buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
+        metalExchangeId: selectedExchange?.id,
+        dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined
       })
 
       if (res.success) {
@@ -622,7 +852,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, notes, referenceNumber, splitCash, splitUpi, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, splitCash, splitUpi, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -645,7 +875,20 @@ export function BillingScreen() {
           <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center">
             <ShoppingCart size={18} className="text-brand" />
           </div>
-          <h1 className="text-lg font-bold text-dark">{t('billing.newInvoice')}</h1>
+          <h1 className="text-lg font-bold text-dark flex-1">{t('billing.newInvoice')}</h1>
+          <button
+            onClick={() => setShowHoldModal(true)}
+            disabled={cart.length === 0}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg text-slate-500 hover:text-brand hover:bg-brand/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {t('billing.holdSale')}
+          </button>
+          <button
+            onClick={openResumeModal}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg text-slate-500 hover:text-brand hover:bg-brand/5 transition-colors"
+          >
+            {t('billing.resumeSale')}
+          </button>
         </div>
 
         {/* Product search */}
@@ -700,6 +943,31 @@ export function BillingScreen() {
             {productSearching && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />}
           </div>
 
+          <button
+            onClick={() => setShowTipModal(true)}
+            className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors"
+          >
+            <HandCoins size={13} /> {t('billing.addTipOrServiceCharge')}
+          </button>
+
+          {frequentProducts.length > 0 && productResults.length === 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">{t('billing.frequentlySold')}</p>
+              <div className="flex flex-wrap gap-2">
+                {frequentProducts.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-left"
+                  >
+                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate max-w-[9rem]">{p.productName}</p>
+                    <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Product dropdown */}
           {productResults.length > 0 && (
             <div className="absolute left-6 right-6 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-64 overflow-y-auto">
@@ -713,11 +981,21 @@ export function BillingScreen() {
                   )}
                 >
                   <div>
-                    <p className="text-sm font-medium text-dark">{p.productName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-dark">{p.productName}</p>
+                      {p.unavailableUntil && new Date(p.unavailableUntil) > new Date() && (
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">{t('billing.unavailableToday')}</span>
+                      )}
+                    </div>
                     {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-brand">{formatCurrency(p.sellingPrice)}</p>
+                    <p className="text-sm font-semibold text-brand">
+                      {formatCurrency(p.sellingPrice)}
+                      {p.mrp != null && p.mrp > p.sellingPrice && (
+                        <span className="ml-1.5 text-xs font-normal text-slate-400 line-through">{formatCurrency(p.mrp)}</span>
+                      )}
+                    </p>
                     {p.productType === 'STANDARD' && (
                       <p className={cn('text-xs', (p.inventory?.quantity ?? 0) <= 0 ? 'text-danger' : 'text-slate-400')}>
                         Stock: {p.inventory?.quantity ?? 0} {p.unit}
@@ -777,6 +1055,28 @@ export function BillingScreen() {
                       )}
                       {item.productType === 'STANDARD' && item.quantity > item.availableQty && (
                         <p className="text-xs text-danger mt-0.5">Low stock — only {item.availableQty} available</p>
+                      )}
+                      {item.jewelleryDetail && (
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-xs text-slate-400">
+                            {item.jewelleryDetail.metalType} {item.jewelleryDetail.purity} · {item.jewelleryDetail.netWeight.toFixed(3)}g @ {formatCurrency(item.jewelleryDetail.ratePerGram)}/g
+                            {item.jewelleryDetail.hallmarkNumber && <> · HUID {item.jewelleryDetail.hallmarkNumber}</>}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-slate-400">{t('jewellery.makingCharge')}:</span>
+                            <input
+                              type="number" min="0" step="1"
+                              value={item.jewelleryDetail.makingCharge || ''}
+                              onChange={e => updateMakingChargeOverride(ck, parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              title={t('jewellery.makingChargeOverrideHint')}
+                              className={cn(
+                                'w-16 h-5 text-xs px-1.5 rounded border text-right focus:outline-none focus:ring-1 focus:ring-brand',
+                                item.jewelleryDetail.makingChargeOverridden ? 'border-brand text-brand bg-brand/5' : 'border-slate-200'
+                              )}
+                            />
+                          </div>
+                        </div>
                       )}
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-xs text-slate-400">{formatCurrency(item.unitPrice)}/{item.unit}</span>
@@ -851,13 +1151,13 @@ export function BillingScreen() {
                                 open: !(prev[ck]?.open ?? false)
                               }
                             }))}
-                            title="Area calculator (L × W)"
+                            title={t('billing.areaCalculator') as string}
                             className="flex items-center gap-1 text-xs text-brand/70 hover:text-brand transition-colors">
-                            <Ruler size={10} /> Area
+                            <Ruler size={10} /> {t('billing.areaLabel')}
                           </button>
                           {areaCalc[ck]?.open && (
                             <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 bg-white rounded-xl border border-slate-200 shadow-lg p-3 w-40 space-y-2">
-                              <p className="text-xs font-semibold text-dark text-center">L × W = Area</p>
+                              <p className="text-xs font-semibold text-dark text-center">{t('billing.areaFormula')}</p>
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="number" min="0" step="0.01"
@@ -886,7 +1186,7 @@ export function BillingScreen() {
                                       setAreaCalc(prev => ({ ...prev, [ck]: { ...prev[ck], open: false } }))
                                     }}
                                     className="w-full py-1 text-xs bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors font-semibold">
-                                    Use {area} sq
+                                    {t('billing.useAreaSq', { area })}
                                   </button>
                                 ) : null
                               })()}
@@ -1015,9 +1315,27 @@ export function BillingScreen() {
 
           {/* Credit warning */}
           {paymentMethod === 'CREDIT' && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-xs">
-              <span className="font-semibold shrink-0">Credit Sale</span>
-              <span>Invoice created as UNPAID. Customer ledger debited. Payment to be collected later. Customer required.</span>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-xs">
+                <span className="font-semibold shrink-0">Credit Sale</span>
+                <span>Invoice created as UNPAID. Customer ledger debited. Payment to be collected later. Customer required.</span>
+              </div>
+              {/* Phase 58 §2 — optional payment due date (e.g. Agri Inputs'
+                  harvest-tied credit terms — a farmer's bill may not fall due
+                  for months). Generic across every vertical that sells on
+                  credit, not agri-specific; feeds directly into the existing
+                  Outstanding Analytics aging (report.service.ts's
+                  generateOutstandingReport already ages by dueDate when set,
+                  falling back to invoiceDate otherwise — this was the only
+                  missing piece, nothing there needed to change). */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{t('billing.dueDate')} ({t('common.optional')})</label>
+                <input
+                  type="date" value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                />
+              </div>
             </div>
           )}
 
@@ -1033,7 +1351,7 @@ export function BillingScreen() {
                     onChange={e => {
                       setSplitCash(e.target.value)
                       const cash = parseFloat(e.target.value) || 0
-                      const remaining = Math.max(0, computeTotals(cart, globalDiscount).totalAmount - cash)
+                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount).totalAmount - cash)
                       setSplitUpi(remaining > 0 ? remaining.toFixed(2) : '')
                     }}
                     placeholder="0.00"
@@ -1047,7 +1365,7 @@ export function BillingScreen() {
                     onChange={e => {
                       setSplitUpi(e.target.value)
                       const upi = parseFloat(e.target.value) || 0
-                      const remaining = Math.max(0, computeTotals(cart, globalDiscount).totalAmount - upi)
+                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount).totalAmount - upi)
                       setSplitCash(remaining > 0 ? remaining.toFixed(2) : '')
                     }}
                     placeholder="0.00"
@@ -1058,7 +1376,7 @@ export function BillingScreen() {
               {(() => {
                 const cash = parseFloat(splitCash) || 0
                 const upi = parseFloat(splitUpi) || 0
-                const total = computeTotals(cart, globalDiscount).totalAmount
+                const total = computeTotals(cart, effectiveGlobalDiscount).totalAmount
                 const diff = Math.abs(cash + upi - total)
                 return diff > 0.05 && (cash + upi) > 0 ? (
                   <p className="text-xs text-danger">Remaining: {formatCurrency(total - cash - upi)}</p>
@@ -1077,6 +1395,26 @@ export function BillingScreen() {
               className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
             />
           </div>
+
+          {/* Phase 58 §2 — Jewellery old-metal exchange (applied atomically on checkout) */}
+          {jewelleryPricingEnabled && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('jewellery.applyExchange')}</p>
+              {selectedExchange ? (
+                <div className="flex items-center justify-between gap-2 border border-brand/30 bg-brand/5 rounded-xl px-3 py-2">
+                  <p className="text-xs text-brand">{t('jewellery.exchangeApplied', { number: selectedExchange.exchangeNumber, amount: formatCurrency(selectedExchange.valueGiven) })}</p>
+                  <button onClick={() => setSelectedExchange(null)} className="text-xs text-slate-400 hover:text-danger shrink-0">{t('jewellery.removeExchange')}</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowExchangePicker(true)}
+                  className="w-full h-9 px-3 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 hover:border-brand hover:text-brand transition-colors"
+                >
+                  {t('jewellery.applyExchange')}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -1229,6 +1567,33 @@ export function BillingScreen() {
         </div>
       )}
 
+      {/* Phase 58 §2 — Pharmacy Schedule H/H1 prescription-capture modal */}
+      {rxPickProduct && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-dark">{t('billing.rx.title')}</h3>
+                <p className="text-sm text-slate-500">{rxPickProduct.productName}</p>
+              </div>
+              <button onClick={() => setRxPickProduct(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-dark hover:bg-slate-100 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">{t('billing.rx.description')}</p>
+            <div className="space-y-3">
+              <Input label={t('billing.rx.patientName')} value={rxPatientName} onChange={e => setRxPatientName(e.target.value)} autoFocus />
+              <Input label={t('billing.rx.doctorName')} value={rxDoctorName} onChange={e => setRxDoctorName(e.target.value)} />
+              <Input label={t('billing.rx.date')} type="date" value={rxDate} onChange={e => setRxDate(e.target.value)} />
+            </div>
+            <Button className="w-full mt-4" onClick={handleConfirmRx} disabled={!rxPatientName.trim() || !rxDoctorName.trim()}>
+              {t('billing.rx.addToCart')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Customer quick-add modal */}
       {showQuickAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -1252,6 +1617,126 @@ export function BillingScreen() {
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => { setShowQuickAdd(false); setQuickName(''); setQuickPhone('') }}>{t('common.cancel')}</Button>
               <Button className="flex-1" onClick={handleQuickAddCustomer} loading={quickAdding}>{t('customers.addCustomer')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tip / Service Charge modal */}
+      {showTipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-dark dark:text-slate-100 flex items-center gap-2"><HandCoins size={18} /> {t('billing.addTipOrServiceCharge')}</h2>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t('billing.tipAmountLabel')}</label>
+              <input
+                type="number" min="0" step="0.01" value={tipAmount}
+                onChange={e => setTipAmount(e.target.value)}
+                placeholder="e.g. 100"
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handleConfirmTip() }}
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowTipModal(false); setTipAmount('') }}>{t('common.cancel')}</Button>
+              <Button className="flex-1" onClick={handleConfirmTip} loading={addingTip}>{t('billing.confirmAddToCart')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 58 §2 — Jewellery old-metal exchange picker */}
+      {showExchangePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-base font-bold text-dark dark:text-slate-100">{t('jewellery.applyExchange')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('jewellery.applyExchangeDesc')}</p>
+            <input
+              value={exchangeSearch}
+              onChange={e => setExchangeSearch(e.target.value)}
+              placeholder={t('jewellery.exchangeSearchPlaceholder') as string}
+              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              autoFocus
+            />
+            <div className="space-y-2">
+              {exchangeResults
+                .filter(ex => {
+                  const q = exchangeSearch.trim().toLowerCase()
+                  if (!q) return true
+                  return ex.exchangeNumber.toLowerCase().includes(q) || (ex.customer?.customerName ?? ex.customerName ?? '').toLowerCase().includes(q)
+                })
+                .map(ex => (
+                  <button
+                    key={ex.id}
+                    onClick={() => { setSelectedExchange(ex); setShowExchangePicker(false); setExchangeSearch('') }}
+                    className="w-full flex items-center justify-between border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-left hover:border-brand transition-colors"
+                  >
+                    <div>
+                      <p className="text-sm font-mono text-dark dark:text-slate-100">{ex.exchangeNumber}</p>
+                      <p className="text-xs text-slate-400">{ex.customer?.customerName ?? ex.customerName ?? '—'}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-brand">{formatCurrency(ex.valueGiven)}</span>
+                  </button>
+                ))}
+              {exchangeResults.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-4">{t('jewellery.noUnlinkedExchanges')}</p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowExchangePicker(false); setExchangeSearch('') }}>{t('common.cancel')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hold Sale modal */}
+      {showHoldModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-dark dark:text-slate-100">{t('billing.holdSale')}</h2>
+            <Input
+              label={t('billing.holdSaleLabel') as string}
+              placeholder={t('billing.holdSaleLabelPlaceholder') as string}
+              value={holdLabel}
+              onChange={(e) => setHoldLabel(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowHoldModal(false); setHoldLabel('') }}>{t('common.cancel')}</Button>
+              <Button className="flex-1" onClick={handleHoldSale} loading={holding}>{t('billing.confirmHold')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Sale modal */}
+      {showResumeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <p className="font-semibold text-dark dark:text-slate-100">{t('billing.heldSales')}</p>
+              <button onClick={() => setShowResumeModal(false)} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={18} /></button>
+            </div>
+            <div className="p-4 space-y-2">
+              {loadingHeldSales ? (
+                <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
+              ) : heldSales.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">{t('billing.noHeldSales')}</p>
+              ) : (
+                heldSales.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-dark dark:text-slate-100">{h.label || h.customerName || `${h.itemCount} items`}</p>
+                      <p className="text-xs text-slate-400">{t('billing.items', { count: h.itemCount })} · {formatCurrency(h.totalAmount)} · {new Date(h.createdAt).toLocaleTimeString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => handleResumeSale(h.id)} loading={resumingId === h.id}>{t('billing.resumeSaleAction')}</Button>
+                      <button onClick={() => handleDeleteHeldSale(h.id)} className="text-slate-300 hover:text-danger" title={t('billing.abandonHeldSale') as string}><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

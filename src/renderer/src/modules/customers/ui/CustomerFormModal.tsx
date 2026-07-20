@@ -6,6 +6,7 @@ import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
+import { useIndustryStore } from '@app/store/industry.store'
 
 const schema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
@@ -19,6 +20,11 @@ const schema = z.object({
   taxExempt: z.boolean().optional(),
   taxExemptReason: z.string().max(200).optional(),
   creditLimit: z.coerce.number().min(0).optional(),
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text
+  // (e.g. "RETAILER"/"WHOLESALER"/"VIP") — only surfaced in the UI when
+  // field_order_capture is on (a DISTRIBUTOR default), same "config flags
+  // only, no template-specific if/else" convention as area_pricing above.
+  customerClass: z.string().max(50).optional(),
   notes: z.string().max(500).optional()
 })
 
@@ -28,7 +34,7 @@ interface Customer {
   id: string; customerName: string; phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
   taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null
-  creditLimit?: number; notes?: string | null
+  creditLimit?: number; customerClass?: string | null; notes?: string | null
 }
 
 interface CustomerFormModalProps {
@@ -40,6 +46,8 @@ interface CustomerFormModalProps {
 
 export function CustomerFormModal({ open, onClose, onSaved, customer }: CustomerFormModalProps) {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { isModuleEnabled } = useIndustryStore()
+  const fieldOrderCaptureEnabled = isModuleEnabled('field_order_capture')
   const isEdit = !!customer
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -61,6 +69,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         taxExempt: customer?.taxExempt ?? false,
         taxExemptReason: customer?.taxExemptReason ?? '',
         creditLimit: customer?.creditLimit ?? 0,
+        customerClass: customer?.customerClass ?? '',
         notes: customer?.notes ?? ''
       })
     }
@@ -116,6 +125,14 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           <Input label="Tax Number" placeholder="GST / PAN / VAT" {...register('taxNumber')} />
           <Input label="Credit Limit" type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
         </div>
+        {fieldOrderCaptureEnabled && (
+          <Input
+            label="Customer Class"
+            placeholder="e.g. RETAILER, WHOLESALER, VIP"
+            {...register('customerClass')}
+            error={errors.customerClass?.message}
+          />
+        )}
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
             <input type="checkbox" {...register('taxExempt')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />

@@ -136,6 +136,22 @@ const PERMISSIONS = [
   // creates a real Invoice + KOT, so this is scoped like billing.createInvoice
   // (Manager/Cashier), not viewKOT/updateKOT (which Kitchen Staff also has).
   { permissionKey: 'restaurant.manageOrderRequests', permissionName: 'Manage QR Order Requests' },
+  // Phase 58 §2 — Distributor field-rep order capture. Accepting/rejecting a
+  // rep's submitted order creates a real Invoice, so this is scoped exactly
+  // like restaurant.manageOrderRequests directly above (Manager/Cashier, not
+  // Staff) — the rep's own capture-side submission goes through an
+  // unauthenticated LAN endpoint (see field-order-server.ts), same as QR
+  // table ordering, and needs no permission of its own.
+  { permissionKey: 'distributor.manageFieldOrders', permissionName: 'Manage Field-Rep Order Requests' },
+  // Phase 58 §2 — Electronics repair/RMA. Same 3-way split rationale as
+  // labOrders.view/create/manage: logging a claim at intake is routine
+  // front-desk trust (Cashier reaches this, same as billing.createInvoice),
+  // while advancing a ticket's status — especially REPLACED, which flips a
+  // ProductSerial's status and effectively creates a free replacement sale —
+  // needs Manager+ trust.
+  { permissionKey: 'repairTickets.view', permissionName: 'View Repair Tickets' },
+  { permissionKey: 'repairTickets.create', permissionName: 'Log New Repair Ticket' },
+  { permissionKey: 'repairTickets.manage', permissionName: 'Update Repair Ticket Status, Vendor RMA & Replacement' },
   // HR & Attendance
   { permissionKey: 'hr.view', permissionName: 'View HR & Attendance' },
   { permissionKey: 'hr.manage', permissionName: 'Manage Employees & Salary Reference' },
@@ -224,6 +240,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'audit.view',
     'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve', 'purchaseOrders.receive', 'purchaseOrders.cancel', 'purchaseOrders.print',
     'restaurant.viewKOT', 'restaurant.updateKOT', 'restaurant.manageTables', 'restaurant.manageRecipes', 'restaurant.manageOrderRequests',
+    'distributor.manageFieldOrders',
+    'repairTickets.view', 'repairTickets.create', 'repairTickets.manage',
     'hr.view', 'hr.manage', 'hr.attendance',
     'clinicalNotes.view', 'clinicalNotes.write',
     'labOrders.view', 'labOrders.create', 'labOrders.manage',
@@ -254,6 +272,12 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'reports.sales', 'reports.invoices', 'reports.export', 'reports.print',
     'analytics.viewDashboard',
     'restaurant.viewKOT', 'restaurant.updateKOT', 'restaurant.manageOrderRequests',
+    'distributor.manageFieldOrders',
+    // Cashier can log a new claim at intake (bounded, per-transaction — same
+    // trust level as billing.createInvoice) but cannot advance its status,
+    // set vendor RMA details, or link a replacement unit (repairTickets.manage
+    // stays Manager+ — REPLACED effectively gives away a free unit).
+    'repairTickets.view', 'repairTickets.create',
     // Bounded, not a financial-integrity risk: a PO's quantities/costs are
     // already fixed by whoever created+approved it (Manager/Admin only).
     // Letting whoever is on the floor check off a delivery against it — without
@@ -289,7 +313,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'purchaseOrders.view', 'purchaseOrders.receive',
     'rental.view',
     'hotel.view',
-    'jewellery.view'
+    'jewellery.view',
+    'repairTickets.view'
   ],
   'Kitchen Staff': [
     'auth.login', 'auth.changeOwnPassword',

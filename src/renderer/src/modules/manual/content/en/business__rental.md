@@ -25,6 +25,14 @@ Open **Rental Bookings** in the sidebar. A booking moves through:
 
 A Reserved booking can also be **Cancelled** (before checkout) or **Extended** to a later end date/time (as long as the item stays available through the new range).
 
+A booking can include multiple items in one go — each gets its own **damage charge** at return, so a multi-item booking's invoice itemizes exactly which unit was damaged rather than one lump repair line. Attach real **condition photos** at both checkout and return for each item, giving you a documented before/after record if a dispute ever comes up.
+
+## Maintenance and standing rentals
+
+Set a **service interval** on a UNIT-tracked item — either a number of rentals or a number of days — and Sarang routes it into Maintenance status automatically on return once the interval is hit, blocking it from being rented again until you mark it serviced. Open **Rental Units** to see which items are due and to log a completed service.
+
+For a customer who rents the same thing on a regular schedule, set a **recurrence interval** on the booking and use **Create Next Cycle** once the current period ends to generate the next booking in one click instead of re-entering everything from scratch.
+
 ## Availability is always live, never a stock decrement
 
 Sarang never decrements a stock quantity when a rental is checked out. Instead, availability — for both UNIT and BULK items — is computed live from every currently Reserved or Checked-Out booking that overlaps the requested date range. This matters because a reservation has to block availability *before* checkout: two customers trying to reserve the same last tent for overlapping dates must not both succeed, which a "decrement only at checkout" model would miss.

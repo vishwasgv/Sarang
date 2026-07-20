@@ -14,6 +14,8 @@ export const CreateJobOrderSchema = z.object({
   targetDate: z.string().optional(),
   commissionType: z.string().max(20).optional(),
   commissionValue: z.number().finite().nonnegative('Commission value cannot be negative').optional(),
+  feeAgreementTerms: z.string().max(2000).optional(),
+  replacementGuaranteeDays: z.number().int().nonnegative('Replacement guarantee days cannot be negative').optional(),
   notes: z.string().max(2000).optional(),
 })
 
@@ -32,6 +34,8 @@ export const UpdateJobOrderSchema = z.object({
   status: z.string().max(20).optional(),
   commissionType: z.string().max(20).optional(),
   commissionValue: z.number().finite().nonnegative('Commission value cannot be negative').optional(),
+  feeAgreementTerms: z.string().max(2000).nullable().optional(),
+  replacementGuaranteeDays: z.number().int().nonnegative('Replacement guarantee days cannot be negative').nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
 

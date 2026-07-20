@@ -139,7 +139,8 @@
     "of": "من",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "متوفر"
   },
   "auth": {
     "username": "اسم المستخدم",
@@ -229,6 +230,8 @@
     "percentDiscount": "% خصم",
     "invoiceDate": "تاريخ الفاتورة",
     "dueDate": "تاريخ الاستحقاق",
+    "dueOn": "الاستحقاق {{date}}",
+    "overdueSince": "متأخرة منذ {{date}}",
     "notes": "ملاحظات",
     "rounding": "تقريب",
     "invoiceCreated": "تم إنشاء الفاتورة",
@@ -286,7 +289,40 @@
     "batchLabel": "الدفعة {{batchNumber}} · {{status}}",
     "batchExpired": "منتهي الصلاحية",
     "batchExpiresToday": "تنتهي صلاحيته اليوم",
-    "batchExpiresIn": "تنتهي الصلاحية خلال {{days}} يوم"
+    "batchExpiresIn": "تنتهي الصلاحية خلال {{days}} يوم",
+    "addTipOrServiceCharge": "إضافة إكرامية / رسوم خدمة",
+    "tipAmountLabel": "المبلغ",
+    "tipAmountInvalid": "أدخل مبلغًا أكبر من صفر.",
+    "confirmAddToCart": "أضف إلى السلة",
+    "unavailableToday": "غير متوفر اليوم",
+    "unavailableTodayMessage": "تم تمييز {{productName}} كغير متوفر لهذا اليوم.",
+    "holdSale": "تعليق البيع",
+    "resumeSale": "استئناف البيع",
+    "heldSales": "المبيعات المعلّقة",
+    "noHeldSales": "لا توجد مبيعات معلّقة.",
+    "holdSaleLabel": "ملاحظة (اختياري)",
+    "holdSaleLabelPlaceholder": "مثال: راهول - قميص أزرق",
+    "confirmHold": "تعليق",
+    "holdSaleSuccess": "تم تعليق البيع.",
+    "resumeSaleAction": "استئناف",
+    "abandonHeldSale": "حذف",
+    "confirmAbandonHeldSale": "حذف هذا البيع المعلّق؟ لا يمكن التراجع عن هذا الإجراء.",
+    "emptyCartCannotHold": "السلة فارغة — لا يوجد ما يمكن تعليقه.",
+    "frequentlySold": "الأكثر مبيعًا",
+    "mrpLabel": "MRP",
+    "areaCalculator": "حاسبة المساحة (الطول × العرض)",
+    "areaLabel": "المساحة",
+    "areaFormula": "الطول × العرض = المساحة",
+    "useAreaSq": "استخدام {{area}} تربيعي",
+    "rx": {
+      "title": "تفاصيل الوصفة الطبية",
+      "description": "هذا صنف يُصرف بوصفة طبية فقط (الجدول H/H1) — يلزم إدخال اسم المريض واسم الطبيب لبيعه.",
+      "patientName": "اسم المريض *",
+      "doctorName": "اسم الطبيب *",
+      "date": "تاريخ الوصفة (اختياري)",
+      "addToCart": "أضف إلى السلة",
+      "required": "اسم المريض واسم الطبيب مطلوبان."
+    }
   },
   "products": {
     "title": "المنتجات",
@@ -298,6 +334,7 @@
     "unit": "الوحدة",
     "sellingPrice": "سعر البيع",
     "costPrice": "سعر التكلفة",
+    "mrp": "MRP (اختياري)",
     "taxRate": "نسبة الضريبة (%)",
     "stock": "المخزون",
     "lowStockAlert": "تنبيه مخزون منخفض",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "إنشاء أوامر إعادة الطلب",
+      "title": "تم إنشاء أوامر إعادة الطلب",
+      "nothingToOrder": "لا توجد منتجات منخفضة المخزون تحتاج إلى إعادة طلب الآن.",
+      "created": "تم إنشاء أوامر شراء مسودة: {{count}}",
+      "skippedNoSupplier": "تم التخطي (لا يوجد مورد افتراضي): {{count}}",
+      "skippedOpenPO": "تم التخطي (موجود بالفعل في طلب مفتوح): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "أوامر الشراء",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "مبيعات الأدوية بوصفة طبية",
+        "description": "سجل مبيعات الأدوية التي تُصرف بوصفة طبية فقط (الجدول H/H1)، مع أسماء المريض والطبيب."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "لم يتم إصدار أي مستندات في هذه الفترة.",
       "jewelleryStock": "لا توجد منتجات مجوهرات بوزن معدني مسجل بعد.",
       "projects": "لا توجد مشاريع في هذه الفترة.",
-      "jobCards": "لا توجد بطاقات عمل في هذه الفترة."
+      "jobCards": "لا توجد بطاقات عمل في هذه الفترة.",
+      "prescriptionDrugSales": "لا توجد مبيعات أدوية بوصفة طبية في هذا النطاق الزمني."
     },
     "col": {
       "invoiceNo": "رقم الفاتورة",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "النوع",
+    "subAssembly": "مجموعة فرعية",
+    "searchSubAssembly": "البحث عن منتج (مجموعة فرعية)…",
+    "subAssemblyTag": "(مجموعة فرعية)",
+    "selfReferenceError": "لا يمكن أن يكون المنتج مكونًا في قائمة المواد الخاصة به.",
+    "lotsUsed": "الدفعات المستخدمة",
+    "qcCheckpointTag": "(نقطة فحص الجودة)",
+    "qcNotesLabel": "ملاحظات الجودة",
+    "qcPass": "ناجح",
+    "qcFail": "فاشل",
+    "qcResultTitle": "تسجيل نتيجة الجودة",
+    "markAsQcStep": "نقطة فحص الجودة",
+    "scrapQtyLabel": "كمية الهالك / المرفوض",
+    "laborCostLabel": "تكلفة العمالة",
+    "batchNumber": "رقم الدفعة",
+    "receiveBatch": "استلام دفعة",
+    "receiveBatchTitle": "استلام دفعة مواد خام",
+    "batchReceived": "تم استلام الدفعة.",
+    "noBatchesYet": "لم يتم استلام أي دفعات لهذه المادة بعد.",
+    "remainingQty": "المتبقي"
   },
   "service": {
     "projects": "المشاريع",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "القطع المستخدمة",
+    "addPart": "إضافة قطعة",
+    "searchProduct": "بحث عن منتج...",
+    "partsTotal": "إجمالي القطع",
+    "noPartsUsed": "لم يتم استخدام أي قطع بعد",
+    "removePart": "إزالة القطعة",
+    "invalidQuantity": "أدخل كمية صحيحة.",
+    "couldNotAddPart": "تعذر إضافة القطعة.",
+    "couldNotRemovePart": "تعذرت إزالة القطعة.",
+    "warranty": "الضمان",
+    "warrantyDays": "الضمان (أيام)",
+    "warrantyUntil": "حتى",
+    "underWarranty": "تحت الضمان",
+    "warrantyExpired": "انتهى الضمان",
+    "saveWarranty": "حفظ",
+    "warrantySaved": "تم حفظ الضمان.",
+    "invalidWarrantyDays": "أدخل عدد أيام ضمان صحيح.",
+    "couldNotSaveWarranty": "تعذر حفظ الضمان.",
+    "warrantyAppliesOnDelivery": "تُحسب فترة الضمان من تاريخ التسليم.",
+    "warrantyClaimAgainst": "مطالبة ضمان مقابل",
+    "notAWarrantyClaim": "ليست مطالبة ضمان",
+    "originalUnderWarranty": "العمل الأصلي لا يزال تحت الضمان",
+    "originalWarrantyExpired": "انتهت مدة ضمان العمل الأصلي"
   },
   "setup": {
     "welcome": "مرحباً بك في Sarang",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "الخدمات المؤهلة",
+    "qualifiedServicesHint": "الخدمات التي يمكن لهذا الموظف تقديمها. اتركه فارغًا للسماح بأي خدمة (افتراضي).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "القيمة {{symbol}}",
       "itemNotesPlaceholder": "ملاحظات الصنف (اختياري)",
       "deleteConfirm": "حذف الشحنة {{number}}؟ لا يمكن التراجع عن هذا الإجراء.",
-      "destinationRequired": "عنوان الوجهة مطلوب."
+      "destinationRequired": "عنوان الوجهة مطلوب.",
+      "stops": {
+        "title": "المحطات",
+        "addStop": "إضافة محطة",
+        "customerName": "اسم العميل (اختياري)",
+        "destinationAddress": "عنوان الوجهة",
+        "notes": "ملاحظات (اختياري)",
+        "markDelivered": "وضع علامة تم التسليم",
+        "skip": "تخطي",
+        "delete": "حذف",
+        "empty": "لم تتم إضافة أي محطات إضافية بعد.",
+        "primaryHint": "الوجهة أعلاه هي دائمًا المحطة الأولى — أضف المزيد أدناه لمسار متعدد المحطات.",
+        "saveFirst": "احفظ الشحنة أولاً، ثم أضف المحطات."
+      }
     },
     "grn": {
       "title": "إشعارات استلام البضائع (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "إصدار فاتورة",
       "invoicing": "...",
-      "invoiced": "تم إصدار الفاتورة"
+      "invoiced": "تم إصدار الفاتورة",
+      "scheduleTrial": "جدولة تجربة القياس",
+      "trial": "تجربة",
+      "trialScheduled": "تم جدولة موعد التجربة",
+      "setFabric": "تحديد القماش",
+      "fabricLinked": "القماش ✓",
+      "clearFabric": "إلغاء ربط القماش (يستعيد المخزون)"
     },
     "invoiceBanner": {
       "success": "تم إصدار الفاتورة (SAC 998821، ضريبة 5%).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "فشل الحفظ.",
       "deleteOrderFailed": "فشل حذف الطلب.",
       "deleteMeasurementFailed": "فشل حذف المقاس.",
-      "updateStatusFailed": "فشل تحديث الحالة."
+      "updateStatusFailed": "فشل تحديث الحالة.",
+      "trialDateRequired": "تاريخ التجربة مطلوب.",
+      "fabricQuantityInvalid": "أدخل كمية صحيحة."
     },
     "measurements": {
       "selectClient": "اختر العميل",
@@ -2325,6 +2441,20 @@
       "saving": "جارٍ الحفظ...",
       "updateOrder": "تحديث الطلب",
       "createOrder": "إنشاء الطلب"
+    },
+    "trial": {
+      "title": "جدولة موعد التجربة/القياس",
+      "hint": "سيحصل العميل على نفس تذكيرات واتساب مثل أي موعد آخر.",
+      "date": "التاريخ",
+      "time": "الوقت",
+      "schedule": "جدولة"
+    },
+    "fabric": {
+      "title": "تحديد القماش",
+      "hint": "يخصم من المخزون الفعلي عند التحديد.",
+      "searchPlaceholder": "ابحث عن القماش في المخزون…",
+      "quantity": "الكمية",
+      "set": "تحديد القماش"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "العميل",
       "items": "العناصر",
       "item": "العنصر",
-      "period": "الفترة"
+      "period": "الفترة",
+      "service": "الخدمة"
     },
     "confirmCancel": "إلغاء هذا الحجز؟ لا يمكن التراجع عن هذا الإجراء.",
     "lateFee": "رسوم التأخير",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "لا يوجد شيء مسلَّم حاليًا.",
       "revenue": "لا توجد إيرادات تأجير في هذه الفترة."
-    }
+    },
+    "serviceIntervalRentals": "فاصل الخدمة (عدد الإيجارات)",
+    "serviceIntervalDays": "فاصل الخدمة (أيام)",
+    "dueForService": "مستحق للصيانة",
+    "markServiced": "تمييز كمخدوم",
+    "lastServiced": "آخر صيانة",
+    "neverServiced": "أبدًا",
+    "addItem": "إضافة عنصر",
+    "removeItem": "إزالة",
+    "recurringRental": "إيجار متكرر",
+    "repeatEveryDays": "التكرار كل (أيام)",
+    "createNextCycle": "إنشاء الدورة التالية",
+    "nextCycleCreated": "تم إنشاء دورة الإيجار التالية.",
+    "conditionOutLabel": "الحالة عند تسليم الوحدة",
+    "conditionInLabel": "الحالة عند الإرجاع",
+    "itemDamageCharge": "رسوم الضرر (لهذا العنصر)",
+    "photos": "الصور"
   },
   "jewellery": {
     "metalRates": "أسعار المعادن",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "لا يوجد سعر محدد لـ {{metalType}} {{purity}}. حدد سعر اليوم في المجوهرات ← أسعار المعادن، ثم أضف هذا الصنف مرة أخرى.",
     "computeErrorDesc": "تعذر حساب سعر المجوهرات. يرجى التحقق من السعر وإعادة إضافة هذا الصنف.",
     "priceNotSetTitle": "سعر المجوهرات غير محدد",
-    "priceNotSetDesc": "{{productName}} ليس له سعر بعد — حدد سعر اليوم في المجوهرات ← أسعار المعادن، ثم احذف هذا الصنف وأضفه مرة أخرى."
+    "priceNotSetDesc": "{{productName}} ليس له سعر بعد — حدد سعر اليوم في المجوهرات ← أسعار المعادن، ثم احذف هذا الصنف وأضفه مرة أخرى.",
+    "makingCharge": "أجرة المصنعية",
+    "makingChargeOverrideHint": "تجاوز أجرة المصنعية لهذه العملية فقط — إعداد المنتج نفسه لا يتغير.",
+    "applyExchange": "تطبيق استبدال المعدن القديم",
+    "applyExchangeDesc": "يطبق رصيد عملية استبدال غير مرتبطة كخصم على هذه الفاتورة تلقائيًا عند إتمام البيع.",
+    "exchangeSearchPlaceholder": "البحث برقم عملية الاستبدال...",
+    "noUnlinkedExchanges": "لم يتم العثور على عمليات استبدال غير مرتبطة لهذا العميل.",
+    "exchangeApplied": "الاستبدال {{number}} — سيتم تطبيق رصيد {{amount}} عند الدفع.",
+    "removeExchange": "إزالة"
   },
   "manual": {
     "yourType": "نوعك",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "الميزات الشاملة",
     "groupAi": "مساعد الذكاء الاصطناعي",
     "groupBusiness": "أنواع الأعمال"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "طلبات ميدانية",
+      "subtitle": "طلبات مُرسَلة من المندوبين الميدانيين، بانتظار التأكيد",
+      "refresh": "تحديث",
+      "linkTitle": "رابط الطلب الميداني",
+      "linkDescription": "شارك هذا الرابط (أو رمز الاستجابة السريعة) مع مندوبيك الميدانيين — يمكنهم إرسال الطلبات من هواتفهم عبر واي فاي المتجر.",
+      "showQr": "إظهار رمز الاستجابة السريعة",
+      "regenerateLink": "إعادة إنشاء الرابط",
+      "openDirectly": "أو افتح مباشرة:",
+      "copied": "تم النسخ",
+      "linkCopied": "تم نسخ الرابط إلى الحافظة.",
+      "notRunning": "التقاط الطلبات الميدانية غير مفعّل حاليًا. فعّل \"التقاط الطلبات الميدانية\" في الإعدادات للسماح للمندوبين بإرسال الطلبات من هواتفهم.",
+      "pendingTitle": "الطلبات الميدانية المعلّقة",
+      "loading": "جارٍ التحميل…",
+      "empty": "لا توجد طلبات ميدانية بانتظار التأكيد.",
+      "noCustomer": "(لم يتم اختيار عميل)",
+      "accept": "قبول",
+      "reject": "رفض",
+      "acceptTitle": "قبول الطلب — {{repName}}",
+      "paymentMethod": "طريقة الدفع",
+      "acceptHint": "يتم إعادة التحقق من الأسعار (بما في ذلك أي سعر متفاوض عليه مع العميل) عند التأكيد، ويتم إنشاء فاتورة.",
+      "confirmBill": "تأكيد وإصدار الفاتورة",
+      "creating": "جارٍ الإنشاء…",
+      "cancel": "إلغاء",
+      "orderAccepted": "تم قبول الطلب",
+      "invoiceCreated": "تم إنشاء فاتورة من هذا الطلب الميداني.",
+      "error": "خطأ",
+      "couldNotLoad": "تعذر تحميل الطلبات الميدانية الواردة.",
+      "couldNotAccept": "تعذر قبول الطلب.",
+      "couldNotReject": "تعذر رفض الطلب.",
+      "couldNotGenerateQr": "تعذر إنشاء رمز الاستجابة السريعة.",
+      "regenerated": "تم إعادة الإنشاء",
+      "regeneratedMessage": "تم إنشاء رابط طلب ميداني جديد.",
+      "couldNotRegenerate": "تعذر إعادة إنشاء الرابط.",
+      "regenerateConfirm": "إعادة الإنشاء تُبطل أي رابط/رمز استجابة سريعة تمت مشاركته بالفعل مع مندوبيك — سيحتاجون إلى الرابط الجديد. هل تريد المتابعة؟"
+    },
+    "pricing": {
+      "title": "تسعير حسب فئة العميل",
+      "subtitle": "حدد أسعارًا متفاوضًا عليها لكل فئة عميل (مثل تجزئة، جملة، VIP) — يحل محل سعر القائمة لأي عميل من تلك الفئة.",
+      "addTitle": "إضافة / تحديث سعر",
+      "searchProduct": "البحث عن منتج…",
+      "classPlaceholder": "فئة العميل، مثل تجزئة",
+      "pricePlaceholder": "السعر",
+      "save": "حفظ السعر",
+      "saving": "جارٍ الحفظ…",
+      "columnProduct": "المنتج",
+      "columnClass": "الفئة",
+      "columnListPrice": "سعر القائمة",
+      "columnPrice": "السعر",
+      "empty": "لم يتم تحديد أي أسعار حسب فئة العميل بعد.",
+      "loading": "جارٍ التحميل…",
+      "noProduct": "لا يوجد منتج",
+      "noProductMessage": "اختر منتجًا أولاً.",
+      "noClass": "لا توجد فئة عميل",
+      "noClassMessage": "أدخل فئة عميل، مثل تجزئة.",
+      "invalidPrice": "سعر غير صالح",
+      "invalidPriceMessage": "أدخل سعرًا صالحًا وغير سالب.",
+      "priceSet": "تم تعيين السعر",
+      "priceSetMessage": "تم تعيين سعر {{customerClass}} لـ {{productName}}.",
+      "error": "خطأ",
+      "couldNotSave": "تعذر حفظ السعر.",
+      "couldNotLoad": "تعذر تحميل قائمة الأسعار.",
+      "removed": "تمت الإزالة",
+      "removedMessage": "تمت إزالة السعر.",
+      "couldNotRemove": "تعذر إزالة السعر."
+    }
   }
 }

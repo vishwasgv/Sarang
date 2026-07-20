@@ -2,7 +2,8 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 
 export interface BomItemInput {
-  rawMaterialId: string
+  rawMaterialId?: string
+  componentProductId?: string
   quantityNeeded: number
   wastagePercent?: number
 }
@@ -22,15 +23,25 @@ export interface BomRecord {
 export interface BomItemRecord {
   id: string
   bomId: string
-  rawMaterialId: string
-  materialName: string
-  materialUnit: string
+  rawMaterialId: string | null
+  materialName: string | null
+  materialUnit: string | null
+  // Phase 58 §2 — multi-level BOM: set instead of the material* fields when
+  // this line is a component Product (sub-assembly) rather than a raw
+  // material.
+  componentProductId: string | null
+  componentProductName: string | null
   quantityNeeded: number
   wastagePercent: number
   effectiveQty: number
   unitCost: number
   lineCost: number
 }
+
+const ITEM_INCLUDE = {
+  rawMaterial: { select: { name: true, unit: true, unitCost: true } },
+  componentProduct: { select: { productName: true, costPrice: true } }
+} as const
 
 export async function listBoms(payload?: { isActive?: boolean }): Promise<{ success: boolean; data?: BomRecord[]; error?: { code: string; message: string } }> {
   try {
@@ -40,9 +51,7 @@ export async function listBoms(payload?: { isActive?: boolean }): Promise<{ succ
       orderBy: { createdAt: 'desc' },
       include: {
         product: { select: { productName: true } },
-        items: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-        }
+        items: { include: ITEM_INCLUDE }
       }
     })
     return { success: true, data: rows.map(toRecord) }
@@ -58,9 +67,7 @@ export async function getBom(productId: string): Promise<{ success: boolean; dat
       where: { productId },
       include: {
         product: { select: { productName: true } },
-        items: {
-          include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } }
-        }
+        items: { include: ITEM_INCLUDE }
       }
     })
     if (!row) return { success: false, error: { code: 'BOM-002', message: 'No BOM found for this product.' } }
@@ -68,6 +75,43 @@ export async function getBom(productId: string): Promise<{ success: boolean; dat
   } catch (err) {
     return { success: false, error: { code: 'BOM-003', message: err instanceof Error ? err.message : 'Failed to get BOM.' } }
   }
+}
+
+// Phase 58 §2 — multi-level BOM cycle guard. Walks every candidate component
+// product's OWN BOM chain (breadth-first, de-duplicated) — if that walk ever
+// reaches back to `productId` (the BOM being saved), assembling this product
+// would require consuming a chain that eventually needs itself, which can
+// never physically resolve. A depth cap (50) is a pure safety backstop
+// against a pathological/corrupted chain, not an expected real case — no
+// legitimate multi-level BOM should ever nest that deep.
+async function wouldCreateCycle(
+  db: ReturnType<typeof getPrisma>,
+  productId: string,
+  candidateComponentIds: string[]
+): Promise<string | null> {
+  const toVisit = [...new Set(candidateComponentIds)]
+  const visited = new Set<string>()
+  let depth = 0
+
+  while (toVisit.length > 0 && depth < 50) {
+    depth++
+    const batch = toVisit.splice(0, toVisit.length)
+    const boms = await db.billOfMaterial.findMany({
+      where: { productId: { in: batch }, isActive: true },
+      include: { items: { select: { componentProductId: true } } }
+    })
+    for (const bom of boms) {
+      for (const item of bom.items) {
+        if (!item.componentProductId) continue
+        if (item.componentProductId === productId) return bom.productId
+        if (!visited.has(item.componentProductId)) {
+          visited.add(item.componentProductId)
+          toVisit.push(item.componentProductId)
+        }
+      }
+    }
+  }
+  return null
 }
 
 export async function upsertBom(payload: {
@@ -83,7 +127,23 @@ export async function upsertBom(payload: {
     if (!product) return { success: false, error: { code: 'BOM-004', message: 'Product not found.' } }
 
     if (payload.items.length === 0) {
-      return { success: false, error: { code: 'BOM-005', message: 'BOM must have at least one raw material.' } }
+      return { success: false, error: { code: 'BOM-005', message: 'BOM must have at least one line.' } }
+    }
+    for (const item of payload.items) {
+      if (!!item.rawMaterialId === !!item.componentProductId) {
+        return { success: false, error: { code: 'BOM-009', message: 'Each BOM line must be either a raw material or a component product, not both or neither.' } }
+      }
+      if (item.componentProductId === payload.productId) {
+        return { success: false, error: { code: 'BOM-010', message: 'A product cannot be a component of its own BOM.' } }
+      }
+    }
+
+    const componentIds = payload.items.map(i => i.componentProductId).filter((id): id is string => !!id)
+    if (componentIds.length > 0) {
+      const cyclePoint = await wouldCreateCycle(db, payload.productId, componentIds)
+      if (cyclePoint) {
+        return { success: false, error: { code: 'BOM-011', message: 'This would create a circular BOM — a component\'s own assembly chain eventually requires this product back.' } }
+      }
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -112,7 +172,8 @@ export async function upsertBom(payload: {
       await tx.billOfMaterialItem.createMany({
         data: payload.items.map(item => ({
           bomId: bom!.id,
-          rawMaterialId: item.rawMaterialId,
+          rawMaterialId: item.rawMaterialId ?? null,
+          componentProductId: item.componentProductId ?? null,
           quantityNeeded: item.quantityNeeded,
           wastagePercent: item.wastagePercent ?? 0
         }))
@@ -122,7 +183,7 @@ export async function upsertBom(payload: {
         where: { id: bom.id },
         include: {
           product: { select: { productName: true } },
-          items: { include: { rawMaterial: { select: { name: true, unit: true, unitCost: true } } } }
+          items: { include: ITEM_INCLUDE }
         }
       })
     })
@@ -162,27 +223,32 @@ type BomRow = {
   items: Array<{
     id: string
     bomId: string
-    rawMaterialId: string
+    rawMaterialId: string | null
+    componentProductId: string | null
     quantityNeeded: number
     wastagePercent: number
-    rawMaterial: { name: string; unit: string; unitCost: number }
+    rawMaterial: { name: string; unit: string; unitCost: number } | null
+    componentProduct: { productName: string; costPrice: number } | null
   }>
 }
 
 function toRecord(b: BomRow): BomRecord {
   const items: BomItemRecord[] = b.items.map(i => {
     const effectiveQty = i.quantityNeeded * (1 + i.wastagePercent / 100)
+    const unitCost = i.rawMaterial?.unitCost ?? i.componentProduct?.costPrice ?? 0
     return {
       id: i.id,
       bomId: i.bomId,
       rawMaterialId: i.rawMaterialId,
-      materialName: i.rawMaterial.name,
-      materialUnit: i.rawMaterial.unit,
+      materialName: i.rawMaterial?.name ?? null,
+      materialUnit: i.rawMaterial?.unit ?? null,
+      componentProductId: i.componentProductId,
+      componentProductName: i.componentProduct?.productName ?? null,
       quantityNeeded: i.quantityNeeded,
       wastagePercent: i.wastagePercent,
       effectiveQty,
-      unitCost: i.rawMaterial.unitCost,
-      lineCost: effectiveQty * i.rawMaterial.unitCost
+      unitCost,
+      lineCost: effectiveQty * unitCost
     }
   })
   return {

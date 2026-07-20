@@ -8,7 +8,7 @@ vi.mock('../logistics-notification.service', () => ({
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { createShipment, updateShipment, updateShipmentStatus } from '../logistics-shipment.service'
+import { createShipment, updateShipment, updateShipmentStatus, addShipmentStop, updateShipmentStopStatus, deleteShipmentStop } from '../logistics-shipment.service'
 
 function makeShipment(overrides: Record<string, unknown> = {}) {
   return {
@@ -33,6 +33,13 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       create: vi.fn(),
     },
     shipmentItem: { deleteMany: vi.fn() },
+    shipmentStop: {
+      aggregate: vi.fn().mockResolvedValue({ _max: { sequenceNumber: null } }),
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'stop-1', status: 'PENDING', deliveredAt: null, ...data })),
+      findUnique: vi.fn().mockResolvedValue({ id: 'stop-1', status: 'PENDING', deliveredAt: null, shipmentId: 'ship-1' }),
+      update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'stop-1', shipmentId: 'ship-1', ...data })),
+      delete: vi.fn().mockResolvedValue({}),
+    },
     vehicle: {
       findUnique: vi.fn().mockResolvedValue({ id: 'veh-2', status: 'AVAILABLE', vehicleNumber: 'MH12CD5678' }),
       update: vi.fn().mockResolvedValue({}),
@@ -205,5 +212,96 @@ describe('updateShipment — vehicle reassignment while IN_TRANSIT', () => {
 
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('VAL-005')
+  })
+})
+
+// Phase 58 §2 — Distributor route/beat planning. A stop is additive on top
+// of the shipment's own primary destinationAddress — never touches
+// Vehicle.status/inventory itself, matching updateShipmentStatus's existing
+// vehicle side-effects above (a vehicle stays "in transit" for the whole
+// run, not per stop).
+describe('addShipmentStop', () => {
+  it('rejects a missing destination address', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await addShipmentStop({ shipmentId: 'ship-1', destinationAddress: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an unknown shipment', async () => {
+    const db = makeDb({ shipment: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await addShipmentStop({ shipmentId: 'ghost', destinationAddress: 'X' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects adding a stop to a terminal shipment', async () => {
+    const db = makeDb({ shipment: { findUnique: vi.fn().mockResolvedValue(makeShipment({ status: 'DELIVERED' })) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await addShipmentStop({ shipmentId: 'ship-1', destinationAddress: 'X' })
+    expect(result.success).toBe(false)
+  })
+
+  it('assigns sequenceNumber 1 to the first stop on a shipment', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await addShipmentStop({ shipmentId: 'ship-1', destinationAddress: 'Customer A' })
+    expect(result.success).toBe(true)
+    expect(db.shipmentStop.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ shipmentId: 'ship-1', sequenceNumber: 1, destinationAddress: 'Customer A' })
+    }))
+  })
+
+  it('assigns the next sequenceNumber after existing stops', async () => {
+    const db = makeDb({ shipmentStop: { aggregate: vi.fn().mockResolvedValue({ _max: { sequenceNumber: 3 } }), create: vi.fn().mockResolvedValue({ id: 'stop-4' }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    await addShipmentStop({ shipmentId: 'ship-1', destinationAddress: 'Customer B' })
+    expect(db.shipmentStop.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ sequenceNumber: 4 })
+    }))
+  })
+})
+
+describe('updateShipmentStopStatus', () => {
+  it('rejects an unknown stop', async () => {
+    const db = makeDb({ shipmentStop: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await updateShipmentStopStatus({ id: 'ghost', status: 'DELIVERED' })
+    expect(result.success).toBe(false)
+  })
+
+  it('sets deliveredAt when marking a stop DELIVERED', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    await updateShipmentStopStatus({ id: 'stop-1', status: 'DELIVERED' })
+    const updateCall = db.shipmentStop.update.mock.calls[0][0]
+    expect(updateCall.data.status).toBe('DELIVERED')
+    expect(updateCall.data.deliveredAt).toBeInstanceOf(Date)
+  })
+
+  it('does not set deliveredAt when marking a stop SKIPPED', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    await updateShipmentStopStatus({ id: 'stop-1', status: 'SKIPPED' })
+    const updateCall = db.shipmentStop.update.mock.calls[0][0]
+    expect(updateCall.data.status).toBe('SKIPPED')
+    expect(updateCall.data.deliveredAt).toBeNull()
+  })
+})
+
+describe('deleteShipmentStop', () => {
+  it('rejects an unknown stop', async () => {
+    const db = makeDb({ shipmentStop: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await deleteShipmentStop('ghost')
+    expect(result.success).toBe(false)
+  })
+
+  it('deletes an existing stop', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const result = await deleteShipmentStop('stop-1')
+    expect(result.success).toBe(true)
+    expect(db.shipmentStop.delete).toHaveBeenCalledWith({ where: { id: 'stop-1' } })
   })
 })

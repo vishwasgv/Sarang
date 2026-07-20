@@ -291,3 +291,149 @@ describe('purchaseOrderService.cancelPO', () => {
     expect((result as { error: { code: string } }).error.code).toBe('PO-004')
   })
 })
+
+// Phase 58 §2 — reorder automation, triggered from low-stock alerts. Only
+// ever drafts for a product with a default supplier configured, groups by
+// supplier into one PO each, and never duplicates a product already on an
+// open (DRAFT/APPROVED) PO.
+describe('purchaseOrderService.generateReorderDraftPOs', () => {
+  function makeReorderInventoryRow(overrides: Record<string, unknown> = {}) {
+    return {
+      productId: 'prod-a', quantity: 2, reorderLevel: 5, reorderQuantity: 20,
+      product: { id: 'prod-a', productName: 'Widget A', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18 },
+      ...overrides
+    }
+  }
+
+  function makeReorderDb(inventoryRows: Array<Record<string, any>>, openItems: Array<{ productId: string }> = []) {
+    const suppliers: Record<string, any> = {
+      'sup-1': { id: 'sup-1', supplierName: 'Supplier One', isActive: true },
+      'sup-2': { id: 'sup-2', supplierName: 'Supplier Two', isActive: true }
+    }
+    const products: Record<string, any> = {}
+    for (const row of inventoryRows) products[row.product.id] = row.product
+
+    let poCounter = 0
+    let settingRow: { settingKey: string; settingValue: string } | null = null
+    const db: Record<string, any> = {
+      inventory: { findMany: vi.fn().mockResolvedValue(inventoryRows) },
+      purchaseOrderItem: { findMany: vi.fn().mockResolvedValue(openItems) },
+      supplier: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => suppliers[where.id] ?? null) },
+      product: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => products[where.id] ?? null) },
+      setting: {
+        findUnique: vi.fn(async () => settingRow),
+        update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
+        create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),
+        updateMany: vi.fn(async ({ data }: { data: { settingValue: string } }) => {
+          if (!settingRow) return { count: 0 }
+          settingRow = { ...settingRow, settingValue: data.settingValue }
+          return { count: 1 }
+        })
+      },
+      purchaseOrder: {
+        count: vi.fn().mockResolvedValue(0),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn(async ({ data }: { data: { supplierId: string; notes: string | null } }) => {
+          poCounter++
+          return {
+            id: `po-${poCounter}`, poNumber: `PO-0000${poCounter}`, supplierId: data.supplierId,
+            status: 'DRAFT', subtotal: 0, taxAmount: 0, totalAmount: 0, notes: data.notes,
+            supplier: suppliers[data.supplierId], items: []
+          }
+        })
+      }
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    return db
+  }
+
+  it('skips a low-stock product with no default supplier configured', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({ product: { id: 'prod-a', productName: 'A', isActive: true, defaultSupplierId: null, costPrice: 50, taxRate: 18 } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(0)
+    expect(result.data?.skippedNoDefaultSupplier).toBe(1)
+  })
+
+  it('does not draft a PO for a product whose stock is above its reorder level', async () => {
+    const db = makeReorderDb([makeReorderInventoryRow({ quantity: 50, reorderLevel: 5 })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(0)
+  })
+
+  it('drafts one PO per supplier, grouping multiple due products for the same supplier', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({ productId: 'prod-a', quantity: 2, reorderLevel: 5, reorderQuantity: 20, product: { id: 'prod-a', productName: 'A', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18 } }),
+      makeReorderInventoryRow({ productId: 'prod-b', quantity: 1, reorderLevel: 5, reorderQuantity: 10, product: { id: 'prod-b', productName: 'B', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 30, taxRate: 5 } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(1)
+    expect(result.data?.created?.[0].itemCount).toBe(2)
+    expect(result.data?.created?.[0].supplierId).toBe('sup-1')
+  })
+
+  it('drafts separate POs for products with different default suppliers', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({ productId: 'prod-a', quantity: 2, reorderLevel: 5, reorderQuantity: 20, product: { id: 'prod-a', productName: 'A', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18 } }),
+      makeReorderInventoryRow({ productId: 'prod-c', quantity: 1, reorderLevel: 5, reorderQuantity: 10, product: { id: 'prod-c', productName: 'C', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-2', costPrice: 30, taxRate: 5 } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(2)
+    expect(result.data?.created?.map(c => c.supplierId).sort()).toEqual(['sup-1', 'sup-2'])
+  })
+
+  it('skips a due product that already has an open (DRAFT/APPROVED) PO in flight — does not duplicate on repeat runs', async () => {
+    const db = makeReorderDb(
+      [makeReorderInventoryRow()],
+      [{ productId: 'prod-a' }]
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(0)
+    expect(result.data?.skippedAlreadyOnOpenPO).toBe(1)
+  })
+
+  it('ignores an inactive (archived) product even if its stock is below reorder level', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({ product: { id: 'prod-a', productName: 'A', isActive: false, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18 } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(0)
+  })
+
+  it('produces zero results (no error) when nothing is low on stock', async () => {
+    const db = makeReorderDb([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.generateReorderDraftPOs()
+
+    expect(result.success).toBe(true)
+    expect(result.data?.created).toHaveLength(0)
+    expect(result.data?.skippedNoDefaultSupplier).toBe(0)
+    expect(result.data?.skippedAlreadyOnOpenPO).toBe(0)
+  })
+})

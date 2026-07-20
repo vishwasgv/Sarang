@@ -176,6 +176,25 @@ describe('listMenuProducts', () => {
     const menu = await listMenuProducts()
     expect(menu[0]).toEqual({ id: 'p1', productName: 'Burger', sellingPrice: 150, imagePath: null, categoryName: 'Mains' })
   })
+
+  // Phase 58 §2 (2026-07-17) — "86 today" must exclude the item from the
+  // customer-facing QR menu, same as isActive:false. The query itself
+  // can't distinguish "86'd until later today" from "never 86'd" in a unit
+  // test (both compile to the same WHERE clause), so this asserts the
+  // WHERE shape itself is correct — that a null unavailableUntil is
+  // included but the query genuinely constrains on the field, not that a
+  // real 86'd row gets excluded (the real Prisma query engine does that
+  // filtering, not this function's own JS).
+  it('queries with an isActive + unavailableUntil-not-in-the-future filter, not isActive alone', async () => {
+    const db = makeMockDb({ product: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await listMenuProducts()
+
+    const call = db.product.findMany.mock.calls[0][0]
+    expect(call.where.isActive).toBe(true)
+    expect(call.where.OR).toEqual([{ unavailableUntil: null }, { unavailableUntil: { lte: expect.any(Date) } }])
+  })
 })
 
 describe('acceptOrderRequest (staff-facing, permissioned)', () => {

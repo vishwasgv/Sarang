@@ -1,6 +1,6 @@
-import { listDrawingRevisions, createDrawingRevision, updateDrawingRevision, deleteDrawingRevision } from '../../services/drawing-revision.service'
+import { listDrawingRevisions, createDrawingRevision, updateDrawingRevision, deleteDrawingRevision, issueNewRevision, getRevisionHistory } from '../../services/drawing-revision.service'
 import { requirePermission } from '../permission-guard'
-import { CreateDrawingRevisionSchema, UpdateDrawingRevisionSchema, DeleteDrawingRevisionSchema } from '../../validation/drawing-revision.validation'
+import { CreateDrawingRevisionSchema, UpdateDrawingRevisionSchema, DeleteDrawingRevisionSchema, IssueNewRevisionSchema, GetRevisionHistorySchema } from '../../validation/drawing-revision.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -30,5 +30,19 @@ export function register(handle: HandleFn): void {
     const parsed = DeleteDrawingRevisionSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteDrawingRevision(parsed.data.id)
+  })
+
+  handle('drawingRevision:issueNewRevision', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = IssueNewRevisionSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return issueNewRevision(parsed.data)
+  })
+
+  handle('drawingRevision:getHistory', async (payload) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = GetRevisionHistorySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return getRevisionHistory(parsed.data.projectId, parsed.data.drawingNumber)
   })
 }

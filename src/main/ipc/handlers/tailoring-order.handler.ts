@@ -1,9 +1,13 @@
 import {
   listTailoringOrders, getTailoringOrder, createTailoringOrder, updateTailoringOrder,
-  deleteTailoringOrder, generateTailoringInvoice, getTailoringKPIs
+  deleteTailoringOrder, generateTailoringInvoice, getTailoringKPIs,
+  scheduleTrialAppointment, setOrderFabric, clearOrderFabric
 } from '../../services/tailoring-order.service'
 import { requirePermission } from '../permission-guard'
-import { CreateTailoringOrderSchema, UpdateTailoringOrderSchema, TailoringOrderIdSchema } from '../../validation/tailoring-order.validation'
+import {
+  CreateTailoringOrderSchema, UpdateTailoringOrderSchema, TailoringOrderIdSchema,
+  ScheduleTrialAppointmentSchema, SetOrderFabricSchema
+} from '../../validation/tailoring-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -49,5 +53,26 @@ export function registerTailoringOrder(handle: HandleFn): void {
   handle('tailoringOrder:kpis', async () => {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     return getTailoringKPIs()
+  })
+
+  handle('tailoringOrder:scheduleTrialAppointment', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = ScheduleTrialAppointmentSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return scheduleTrialAppointment(parsed.data)
+  })
+
+  handle('tailoringOrder:setFabric', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = SetOrderFabricSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return setOrderFabric(parsed.data)
+  })
+
+  handle('tailoringOrder:clearFabric', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = TailoringOrderIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return clearOrderFabric(parsed.data)
   })
 }

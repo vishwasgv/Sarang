@@ -14,6 +14,10 @@ Open **Billing** from the sidebar (`/billing`) to reach the point-of-sale screen
 
 The cart shows a running subtotal, discount, tax, rounding adjustment, and total as you build it. **Clear Cart** at the bottom resets everything without saving.
 
+A tile grid of your **frequently sold products** appears above the search box — a tap adds it straight to the cart, no typing needed, ranked by what actually sells most.
+
+Mid-sale, need to help another customer without losing the current cart? Click **Hold Sale** to park it and start fresh; **Resume Sale** brings up your held carts to pick back up exactly where you left off. A product's **MRP**, when set higher than its selling price, shows as a struck-through reference price next to the real price in the search results.
+
 ## Invoice history and detail
 
 **Invoice List** (`/billing`, via the invoice list view) shows every invoice with its customer, item count, total, outstanding balance, and payment status (UNPAID / PARTIAL / PAID / CANCELLED). Search by invoice number or customer, filter by date range or by Active/Cancelled status.

@@ -4,9 +4,15 @@ Choosing **Restaurant** as your business type during setup turns on four things 
 
 ## Tables
 
-Open **Restaurant Tables** from the sidebar to see every table you've configured, each shown as a card with its current status: **Free**, **Busy**, or **Rsv** (Reserved). Add a table with a table number (e.g. "T1") and an optional display name. Tap a status button on a table's card to change it — a table can't be deleted while it has an active kitchen ticket.
+Open **Restaurant Tables** from the sidebar to see every table you've configured, each shown as a card with its current status: **Free**, **Busy**, or **Rsv** (Reserved). Add a table with a table number (e.g. "T1") and an optional display name. Tap a status button on a table's card to change it — a table can't be deleted while it has an active kitchen ticket. Assign a **waiter** to a table from its card so you always know who's serving it; clear the assignment any time.
 
 **End of Day** is a button on this screen: it marks every occupied table available again and shows a one-line closing summary (KOTs served and today's revenue) so you can close out the dining room at the end of a shift.
+
+## Tip / service charge and "86" items
+
+On the Billing screen, use **Add Tip / Service Charge** to add a tip line to a bill without it being tied to any specific menu item or taxed as a product.
+
+On the Products screen, toggle any menu item **86** (kitchen slang for "out of stock for today") to instantly hide it from the billing cart and the customer-facing QR menu, without deactivating the product itself — perfect for a dish that's sold out for the day but will be back on the menu tomorrow.
 
 ## Kitchen Order Tickets (KOT)
 

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber, SequenceContendedError } from './sequence.service'
+import { billingService } from './billing.service'
 
 export interface ServiceTicketRecord {
   id: string
@@ -17,6 +18,7 @@ export interface ServiceTicketRecord {
   resolvedAt: string | null
   closedAt: string | null
   resolution: string | null
+  invoiceId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -37,6 +39,7 @@ function toRecord(t: any): ServiceTicketRecord {
     resolvedAt: t.resolvedAt ? new Date(t.resolvedAt).toISOString() : null,
     closedAt: t.closedAt ? new Date(t.closedAt).toISOString() : null,
     resolution: t.resolution ?? null,
+    invoiceId: t.invoiceId ?? null,
     createdAt: new Date(t.createdAt).toISOString(),
     updatedAt: new Date(t.updatedAt).toISOString()
   }
@@ -175,5 +178,48 @@ export async function deleteTicket(id: string, userId?: string): Promise<{ succe
   } catch (e: any) {
     console.error('[TKT_DELETE_FAIL]', e)
     return { success: false, error: { code: 'TKT_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
+}
+
+// Phase 58 §1 (2026-07-17) — legacy Service/Consultant invoicing bridge,
+// matching the generate*Invoice(id) pattern already proven elsewhere. Unlike
+// Project (estimatedAmount) and JobCard (actualCost/estimatedCost),
+// ServiceTicket has no stored monetary field at all (nor does its linked
+// WorkLog — hours only, no ratePerHour) — so the billable amount has to be
+// entered by the caller at generation time rather than derived.
+export async function generateTicketInvoice(id: string, amount: number, userId?: string) {
+  try {
+    if (amount <= 0) return { success: false, error: { code: 'TKT-004', message: 'Enter a billable amount greater than zero.' } }
+    const db = getPrisma()
+    const ticket = await db.serviceTicket.findUnique({ where: { id } })
+    if (!ticket) return { success: false, error: { code: 'TKT-005', message: 'Ticket not found.' } }
+    if (!ticket.customerId) return { success: false, error: { code: 'TKT-006', message: 'This ticket has no linked customer. Set a customer before generating an invoice.' } }
+    if (ticket.invoiceId) return { success: false, error: { code: 'TKT-007', message: 'Invoice already generated for this ticket.' } }
+
+    // SAC 998313 — IT consulting and support services, 18% GST
+    let product = await db.product.findFirst({ where: { hsnCode: '998313', isActive: true } })
+    if (!product) {
+      product = await db.product.create({
+        data: { productName: 'Professional / Consulting Services', productType: 'SERVICE', hsnCode: '998313', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+      })
+    }
+
+    const result = await billingService.createInvoice({
+      customerId: ticket.customerId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: product.id, quantity: 1, unitPrice: amount, taxRate: 18 }],
+      notes: `Ticket ${ticket.ticketNumber} — ${ticket.title}`,
+      referenceNumber: ticket.ticketNumber,
+    })
+    if (!result.success) return { success: false as const, error: result.error }
+
+    const invoice = result.data as { id: string }
+    await db.serviceTicket.update({ where: { id }, data: { invoiceId: invoice.id } })
+    if (userId) await logAction(userId, 'INVOICED', 'SERVICE_TICKET', id, null, { invoiceId: invoice.id })
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (e: any) {
+    console.error('[TKT_INVOICE_FAIL]', e)
+    return { success: false, error: { code: 'TKT_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }

@@ -2,7 +2,7 @@
 
 ## What's included
 
-Software Agency is built on Sarang's shared service-business foundation — appointments, a service catalog, provider schedules, and the notification queue — plus **Leads**, **Service Projects**, **Retainers**, and a dedicated **Issues** tracker for bugs and tasks.
+Software Agency is built on Sarang's shared service-business foundation — appointments, a service catalog, provider schedules, and the notification queue — plus **Leads**, **Service Projects**, **Retainers**, and a dedicated **Issues** tracker for bugs and tasks. Billable time tracking is turned on by default for this vertical, so you can log hours against a retainer's hourly bucket from day one.
 
 ## Leads and Retainers
 
@@ -12,9 +12,9 @@ Software Agency is built on Sarang's shared service-business foundation — appo
 
 **Projects** carries the project name, type (Product Build, Feature Development, Maintenance Retainer, and others), status, and total contract value, with **Milestones** for deliverable-based billing — each milestone can be turned into an invoice once its amount is set.
 
-From a project you can also open its **Sprints** — short work cycles with a sprint number, optional name and goal, a date range, and a status (Planning, Active, Completed). Each sprint shows how many issues are open versus total.
+From a project you can also open its **Sprints** — short work cycles with a sprint number, optional name and goal, a date range, and a status (Planning, Active, Completed). Each sprint shows how many issues are open versus total. Click the chart icon on a sprint to see its **burndown chart** — real remaining work plotted day by day against an ideal pace line, computed from your issues' own story points (or a plain issue count if you don't use points) and their actual resolved dates. Once you've completed a few sprints, a **velocity** chart appears showing completed-vs-total work per sprint, so you can see the team's real throughput trend.
 
-**Issues** is the agency's bug/task tracker: a title, description, priority (High, Med, Low), status (Open, In Progress, Resolved, Closed), the project it belongs to, an optional sprint assignment, and the person it's assigned to. Filter by project, status, or priority; the KPI bar shows total issues, open issues, in-progress issues, and high-priority issues still open.
+**Issues** is the agency's bug/task tracker: a title, description, priority (High, Med, Low), status (Open, In Progress, Resolved, Closed), the project it belongs to, an optional sprint assignment, a story-point estimate, and the person it's assigned to. Filter by project, status, or priority; the KPI bar shows total issues, open issues, in-progress issues, and high-priority issues still open. Switch to **Board** view for a drag-and-drop Kanban board — drop a card into a new column to change its status. Click any issue's title (or its comment icon) to open its detail: a **checklist of subtasks** you can add/check off, and a real **comment thread** for discussion, attributed to whoever's logged in.
 
 ## Language
 

@@ -165,7 +165,7 @@ export async function generateShootInvoice(id: string) {
     try {
       const booking = await db.shootBooking.findUnique({
         where: { id },
-        select: { id: true, clientId: true, shootType: true, shootLocation: true, finalAmount: true },
+        select: { id: true, clientId: true, shootType: true, shootLocation: true, finalAmount: true, addOnItems: true },
       })
       if (!booking || booking.finalAmount == null || Number(booking.finalAmount) <= 0) {
         await db.shootBooking.update({ where: { id }, data: { invoiceId: null } })
@@ -179,16 +179,30 @@ export async function generateShootInvoice(id: string) {
         })
       }
 
+      // Phase 58 §2 — itemized add-ons (extra prints, album copies, etc.)
+      // feed into the invoice as their OWN lines, each backed by a real
+      // Product looked up/created by its own description text — never
+      // folded into one manually-typed number, and never overriding the
+      // base package fee above.
+      const addOnLineItems = []
+      for (const addOn of booking.addOnItems) {
+        let addOnProduct = await db.product.findFirst({ where: { productName: addOn.description, hsnCode: '998314' } })
+        if (!addOnProduct) {
+          addOnProduct = await db.product.create({
+            data: { productName: addOn.description, productType: 'SERVICE', hsnCode: '998314', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+          })
+        }
+        addOnLineItems.push({ productId: addOnProduct.id, quantity: addOn.quantity, unitPrice: Number(addOn.unitPrice), taxRate: 18 })
+      }
+
       const result = await billingService.createInvoice({
         customerId: booking.clientId,
         paymentMethod: 'CREDIT',
         gstType: 'CGST_SGST',
-        items: [{
-          productId: product.id,
-          quantity: 1,
-          unitPrice: Number(booking.finalAmount),
-          taxRate: 18,
-        }],
+        items: [
+          { productId: product.id, quantity: 1, unitPrice: Number(booking.finalAmount), taxRate: 18 },
+          ...addOnLineItems,
+        ],
         notes: `${booking.shootType} shoot — ${booking.shootLocation}`,
         referenceNumber: id.slice(0, 12),
       })

@@ -10,9 +10,11 @@ Stock only moves through **Adjust Stock**, which records one of three movement t
 
 ## 2. Bill of Materials (BOM)
 
-A BOM defines what a finished product actually needs: pick the product, set an output quantity per batch, and list the raw materials it consumes with a quantity needed and an optional wastage percentage. Wastage inflates the effective quantity consumed (e.g. 5% wastage on a needed 10 kg means 10.5 kg is actually planned for consumption). Sarang totals the material cost per batch from each ingredient's current unit cost — this is the cost basis a production order will use later.
+A BOM defines what a finished product actually needs: pick the product, set an output quantity per batch, and list what it consumes — either a raw material, or **another manufactured product as a sub-assembly** (toggle the row's type), with a quantity needed and an optional wastage percentage. Wastage inflates the effective quantity consumed (e.g. 5% wastage on a needed 10 kg means 10.5 kg is actually planned for consumption). Building a multi-level product — say a Car that needs an Engine, which is itself manufactured from raw Steel — Sarang checks for circular references (a component that would eventually need itself) and blocks saving one. Sarang totals the material cost per batch from each ingredient's current unit cost — this is the cost basis a production order will use later.
 
-Only one BOM per product is allowed; editing an existing BOM lets you change quantities and wastage but not which product it's for.
+Only one BOM per product is allowed; editing an existing BOM lets you change quantities, wastage, and component rows but not which product it's for.
+
+Raw materials received in distinct lots (a delivery today may cost differently than last month's) can be tracked as **material batches** from Raw Materials — receive a lot with its own quantity, and a production order automatically draws from the oldest lot first (FIFO), so you always know exactly which lot went into which production run.
 
 ## 3. Production Orders
 
@@ -20,10 +22,10 @@ This is the core manufacturing workflow, and it moves through four states:
 
 - **Draft** — you pick a product with a BOM and a planned quantity; Sarang calculates exactly how much of each raw material that plan needs.
 - **In Progress** — starting an order checks that every required raw material has enough stock; if anything is short, it tells you exactly what and by how much, and refuses to start. Once started, the raw materials are deducted immediately (recorded as a "Consumed" movement against each material) — this happens at start, not at completion.
-- **Completed** — you enter the actual produced quantity (it doesn't have to match the plan). Sarang adds that quantity to the finished product's stock and recalculates its average cost using the same weighted-average formula every other stock-in path in Sarang uses, so a manufactured batch's cost basis flows correctly into your inventory valuation and profit reports.
+- **Completed** — you enter the actual produced quantity, a **scrap/reject quantity** (units that consumed material and labor but yielded nothing sellable), and the **labor cost** for the run. Sarang adds the produced quantity to the finished product's stock and recalculates its average cost from material cost plus labor cost, divided across the produced units only — the scrapped units' cost is absorbed into the good units' cost, since they still consumed real resources.
 - **Cancelled** — available from Draft or In Progress, with an optional reason. Cancelling an order that already consumed raw materials returns them to stock.
 
-Each production order can also carry an optional checklist of **work order steps** (e.g. "Mixing", "Baking", "Packing") that you tick off one by one as production actually happens on the floor — this is separate from the material/quantity tracking and purely for following the physical process.
+Each production order can also carry an optional checklist of **work order steps** (e.g. "Mixing", "Baking", "Packing") that you tick off one by one as production actually happens on the floor. Mark a step as a **QC checkpoint** and Sarang requires a real Pass/Fail result before it can be checked off — a quality gate can't be silently skipped with a plain tick.
 
 ## 4. Dispatch Tracking
 

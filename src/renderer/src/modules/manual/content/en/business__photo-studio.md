@@ -12,11 +12,17 @@ A booking moves through a status pipeline: **Inquiry → Confirmed → Shot → 
 
 ## Delivery tracking
 
-Expanding a booking shows its **delivery milestones**, each toggled on/off with a timestamp: Proofs Sent to Client, Client Selection Received, Editing Started, Album Proof Sent, and Final Delivery Done. This gives you a simple checklist for where any given shoot's post-production stands.
+Expanding a booking shows its **delivery milestones**, each toggled on/off with a timestamp: Proofs Sent to Client, Client Selection Received, Editing Started, Album Proof Sent, and Final Delivery Done. This gives you a simple checklist for where any given shoot's post-production stands. Enter the actual **delivered photo count** alongside the expected count, so you have a real record of what was handed over, not just what was promised.
+
+## Equipment/crew checklist and add-ons
+
+Each booking also has a shoot-day **Equipment & Crew Checklist** — add and check off gear (2nd camera body, lenses, lighting) and crew (assistant photographer) items so nothing gets left behind on the day.
+
+Add **Add-on Items** for anything beyond the base package — extra prints, additional album copies, and so on — each with its own quantity and unit price. These itemized add-ons feed into your final invoice as their own real line items, so the client sees exactly what they're paying for instead of one lump-sum number.
 
 ## Billing
 
-Once a final amount is entered on a booking, a **Generate Invoice** button turns it into a real invoice — Sarang won't let you generate a second invoice for the same booking. The KPI bar shows shoots this month, deliveries pending, and upcoming shoots.
+Once a final amount is entered on a booking, a **Generate Invoice** button turns it into a real invoice that includes the base package fee plus every add-on item as its own line — Sarang won't let you generate a second invoice for the same booking, or change the add-ons once invoiced. The KPI bar shows shoots this month, deliveries pending, and upcoming shoots.
 
 ## Language
 

@@ -133,3 +133,76 @@ export async function deleteROCFiling(id: string) {
     return { success: false, error: { code: 'RF29-004', message: err instanceof Error ? err.message : 'Could not delete ROC filing.' } }
   }
 }
+
+// Phase 58 §2 — Company Secretary: a per-company annual-compliance rollup
+// (AGM held? MGT-7/AOC-4/ADT-1 filed?) at a glance, instead of a CS having
+// to cross-reference two separate screens per client. Indian FY runs
+// 1 April – 31 March; "2025-26" means Apr 2025 – Mar 2026.
+function fyRange(financialYear: string): { start: Date; end: Date } {
+  const startYear = parseInt(financialYear.split('-')[0], 10)
+  return {
+    start: new Date(Date.UTC(startYear, 3, 1)),
+    end: new Date(Date.UTC(startYear + 1, 2, 31, 23, 59, 59, 999)),
+  }
+}
+
+export interface ComplianceRollupRow {
+  clientId: string
+  clientName: string
+  agmHeld: boolean
+  agmDate: string | null
+  mgt7Status: string
+  aoc4Status: string
+  adt1Status: string
+}
+
+export async function getComplianceRollup(financialYear: string): Promise<{ success: true; data: ComplianceRollupRow[] } | { success: false; error: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const { start, end } = fyRange(financialYear)
+
+    // "Company" clients are identified by having EVER had a ROCFiling or
+    // BoardMeeting record — Customer has no dedicated entity-type field, so
+    // this is the closest real signal without adding a new schema flag just
+    // for this one rollup view.
+    const [filingClientIds, meetingClientIds] = await Promise.all([
+      db.rOCFiling.findMany({ distinct: ['clientId'], select: { clientId: true } }),
+      db.boardMeeting.findMany({ distinct: ['clientId'], select: { clientId: true } }),
+    ])
+    const companyClientIds = Array.from(new Set([...filingClientIds.map((f) => f.clientId), ...meetingClientIds.map((m) => m.clientId)]))
+    if (companyClientIds.length === 0) return { success: true, data: [] }
+
+    const [clients, filings, agmMeetings] = await Promise.all([
+      db.customer.findMany({ where: { id: { in: companyClientIds } }, select: { id: true, customerName: true } }),
+      db.rOCFiling.findMany({
+        where: { clientId: { in: companyClientIds }, financialYear, formType: { in: ['MGT-7', 'AOC-4', 'ADT-1'] } },
+        select: { clientId: true, formType: true, status: true },
+      }),
+      db.boardMeeting.findMany({
+        where: { clientId: { in: companyClientIds }, meetingType: 'AGM', meetingDate: { gte: start, lte: end } },
+        select: { clientId: true, meetingDate: true },
+        orderBy: { meetingDate: 'desc' },
+      }),
+    ])
+
+    const rows: ComplianceRollupRow[] = clients.map((c) => {
+      const clientFilings = filings.filter((f) => f.clientId === c.id)
+      const agm = agmMeetings.find((m) => m.clientId === c.id)
+      const statusFor = (formType: string) => clientFilings.find((f) => f.formType === formType)?.status ?? 'NOT_STARTED'
+      return {
+        clientId: c.id,
+        clientName: c.customerName,
+        agmHeld: !!agm,
+        agmDate: agm ? agm.meetingDate.toISOString() : null,
+        mgt7Status: statusFor('MGT-7'),
+        aoc4Status: statusFor('AOC-4'),
+        adt1Status: statusFor('ADT-1'),
+      }
+    })
+    rows.sort((a, b) => a.clientName.localeCompare(b.clientName))
+
+    return { success: true, data: rows }
+  } catch (err) {
+    return { success: false, error: { code: 'RF29-005', message: err instanceof Error ? err.message : 'Could not generate compliance rollup.' } }
+  }
+}

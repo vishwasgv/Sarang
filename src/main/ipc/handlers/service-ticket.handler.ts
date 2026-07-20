@@ -1,7 +1,7 @@
-import { listTickets, createTicket, updateTicket, deleteTicket } from '../../services/service-ticket.service'
+import { listTickets, createTicket, updateTicket, deleteTicket, generateTicketInvoice } from '../../services/service-ticket.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateTicketSchema, UpdateTicketSchema, DeleteTicketSchema } from '../../validation/service-ticket.validation'
+import { CreateTicketSchema, UpdateTicketSchema, DeleteTicketSchema, GenerateTicketInvoiceSchema } from '../../validation/service-ticket.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -30,5 +30,12 @@ export function register(handle: HandleFn): void {
     const parsed = DeleteTicketSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteTicket(parsed.data.id, getCurrentSession()?.userId)
+  })
+
+  handle('tickets:generateInvoice', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = GenerateTicketInvoiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateTicketInvoice(parsed.data.id, parsed.data.amount, getCurrentSession()?.userId)
   })
 }

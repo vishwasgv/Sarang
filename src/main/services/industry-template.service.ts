@@ -93,6 +93,10 @@ export type TemplateModule =
   // business type. An owner turns these on explicitly in Settings; until they do, this
   // phase is entirely dormant for every business.)
   | 'barcode_generation' | 'barcode_printing' | 'loose_billing'
+  // Phase 58 §2 — carton/box-to-loose-piece unit conversion (Hardware).
+  // Same cross-cutting, opt-in-only convention as loose_billing above —
+  // never in TEMPLATE_DEFAULTS, toggled explicitly in Settings.
+  | 'pack_billing'
   // Phase 46 modules — replacing two hardcoded business-type checks the audit found in
   // AppointmentsScreen.tsx/VisitNoteScreen.tsx (raw `businessType === 'X'` comparisons in
   // renderer business logic, violating "no template-specific if/else — configuration
@@ -163,6 +167,26 @@ export type TemplateModule =
   // barcode_generation/barcode_printing/loose_billing): an owner turns it on
   // explicitly in Settings, until then this phase is entirely dormant.
   | 'ai_assistant'
+  // Phase 58 §2 — Distributor field-rep order capture (structural mirror of
+  // qr_table_ordering's LAN server, but for a travelling rep instead of a
+  // dine-in customer). Unlike the opt-in-only modules above, this ships as
+  // a DISTRIBUTOR default below — it's the core ask for this vertical, not
+  // an optional add-on — but is still a plain TemplateModule flag so it can
+  // be turned off in Settings like any other module.
+  | 'field_order_capture'
+  // Phase 58 §2 — Electronics repair/RMA workflow (RepairTicket: claim
+  // intake, vendor RMA tracking, replacement-unit linkage, service history
+  // per serial/IMEI). Ships as an ELECTRONICS default below — core to that
+  // vertical, not an optional add-on — but still a plain TemplateModule flag
+  // so it can be turned off in Settings like any other module.
+  | 'repair_rma'
+  // Phase 58 §2 — Agri Inputs combined consumables (batch/expiry) + equipment
+  // (serial/warranty) dashboard. An AGRI_INPUTS default below — core to that
+  // vertical, since it's the only business type with both batch_tracking AND
+  // serial_tracking on by default — but a plain flag so any business that
+  // happens to sell both consumable and serialized-equipment stock can turn
+  // it on too.
+  | 'agri_dashboard'
 
 export interface TemplateConfig {
   businessType: string
@@ -225,11 +249,11 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   RESTAURANT:  ['tables', 'kot', 'recipes', 'ingredient_tracking'],
   RETAIL:      ['returns', ...LOGISTICS_MODULES],
   HARDWARE:    ['area_pricing', 'credit_limit_enforcement', ...LOGISTICS_MODULES],
-  DISTRIBUTOR: ['credit_limit_enforcement', 'bulk_orders', 'outstanding_analytics', ...LOGISTICS_MODULES],
+  DISTRIBUTOR: ['credit_limit_enforcement', 'bulk_orders', 'outstanding_analytics', 'field_order_capture', ...LOGISTICS_MODULES],
   GENERAL:     [...LOGISTICS_MODULES],
   // Phase 2
   PHARMACY:    ['batch_tracking', 'expiry_tracking', ...LOGISTICS_MODULES],
-  ELECTRONICS: ['serial_tracking', 'imei_tracking', 'warranty_tracking', ...LOGISTICS_MODULES],
+  ELECTRONICS: ['serial_tracking', 'imei_tracking', 'warranty_tracking', 'repair_rma', ...LOGISTICS_MODULES],
   CLOTHING:    ['variant_tracking', 'returns', ...LOGISTICS_MODULES],
   FOOTWEAR:    ['variant_tracking', 'returns', ...LOGISTICS_MODULES],
   // Phase 3
@@ -241,7 +265,12 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // apply to a tractor/sprayer); job_cards reuses REPAIR's generic job-card
   // model/screen for equipment servicing. Not in SERVICE_TEMPLATE_TYPES, so
   // this is businessCategory: 'PRODUCT' and languageLock: 'multi' automatically.
-  AGRI_INPUTS: ['batch_tracking', 'expiry_tracking', 'serial_tracking', 'warranty_tracking', 'job_cards', ...LOGISTICS_MODULES],
+  // Phase 58 §2 — credit_limit_enforcement/outstanding_analytics added:
+  // Agri Inputs sells fertilizer/seed on credit against a farmer's harvest
+  // just as routinely as Distributor sells wholesale on credit — it had
+  // neither module before, so a shop extending seasonal credit had no limit
+  // enforcement and no exposure visibility at all.
+  AGRI_INPUTS: ['batch_tracking', 'expiry_tracking', 'serial_tracking', 'warranty_tracking', 'job_cards', 'credit_limit_enforcement', 'outstanding_analytics', 'agri_dashboard', ...LOGISTICS_MODULES],
   // Phase 51 — Blood Bank. Deliberately does NOT include batch_tracking/
   // expiry_tracking — blood_bank's own dedicated stock screen reuses
   // ProductBatch as the underlying ledger directly, not through the generic
@@ -269,9 +298,17 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // brought items via job_cards, not supplier shipments). Still available via
   // the Logistics & Supply Chain "Additional Business Features" toggle in
   // Settings for anyone who genuinely needs it.
-  SERVICE:    ['projects', 'project_tasks', 'service_tickets', 'work_tracking', 'customer_history'],
-  CONSULTANT: ['projects', 'project_tasks', 'work_tracking', 'customer_history'],
-  REPAIR:     ['job_cards', 'service_tickets', 'work_tracking', 'customer_history'],
+  // Phase 58 §1 (2026-07-17): SERVICE_BASE_MODULES (appointments/service
+  // catalog/provider schedule/notification queue) was the one thing every
+  // newer service-family vertical gets by default that this original trio
+  // never did — a real gap (e.g. an IT services shop or repair centre with
+  // walk-in-by-appointment customers had no scheduling at all). Adding it
+  // here doesn't touch the legacy Project/JobCard/ServiceTicket workflows,
+  // it just additionally turns on the same generic Appointments system every
+  // clinic/salon/studio vertical already shares.
+  SERVICE:    [...SERVICE_BASE_MODULES, 'projects', 'project_tasks', 'service_tickets', 'work_tracking', 'customer_history'],
+  CONSULTANT: [...SERVICE_BASE_MODULES, 'projects', 'project_tasks', 'work_tracking', 'customer_history'],
+  REPAIR:     [...SERVICE_BASE_MODULES, 'job_cards', 'service_tickets', 'work_tracking', 'customer_history'],
   // Phase 22 — Clinical; Phase 23 adds vet_patients; Phase 24 adds visit_notes + token_queue
   // 'token_queue' (2026-07-15, final testing pass): extended to ALL 6 clinic-shaped
   // verticals, not just GP_CLINIC/SPECIALIST_CLINIC — walk-in token queues are just as
@@ -279,7 +316,14 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // clinics (the earlier Phase 50 rationale for adding it to SPECIALIST_CLINIC applies
   // equally here). TokenQueueScreen.tsx/its IPC layer were already fully generic (no
   // business-type-specific logic), so this is purely a module-flag change.
-  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'token_queue'],
+  // Phase 58 §2 — the single highest-priority gap in the whole Phase 58 plan:
+  // VET_CLINIC previously had NO way to record a consultation at all (had
+  // vet_patients + token_queue, but never visit_notes) despite the exact
+  // same VisitNote/SOAP infrastructure GP_CLINIC/SPECIALIST_CLINIC/
+  // PHYSIO_CLINIC already use sitting right there, already wired to
+  // Appointment.petId (added back in Phase 23) — the module flag was simply
+  // never turned on for this vertical.
+  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'visit_notes', 'token_queue'],
   GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue'],
   // 'specialist_referral' (Phase 46) is the flag distinguishing this vertical's extra
   // referral fields on the visit note — GP_CLINIC/PHYSIO_CLINIC also have 'visit_notes'
@@ -311,7 +355,12 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   INDEPENDENT_CONSULTANT: [...SERVICE_BASE_MODULES, 'leads', 'service_projects', 'retainers', 'time_entries'],
   // Phase 22 — Creative
   MARKETING_AGENCY: [...SERVICE_BASE_MODULES, 'leads', 'service_projects', 'retainers', 'marketing_campaigns'],
-  SOFTWARE_AGENCY:  [...SERVICE_BASE_MODULES, 'leads', 'service_projects', 'retainers', 'issues'],
+  // Phase 58 §1 (2026-07-17): time_entries added to the default set —
+  // Software Agency is the one time-billed profession in this app that
+  // didn't already default it on (Lawyer/CA Firm/CS/Architect/Civil
+  // Engineer/Independent Consultant all do). Still available to any other
+  // business type via the self-service toggle in BusinessFeaturesSection.
+  SOFTWARE_AGENCY:  [...SERVICE_BASE_MODULES, 'leads', 'service_projects', 'retainers', 'issues', 'time_entries'],
   PHOTO_STUDIO:     [...SERVICE_BASE_MODULES, 'shoot_bookings'],
   EVENT_MANAGEMENT: [...SERVICE_BASE_MODULES, 'leads', 'event_bookings'],
   // Phase 22 — Education; Phase 31 adds coaching-specific modules

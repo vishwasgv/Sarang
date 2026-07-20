@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { api } from '@renderer/services/ipc-client'
-import { Camera, Plus, X, ChevronDown, ChevronRight, Check, Pencil, UserCheck, Receipt } from 'lucide-react'
+import { Camera, Plus, X, ChevronDown, ChevronRight, Check, Pencil, UserCheck, Receipt, ClipboardList, Trash2 } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -22,7 +22,22 @@ interface DeliveryTracker {
   albumProofSentDate: string | null
   finalDeliveredDate: string | null
   deliveryFormat: string | null
+  deliveredPhotosCount: number | null
   notes: string | null
+}
+interface ShootChecklistItem {
+  id: string
+  shootBookingId: string
+  category: string
+  label: string
+  isDone: boolean
+}
+interface ShootAddOnItem {
+  id: string
+  shootBookingId: string
+  description: string
+  quantity: number
+  unitPrice: number
 }
 interface ShootBooking {
   id: string
@@ -326,6 +341,14 @@ export default function ShootsScreen() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Phase 58 §2 — Photo Studio: equipment/crew checklist + itemized add-ons
+  const [checklistMap, setChecklistMap] = useState<Record<string, ShootChecklistItem[]>>({})
+  const [addOnMap, setAddOnMap] = useState<Record<string, ShootAddOnItem[]>>({})
+  const [checklistForm, setChecklistForm] = useState({ label: '', category: 'EQUIPMENT' })
+  const [addOnForm, setAddOnForm] = useState({ description: '', quantity: '1', unitPrice: '' })
+  const [checklistSaving, setChecklistSaving] = useState(false)
+  const [addOnSaving, setAddOnSaving] = useState(false)
+
   const loadBookings = useCallback(async (filter?: string) => {
     try {
       const res = await api.shootBooking.list(filter ? { status: filter } : {})
@@ -389,6 +412,83 @@ export default function ShootsScreen() {
     } else {
       setMilestoneErrors(prev => ({ ...prev, [errorKey]: 'failed' }))
     }
+  }
+
+  async function handleUpdateDeliveredCount(shootBookingId: string, count: string) {
+    const val = count.trim() ? parseInt(count, 10) : null
+    const res = await api.deliveryTracker.upsert({ shootBookingId, deliveredPhotosCount: val })
+    if (res.success) {
+      setBookings(bs => bs.map(b => (b.id !== shootBookingId ? b : { ...b, delivery: (res.data as DeliveryTracker) })))
+    }
+  }
+
+  // ── Equipment/Crew checklist ────────────────────────────────────────────────
+
+  const loadChecklist = useCallback(async (shootBookingId: string) => {
+    const res = await api.shootChecklist.list({ shootBookingId })
+    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootChecklistItem[]) ?? [] }))
+  }, [])
+
+  const loadAddOns = useCallback(async (shootBookingId: string) => {
+    const res = await api.shootAddOn.list({ shootBookingId })
+    if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootAddOnItem[]) ?? [] }))
+  }, [])
+
+  function toggleExpand(id: string) {
+    const next = expandedId === id ? null : id
+    setExpandedId(next)
+    if (next) {
+      setChecklistForm({ label: '', category: 'EQUIPMENT' })
+      setAddOnForm({ description: '', quantity: '1', unitPrice: '' })
+      void loadChecklist(next)
+      void loadAddOns(next)
+    }
+  }
+
+  async function handleAddChecklistItem(shootBookingId: string) {
+    if (!checklistForm.label.trim()) return
+    setChecklistSaving(true)
+    try {
+      const res = await api.shootChecklist.add({ shootBookingId, label: checklistForm.label.trim(), category: checklistForm.category })
+      if (res.success) { setChecklistForm({ label: '', category: checklistForm.category }); void loadChecklist(shootBookingId) }
+      else setActionError(res.error?.message ?? 'Could not add checklist item.')
+    } finally {
+      setChecklistSaving(false)
+    }
+  }
+
+  async function handleToggleChecklistItem(shootBookingId: string, item: ShootChecklistItem) {
+    const res = await api.shootChecklist.toggle({ id: item.id, isDone: !item.isDone })
+    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).map(i => (i.id === item.id ? { ...i, isDone: !i.isDone } : i)) }))
+  }
+
+  async function handleDeleteChecklistItem(shootBookingId: string, id: string) {
+    const res = await api.shootChecklist.delete({ id })
+    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
+  }
+
+  // ── Itemized add-ons ─────────────────────────────────────────────────────────
+
+  async function handleAddAddOn(shootBookingId: string) {
+    if (!addOnForm.description.trim() || !addOnForm.unitPrice) return
+    setAddOnSaving(true)
+    try {
+      const res = await api.shootAddOn.add({
+        shootBookingId, description: addOnForm.description.trim(),
+        quantity: addOnForm.quantity ? parseInt(addOnForm.quantity, 10) : 1,
+        unitPrice: parseFloat(addOnForm.unitPrice),
+      })
+      if (res.success) { setAddOnForm({ description: '', quantity: '1', unitPrice: '' }); void loadAddOns(shootBookingId) }
+      else setActionError(res.error?.message ?? 'Could not add add-on item.')
+    } finally {
+      setAddOnSaving(false)
+    }
+  }
+
+  async function handleDeleteAddOn(shootBookingId: string, id: string) {
+    const res = await api.shootAddOn.delete({ id })
+    if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
+    else setActionError(res.error?.message ?? 'Could not remove add-on item.')
   }
 
   async function handleGenerateInvoice(booking: ShootBooking) {
@@ -495,7 +595,7 @@ export default function ShootsScreen() {
               {/* Booking Row */}
               <div
                 className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800"
-                onClick={() => setExpandedId(expanded ? null : b.id)}
+                onClick={() => toggleExpand(b.id)}
               >
                 <div className="flex-shrink-0">{expanded ? <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" /> : <ChevronRight size={16} className="text-gray-400 dark:text-slate-500" />}</div>
                 <div className="flex-1 min-w-0">
@@ -555,9 +655,103 @@ export default function ShootsScreen() {
                   })}
                   {b.notes && <p className="text-xs text-gray-500 mt-3 italic dark:text-slate-400">{b.notes}</p>}
 
+                  {/* Phase 58 §2 — actual/delivered photo count vs. expected */}
+                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+                    <label className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Delivered Photos</label>
+                    <input
+                      type="number" min="0"
+                      className="w-24 h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      defaultValue={b.delivery?.deliveredPhotosCount != null ? String(b.delivery.deliveredPhotosCount) : ''}
+                      onBlur={e => { if (e.target.value !== (b.delivery?.deliveredPhotosCount != null ? String(b.delivery.deliveredPhotosCount) : '')) handleUpdateDeliveredCount(b.id, e.target.value) }}
+                      onClick={e => e.stopPropagation()}
+                    />
+                    {b.expectedPhotosCount != null && <span className="text-xs text-gray-400 dark:text-slate-500">of {b.expectedPhotosCount} expected</span>}
+                  </div>
+
+                  {/* Phase 58 §2 — shoot-day equipment/crew checklist */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 dark:text-slate-400 flex items-center gap-1.5">
+                      <ClipboardList size={12} /> Equipment &amp; Crew Checklist
+                    </p>
+                    {(checklistMap[b.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">No checklist items yet.</p>
+                    ) : (
+                      <div className="space-y-1 mb-2">
+                        {(checklistMap[b.id] ?? []).map(item => (
+                          <div key={item.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 rounded px-2 py-1.5 border border-gray-100 dark:border-slate-800">
+                            <input type="checkbox" checked={item.isDone} onChange={() => handleToggleChecklistItem(b.id, item)} className="w-3.5 h-3.5" />
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">{item.category}</span>
+                            <span className={`flex-1 ${item.isDone ? 'line-through text-gray-400 dark:text-slate-500' : 'text-gray-700 dark:text-slate-300'}`}>{item.label}</span>
+                            <button onClick={() => handleDeleteChecklistItem(b.id, item.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={12} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <select value={checklistForm.category} onChange={e => setChecklistForm(f => ({ ...f, category: e.target.value }))}
+                        className="h-8 px-1.5 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                        <option value="EQUIPMENT">Equipment</option>
+                        <option value="CREW">Crew</option>
+                      </select>
+                      <input value={checklistForm.label} onChange={e => setChecklistForm(f => ({ ...f, label: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddChecklistItem(b.id) }}
+                        placeholder="e.g. 2nd camera body, 50mm lens..."
+                        className="flex-1 h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      <button onClick={() => handleAddChecklistItem(b.id)} disabled={checklistSaving || !checklistForm.label.trim()}
+                        className="px-2.5 h-8 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Phase 58 §2 — itemized add-on line items (feed into the invoice, not one manual number) */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 dark:text-slate-400">Add-on Items</p>
+                    {(addOnMap[b.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">No add-ons yet — extra prints, album copies, etc.</p>
+                    ) : (
+                      <div className="space-y-1 mb-2">
+                        {(addOnMap[b.id] ?? []).map(item => (
+                          <div key={item.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 rounded px-2 py-1.5 border border-gray-100 dark:border-slate-800">
+                            <span className="flex-1 text-gray-700 dark:text-slate-300">{item.description}</span>
+                            <span className="text-gray-500 dark:text-slate-400">{item.quantity} × ₹{item.unitPrice.toLocaleString('en-IN')}</span>
+                            <span className="font-medium text-gray-900 dark:text-slate-100 w-16 text-right">₹{(item.quantity * item.unitPrice).toLocaleString('en-IN')}</span>
+                            {!b.invoiceId && <button onClick={() => handleDeleteAddOn(b.id, item.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={12} /></button>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!b.invoiceId && (
+                      <div className="flex gap-1.5">
+                        <input value={addOnForm.description} onChange={e => setAddOnForm(f => ({ ...f, description: e.target.value }))}
+                          placeholder="e.g. Extra prints (6x4)"
+                          className="flex-1 h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" min="1" value={addOnForm.quantity} onChange={e => setAddOnForm(f => ({ ...f, quantity: e.target.value }))}
+                          className="w-14 h-8 px-1.5 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" min="0" step="0.01" value={addOnForm.unitPrice} onChange={e => setAddOnForm(f => ({ ...f, unitPrice: e.target.value }))}
+                          placeholder="₹/unit"
+                          className="w-20 h-8 px-1.5 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <button onClick={() => handleAddAddOn(b.id)} disabled={addOnSaving || !addOnForm.description.trim() || !addOnForm.unitPrice}
+                          className="px-2.5 h-8 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200 dark:border-slate-800">
                     <div className="text-xs text-gray-500 dark:text-slate-400">
-                      {b.finalAmount != null ? `Final Amount: ₹${Number(b.finalAmount).toLocaleString('en-IN')}` : 'Final amount not set'}
+                      {b.finalAmount != null ? (
+                        <>
+                          Final Amount: ₹{Number(b.finalAmount).toLocaleString('en-IN')}
+                          {(addOnMap[b.id]?.length ?? 0) > 0 && (
+                            <>
+                              {' '}+ Add-ons ₹{(addOnMap[b.id] ?? []).reduce((s, i) => s + i.quantity * i.unitPrice, 0).toLocaleString('en-IN')}
+                              {' '}= <span className="font-semibold text-gray-700 dark:text-slate-300">₹{(Number(b.finalAmount) + (addOnMap[b.id] ?? []).reduce((s, i) => s + i.quantity * i.unitPrice, 0)).toLocaleString('en-IN')}</span>
+                            </>
+                          )}
+                        </>
+                      ) : 'Final amount not set'}
                       {b.invoiceId && <span className="ml-2 text-green-600 font-medium">Invoiced</span>}
                     </div>
                     {!b.invoiceId && b.finalAmount != null && b.finalAmount > 0 && (

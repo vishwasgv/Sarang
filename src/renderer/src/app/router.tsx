@@ -39,11 +39,15 @@ import { DisclaimerScreen } from '@modules/disclaimer/ui/DisclaimerScreen'
 import { BackupPromptScreen } from '@modules/backup/ui/BackupPromptScreen'
 import { BulkOrderScreen } from '@modules/distributor/ui/BulkOrderScreen'
 import { OutstandingAnalyticsScreen } from '@modules/distributor/ui/OutstandingAnalyticsScreen'
+import { FieldOrdersScreen } from '@modules/distributor/ui/FieldOrdersScreen'
+import { CustomerPricingScreen } from '@modules/distributor/ui/CustomerPricingScreen'
 import { AuditLogsScreen } from '@modules/audit/ui/AuditLogsScreen'
 import { ExpensesScreen } from '@modules/expenses/ui/ExpensesScreen'
 import { CashCloseScreen } from '@modules/cashclose/ui/CashCloseScreen'
 import { BatchManagementScreen } from '@modules/inventory/ui/BatchManagementScreen'
 import { SerialTrackingScreen } from '@modules/inventory/ui/SerialTrackingScreen'
+import { RepairTicketsScreen } from '@modules/inventory/ui/RepairTicketsScreen'
+import { AgriInputsDashboardScreen } from '@modules/inventory/ui/AgriInputsDashboardScreen'
 import { RawMaterialsScreen } from '@modules/manufacturing/ui/RawMaterialsScreen'
 import { BillOfMaterialsScreen } from '@modules/manufacturing/ui/BillOfMaterialsScreen'
 import { ProductionOrdersScreen } from '@modules/manufacturing/ui/ProductionOrdersScreen'
@@ -86,6 +90,7 @@ import { RentalBookingsScreen } from '@modules/rental/ui/RentalBookingsScreen'
 import { RentalUnitsScreen } from '@modules/rental/ui/RentalUnitsScreen'
 import { HotelBookingsScreen } from '@modules/hotel/ui/HotelBookingsScreen'
 import { HotelRoomsScreen } from '@modules/hotel/ui/HotelRoomsScreen'
+import { HotelHousekeepingScreen } from '@modules/hotel/ui/HotelHousekeepingScreen'
 import { AiAssistantScreen } from '@modules/ai/ui/AiAssistantScreen'
 import { MetalRatesScreen } from '@modules/jewellery/ui/MetalRatesScreen'
 import { MetalExchangeScreen } from '@modules/jewellery/ui/MetalExchangeScreen'
@@ -244,9 +249,16 @@ export function AppRouter() {
         {/* Distributor routes */}
         <Route path="/distributor/bulk-order" element={<ProtectedRoute permission="billing.createInvoice"><BulkOrderScreen /></ProtectedRoute>} />
         <Route path="/distributor/outstanding" element={<ProtectedRoute permission="customers.view"><OutstandingAnalyticsScreen /></ProtectedRoute>} />
+        {/* Phase 58 §2 — Distributor field-rep order capture + customer-class pricing */}
+        <Route path="/distributor/field-orders" element={<ProtectedRoute permission="distributor.manageFieldOrders"><FieldOrdersScreen /></ProtectedRoute>} />
+        <Route path="/distributor/pricing" element={<ProtectedRoute permission="products.modifyPricing"><CustomerPricingScreen /></ProtectedRoute>} />
         {/* Phase 2 — Industry Expansion */}
         <Route path="/pharmacy/batches" element={<ProtectedRoute permission="inventory.view"><BatchManagementScreen /></ProtectedRoute>} />
         <Route path="/electronics/serials" element={<ProtectedRoute permission="inventory.view"><SerialTrackingScreen /></ProtectedRoute>} />
+        {/* Phase 58 §2 — Electronics repair/RMA workflow */}
+        <Route path="/electronics/repair-tickets" element={<ProtectedRoute permission="repairTickets.view"><RepairTicketsScreen /></ProtectedRoute>} />
+        {/* Phase 58 §2 — Agri Inputs combined consumables+equipment dashboard */}
+        <Route path="/agri/dashboard" element={<ProtectedRoute permission="inventory.view"><AgriInputsDashboardScreen /></ProtectedRoute>} />
         {/* Phase 3 — Manufacturing Lite */}
         <Route path="/manufacturing/raw-materials" element={<ProtectedRoute permission="inventory.view"><RawMaterialsScreen /></ProtectedRoute>} />
         <Route path="/manufacturing/bom" element={<ProtectedRoute permission="inventory.view"><BillOfMaterialsScreen /></ProtectedRoute>} />
@@ -293,6 +305,7 @@ export function AppRouter() {
         <Route path="/rental/units" element={<ProtectedRoute permission="rental.view"><RentalUnitsScreen /></ProtectedRoute>} />
         <Route path="/hotel/bookings" element={<ProtectedRoute permission="hotel.view"><HotelBookingsScreen /></ProtectedRoute>} />
         <Route path="/hotel/rooms" element={<ProtectedRoute permission="hotel.view"><HotelRoomsScreen /></ProtectedRoute>} />
+        <Route path="/hotel/housekeeping" element={<ProtectedRoute permission="hotel.view"><HotelHousekeepingScreen /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute permission="ai.query"><AiAssistantScreen /></ProtectedRoute>} />
         <Route path="/jewellery/metal-rates" element={<ProtectedRoute permission="jewellery.view"><MetalRatesScreen /></ProtectedRoute>} />
         <Route path="/jewellery/exchanges" element={<ProtectedRoute permission="jewellery.view"><MetalExchangeScreen /></ProtectedRoute>} />

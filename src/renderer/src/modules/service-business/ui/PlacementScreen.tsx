@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Briefcase, Users, UserCheck, Plus, Pencil, Trash2, X, Receipt, ChevronRight, Search, Printer } from 'lucide-react'
+import { Briefcase, Users, UserCheck, Plus, Pencil, Trash2, X, Receipt, ChevronRight, Search, Printer, CalendarClock } from 'lucide-react'
 import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 import { useNotificationStore } from '@app/store/notification.store'
 
 const api = window.api
@@ -26,16 +27,24 @@ interface JobOrderRow {
   experienceMin?: number | null; experienceMax?: number | null
   salaryBudgetMin?: number | null; salaryBudgetMax?: number | null; location?: string | null
   numberOfPositions: number; status: string; targetDate?: string | null
-  commissionType: string; commissionValue: number; notes?: string | null
+  commissionType: string; commissionValue: number
+  feeAgreementTerms?: string | null; replacementGuaranteeDays?: number | null
+  notes?: string | null
   _count: { placements: number }; createdAt: string
 }
 interface PlacementRow {
   id: string; placementNumber: string; candidateId: string; jobOrderId: string; clientId: string
   candidate: { id: string; candidateNumber: string; fullName: string; phone?: string | null }
-  jobOrder: { id: string; orderNumber: string; jobTitle: string }
+  jobOrder: { id: string; orderNumber: string; jobTitle: string; replacementGuaranteeDays?: number | null }
   client: { id: string; customerName: string }
   joiningDate: string; offeredSalary: number; commissionAmount: number
   invoiceId?: string | null; status: string; notes?: string | null; createdAt: string
+}
+interface InterviewRound {
+  id: string; candidateId: string; jobOrderId: string; roundNumber: number; roundType: string
+  scheduledDate: string | null; status: string; interviewerName: string | null
+  clientFeedback: string | null; notes: string | null
+  jobOrder: { id: string; orderNumber: string; jobTitle: string }
 }
 interface Customer { id: string; customerName: string; phone?: string | null }
 
@@ -99,7 +108,8 @@ function emptyJOForm() {
     clientId: '', jobTitle: '', jobDescription: '', requiredSkills: [] as string[],
     experienceMin: '', experienceMax: '', salaryBudgetMin: '', salaryBudgetMax: '',
     location: '', numberOfPositions: '1', targetDate: '', status: 'OPEN',
-    commissionType: 'PERCENTAGE', commissionValue: '', notes: '',
+    commissionType: 'PERCENTAGE', commissionValue: '',
+    feeAgreementTerms: '', replacementGuaranteeDays: '', notes: '',
   }
 }
 function emptyPLCForm() {
@@ -202,6 +212,108 @@ function printPlacementLetter(p: PlacementRow) {
   win.document.close()
   win.focus()
   win.print()
+}
+
+// ── Interview Rounds panel (candidate/job-order pairing sub-record) ────────────
+
+const ROUND_TYPES = ['PHONE_SCREEN', 'TECHNICAL', 'HR', 'FINAL', 'OTHER']
+const ROUND_STATUSES = ['SCHEDULED', 'COMPLETED', 'PASSED', 'REJECTED', 'NO_SHOW']
+const ROUND_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  SCHEDULED: 'info', COMPLETED: 'neutral', PASSED: 'success', REJECTED: 'danger', NO_SHOW: 'warning',
+}
+
+function InterviewRoundsPanel({ candidateId, jobOrders }: { candidateId: string; jobOrders: JobOrderRow[] }) {
+  const [rounds, setRounds] = useState<InterviewRound[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ jobOrderId: '', roundType: 'PHONE_SCREEN', scheduledDate: '', interviewerName: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    const res = await api.interviewRound.list({ candidateId })
+    if (res.success) setRounds((res.data as InterviewRound[]) ?? [])
+    setLoading(false)
+  }, [candidateId])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleAdd() {
+    if (!form.jobOrderId) return setError('Select a job order.')
+    setSaving(true); setError('')
+    const res = await api.interviewRound.create({
+      candidateId, jobOrderId: form.jobOrderId, roundType: form.roundType,
+      scheduledDate: form.scheduledDate || undefined, interviewerName: form.interviewerName || undefined,
+    })
+    setSaving(false)
+    if (res.success) { setForm({ jobOrderId: form.jobOrderId, roundType: 'PHONE_SCREEN', scheduledDate: '', interviewerName: '' }); load() }
+    else setError(res.error?.message ?? 'Could not add round.')
+  }
+
+  async function handleStatusChange(round: InterviewRound, status: string) {
+    const res = await api.interviewRound.update({ id: round.id, status })
+    if (res.success) setRounds(prev => prev.map(r => r.id === round.id ? { ...r, status } : r))
+  }
+
+  async function handleFeedbackBlur(round: InterviewRound, feedback: string) {
+    if (feedback === (round.clientFeedback ?? '')) return
+    await api.interviewRound.update({ id: round.id, clientFeedback: feedback || null })
+  }
+
+  async function handleDelete(id: string) {
+    const res = await api.interviewRound.delete({ id })
+    if (res.success) setRounds(prev => prev.filter(r => r.id !== id))
+  }
+
+  if (loading) return <p className="text-xs text-gray-400 dark:text-slate-500">Loading interview rounds...</p>
+
+  return (
+    <div>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+      {rounds.length === 0 ? (
+        <p className="text-xs text-gray-400 italic dark:text-slate-500 mb-2">No interview rounds recorded yet.</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {rounds.map(round => (
+            <div key={round.id} className="bg-gray-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-gray-800 dark:text-slate-200">Round {round.roundNumber} — {round.roundType.replace('_', ' ')}</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500">{round.jobOrder.jobTitle} ({round.jobOrder.orderNumber})</span>
+                {round.scheduledDate && <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(round.scheduledDate).toLocaleDateString('en-IN')}</span>}
+                {round.interviewerName && <span className="text-xs text-gray-400 dark:text-slate-500">· {round.interviewerName}</span>}
+                <select value={round.status} onChange={e => handleStatusChange(round, e.target.value)}
+                  className="ml-auto text-xs h-6 px-1.5 border border-gray-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900">
+                  {ROUND_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                </select>
+                <Badge variant={ROUND_STATUS_VARIANT[round.status] ?? 'neutral'} size="sm">{round.status.replace('_', ' ')}</Badge>
+                <button onClick={() => handleDelete(round.id)} className="text-gray-300 hover:text-red-500"><X size={13} /></button>
+              </div>
+              <input defaultValue={round.clientFeedback ?? ''} onBlur={e => handleFeedbackBlur(round, e.target.value)}
+                placeholder="Client feedback for this round..."
+                className="w-full mt-1.5 h-7 px-2 text-xs border border-gray-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300" />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-2">
+        <select value={form.jobOrderId} onChange={e => setForm(f => ({ ...f, jobOrderId: e.target.value }))}
+          className="h-9 px-2 border border-gray-200 rounded-lg text-xs dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+          <option value="">Job order...</option>
+          {jobOrders.map(jo => <option key={jo.id} value={jo.id}>{jo.jobTitle}</option>)}
+        </select>
+        <select value={form.roundType} onChange={e => setForm(f => ({ ...f, roundType: e.target.value }))}
+          className="h-9 px-2 border border-gray-200 rounded-lg text-xs dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+          {ROUND_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+        </select>
+        <input type="date" value={form.scheduledDate} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))}
+          className="h-9 px-2 border border-gray-200 rounded-lg text-xs dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+        <input value={form.interviewerName} onChange={e => setForm(f => ({ ...f, interviewerName: e.target.value }))}
+          placeholder="Interviewer" className="h-9 px-2 border border-gray-200 rounded-lg text-xs dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+      </div>
+      <button onClick={handleAdd} disabled={saving || !form.jobOrderId} className="mt-2 text-xs px-3 h-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium flex items-center gap-1">
+        <Plus size={13} /> Add Round
+      </button>
+    </div>
+  )
 }
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -415,6 +527,8 @@ export default function PlacementScreen() {
       targetDate: jo.targetDate ? dateSlice(jo.targetDate) : '',
       status: jo.status, commissionType: jo.commissionType,
       commissionValue: jo.commissionValue != null ? String(jo.commissionValue) : '',
+      feeAgreementTerms: jo.feeAgreementTerms ?? '',
+      replacementGuaranteeDays: jo.replacementGuaranteeDays != null ? String(jo.replacementGuaranteeDays) : '',
       notes: jo.notes ?? '',
     })
     setJoFormError(''); setShowJOForm(true)
@@ -433,6 +547,8 @@ export default function PlacementScreen() {
         location: joForm.location || undefined, numberOfPositions: toInt(joForm.numberOfPositions) ?? 1,
         targetDate: joForm.targetDate || undefined, status: joForm.status,
         commissionType: joForm.commissionType, commissionValue: toNum(joForm.commissionValue) ?? 0,
+        feeAgreementTerms: joForm.feeAgreementTerms || undefined,
+        replacementGuaranteeDays: toInt(joForm.replacementGuaranteeDays),
         notes: joForm.notes || undefined,
       }
       const res = editJO
@@ -691,6 +807,15 @@ export default function PlacementScreen() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                 </div>
               </div>
+              {editCand && <DocumentPanel entityType="CANDIDATE" entityId={editCand.id} compact />}
+              {editCand && (
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 dark:text-slate-400 flex items-center gap-1.5">
+                    <CalendarClock size={12} /> Interview Rounds
+                  </p>
+                  <InterviewRoundsPanel candidateId={editCand.id} jobOrders={allJobOrders} />
+                </div>
+              )}
               <div className="flex gap-3 mt-4">
                 <button onClick={saveCand} disabled={candSaving} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
                   {candSaving ? 'Saving…' : 'Save Candidate'}
@@ -844,6 +969,17 @@ export default function PlacementScreen() {
                     {JO_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                   </Select>
                 )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1 dark:text-slate-400">Replacement Guarantee (days)</label>
+                  <input type="number" min="0" value={joForm.replacementGuaranteeDays} onChange={e => setJoForm(f => ({ ...f, replacementGuaranteeDays: e.target.value }))}
+                    placeholder="e.g. 90" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1 dark:text-slate-400">Fee Agreement Terms</label>
+                  <textarea rows={2} value={joForm.feeAgreementTerms} onChange={e => setJoForm(f => ({ ...f, feeAgreementTerms: e.target.value }))}
+                    placeholder="e.g. 15% of annual CTC, payable within 30 days of joining"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-gray-600 mb-1 dark:text-slate-400">Required Skills</label>
                   <TagInput tags={joForm.requiredSkills} onAdd={v => setJoForm(f => ({ ...f, requiredSkills: [...f.requiredSkills, v] }))}
@@ -1044,6 +1180,11 @@ export default function PlacementScreen() {
                           <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500 dark:text-slate-400">
                             <span>Offered: ₹{fmt(Number(p.offeredSalary))}/mo</span>
                             <span className="font-medium text-purple-600 dark:text-purple-400">Commission: ₹{fmt(Number(p.commissionAmount))}</span>
+                            {p.jobOrder.replacementGuaranteeDays != null && (
+                              <span className="text-amber-600 dark:text-amber-400">
+                                Replacement guarantee until {new Date(new Date(p.joiningDate).getTime() + p.jobOrder.replacementGuaranteeDays * 86400000).toLocaleDateString('en-IN')}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col gap-1 shrink-0 items-end">

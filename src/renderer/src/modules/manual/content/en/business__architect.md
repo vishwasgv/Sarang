@@ -20,4 +20,8 @@ Log billable hours against a project from the standalone **Time Tracking** scree
 
 ## Drawing Register
 
-The **Drawing Register** is the real, day-to-day differentiator for an architectural practice: for each project, track every drawing you issue — drawing number, title, discipline (Architectural, Structural, MEP, Landscape, Interior), revision number, status (Draft / Issued for Review / Approved / Superseded), and issue date. Change a drawing's status directly from the list as it moves through review, and attach files (the actual drawing documents) to each drawing revision. This gives you a clear, always-current record of exactly which revision of which drawing was issued to whom, and when.
+The **Drawing Register** is the real, day-to-day differentiator for an architectural practice: for each project, track every drawing you issue — drawing number, title, discipline (Architectural, Structural, MEP, Landscape, Interior), revision number, status (Draft / Issued for Review / Approved / Superseded), and issue date. Change a drawing's status directly from the list as it moves through review, and attach files (the actual drawing documents) to each drawing revision.
+
+Drawings are grouped by drawing number, with the current revision shown as the main row. Click **New Revision** to issue the next revision of a drawing — Sarang creates a genuinely new, separate record and automatically marks the previous one Superseded, so you always have a real Rev A vs. Rev B comparison, not just one field that got overwritten. Open **History** on any drawing to see every past revision.
+
+Moving a drawing to **Approved** requires recording who actually signed off — Sarang will prompt for the approver's name if it isn't already on file, and won't let the status change go through without one. This gives you a genuine client approval trail, not just a status label.

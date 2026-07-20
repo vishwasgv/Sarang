@@ -6,7 +6,7 @@ vi.mock('../inventory.service', () => ({ inventoryService: { adjustStock: vi.fn(
 
 import { getPrisma } from '../../database/db'
 import { inventoryService } from '../inventory.service'
-import { updateKOTStatus } from '../restaurant.service'
+import { updateKOTStatus, assignWaiter } from '../restaurant.service'
 
 function makeKot(status: string) {
   return {
@@ -65,5 +65,37 @@ describe('restaurant.service.updateKOTStatus', () => {
     // but must not re-deduct ingredients since kot.status === 'DONE' already.
     expect(res.success).toBe(true)
     expect(inventoryService.adjustStock).not.toHaveBeenCalled()
+  })
+})
+
+describe('restaurant.service.assignWaiter', () => {
+  it('assigns a waiter to a table', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'table-1', waiterId: 'emp-1', waiter: { id: 'emp-1', fullName: 'Ravi' } })
+    vi.mocked(getPrisma).mockReturnValue({ restaurantTable: { update } } as never)
+
+    const res = await assignWaiter('table-1', 'emp-1')
+
+    expect(res.success).toBe(true)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'table-1' },
+      data: { waiterId: 'emp-1' },
+      include: { waiter: { select: { id: true, fullName: true } } },
+    })
+    expect((res as { data: { waiterId: string } }).data.waiterId).toBe('emp-1')
+  })
+
+  it('clears an assignment back to unassigned when waiterId is null', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'table-1', waiterId: null, waiter: null })
+    vi.mocked(getPrisma).mockReturnValue({ restaurantTable: { update } } as never)
+
+    const res = await assignWaiter('table-1', null)
+
+    expect(res.success).toBe(true)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'table-1' },
+      data: { waiterId: null },
+      include: { waiter: { select: { id: true, fullName: true } } },
+    })
+    expect((res as { data: { waiterId: string | null } }).data.waiterId).toBeNull()
   })
 })

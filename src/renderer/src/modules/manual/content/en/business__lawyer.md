@@ -14,7 +14,15 @@ The **Legal Cases** screen is a full case-management workspace with three tabs:
 - **Upcoming Hearings** — every scheduled hearing across all cases, filterable to Upcoming / Today / All, with the ability to mark a hearing **Done** or **Adjourn** it (recording an outcome and the next hearing date) directly from the list.
 - **Time Entries** — every logged billable hour across all cases, filterable to Unbilled / Billed / All, with a running total of unbilled value.
 
-Opening a case shows its full detail: case info, a running list of hearings (add one with date, time, court room, and purpose — Arguments, Evidence, Framing of Issues, Judgment, Bail Hearing, Interim Order, Other), and its time entries. From here you can also mark the case **Closed** or **Disposed**.
+Opening a case shows its full detail: case info, a running list of hearings (add one with date, time, court room, and purpose — Arguments, Evidence, Framing of Issues, Judgment, Bail Hearing, Interim Order, Other), and its time entries. From here you can also mark the case **Closed** or **Disposed**, attach case documents (filed petitions, court orders, scanned exhibits), and set a limitation/deadline date.
+
+## Conflict-of-interest check
+
+When you create a new case, enter both the client and an **opposing party name**. Sarang checks — in both directions — whether the proposed opposing party is already a client elsewhere, or whether the proposed client was previously recorded as an opposing party in another case. If either is true, a warning banner appears on the New Case form showing the reason. This check is advisory only — it never blocks saving the case — since a real conflict call needs your own professional judgment, not a computer's.
+
+## Limitation / deadline reminders
+
+Set a **limitation date** on a case (at creation, or later from the case detail panel) to have Sarang track its statute-of-limitations or filing deadline. You'll get an automatic WhatsApp reminder 30 days before and again 7 days before the date, giving enough time to gather documents and instructions. Changing the date cancels the old reminders and schedules fresh ones — you never need to track this by hand.
 
 ## Time Entries
 

@@ -118,7 +118,10 @@ async function login(page, username = 'admin', password = UAT_PASSWORD) {
   await page.waitForFunction(() => !!window.api, { timeout: 15000 })
   for (let attempt = 0; attempt < 5; attempt++) {
     const who = await page.evaluate(async () => window.api.auth.getCurrentUser()).catch(() => null)
-    if (who?.success) return
+    if (who?.success) {
+      await dismissBackupPrompt(page)
+      return
+    }
     const userInput = page.locator('input[name="username"]')
     if (await userInput.count()) {
       await userInput.fill(username)
@@ -126,6 +129,21 @@ async function login(page, username = 'admin', password = UAT_PASSWORD) {
       await page.locator('button[type="submit"]').click()
     }
     await page.waitForTimeout(1500)
+  }
+}
+
+// One-time first-run "choose a backup folder" screen (gated on the
+// `backup_prompt_dismissed` Setting row) blocks the whole app behind itself
+// until dismissed — real gotcha hit 2026-07-16 when a suite run found the
+// dev DB missing that row and every subsequent selector timed out with no
+// useful error. "Skip for now" is a real, supported user action (not a
+// test-only bypass), so clicking it here just clears the same one-time
+// prompt a human would dismiss on first launch.
+async function dismissBackupPrompt(page) {
+  const skipBtn = page.locator('button', { hasText: 'Skip for now' })
+  if (await skipBtn.count().catch(() => 0)) {
+    await skipBtn.click().catch(() => {})
+    await page.waitForTimeout(400)
   }
 }
 

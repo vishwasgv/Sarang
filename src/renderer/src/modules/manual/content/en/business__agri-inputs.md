@@ -16,6 +16,18 @@ Tractors, power sprayers, water pumps, and other durable equipment are tracked i
 
 When a customer brings in a piece of equipment for repair or scheduled servicing, open a job card from **Job Cards** in the sidebar — the same generic job-card workflow Sarang's Repair business type uses. Record what was brought in, the work to be done, parts used, and labor charges, and the job card can be billed once the work is complete.
 
+## Harvest-tied credit terms
+
+A farmer customer often needs to pay after the harvest, not at the time of purchase. When billing a Credit sale, set a real **due date** — Sarang shows an overdue badge on the invoice once that date passes (not the sale date), and the Outstanding Analytics aging report bucket it by the actual due date too, so a deferred-until-harvest payment doesn't get flagged as overdue just because time has passed since the sale.
+
+## Category-specific expiry alerts
+
+Different agri-input categories need different advance warning — seeds and fertilizer often need a longer heads-up than a fast-moving item. Set an **expiry alert lead time** (in days) per product to override the standard 30-day warning window; batches of that product then show their warning badge based on its own configured lead time.
+
+## Combined Dashboard
+
+Open **Agri Dashboard** for a single-screen view across both halves of the business at once — low-stock consumables, expiring/expired batches, total equipment count, and equipment with warranties expiring soon — instead of checking two separate screens.
+
 ## Logistics & Supply Chain
 
 Because agri-input retailers routinely receive formal supplier deliveries (fertilizer sacks and equipment arriving by truck), the full Logistics & Supply Chain module set is enabled by default — Fleet, Carriers, Shipments, GRN (goods receipt), Delivery Challan, Freight Ledger, and Logistics Analytics all appear in the sidebar without needing to turn them on separately.

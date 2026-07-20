@@ -139,7 +139,8 @@
     "of": "dari",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "stok tersedia"
   },
   "auth": {
     "username": "Nama Pengguna",
@@ -229,6 +230,8 @@
     "percentDiscount": "% Diskon",
     "invoiceDate": "Tanggal Faktur",
     "dueDate": "Jatuh Tempo",
+    "dueOn": "Jatuh tempo {{date}}",
+    "overdueSince": "Terlambat sejak {{date}}",
     "notes": "Catatan",
     "rounding": "Pembulatan",
     "invoiceCreated": "Faktur Dibuat",
@@ -286,7 +289,40 @@
     "batchLabel": "Batch {{batchNumber}} · {{status}}",
     "batchExpired": "kedaluwarsa",
     "batchExpiresToday": "kedaluwarsa hari ini",
-    "batchExpiresIn": "kedaluwarsa dalam {{days}}h"
+    "batchExpiresIn": "kedaluwarsa dalam {{days}}h",
+    "addTipOrServiceCharge": "Tambah Tip / Biaya Layanan",
+    "tipAmountLabel": "Jumlah",
+    "tipAmountInvalid": "Masukkan jumlah lebih dari nol.",
+    "confirmAddToCart": "Tambah ke Keranjang",
+    "unavailableToday": "Tidak Tersedia Hari Ini",
+    "unavailableTodayMessage": "{{productName}} telah ditandai tidak tersedia untuk hari ini.",
+    "holdSale": "Tahan Penjualan",
+    "resumeSale": "Lanjutkan Penjualan",
+    "heldSales": "Penjualan Tertahan",
+    "noHeldSales": "Tidak ada penjualan yang ditahan.",
+    "holdSaleLabel": "Catatan (opsional)",
+    "holdSaleLabelPlaceholder": "mis. Rahul - kemeja biru",
+    "confirmHold": "Tahan",
+    "holdSaleSuccess": "Penjualan ditahan.",
+    "resumeSaleAction": "Lanjutkan",
+    "abandonHeldSale": "Buang",
+    "confirmAbandonHeldSale": "Buang penjualan tertahan ini? Tindakan ini tidak dapat dibatalkan.",
+    "emptyCartCannotHold": "Keranjang kosong — tidak ada yang bisa ditahan.",
+    "frequentlySold": "Sering Terjual",
+    "mrpLabel": "MRP",
+    "areaCalculator": "Kalkulator Luas (P × L)",
+    "areaLabel": "Luas",
+    "areaFormula": "P × L = Luas",
+    "useAreaSq": "Gunakan {{area}} persegi",
+    "rx": {
+      "title": "Detail Resep",
+      "description": "Ini adalah item khusus resep (Schedule H/H1) — nama pasien dan dokter wajib diisi untuk menjualnya.",
+      "patientName": "Nama Pasien *",
+      "doctorName": "Nama Dokter *",
+      "date": "Tanggal Resep (opsional)",
+      "addToCart": "Tambah ke Keranjang",
+      "required": "Nama pasien dan nama dokter wajib diisi."
+    }
   },
   "products": {
     "title": "Produk",
@@ -298,6 +334,7 @@
     "unit": "Satuan",
     "sellingPrice": "Harga Jual",
     "costPrice": "Harga Pokok",
+    "mrp": "MRP (opsional)",
     "taxRate": "Tarif Pajak (%)",
     "stock": "Stok",
     "lowStockAlert": "Peringatan Stok Rendah",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "Buat PO Pemesanan Ulang",
+      "title": "PO Pemesanan Ulang Dibuat",
+      "nothingToOrder": "Tidak ada produk stok rendah yang perlu dipesan ulang saat ini.",
+      "created": "PO draf dibuat: {{count}}",
+      "skippedNoSupplier": "Dilewati (tidak ada pemasok default): {{count}}",
+      "skippedOpenPO": "Dilewati (sudah ada di PO terbuka): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "Pesanan Pembelian",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "Penjualan Obat Resep",
+        "description": "Register penjualan obat khusus resep (Schedule H/H1), dengan nama pasien dan dokter."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "Tidak ada dokumen diterbitkan pada periode ini.",
       "jewelleryStock": "Belum ada produk perhiasan dengan berat logam tercatat.",
       "projects": "Tidak ada proyek dalam periode ini.",
-      "jobCards": "Tidak ada kartu kerja dalam periode ini."
+      "jobCards": "Tidak ada kartu kerja dalam periode ini.",
+      "prescriptionDrugSales": "Tidak ada penjualan obat resep dalam rentang tanggal ini."
     },
     "col": {
       "invoiceNo": "No. Faktur",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "Jenis",
+    "subAssembly": "Sub-rakitan",
+    "searchSubAssembly": "Cari produk (sub-rakitan)…",
+    "subAssemblyTag": "(sub-rakitan)",
+    "selfReferenceError": "Sebuah produk tidak dapat menjadi komponen dari BOM-nya sendiri.",
+    "lotsUsed": "Lot yang digunakan",
+    "qcCheckpointTag": "(titik pemeriksaan QC)",
+    "qcNotesLabel": "Catatan QC",
+    "qcPass": "Lulus",
+    "qcFail": "Gagal",
+    "qcResultTitle": "Catat Hasil QC",
+    "markAsQcStep": "Titik pemeriksaan QC",
+    "scrapQtyLabel": "Jml Sisa / Ditolak",
+    "laborCostLabel": "Biaya Tenaga Kerja",
+    "batchNumber": "Nomor Lot",
+    "receiveBatch": "Terima Lot",
+    "receiveBatchTitle": "Terima Lot Bahan Baku",
+    "batchReceived": "Lot diterima.",
+    "noBatchesYet": "Belum ada lot yang diterima untuk bahan ini.",
+    "remainingQty": "Sisa"
   },
   "service": {
     "projects": "Proyek",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "Suku Cadang Terpakai",
+    "addPart": "Tambah Suku Cadang",
+    "searchProduct": "Cari produk...",
+    "partsTotal": "Total Suku Cadang",
+    "noPartsUsed": "Belum ada suku cadang terpakai",
+    "removePart": "Hapus suku cadang",
+    "invalidQuantity": "Masukkan jumlah yang valid.",
+    "couldNotAddPart": "Tidak dapat menambahkan suku cadang.",
+    "couldNotRemovePart": "Tidak dapat menghapus suku cadang.",
+    "warranty": "Garansi",
+    "warrantyDays": "Garansi (hari)",
+    "warrantyUntil": "hingga",
+    "underWarranty": "Dalam Garansi",
+    "warrantyExpired": "Garansi Berakhir",
+    "saveWarranty": "Simpan",
+    "warrantySaved": "Garansi disimpan.",
+    "invalidWarrantyDays": "Masukkan jumlah hari garansi yang valid.",
+    "couldNotSaveWarranty": "Tidak dapat menyimpan garansi.",
+    "warrantyAppliesOnDelivery": "Masa garansi dihitung sejak tanggal pengiriman.",
+    "warrantyClaimAgainst": "Klaim Garansi Terhadap",
+    "notAWarrantyClaim": "Bukan klaim garansi",
+    "originalUnderWarranty": "Pekerjaan asli masih dalam garansi",
+    "originalWarrantyExpired": "Garansi pekerjaan asli telah berakhir"
   },
   "setup": {
     "welcome": "Selamat Datang di Sarang",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "Layanan yang Memenuhi Syarat",
+    "qualifiedServicesHint": "Layanan yang dapat dilakukan oleh staf ini. Biarkan kosong untuk mengizinkan layanan apa pun (default).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "Nilai {{symbol}}",
       "itemNotesPlaceholder": "Catatan barang (opsional)",
       "deleteConfirm": "Hapus pengiriman {{number}}? Tindakan ini tidak dapat dibatalkan.",
-      "destinationRequired": "Alamat tujuan wajib diisi."
+      "destinationRequired": "Alamat tujuan wajib diisi.",
+      "stops": {
+        "title": "Pemberhentian",
+        "addStop": "Tambah Pemberhentian",
+        "customerName": "Nama Pelanggan (opsional)",
+        "destinationAddress": "Alamat Tujuan",
+        "notes": "Catatan (opsional)",
+        "markDelivered": "Tandai Terkirim",
+        "skip": "Lewati",
+        "delete": "Hapus",
+        "empty": "Belum ada pemberhentian tambahan yang ditambahkan.",
+        "primaryHint": "Tujuan di atas selalu menjadi pemberhentian pertama — tambahkan lagi di bawah untuk rute multi-pemberhentian.",
+        "saveFirst": "Simpan pengiriman terlebih dahulu, lalu tambahkan pemberhentian."
+      }
     },
     "grn": {
       "title": "Nota Penerimaan Barang (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "Buat Faktur",
       "invoicing": "...",
-      "invoiced": "Sudah Difaktur"
+      "invoiced": "Sudah Difaktur",
+      "scheduleTrial": "Jadwalkan Uji Coba",
+      "trial": "Uji Coba",
+      "trialScheduled": "Janji uji coba telah dijadwalkan",
+      "setFabric": "Atur Kain",
+      "fabricLinked": "Kain ✓",
+      "clearFabric": "Hapus tautan kain (mengembalikan stok)"
     },
     "invoiceBanner": {
       "success": "Faktur dibuat (SAC 998821, PPN 5%).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "Gagal menyimpan.",
       "deleteOrderFailed": "Gagal menghapus pesanan.",
       "deleteMeasurementFailed": "Gagal menghapus ukuran.",
-      "updateStatusFailed": "Gagal memperbarui status."
+      "updateStatusFailed": "Gagal memperbarui status.",
+      "trialDateRequired": "Tanggal uji coba wajib diisi.",
+      "fabricQuantityInvalid": "Masukkan jumlah yang valid."
     },
     "measurements": {
       "selectClient": "Pilih Pelanggan",
@@ -2325,6 +2441,20 @@
       "saving": "Menyimpan...",
       "updateOrder": "Perbarui Pesanan",
       "createOrder": "Buat Pesanan"
+    },
+    "trial": {
+      "title": "Jadwalkan Uji Coba/Pas Baju",
+      "hint": "Klien akan mendapatkan pengingat WhatsApp yang sama seperti janji temu lainnya.",
+      "date": "Tanggal",
+      "time": "Waktu",
+      "schedule": "Jadwalkan"
+    },
+    "fabric": {
+      "title": "Atur Kain",
+      "hint": "Mengurangi inventaris nyata saat diatur.",
+      "searchPlaceholder": "Cari kain di inventaris…",
+      "quantity": "Jumlah",
+      "set": "Atur Kain"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "Pelanggan",
       "items": "Barang",
       "item": "Barang",
-      "period": "Periode"
+      "period": "Periode",
+      "service": "Servis"
     },
     "confirmCancel": "Batalkan reservasi ini? Tindakan ini tidak dapat dibatalkan.",
     "lateFee": "Biaya Keterlambatan",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "Tidak ada yang sedang dikeluarkan saat ini.",
       "revenue": "Tidak ada pendapatan sewa dalam periode ini."
-    }
+    },
+    "serviceIntervalRentals": "Interval Servis (Penyewaan)",
+    "serviceIntervalDays": "Interval Servis (Hari)",
+    "dueForService": "Perlu Servis",
+    "markServiced": "Tandai Sudah Diservis",
+    "lastServiced": "Terakhir Diservis",
+    "neverServiced": "Tidak Pernah",
+    "addItem": "Tambah Item",
+    "removeItem": "Hapus",
+    "recurringRental": "Sewa Berulang",
+    "repeatEveryDays": "Ulangi Setiap (Hari)",
+    "createNextCycle": "Buat Siklus Berikutnya",
+    "nextCycleCreated": "Siklus sewa berikutnya berhasil dibuat.",
+    "conditionOutLabel": "Kondisi saat Checkout",
+    "conditionInLabel": "Kondisi saat Pengembalian",
+    "itemDamageCharge": "Biaya Kerusakan (item ini)",
+    "photos": "Foto"
   },
   "jewellery": {
     "metalRates": "Harga Logam",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "Belum ada harga untuk {{metalType}} {{purity}}. Tetapkan harga hari ini di Perhiasan → Harga Logam, lalu tambahkan kembali barang ini.",
     "computeErrorDesc": "Tidak dapat menghitung harga perhiasan. Periksa harga dan tambahkan kembali barang ini.",
     "priceNotSetTitle": "Harga Perhiasan Belum Ditetapkan",
-    "priceNotSetDesc": "{{productName}} belum memiliki harga — tetapkan harga hari ini di Perhiasan → Harga Logam, lalu hapus dan tambahkan kembali barang ini."
+    "priceNotSetDesc": "{{productName}} belum memiliki harga — tetapkan harga hari ini di Perhiasan → Harga Logam, lalu hapus dan tambahkan kembali barang ini.",
+    "makingCharge": "Biaya pembuatan",
+    "makingChargeOverrideHint": "Mengganti biaya pembuatan hanya untuk penjualan ini — konfigurasi produk itu sendiri tidak berubah.",
+    "applyExchange": "Terapkan Tukar Tambah Logam Lama",
+    "applyExchangeDesc": "Menerapkan kredit dari penukaran yang belum tertaut sebagai diskon pada faktur ini secara otomatis saat penjualan diselesaikan.",
+    "exchangeSearchPlaceholder": "Cari berdasarkan nomor penukaran...",
+    "noUnlinkedExchanges": "Tidak ditemukan penukaran yang belum tertaut untuk pelanggan ini.",
+    "exchangeApplied": "Penukaran {{number}} — kredit {{amount}} akan diterapkan saat checkout.",
+    "removeExchange": "Hapus"
   },
   "manual": {
     "yourType": "Milik Anda",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "Fitur Universal",
     "groupAi": "Asisten AI",
     "groupBusiness": "Jenis Bisnis"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "Pesanan Lapangan",
+      "subtitle": "Pesanan yang dikirim oleh sales lapangan, menunggu konfirmasi",
+      "refresh": "Segarkan",
+      "linkTitle": "Tautan Pesanan Lapangan",
+      "linkDescription": "Bagikan tautan ini (atau kode QR) dengan sales lapangan Anda — mereka dapat mencatat pesanan dari ponsel mereka sendiri di WiFi toko.",
+      "showQr": "Tampilkan Kode QR",
+      "regenerateLink": "Buat Ulang Tautan",
+      "openDirectly": "Atau buka langsung:",
+      "copied": "Disalin",
+      "linkCopied": "Tautan disalin ke clipboard.",
+      "notRunning": "Penangkapan pesanan lapangan saat ini tidak berjalan. Aktifkan \"Penangkapan Pesanan Lapangan\" di Pengaturan agar sales dapat mengirim pesanan dari ponsel mereka sendiri.",
+      "pendingTitle": "Pesanan Lapangan Tertunda",
+      "loading": "Memuat…",
+      "empty": "Tidak ada pesanan lapangan yang menunggu konfirmasi.",
+      "noCustomer": "(tidak ada pelanggan dipilih)",
+      "accept": "Terima",
+      "reject": "Tolak",
+      "acceptTitle": "Terima Pesanan — {{repName}}",
+      "paymentMethod": "Metode Pembayaran",
+      "acceptHint": "Harga diperiksa ulang (termasuk harga negosiasi pelanggan) saat konfirmasi, dan faktur dibuat.",
+      "confirmBill": "Konfirmasi & Buat Faktur",
+      "creating": "Membuat…",
+      "cancel": "Batal",
+      "orderAccepted": "Pesanan Diterima",
+      "invoiceCreated": "Faktur dibuat dari pesanan lapangan ini.",
+      "error": "Kesalahan",
+      "couldNotLoad": "Tidak dapat memuat pesanan lapangan yang masuk.",
+      "couldNotAccept": "Tidak dapat menerima pesanan.",
+      "couldNotReject": "Tidak dapat menolak pesanan.",
+      "couldNotGenerateQr": "Tidak dapat membuat kode QR.",
+      "regenerated": "Dibuat Ulang",
+      "regeneratedMessage": "Tautan pesanan lapangan baru telah dibuat.",
+      "couldNotRegenerate": "Tidak dapat membuat ulang tautan.",
+      "regenerateConfirm": "Membuat ulang akan membatalkan tautan/kode QR apa pun yang sudah dibagikan dengan sales Anda — mereka akan memerlukan yang baru. Lanjutkan?"
+    },
+    "pricing": {
+      "title": "Harga Berdasarkan Kelas Pelanggan",
+      "subtitle": "Tetapkan harga negosiasi per kelas pelanggan (mis. PENGECER, GROSIR, VIP) — menggantikan harga daftar untuk pelanggan mana pun dengan kelas tersebut.",
+      "addTitle": "Tambah / Perbarui Harga",
+      "searchProduct": "Cari produk…",
+      "classPlaceholder": "Kelas pelanggan, mis. PENGECER",
+      "pricePlaceholder": "Harga",
+      "save": "Simpan Harga",
+      "saving": "Menyimpan…",
+      "columnProduct": "Produk",
+      "columnClass": "Kelas",
+      "columnListPrice": "Harga Daftar",
+      "columnPrice": "Harga",
+      "empty": "Belum ada harga kelas pelanggan yang ditetapkan.",
+      "loading": "Memuat…",
+      "noProduct": "Tidak Ada Produk",
+      "noProductMessage": "Pilih produk terlebih dahulu.",
+      "noClass": "Tidak Ada Kelas Pelanggan",
+      "noClassMessage": "Masukkan kelas pelanggan, mis. PENGECER.",
+      "invalidPrice": "Harga Tidak Valid",
+      "invalidPriceMessage": "Masukkan harga yang valid dan tidak negatif.",
+      "priceSet": "Harga Ditetapkan",
+      "priceSetMessage": "Harga {{customerClass}} ditetapkan untuk {{productName}}.",
+      "error": "Kesalahan",
+      "couldNotSave": "Tidak dapat menyimpan harga.",
+      "couldNotLoad": "Tidak dapat memuat daftar harga.",
+      "removed": "Dihapus",
+      "removedMessage": "Harga dihapus.",
+      "couldNotRemove": "Tidak dapat menghapus harga."
+    }
   }
 }

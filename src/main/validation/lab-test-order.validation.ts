@@ -49,7 +49,8 @@ const ResultParameterSchema = z.object({
   value: z.string().min(1),
   unit: z.string().max(50).optional(),
   referenceRange: z.string().max(100).optional(),
-  flag: z.enum(['LOW', 'NORMAL', 'HIGH', 'ABNORMAL']).optional(),
+  // Phase 58 §2 — CRITICAL is a real panic-value tier, distinct from HIGH/LOW.
+  flag: z.enum(['LOW', 'NORMAL', 'HIGH', 'ABNORMAL', 'CRITICAL']).optional(),
 })
 
 export const UpdateTestResultSchema = z.object({
@@ -72,7 +73,15 @@ export const CancelLabTestOrderSchema = z.object({
   reason: z.string().max(2000).optional(),
 })
 
+// Phase 58 §2 — critical-value escalation: record that the referring doctor was called.
+export const AcknowledgeCriticalResultSchema = z.object({
+  itemId: z.string().min(1, 'itemId is required'),
+  notifiedById: z.string().optional(),
+  notes: z.string().max(2000).optional(),
+})
+
 export type CreateLabTestOrderPayload = z.infer<typeof CreateLabTestOrderSchema>
 export type UpdateLabTestOrderPayload = z.infer<typeof UpdateLabTestOrderSchema>
 export type AddTestItemPayload = z.infer<typeof AddTestItemSchema>
 export type UpdateTestResultPayload = z.infer<typeof UpdateTestResultSchema>
+export type AcknowledgeCriticalResultPayload = z.infer<typeof AcknowledgeCriticalResultSchema>

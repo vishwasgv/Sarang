@@ -5,6 +5,10 @@ export const CreateReturnSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1, 'Product ID is required'),
     quantity: z.number().positive('Quantity must be greater than zero'),
+    // Optional — distinguishes which size/colour variant is being returned
+    // when the same product was sold as more than one variant on the
+    // original invoice (real bug fix 2026-07-16, see returns.service.ts).
+    variantId: z.string().min(1).optional(),
   })).min(1, 'At least one item is required'),
   reason: z.string().min(1, 'Reason is required'),
 })

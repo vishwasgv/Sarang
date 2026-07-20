@@ -217,6 +217,88 @@ export async function updateMembership(payload: {
   }
 }
 
+// Phase 58 §2 — freezing used to just flip status to FROZEN via the generic
+// updateMembership() above, with `freezeHistory` never actually written and
+// `endDate` never adjusted — a member frozen for 3 weeks still expired on
+// their original date, silently losing that time. freezeMembership/
+// resumeMembership are the real, dedicated pair: freeze records WHEN, resume
+// computes how many days were actually frozen and pushes endDate out by
+// exactly that many — a real gym member never loses paid-for time to a freeze.
+type FreezeEntry = { frozenOn: string; resumedOn: string | null; reason: string | null }
+
+function parseFreezeHistory(raw: string | null): FreezeEntry[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export async function freezeMembership(payload: { id: string; reason?: string }) {
+  try {
+    const db = getPrisma()
+    const existing = await db.membership.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'M27-012', message: 'Membership not found.' } }
+    if (existing.status !== 'ACTIVE') {
+      return { success: false, error: { code: 'M27-013', message: `Only an active membership can be frozen (current status: ${existing.status}).` } }
+    }
+
+    const history = parseFreezeHistory(existing.freezeHistory)
+    history.push({ frozenOn: new Date().toISOString(), resumedOn: null, reason: payload.reason ?? null })
+
+    const membership = await db.membership.update({
+      where: { id: payload.id },
+      data: { status: 'FROZEN', freezeHistory: JSON.stringify(history) },
+    })
+    await db.auditLog.create({ data: { action: 'FREEZE', entityType: 'Membership', entityId: membership.id } }).catch(() => {})
+    return { success: true, data: membership }
+  } catch (err) {
+    return { success: false, error: { code: 'M27-014', message: err instanceof Error ? err.message : 'Could not freeze membership.' } }
+  }
+}
+
+export async function resumeMembership(payload: { id: string }) {
+  try {
+    const db = getPrisma()
+    const existing = await db.membership.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'M27-012', message: 'Membership not found.' } }
+    if (existing.status !== 'FROZEN') {
+      return { success: false, error: { code: 'M27-015', message: `Only a frozen membership can be resumed (current status: ${existing.status}).` } }
+    }
+
+    const history = parseFreezeHistory(existing.freezeHistory)
+    const openEntry = [...history].reverse().find((h) => !h.resumedOn)
+    if (!openEntry) {
+      // Defensive: status says FROZEN but there's no open freeze entry to
+      // close (e.g. history was hand-edited). Resume without extending
+      // endDate rather than silently computing a bogus duration.
+      const membership = await db.membership.update({ where: { id: payload.id }, data: { status: 'ACTIVE' } })
+      return { success: true, data: membership }
+    }
+
+    const now = new Date()
+    const frozenDays = Math.max(0, Math.ceil((now.getTime() - new Date(openEntry.frozenOn).getTime()) / 86400000))
+    openEntry.resumedOn = now.toISOString()
+
+    const membership = await db.membership.update({
+      where: { id: payload.id },
+      data: {
+        status: 'ACTIVE',
+        freezeHistory: JSON.stringify(history),
+        endDate: new Date(existing.endDate.getTime() + frozenDays * 86400000),
+      },
+    })
+    await db.auditLog.create({
+      data: { action: 'RESUME', entityType: 'Membership', entityId: membership.id, newValue: JSON.stringify({ frozenDays }) },
+    }).catch(() => {})
+    return { success: true, data: membership }
+  } catch (err) {
+    return { success: false, error: { code: 'M27-016', message: err instanceof Error ? err.message : 'Could not resume membership.' } }
+  }
+}
+
 // Phase 41: closes a dormant invoiceId stub — Membership had a
 // paymentStatus flag (PAID/PENDING/PARTIAL) tracked manually, with no
 // function that ever created a real GST invoice. Same atomic-claim pattern

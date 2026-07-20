@@ -11,7 +11,10 @@ Every service-based business type in Sarang — including Physiotherapy Clinic �
 Opening an appointment's **Consultation Note** gives you the same structured SOAP note used across Sarang's clinical business types (see the *GP Clinic* chapter for the base fields), plus two physio-specific additions:
 
 - **Pain Score** — a 0 (none) to 10 (worst) scale, entered either as a number or by tapping a quick-pick button.
+- **Functional Score** — a 0-100 scale (higher = better function), tracking how well the patient can actually move and perform tasks, alongside pain.
 - **Treatment Given This Session** — free text describing what was actually done in the session (e.g. ultrasound therapy, TENS, manual therapy, taping).
+
+Once a patient has two or more sessions recorded, a **Vitals Trend** chart appears on their note — switch between the Pain Score and Functional Score chips to see either one plotted over time, so you and the patient can see real progress (or its absence) at a glance instead of flipping through past notes.
 
 ## Treatment Phases
 

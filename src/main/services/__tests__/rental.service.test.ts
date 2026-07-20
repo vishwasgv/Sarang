@@ -16,6 +16,10 @@ import {
   extendBooking,
   cancelBooking,
   generateRentalInvoice,
+  createNextRentalCycle,
+  createRentalUnit,
+  updateRentalUnit,
+  markUnitServiced,
 } from '../rental.service'
 
 const MS_PER_DAY = 86_400_000
@@ -42,7 +46,15 @@ function makeBaseMockDb() {
   const db: Record<string, any> = {
     product: { findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
     inventory: { findUnique: vi.fn().mockResolvedValue({ quantity: 10 }) },
-    rentalUnit: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({}) },
+    rentalUnit: {
+      findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({}),
+      // Default shape covers isUnitDueForService's fields — no thresholds
+      // set, so every returnBooking test not specifically about maintenance
+      // keeps its pre-existing "unit goes back to AVAILABLE" behavior.
+      update: vi.fn().mockResolvedValue({ id: 'unit-1', serviceIntervalRentals: null, serviceIntervalDays: null, rentalCountSinceService: 1, lastServicedAt: null, createdAt: new Date('2026-01-01') }),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
     rentalBookingItem: {
       aggregate: vi.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
       findMany: vi.fn().mockResolvedValue([]),
@@ -379,7 +391,7 @@ describe('rental.service — returnBooking', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await returnBooking({ id: 'booking-1' })
-    expect(db.rentalUnit.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['unit-1'] } }, data: { status: 'AVAILABLE' } })
+    expect(db.rentalUnit.update).toHaveBeenCalledWith({ where: { id: 'unit-1' }, data: { status: 'AVAILABLE' } })
   })
 })
 
@@ -589,5 +601,230 @@ describe('rental.service — generateRentalInvoice', () => {
     }))
     const callArgs = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ productId: string }> }
     expect(callArgs.items.every((i) => i.productId !== 'prod-tent')).toBe(true)
+  })
+})
+
+describe('rental.service — maintenance schedule', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createRentalUnit rejects a zero or negative service interval', async () => {
+    const db = makeBaseMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await createRentalUnit({ productId: 'prod-car', unitLabel: 'KA01AB1234', serviceIntervalRentals: 0 })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RENT-036')
+  })
+
+  it('returnBooking routes the unit to MAINTENANCE instead of AVAILABLE once the rental-count threshold is reached', async () => {
+    const db = makeBaseMockDb()
+    const future = new Date(Date.now() + 10 * MS_PER_DAY)
+    db.rentalBooking.findUnique
+      .mockResolvedValueOnce(makeBookingRow({ status: 'CHECKED_OUT', endDateTime: future, items: [{ rateAmount: 2000, rateBasis: 'DAY', quantity: 1, rentalUnitId: 'unit-1' }] }))
+      .mockResolvedValueOnce(makeBookingRow({ status: 'RETURNED' }))
+    // serviceIntervalRentals: 3, and this return is the 3rd rental (increment brings it to 3) -> due.
+    db.rentalUnit.update.mockResolvedValueOnce({ id: 'unit-1', serviceIntervalRentals: 3, serviceIntervalDays: null, rentalCountSinceService: 3, lastServicedAt: null, createdAt: new Date('2026-01-01') })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await returnBooking({ id: 'booking-1' })
+
+    expect(db.rentalUnit.update).toHaveBeenCalledWith({ where: { id: 'unit-1' }, data: { status: 'MAINTENANCE' } })
+  })
+
+  it('returnBooking leaves the unit AVAILABLE when the service threshold has not been reached yet', async () => {
+    const db = makeBaseMockDb()
+    const future = new Date(Date.now() + 10 * MS_PER_DAY)
+    db.rentalBooking.findUnique
+      .mockResolvedValueOnce(makeBookingRow({ status: 'CHECKED_OUT', endDateTime: future, items: [{ rateAmount: 2000, rateBasis: 'DAY', quantity: 1, rentalUnitId: 'unit-1' }] }))
+      .mockResolvedValueOnce(makeBookingRow({ status: 'RETURNED' }))
+    db.rentalUnit.update.mockResolvedValueOnce({ id: 'unit-1', serviceIntervalRentals: 5, serviceIntervalDays: null, rentalCountSinceService: 2, lastServicedAt: null, createdAt: new Date('2026-01-01') })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await returnBooking({ id: 'booking-1' })
+
+    expect(db.rentalUnit.update).toHaveBeenCalledWith({ where: { id: 'unit-1' }, data: { status: 'AVAILABLE' } })
+  })
+
+  it('markUnitServiced resets the counters and restores a MAINTENANCE unit to AVAILABLE', async () => {
+    const db = makeBaseMockDb()
+    db.rentalUnit.findUnique.mockResolvedValue({ id: 'unit-1', status: 'MAINTENANCE' })
+    db.rentalUnit.update.mockResolvedValue({ id: 'unit-1', productId: 'prod-car', unitLabel: 'KA01AB1234', status: 'AVAILABLE', conditionNotes: null, purchaseDate: null, unitCost: 0, serviceIntervalRentals: 3, serviceIntervalDays: null, rentalCountSinceService: 0, lastServicedAt: new Date(), createdAt: new Date(), updatedAt: new Date(), product: { productName: 'Sedan Car' } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await markUnitServiced('unit-1')
+    expect(res.success).toBe(true)
+    expect(db.rentalUnit.update).toHaveBeenCalledWith({
+      where: { id: 'unit-1' },
+      data: { rentalCountSinceService: 0, lastServicedAt: expect.any(Date), status: 'AVAILABLE' },
+      include: { product: { select: { productName: true } } },
+    })
+  })
+
+  it('markUnitServiced does not touch status for a unit that was not in MAINTENANCE', async () => {
+    const db = makeBaseMockDb()
+    db.rentalUnit.findUnique.mockResolvedValue({ id: 'unit-1', status: 'AVAILABLE' })
+    db.rentalUnit.update.mockResolvedValue({ id: 'unit-1', productId: 'prod-car', unitLabel: 'KA01AB1234', status: 'AVAILABLE', conditionNotes: null, purchaseDate: null, unitCost: 0, serviceIntervalRentals: 3, serviceIntervalDays: null, rentalCountSinceService: 0, lastServicedAt: new Date(), createdAt: new Date(), updatedAt: new Date(), product: { productName: 'Sedan Car' } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await markUnitServiced('unit-1')
+    expect(db.rentalUnit.update).toHaveBeenCalledWith({
+      where: { id: 'unit-1' },
+      data: { rentalCountSinceService: 0, lastServicedAt: expect.any(Date), status: undefined },
+      include: { product: { select: { productName: true } } },
+    })
+  })
+
+  it('updateRentalUnit rejects a negative-equivalent (zero) service interval', async () => {
+    const db = makeBaseMockDb()
+    db.rentalUnit.findUnique.mockResolvedValue({ id: 'unit-1', status: 'AVAILABLE' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await updateRentalUnit({ id: 'unit-1', serviceIntervalDays: 0 })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RENT-036')
+  })
+})
+
+describe('rental.service — itemized damage charge', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sums per-item damage charges into the booking-level aggregate and writes each item its own amount', async () => {
+    const db = makeBaseMockDb()
+    const future = new Date(Date.now() + 10 * MS_PER_DAY)
+    db.rentalBooking.findUnique
+      .mockResolvedValueOnce(makeBookingRow({
+        status: 'CHECKED_OUT', endDateTime: future, securityDepositCollected: 5000,
+        items: [
+          { id: 'item-1', rateAmount: 2000, rateBasis: 'DAY', quantity: 1, rentalUnitId: 'unit-1' },
+          { id: 'item-2', rateAmount: 1000, rateBasis: 'DAY', quantity: 1, rentalUnitId: 'unit-2' },
+        ],
+      }))
+      .mockResolvedValueOnce(makeBookingRow({ status: 'RETURNED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await returnBooking({
+      id: 'booking-1',
+      itemConditions: [
+        { itemId: 'item-1', conditionIn: 'Scratched bumper', damageChargeAmount: 800 },
+        { itemId: 'item-2', conditionIn: 'Fine', damageChargeAmount: 0 },
+      ],
+    })
+
+    expect(db.rentalBooking.update).toHaveBeenCalledWith({
+      where: { id: 'booking-1' },
+      data: expect.objectContaining({ damageChargeAmount: 800 }),
+    })
+    expect(db.rentalBookingItem.update).toHaveBeenCalledWith({ where: { id: 'item-1' }, data: { conditionIn: 'Scratched bumper', damageChargeAmount: 800 } })
+    expect(db.rentalBookingItem.update).toHaveBeenCalledWith({ where: { id: 'item-2' }, data: { conditionIn: 'Fine', damageChargeAmount: 0 } })
+  })
+
+  it('falls back to the legacy whole-booking damageChargeAmount when no item has one set', async () => {
+    const db = makeBaseMockDb()
+    const future = new Date(Date.now() + 10 * MS_PER_DAY)
+    db.rentalBooking.findUnique
+      .mockResolvedValueOnce(makeBookingRow({ status: 'CHECKED_OUT', endDateTime: future, securityDepositCollected: 2000, items: [{ id: 'item-1', rateAmount: 500, rateBasis: 'DAY', quantity: 1, rentalUnitId: null }] }))
+      .mockResolvedValueOnce(makeBookingRow({ status: 'RETURNED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await returnBooking({ id: 'booking-1', damageChargeAmount: 300 })
+
+    expect(db.rentalBooking.update).toHaveBeenCalledWith({
+      where: { id: 'booking-1' },
+      data: expect.objectContaining({ damageChargeAmount: 300 }),
+    })
+  })
+
+  it('generateRentalInvoice itemizes damage per unit when item-level charges exist, instead of one aggregate line', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 1 })
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({
+      damageChargeAmount: 800, // legacy aggregate, should be IGNORED since items have their own
+      items: [
+        { id: 'item-1', productId: 'prod-car', lineTotal: 2000, product: makeUnitProduct(), rentalUnit: { unitLabel: 'KA01AB1234' }, damageChargeAmount: 800 },
+        { id: 'item-2', productId: 'prod-tent', lineTotal: 500, product: makeBulkProduct(), rentalUnit: null, damageChargeAmount: 0 },
+      ],
+    }))
+    db.product.findFirst.mockResolvedValue(null)
+    db.product.create.mockImplementation(({ data }: { data: { productName: string } }) => Promise.resolve({ id: `prod-${data.productName}`, ...data }))
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await generateRentalInvoice('booking-1')
+
+    expect(db.product.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ productName: 'Rental Damage Charge — Sedan Car (KA01AB1234)' }),
+    }))
+    const callArgs = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ unitPrice: number }> }
+    // One damage line at 800 (item-1's own charge) — NOT the stale 800
+    // whole-booking aggregate counted a second time.
+    expect(callArgs.items.filter((i) => i.unitPrice === 800)).toHaveLength(1)
+  })
+})
+
+describe('rental.service — createNextRentalCycle', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a booking that was never set up as recurring', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 1 })
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({ status: 'RETURNED', recurrenceIntervalDays: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createNextRentalCycle('booking-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RENT-040')
+    expect(db.rentalBooking.update).toHaveBeenCalledWith({ where: { id: 'booking-1' }, data: { nextCycleGenerated: false } })
+  })
+
+  it('rejects a double-claim when the next cycle was already generated', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createNextRentalCycle('booking-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RENT-039')
+  })
+
+  it('rejects creating the next cycle before the booking has been checked out', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 1 })
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({ status: 'RESERVED', recurrenceIntervalDays: 30 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createNextRentalCycle('booking-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RENT-041')
+  })
+
+  it('creates the next cycle shifted by the recurrence interval, linked to the parent booking', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 1 })
+    const start = new Date('2026-08-01T00:00:00Z')
+    const end = new Date('2026-08-31T00:00:00Z') // 30-day cycle
+    db.rentalBooking.findUnique.mockResolvedValueOnce(makeBookingRow({
+      status: 'RETURNED', recurrenceIntervalDays: 30, startDateTime: start, endDateTime: end,
+      items: [{ productId: 'prod-tent', rateBasis: 'DAY', quantity: 1, rentalUnitId: null }],
+    }))
+    db.product.findUnique.mockResolvedValue(makeBulkProduct())
+    db.inventory.findUnique.mockResolvedValue({ quantity: 10 })
+    db.rentalBookingItem.aggregate.mockResolvedValue({ _sum: { quantity: 0 } })
+    db.rentalBooking.create.mockResolvedValue({ id: 'booking-2' })
+    // Two more findUnique calls happen after creation, in this order:
+    // scheduleReturnReminder's own lookup (fire-and-forget, errors
+    // swallowed), then getBooking()'s real re-fetch.
+    db.rentalBooking.findUnique
+      .mockResolvedValueOnce(makeBookingRow({ id: 'booking-2', parentBookingId: 'booking-1' }))
+      .mockResolvedValueOnce(makeBookingRow({ id: 'booking-2', parentBookingId: 'booking-1' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createNextRentalCycle('booking-1')
+    expect(res.success).toBe(true)
+    expect(db.rentalBooking.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        startDateTime: end, // new cycle starts exactly where the old one ended
+        endDateTime: new Date(end.getTime() + (end.getTime() - start.getTime())),
+        parentBookingId: 'booking-1',
+        recurrenceIntervalDays: 30,
+      }),
+    }))
   })
 })

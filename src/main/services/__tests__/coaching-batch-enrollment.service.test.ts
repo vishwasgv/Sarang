@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { listEnrollmentsByBatch, listEnrollmentsByStudent, createEnrollment, updateEnrollment } from '../coaching-batch-enrollment.service'
+import { listEnrollmentsByBatch, listEnrollmentsByStudent, createEnrollment, updateEnrollment, promoteFromWaitlist } from '../coaching-batch-enrollment.service'
 
 // Regression coverage for the Phase 31 re-audit finding:
 // CoachingBatchEnrollment.discountAmount/effectiveFee are Prisma Decimal
@@ -110,7 +110,16 @@ describe('coaching-batch-enrollment.service — Decimal serialization', () => {
     expect(typeof (res as { data: { effectiveFee: unknown } }).data.effectiveFee).toBe('number')
   })
 
-  it('createEnrollment rejects when the batch is already at capacity (ENR-003)', async () => {
+})
+
+// Phase 58 §2 — a batch at capacity used to hard-reject any new enrollment;
+// it now enrolls onto a real WAITLISTED queue instead, promotable once a
+// seat frees up.
+
+describe('coaching-batch-enrollment.service — waitlist', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('enrolls as WAITLISTED (not rejected) when the batch is already at capacity', async () => {
     const db = makeMockDb()
     db.coachingBatch.findUnique = vi.fn().mockResolvedValue(makeBatchWithFee({ maxCapacity: 1 }))
     db.coachingBatchEnrollment.count = vi.fn().mockResolvedValue(1)
@@ -118,7 +127,74 @@ describe('coaching-batch-enrollment.service — Decimal serialization', () => {
 
     const res = await createEnrollment({ batchId: 'batch-1', studentId: 'stu-2', effectiveFee: 3000 })
 
+    expect(res.success).toBe(true)
+    const data = (res as { data: { status: string; waitlisted: boolean } }).data
+    expect(data.status).toBe('WAITLISTED')
+    expect(data.waitlisted).toBe(true)
+    expect(db.coachingBatchEnrollment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'WAITLISTED' }),
+    }))
+  })
+
+  it('enrolls as ACTIVE (waitlisted: false) when there is room', async () => {
+    const db = makeMockDb()
+    db.coachingBatch.findUnique = vi.fn().mockResolvedValue(makeBatchWithFee({ maxCapacity: 20 }))
+    db.coachingBatchEnrollment.count = vi.fn().mockResolvedValue(5)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createEnrollment({ batchId: 'batch-1', studentId: 'stu-2', effectiveFee: 3000 })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { status: string; waitlisted: boolean } }).data
+    expect(data.status).toBe('ACTIVE')
+    expect(data.waitlisted).toBe(false)
+  })
+
+  it('promoteFromWaitlist rejects a missing enrollment', async () => {
+    const db = makeMockDb()
+    db.coachingBatchEnrollment.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await promoteFromWaitlist('missing')
     expect(res.success).toBe(false)
-    expect((res as { error: { code: string } }).error.code).toBe('ENR-003')
+    expect((res as { error: { code: string } }).error.code).toBe('ENR-004')
+  })
+
+  it('promoteFromWaitlist rejects an enrollment that is not WAITLISTED', async () => {
+    const db = makeMockDb()
+    db.coachingBatchEnrollment.findUnique = vi.fn().mockResolvedValue(makeEnrollment({ status: 'ACTIVE' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await promoteFromWaitlist('enr-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('ENR-005')
+  })
+
+  it('promoteFromWaitlist rejects if the batch is still full at promote time', async () => {
+    const db = makeMockDb()
+    db.coachingBatchEnrollment.findUnique = vi.fn().mockResolvedValue(makeEnrollment({ status: 'WAITLISTED' }))
+    db.coachingBatch.findUnique = vi.fn().mockResolvedValue(makeBatchWithFee({ maxCapacity: 1 }))
+    db.coachingBatchEnrollment.count = vi.fn().mockResolvedValue(1)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await promoteFromWaitlist('enr-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('ENR-006')
+  })
+
+  it('promoteFromWaitlist flips a waitlisted enrollment to ACTIVE once a seat is free', async () => {
+    const db = makeMockDb()
+    db.coachingBatchEnrollment.findUnique = vi.fn().mockResolvedValue(makeEnrollment({ status: 'WAITLISTED' }))
+    db.coachingBatch.findUnique = vi.fn().mockResolvedValue(makeBatchWithFee({ maxCapacity: 20 }))
+    db.coachingBatchEnrollment.count = vi.fn().mockResolvedValue(5)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await promoteFromWaitlist('enr-1')
+
+    expect(res.success).toBe(true)
+    expect(db.coachingBatchEnrollment.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'enr-1' },
+      data: { status: 'ACTIVE' },
+    }))
   })
 })

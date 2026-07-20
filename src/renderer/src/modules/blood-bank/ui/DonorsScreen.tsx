@@ -14,9 +14,11 @@ interface Donor {
   fullName: string
   phone: string | null
   email: string | null
+  gender: string | null
   bloodGroup: string | null
   weightKg: number | null
   lastDonationDate: string | null
+  lastDonationComponentType: string | null
   nextEligibleDate: string | null
   isDeferred: boolean
   deferralReason: string | null
@@ -24,7 +26,7 @@ interface Donor {
   isActive: boolean
 }
 
-const BLANK_FORM = { fullName: '', phone: '', email: '', bloodGroup: '', weightKg: '', address: '', notes: '' }
+const BLANK_FORM = { fullName: '', phone: '', email: '', gender: '', bloodGroup: '', weightKg: '', address: '', notes: '' }
 
 export function DonorsScreen() {
   const { hasPermission } = useAuthStore()
@@ -71,6 +73,7 @@ export function DonorsScreen() {
       fullName: form.fullName.trim(),
       phone: form.phone || undefined,
       email: form.email || undefined,
+      gender: form.gender || undefined,
       bloodGroup: form.bloodGroup || undefined,
       weightKg: form.weightKg ? Number(form.weightKg) : undefined,
       address: form.address || undefined,
@@ -242,16 +245,29 @@ export function DonorsScreen() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                {/* Phase 58 §2 — feeds the sex-aware whole-blood/RBC donation
+                    cooldown; previously collected nowhere in the UI despite
+                    the field existing on the schema since Phase 51. */}
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">Gender</label>
+                  <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}
+                    className="w-full h-12 px-4 rounded-xl border border-border text-base bg-white dark:bg-slate-900">
+                    <option value="">Unspecified</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-text-primary mb-1">Weight (kg)</label>
                   <input type="number" value={form.weightKg} onChange={(e) => setForm((f) => ({ ...f, weightKg: e.target.value }))}
                     placeholder="e.g. 60" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Email</label>
-                  <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
-                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-text-primary mb-1">Email</label>
+                <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-text-primary mb-1">Address</label>

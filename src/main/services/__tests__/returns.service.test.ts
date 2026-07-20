@@ -26,7 +26,7 @@ function makeOriginalInvoice(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: unknown[]; originalBalance?: number } = {}) {
+function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: unknown[]; originalBalance?: number; variants?: Array<{ id: string; stockQty: number }> } = {}) {
   const original = makeOriginalInvoice(opts.original)
   let settingRow: { settingKey: string; settingValue: string } | null = null
   const db: Record<string, any> = {
@@ -58,6 +58,14 @@ function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: u
     inventoryMovement: { create: vi.fn() },
     inventory: { upsert: vi.fn() },
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
+    // restoreVariantStockTx (variant.service.ts) takes `tx` directly rather
+    // than calling getPrisma() itself, so it runs for real against this same
+    // mock db via db.$transaction below — no separate module mock needed.
+    productVariant: {
+      findUnique: vi.fn(async ({ where }: { where: { id: string } }) =>
+        (opts.variants ?? []).find(v => v.id === where.id) ?? null),
+      update: vi.fn(),
+    },
     customerLedger: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
@@ -198,6 +206,107 @@ describe('returns.service.createReturn', () => {
 
     const createCall = db.invoice.create.mock.calls[0][0]
     expect(createCall.data.originalInvoiceId).toBe(ORIGINAL_INVOICE_ID)
+  })
+
+  // Real bug found 2026-07-16: a return only ever restored the shared
+  // product-level Inventory.quantity, never the specific ProductVariant's
+  // stockQty it was sold from — silently drifting per-size/colour stock
+  // counts low forever on Clothing/Footwear. These four tests cover the fix.
+  describe('variant-aware returns (real bug fix)', () => {
+    function makeVariantInvoice() {
+      return makeOriginalInvoice({
+        items: [
+          {
+            id: 'item-black-m', productId: 'prod-shirt', quantity: 3, unitPrice: 500,
+            discountAmount: 0, taxRate: 18, variantId: 'var-black-m', variantInfo: 'Black / M',
+            product: { id: 'prod-shirt', productName: 'T-Shirt', productType: 'STANDARD' }
+          },
+          {
+            id: 'item-red-l', productId: 'prod-shirt', quantity: 4, unitPrice: 500,
+            discountAmount: 0, taxRate: 18, variantId: 'var-red-l', variantInfo: 'Red / L',
+            product: { id: 'prod-shirt', productName: 'T-Shirt', productType: 'STANDARD' }
+          },
+        ]
+      })
+    }
+
+    it('restores stock to the SPECIFIC variant sold, not just the shared product total', async () => {
+      const db = makeMockDb({
+        original: makeVariantInvoice(),
+        variants: [{ id: 'var-black-m', stockQty: 2 }, { id: 'var-red-l', stockQty: 1 }],
+      })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-shirt', quantity: 2, variantId: 'var-black-m' }], 'Wrong size')
+
+      expect(res.success).toBe(true)
+      // Product-level aggregate still goes up (unchanged prior behavior)...
+      expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        update: { quantity: { increment: 2 } },
+      }))
+      // ...AND now the exact variant that was sold gets its stock back too —
+      // this call didn't exist at all before the fix.
+      expect(db.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'var-black-m' },
+        data: { stockQty: 2 + 2 }, // starting stockQty 2 + returned 2
+      })
+    })
+
+    it('never touches ProductVariant when the returned product has no variant (plain products unaffected)', async () => {
+      const db = makeMockDb() // default single-item, non-variant invoice
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 5 }], 'Defective')
+
+      expect(db.productVariant.update).not.toHaveBeenCalled()
+    })
+
+    it('matches the correct line and restores the correct variant when the SAME product was sold as two different variants on one invoice', async () => {
+      const db = makeMockDb({
+        original: makeVariantInvoice(),
+        variants: [{ id: 'var-black-m', stockQty: 0 }, { id: 'var-red-l', stockQty: 0 }],
+      })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      // Return 1 Red/L specifically — must not be confused with the Black/M line.
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-shirt', quantity: 1, variantId: 'var-red-l' }], 'Damaged')
+
+      expect(res.success).toBe(true)
+      expect(db.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'var-red-l' },
+        data: { stockQty: 1 },
+      })
+      expect(db.productVariant.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'var-black-m' } }))
+    })
+
+    it('tracks already-returned quantity PER VARIANT, not per product — returning all of one variant must not block returning the other', async () => {
+      const db = makeMockDb({
+        original: makeVariantInvoice(),
+        // All 3 Black/M units were already returned in a prior transaction.
+        priorReturns: [{ items: [{ productId: 'prod-shirt', variantId: 'var-black-m', quantity: 3 }] }],
+        variants: [{ id: 'var-black-m', stockQty: 3 }, { id: 'var-red-l', stockQty: 0 }],
+      })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      // Red/L was never returned — all 4 units should still be returnable,
+      // even though Black/M (same product) is fully exhausted.
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-shirt', quantity: 4, variantId: 'var-red-l' }], 'Second visit')
+
+      expect(res.success).toBe(true)
+    })
+
+    it('still rejects over-returning a specific variant once ITS quantity is exhausted, independent of the other variant', async () => {
+      const db = makeMockDb({
+        original: makeVariantInvoice(),
+        priorReturns: [{ items: [{ productId: 'prod-shirt', variantId: 'var-black-m', quantity: 3 }] }],
+      })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-shirt', quantity: 1, variantId: 'var-black-m' }], 'Second visit')
+
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('RET-007')
+    })
   })
 })
 

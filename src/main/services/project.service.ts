@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber, SequenceContendedError } from './sequence.service'
+import { billingService } from './billing.service'
 
 export interface ProjectRecord {
   id: string
@@ -22,6 +23,7 @@ export interface ProjectRecord {
   totalTasks: number
   doneTasks: number
   totalLoggedHours: number
+  invoiceId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -63,6 +65,7 @@ function toRecord(p: any): ProjectRecord {
     totalTasks: (p.tasks ?? []).length,
     doneTasks,
     totalLoggedHours,
+    invoiceId: p.invoiceId ?? null,
     createdAt: new Date(p.createdAt).toISOString(),
     updatedAt: new Date(p.updatedAt).toISOString()
   }
@@ -221,6 +224,48 @@ export async function deleteProject(id: string, userId?: string): Promise<{ succ
   } catch (e: any) {
     console.error('[PRJ_DELETE_FAIL]', e)
     return { success: false, error: { code: 'PRJ_DELETE_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
+}
+
+// Phase 58 §1 (2026-07-17) — legacy SERVICE/CONSULTANT invoicing bridge,
+// matching the generate*Invoice(id) pattern already proven on CarJobCard/
+// Placement/etc. Bills the project's estimatedAmount as a single SERVICE
+// line — this is the legacy Project model's only stored monetary figure
+// (no per-task or per-hour billing exists on this model).
+export async function generateProjectInvoice(id: string, userId?: string) {
+  try {
+    const db = getPrisma()
+    const project = await db.project.findUnique({ where: { id } })
+    if (!project) return { success: false, error: { code: 'PRJ-003', message: 'Project not found.' } }
+    if (!project.customerId) return { success: false, error: { code: 'PRJ-004', message: 'This project has no linked customer. Set a customer before generating an invoice.' } }
+    if (project.invoiceId) return { success: false, error: { code: 'PRJ-005', message: 'Invoice already generated for this project.' } }
+    if (project.estimatedAmount <= 0) return { success: false, error: { code: 'PRJ-006', message: 'This project has no billable amount. Set an amount before generating an invoice.' } }
+
+    // SAC 998313 — IT consulting and support services, 18% GST
+    let product = await db.product.findFirst({ where: { hsnCode: '998313', isActive: true } })
+    if (!product) {
+      product = await db.product.create({
+        data: { productName: 'Professional / Consulting Services', productType: 'SERVICE', hsnCode: '998313', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+      })
+    }
+
+    const result = await billingService.createInvoice({
+      customerId: project.customerId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: product.id, quantity: 1, unitPrice: project.estimatedAmount, taxRate: 18 }],
+      notes: `Project ${project.projectNumber} — ${project.title}`,
+      referenceNumber: project.projectNumber,
+    })
+    if (!result.success) return { success: false as const, error: result.error }
+
+    const invoice = result.data as { id: string }
+    await db.project.update({ where: { id }, data: { invoiceId: invoice.id } })
+    if (userId) await logAction(userId, 'INVOICED', 'PROJECT', id, null, { invoiceId: invoice.id })
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (e: any) {
+    console.error('[PRJ_INVOICE_FAIL]', e)
+    return { success: false, error: { code: 'PRJ_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
   }
 }
 

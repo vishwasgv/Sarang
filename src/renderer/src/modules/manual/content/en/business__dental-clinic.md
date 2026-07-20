@@ -16,9 +16,11 @@ Each dental patient has a **Tooth Chart** tab showing a full FDI-notation dental
 
 A legend above the chart shows what each color means, and you can **Print Chart** at any time for a tabular printout of every tooth with a recorded (non-Sound) condition — useful for referrals or patient records.
 
+Click **History** on any tooth to see its full chronological record — every condition it's ever been given, in order, not just the current state. Re-saving a tooth (say, from Caries to Filled after treatment) never erases the earlier entry; both stay in the tooth's history so you have a genuine timeline of that tooth's treatment.
+
 ## Treatment Plans
 
-The same patient screen's **Treatment Plans** tab lets you build itemized treatment plans: a title, a status (Proposed / Accepted / In Progress / Completed / Declined), and a list of procedures, each optionally tied to a specific tooth number, with its own estimated cost and a Pending/Done flag. The plan's total estimated cost is calculated automatically from its line items.
+The same patient screen's **Treatment Plans** tab lets you build itemized treatment plans: a title, a status (Proposed / Accepted / In Progress / Completed / Declined), and a list of procedures, each optionally tied to a specific tooth number, with its own estimated cost and a Pending/Done flag. The plan's total estimated cost is calculated automatically from its line items. Once a plan exists, attach supporting files to it — an X-ray, a scanned consent form — directly from its edit view.
 
 ## Recall Schedule
 

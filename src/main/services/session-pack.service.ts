@@ -10,12 +10,17 @@ function serializePack<T extends { pricePerPack: unknown }>(pack: T): T {
   return { ...pack, pricePerPack: Number(pack.pricePerPack) }
 }
 
+// Phase 58 §2 — Gym/Studio: a standing trainer for the pack, surfaced
+// everywhere a pack is read so the booking form can pre-fill the provider
+// picker from it (see AppointmentsScreen.tsx).
+const ASSIGNED_TRAINER_SELECT = { select: { id: true, fullName: true } } as const
+
 export async function getActivePack(customerId: string) {
   try {
     const db = getPrisma()
     const packs = await db.clientSessionPack.findMany({
       where: { customerId, isActive: true },
-      include: { sessionLogs: { orderBy: { deductedAt: 'desc' }, take: 5 } },
+      include: { sessionLogs: { orderBy: { deductedAt: 'desc' }, take: 5 }, assignedTrainer: ASSIGNED_TRAINER_SELECT },
       orderBy: { purchaseDate: 'asc' },
     })
     const active = packs.find((p) => p.usedSessions < p.totalSessions) ?? null
@@ -32,6 +37,7 @@ export async function listPacks(customerId: string) {
       where: { customerId },
       include: {
         _count: { select: { sessionLogs: true } },
+        assignedTrainer: ASSIGNED_TRAINER_SELECT,
       },
       orderBy: { purchaseDate: 'asc' },
     })
@@ -48,6 +54,7 @@ export async function listAllActivePacks() {
       where: { isActive: true },
       include: {
         customer: { select: { id: true, customerName: true, phone: true } },
+        assignedTrainer: ASSIGNED_TRAINER_SELECT,
       },
       orderBy: { purchaseDate: 'desc' },
     })
@@ -67,6 +74,8 @@ export async function createPack(payload: {
   taxRate?: number
   sacCode?: string
   notes?: string
+  // Phase 58 §2 — Gym/Studio: standing trainer for this PT package.
+  assignedTrainerId?: string
 }) {
   try {
     const db = getPrisma()
@@ -83,6 +92,7 @@ export async function createPack(payload: {
         sacCode: payload.sacCode ?? null,
         notes: payload.notes ?? null,
         isActive: true,
+        assignedTrainerId: payload.assignedTrainerId ?? null,
       },
     })
 
@@ -98,6 +108,30 @@ export async function createPack(payload: {
     return { success: true, data: serializePack(pack) }
   } catch (err) {
     return { success: false, error: { code: 'SP-004', message: err instanceof Error ? err.message : 'Could not create session pack.' } }
+  }
+}
+
+// Phase 58 §2 — Gym/Studio: assign or clear the standing trainer for a PT
+// package, editable after purchase too (a client may switch trainers mid-pack).
+export async function assignPackTrainer(packId: string, trainerId: string | null) {
+  try {
+    const db = getPrisma()
+    const existing = await db.clientSessionPack.findUnique({ where: { id: packId }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'SP-012', message: 'Session pack not found.' } }
+
+    const pack = await db.clientSessionPack.update({
+      where: { id: packId },
+      data: { assignedTrainerId: trainerId },
+      include: { assignedTrainer: ASSIGNED_TRAINER_SELECT },
+    })
+
+    await db.auditLog.create({
+      data: { action: 'UPDATE', entityType: 'ClientSessionPack', entityId: packId, newValue: JSON.stringify({ assignedTrainerId: trainerId }) },
+    }).catch(() => {})
+
+    return { success: true, data: serializePack(pack) }
+  } catch (err) {
+    return { success: false, error: { code: 'SP-013', message: err instanceof Error ? err.message : 'Could not assign trainer.' } }
   }
 }
 

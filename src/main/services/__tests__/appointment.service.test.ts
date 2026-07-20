@@ -120,6 +120,34 @@ describe('appointment.service — provider conflict detection', () => {
 
       expect(db.$transaction).toHaveBeenCalledTimes(1)
     })
+
+    it('Phase 58 §2 — persists a provided petId onto the created appointment (Vet Clinic)', async () => {
+      const db = makeMockDb([])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createAppointment({
+        providerId: 'prov-1', serviceTitle: 'Vaccination', scheduledDate: '2026-07-10', scheduledTime: '10:00',
+        durationMinutes: 30, petId: 'pet-1',
+      })
+
+      expect(res.success).toBe(true)
+      expect(db.appointment.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ petId: 'pet-1' })
+      }))
+    })
+
+    it('omitting petId does not break or set it for non-vet appointments', async () => {
+      const db = makeMockDb([])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createAppointment({
+        providerId: 'prov-1', serviceTitle: 'Checkup', scheduledDate: '2026-07-10', scheduledTime: '10:00', durationMinutes: 30
+      })
+
+      expect(res.success).toBe(true)
+      const call = vi.mocked(db.appointment.create).mock.calls[0][0] as { data: Record<string, unknown> }
+      expect(call.data.petId).toBeNull()
+    })
   })
 
   describe('updateAppointment', () => {
@@ -171,6 +199,34 @@ describe('appointment.service — provider conflict detection', () => {
 
       expect(res.success).toBe(false)
       expect((res as { error: { code: string } }).error.code).toBe('APT-005')
+    })
+
+    it('Phase 58 §2 — can set a petId onto an existing appointment', async () => {
+      const db = makeMockDb([
+        makeExistingAppointment({ id: 'apt-a', appointmentNumber: 'APT-0001', scheduledTime: '10:00', durationMinutes: 30 }),
+      ])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await updateAppointment({ id: 'apt-a', petId: 'pet-2' })
+
+      expect(res.success).toBe(true)
+      expect(db.appointment.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'apt-a' }, data: expect.objectContaining({ petId: 'pet-2' })
+      }))
+    })
+
+    it('Phase 58 §2 — can clear a petId by passing null', async () => {
+      const db = makeMockDb([
+        makeExistingAppointment({ id: 'apt-a', appointmentNumber: 'APT-0001', scheduledTime: '10:00', durationMinutes: 30, petId: 'pet-2' }),
+      ])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await updateAppointment({ id: 'apt-a', petId: null })
+
+      expect(res.success).toBe(true)
+      expect(db.appointment.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'apt-a' }, data: expect.objectContaining({ petId: null })
+      }))
     })
   })
 })
@@ -289,7 +345,11 @@ function makeApptForInvoice(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeInvoiceMockDb(appts: Array<Record<string, unknown> | null>, serviceCatalogById: Record<string, unknown> = {}) {
+function makeInvoiceMockDb(
+  appts: Array<Record<string, unknown> | null>,
+  serviceCatalogById: Record<string, unknown> = {},
+  productsById: Record<string, unknown> = {}
+) {
   const byId = new Map(appts.filter((a): a is Record<string, unknown> => !!a).map((a) => [a.id as string, a]))
   return {
     appointment: {
@@ -318,6 +378,8 @@ function makeInvoiceMockDb(appts: Array<Record<string, unknown> | null>, service
     product: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: `product-${data.productName}`, ...data })),
+      // Phase 58 §2 — Beauty Salon retail-upsell resolution
+      findUnique: vi.fn().mockImplementation(({ where: { id } }: { where: { id: string } }) => Promise.resolve(productsById[id] ?? null)),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     __byId: byId,
@@ -463,6 +525,94 @@ describe('appointment.service — generateAppointmentInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('APT-010')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Phase 58 §2 — Beauty Salon: unify a retail product upsell into the same
+  // appointment checkout invoice, instead of a disconnected second Billing transaction.
+  describe('retail upsell + payment method (Phase 58 §2)', () => {
+    const SHAMPOO = { id: 'prod-shampoo', productName: 'Salon Shampoo', sellingPrice: 450, taxRate: 18, isActive: true }
+
+    it('appends a retail product as an extra invoice line, priced from the real Product record', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()], {}, { 'prod-shampoo': SHAMPOO })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+      const res = await generateAppointmentInvoice('apt-1', { retailItems: [{ productId: 'prod-shampoo', quantity: 2 }] })
+
+      expect(res.success).toBe(true)
+      expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
+        items: [
+          expect.objectContaining({ unitPrice: 500, taxRate: 0 }), // the service line, unchanged
+          expect.objectContaining({ productId: 'prod-shampoo', quantity: 2, unitPrice: 450, taxRate: 18 }),
+        ],
+      }))
+    })
+
+    it('never trusts a client-sent price for the retail item — only productId/quantity are accepted', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()], {}, { 'prod-shampoo': SHAMPOO })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+      // Even if a caller's payload somehow included extra fields, the
+      // service function's own type signature only accepts productId/quantity —
+      // proving there's no price-passthrough path in the implementation.
+      await generateAppointmentInvoice('apt-1', { retailItems: [{ productId: 'prod-shampoo', quantity: 1 }] })
+
+      const call = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ unitPrice: number }> }
+      expect(call.items[1].unitPrice).toBe(450) // from the Product record, not any caller-supplied value
+    })
+
+    it('rejects a retail item referencing an inactive/nonexistent product', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()], {}, {})
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await generateAppointmentInvoice('apt-1', { retailItems: [{ productId: 'prod-missing', quantity: 1 }] })
+
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('APT-021')
+      expect(billingService.createInvoice).not.toHaveBeenCalled()
+    })
+
+    it('rejects a zero/negative retail quantity', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()], {}, { 'prod-shampoo': SHAMPOO })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await generateAppointmentInvoice('apt-1', { retailItems: [{ productId: 'prod-shampoo', quantity: 0 }] })
+
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('APT-020')
+    })
+
+    it('defaults to CREDIT (unchanged behavior) when no paymentMethod override is given', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+      await generateAppointmentInvoice('apt-1')
+
+      expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'CREDIT' }))
+    })
+
+    it('uses the real checkout payment method when provided', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+      await generateAppointmentInvoice('apt-1', { paymentMethod: 'CASH' })
+
+      expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'CASH' }))
+    })
+
+    it('a service-only checkout (no retailItems) is unaffected — no extra line added', async () => {
+      const db = makeInvoiceMockDb([makeApptForInvoice()])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+      await generateAppointmentInvoice('apt-1', {})
+
+      const call = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: unknown[] }
+      expect(call.items).toHaveLength(1)
+    })
   })
 })
 

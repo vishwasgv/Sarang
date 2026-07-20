@@ -6,6 +6,7 @@ export const CreateRoomSchema = z.object({
   floor: z.string().max(20).optional(),
   maxOccupancy: z.number().int().positive('Max occupancy must be greater than zero').finite().optional(),
   baseRate: z.number().nonnegative('Base rate cannot be negative').finite().optional(),
+  dayUseRate: z.number().nonnegative('Day-use rate cannot be negative').finite().optional(),
   amenities: z.string().max(500).optional(),
   notes: z.string().max(2000).optional(),
 })
@@ -16,6 +17,7 @@ export const UpdateRoomSchema = z.object({
   floor: z.string().max(20).optional(),
   maxOccupancy: z.number().int().positive('Max occupancy must be greater than zero').finite().optional(),
   baseRate: z.number().nonnegative('Base rate cannot be negative').finite().optional(),
+  dayUseRate: z.number().nonnegative('Day-use rate cannot be negative').finite().nullable().optional(),
   status: z.enum(['AVAILABLE', 'CLEANING', 'MAINTENANCE', 'OUT_OF_ORDER']).optional(),
   amenities: z.string().max(500).optional(),
   notes: z.string().max(2000).optional(),
@@ -45,12 +47,16 @@ export const CreateHotelBookingSchema = z.object({
   guestEmail: z.string().email('Invalid email address').max(200).optional().or(z.literal('')),
   numberOfGuests: z.number().int().positive('Number of guests must be greater than zero').finite().optional(),
   checkInDate: z.string().min(1, 'Check-in date is required'),
-  checkOutDate: z.string().min(1, 'Check-out date is required'),
+  // Ignored server-side for a DAY_USE booking (forced to checkIn+1 day), but
+  // still required by the schema since an OVERNIGHT booking needs it.
+  checkOutDate: z.string().min(1, 'Check-out date is required').optional(),
   ratePerNight: z.number().nonnegative('Rate per night cannot be negative').finite().optional(),
+  channel: z.string().max(30).optional(),
+  bookingType: z.enum(['OVERNIGHT', 'DAY_USE']).optional(),
   advanceAmount: z.number().nonnegative('Advance amount cannot be negative').finite().optional(),
   advancePaymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET']).optional(),
   notes: z.string().max(2000).optional(),
-})
+}).refine((v) => v.bookingType === 'DAY_USE' || !!v.checkOutDate, { message: 'Check-out date is required.', path: ['checkOutDate'] })
 
 // idType is intentionally a free string, not a fixed enum — the valid set
 // is country-dependent (Aadhaar/Passport/Driving License/Voter ID/PAN in
@@ -89,10 +95,50 @@ export const RemoveExtraChargeSchema = z.object({ chargeId: z.string().min(1, 'C
 
 export const GenerateHotelInvoiceSchema = z.object({ bookingId: z.string().min(1, 'Booking ID is required') })
 
+export const GenerateGroupHotelInvoiceSchema = z.object({
+  bookingIds: z.array(z.string().min(1)).min(2, 'Select at least two bookings to combine into one invoice.'),
+})
+
 export const GuestRegisterSchema = z.object({
   dateFrom: z.string().min(1, 'Start date is required'),
   dateTo: z.string().min(1, 'End date is required'),
 })
+
+export const CreateRateCalendarEntrySchema = z.object({
+  roomType: z.string().max(50).optional(),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  rate: z.number().nonnegative('Rate cannot be negative').finite(),
+  label: z.string().max(100).optional(),
+})
+
+export const RateCalendarEntryIdSchema = z.object({ id: z.string().min(1, 'Entry ID is required') })
+
+export const HousekeepingTaskListSchema = z.object({
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE']).optional(),
+  roomId: z.string().optional(),
+})
+
+export const CreateHousekeepingTaskSchema = z.object({
+  roomId: z.string().min(1, 'Room ID is required'),
+  taskLabel: z.string().min(1, 'Task description is required').max(200),
+  bookingId: z.string().optional(),
+  notes: z.string().max(2000).optional(),
+})
+
+export const AssignHousekeepingTaskSchema = z.object({
+  id: z.string().min(1, 'Task ID is required'),
+  assignedToId: z.string().nullable(),
+})
+
+export const UpdateHousekeepingTaskStatusSchema = z.object({
+  id: z.string().min(1, 'Task ID is required'),
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE']),
+})
+
+export const HousekeepingTaskIdSchema = z.object({ id: z.string().min(1, 'Task ID is required') })
+
+export const CustomerStayHistorySchema = z.object({ customerId: z.string().min(1, 'Customer ID is required') })
 
 export type CreateRoomPayload = z.infer<typeof CreateRoomSchema>
 export type UpdateRoomPayload = z.infer<typeof UpdateRoomSchema>

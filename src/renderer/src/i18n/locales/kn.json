@@ -139,7 +139,8 @@
     "of": "ರಲ್ಲಿ",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "ಸ್ಟಾಕ್‌ನಲ್ಲಿ"
   },
   "auth": {
     "username": "ಬಳಕೆದಾರ ಹೆಸರು",
@@ -229,6 +230,8 @@
     "percentDiscount": "% ರಿ.",
     "invoiceDate": "ಇ.ದಿನಾಂಕ",
     "dueDate": "ಪಾ.ದಿನಾಂಕ",
+    "dueOn": "ಬಾಕಿ ದಿನಾಂಕ {{date}}",
+    "overdueSince": "{{date}} ರಿಂದ ಬಾಕಿ",
     "notes": "ಟಿಪ್ಪಣಿ",
     "rounding": "ರೌಂಡಿಂಗ್",
     "invoiceCreated": "ಬಿಲ್ ಮಾಡಲಾಗಿದೆ",
@@ -286,7 +289,40 @@
     "batchLabel": "ಬ್ಯಾಚ್ {{batchNumber}} · {{status}}",
     "batchExpired": "ಅವಧಿ ಮುಗಿದಿದೆ",
     "batchExpiresToday": "ಇಂದು ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
-    "batchExpiresIn": "{{days}} ದಿನಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ"
+    "batchExpiresIn": "{{days}} ದಿನಗಳಲ್ಲಿ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+    "addTipOrServiceCharge": "ಟಿಪ್ / ಸೇವಾ ಶುಲ್ಕ ಸೇರಿಸಿ",
+    "tipAmountLabel": "ಮೊತ್ತ",
+    "tipAmountInvalid": "ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿನ ಮೊತ್ತವನ್ನು ನಮೂದಿಸಿ.",
+    "confirmAddToCart": "ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ",
+    "unavailableToday": "ಇಂದು ಲಭ್ಯವಿಲ್ಲ",
+    "unavailableTodayMessage": "{{productName}} ಅನ್ನು ಇಂದು ಲಭ್ಯವಿಲ್ಲ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ.",
+    "holdSale": "ಮಾರಾಟವನ್ನು ಹೋಲ್ಡ್ ಮಾಡಿ",
+    "resumeSale": "ಮಾರಾಟವನ್ನು ಪುನರಾರಂಭಿಸಿ",
+    "heldSales": "ಹೋಲ್ಡ್ ಮಾಡಿದ ಮಾರಾಟಗಳು",
+    "noHeldSales": "ಯಾವುದೇ ಹೋಲ್ಡ್ ಮಾರಾಟಗಳಿಲ್ಲ.",
+    "holdSaleLabel": "ಟಿಪ್ಪಣಿ (ಐಚ್ಛಿಕ)",
+    "holdSaleLabelPlaceholder": "ಉದಾ. ರಾಹುಲ್ - ನೀಲಿ ಶರ್ಟ್",
+    "confirmHold": "ಹೋಲ್ಡ್ ಮಾಡಿ",
+    "holdSaleSuccess": "ಮಾರಾಟವನ್ನು ಹೋಲ್ಡ್ ಮಾಡಲಾಗಿದೆ.",
+    "resumeSaleAction": "ಪುನರಾರಂಭಿಸಿ",
+    "abandonHeldSale": "ತೆಗೆದುಹಾಕಿ",
+    "confirmAbandonHeldSale": "ಈ ಹೋಲ್ಡ್ ಮಾರಾಟವನ್ನು ತೆಗೆದುಹಾಕುವುದೇ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
+    "emptyCartCannotHold": "ಕಾರ್ಟ್ ಖಾಲಿಯಾಗಿದೆ — ಹೋಲ್ಡ್ ಮಾಡಲು ಏನೂ ಇಲ್ಲ.",
+    "frequentlySold": "ಆಗಾಗ್ಗೆ ಮಾರಾಟವಾದವು",
+    "mrpLabel": "MRP",
+    "areaCalculator": "ವಿಸ್ತೀರ್ಣ ಕ್ಯಾಲ್ಕುಲೇಟರ್ (ಉದ್ದ × ಅಗಲ)",
+    "areaLabel": "ವಿಸ್ತೀರ್ಣ",
+    "areaFormula": "ಉದ್ದ × ಅಗಲ = ವಿಸ್ತೀರ್ಣ",
+    "useAreaSq": "{{area}} ಚ. ಬಳಸಿ",
+    "rx": {
+      "title": "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ವಿವರಗಳು",
+      "description": "ಇದು ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ಮಾತ್ರ ಐಟಂ (ಶೆಡ್ಯೂಲ್ H/H1) — ಇದನ್ನು ಮಾರಾಟ ಮಾಡಲು ರೋಗಿ ಮತ್ತು ವೈದ್ಯರ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
+      "patientName": "ರೋಗಿಯ ಹೆಸರು *",
+      "doctorName": "ವೈದ್ಯರ ಹೆಸರು *",
+      "date": "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ದಿನಾಂಕ (ಐಚ್ಛಿಕ)",
+      "addToCart": "ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ",
+      "required": "ರೋಗಿಯ ಹೆಸರು ಮತ್ತು ವೈದ್ಯರ ಹೆಸರು ಅಗತ್ಯವಿದೆ."
+    }
   },
   "products": {
     "title": "ಉತ್ಪನ್ನಗಳು",
@@ -298,6 +334,7 @@
     "unit": "ಘಟಕ",
     "sellingPrice": "ಮಾ.ಬೆ.",
     "costPrice": "ವೆ.ಬೆ.",
+    "mrp": "MRP (ಐಚ್ಛಿಕ)",
     "taxRate": "ತೆ.ದರ (%)",
     "stock": "ದಾ.",
     "lowStockAlert": "ಕ.ದಾ.ಎ.",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "ಮರುಆದೇಶ PO ಗಳನ್ನು ರಚಿಸಿ",
+      "title": "ಮರುಆದೇಶ PO ಗಳನ್ನು ರಚಿಸಲಾಗಿದೆ",
+      "nothingToOrder": "ಸದ್ಯಕ್ಕೆ ಯಾವುದೇ ಕಡಿಮೆ-ಸ್ಟಾಕ್ ಉತ್ಪನ್ನಗಳಿಗೆ ಮರುಆದೇಶ ಅಗತ್ಯವಿಲ್ಲ.",
+      "created": "ಡ್ರಾಫ್ಟ್ PO ಗಳನ್ನು ರಚಿಸಲಾಗಿದೆ: {{count}}",
+      "skippedNoSupplier": "ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ (ಡೀಫಾಲ್ಟ್ ಪೂರೈಕೆದಾರರಿಲ್ಲ): {{count}}",
+      "skippedOpenPO": "ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ (ಈಗಾಗಲೇ ತೆರೆದ PO ನಲ್ಲಿ): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "ಖರೀದಿ ಆದೇಶ",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ಔಷಧಿ ಮಾರಾಟ",
+        "description": "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ಮಾತ್ರ ಔಷಧಿಗಳ (ಶೆಡ್ಯೂಲ್ H/H1) ಮಾರಾಟದ ನೋಂದಣಿ, ರೋಗಿ ಮತ್ತು ವೈದ್ಯರ ಹೆಸರುಗಳೊಂದಿಗೆ."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ದಾಖಲೆಗಳನ್ನು ನೀಡಲಾಗಿಲ್ಲ.",
       "jewelleryStock": "ಇನ್ನೂ ಲೋಹದ ತೂಕ ದಾಖಲಿಸಿದ ಯಾವುದೇ ಆಭರಣ ಉತ್ಪನ್ನಗಳಿಲ್ಲ.",
       "projects": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಪ್ರಾಜೆಕ್ಟ್‌ಗಳಿಲ್ಲ.",
-      "jobCards": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳಿಲ್ಲ."
+      "jobCards": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳಿಲ್ಲ.",
+      "prescriptionDrugSales": "ಈ ದಿನಾಂಕ ಶ್ರೇಣಿಯಲ್ಲಿ ಯಾವುದೇ ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ಔಷಧಿ ಮಾರಾಟವಿಲ್ಲ."
     },
     "col": {
       "invoiceNo": "ಬಿಲ್ #",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "ಪ್ರಕಾರ",
+    "subAssembly": "ಉಪ-ಜೋಡಣೆ",
+    "searchSubAssembly": "ಉತ್ಪನ್ನ ಹುಡುಕಿ (ಉಪ-ಜೋಡಣೆ)…",
+    "subAssemblyTag": "(ಉಪ-ಜೋಡಣೆ)",
+    "selfReferenceError": "ಒಂದು ಉತ್ಪನ್ನ ತನ್ನದೇ BOM ನ ಘಟಕವಾಗಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+    "lotsUsed": "ಬಳಸಿದ ಲಾಟ್‌ಗಳು",
+    "qcCheckpointTag": "(QC ತಪಾಸಣಾ ಬಿಂದು)",
+    "qcNotesLabel": "QC ಟಿಪ್ಪಣಿಗಳು",
+    "qcPass": "ಪಾಸ್",
+    "qcFail": "ಫೇಲ್",
+    "qcResultTitle": "QC ಫಲಿತಾಂಶ ದಾಖಲಿಸಿ",
+    "markAsQcStep": "QC ತಪಾಸಣಾ ಬಿಂದು",
+    "scrapQtyLabel": "ಸ್ಕ್ರ್ಯಾಪ್ / ತಿರಸ್ಕೃತ ಪ್ರಮಾಣ",
+    "laborCostLabel": "ಕಾರ್ಮಿಕ ವೆಚ್ಚ",
+    "batchNumber": "ಬ್ಯಾಚ್ / ಲಾಟ್ ಸಂಖ್ಯೆ",
+    "receiveBatch": "ಲಾಟ್ ಸ್ವೀಕರಿಸಿ",
+    "receiveBatchTitle": "ಕಚ್ಚಾ ವಸ್ತು ಲಾಟ್ ಸ್ವೀಕರಿಸಿ",
+    "batchReceived": "ಲಾಟ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ.",
+    "noBatchesYet": "ಈ ವಸ್ತುಗಾಗಿ ಇನ್ನೂ ಯಾವುದೇ ಲಾಟ್ ಸ್ವೀಕರಿಸಲಾಗಿಲ್ಲ.",
+    "remainingQty": "ಉಳಿದಿರುವ"
   },
   "service": {
     "projects": "ಯೋ.",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "ಬಳಸಿದ ಬಿಡಿಭಾಗಗಳು",
+    "addPart": "ಬಿಡಿಭಾಗ ಸೇರಿಸಿ",
+    "searchProduct": "ಉತ್ಪನ್ನ ಹುಡುಕಿ...",
+    "partsTotal": "ಬಿಡಿಭಾಗಗಳ ಒಟ್ಟು",
+    "noPartsUsed": "ಇನ್ನೂ ಯಾವುದೇ ಬಿಡಿಭಾಗಗಳನ್ನು ಬಳಸಿಲ್ಲ",
+    "removePart": "ಬಿಡಿಭಾಗವನ್ನು ತೆಗೆದುಹಾಕಿ",
+    "invalidQuantity": "ಮಾನ್ಯ ಪ್ರಮಾಣವನ್ನು ನಮೂದಿಸಿ.",
+    "couldNotAddPart": "ಬಿಡಿಭಾಗವನ್ನು ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldNotRemovePart": "ಬಿಡಿಭಾಗವನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "warranty": "ವಾರಂಟಿ",
+    "warrantyDays": "ವಾರಂಟಿ (ದಿನಗಳು)",
+    "warrantyUntil": "ವರೆಗೆ",
+    "underWarranty": "ವಾರಂಟಿ ಅಡಿಯಲ್ಲಿ",
+    "warrantyExpired": "ವಾರಂಟಿ ಅವಧಿ ಮುಗಿದಿದೆ",
+    "saveWarranty": "ಉಳಿಸಿ",
+    "warrantySaved": "ವಾರಂಟಿ ಉಳಿಸಲಾಗಿದೆ.",
+    "invalidWarrantyDays": "ಮಾನ್ಯ ವಾರಂಟಿ ದಿನಗಳ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+    "couldNotSaveWarranty": "ವಾರಂಟಿಯನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "warrantyAppliesOnDelivery": "ವಾರಂಟಿ ಅವಧಿಯನ್ನು ವಿತರಣಾ ದಿನಾಂಕದಿಂದ ಎಣಿಸಲಾಗುತ್ತದೆ.",
+    "warrantyClaimAgainst": "ವಾರಂಟಿ ಕ್ಲೇಮ್ ಇದರ ವಿರುದ್ಧ",
+    "notAWarrantyClaim": "ವಾರಂಟಿ ಕ್ಲೇಮ್ ಅಲ್ಲ",
+    "originalUnderWarranty": "ಮೂಲ ಕೆಲಸವು ಇನ್ನೂ ವಾರಂಟಿ ಅಡಿಯಲ್ಲಿದೆ",
+    "originalWarrantyExpired": "ಮೂಲ ಕೆಲಸದ ವಾರಂಟಿ ಅವಧಿ ಮುಗಿದಿದೆ"
   },
   "setup": {
     "welcome": "ಸಾರಂಗ್‌ಗೆ ಸ್ವಾಗತ",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "ಅರ್ಹ ಸೇವೆಗಳು",
+    "qualifiedServicesHint": "ಈ ಸಿಬ್ಬಂದಿ ಸದಸ್ಯರು ನಿರ್ವಹಿಸಬಹುದಾದ ಸೇವೆಗಳು. ಯಾವುದೇ ಸೇವೆಯನ್ನು ಅನುಮತಿಸಲು ಖಾಲಿ ಬಿಡಿ (ಡೀಫಾಲ್ಟ್).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "ಮೌಲ್ಯ {{symbol}}",
       "itemNotesPlaceholder": "ವಸ್ತು ಟಿಪ್ಪಣಿಗಳು (ಐಚ್ಛಿಕ)",
       "deleteConfirm": "ಶಿಪ್‌ಮೆಂಟ್ {{number}} ಅಳಿಸುವುದೇ? ಈ ಕ್ರಿಯೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
-      "destinationRequired": "ಗಮ್ಯಸ್ಥಾನ ವಿಳಾಸ ಅಗತ್ಯವಿದೆ."
+      "destinationRequired": "ಗಮ್ಯಸ್ಥಾನ ವಿಳಾಸ ಅಗತ್ಯವಿದೆ.",
+      "stops": {
+        "title": "ನಿಲುಗಡೆಗಳು",
+        "addStop": "ನಿಲುಗಡೆ ಸೇರಿಸಿ",
+        "customerName": "ಗ್ರಾಹಕರ ಹೆಸರು (ಐಚ್ಛಿಕ)",
+        "destinationAddress": "ಗಮ್ಯಸ್ಥಾನ ವಿಳಾಸ",
+        "notes": "ಟಿಪ್ಪಣಿಗಳು (ಐಚ್ಛಿಕ)",
+        "markDelivered": "ವಿತರಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+        "skip": "ಬಿಟ್ಟುಬಿಡಿ",
+        "delete": "ಅಳಿಸಿ",
+        "empty": "ಇನ್ನೂ ಯಾವುದೇ ಹೆಚ್ಚುವರಿ ನಿಲುಗಡೆ ಸೇರಿಸಲಾಗಿಲ್ಲ.",
+        "primaryHint": "ಮೇಲಿನ ಗಮ್ಯಸ್ಥಾನವು ಯಾವಾಗಲೂ ಮೊದಲ ನಿಲುಗಡೆಯಾಗಿದೆ — ಬಹು-ನಿಲುಗಡೆ ಮಾರ್ಗಕ್ಕಾಗಿ ಕೆಳಗೆ ಇನ್ನಷ್ಟು ಸೇರಿಸಿ.",
+        "saveFirst": "ಮೊದಲು ಸಾಗಣೆಯನ್ನು ಉಳಿಸಿ, ನಂತರ ನಿಲುಗಡೆಗಳನ್ನು ಸೇರಿಸಿ."
+      }
     },
     "grn": {
       "title": "ಸರಕು ಸ್ವೀಕೃತಿ ಟಿಪ್ಪಣಿಗಳು (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಿ",
       "invoicing": "...",
-      "invoiced": "ಇನ್‌ವಾಯ್ಸ್ ಆಗಿದೆ"
+      "invoiced": "ಇನ್‌ವಾಯ್ಸ್ ಆಗಿದೆ",
+      "scheduleTrial": "ಟ್ರಯಲ್ ನಿಗದಿಪಡಿಸಿ",
+      "trial": "ಟ್ರಯಲ್",
+      "trialScheduled": "ಟ್ರಯಲ್ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ನಿಗದಿಪಡಿಸಲಾಗಿದೆ",
+      "setFabric": "ಬಟ್ಟೆಯನ್ನು ಹೊಂದಿಸಿ",
+      "fabricLinked": "ಬಟ್ಟೆ ✓",
+      "clearFabric": "ಬಟ್ಟೆಯ ಲಿಂಕ್ ತೆರವುಗೊಳಿಸಿ (ಸ್ಟಾಕ್ ಅನ್ನು ಪುನಃಸ್ಥಾಪಿಸುತ್ತದೆ)"
     },
     "invoiceBanner": {
       "success": "ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ (SAC 998821, 5% GST).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ.",
       "deleteOrderFailed": "ಆರ್ಡರ್ ಅಳಿಸಲು ವಿಫಲವಾಗಿದೆ.",
       "deleteMeasurementFailed": "ಅಳತೆ ಅಳಿಸಲು ವಿಫಲವಾಗಿದೆ.",
-      "updateStatusFailed": "ಸ್ಥಿತಿ ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ."
+      "updateStatusFailed": "ಸ್ಥಿತಿ ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ.",
+      "trialDateRequired": "ಟ್ರಯಲ್ ದಿನಾಂಕ ಅಗತ್ಯವಿದೆ.",
+      "fabricQuantityInvalid": "ಮಾನ್ಯ ಪ್ರಮಾಣವನ್ನು ನಮೂದಿಸಿ."
     },
     "measurements": {
       "selectClient": "ಗ್ರಾಹಕ ಆಯ್ಕೆಮಾಡಿ",
@@ -2325,6 +2441,20 @@
       "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
       "updateOrder": "ಆರ್ಡರ್ ನವೀಕರಿಸಿ",
       "createOrder": "ಆರ್ಡರ್ ರಚಿಸಿ"
+    },
+    "trial": {
+      "title": "ಟ್ರಯಲ್ / ಫಿಟ್ಟಿಂಗ್ ನಿಗದಿಪಡಿಸಿ",
+      "hint": "ಗ್ರಾಹಕರಿಗೆ ಇತರ ಯಾವುದೇ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ನಂತೆಯೇ ಅದೇ ವಾಟ್ಸ್ಆ್ಯಪ್ ಜ್ಞಾಪನೆಗಳು ಸಿಗುತ್ತವೆ.",
+      "date": "ದಿನಾಂಕ",
+      "time": "ಸಮಯ",
+      "schedule": "ನಿಗದಿಪಡಿಸಿ"
+    },
+    "fabric": {
+      "title": "ಬಟ್ಟೆಯನ್ನು ಹೊಂದಿಸಿ",
+      "hint": "ಹೊಂದಿಸಿದಾಗ ನಿಜವಾದ ಇನ್ವೆಂಟರಿಯನ್ನು ಕಡಿತಗೊಳಿಸುತ್ತದೆ.",
+      "searchPlaceholder": "ಇನ್ವೆಂಟರಿಯಲ್ಲಿ ಬಟ್ಟೆ ಹುಡುಕಿ…",
+      "quantity": "ಪ್ರಮಾಣ",
+      "set": "ಬಟ್ಟೆಯನ್ನು ಹೊಂದಿಸಿ"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "ಗ್ರಾಹಕ",
       "items": "ವಸ್ತುಗಳು",
       "item": "ವಸ್ತು",
-      "period": "ಅವಧಿ"
+      "period": "ಅವಧಿ",
+      "service": "ಸೇವೆ"
     },
     "confirmCancel": "ಈ ಕಾಯ್ದಿರಿಸುವಿಕೆಯನ್ನು ರದ್ದುಗೊಳಿಸುವುದೇ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
     "lateFee": "ವಿಳಂಬ ಶುಲ್ಕ",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "ಪ್ರಸ್ತುತ ಏನೂ ಚೆಕ್-ಔಟ್ ಆಗಿಲ್ಲ.",
       "revenue": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಬಾಡಿಗೆ ಆದಾಯವಿಲ್ಲ."
-    }
+    },
+    "serviceIntervalRentals": "ಸೇವಾ ಮಧ್ಯಂತರ (ಬಾಡಿಗೆಗಳು)",
+    "serviceIntervalDays": "ಸೇವಾ ಮಧ್ಯಂತರ (ದಿನಗಳು)",
+    "dueForService": "ಸೇವೆಗೆ ಬಾಕಿ",
+    "markServiced": "ಸೇವೆ ಮಾಡಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+    "lastServiced": "ಕೊನೆಯ ಸೇವೆ",
+    "neverServiced": "ಎಂದಿಗೂ ಇಲ್ಲ",
+    "addItem": "ಐಟಂ ಸೇರಿಸಿ",
+    "removeItem": "ತೆಗೆದುಹಾಕಿ",
+    "recurringRental": "ಪುನರಾವರ್ತಿತ ಬಾಡಿಗೆ",
+    "repeatEveryDays": "ಪ್ರತಿ (ದಿನಗಳು) ಪುನರಾವರ್ತಿಸಿ",
+    "createNextCycle": "ಮುಂದಿನ ಚಕ್ರವನ್ನು ರಚಿಸಿ",
+    "nextCycleCreated": "ಮುಂದಿನ ಬಾಡಿಗೆ ಚಕ್ರವನ್ನು ರಚಿಸಲಾಗಿದೆ.",
+    "conditionOutLabel": "ಚೆಕ್-ಔಟ್‌ನಲ್ಲಿ ಸ್ಥಿತಿ",
+    "conditionInLabel": "ಹಿಂತಿರುಗಿಸುವಾಗ ಸ್ಥಿತಿ",
+    "itemDamageCharge": "ಹಾನಿ ಶುಲ್ಕ (ಈ ಐಟಂ)",
+    "photos": "ಫೋಟೋಗಳು"
   },
   "jewellery": {
     "metalRates": "ಲೋಹದ ದರಗಳು",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "{{metalType}} {{purity}} ಗೆ ಯಾವುದೇ ದರ ಹೊಂದಿಸಿಲ್ಲ. ಆಭರಣ → ಲೋಹದ ದರಗಳಲ್ಲಿ ಇಂದಿನ ದರವನ್ನು ಹೊಂದಿಸಿ, ನಂತರ ಈ ವಸ್ತುವನ್ನು ಮತ್ತೆ ಸೇರಿಸಿ.",
     "computeErrorDesc": "ಆಭರಣದ ಬೆಲೆಯನ್ನು ಲೆಕ್ಕಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ದರವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಈ ವಸ್ತುವನ್ನು ಮತ್ತೆ ಸೇರಿಸಿ.",
     "priceNotSetTitle": "ಆಭರಣದ ಬೆಲೆ ಹೊಂದಿಸಿಲ್ಲ",
-    "priceNotSetDesc": "{{productName}} ಗೆ ಇನ್ನೂ ಬೆಲೆ ಇಲ್ಲ — ಆಭರಣ → ಲೋಹದ ದರಗಳಲ್ಲಿ ಇಂದಿನ ದರವನ್ನು ಹೊಂದಿಸಿ, ನಂತರ ಈ ವಸ್ತುವನ್ನು ತೆಗೆದು ಮತ್ತೆ ಸೇರಿಸಿ."
+    "priceNotSetDesc": "{{productName}} ಗೆ ಇನ್ನೂ ಬೆಲೆ ಇಲ್ಲ — ಆಭರಣ → ಲೋಹದ ದರಗಳಲ್ಲಿ ಇಂದಿನ ದರವನ್ನು ಹೊಂದಿಸಿ, ನಂತರ ಈ ವಸ್ತುವನ್ನು ತೆಗೆದು ಮತ್ತೆ ಸೇರಿಸಿ.",
+    "makingCharge": "ಮೇಕಿಂಗ್ ಚಾರ್ಜ್",
+    "makingChargeOverrideHint": "ಈ ಮಾರಾಟಕ್ಕೆ ಮಾತ್ರ ಮೇಕಿಂಗ್ ಚಾರ್ಜ್ ಅನ್ನು ಬದಲಾಯಿಸಿ — ಉತ್ಪನ್ನದ ಸ್ವಂತ ಸಂರಚನೆ ಬದಲಾಗುವುದಿಲ್ಲ.",
+    "applyExchange": "ಹಳೆಯ ಲೋಹ ವಿನಿಮಯ ಅನ್ವಯಿಸಿ",
+    "applyExchangeDesc": "ಮಾರಾಟ ಪೂರ್ಣಗೊಳಿಸಿದಾಗ ಲಿಂಕ್ ಆಗದ ವಿನಿಮಯದ ಕ್ರೆಡಿಟ್ ಅನ್ನು ಈ ಇನ್‌ವಾಯ್ಸ್‌ನಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರಿಯಾಯಿತಿಯಾಗಿ ಅನ್ವಯಿಸುತ್ತದೆ.",
+    "exchangeSearchPlaceholder": "ವಿನಿಮಯ ಸಂಖ್ಯೆಯಿಂದ ಹುಡುಕಿ...",
+    "noUnlinkedExchanges": "ಈ ಗ್ರಾಹಕರಿಗೆ ಲಿಂಕ್ ಆಗದ ವಿನಿಮಯಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+    "exchangeApplied": "ವಿನಿಮಯ {{number}} — ಚೆಕ್‌ಔಟ್‌ನಲ್ಲಿ {{amount}} ಕ್ರೆಡಿಟ್ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ.",
+    "removeExchange": "ತೆಗೆದುಹಾಕಿ"
   },
   "manual": {
     "yourType": "ನಿಮ್ಮದು",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "ಸಾರ್ವತ್ರಿಕ ವೈಶಿಷ್ಟ್ಯಗಳು",
     "groupAi": "ಎಐ ಸಹಾಯಕ",
     "groupBusiness": "ವ್ಯವಹಾರ ಪ್ರಕಾರಗಳು"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "ಫೀಲ್ಡ್ ಆರ್ಡರ್‌ಗಳು",
+      "subtitle": "ಕ್ಷೇತ್ರದಲ್ಲಿನ ಪ್ರತಿನಿಧಿಗಳಿಂದ ಸಲ್ಲಿಸಲಾದ ಆರ್ಡರ್‌ಗಳು, ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿವೆ",
+      "refresh": "ರಿಫ್ರೆಶ್ ಮಾಡಿ",
+      "linkTitle": "ಫೀಲ್ಡ್ ಆರ್ಡರ್ ಲಿಂಕ್",
+      "linkDescription": "ಈ ಲಿಂಕ್ (ಅಥವಾ QR ಕೋಡ್) ಅನ್ನು ನಿಮ್ಮ ಫೀಲ್ಡ್ ಪ್ರತಿನಿಧಿಗಳೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ — ಅವರು ಅಂಗಡಿಯ ವೈಫೈನಲ್ಲಿ ತಮ್ಮ ಸ್ವಂತ ಫೋನ್‌ನಿಂದ ಆರ್ಡರ್‌ಗಳನ್ನು ಸೆರೆಹಿಡಿಯಬಹುದು.",
+      "showQr": "QR ಕೋಡ್ ತೋರಿಸಿ",
+      "regenerateLink": "ಲಿಂಕ್ ಮರುಸೃಷ್ಟಿಸಿ",
+      "openDirectly": "ಅಥವಾ ನೇರವಾಗಿ ತೆರೆಯಿರಿ:",
+      "copied": "ನಕಲಿಸಲಾಗಿದೆ",
+      "linkCopied": "ಲಿಂಕ್ ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ನಕಲಿಸಲಾಗಿದೆ.",
+      "notRunning": "ಫೀಲ್ಡ್ ಆರ್ಡರ್ ಕ್ಯಾಪ್ಚರ್ ಪ್ರಸ್ತುತ ಚಾಲನೆಯಲ್ಲಿಲ್ಲ. ಪ್ರತಿನಿಧಿಗಳು ತಮ್ಮ ಸ್ವಂತ ಫೋನ್‌ನಿಂದ ಆರ್ಡರ್‌ಗಳನ್ನು ಸಲ್ಲಿಸಲು ಅನುಮತಿಸಲು ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ \"ಫೀಲ್ಡ್ ಆರ್ಡರ್ ಕ್ಯಾಪ್ಚರ್\" ಸಕ್ರಿಯಗೊಳಿಸಿ.",
+      "pendingTitle": "ಬಾಕಿ ಫೀಲ್ಡ್ ಆರ್ಡರ್‌ಗಳು",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "empty": "ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿರುವ ಯಾವುದೇ ಫೀಲ್ಡ್ ಆರ್ಡರ್ ಇಲ್ಲ.",
+      "noCustomer": "(ಯಾವುದೇ ಗ್ರಾಹಕ ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ)",
+      "accept": "ಸ್ವೀಕರಿಸಿ",
+      "reject": "ತಿರಸ್ಕರಿಸಿ",
+      "acceptTitle": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಿ — {{repName}}",
+      "paymentMethod": "ಪಾವತಿ ವಿಧಾನ",
+      "acceptHint": "ದೃಢೀಕರಣದ ಸಮಯದಲ್ಲಿ ಬೆಲೆಗಳನ್ನು ಮರುಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ (ಯಾವುದೇ ಒಪ್ಪಿದ ಗ್ರಾಹಕ ಬೆಲೆ ಸೇರಿದಂತೆ), ಮತ್ತು ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಲಾಗುತ್ತದೆ.",
+      "confirmBill": "ದೃಢೀಕರಿಸಿ ಮತ್ತು ಬಿಲ್ ಮಾಡಿ",
+      "creating": "ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "orderAccepted": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
+      "invoiceCreated": "ಈ ಫೀಲ್ಡ್ ಆರ್ಡರ್‌ನಿಂದ ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ.",
+      "error": "ದೋಷ",
+      "couldNotLoad": "ಬರುತ್ತಿರುವ ಫೀಲ್ಡ್ ಆರ್ಡರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "couldNotAccept": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "couldNotReject": "ಆರ್ಡರ್ ತಿರಸ್ಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "couldNotGenerateQr": "QR ಕೋಡ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "regenerated": "ಮರುಸೃಷ್ಟಿಸಲಾಗಿದೆ",
+      "regeneratedMessage": "ಹೊಸ ಫೀಲ್ಡ್ ಆರ್ಡರ್ ಲಿಂಕ್ ರಚಿಸಲಾಗಿದೆ.",
+      "couldNotRegenerate": "ಲಿಂಕ್ ಮರುಸೃಷ್ಟಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "regenerateConfirm": "ಮರುಸೃಷ್ಟಿಸುವುದರಿಂದ ನಿಮ್ಮ ಪ್ರತಿನಿಧಿಗಳೊಂದಿಗೆ ಈಗಾಗಲೇ ಹಂಚಿಕೊಂಡ ಯಾವುದೇ ಲಿಂಕ್/QR ಕೋಡ್ ಅಮಾನ್ಯವಾಗುತ್ತದೆ — ಅವರಿಗೆ ಹೊಸದು ಬೇಕಾಗುತ್ತದೆ. ಮುಂದುವರಿಸುವುದೇ?"
+    },
+    "pricing": {
+      "title": "ಗ್ರಾಹಕ ವರ್ಗದ ಬೆಲೆ",
+      "subtitle": "ಪ್ರತಿ ಗ್ರಾಹಕ ವರ್ಗಕ್ಕೆ (ಉದಾ. ರೀಟೇಲರ್, ಹೋಲ್‌ಸೇಲರ್, VIP) ಒಪ್ಪಿದ ಬೆಲೆಗಳನ್ನು ಹೊಂದಿಸಿ — ಆ ವರ್ಗದ ಯಾವುದೇ ಗ್ರಾಹಕರಿಗೆ ಪಟ್ಟಿ ಬೆಲೆಯನ್ನು ಬದಲಾಯಿಸುತ್ತದೆ.",
+      "addTitle": "ಬೆಲೆ ಸೇರಿಸಿ / ನವೀಕರಿಸಿ",
+      "searchProduct": "ಉತ್ಪನ್ನ ಹುಡುಕಿ…",
+      "classPlaceholder": "ಗ್ರಾಹಕ ವರ್ಗ, ಉದಾ. ರೀಟೇಲರ್",
+      "pricePlaceholder": "ಬೆಲೆ",
+      "save": "ಬೆಲೆ ಉಳಿಸಿ",
+      "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+      "columnProduct": "ಉತ್ಪನ್ನ",
+      "columnClass": "ವರ್ಗ",
+      "columnListPrice": "ಪಟ್ಟಿ ಬೆಲೆ",
+      "columnPrice": "ಬೆಲೆ",
+      "empty": "ಇನ್ನೂ ಯಾವುದೇ ಗ್ರಾಹಕ-ವರ್ಗ ಬೆಲೆ ಹೊಂದಿಸಲಾಗಿಲ್ಲ.",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noProduct": "ಯಾವುದೇ ಉತ್ಪನ್ನವಿಲ್ಲ",
+      "noProductMessage": "ಮೊದಲು ಉತ್ಪನ್ನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "noClass": "ಯಾವುದೇ ಗ್ರಾಹಕ ವರ್ಗವಿಲ್ಲ",
+      "noClassMessage": "ಗ್ರಾಹಕ ವರ್ಗವನ್ನು ನಮೂದಿಸಿ, ಉದಾ. ರೀಟೇಲರ್.",
+      "invalidPrice": "ಅಮಾನ್ಯ ಬೆಲೆ",
+      "invalidPriceMessage": "ಮಾನ್ಯ, ಋಣಾತ್ಮಕವಲ್ಲದ ಬೆಲೆಯನ್ನು ನಮೂದಿಸಿ.",
+      "priceSet": "ಬೆಲೆ ಹೊಂದಿಸಲಾಗಿದೆ",
+      "priceSetMessage": "{{productName}} ಗಾಗಿ {{customerClass}} ಬೆಲೆ ಹೊಂದಿಸಲಾಗಿದೆ.",
+      "error": "ದೋಷ",
+      "couldNotSave": "ಬೆಲೆ ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "couldNotLoad": "ಬೆಲೆ ಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "removed": "ತೆಗೆದುಹಾಕಲಾಗಿದೆ",
+      "removedMessage": "ಬೆಲೆ ತೆಗೆದುಹಾಕಲಾಗಿದೆ.",
+      "couldNotRemove": "ಬೆಲೆ ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    }
   }
 }

@@ -15,6 +15,8 @@ A job card carries two line-item lists:
 
 A job card moves through a status pipeline: **Received → Inspection → In Progress → (Waiting Parts, if needed) → Ready → Delivered**, with Cancelled as a separate outcome. Once Ready, a **Generate Invoice** button bills the labor and parts together as a real invoice.
 
+Set a **next service due** date and/or odometer reading on a job card, and click **Remind** to schedule a real WhatsApp reminder to the client ahead of it. Open the **Vehicles** tab to see every distinct vehicle you've serviced, grouped by registration number with a Due Soon/Overdue badge — click **History** on any vehicle for its complete grouped service history, newest first.
+
 The KPI bar shows active jobs, jobs ready for pickup, and jobs delivered this month.
 
 ## Language

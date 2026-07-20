@@ -101,6 +101,60 @@ export const purchaseOrderService = {
     return { success: true, data: po }
   },
 
+  // Phase 58 §2 — reorder automation, triggered manually from the low-stock
+  // alert (not fully silent — an owner reviews/approves the drafted PO like
+  // any other, same DRAFT-status starting point createPO already uses).
+  // Only ever drafts for a product that has BOTH reorderLevel/reorderQuantity
+  // configured AND a defaultSupplierId set — no guessing which supplier or
+  // how much to order. Groups all due products by supplier into one PO per
+  // supplier, and skips a product that already has an open (DRAFT/APPROVED)
+  // PO in flight so re-running this doesn't pile up duplicate orders.
+  async generateReorderDraftPOs(userId?: string): Promise<{ success: boolean; error?: { code: string; message: string }; data?: { created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number } }> {
+    const db = getPrisma()
+
+    const lowStock = await db.inventory.findMany({
+      where: { reorderLevel: { gt: 0 }, reorderQuantity: { gt: 0 } },
+      include: { product: { select: { id: true, productName: true, isActive: true, defaultSupplierId: true, costPrice: true, taxRate: true } } }
+    })
+    const due = lowStock.filter(inv => inv.quantity <= inv.reorderLevel && inv.product.isActive)
+
+    const withSupplier = due.filter(inv => !!inv.product.defaultSupplierId)
+    const skippedNoDefaultSupplier = due.length - withSupplier.length
+
+    // Skip a product that's already on a DRAFT or APPROVED PO — re-running
+    // this action repeatedly (e.g. once a day) must not pile up duplicate
+    // orders for the same still-unreceived shortage.
+    const productIds = withSupplier.map(inv => inv.product.id)
+    const openItems = productIds.length
+      ? await db.purchaseOrderItem.findMany({
+          where: { productId: { in: productIds }, purchaseOrder: { status: { in: ['DRAFT', 'APPROVED'] } } },
+          select: { productId: true }
+        })
+      : []
+    const alreadyOpen = new Set(openItems.map(i => i.productId))
+    const toOrder = withSupplier.filter(inv => !alreadyOpen.has(inv.product.id))
+    const skippedAlreadyOnOpenPO = withSupplier.length - toOrder.length
+
+    const bySupplier = new Map<string, Array<{ productId: string; quantity: number; unitCost: number; taxRate: number }>>()
+    for (const inv of toOrder) {
+      const supplierId = inv.product.defaultSupplierId!
+      const list = bySupplier.get(supplierId) ?? []
+      list.push({ productId: inv.product.id, quantity: inv.reorderQuantity, unitCost: inv.product.costPrice, taxRate: inv.product.taxRate })
+      bySupplier.set(supplierId, list)
+    }
+
+    const created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }> = []
+    for (const [supplierId, items] of bySupplier) {
+      const res = await this.createPO({ supplierId, items, notes: 'Auto-drafted from low-stock reorder alert — review before approving.' }, userId)
+      if (res.success && res.data) {
+        const po = res.data as { id: string; poNumber: string; supplier: { supplierName: string } }
+        created.push({ poId: po.id, poNumber: po.poNumber, supplierId, supplierName: po.supplier.supplierName, itemCount: items.length })
+      }
+    }
+
+    return { success: true, data: { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO } }
+  },
+
   async getPO(id: string) {
     const db = getPrisma()
     const po = await db.purchaseOrder.findUnique({

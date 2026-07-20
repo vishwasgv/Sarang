@@ -37,6 +37,19 @@ interface PropertyDeal {
   notes: string | null
   buyer: Client
   seller: Client
+  coBrokerName: string | null
+  coBrokerSharePercent: number | null
+  coBrokerShareAmount: number | null
+}
+interface PropertySiteVisit {
+  id: string
+  inquiryId: string
+  scheduledDate: string
+  scheduledTime: string | null
+  status: string
+  feedback: string | null
+  interestLevel: string | null
+  completedDate: string | null
 }
 interface Property {
   id: string
@@ -55,6 +68,7 @@ interface Property {
   notes: string | null
   status: string
   createdAt: string
+  photos: string
   owner: PropertyOwner
 }
 interface PropertyWithDetails extends Property {
@@ -70,6 +84,7 @@ const PROPERTY_TYPES = ['RESIDENTIAL_FLAT', 'INDEPENDENT_HOUSE', 'PLOT', 'COMMER
 const LISTING_TYPES = ['SALE', 'RENT', 'LEASE']
 const PROPERTY_STATUSES = ['AVAILABLE', 'UNDER_NEGOTIATION', 'SOLD', 'RENTED', 'OFF_MARKET']
 const INQUIRY_STATUSES = ['SHORTLISTED', 'SITE_VISIT_SCHEDULED', 'NEGOTIATION', 'DEAL_CLOSED', 'REJECTED']
+const INTEREST_LEVELS = ['HIGH', 'MEDIUM', 'LOW', 'NONE']
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand'
 
 // Verified exhaustive against prisma/schema.prisma Property.status ("AVAILABLE|UNDER_NEGOTIATION|SOLD|RENTED|OFF_MARKET")
@@ -103,6 +118,12 @@ function printPropertySheet(p: Property) {
     ? (p.askingPrice ? `${fmtCurrency(p.askingPrice)}` : 'Price on request')
     : (p.monthlyRent ? `${fmtCurrency(p.monthlyRent)}/month` : 'Rent on request')
 
+  let photos: string[] = []
+  try { photos = JSON.parse(p.photos || '[]') } catch { /* leave empty */ }
+  const photosHtml = photos.length > 0
+    ? `<div class="photos">${photos.map((ph) => `<img src="file://${ph}" alt="Property photo" />`).join('')}</div>`
+    : ''
+
   const html = `<!DOCTYPE html><html><head><title>Property Listing - ${p.location}</title>
 <style>
   body{font-family:Arial,sans-serif;margin:40px;color:#111;font-size:14px}
@@ -113,11 +134,14 @@ function printPropertySheet(p: Property) {
   td:first-child{font-weight:600;background:#f9fafb;width:35%}
   .price{font-size:26px;font-weight:700;color:#16a34a;margin:12px 0}
   .desc{margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px}
+  .photos{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+  .photos img{width:140px;height:140px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb}
   .footer{margin-top:40px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:12px}
 </style></head><body>
 <h1>${fmtLabel(p.propertyType)} for ${p.listingType}<span class="badge">${fmtLabel(p.status)}</span></h1>
 <p style="color:#6b7280;margin:0">${p.location}</p>
 <div class="price">${price}</div>
+${photosHtml}
 <table>
   <tr><td>Owner</td><td>${p.owner.customerName}${p.owner.phone ? ' · ' + p.owner.phone : ''}</td></tr>
   <tr><td>Property Type</td><td>${fmtLabel(p.propertyType)}</td></tr>
@@ -369,7 +393,7 @@ function AddDealForm({
   onSave: () => void
   onClose: () => void
 }) {
-  const [form, setForm] = useState({ buyerClientId: '', sellerClientId: '', dealValue: '', brokeragePercent: '2', expectedRegistrationDate: '', notes: '' })
+  const [form, setForm] = useState({ buyerClientId: '', sellerClientId: '', dealValue: '', brokeragePercent: '2', expectedRegistrationDate: '', notes: '', coBrokerName: '', coBrokerSharePercent: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -387,6 +411,8 @@ function AddDealForm({
       brokeragePercent: parseFloat(form.brokeragePercent) || 2,
       expectedRegistrationDate: form.expectedRegistrationDate || undefined,
       notes: form.notes || undefined,
+      coBrokerName: form.coBrokerName.trim() || undefined,
+      coBrokerSharePercent: form.coBrokerSharePercent ? parseFloat(form.coBrokerSharePercent) : undefined,
     })
     setSaving(false)
     if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to create deal.') }
@@ -394,6 +420,9 @@ function AddDealForm({
 
   const brokerage = form.dealValue && form.brokeragePercent
     ? (parseFloat(form.dealValue) * parseFloat(form.brokeragePercent)) / 100
+    : null
+  const coBrokerShare = brokerage != null && form.coBrokerSharePercent
+    ? (brokerage * parseFloat(form.coBrokerSharePercent)) / 100
     : null
 
   return (
@@ -414,8 +443,15 @@ function AddDealForm({
         <input type="date" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" title="Expected registration date" value={form.expectedRegistrationDate} onChange={e => set('expectedRegistrationDate', e.target.value)} />
         <input type="text" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} />
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input type="text" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Co-broker name (optional)" value={form.coBrokerName} onChange={e => set('coBrokerName', e.target.value)} />
+        <input type="number" min="0" max="100" step="0.1" className="h-10 border border-gray-300 rounded-lg px-2 text-sm dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" placeholder="Co-broker share %" value={form.coBrokerSharePercent} onChange={e => set('coBrokerSharePercent', e.target.value)} />
+      </div>
       {brokerage !== null && (
         <p className="text-xs text-green-700 font-medium">Brokerage: {fmtCurrency(brokerage)} + 18% GST on commission invoice</p>
+      )}
+      {coBrokerShare !== null && (
+        <p className="text-xs text-orange-600">Co-broker share: {fmtCurrency(coBrokerShare)} · Own share: {fmtCurrency((brokerage ?? 0) - coBrokerShare)}</p>
       )}
       <div className="flex gap-2">
         <button onClick={onClose} className="flex-1 h-9 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-white dark:hover:bg-slate-900 dark:border-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">Cancel</button>
@@ -447,6 +483,19 @@ export default function PropertiesScreen() {
   const [invoiceBanner, setInvoiceBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [dealDeleteError, setDealDeleteError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [photoBusyFor, setPhotoBusyFor] = useState<string | null>(null)
+
+  // Phase 58 §2 — structured site-visit scheduling with feedback capture
+  const [visitsOpenFor, setVisitsOpenFor] = useState<string | null>(null)
+  const [siteVisits, setSiteVisits] = useState<PropertySiteVisit[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
+  const [newVisitDate, setNewVisitDate] = useState('')
+  const [newVisitTime, setNewVisitTime] = useState('')
+  const [visitScheduling, setVisitScheduling] = useState(false)
+  const [completingVisit, setCompletingVisit] = useState<PropertySiteVisit | null>(null)
+  const [completeFeedback, setCompleteFeedback] = useState('')
+  const [completeInterest, setCompleteInterest] = useState('MEDIUM')
+  const [completingSaving, setCompletingSaving] = useState(false)
 
   type DeleteTarget =
     | { kind: 'property'; id: string }
@@ -516,6 +565,53 @@ export default function PropertiesScreen() {
     if (!propertyDetails[id]) await loadPropertyDetails(id, properties)
   }
 
+  // Phase 58 §1 — Property.photos was already a working DB column with no
+  // way to populate or view it. Reuses the same generic dialog:openFile +
+  // file://<path> preview pattern ProductFormModal.tsx already uses for
+  // product images.
+  function parsePhotos(p: Property): string[] {
+    try { return JSON.parse(p.photos || '[]') } catch { return [] }
+  }
+
+  async function handleAddPhoto(p: Property) {
+    setPhotoBusyFor(p.id)
+    setActionError(null)
+    try {
+      const picked = await api.dialog.openFile({ title: 'Select Property Photo', accept: ['.jpg', '.jpeg', '.png', '.webp'] })
+      if (!picked.success) { setActionError(picked.error?.message ?? 'Could not open file picker.'); return }
+      if (!picked.data) return // user cancelled
+      const photos = [...parsePhotos(p), picked.data as string]
+      const res = await api.property.update({ id: p.id, photos })
+      if (res.success) {
+        setProperties(ps => ps.map(x => x.id === p.id ? { ...x, photos: JSON.stringify(photos) } : x))
+      } else {
+        setActionError(res.error?.message ?? 'Could not save photo.')
+      }
+    } catch {
+      setActionError('Could not add photo.')
+    } finally {
+      setPhotoBusyFor(null)
+    }
+  }
+
+  async function handleRemovePhoto(p: Property, photoPath: string) {
+    setPhotoBusyFor(p.id)
+    setActionError(null)
+    try {
+      const photos = parsePhotos(p).filter(ph => ph !== photoPath)
+      const res = await api.property.update({ id: p.id, photos })
+      if (res.success) {
+        setProperties(ps => ps.map(x => x.id === p.id ? { ...x, photos: JSON.stringify(photos) } : x))
+      } else {
+        setActionError(res.error?.message ?? 'Could not remove photo.')
+      }
+    } catch {
+      setActionError('Could not remove photo.')
+    } finally {
+      setPhotoBusyFor(null)
+    }
+  }
+
   async function handleDelete(id: string) {
     setDeleting(true)
     setActionError(null)
@@ -559,6 +655,69 @@ export default function PropertiesScreen() {
       loadKpis()
     } else {
       setDealDeleteError(res.error?.message ?? 'Failed to delete deal.')
+    }
+  }
+
+  async function loadSiteVisits(inquiryId: string) {
+    setVisitsLoading(true)
+    try {
+      const res = await api.propertySiteVisit.list({ inquiryId })
+      if (res.success) setSiteVisits((res.data as PropertySiteVisit[]) ?? [])
+      else toastError('Error', res.error?.message ?? 'Could not load site visits.')
+    } finally {
+      setVisitsLoading(false)
+    }
+  }
+
+  function toggleVisitsFor(inquiryId: string) {
+    if (visitsOpenFor === inquiryId) { setVisitsOpenFor(null); return }
+    setVisitsOpenFor(inquiryId)
+    setNewVisitDate(''); setNewVisitTime('')
+    void loadSiteVisits(inquiryId)
+  }
+
+  async function handleScheduleVisit(inquiryId: string, propertyId: string) {
+    if (!newVisitDate) return
+    setVisitScheduling(true)
+    const res = await api.propertySiteVisit.schedule({ inquiryId, scheduledDate: newVisitDate, scheduledTime: newVisitTime || undefined })
+    setVisitScheduling(false)
+    if (res.success) {
+      setNewVisitDate(''); setNewVisitTime('')
+      await loadSiteVisits(inquiryId)
+      // The backend flips the inquiry's own status to SITE_VISIT_SCHEDULED —
+      // refresh the property details so that real change is reflected here.
+      const fresh = await loadProperties(statusFilter, listingTypeFilter)
+      await loadPropertyDetails(propertyId, fresh)
+    } else {
+      toastError('Error', res.error?.message ?? 'Could not schedule site visit.')
+    }
+  }
+
+  async function handleCancelVisit(visit: PropertySiteVisit) {
+    const res = await api.propertySiteVisit.update({ id: visit.id, status: 'CANCELLED' })
+    if (res.success) await loadSiteVisits(visit.inquiryId)
+    else toastError('Error', res.error?.message ?? 'Could not cancel site visit.')
+  }
+
+  function openCompleteVisit(visit: PropertySiteVisit) {
+    setCompletingVisit(visit)
+    setCompleteFeedback('')
+    setCompleteInterest('MEDIUM')
+  }
+
+  async function handleSaveCompleteVisit() {
+    if (!completingVisit) return
+    setCompletingSaving(true)
+    const res = await api.propertySiteVisit.update({
+      id: completingVisit.id, status: 'COMPLETED', feedback: completeFeedback.trim() || undefined, interestLevel: completeInterest,
+    })
+    setCompletingSaving(false)
+    if (res.success) {
+      const inquiryId = completingVisit.inquiryId
+      setCompletingVisit(null)
+      await loadSiteVisits(inquiryId)
+    } else {
+      toastError('Error', res.error?.message ?? 'Could not save visit feedback.')
     }
   }
 
@@ -745,6 +904,7 @@ export default function PropertiesScreen() {
                                     {inq.notes && <p className="text-xs text-gray-400 mt-0.5 dark:text-slate-500">{inq.notes}</p>}
                                   </div>
                                   <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button onClick={() => toggleVisitsFor(inq.id)} className="text-xs text-blue-600 hover:underline px-1">Visits</button>
                                     <select
                                       value={inq.status}
                                       onChange={e => handleInquiryStatusUpdate(inq.id, p.id, e.target.value)}
@@ -757,6 +917,39 @@ export default function PropertiesScreen() {
                                     </button>
                                   </div>
                                 </div>
+                                {visitsOpenFor === inq.id && (
+                                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800 space-y-2">
+                                    {visitsLoading ? (
+                                      <p className="text-xs text-gray-400">Loading…</p>
+                                    ) : siteVisits.length === 0 ? (
+                                      <p className="text-xs text-gray-400 italic">No site visits scheduled yet.</p>
+                                    ) : (
+                                      siteVisits.map(v => (
+                                        <div key={v.id} className="flex items-center justify-between gap-2 flex-wrap text-xs bg-gray-50 dark:bg-slate-800 rounded px-2 py-1.5">
+                                          <div>
+                                            <span className="font-medium text-gray-700 dark:text-slate-300">{fmtDate(v.scheduledDate)}{v.scheduledTime ? ` ${v.scheduledTime}` : ''}</span>
+                                            <span className="ml-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400">{fmtLabel(v.status)}</span>
+                                            {v.interestLevel && <span className="ml-1 text-orange-600">Interest: {fmtLabel(v.interestLevel)}</span>}
+                                            {v.feedback && <div className="text-gray-500 dark:text-slate-400 mt-0.5">{v.feedback}</div>}
+                                          </div>
+                                          {v.status === 'SCHEDULED' && (
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                              <button onClick={() => openCompleteVisit(v)} className="text-green-600 hover:underline">Complete</button>
+                                              <button onClick={() => void handleCancelVisit(v)} className="text-red-500 hover:underline">Cancel</button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <input type="date" value={newVisitDate} onChange={e => setNewVisitDate(e.target.value)} className="text-xs h-7 px-1.5 border border-gray-200 rounded bg-white dark:bg-slate-900 dark:border-slate-700" />
+                                      <input type="time" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} className="text-xs h-7 px-1.5 border border-gray-200 rounded bg-white dark:bg-slate-900 dark:border-slate-700" />
+                                      <button onClick={() => void handleScheduleVisit(inq.id, p.id)} disabled={visitScheduling || !newVisitDate} className="text-xs h-7 px-2 bg-blue-600 text-white rounded disabled:opacity-50">
+                                        {visitScheduling ? '...' : 'Schedule'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -795,6 +988,9 @@ export default function PropertiesScreen() {
                                     <p className="text-xs text-gray-500 dark:text-slate-400">Seller: <span className="font-medium text-gray-800 dark:text-slate-200">{deal.seller.customerName}</span></p>
                                     <p className="text-sm font-bold text-gray-900 mt-1 dark:text-slate-100">{fmtCurrency(deal.dealValue)}</p>
                                     <p className="text-xs text-green-700">Brokerage: {fmtCurrency(deal.brokerageAmount)} ({deal.brokeragePercent}%)</p>
+                                    {deal.coBrokerName && deal.coBrokerShareAmount != null && (
+                                      <p className="text-xs text-orange-600">Co-broker {deal.coBrokerName}: {fmtCurrency(deal.coBrokerShareAmount)} ({deal.coBrokerSharePercent}%) · Own: {fmtCurrency(deal.brokerageAmount - deal.coBrokerShareAmount)}</p>
+                                    )}
                                     {deal.expectedRegistrationDate && <p className="text-xs text-orange-600 mt-0.5">Reg. date: {fmtDate(deal.expectedRegistrationDate)}</p>}
                                   </div>
                                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -849,6 +1045,42 @@ export default function PropertiesScreen() {
                       </div>
                     </div>
                   )}
+                  <div className="mt-4 border-t pt-3 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-slate-400">Photos ({parsePhotos(p).length})</p>
+                      <button
+                        onClick={() => handleAddPhoto(p)}
+                        disabled={photoBusyFor === p.id}
+                        className="text-xs text-blue-600 font-medium hover:underline disabled:opacity-50"
+                      >
+                        {photoBusyFor === p.id ? 'Working...' : '+ Add Photo'}
+                      </button>
+                    </div>
+                    {parsePhotos(p).length === 0 ? (
+                      <p className="text-xs text-gray-400 italic dark:text-slate-500">No photos yet</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {parsePhotos(p).map((photoPath) => (
+                          <div key={photoPath} className="relative group">
+                            <img
+                              src={`file://${photoPath}`}
+                              alt="Property"
+                              className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-slate-700"
+                            />
+                            <button
+                              onClick={() => handleRemovePhoto(p, photoPath)}
+                              disabled={photoBusyFor === p.id}
+                              title="Remove photo"
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {p.description && (
                     <p className="text-xs text-gray-500 italic mt-4 border-t pt-3 dark:text-slate-400">{p.description}</p>
                   )}
@@ -866,6 +1098,31 @@ export default function PropertiesScreen() {
           onSave={() => { setShowForm(false); setEditProperty(null); loadProperties(statusFilter, listingTypeFilter); loadKpis() }}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
         />
+      )}
+
+      {completingVisit && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Site Visit Feedback</h3>
+            <div>
+              <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">Buyer Interest Level</label>
+              <select value={completeInterest} onChange={e => setCompleteInterest(e.target.value)} className="w-full h-9 px-2 border border-gray-200 rounded-lg text-sm dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                {INTEREST_LEVELS.map(l => <option key={l} value={l}>{fmtLabel(l)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">Feedback</label>
+              <textarea value={completeFeedback} onChange={e => setCompleteFeedback(e.target.value)} rows={3} placeholder="What did the buyer say about the property…"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 resize-none" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setCompletingVisit(null)} className="px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:text-slate-400">Cancel</button>
+              <button onClick={() => void handleSaveCompleteVisit()} disabled={completingSaving} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50">
+                {completingSaving ? 'Saving...' : 'Save Feedback'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog

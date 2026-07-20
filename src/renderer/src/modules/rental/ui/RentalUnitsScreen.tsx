@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, X, Trash2 } from 'lucide-react'
+import { Plus, X, Trash2, Wrench } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
@@ -17,6 +17,11 @@ interface RentalUnit {
   unitLabel: string
   status: 'AVAILABLE' | 'RENTED' | 'MAINTENANCE' | 'RETIRED'
   conditionNotes: string | null
+  serviceIntervalRentals: number | null
+  serviceIntervalDays: number | null
+  rentalCountSinceService: number
+  lastServicedAt: string | null
+  dueForService: boolean
 }
 
 interface RentalProduct { id: string; productName: string; isRentable: boolean; rentalTrackingType: string | null }
@@ -41,6 +46,8 @@ export function RentalUnitsScreen() {
   const [productId, setProductId] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [conditionNotes, setConditionNotes] = useState('')
+  const [serviceIntervalRentals, setServiceIntervalRentals] = useState('')
+  const [serviceIntervalDays, setServiceIntervalDays] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RentalUnit | null>(null)
@@ -75,10 +82,15 @@ export function RentalUnitsScreen() {
     if (!productId || !unitLabel.trim()) { setError(t('rental.fillAllFields') as string); return }
     setSaving(true)
     setError(null)
-    const res = await api.rental.createUnit({ productId, unitLabel: unitLabel.trim(), conditionNotes: conditionNotes.trim() || undefined })
+    const res = await api.rental.createUnit({
+      productId, unitLabel: unitLabel.trim(), conditionNotes: conditionNotes.trim() || undefined,
+      serviceIntervalRentals: serviceIntervalRentals ? Number(serviceIntervalRentals) : undefined,
+      serviceIntervalDays: serviceIntervalDays ? Number(serviceIntervalDays) : undefined,
+    })
     setSaving(false)
     if (res.success) {
       setShowAdd(false); setProductId(''); setUnitLabel(''); setConditionNotes('')
+      setServiceIntervalRentals(''); setServiceIntervalDays('')
       await load()
     } else {
       setError(res.error?.message ?? t('rental.saveFailed') as string)
@@ -93,6 +105,12 @@ export function RentalUnitsScreen() {
     } catch {
       toastError(t('common.error'), t('rental.saveFailed') as string)
     }
+  }
+
+  async function handleMarkServiced(unit: RentalUnit) {
+    const res = await api.rental.markUnitServiced({ id: unit.id })
+    if (res.success) await load()
+    else toastError(t('common.error'), res.error?.message ?? t('rental.saveFailed') as string)
   }
 
   async function handleDelete() {
@@ -132,6 +150,7 @@ export function RentalUnitsScreen() {
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.item')}</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.unitLabel')}</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('common.status')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.service')}</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
               </tr>
             </thead>
@@ -151,6 +170,21 @@ export function RentalUnitsScreen() {
                     ) : (
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[u.status]}`}>{t(`rental.status.${u.status}`)}</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(u.serviceIntervalRentals != null || u.serviceIntervalDays != null) ? (
+                      <div className="flex items-center gap-2">
+                        {u.dueForService && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-warning/10 text-warning">{t('rental.dueForService')}</span>
+                        )}
+                        {canManage && (
+                          <button onClick={() => handleMarkServiced(u)} title={t('rental.markServiced') as string}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors">
+                            <Wrench size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ) : <span className="text-slate-300 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canManage && u.status !== 'RENTED' && (
@@ -179,6 +213,10 @@ export function RentalUnitsScreen() {
               </Select>
               <Input label={t('rental.unitLabel') as string} placeholder="e.g. KA01AB1234" value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)} />
               <Input label={t('rental.conditionNotes') as string} value={conditionNotes} onChange={(e) => setConditionNotes(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label={t('rental.serviceIntervalRentals') as string} type="number" min="1" value={serviceIntervalRentals} onChange={(e) => setServiceIntervalRentals(e.target.value)} />
+                <Input label={t('rental.serviceIntervalDays') as string} type="number" min="1" value={serviceIntervalDays} onChange={(e) => setServiceIntervalDays(e.target.value)} />
+              </div>
               <Button onClick={handleAdd} disabled={saving} className="w-full">{saving ? '…' : t('common.save')}</Button>
             </div>
           </div>

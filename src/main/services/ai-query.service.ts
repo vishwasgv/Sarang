@@ -1279,7 +1279,12 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
       const from = new Date(dateFrom)
       const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
       const movements = await db.inventoryMovement.findMany({
-        where: { movementType: 'ADJUSTMENT', createdAt: { gte: from, lte: to } },
+        // 'DAMAGE' is a real subset of "stock adjustment" from the user's
+        // question perspective (Phase 58 §2 split it out of the generic
+        // 'ADJUSTMENT' bucket for reportability) — excluding it here would
+        // silently under-report once damage write-offs stop being tagged
+        // 'ADJUSTMENT'.
+        where: { movementType: { in: ['ADJUSTMENT', 'DAMAGE'] }, createdAt: { gte: from, lte: to } },
         select: { quantity: true, product: { select: { productName: true, costPrice: true } } }
       })
       if (movements.length === 0) return { headline: '', details: [], isEmpty: true }

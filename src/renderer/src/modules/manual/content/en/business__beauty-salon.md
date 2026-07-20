@@ -6,7 +6,13 @@ Every service-business template shares the same foundation: **Appointments** for
 
 ## Multi-Service Booking
 
-A salon appointment is rarely just one service — a client might get a haircut, a color, and a blow-dry in the same visit. Beauty Salon's booking form lets you add multiple services to a single appointment; Sarang adds up their prices and durations automatically and books one combined slot instead of forcing you to create separate appointments. Appointments can also carry a **chair assignment** so you know which station a client is booked into.
+A salon appointment is rarely just one service — a client might get a haircut, a color, and a blow-dry in the same visit. Beauty Salon's booking form lets you add multiple services to a single appointment; Sarang adds up their prices and durations automatically and books one combined slot instead of forcing you to create separate appointments. Appointments can also carry a **chair assignment** so you know which station a client is booked into. Attach real **before/after photos** to an appointment from its camera-icon button.
+
+If you've set which stylists are qualified for which services (from a stylist's Employee record — see *Staff Commission* below), the booking form's Provider picker automatically narrows to only the qualified stylists once a matching service is chosen.
+
+## Checkout with retail upsell
+
+Completing an appointment opens a real **Checkout** — the service total is there automatically, and you can add real retail products (shampoo, styling product) with quantity right into the same bill, plus choose the actual payment method taken. Everything goes out as one single invoice with both the service and retail lines, rather than two separate transactions.
 
 ## Session Packs
 
@@ -15,3 +21,5 @@ A client can buy a bundle of prepaid sessions up front (e.g. "10-session hair sp
 ## Staff Commission
 
 When a completed appointment has a provider and an amount, Sarang can calculate that staff member's commission automatically (a default 10% of service revenue, though each staff member's actual rate is configurable in their Employee record). The **Commission** screen gives you a monthly report per staff member — revenue generated, commission earned, tips, and how much is paid vs. still pending — plus a full record-by-record list you can filter by staff or payment status and mark as paid in bulk once payouts are settled.
+
+From an employee's edit form, check off which services they're **qualified** to perform — leave a service with no qualified stylists set and any provider can still be booked for it, so this is entirely opt-in and doesn't change anything unless you configure it.

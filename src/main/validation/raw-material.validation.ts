@@ -29,6 +29,20 @@ export const AdjustRawMaterialStockSchema = z.object({
   notes: z.string().optional(),
 })
 
+// Phase 58 §2 — raw-material lot/batch traceability
+export const ReceiveRawMaterialBatchSchema = z.object({
+  rawMaterialId: z.string().min(1, 'Raw material ID is required'),
+  batchNumber: z.string().min(1, 'Batch/lot number is required').max(50),
+  quantity: z.number().positive('Quantity must be greater than zero').finite(),
+  unitCost: z.number().nonnegative('Unit cost cannot be negative').finite().optional(),
+  supplierId: z.string().optional(),
+})
+
+export const ListRawMaterialBatchesSchema = z.object({
+  rawMaterialId: z.string().optional(),
+})
+
 export type CreateRawMaterialPayload = z.infer<typeof CreateRawMaterialSchema>
 export type UpdateRawMaterialPayload = z.infer<typeof UpdateRawMaterialSchema>
 export type AdjustRawMaterialStockPayload = z.infer<typeof AdjustRawMaterialStockSchema>
+export type ReceiveRawMaterialBatchPayload = z.infer<typeof ReceiveRawMaterialBatchSchema>

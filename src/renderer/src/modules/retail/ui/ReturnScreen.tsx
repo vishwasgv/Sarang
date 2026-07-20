@@ -15,6 +15,10 @@ interface InvoiceItem {
   quantity: number
   unitPrice: number
   product: { unit: string }
+  // Real bug fix 2026-07-16 — see returns.service.ts. Present only for
+  // variant-sold products (Clothing/Footwear); undefined/null otherwise.
+  variantId?: string | null
+  variantInfo?: string | null
 }
 
 interface Invoice {
@@ -32,6 +36,15 @@ interface ReturnItem {
   unit: string
   maxQty: number
   returnQty: number
+  variantId?: string
+  variantInfo?: string | null
+}
+
+// Same product can appear twice on one invoice as two different variants
+// (e.g. Black-M and Red-L of the same T-shirt) — a plain productId key
+// would collide the two rows together. This is the fix for that.
+function rowKey(productId: string, variantId?: string | null): string {
+  return `${productId}|${variantId ?? ''}`
 }
 
 export function ReturnScreen() {
@@ -97,10 +110,11 @@ export function ReturnScreen() {
         return
       }
       const alreadyReturned = new Map<string, number>()
-      const priorReturns = priorRes.data as Array<{ items: Array<{ productId: string; quantity: number }> }>
+      const priorReturns = priorRes.data as Array<{ items: Array<{ productId: string; quantity: number; variantId?: string | null }> }>
       for (const pr of priorReturns) {
         for (const it of pr.items) {
-          alreadyReturned.set(it.productId, (alreadyReturned.get(it.productId) ?? 0) + it.quantity)
+          const key = rowKey(it.productId, it.variantId)
+          alreadyReturned.set(key, (alreadyReturned.get(key) ?? 0) + it.quantity)
         }
       }
 
@@ -109,8 +123,10 @@ export function ReturnScreen() {
         productId: item.productId,
         productName: item.productName,
         unit: item.product.unit,
-        maxQty: Math.max(0, item.quantity - (alreadyReturned.get(item.productId) ?? 0)),
-        returnQty: 0
+        maxQty: Math.max(0, item.quantity - (alreadyReturned.get(rowKey(item.productId, item.variantId)) ?? 0)),
+        returnQty: 0,
+        variantId: item.variantId ?? undefined,
+        variantInfo: item.variantInfo
       })))
     } catch {
       setSearchError('Could not search invoices. Please try again.')
@@ -120,9 +136,9 @@ export function ReturnScreen() {
     }
   }
 
-  function updateQty(productId: string, delta: number) {
+  function updateQty(productId: string, variantId: string | undefined, delta: number) {
     setReturnItems(prev => prev.map(item =>
-      item.productId === productId
+      item.productId === productId && item.variantId === variantId
         ? { ...item, returnQty: Math.max(0, Math.min(item.maxQty, item.returnQty + delta)) }
         : item
     ))
@@ -138,7 +154,7 @@ export function ReturnScreen() {
     setSubmitError(null)
     const res = await api.returns.create({
       originalInvoiceId: invoice.id,
-      items: selected.map(i => ({ productId: i.productId, quantity: i.returnQty })),
+      items: selected.map(i => ({ productId: i.productId, quantity: i.returnQty, ...(i.variantId ? { variantId: i.variantId } : {}) })),
       reason: reason.trim()
     })
     setSubmitting(false)
@@ -222,13 +238,15 @@ export function ReturnScreen() {
             </div>
             <div className="divide-y divide-slate-50">
               {returnItems.map(item => (
-                <div key={item.productId} className="px-5 py-4 flex items-center justify-between gap-4">
+                <div key={rowKey(item.productId, item.variantId)} className="px-5 py-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-dark dark:text-slate-100">{item.productName}</p>
+                    <p className="text-sm font-medium text-dark dark:text-slate-100">
+                      {item.productName}{item.variantInfo ? <span className="text-slate-400 font-normal"> — {item.variantInfo}</span> : null}
+                    </p>
                     <p className="text-xs text-slate-400">{t('returns.maxReturn')}: {item.maxQty} {item.unit}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => updateQty(item.productId, -1)}
+                    <button onClick={() => updateQty(item.productId, item.variantId, -1)}
                       disabled={item.returnQty === 0}
                       className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors disabled:opacity-30">
                       <Minus size={12} />
@@ -236,7 +254,7 @@ export function ReturnScreen() {
                     <span className={cn('w-8 text-center text-sm font-semibold', item.returnQty > 0 ? 'text-brand' : 'text-slate-300')}>
                       {item.returnQty}
                     </span>
-                    <button onClick={() => updateQty(item.productId, 1)}
+                    <button onClick={() => updateQty(item.productId, item.variantId, 1)}
                       disabled={item.returnQty >= item.maxQty}
                       className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors disabled:opacity-30">
                       <Plus size={12} />

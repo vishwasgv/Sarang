@@ -6,6 +6,7 @@ import {
   UpdateAppointmentStatusSchema,
   AppointmentIdSchema,
   GenerateAppointmentBatchInvoiceSchema,
+  GenerateAppointmentInvoiceSchema,
 } from '../../validation/appointment.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -63,9 +64,9 @@ export function register(handle: HandleFn): void {
 
   handle('appointments:generateInvoice', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
-    const parsed = AppointmentIdSchema.safeParse(payload)
+    const parsed = GenerateAppointmentInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    return svc.generateAppointmentInvoice(parsed.data.id)
+    return svc.generateAppointmentInvoice(parsed.data.id, { retailItems: parsed.data.retailItems, paymentMethod: parsed.data.paymentMethod })
   })
 
   handle('appointments:generateBatchInvoice', async (payload) => {

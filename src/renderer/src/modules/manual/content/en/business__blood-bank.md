@@ -6,7 +6,7 @@ A Blood Bank tracks donors, donations, screening, stock, and issue — a workflo
 
 ## Donor registry
 
-Open **Donors** in the sidebar to register a new donor — name, phone, date of birth, gender, blood group, and weight. Each donor gets a sequential donor code (e.g. `DNR-202607-0001`). A donor can be marked **deferred** (temporarily or indefinitely ineligible to donate, with a reason), which blocks recording a new donation from them until the deferral period has genuinely passed. You can send a WhatsApp recall reminder to a donor once they become eligible again — Sarang estimates a 90-day recovery interval after a whole-blood donation as a conservative default; always follow your own local medical/regulatory guidance for the real eligibility window.
+Open **Donors** in the sidebar to register a new donor — name, phone, date of birth, **gender**, blood group, and weight. Each donor gets a sequential donor code (e.g. `DNR-202607-0001`). A donor can be marked **deferred** (temporarily or indefinitely ineligible to donate, with a reason), which blocks recording a new donation from them until the deferral period has genuinely passed. You can send a WhatsApp recall reminder to a donor once they become eligible again — Sarang estimates their next-eligible date from the type of their last donation and their gender (90 days for whole blood/RBC for a male donor, 120 for a female donor, 14 for platelets, 28 for plasma) as a conservative default; always follow your own local medical/regulatory guidance for the real eligibility window.
 
 ## Donations & camps
 
@@ -22,7 +22,7 @@ Open **Blood Stock** to see every available unit grouped by blood group and comp
 
 ## Issue — compatibility-aware
 
-When issuing units to a recipient, Sarang checks ABO/Rh compatibility between the recipient's blood group and each unit's donor group, using standard rules for whole blood / packed RBC (and the reverse rule for plasma, where AB is the universal donor). This is an advisory safety check shown at the point of selection — it is never a substitute for your lab's own real crossmatch procedure. Platelets and cryoprecipitate have no hard compatibility rule enforced, consistent with common blood-bank practice for those components. Issuing a unit permanently marks it used and reduces the stock ledger; cancelling an un-invoiced issue restores the units.
+When issuing units to a recipient, Sarang checks ABO/Rh compatibility between the recipient's blood group and each unit's donor group, using standard rules for whole blood / packed RBC (and the reverse rule for plasma, where AB is the universal donor). **An incompatible unit is blocked from being issued** — the Issue Units button stays disabled until you either pick a compatible unit, or, for a genuine emergency release, check **Override — emergency release** and type a documented reason (both are required together; the reason is saved on the issue record and logged). Platelets and cryoprecipitate have no hard compatibility rule enforced, consistent with common blood-bank practice for those components. This check is never a substitute for your lab's own real crossmatch procedure. Issuing a unit permanently marks it used and reduces the stock ledger; cancelling an un-invoiced issue restores the units.
 
 ## Billing
 

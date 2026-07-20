@@ -23,6 +23,17 @@ const InvoiceItemSchema = z.object({
   jewelleryNetWeight: z.number().min(0).optional(),
   jewelleryRatePerGram: z.number().min(0).optional(),
   jewelleryMakingCharge: z.number().min(0).optional(),
+  // Phase 58 §2 — hallmark/HUID number, same snapshot-at-sale-time reasoning
+  // as the other jewellery fields above.
+  jewelleryHallmarkNumber: z.string().max(100).optional(),
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture, snapshotted
+  // from the renderer at sale time — billing.service.ts requires these to
+  // be present (non-empty) when the underlying product has
+  // isPrescriptionRequired set, same enforcement shape as the loose/pack/
+  // jewellery per-line superRefine checks elsewhere in this codebase.
+  prescriptionPatientName: z.string().max(200).optional(),
+  prescriptionDoctorName: z.string().max(200).optional(),
+  prescriptionDate: z.string().optional(),
 })
 
 export const CreateInvoiceSchema = z.object({
@@ -34,6 +45,16 @@ export const CreateInvoiceSchema = z.object({
   referenceNumber: z.string().max(100).optional(),
   gstType: z.enum(['CGST_SGST', 'IGST']).optional().default('CGST_SGST'),
   buyerState: z.string().max(50).optional(),
+  // Phase 58 §2 — Jewellery old-metal exchange, applied ATOMICALLY as part of
+  // this same invoice-creation transaction (see billing.service.ts) instead
+  // of the old two-step "type the same number into globalDiscount, then
+  // separately call metalExchange.linkToInvoice" manual process.
+  metalExchangeId: z.string().optional(),
+  // Phase 58 §2 — optional payment due date for CREDIT sales (e.g. Agri
+  // Inputs' harvest-tied credit terms). Invoice.dueDate already existed in
+  // the schema and report.service.ts's aging already reads it — this was
+  // the only missing piece (nothing ever wrote it).
+  dueDate: z.string().optional(),
 })
 
 export const CancelInvoiceSchema = z.object({

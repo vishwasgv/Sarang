@@ -59,6 +59,21 @@ export async function upsertLearnerProfile(payload: {
 
 // ── DrivingVehicle ────────────────────────────────────────────────────────────
 
+// Phase 58 §2 — Driving School: "due for service" derived from real usage
+// (session count and/or odometer), not a fixed calendar reminder.
+function withMaintenanceStatus<T extends {
+  sessionsSinceService: number
+  serviceIntervalSessions: number
+  odometerKm: number
+  lastServiceOdometerKm: number
+  serviceIntervalKm: number
+}>(vehicle: T): T & { dueForService: boolean } {
+  const dueForService =
+    vehicle.sessionsSinceService >= vehicle.serviceIntervalSessions ||
+    vehicle.odometerKm - vehicle.lastServiceOdometerKm >= vehicle.serviceIntervalKm
+  return { ...vehicle, dueForService }
+}
+
 export async function listDrivingVehicles(status?: string) {
   try {
     const db = getPrisma()
@@ -70,7 +85,7 @@ export async function listDrivingVehicles(status?: string) {
       include: { instructor: { select: { id: true, fullName: true } } },
       orderBy: { createdAt: 'asc' },
     })
-    return { success: true, data: vehicles }
+    return { success: true, data: vehicles.map(withMaintenanceStatus) }
   } catch (err) {
     return { success: false, error: { code: 'DV27-001', message: err instanceof Error ? err.message : 'Could not list vehicles.' } }
   }
@@ -83,6 +98,9 @@ export async function createDrivingVehicle(payload: {
   vehicleClass: string
   instructorId?: string
   status?: string
+  odometerKm?: number
+  serviceIntervalKm?: number
+  serviceIntervalSessions?: number
 }) {
   try {
     const db = getPrisma()
@@ -94,10 +112,14 @@ export async function createDrivingVehicle(payload: {
         vehicleClass: payload.vehicleClass,
         instructorId: payload.instructorId ?? null,
         status: payload.status ?? 'ACTIVE',
+        odometerKm: payload.odometerKm ?? 0,
+        lastServiceOdometerKm: payload.odometerKm ?? 0,
+        serviceIntervalKm: payload.serviceIntervalKm ?? 5000,
+        serviceIntervalSessions: payload.serviceIntervalSessions ?? 30,
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'DrivingVehicle', entityId: vehicle.id, newValue: JSON.stringify({ registrationNumber: vehicle.registrationNumber }) } }).catch(() => {})
-    return { success: true, data: vehicle }
+    return { success: true, data: withMaintenanceStatus(vehicle) }
   } catch (err) {
     return { success: false, error: { code: 'DV27-002', message: err instanceof Error ? err.message : 'Could not create vehicle.' } }
   }
@@ -111,15 +133,79 @@ export async function updateDrivingVehicle(payload: {
   vehicleClass?: string
   instructorId?: string | null
   status?: string
+  odometerKm?: number
+  serviceIntervalKm?: number
+  serviceIntervalSessions?: number
 }) {
   try {
     const db = getPrisma()
     const { id, ...rest } = payload
     const vehicle = await db.drivingVehicle.update({ where: { id }, data: rest })
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'DrivingVehicle', entityId: vehicle.id } }).catch(() => {})
-    return { success: true, data: vehicle }
+    return { success: true, data: withMaintenanceStatus(vehicle) }
   } catch (err) {
     return { success: false, error: { code: 'DV27-003', message: err instanceof Error ? err.message : 'Could not update vehicle.' } }
+  }
+}
+
+// Phase 58 §2 — Driving School: log a real service event. Updates the
+// vehicle's aggregate fields (lastServiceOdometerKm/lastServiceDate,
+// resets sessionsSinceService to 0) while keeping the log row as the
+// permanent, append-only history — same "ledger alongside the aggregate"
+// pattern used elsewhere this phase.
+export async function logVehicleMaintenance(payload: {
+  vehicleId: string
+  serviceDate?: string
+  odometerKm: number
+  serviceType: string
+  cost?: number
+  notes?: string
+}) {
+  try {
+    if (payload.odometerKm < 0) return { success: false, error: { code: 'DVM58-004', message: 'Odometer reading cannot be negative.' } }
+    const db = getPrisma()
+    const vehicle = await db.drivingVehicle.findUnique({ where: { id: payload.vehicleId }, select: { id: true, odometerKm: true } })
+    if (!vehicle) return { success: false, error: { code: 'DVM58-001', message: 'Vehicle not found.' } }
+
+    const serviceDate = payload.serviceDate ? new Date(payload.serviceDate) : new Date()
+    const [log] = await db.$transaction([
+      db.drivingVehicleMaintenanceLog.create({
+        data: {
+          vehicleId: payload.vehicleId,
+          serviceDate,
+          odometerKm: payload.odometerKm,
+          serviceType: payload.serviceType,
+          cost: payload.cost ?? null,
+          notes: payload.notes ?? null,
+        },
+      }),
+      db.drivingVehicle.update({
+        where: { id: payload.vehicleId },
+        data: {
+          lastServiceOdometerKm: payload.odometerKm,
+          lastServiceDate: serviceDate,
+          sessionsSinceService: 0,
+          odometerKm: Math.max(payload.odometerKm, vehicle.odometerKm),
+        },
+      }),
+    ])
+    await db.auditLog.create({ data: { action: 'CREATE', entityType: 'DrivingVehicleMaintenanceLog', entityId: log.id, newValue: JSON.stringify({ vehicleId: payload.vehicleId, serviceType: payload.serviceType }) } }).catch(() => {})
+    return { success: true, data: { ...log, cost: log.cost == null ? null : Number(log.cost) } }
+  } catch (err) {
+    return { success: false, error: { code: 'DVM58-002', message: err instanceof Error ? err.message : 'Could not log maintenance.' } }
+  }
+}
+
+export async function listVehicleMaintenanceLogs(vehicleId: string) {
+  try {
+    const db = getPrisma()
+    const logs = await db.drivingVehicleMaintenanceLog.findMany({
+      where: { vehicleId },
+      orderBy: { serviceDate: 'desc' },
+    })
+    return { success: true, data: logs.map((l) => ({ ...l, cost: l.cost == null ? null : Number(l.cost) })) }
+  } catch (err) {
+    return { success: false, error: { code: 'DVM58-003', message: err instanceof Error ? err.message : 'Could not list maintenance logs.' } }
   }
 }
 
@@ -247,6 +333,14 @@ export async function updateDrivingSession(payload: {
     }
     const db = getPrisma()
     const { id, sessionDate, ...rest } = payload
+
+    // Phase 58 §2 — Driving School: maintenance scheduling is tied to real
+    // vehicle usage, so a session only counts once it's actually COMPLETED
+    // (not on every edit, and not twice if saved again after completion).
+    const existing = payload.status === 'COMPLETED'
+      ? await db.drivingSession.findUnique({ where: { id }, select: { status: true, vehicleId: true } })
+      : null
+
     const session = await db.drivingSession.update({
       where: { id },
       data: {
@@ -254,6 +348,11 @@ export async function updateDrivingSession(payload: {
         ...(sessionDate !== undefined ? { sessionDate: new Date(sessionDate) } : {}),
       },
     })
+
+    if (existing && existing.status !== 'COMPLETED') {
+      await db.drivingVehicle.update({ where: { id: existing.vehicleId }, data: { sessionsSinceService: { increment: 1 } } }).catch(() => {})
+    }
+
     await db.auditLog.create({ data: { action: payload.status === 'COMPLETED' ? 'COMPLETED' : payload.status === 'CANCELLED' ? 'CANCELLED' : 'UPDATE', entityType: 'DrivingSession', entityId: session.id } }).catch(() => {})
     return { success: true, data: serializeSession(session) }
   } catch (err) {
@@ -525,22 +624,53 @@ export async function generateDrivingPackageInvoice(enrollmentId: string) {
 
 // ── DrivingTest ────────────────────────────────────────────────────────────────
 
-export async function listDrivingTests(filters?: { learnerId?: string; testType?: string; result?: string }) {
+export async function listDrivingTests(filters?: { learnerId?: string; testType?: string; result?: string; instructorId?: string }) {
   try {
     const db = getPrisma()
     const where: Record<string, unknown> = {}
     if (filters?.learnerId) where.learnerId = filters.learnerId
     if (filters?.testType) where.testType = filters.testType
     if (filters?.result) where.result = filters.result
+    if (filters?.instructorId) where.instructorId = filters.instructorId
 
     const tests = await db.drivingTest.findMany({
       where,
-      include: { learner: { select: { id: true, customerName: true, phone: true } } },
+      include: {
+        learner: { select: { id: true, customerName: true, phone: true } },
+        instructor: { select: { id: true, fullName: true } },
+      },
       orderBy: { testDate: 'desc' },
     })
     return { success: true, data: tests }
   } catch (err) {
     return { success: false, error: { code: 'DT27-001', message: err instanceof Error ? err.message : 'Could not list tests.' } }
+  }
+}
+
+// Phase 58 §2 — Driving School: per-instructor pass/fail counts, so
+// "pass-rate by instructor" is a real queryable fact once DrivingTest is
+// linked to who taught the learner.
+export async function getInstructorPassRates() {
+  try {
+    const db = getPrisma()
+    const tests = await db.drivingTest.findMany({
+      where: { instructorId: { not: null }, result: { in: ['PASSED', 'FAILED'] } },
+      select: { instructorId: true, result: true, instructor: { select: { id: true, fullName: true } } },
+    })
+    const byInstructor = new Map<string, { instructorId: string; instructorName: string; passed: number; failed: number }>()
+    for (const t of tests) {
+      if (!t.instructorId || !t.instructor) continue
+      const row = byInstructor.get(t.instructorId) ?? { instructorId: t.instructorId, instructorName: t.instructor.fullName, passed: 0, failed: 0 }
+      if (t.result === 'PASSED') row.passed++
+      else row.failed++
+      byInstructor.set(t.instructorId, row)
+    }
+    const data = Array.from(byInstructor.values())
+      .map((r) => ({ ...r, total: r.passed + r.failed, passRate: r.passed + r.failed > 0 ? Math.round((r.passed / (r.passed + r.failed)) * 100) : 0 }))
+      .sort((a, b) => b.total - a.total)
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: { code: 'DT27-004', message: err instanceof Error ? err.message : 'Could not compute instructor pass rates.' } }
   }
 }
 
@@ -550,6 +680,7 @@ export async function createDrivingTest(payload: {
   testDate: string
   testCenter: string
   notes?: string
+  instructorId?: string
 }) {
   try {
     const db = getPrisma()
@@ -560,8 +691,10 @@ export async function createDrivingTest(payload: {
         testDate: new Date(payload.testDate),
         testCenter: payload.testCenter,
         notes: payload.notes ?? null,
+        instructorId: payload.instructorId ?? null,
         result: 'PENDING',
       },
+      include: { instructor: { select: { id: true, fullName: true } } },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'DrivingTest', entityId: test.id, newValue: JSON.stringify({ testType: test.testType }) } }).catch(() => {})
     return { success: true, data: test }
@@ -575,6 +708,7 @@ export async function updateDrivingTest(payload: {
   result?: string
   retestDate?: string | null
   notes?: string | null
+  instructorId?: string | null
 }) {
   try {
     const db = getPrisma()
@@ -585,6 +719,7 @@ export async function updateDrivingTest(payload: {
         ...rest,
         ...(retestDate !== undefined ? { retestDate: retestDate ? new Date(retestDate) : null } : {}),
       },
+      include: { instructor: { select: { id: true, fullName: true } } },
     })
     await db.auditLog.create({ data: { action: payload.result === 'PASSED' ? 'PASSED' : payload.result === 'FAILED' ? 'FAILED' : 'UPDATE', entityType: 'DrivingTest', entityId: test.id } }).catch(() => {})
     return { success: true, data: test }

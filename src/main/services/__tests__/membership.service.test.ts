@@ -6,7 +6,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice } from '../membership.service'
+import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice, freezeMembership, resumeMembership } from '../membership.service'
 
 // Regression coverage for the Phase 27 re-audit finding: MembershipPlan.price
 // is a Prisma Decimal — Electron's IPC can't serialize a Decimal instance and
@@ -228,6 +228,131 @@ describe('membership.service — generateMembershipInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('M27-009')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 58 §2 — Gym/Studio: freezeMembership/resumeMembership real date math
+
+function makeFreezeMockDb(membership: Record<string, unknown> | null) {
+  return {
+    membership: {
+      findUnique: vi.fn().mockResolvedValue(membership),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ ...membership, ...data })
+      ),
+    },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
+  }
+}
+
+describe('membership.service — freezeMembership / resumeMembership', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('freeze rejects a missing membership', async () => {
+    const db = makeFreezeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await freezeMembership({ id: 'missing' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-012')
+  })
+
+  it('freeze rejects a membership that is not ACTIVE', async () => {
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'EXPIRED', freezeHistory: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await freezeMembership({ id: 'mem-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-013')
+  })
+
+  it('freeze appends an open freeze entry and sets status FROZEN', async () => {
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'ACTIVE', freezeHistory: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await freezeMembership({ id: 'mem-1', reason: 'Traveling' })
+    expect(res.success).toBe(true)
+
+    const updateCall = db.membership.update.mock.calls[0][0]
+    expect(updateCall.data.status).toBe('FROZEN')
+    const history = JSON.parse(updateCall.data.freezeHistory)
+    expect(history).toHaveLength(1)
+    expect(history[0].resumedOn).toBeNull()
+    expect(history[0].reason).toBe('Traveling')
+  })
+
+  it('freeze preserves prior closed freeze entries when appending a new one', async () => {
+    const priorHistory = JSON.stringify([{ frozenOn: '2026-01-01T00:00:00.000Z', resumedOn: '2026-01-10T00:00:00.000Z', reason: 'Old' }])
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'ACTIVE', freezeHistory: priorHistory })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await freezeMembership({ id: 'mem-1' })
+
+    const updateCall = db.membership.update.mock.calls[0][0]
+    const history = JSON.parse(updateCall.data.freezeHistory)
+    expect(history).toHaveLength(2)
+    expect(history[0].reason).toBe('Old')
+    expect(history[1].resumedOn).toBeNull()
+  })
+
+  it('resume rejects a missing membership', async () => {
+    const db = makeFreezeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await resumeMembership({ id: 'missing' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-012')
+  })
+
+  it('resume rejects a membership that is not FROZEN', async () => {
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'ACTIVE', freezeHistory: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await resumeMembership({ id: 'mem-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-015')
+  })
+
+  it('resume pushes endDate forward by exactly the frozen number of days and closes the open entry', async () => {
+    const now = new Date('2026-07-18T12:00:00.000Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+
+    const frozenOn = new Date('2026-07-08T12:00:00.000Z') // exactly 10 days before "now"
+    const endDate = new Date('2026-08-01T00:00:00.000Z')
+    const history = JSON.stringify([{ frozenOn: frozenOn.toISOString(), resumedOn: null, reason: 'Injury' }])
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'FROZEN', freezeHistory: history, endDate })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await resumeMembership({ id: 'mem-1' })
+    expect(res.success).toBe(true)
+
+    const updateCall = db.membership.update.mock.calls[0][0]
+    expect(updateCall.data.status).toBe('ACTIVE')
+    const newHistory = JSON.parse(updateCall.data.freezeHistory)
+    expect(newHistory[0].resumedOn).not.toBeNull()
+
+    const expectedEndDate = new Date(endDate.getTime() + 10 * 86400000)
+    expect((updateCall.data.endDate as Date).getTime()).toBe(expectedEndDate.getTime())
+
+    vi.useRealTimers()
+  })
+
+  it('resume falls back to a plain status flip (no endDate change) when FROZEN but no open freeze entry exists', async () => {
+    const endDate = new Date('2026-08-01T00:00:00.000Z')
+    const history = JSON.stringify([{ frozenOn: '2026-07-01T00:00:00.000Z', resumedOn: '2026-07-05T00:00:00.000Z', reason: 'Already closed' }])
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'FROZEN', freezeHistory: history, endDate })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await resumeMembership({ id: 'mem-1' })
+    expect(res.success).toBe(true)
+
+    const updateCall = db.membership.update.mock.calls[0][0]
+    expect(updateCall.data.status).toBe('ACTIVE')
+    expect(updateCall.data.endDate).toBeUndefined()
   })
 })
 

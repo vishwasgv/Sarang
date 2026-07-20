@@ -1,6 +1,9 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { listShipments, getShipment, createShipment, updateShipment, updateShipmentStatus, deleteShipment } from '../../services/logistics-shipment.service'
+import {
+  listShipments, getShipment, createShipment, updateShipment, updateShipmentStatus, deleteShipment,
+  addShipmentStop, updateShipmentStopStatus, deleteShipmentStop
+} from '../../services/logistics-shipment.service'
 import { CreateShipmentSchema, UpdateShipmentSchema, UpdateShipmentStatusSchema } from '../../validation/logistics-shipment.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -40,5 +43,28 @@ export function registerLogisticsShipmentHandlers(handle: HandleFn): void {
   handle('logisticsShipment:delete', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
     return deleteShipment(raw as string, getCurrentSession()?.userId)
+  })
+
+  // ── Phase 58 §2 — Distributor route/beat planning (multi-stop shipments) ──
+
+  handle('logisticsShipment:addStop', async (raw) => {
+    const deny = await requirePermission('logistics.manage'); if (deny) return deny
+    const p = raw as { shipmentId?: string; customerId?: string; customerName?: string; destinationAddress?: string; notes?: string }
+    if (!p?.shipmentId || !p?.destinationAddress?.trim()) {
+      return { success: false, error: { code: 'VAL-001', message: 'shipmentId and destinationAddress are required.' } }
+    }
+    return addShipmentStop({ shipmentId: p.shipmentId, customerId: p.customerId, customerName: p.customerName, destinationAddress: p.destinationAddress, notes: p.notes }, getCurrentSession()?.userId)
+  })
+
+  handle('logisticsShipment:updateStopStatus', async (raw) => {
+    const deny = await requirePermission('logistics.manage'); if (deny) return deny
+    const p = raw as { id?: string; status?: string }
+    if (!p?.id || !p?.status) return { success: false, error: { code: 'VAL-001', message: 'id and status are required.' } }
+    return updateShipmentStopStatus({ id: p.id, status: p.status as 'DELIVERED' | 'SKIPPED' | 'PENDING' }, getCurrentSession()?.userId)
+  })
+
+  handle('logisticsShipment:deleteStop', async (raw) => {
+    const deny = await requirePermission('logistics.manage'); if (deny) return deny
+    return deleteShipmentStop(raw as string, getCurrentSession()?.userId)
   })
 }

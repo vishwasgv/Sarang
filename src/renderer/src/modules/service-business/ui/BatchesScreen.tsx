@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@renderer/services/ipc-client'
-import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, UserPlus, UserMinus, BookOpen } from 'lucide-react'
+import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, UserPlus, UserMinus, BookOpen, ArrowUpCircle, CheckSquare, Square, X } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -51,11 +51,23 @@ const STATUS_VARIANT: Record<string, 'success' | 'info' | 'danger'> = {
   COMPLETED: 'info',
   CANCELLED: 'danger',
 }
-// CoachingBatchEnrollment.status — ACTIVE|DROPPED|COMPLETED (prisma/schema.prisma)
-const ENR_STATUS_VARIANT: Record<string, 'success' | 'danger' | 'neutral'> = {
+// CoachingBatchEnrollment.status — ACTIVE|WAITLISTED|DROPPED|COMPLETED (prisma/schema.prisma)
+const ENR_STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   ACTIVE: 'success',
+  WAITLISTED: 'warning',
   DROPPED: 'danger',
   COMPLETED: 'neutral',
+}
+
+interface SyllabusTopic {
+  id: string
+  batchId: string
+  topicName: string
+  sequenceOrder: number
+  plannedDate: string | null
+  status: string
+  completedDate: string | null
+  notes: string | null
 }
 
 const EMPTY_BATCH = {
@@ -70,7 +82,7 @@ const EMPTY_ENR = {
 }
 
 export default function BatchesScreen() {
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, info: toastInfo } = useNotificationStore()
   const [batches, setBatches] = useState<CoachingBatch[]>([])
   const [employees, setEmployees] = useState<Instructor[]>([])
   const [allStudents, setAllStudents] = useState<StudentOption[]>([])
@@ -79,6 +91,12 @@ export default function BatchesScreen() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [enrollments, setEnrollments] = useState<Record<string, Enrollment[]>>({})
+
+  // Syllabus (Phase 58 §2)
+  const [syllabusOpenId, setSyllabusOpenId] = useState<string | null>(null)
+  const [syllabusTopics, setSyllabusTopics] = useState<Record<string, SyllabusTopic[]>>({})
+  const [newTopicName, setNewTopicName] = useState('')
+  const [savingTopic, setSavingTopic] = useState(false)
 
   const [batchKpis, setBatchKpis] = useState<{ totalBatches: number; activeBatches: number; totalEnrolled: number; totalMonthlyRevenue: number } | null>(null)
 
@@ -261,6 +279,8 @@ export default function BatchesScreen() {
         setShowEnrForm(false)
         loadEnrollments(enrBatchId)
         api.coachingBatch.kpis().then((r) => { if (r.success && r.data) setBatchKpis(r.data as typeof batchKpis) })
+        const data = res.data as { waitlisted?: boolean }
+        if (data.waitlisted) toastInfo('Batch Full', 'The batch is at capacity — this student was added to the waitlist instead.')
       } else setEnrError(res.error?.message ?? 'Failed to enroll student.')
     } catch {
       setEnrError('Failed to enroll student.')
@@ -280,6 +300,73 @@ export default function BatchesScreen() {
       }
     } catch {
       toastError('Error', 'Failed to drop student from batch.')
+    }
+  }
+
+  async function handlePromoteFromWaitlist(enr: Enrollment) {
+    try {
+      const res = await api.enrollment.promoteFromWaitlist({ id: enr.id })
+      if (res.success) {
+        loadEnrollments(enr.batchId)
+        api.coachingBatch.kpis().then((r) => { if (r.success && r.data) setBatchKpis(r.data as typeof batchKpis) })
+      } else {
+        toastError('Error', res.error?.message ?? 'Failed to promote student from the waitlist.')
+      }
+    } catch {
+      toastError('Error', 'Failed to promote student from the waitlist.')
+    }
+  }
+
+  // Syllabus (Phase 58 §2)
+  async function loadSyllabus(batchId: string) {
+    try {
+      const res = await api.syllabusTopic.list({ batchId })
+      if (res.success && res.data) setSyllabusTopics((prev) => ({ ...prev, [batchId]: res.data as SyllabusTopic[] }))
+      else toastError('Error', res.error?.message ?? 'Could not load syllabus.')
+    } catch {
+      toastError('Error', 'Could not load syllabus.')
+    }
+  }
+
+  function toggleSyllabus(batchId: string) {
+    if (syllabusOpenId === batchId) { setSyllabusOpenId(null); return }
+    setSyllabusOpenId(batchId)
+    setNewTopicName('')
+    loadSyllabus(batchId)
+  }
+
+  async function handleAddTopic(batchId: string) {
+    if (!newTopicName.trim()) return
+    setSavingTopic(true)
+    try {
+      const existing = syllabusTopics[batchId] ?? []
+      const res = await api.syllabusTopic.create({ batchId, topicName: newTopicName.trim(), sequenceOrder: existing.length })
+      if (res.success) { setNewTopicName(''); loadSyllabus(batchId) }
+      else toastError('Error', res.error?.message ?? 'Could not add topic.')
+    } catch {
+      toastError('Error', 'Could not add topic.')
+    } finally {
+      setSavingTopic(false)
+    }
+  }
+
+  async function handleToggleTopic(topic: SyllabusTopic) {
+    try {
+      const res = await api.syllabusTopic.update({ id: topic.id, status: topic.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' })
+      if (res.success) loadSyllabus(topic.batchId)
+      else toastError('Error', res.error?.message ?? 'Could not update topic.')
+    } catch {
+      toastError('Error', 'Could not update topic.')
+    }
+  }
+
+  async function handleDeleteTopic(topic: SyllabusTopic) {
+    try {
+      const res = await api.syllabusTopic.delete({ id: topic.id })
+      if (res.success) loadSyllabus(topic.batchId)
+      else toastError('Error', res.error?.message ?? 'Could not remove topic.')
+    } catch {
+      toastError('Error', 'Could not remove topic.')
     }
   }
 
@@ -365,14 +452,13 @@ export default function BatchesScreen() {
                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 dark:text-slate-300">
                       <BookOpen size={14} /> Enrollments
                     </h3>
-                    {atCapacity ? (
-                      <Badge variant="danger">Batch Full</Badge>
-                    ) : (
+                    <div className="flex items-center gap-2">
+                      {atCapacity && <Badge variant="warning">Batch Full — new enrollments join the waitlist</Badge>}
                       <button onClick={() => openEnrForm(b.id, b)}
                         className="flex items-center gap-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-300 px-3 py-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 font-medium dark:border-slate-600">
-                        <UserPlus size={12} /> Enroll Student
+                        <UserPlus size={12} /> {atCapacity ? 'Join Waitlist' : 'Enroll Student'}
                       </button>
-                    )}
+                    </div>
                   </div>
                   {enrs.length === 0 ? (
                     <p className="text-sm text-gray-400 py-4 text-center dark:text-slate-500">No students enrolled yet</p>
@@ -401,17 +487,85 @@ export default function BatchesScreen() {
                               <Badge variant={ENR_STATUS_VARIANT[e.status] ?? 'neutral'} size="sm">{e.status}</Badge>
                             </td>
                             <td className="py-2 text-right">
-                              {e.status === 'ACTIVE' && (
-                                <button onClick={() => handleDropEnrollment(e)} className="text-red-500 hover:text-red-700" title="Drop student">
-                                  <UserMinus size={14} />
-                                </button>
-                              )}
+                              <div className="flex items-center justify-end gap-2">
+                                {e.status === 'WAITLISTED' && activeEnrs.length < b.maxCapacity && (
+                                  <button onClick={() => handlePromoteFromWaitlist(e)} className="text-emerald-600 hover:text-emerald-700" title="Promote to active — a seat is free">
+                                    <ArrowUpCircle size={14} />
+                                  </button>
+                                )}
+                                {(e.status === 'ACTIVE' || e.status === 'WAITLISTED') && (
+                                  <button onClick={() => handleDropEnrollment(e)} className="text-red-500 hover:text-red-700" title="Drop student">
+                                    <UserMinus size={14} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
+                </div>
+              )}
+
+              {/* Syllabus panel (Phase 58 §2) */}
+              {isOpen && (
+                <div className="border-t border-gray-100 bg-white p-4 dark:bg-slate-900 dark:border-slate-800">
+                  <button onClick={() => toggleSyllabus(b.id)} className="w-full flex items-center justify-between text-left">
+                    <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 dark:text-slate-300">
+                      <BookOpen size={14} /> Syllabus
+                    </h3>
+                    {syllabusOpenId === b.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                  </button>
+                  {syllabusOpenId === b.id && (() => {
+                    const topics = syllabusTopics[b.id] ?? []
+                    const completed = topics.filter((t) => t.status === 'COMPLETED').length
+                    const percent = topics.length > 0 ? Math.round((completed / topics.length) * 100) : 0
+                    return (
+                      <div className="mt-3 space-y-3">
+                        {topics.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
+                              <span>{completed}/{topics.length} topics covered</span>
+                              <span>{percent}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
+                              <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        {topics.length === 0 ? (
+                          <p className="text-sm text-gray-400 py-2 dark:text-slate-500">No syllabus topics added yet.</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {topics.map((t) => (
+                              <div key={t.id} className="flex items-center gap-2 group">
+                                <button onClick={() => handleToggleTopic(t)} className={t.status === 'COMPLETED' ? 'text-emerald-600' : 'text-gray-400 dark:text-slate-500'} title={t.status === 'COMPLETED' ? 'Mark as pending' : 'Mark as covered'}>
+                                  {t.status === 'COMPLETED' ? <CheckSquare size={16} /> : <Square size={16} />}
+                                </button>
+                                <span className={`flex-1 text-sm ${t.status === 'COMPLETED' ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-800 dark:text-slate-200'}`}>{t.topicName}</span>
+                                <button onClick={() => handleDeleteTopic(t)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove topic">
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            value={newTopicName}
+                            onChange={(e) => setNewTopicName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddTopic(b.id) }}
+                            placeholder="Add a topic..."
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                          />
+                          <button onClick={() => handleAddTopic(b.id)} disabled={savingTopic || !newTopicName.trim()} className="px-3 py-1.5 text-xs bg-brand text-white rounded-lg hover:bg-blue-600 disabled:opacity-50">
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </Card>

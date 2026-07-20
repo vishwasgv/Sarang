@@ -122,6 +122,41 @@ describe('event-booking.service — Decimal serialization', () => {
   })
 })
 
+// Phase 58 §2 — Event Management: changing expectedGuestCount must keep
+// every PER_HEAD vendor line's billable amount honest, not silently stale.
+// event-vendor-booking.service.ts is NOT mocked here — its real
+// recomputePerHeadVendorBookings runs against this same mocked db.
+
+describe('event-booking.service — updateEventBooking recomputes PER_HEAD vendor lines on guest-count change', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('recomputes every PER_HEAD vendor line when expectedGuestCount changes', async () => {
+    const db = makeMockDb(makeEvent({ expectedGuestCount: 200 }))
+    db.eventBooking.findUnique = vi.fn().mockResolvedValue(makeEvent({ expectedGuestCount: 300 }))
+    db.eventVendorBooking = {
+      findMany: vi.fn().mockResolvedValue([{ id: 'vb-1', perHeadRate: 500 }]),
+      update: vi.fn().mockResolvedValue({}),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateEventBooking({ id: 'event-1', expectedGuestCount: 300 })
+
+    expect(res.success).toBe(true)
+    expect(db.eventVendorBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { eventId: 'event-1', pricingType: 'PER_HEAD' } }))
+    expect(db.eventVendorBooking.update).toHaveBeenCalledWith({ where: { id: 'vb-1' }, data: { quotedAmount: 150000 } })
+  })
+
+  it('does NOT touch vendor lines when expectedGuestCount is not part of the update', async () => {
+    const db = makeMockDb(makeEvent())
+    db.eventVendorBooking = { findMany: vi.fn(), update: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateEventBooking({ id: 'event-1', venueName: 'New Venue' })
+
+    expect(db.eventVendorBooking.findMany).not.toHaveBeenCalled()
+  })
+})
+
 // Phase 40 — deleteEventBooking invoice guard (EVT-002). The structurally
 // identical ShootBooking already had this guard (SHT-002); EventBooking
 // never did, a real gap found while implementing generateEventInvoice.

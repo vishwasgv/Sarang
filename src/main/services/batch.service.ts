@@ -16,6 +16,11 @@ export interface BatchRecord {
   isActive: boolean
   daysToExpiry: number
   createdAt: string
+  // Phase 58 §2 — this batch's product's own expiry-alert lead time (or the
+  // generic 30-day fallback when unset) — see product.validation.ts's
+  // comment for why a seed/fertilizer shop needs a longer heads-up window
+  // than a pharmacy's medicine cutoff.
+  expiryAlertLeadDays: number
 }
 
 function daysUntil(date: Date): number {
@@ -53,7 +58,7 @@ export async function listBatches(payload?: {
         take: limit,
         orderBy: { expiryDate: 'asc' },
         include: {
-          product: { select: { productName: true } },
+          product: { select: { productName: true, expiryAlertLeadDays: true } },
           supplier: { select: { supplierName: true } }
         }
       }),
@@ -74,7 +79,8 @@ export async function listBatches(payload?: {
       supplierName: b.supplier?.supplierName ?? null,
       isActive: b.isActive,
       daysToExpiry: daysUntil(b.expiryDate),
-      createdAt: b.createdAt.toISOString()
+      createdAt: b.createdAt.toISOString(),
+      expiryAlertLeadDays: b.product.expiryAlertLeadDays ?? 30
     }))
 
     return { success: true, data: { batches, total } }
@@ -115,7 +121,7 @@ export async function createBatch(payload: {
           supplierId: payload.supplierId ?? null
         },
         include: {
-          product: { select: { productName: true } },
+          product: { select: { productName: true, expiryAlertLeadDays: true } },
           supplier: { select: { supplierName: true } }
         }
       })
@@ -141,6 +147,7 @@ export async function createBatch(payload: {
         quantityReceived: batch.quantityReceived,
         quantityRemaining: batch.quantityRemaining,
         unitCost: batch.unitCost,
+        expiryAlertLeadDays: batch.product.expiryAlertLeadDays ?? 30,
         supplierId: batch.supplierId,
         supplierName: batch.supplier?.supplierName ?? null,
         isActive: batch.isActive,
@@ -229,35 +236,47 @@ export async function deleteBatch(id: string, userId?: string): Promise<{ succes
   }
 }
 
+// Phase 58 §2 — "expiring soon" is now resolved PER BATCH against its own
+// product's expiryAlertLeadDays (falling back to the withinDays default,
+// itself defaulting to 30) instead of one global cutoff for every product.
+// Prisma can't express "expiryDate <= now + <a value that varies per row>"
+// in a single WHERE, so the outer bound is the WIDEST possible lead time in
+// use (queried once) and the real per-row cutoff is applied in memory —
+// same "push what's easy to the DB, filter the rest in memory" pattern
+// purchase-order.service.ts's generateReorderDraftPOs already established
+// for its own per-row reorderLevel comparison.
 export async function getExpiryAlerts(withinDays = 30): Promise<{ success: boolean; data?: { expiring: BatchRecord[]; expired: BatchRecord[] } }> {
   try {
     const db = getPrisma()
     const now = new Date()
-    const cutoff = new Date(now.getTime() + withinDays * 86400000)
 
-    const [expiring, expired] = await Promise.all([
-      db.productBatch.findMany({
-        where: { isActive: true, quantityRemaining: { gt: 0 }, expiryDate: { gte: now, lte: cutoff } },
-        orderBy: { expiryDate: 'asc' },
-        include: { product: { select: { productName: true } }, supplier: { select: { supplierName: true } } }
-      }),
-      db.productBatch.findMany({
-        where: { isActive: true, quantityRemaining: { gt: 0 }, expiryDate: { lt: now } },
-        orderBy: { expiryDate: 'desc' },
-        include: { product: { select: { productName: true } }, supplier: { select: { supplierName: true } } }
-      })
-    ])
+    const candidates = await db.productBatch.findMany({
+      where: { isActive: true, quantityRemaining: { gt: 0 } },
+      orderBy: { expiryDate: 'asc' },
+      include: { product: { select: { productName: true, expiryAlertLeadDays: true } }, supplier: { select: { supplierName: true } } }
+    })
 
-    const toRecord = (b: typeof expiring[0]): BatchRecord => ({
+    const toRecord = (b: typeof candidates[0]): BatchRecord => ({
       id: b.id, productId: b.productId, productName: b.product.productName,
       batchNumber: b.batchNumber, mfgDate: b.mfgDate?.toISOString() ?? null,
       expiryDate: b.expiryDate.toISOString(), quantityReceived: b.quantityReceived,
       quantityRemaining: b.quantityRemaining, unitCost: b.unitCost, supplierId: b.supplierId,
       supplierName: b.supplier?.supplierName ?? null, isActive: b.isActive,
-      daysToExpiry: daysUntil(b.expiryDate), createdAt: b.createdAt.toISOString()
+      daysToExpiry: daysUntil(b.expiryDate), createdAt: b.createdAt.toISOString(),
+      expiryAlertLeadDays: b.product.expiryAlertLeadDays ?? withinDays
     })
 
-    return { success: true, data: { expiring: expiring.map(toRecord), expired: expired.map(toRecord) } }
+    const expiring: BatchRecord[] = []
+    const expired: BatchRecord[] = []
+    for (const b of candidates) {
+      const leadDays = b.product.expiryAlertLeadDays ?? withinDays
+      const cutoff = new Date(now.getTime() + leadDays * 86400000)
+      if (b.expiryDate < now) expired.push(toRecord(b))
+      else if (b.expiryDate <= cutoff) expiring.push(toRecord(b))
+    }
+    expired.sort((a, b) => b.expiryDate.localeCompare(a.expiryDate))
+
+    return { success: true, data: { expiring, expired } }
   } catch {
     return { success: true, data: { expiring: [], expired: [] } }
   }

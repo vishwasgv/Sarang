@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@renderer/services/ipc-client'
-import { UserPlus, Search, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import { UserPlus, Search, Edit2, Trash2, CheckCircle, XCircle, Printer } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -8,6 +8,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { aszurexFooterHtml } from '@shared/utils/print-branding'
 
 interface Customer {
   id: string
@@ -26,6 +27,76 @@ interface StudentProfile {
   enrollmentDate: string
   isActive: boolean
   customer: Customer
+}
+
+// Phase 58 §2 — Coaching Institute: a real parent-facing printable progress
+// report, assembled from the same attendance/test-score/fee data already
+// tracked elsewhere (coaching-progress.service.ts).
+interface ProgressBatch {
+  enrollmentId: string
+  batch: { id: string; batchName: string; subjectOrCourse: string; status: string }
+  enrollmentStatus: string
+  enrolledDate: string
+  attendance: { present: number; absent: number; totalSessions: number; percent: number | null }
+  testScores: { id: string; testName: string; subject: string | null; marksObtained: number; maxMarks: number; testDate: string; grade: string | null }[]
+  feeRecords: { feeMonth: string; amountDue: number; amountReceived: number; status: string }[]
+}
+interface ProgressReport {
+  student: { id: string; customerName: string; phone: string | null }
+  batches: ProgressBatch[]
+}
+
+async function printProgressReport(student: StudentProfile) {
+  const res = await api.coachingProgress.getReport({ studentId: student.customerId })
+  if (!res.success || !res.data) return
+  const report = res.data as ProgressReport
+  const printedOn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const win = window.open('', '_blank', 'width=750,height=950')
+  if (!win) return
+
+  const batchesHtml = report.batches.map((b) => {
+    const scoresHtml = b.testScores.length === 0
+      ? '<p class="muted">No test scores recorded yet.</p>'
+      : `<table class="mini"><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Marks</th><th>Grade</th></tr></thead><tbody>${b.testScores.map((t) => `<tr><td>${t.testName}</td><td>${t.subject ?? '—'}</td><td>${new Date(t.testDate).toLocaleDateString('en-IN')}</td><td>${t.marksObtained}/${t.maxMarks}</td><td>${t.grade ?? '—'}</td></tr>`).join('')}</tbody></table>`
+
+    const feesHtml = b.feeRecords.length === 0
+      ? '<p class="muted">No fee records yet.</p>'
+      : `<table class="mini"><thead><tr><th>Month</th><th>Due</th><th>Received</th><th>Status</th></tr></thead><tbody>${b.feeRecords.map((f) => `<tr><td>${f.feeMonth}</td><td>₹${f.amountDue.toLocaleString('en-IN')}</td><td>₹${f.amountReceived.toLocaleString('en-IN')}</td><td>${f.status}</td></tr>`).join('')}</tbody></table>`
+
+    return `<div class="batch">
+      <h2>${b.batch.batchName} <span class="subject">— ${b.batch.subjectOrCourse}</span></h2>
+      <div class="row"><span class="label">Attendance</span><span class="value">${b.attendance.percent != null ? `${b.attendance.percent}% (${b.attendance.present}/${b.attendance.totalSessions} sessions)` : 'No attendance recorded yet'}</span></div>
+      <h3>Test Scores</h3>${scoresHtml}
+      <h3>Fee Status</h3>${feesHtml}
+    </div>`
+  }).join('')
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Progress Report — ${report.student.customerName}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; padding: 40px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; } .subtitle { color: #555; margin-bottom: 24px; font-size: 12px; }
+  .batch { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .batch h2 { font-size: 15px; margin: 0 0 8px; } .subject { font-weight: 400; color: #555; }
+  .batch h3 { font-size: 12px; margin: 12px 0 6px; color: #334155; }
+  .row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .label { color: #555; } .value { font-weight: 600; }
+  .muted { color: #94a3b8; font-size: 11px; }
+  table.mini { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.mini th { text-align: left; color: #555; border-bottom: 1px solid #e2e8f0; padding: 4px; }
+  table.mini td { padding: 4px; border-bottom: 1px solid #f1f5f9; }
+  .footer { font-size: 10px; color: #555; text-align: center; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+</style></head><body>
+<h1>Progress Report</h1>
+<div class="subtitle">${report.student.customerName}${report.student.phone ? ` · ${report.student.phone}` : ''} &nbsp;|&nbsp; Printed: ${printedOn}</div>
+${batchesHtml || '<p class="muted">Not enrolled in any batch yet.</p>'}
+<div class="footer">${aszurexFooterHtml(10)}</div>
+</body></html>`
+
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  win.print()
 }
 
 const EMPTY_FORM = {
@@ -250,6 +321,9 @@ export default function StudentsScreen() {
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2 justify-end">
+                    <button onClick={() => printProgressReport(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Print progress report">
+                      <Printer size={14} />
+                    </button>
                     <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Edit">
                       <Edit2 size={14} />
                     </button>

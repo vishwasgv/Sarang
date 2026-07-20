@@ -10,7 +10,19 @@ Open **Rooms** in the sidebar to maintain your room list — room number, room t
 
 ## Booking a stay
 
-Open **Hotel Bookings** to create a new booking — pick a room, check-in and check-out dates, guest name and contact details, number of guests (capped at the room's maximum occupancy), and an optional advance payment. Sarang checks the room is genuinely free for that exact date range before confirming — the same live-availability check used elsewhere in Sarang, so two staff members can never double-book the same room for overlapping dates. Nights are billed on calendar dates, not elapsed hours — a stay from evening check-in to morning check-out the next day is always one night, as in normal hotel practice.
+Open **Hotel Bookings** to create a new booking — pick a room, check-in and check-out dates, guest name and contact details, number of guests (capped at the room's maximum occupancy), an optional advance payment, and where the booking came from (**booking source/channel** — Walk-In, Phone, MakeMyTrip, Booking.com, or any other channel you type). Sarang checks the room is genuinely free for that exact date range before confirming — the same live-availability check used elsewhere in Sarang, so two staff members can never double-book the same room for overlapping dates. Nights are billed on calendar dates, not elapsed hours — a stay from evening check-in to morning check-out the next day is always one night, as in normal hotel practice.
+
+If the guest has stayed before, picking them from the customer search shows their **previous stay count** right in the New Booking form, so front desk staff can recognize and welcome back a returning guest.
+
+For a shorter same-day stay, choose **Day Use** instead of a normal overnight booking — it bills at the room's configured day-use rate (or half the nightly rate if none is set) and still holds the room for the full day.
+
+### Seasonal rates
+
+Set up date-range pricing under **Manage Seasonal Rates** on the Rooms screen — a blanket rate for all rooms during a period (e.g. a festival season surcharge), or a rate specific to one room type. A stay that spans a season boundary is priced correctly night by night, not at one flat rate for the whole stay.
+
+### Group bookings
+
+Booking multiple rooms for the same guest for a group or family? Check off the related bookings on the Hotel Bookings list and use **Generate Combined Bill** to produce one invoice covering all of them, instead of a separate bill per room.
 
 ## Guest ID compliance at check-in
 
@@ -23,6 +35,10 @@ While a guest is checked in, add extra charges to their stay from the booking's 
 ## Checkout and billing
 
 Checking out ends the stay and frees the room for cleaning. Generating the invoice bills the room charge (nightly rate × nights) plus every extra charge as its own line item, so the printed invoice itemizes the stay the way a real hotel folio would. Any advance payment collected at booking time is automatically recorded as a payment against the new invoice. Like every other invoice in Sarang, it can be printed at A4 or thermal receipt width.
+
+## Housekeeping
+
+Every checkout automatically queues a **housekeeping task** for that room. Open **Housekeeping** to see every pending task, assign it to a staff member, and mark it done — once every open task for a room is complete, the room flips back to Available on its own, rather than relying on someone remembering to change its status manually.
 
 ## Cancelling or no-show
 

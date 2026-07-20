@@ -8,6 +8,8 @@ export const CreatePropertyDealSchema = z.object({
   brokeragePercent: z.number().nonnegative('Brokerage percent cannot be negative').max(100, 'Brokerage percent cannot exceed 100').finite(),
   expectedRegistrationDate: z.string().optional(),
   notes: z.string().optional(),
+  coBrokerName: z.string().max(200).optional(),
+  coBrokerSharePercent: z.number().nonnegative('Co-broker share percent cannot be negative').max(100, 'Co-broker share percent cannot exceed 100').finite().optional(),
 })
 
 export const UpdatePropertyDealSchema = z.object({
@@ -18,6 +20,8 @@ export const UpdatePropertyDealSchema = z.object({
   status: z.string().optional(),
   invoiceId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  coBrokerName: z.string().max(200).nullable().optional(),
+  coBrokerSharePercent: z.number().nonnegative('Co-broker share percent cannot be negative').max(100, 'Co-broker share percent cannot exceed 100').finite().nullable().optional(),
 })
 
 export const PropertyDealIdSchema = z.string().min(1, 'Deal ID is required')

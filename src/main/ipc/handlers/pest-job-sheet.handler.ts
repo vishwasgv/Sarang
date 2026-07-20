@@ -1,9 +1,11 @@
 import {
   listPestJobSheets, createPestJobSheet, updatePestJobSheet,
-  deletePestJobSheet, generatePestJobInvoice
+  deletePestJobSheet, generatePestJobInvoice,
+  listJobSheetPesticides, addJobSheetPesticide, removeJobSheetPesticide
 } from '../../services/pest-job-sheet.service'
 import { requirePermission } from '../permission-guard'
-import { CreatePestJobSheetSchema, UpdatePestJobSheetSchema, PestJobSheetIdSchema } from '../../validation/pest-job-sheet.validation'
+import { getCurrentSession } from '../../services/auth.service'
+import { CreatePestJobSheetSchema, UpdatePestJobSheetSchema, PestJobSheetIdSchema, AddJobSheetPesticideSchema } from '../../validation/pest-job-sheet.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -39,5 +41,26 @@ export function registerPestJobSheet(handle: HandleFn): void {
     const parsed = PestJobSheetIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generatePestJobInvoice(parsed.data)
+  })
+
+  handle('pestJobSheet:listPesticides', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = PestJobSheetIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listJobSheetPesticides(parsed.data)
+  })
+
+  handle('pestJobSheet:addPesticide', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = AddJobSheetPesticideSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return addJobSheetPesticide(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('pestJobSheet:removePesticide', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = PestJobSheetIdSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return removeJobSheetPesticide(parsed.data, getCurrentSession()?.userId)
   })
 }

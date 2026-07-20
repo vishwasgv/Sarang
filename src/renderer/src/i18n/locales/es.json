@@ -139,7 +139,8 @@
     "of": "de",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "en stock"
   },
   "auth": {
     "username": "Usuario",
@@ -229,6 +230,8 @@
     "percentDiscount": "% Descuento",
     "invoiceDate": "Fecha Factura",
     "dueDate": "Fecha Vencimiento",
+    "dueOn": "Vence {{date}}",
+    "overdueSince": "Vencida desde {{date}}",
     "notes": "Notas",
     "rounding": "Redondeo",
     "invoiceCreated": "Factura Creada",
@@ -286,7 +289,40 @@
     "batchLabel": "Lote {{batchNumber}} · {{status}}",
     "batchExpired": "vencido",
     "batchExpiresToday": "vence hoy",
-    "batchExpiresIn": "vence en {{days}}d"
+    "batchExpiresIn": "vence en {{days}}d",
+    "addTipOrServiceCharge": "Agregar propina / cargo por servicio",
+    "tipAmountLabel": "Monto",
+    "tipAmountInvalid": "Ingrese un monto mayor que cero.",
+    "confirmAddToCart": "Agregar al carrito",
+    "unavailableToday": "No disponible hoy",
+    "unavailableTodayMessage": "{{productName}} se marcó como no disponible por hoy.",
+    "holdSale": "Retener venta",
+    "resumeSale": "Reanudar venta",
+    "heldSales": "Ventas retenidas",
+    "noHeldSales": "No hay ventas retenidas.",
+    "holdSaleLabel": "Nota (opcional)",
+    "holdSaleLabelPlaceholder": "p. ej. Rahul - camisa azul",
+    "confirmHold": "Retener",
+    "holdSaleSuccess": "Venta retenida.",
+    "resumeSaleAction": "Reanudar",
+    "abandonHeldSale": "Descartar",
+    "confirmAbandonHeldSale": "¿Descartar esta venta retenida? Esto no se puede deshacer.",
+    "emptyCartCannotHold": "El carrito está vacío — nada que retener.",
+    "frequentlySold": "Más vendidos",
+    "mrpLabel": "MRP",
+    "areaCalculator": "Calculadora de área (L × An)",
+    "areaLabel": "Área",
+    "areaFormula": "L × An = Área",
+    "useAreaSq": "Usar {{area}} cuadrados",
+    "rx": {
+      "title": "Detalles de la Receta",
+      "description": "Este es un artículo de venta exclusiva con receta (Lista H/H1) — se requiere el nombre del paciente y del médico para venderlo.",
+      "patientName": "Nombre del Paciente *",
+      "doctorName": "Nombre del Médico *",
+      "date": "Fecha de la Receta (opcional)",
+      "addToCart": "Añadir al Carrito",
+      "required": "Se requieren el nombre del paciente y del médico."
+    }
   },
   "products": {
     "title": "Productos",
@@ -298,6 +334,7 @@
     "unit": "Unidad",
     "sellingPrice": "Precio de Venta",
     "costPrice": "Precio de Costo",
+    "mrp": "MRP (opcional)",
     "taxRate": "Tasa de Impuesto (%)",
     "stock": "Stock",
     "lowStockAlert": "Alerta Stock Bajo",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "Generar Órdenes de Reabastecimiento",
+      "title": "Órdenes de Reabastecimiento Generadas",
+      "nothingToOrder": "Ningún producto con poco stock necesita reabastecimiento ahora mismo.",
+      "created": "Órdenes de compra borrador creadas: {{count}}",
+      "skippedNoSupplier": "Omitidos (sin proveedor predeterminado): {{count}}",
+      "skippedOpenPO": "Omitidos (ya en una orden abierta): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "Órdenes de Compra",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "Ventas de Medicamentos Recetados",
+        "description": "Registro de ventas de medicamentos de venta exclusiva con receta (Lista H/H1), con nombres de paciente y médico."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "No se emitieron documentos en este período.",
       "jewelleryStock": "Aún no hay productos de joyería con peso de metal registrado.",
       "projects": "No hay proyectos en este período.",
-      "jobCards": "No hay órdenes de trabajo en este período."
+      "jobCards": "No hay órdenes de trabajo en este período.",
+      "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas."
     },
     "col": {
       "invoiceNo": "N.º Factura",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "Tipo",
+    "subAssembly": "Subconjunto",
+    "searchSubAssembly": "Buscar producto (subconjunto)…",
+    "subAssemblyTag": "(subconjunto)",
+    "selfReferenceError": "Un producto no puede ser un componente de su propia lista de materiales.",
+    "lotsUsed": "Lotes usados",
+    "qcCheckpointTag": "(punto de control de calidad)",
+    "qcNotesLabel": "Notas de calidad",
+    "qcPass": "Aprobado",
+    "qcFail": "Rechazado",
+    "qcResultTitle": "Registrar Resultado de Calidad",
+    "markAsQcStep": "Punto de control de calidad",
+    "scrapQtyLabel": "Cantidad de Desecho / Rechazo",
+    "laborCostLabel": "Costo de Mano de Obra",
+    "batchNumber": "Número de Lote",
+    "receiveBatch": "Recibir Lote",
+    "receiveBatchTitle": "Recibir Lote de Material Prima",
+    "batchReceived": "Lote recibido.",
+    "noBatchesYet": "Aún no se han recibido lotes para este material.",
+    "remainingQty": "Restante"
   },
   "service": {
     "projects": "Proyectos",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "Piezas Usadas",
+    "addPart": "Añadir Pieza",
+    "searchProduct": "Buscar producto...",
+    "partsTotal": "Total de Piezas",
+    "noPartsUsed": "Aún no se han usado piezas",
+    "removePart": "Quitar pieza",
+    "invalidQuantity": "Ingrese una cantidad válida.",
+    "couldNotAddPart": "No se pudo añadir la pieza.",
+    "couldNotRemovePart": "No se pudo quitar la pieza.",
+    "warranty": "Garantía",
+    "warrantyDays": "Garantía (días)",
+    "warrantyUntil": "hasta",
+    "underWarranty": "En Garantía",
+    "warrantyExpired": "Garantía Vencida",
+    "saveWarranty": "Guardar",
+    "warrantySaved": "Garantía guardada.",
+    "invalidWarrantyDays": "Ingrese un número válido de días de garantía.",
+    "couldNotSaveWarranty": "No se pudo guardar la garantía.",
+    "warrantyAppliesOnDelivery": "El período de garantía se cuenta desde la fecha de entrega.",
+    "warrantyClaimAgainst": "Reclamo de Garantía Contra",
+    "notAWarrantyClaim": "No es un reclamo de garantía",
+    "originalUnderWarranty": "El trabajo original aún está en garantía",
+    "originalWarrantyExpired": "La garantía del trabajo original ha expirado"
   },
   "setup": {
     "welcome": "Bienvenido a Sarang",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "Servicios Calificados",
+    "qualifiedServicesHint": "Servicios que este empleado puede realizar. Déjelo vacío para permitir cualquier servicio (predeterminado).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "Valor {{symbol}}",
       "itemNotesPlaceholder": "Notas del artículo (opcional)",
       "deleteConfirm": "¿Eliminar envío {{number}}? Esta acción no se puede deshacer.",
-      "destinationRequired": "La dirección de destino es obligatoria."
+      "destinationRequired": "La dirección de destino es obligatoria.",
+      "stops": {
+        "title": "Paradas",
+        "addStop": "Añadir Parada",
+        "customerName": "Nombre del Cliente (opcional)",
+        "destinationAddress": "Dirección de Destino",
+        "notes": "Notas (opcional)",
+        "markDelivered": "Marcar como Entregado",
+        "skip": "Omitir",
+        "delete": "Eliminar",
+        "empty": "Aún no se han añadido paradas adicionales.",
+        "primaryHint": "El destino indicado arriba es siempre la primera parada — añada más abajo para una ruta con varias paradas.",
+        "saveFirst": "Guarde el envío primero y luego añada paradas."
+      }
     },
     "grn": {
       "title": "Notas de Recepción de Mercancía (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "Facturar",
       "invoicing": "...",
-      "invoiced": "Facturado"
+      "invoiced": "Facturado",
+      "scheduleTrial": "Programar Prueba",
+      "trial": "Prueba",
+      "trialScheduled": "Cita de prueba programada",
+      "setFabric": "Definir Tela",
+      "fabricLinked": "Tela ✓",
+      "clearFabric": "Quitar tela (restaura el stock)"
     },
     "invoiceBanner": {
       "success": "Factura generada (SAC 998821, 5% de IVA).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "Error al guardar.",
       "deleteOrderFailed": "No se pudo eliminar el pedido.",
       "deleteMeasurementFailed": "No se pudo eliminar la medida.",
-      "updateStatusFailed": "No se pudo actualizar el estado."
+      "updateStatusFailed": "No se pudo actualizar el estado.",
+      "trialDateRequired": "La fecha de la prueba es obligatoria.",
+      "fabricQuantityInvalid": "Ingrese una cantidad válida."
     },
     "measurements": {
       "selectClient": "Seleccionar Cliente",
@@ -2325,6 +2441,20 @@
       "saving": "Guardando...",
       "updateOrder": "Actualizar Pedido",
       "createOrder": "Crear Pedido"
+    },
+    "trial": {
+      "title": "Programar Prueba",
+      "hint": "El cliente recibirá los mismos recordatorios de WhatsApp que cualquier otra cita.",
+      "date": "Fecha",
+      "time": "Hora",
+      "schedule": "Programar"
+    },
+    "fabric": {
+      "title": "Definir Tela",
+      "hint": "Deduce inventario real al establecerse.",
+      "searchPlaceholder": "Buscar tela en el inventario…",
+      "quantity": "Cantidad",
+      "set": "Definir Tela"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "Cliente",
       "items": "Artículos",
       "item": "Artículo",
-      "period": "Período"
+      "period": "Período",
+      "service": "Servicio"
     },
     "confirmCancel": "¿Cancelar esta reserva? Esta acción no se puede deshacer.",
     "lateFee": "Recargo por Retraso",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "No hay nada entregado actualmente.",
       "revenue": "No hay ingresos por alquiler en este período."
-    }
+    },
+    "serviceIntervalRentals": "Intervalo de servicio (alquileres)",
+    "serviceIntervalDays": "Intervalo de servicio (días)",
+    "dueForService": "Requiere mantenimiento",
+    "markServiced": "Marcar como reparado",
+    "lastServiced": "Último mantenimiento",
+    "neverServiced": "Nunca",
+    "addItem": "Agregar artículo",
+    "removeItem": "Eliminar",
+    "recurringRental": "Alquiler recurrente",
+    "repeatEveryDays": "Repetir cada (días)",
+    "createNextCycle": "Crear siguiente ciclo",
+    "nextCycleCreated": "Se creó el siguiente ciclo de alquiler.",
+    "conditionOutLabel": "Estado al retirar",
+    "conditionInLabel": "Estado al devolver",
+    "itemDamageCharge": "Cargo por daño (este artículo)",
+    "photos": "Fotos"
   },
   "jewellery": {
     "metalRates": "Tasas de Metal",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "No hay tarifa configurada para {{metalType}} {{purity}}. Fije la tarifa de hoy en Joyería → Tasas de Metal, luego vuelva a agregar este artículo.",
     "computeErrorDesc": "No se pudo calcular el precio de la joyería. Verifique la tarifa y vuelva a agregar este artículo.",
     "priceNotSetTitle": "Precio de Joyería No Establecido",
-    "priceNotSetDesc": "{{productName}} aún no tiene precio — fije la tarifa de hoy en Joyería → Tasas de Metal, luego elimine y vuelva a agregar este artículo."
+    "priceNotSetDesc": "{{productName}} aún no tiene precio — fije la tarifa de hoy en Joyería → Tasas de Metal, luego elimine y vuelva a agregar este artículo.",
+    "makingCharge": "Cargo de hechura",
+    "makingChargeOverrideHint": "Anular el cargo de hechura solo para esta venta — la configuración del producto no cambia.",
+    "applyExchange": "Aplicar Cambio de Metal Usado",
+    "applyExchangeDesc": "Aplica automáticamente el crédito de un cambio no vinculado como descuento en esta factura al completar la venta.",
+    "exchangeSearchPlaceholder": "Buscar por número de cambio...",
+    "noUnlinkedExchanges": "No se encontraron cambios sin vincular para este cliente.",
+    "exchangeApplied": "Cambio {{number}} — se aplicará un crédito de {{amount}} al finalizar la compra.",
+    "removeExchange": "Quitar"
   },
   "manual": {
     "yourType": "El suyo",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "Funciones Universales",
     "groupAi": "Asistente de IA",
     "groupBusiness": "Tipos de Negocio"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "Pedidos de Campo",
+      "subtitle": "Pedidos enviados por representantes desde el campo, en espera de confirmación",
+      "refresh": "Actualizar",
+      "linkTitle": "Enlace de Pedidos de Campo",
+      "linkDescription": "Comparta este enlace (o el código QR) con sus representantes de campo — pueden capturar pedidos desde su propio teléfono en el WiFi de la tienda.",
+      "showQr": "Mostrar Código QR",
+      "regenerateLink": "Regenerar Enlace",
+      "openDirectly": "O abrir directamente:",
+      "copied": "Copiado",
+      "linkCopied": "Enlace copiado al portapapeles.",
+      "notRunning": "La captura de pedidos de campo no está activa actualmente. Active \"Captura de Pedidos de Campo\" en Configuración para que los representantes puedan enviar pedidos desde su propio teléfono.",
+      "pendingTitle": "Pedidos de Campo Pendientes",
+      "loading": "Cargando…",
+      "empty": "No hay pedidos de campo esperando confirmación.",
+      "noCustomer": "(sin cliente seleccionado)",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "acceptTitle": "Aceptar Pedido — {{repName}}",
+      "paymentMethod": "Método de Pago",
+      "acceptHint": "Los precios se vuelven a verificar (incluyendo cualquier precio negociado con el cliente) al confirmar, y se crea una factura.",
+      "confirmBill": "Confirmar y Facturar",
+      "creating": "Creando…",
+      "cancel": "Cancelar",
+      "orderAccepted": "Pedido Aceptado",
+      "invoiceCreated": "Factura creada a partir de este pedido de campo.",
+      "error": "Error",
+      "couldNotLoad": "No se pudieron cargar los pedidos de campo entrantes.",
+      "couldNotAccept": "No se pudo aceptar el pedido.",
+      "couldNotReject": "No se pudo rechazar el pedido.",
+      "couldNotGenerateQr": "No se pudo generar el código QR.",
+      "regenerated": "Regenerado",
+      "regeneratedMessage": "Se ha generado un nuevo enlace de pedidos de campo.",
+      "couldNotRegenerate": "No se pudo regenerar el enlace.",
+      "regenerateConfirm": "Regenerar invalida cualquier enlace/código QR ya compartido con sus representantes — necesitarán el nuevo. ¿Continuar?"
+    },
+    "pricing": {
+      "title": "Precios por Clase de Cliente",
+      "subtitle": "Establezca precios negociados por clase de cliente (p. ej. MINORISTA, MAYORISTA, VIP) — reemplaza el precio de lista para cualquier cliente con esa clase.",
+      "addTitle": "Añadir / Actualizar un Precio",
+      "searchProduct": "Buscar producto…",
+      "classPlaceholder": "Clase de cliente, p. ej. MINORISTA",
+      "pricePlaceholder": "Precio",
+      "save": "Guardar Precio",
+      "saving": "Guardando…",
+      "columnProduct": "Producto",
+      "columnClass": "Clase",
+      "columnListPrice": "Precio de Lista",
+      "columnPrice": "Precio",
+      "empty": "Aún no se han establecido precios por clase de cliente.",
+      "loading": "Cargando…",
+      "noProduct": "Sin Producto",
+      "noProductMessage": "Seleccione un producto primero.",
+      "noClass": "Sin Clase de Cliente",
+      "noClassMessage": "Ingrese una clase de cliente, p. ej. MINORISTA.",
+      "invalidPrice": "Precio Inválido",
+      "invalidPriceMessage": "Ingrese un precio válido y no negativo.",
+      "priceSet": "Precio Establecido",
+      "priceSetMessage": "Precio de {{customerClass}} establecido para {{productName}}.",
+      "error": "Error",
+      "couldNotSave": "No se pudo guardar el precio.",
+      "couldNotLoad": "No se pudo cargar la lista de precios.",
+      "removed": "Eliminado",
+      "removedMessage": "Precio eliminado.",
+      "couldNotRemove": "No se pudo eliminar el precio."
+    }
   }
 }

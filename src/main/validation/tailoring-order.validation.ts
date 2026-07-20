@@ -41,5 +41,20 @@ export const UpdateTailoringOrderSchema = z.object({
 
 export const TailoringOrderIdSchema = z.string().min(1, 'Order ID is required')
 
+// Phase 58 §2 — Tailor Boutique
+export const ScheduleTrialAppointmentSchema = z.object({
+  orderId: z.string().min(1, 'Order is required'),
+  providerId: z.string().optional(),
+  scheduledDate: z.string().min(1, 'Date is required'),
+  scheduledTime: z.string().min(1, 'Time is required'),
+  durationMinutes: z.number().int().positive().optional(),
+})
+
+export const SetOrderFabricSchema = z.object({
+  orderId: z.string().min(1, 'Order is required'),
+  fabricProductId: z.string().min(1, 'Fabric product is required'),
+  fabricQuantity: z.number().positive('Fabric quantity must be greater than zero'),
+})
+
 export type CreateTailoringOrderPayload = z.infer<typeof CreateTailoringOrderSchema>
 export type UpdateTailoringOrderPayload = z.infer<typeof UpdateTailoringOrderSchema>

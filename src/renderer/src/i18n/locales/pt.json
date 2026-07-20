@@ -139,7 +139,8 @@
     "of": "de",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "em estoque"
   },
   "auth": {
     "username": "Usuário",
@@ -229,6 +230,8 @@
     "percentDiscount": "% Desconto",
     "invoiceDate": "Data da Nota",
     "dueDate": "Vencimento",
+    "dueOn": "Vence em {{date}}",
+    "overdueSince": "Vencida desde {{date}}",
     "notes": "Observações",
     "rounding": "Arredondamento",
     "invoiceCreated": "Nota Criada",
@@ -286,7 +289,40 @@
     "batchLabel": "Lote {{batchNumber}} · {{status}}",
     "batchExpired": "vencido",
     "batchExpiresToday": "vence hoje",
-    "batchExpiresIn": "vence em {{days}}d"
+    "batchExpiresIn": "vence em {{days}}d",
+    "addTipOrServiceCharge": "Adicionar gorjeta / taxa de serviço",
+    "tipAmountLabel": "Valor",
+    "tipAmountInvalid": "Insira um valor maior que zero.",
+    "confirmAddToCart": "Adicionar ao carrinho",
+    "unavailableToday": "Indisponível hoje",
+    "unavailableTodayMessage": "{{productName}} foi marcado como indisponível por hoje.",
+    "holdSale": "Reter venda",
+    "resumeSale": "Retomar venda",
+    "heldSales": "Vendas retidas",
+    "noHeldSales": "Nenhuma venda retida.",
+    "holdSaleLabel": "Nota (opcional)",
+    "holdSaleLabelPlaceholder": "ex. Rahul - camisa azul",
+    "confirmHold": "Reter",
+    "holdSaleSuccess": "Venda retida.",
+    "resumeSaleAction": "Retomar",
+    "abandonHeldSale": "Descartar",
+    "confirmAbandonHeldSale": "Descartar esta venda retida? Esta ação não pode ser desfeita.",
+    "emptyCartCannotHold": "O carrinho está vazio — nada para reter.",
+    "frequentlySold": "Mais vendidos",
+    "mrpLabel": "MRP",
+    "areaCalculator": "Calculadora de área (C × L)",
+    "areaLabel": "Área",
+    "areaFormula": "C × L = Área",
+    "useAreaSq": "Usar {{area}} quadrados",
+    "rx": {
+      "title": "Detalhes da Prescrição",
+      "description": "Este é um item somente sob prescrição (Lista H/H1) — o nome do paciente e do médico são obrigatórios para vendê-lo.",
+      "patientName": "Nome do Paciente *",
+      "doctorName": "Nome do Médico *",
+      "date": "Data da Prescrição (opcional)",
+      "addToCart": "Adicionar ao Carrinho",
+      "required": "O nome do paciente e do médico são obrigatórios."
+    }
   },
   "products": {
     "title": "Produtos",
@@ -298,6 +334,7 @@
     "unit": "Unidade",
     "sellingPrice": "Preço de Venda",
     "costPrice": "Preço de Custo",
+    "mrp": "MRP (opcional)",
     "taxRate": "Alíquota (%)",
     "stock": "Estoque",
     "lowStockAlert": "Alerta Estoque Baixo",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "Gerar Pedidos de Reposição",
+      "title": "Pedidos de Reposição Gerados",
+      "nothingToOrder": "Nenhum produto com estoque baixo precisa de reposição no momento.",
+      "created": "Pedidos de compra em rascunho criados: {{count}}",
+      "skippedNoSupplier": "Ignorados (sem fornecedor padrão): {{count}}",
+      "skippedOpenPO": "Ignorados (já em um pedido aberto): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "Pedidos de Compra",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "Vendas de Medicamentos Sob Prescrição",
+        "description": "Registro de vendas de medicamentos somente sob prescrição (Lista H/H1), com nomes do paciente e do médico."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "Nenhum documento emitido neste período.",
       "jewelleryStock": "Ainda não há produtos de joalheria com peso de metal registrado.",
       "projects": "Nenhum projeto neste período.",
-      "jobCards": "Nenhuma ordem de serviço neste período."
+      "jobCards": "Nenhuma ordem de serviço neste período.",
+      "prescriptionDrugSales": "Nenhuma venda de medicamento sob prescrição neste período."
     },
     "col": {
       "invoiceNo": "N.º Fatura",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "Tipo",
+    "subAssembly": "Subconjunto",
+    "searchSubAssembly": "Buscar produto (subconjunto)…",
+    "subAssemblyTag": "(subconjunto)",
+    "selfReferenceError": "Um produto não pode ser um componente de sua própria lista de materiais.",
+    "lotsUsed": "Lotes usados",
+    "qcCheckpointTag": "(ponto de controle de qualidade)",
+    "qcNotesLabel": "Notas de qualidade",
+    "qcPass": "Aprovado",
+    "qcFail": "Reprovado",
+    "qcResultTitle": "Registrar Resultado de Qualidade",
+    "markAsQcStep": "Ponto de controle de qualidade",
+    "scrapQtyLabel": "Qtd. Descarte / Rejeitado",
+    "laborCostLabel": "Custo de Mão de Obra",
+    "batchNumber": "Número do Lote",
+    "receiveBatch": "Receber Lote",
+    "receiveBatchTitle": "Receber Lote de Matéria-Prima",
+    "batchReceived": "Lote recebido.",
+    "noBatchesYet": "Nenhum lote recebido ainda para este material.",
+    "remainingQty": "Restante"
   },
   "service": {
     "projects": "Projetos",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "Peças Utilizadas",
+    "addPart": "Adicionar Peça",
+    "searchProduct": "Pesquisar produto...",
+    "partsTotal": "Total de Peças",
+    "noPartsUsed": "Nenhuma peça utilizada ainda",
+    "removePart": "Remover peça",
+    "invalidQuantity": "Insira uma quantidade válida.",
+    "couldNotAddPart": "Não foi possível adicionar a peça.",
+    "couldNotRemovePart": "Não foi possível remover a peça.",
+    "warranty": "Garantia",
+    "warrantyDays": "Garantia (dias)",
+    "warrantyUntil": "até",
+    "underWarranty": "Em Garantia",
+    "warrantyExpired": "Garantia Expirada",
+    "saveWarranty": "Salvar",
+    "warrantySaved": "Garantia salva.",
+    "invalidWarrantyDays": "Insira um número válido de dias de garantia.",
+    "couldNotSaveWarranty": "Não foi possível salvar a garantia.",
+    "warrantyAppliesOnDelivery": "O período de garantia é contado a partir da data de entrega.",
+    "warrantyClaimAgainst": "Reclamação de Garantia Contra",
+    "notAWarrantyClaim": "Não é uma reclamação de garantia",
+    "originalUnderWarranty": "O trabalho original ainda está em garantia",
+    "originalWarrantyExpired": "A garantia do trabalho original expirou"
   },
   "setup": {
     "welcome": "Bem-vindo ao Sarang",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "Serviços Qualificados",
+    "qualifiedServicesHint": "Serviços que este funcionário pode realizar. Deixe vazio para permitir qualquer serviço (padrão).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "Valor {{symbol}}",
       "itemNotesPlaceholder": "Notas do item (opcional)",
       "deleteConfirm": "Excluir remessa {{number}}? Esta ação não pode ser desfeita.",
-      "destinationRequired": "O endereço de destino é obrigatório."
+      "destinationRequired": "O endereço de destino é obrigatório.",
+      "stops": {
+        "title": "Paradas",
+        "addStop": "Adicionar Parada",
+        "customerName": "Nome do Cliente (opcional)",
+        "destinationAddress": "Endereço de Destino",
+        "notes": "Notas (opcional)",
+        "markDelivered": "Marcar como Entregue",
+        "skip": "Pular",
+        "delete": "Excluir",
+        "empty": "Nenhuma parada adicional foi adicionada ainda.",
+        "primaryHint": "O destino acima é sempre a primeira parada — adicione mais abaixo para uma rota com várias paradas.",
+        "saveFirst": "Salve o envio primeiro e depois adicione paradas."
+      }
     },
     "grn": {
       "title": "Notas de Recebimento de Mercadorias (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "Faturar",
       "invoicing": "...",
-      "invoiced": "Faturado"
+      "invoiced": "Faturado",
+      "scheduleTrial": "Agendar Prova",
+      "trial": "Prova",
+      "trialScheduled": "Consulta de prova agendada",
+      "setFabric": "Definir Tecido",
+      "fabricLinked": "Tecido ✓",
+      "clearFabric": "Remover vínculo do tecido (restaura o estoque)"
     },
     "invoiceBanner": {
       "success": "Nota fiscal gerada (SAC 998821, 5% de imposto).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "Falha ao salvar.",
       "deleteOrderFailed": "Falha ao excluir o pedido.",
       "deleteMeasurementFailed": "Falha ao excluir a medida.",
-      "updateStatusFailed": "Falha ao atualizar o status."
+      "updateStatusFailed": "Falha ao atualizar o status.",
+      "trialDateRequired": "A data da prova é obrigatória.",
+      "fabricQuantityInvalid": "Insira uma quantidade válida."
     },
     "measurements": {
       "selectClient": "Selecionar Cliente",
@@ -2325,6 +2441,20 @@
       "saving": "Salvando...",
       "updateOrder": "Atualizar Pedido",
       "createOrder": "Criar Pedido"
+    },
+    "trial": {
+      "title": "Agendar Prova/Ajuste",
+      "hint": "O cliente receberá os mesmos lembretes do WhatsApp que qualquer outro agendamento.",
+      "date": "Data",
+      "time": "Hora",
+      "schedule": "Agendar"
+    },
+    "fabric": {
+      "title": "Definir Tecido",
+      "hint": "Deduz o estoque real ao ser definido.",
+      "searchPlaceholder": "Pesquisar tecido no estoque…",
+      "quantity": "Quantidade",
+      "set": "Definir Tecido"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "Cliente",
       "items": "Itens",
       "item": "Item",
-      "period": "Período"
+      "period": "Período",
+      "service": "Serviço"
     },
     "confirmCancel": "Cancelar esta reserva? Esta ação não pode ser desfeita.",
     "lateFee": "Taxa de Atraso",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "Nada está retirado no momento.",
       "revenue": "Nenhuma receita de aluguel neste período."
-    }
+    },
+    "serviceIntervalRentals": "Intervalo de manutenção (aluguéis)",
+    "serviceIntervalDays": "Intervalo de manutenção (dias)",
+    "dueForService": "Manutenção pendente",
+    "markServiced": "Marcar como revisado",
+    "lastServiced": "Última manutenção",
+    "neverServiced": "Nunca",
+    "addItem": "Adicionar item",
+    "removeItem": "Remover",
+    "recurringRental": "Aluguel recorrente",
+    "repeatEveryDays": "Repetir a cada (dias)",
+    "createNextCycle": "Criar próximo ciclo",
+    "nextCycleCreated": "Próximo ciclo de aluguel criado.",
+    "conditionOutLabel": "Condição na retirada",
+    "conditionInLabel": "Condição na devolução",
+    "itemDamageCharge": "Taxa de dano (este item)",
+    "photos": "Fotos"
   },
   "jewellery": {
     "metalRates": "Cotações de Metais",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "Nenhuma cotação configurada para {{metalType}} {{purity}}. Defina a cotação de hoje em Joalheria → Cotações de Metais e adicione este item novamente.",
     "computeErrorDesc": "Não foi possível calcular o preço da joia. Verifique a cotação e adicione este item novamente.",
     "priceNotSetTitle": "Preço da Joia Não Definido",
-    "priceNotSetDesc": "{{productName}} ainda não tem preço — defina a cotação de hoje em Joalheria → Cotações de Metais, depois remova e adicione este item novamente."
+    "priceNotSetDesc": "{{productName}} ainda não tem preço — defina a cotação de hoje em Joalheria → Cotações de Metais, depois remova e adicione este item novamente.",
+    "makingCharge": "Taxa de mão de obra",
+    "makingChargeOverrideHint": "Substitui a taxa de mão de obra apenas para esta venda — a configuração do produto não é alterada.",
+    "applyExchange": "Aplicar Troca de Metal Usado",
+    "applyExchangeDesc": "Aplica automaticamente o crédito de uma troca não vinculada como desconto nesta fatura ao concluir a venda.",
+    "exchangeSearchPlaceholder": "Pesquisar por número da troca...",
+    "noUnlinkedExchanges": "Nenhuma troca não vinculada encontrada para este cliente.",
+    "exchangeApplied": "Troca {{number}} — um crédito de {{amount}} será aplicado no pagamento.",
+    "removeExchange": "Remover"
   },
   "manual": {
     "yourType": "Seu",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "Recursos Universais",
     "groupAi": "Assistente de IA",
     "groupBusiness": "Tipos de Negócio"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "Pedidos de Campo",
+      "subtitle": "Pedidos enviados por representantes em campo, aguardando confirmação",
+      "refresh": "Atualizar",
+      "linkTitle": "Link de Pedido de Campo",
+      "linkDescription": "Compartilhe este link (ou o código QR) com seus representantes de campo — eles podem registrar pedidos pelo próprio celular no WiFi da loja.",
+      "showQr": "Mostrar Código QR",
+      "regenerateLink": "Regenerar Link",
+      "openDirectly": "Ou abrir diretamente:",
+      "copied": "Copiado",
+      "linkCopied": "Link copiado para a área de transferência.",
+      "notRunning": "A captura de pedidos de campo não está ativa no momento. Ative \"Captura de Pedido de Campo\" nas Configurações para que os representantes possam enviar pedidos pelo próprio celular.",
+      "pendingTitle": "Pedidos de Campo Pendentes",
+      "loading": "Carregando…",
+      "empty": "Nenhum pedido de campo aguardando confirmação.",
+      "noCustomer": "(nenhum cliente selecionado)",
+      "accept": "Aceitar",
+      "reject": "Rejeitar",
+      "acceptTitle": "Aceitar Pedido — {{repName}}",
+      "paymentMethod": "Método de Pagamento",
+      "acceptHint": "Os preços são reverificados (incluindo qualquer preço negociado com o cliente) na confirmação, e uma fatura é criada.",
+      "confirmBill": "Confirmar e Faturar",
+      "creating": "Criando…",
+      "cancel": "Cancelar",
+      "orderAccepted": "Pedido Aceito",
+      "invoiceCreated": "Fatura criada a partir deste pedido de campo.",
+      "error": "Erro",
+      "couldNotLoad": "Não foi possível carregar os pedidos de campo recebidos.",
+      "couldNotAccept": "Não foi possível aceitar o pedido.",
+      "couldNotReject": "Não foi possível rejeitar o pedido.",
+      "couldNotGenerateQr": "Não foi possível gerar o código QR.",
+      "regenerated": "Regenerado",
+      "regeneratedMessage": "Um novo link de pedido de campo foi gerado.",
+      "couldNotRegenerate": "Não foi possível regenerar o link.",
+      "regenerateConfirm": "Regenerar invalida qualquer link/código QR já compartilhado com seus representantes — eles precisarão do novo. Continuar?"
+    },
+    "pricing": {
+      "title": "Preços por Classe de Cliente",
+      "subtitle": "Defina preços negociados por classe de cliente (ex. VAREJISTA, ATACADISTA, VIP) — substitui o preço de tabela para qualquer cliente dessa classe.",
+      "addTitle": "Adicionar / Atualizar um Preço",
+      "searchProduct": "Buscar produto…",
+      "classPlaceholder": "Classe de cliente, ex. VAREJISTA",
+      "pricePlaceholder": "Preço",
+      "save": "Salvar Preço",
+      "saving": "Salvando…",
+      "columnProduct": "Produto",
+      "columnClass": "Classe",
+      "columnListPrice": "Preço de Tabela",
+      "columnPrice": "Preço",
+      "empty": "Nenhum preço por classe de cliente definido ainda.",
+      "loading": "Carregando…",
+      "noProduct": "Nenhum Produto",
+      "noProductMessage": "Selecione um produto primeiro.",
+      "noClass": "Nenhuma Classe de Cliente",
+      "noClassMessage": "Digite uma classe de cliente, ex. VAREJISTA.",
+      "invalidPrice": "Preço Inválido",
+      "invalidPriceMessage": "Digite um preço válido e não negativo.",
+      "priceSet": "Preço Definido",
+      "priceSetMessage": "Preço {{customerClass}} definido para {{productName}}.",
+      "error": "Erro",
+      "couldNotSave": "Não foi possível salvar o preço.",
+      "couldNotLoad": "Não foi possível carregar a lista de preços.",
+      "removed": "Removido",
+      "removedMessage": "Preço removido.",
+      "couldNotRemove": "Não foi possível remover o preço."
+    }
   }
 }

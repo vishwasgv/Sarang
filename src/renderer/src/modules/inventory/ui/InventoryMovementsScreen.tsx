@@ -24,16 +24,17 @@ interface Movement {
 }
 
 // Kept in sync with every movementType string actually written across the app:
-// inventory.service.ts (ADDITION/SALE/ADJUSTMENT/PURCHASE), billing.service.ts
+// inventory.service.ts (ADDITION/SALE/ADJUSTMENT/PURCHASE/DAMAGE), billing.service.ts
 // (RETURN), dispatch.service.ts (DISPATCH_OUT), production-order.service.ts
 // (PRODUCTION_IN), returns.service.ts (RETURN_IN), import.service.ts (ADDITION).
-const MOVEMENT_TYPES = ['ALL', 'ADDITION', 'SALE', 'PURCHASE', 'ADJUSTMENT', 'RETURN', 'RETURN_IN', 'DISPATCH_OUT', 'PRODUCTION_IN']
+const MOVEMENT_TYPES = ['ALL', 'ADDITION', 'SALE', 'PURCHASE', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'RETURN_IN', 'DISPATCH_OUT', 'PRODUCTION_IN']
 
 const MOVEMENT_LABELS: Record<string, string> = {
   ADDITION: 'Stock Added',
   SALE: 'Sale',
   PURCHASE: 'PO Received',
   ADJUSTMENT: 'Adjustment',
+  DAMAGE: 'Damage / Breakage',
   RETURN: 'Sale Return',
   RETURN_IN: 'Return Received',
   DISPATCH_OUT: 'Dispatched',
@@ -45,6 +46,7 @@ const MOVEMENT_VARIANT: Record<string, 'success' | 'info' | 'brand' | 'warning' 
   SALE: 'info',
   PURCHASE: 'brand',
   ADJUSTMENT: 'warning',
+  DAMAGE: 'danger',
   RETURN: 'success',
   RETURN_IN: 'success',
   DISPATCH_OUT: 'danger',

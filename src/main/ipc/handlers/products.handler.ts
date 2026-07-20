@@ -53,6 +53,13 @@ export function register(handle: HandleFn): void {
     return productService.archiveProduct(id as string)
   })
 
+  handle('products:setAvailability', async (payload) => {
+    const deny = await requirePermission('products.update'); if (deny) return deny
+    const p = payload as { id?: string; unavailableUntil?: string | null }
+    const bad = validateId(p?.id, 'product ID'); if (bad) return bad
+    return productService.setProductAvailability(p.id as string, p.unavailableUntil ?? null)
+  })
+
   handle('products:search', async (query) => {
     const deny = await requirePermission('products.view'); if (deny) return deny
     return productService.searchProducts((query as string) ?? '')
@@ -121,5 +128,36 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.archive'); if (deny) return deny
     const bad = validateId(id, 'category ID'); if (bad) return bad
     return categoryService.archiveCategory(id as string)
+  })
+
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Same trust
+  // level as any other price-setting action (products.modifyPricing) — it
+  // changes what a whole class of customers pays, shop-wide.
+  handle('products:resolveCustomerPrice', async (payload) => {
+    const deny = await requirePermission('products.view'); if (deny) return deny
+    const p = payload as { productId?: string; customerId?: string | null }
+    const bad = validateId(p?.productId, 'product ID'); if (bad) return bad
+    return productService.resolveCustomerPriceForUi(p.productId as string, p.customerId ?? null)
+  })
+
+  handle('products:listCustomerClassPrices', async (payload) => {
+    const deny = await requirePermission('products.modifyPricing'); if (deny) return deny
+    const { productId } = (payload ?? {}) as { productId?: string }
+    return productService.listCustomerClassPrices(productId)
+  })
+
+  handle('products:upsertCustomerClassPrice', async (payload) => {
+    const deny = await requirePermission('products.modifyPricing'); if (deny) return deny
+    const p = payload as { productId?: string; customerClass?: string; price?: number }
+    if (!p?.productId || !p?.customerClass?.trim() || typeof p.price !== 'number') {
+      return { success: false, error: { code: 'VAL-001', message: 'productId, customerClass, and price are required.' } }
+    }
+    return productService.upsertCustomerClassPrice({ productId: p.productId, customerClass: p.customerClass.trim(), price: p.price })
+  })
+
+  handle('products:deleteCustomerClassPrice', async (id) => {
+    const deny = await requirePermission('products.modifyPricing'); if (deny) return deny
+    const bad = validateId(id, 'price ID'); if (bad) return bad
+    return productService.deleteCustomerClassPrice(id as string)
   })
 }

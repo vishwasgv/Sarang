@@ -18,10 +18,12 @@ In day-to-day use, brokers live mostly in **Leads** and **Properties** rather th
 - **Listing type** — Sale, Rent, or Lease — which changes the price fields shown (asking price for a sale; monthly rent and security deposit for a rental).
 - Area, floor number/total floors, a brokerage percentage, description, and status (Available, Under Negotiation, Sold, Rented, Off Market).
 
-Expand any listing to see two panels underneath:
+Attach real photos to a listing from the expanded row — they show as a gallery and print on the listing sheet, so you're never handing over a bare description.
 
-- **Inquiries** — a buyer's interest in this specific property, with a status (Shortlisted, Site Visit Scheduled, Negotiation, Deal Closed, Rejected) and an optional follow-up date.
-- **Deals** — a specific buyer-seller transaction against the listing: deal value, brokerage percentage, and an auto-calculated brokerage amount. A deal's status moves from In Progress to either Registered or Fell Through. Once Registered, a **Generate Commission Invoice** button turns your brokerage into a real invoice with 18% GST — Sarang won't let you generate it twice for the same deal.
+Expand any listing to see the panels underneath:
+
+- **Inquiries** — a buyer's interest in this specific property, with a status (Shortlisted, Site Visit Scheduled, Negotiation, Deal Closed, Rejected) and an optional follow-up date. Schedule an actual **site visit** against an inquiry (date, time) and Sarang sends the buyer a WhatsApp reminder a day before — reschedule it and the reminder moves with it. Marking a visit complete captures real feedback text and an interest level (High/Medium/Low/None), not just a status flip.
+- **Deals** — a specific buyer-seller transaction against the listing: deal value, brokerage percentage, and an auto-calculated brokerage amount. If a co-broker is involved, set their name and share percentage and Sarang computes their exact cut of the brokerage automatically — it stays correct even if you later change the deal value or either percentage. A deal's status moves from In Progress to either Registered or Fell Through. Once Registered, a **Generate Commission Invoice** button turns your brokerage into a real invoice with 18% GST — Sarang won't let you generate it twice for the same deal.
 
 Each listing can also be printed as a one-page listing sheet for handing to a prospective buyer, and the KPI bar shows active listings, deals in progress, new inquiries in the last 7 days, and total listings.
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { listROCFilings, createROCFiling, updateROCFiling } from '../roc-filing.service'
+import { listROCFilings, createROCFiling, updateROCFiling, getComplianceRollup } from '../roc-filing.service'
 
 // Regression coverage for the Phase 29 re-audit finding: ROCFiling.govtFee is
 // a Prisma Decimal field, returned unserialized by listROCFilings/
@@ -90,5 +90,119 @@ describe('roc-filing.service — Decimal serialization', () => {
 
     expect(res.success).toBe(true)
     expect(typeof (res as { data: { govtFee: unknown } }).data.govtFee).toBe('number')
+  })
+})
+
+// Phase 58 §2 — Company Secretary: per-company annual-compliance rollup
+// (AGM held? MGT-7/AOC-4/ADT-1 filed?) at a glance.
+
+function makeRollupDb(opts: {
+  filingClientIds?: string[]
+  meetingClientIds?: string[]
+  clients?: Array<{ id: string; customerName: string }>
+  filings?: Array<{ clientId: string; formType: string; status: string }>
+  agmMeetings?: Array<{ clientId: string; meetingDate: Date }>
+} = {}) {
+  const db: Record<string, any> = {
+    rOCFiling: {
+      findMany: vi.fn().mockImplementation(({ where, distinct }: { where?: any; distinct?: string[] }) => {
+        if (distinct) return Promise.resolve((opts.filingClientIds ?? []).map((clientId) => ({ clientId })))
+        return Promise.resolve(opts.filings ?? [])
+      }),
+    },
+    boardMeeting: {
+      findMany: vi.fn().mockImplementation(({ where, distinct }: { where?: any; distinct?: string[] }) => {
+        if (distinct) return Promise.resolve((opts.meetingClientIds ?? []).map((clientId) => ({ clientId })))
+        return Promise.resolve(opts.agmMeetings ?? [])
+      }),
+    },
+    customer: {
+      findMany: vi.fn().mockResolvedValue(opts.clients ?? []),
+    },
+  }
+  return db
+}
+
+describe('roc-filing.service.getComplianceRollup', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns an empty rollup when no client has ever had a ROC filing or board meeting', async () => {
+    const db = makeRollupDb({})
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown[] }).data).toHaveLength(0)
+    expect(db.customer.findMany).not.toHaveBeenCalled()
+  })
+
+  it('reports NOT_STARTED for a form type with no filing row this FY, and correctly reflects a real one', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-1'],
+      meetingClientIds: [],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Pvt Ltd' }],
+      filings: [{ clientId: 'cust-1', formType: 'MGT-7', status: 'FILED' }],
+      agmMeetings: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: any[] }).data[0]
+    expect(row.mgt7Status).toBe('FILED')
+    expect(row.aoc4Status).toBe('NOT_STARTED')
+    expect(row.adt1Status).toBe('NOT_STARTED')
+  })
+
+  it('reports agmHeld true with the real meeting date when an AGM board meeting exists in the FY window', async () => {
+    const agmDate = new Date('2026-08-15T00:00:00Z')
+    const db = makeRollupDb({
+      filingClientIds: [],
+      meetingClientIds: ['cust-1'],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Pvt Ltd' }],
+      filings: [],
+      agmMeetings: [{ clientId: 'cust-1', meetingDate: agmDate }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: any[] }).data[0]
+    expect(row.agmHeld).toBe(true)
+    expect(row.agmDate).toBe(agmDate.toISOString())
+  })
+
+  it('reports agmHeld false when no AGM meeting exists', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-1'],
+      meetingClientIds: [],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Pvt Ltd' }],
+      filings: [],
+      agmMeetings: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: any[] }).data[0].agmHeld).toBe(false)
+  })
+
+  it('rows are sorted by client name', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-z', 'cust-a'],
+      meetingClientIds: [],
+      clients: [{ id: 'cust-z', customerName: 'Zed Ltd' }, { id: 'cust-a', customerName: 'Alpha Ltd' }],
+      filings: [],
+      agmMeetings: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    expect((res as { data: any[] }).data.map((r) => r.clientName)).toEqual(['Alpha Ltd', 'Zed Ltd'])
   })
 })

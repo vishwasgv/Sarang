@@ -1,5 +1,5 @@
 import { requirePermission } from '../permission-guard'
-import { listRetainers, createRetainer, updateRetainer, deleteRetainer, generateInvoiceForRetainer } from '../../services/retainer.service'
+import { listRetainers, createRetainer, updateRetainer, deleteRetainer, generateInvoiceForRetainer, getRetainerHoursUsage } from '../../services/retainer.service'
 import { CreateRetainerSchema, UpdateRetainerSchema, RetainerIdSchema, GenerateRetainerInvoiceSchema } from '../../validation/retainer.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -37,5 +37,12 @@ export function register(handle: HandleFn): void {
     const parsed = GenerateRetainerInvoiceSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateInvoiceForRetainer(parsed.data.id, parsed.data.period)
+  })
+
+  handle('retainer:getHoursUsage', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const payload = raw as { id: string; period?: string }
+    if (!payload?.id) return { success: false, error: { code: 'VAL-001', message: 'Retainer ID is required.' } }
+    return getRetainerHoursUsage(payload.id, payload.period)
   })
 }

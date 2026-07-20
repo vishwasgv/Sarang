@@ -12,6 +12,8 @@ import {
   getMembershipAttendance,
   getExpiringMemberships,
   generateMembershipInvoice,
+  freezeMembership,
+  resumeMembership,
 } from '../../services/membership.service'
 import {
   CreateMembershipPlanSchema,
@@ -19,6 +21,8 @@ import {
   CreateMembershipSchema,
   UpdateMembershipSchema,
   CheckInMemberSchema,
+  FreezeMembershipSchema,
+  ResumeMembershipSchema,
 } from '../../validation/membership.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -100,5 +104,19 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
     const { id } = raw as { id: string }
     return generateMembershipInvoice(id)
+  })
+
+  handle('membership:freeze', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = FreezeMembershipSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return freezeMembership(parsed.data)
+  })
+
+  handle('membership:resume', async (raw) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = ResumeMembershipSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return resumeMembership(parsed.data)
   })
 }

@@ -89,17 +89,49 @@ export function BulkOrderScreen() {
     return () => clearTimeout(t)
   }, [customerQuery, toastError])
 
-  function addProduct(p: Product) {
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Resolved
+  // fresh from the server (never computed client-side) the moment a
+  // product is added, or the whole cart re-priced when the customer
+  // changes — BulkOrderScreen is Distributor's own primary order-entry
+  // screen, where the customer is picked before/alongside the cart, unlike
+  // the generic cart-first BillingScreen/QuotationFormScreen shared by
+  // every vertical (deliberately out of scope for this pass — see
+  // PHASE_58_VERTICAL_COVERAGE_PLAN.md).
+  async function resolvePrice(productId: string, fallback: number): Promise<number> {
+    try {
+      const res = await api.products.resolveCustomerPrice({ productId, customerId: customer?.id ?? null })
+      if (res.success && res.data) return (res.data as { price: number }).price
+    } catch {
+      // fall through to list price — pricing lookup failures must never block adding an item
+    }
+    return fallback
+  }
+
+  async function addProduct(p: Product) {
+    const unitPrice = await resolvePrice(p.id, p.sellingPrice)
     setItems(prev => {
       const existing = prev.find(i => i.productId === p.id)
       if (existing) return prev.map(i => i.productId === p.id ? { ...i, quantity: i.quantity + 1 } : i)
       return [...prev, {
         productId: p.id, productName: p.productName, sku: p.sku, unit: p.unit,
-        quantity: 1, unitPrice: p.sellingPrice, taxRate: p.taxRate,
+        quantity: 1, unitPrice, taxRate: p.taxRate,
         availableQty: p.inventory?.quantity ?? 0
       }]
     })
     setQuery(''); setResults([])
+  }
+
+  // Re-price every line already in the cart when the customer changes (or
+  // is cleared back to list price) — a rep might add items before picking
+  // the customer, or switch customers mid-order.
+  async function repriceCartForCustomer(customerId: string | null) {
+    if (items.length === 0) return
+    const repriced = await Promise.all(items.map(async (i) => {
+      const res = await api.products.resolveCustomerPrice({ productId: i.productId, customerId })
+      const unitPrice = res.success && res.data ? (res.data as { price: number }).price : i.unitPrice
+      return { ...i, unitPrice }
+    }))
+    setItems(repriced)
   }
 
   function updateQty(productId: string, qty: number) {
@@ -291,7 +323,7 @@ export function BulkOrderScreen() {
                     <User size={14} className="text-brand shrink-0" />
                     <span className="text-sm text-dark truncate">{customer.customerName}</span>
                   </div>
-                  <button onClick={() => { setCustomer(null); if (paymentMethod === 'CREDIT') setPaymentMethod('CASH') }}
+                  <button onClick={() => { setCustomer(null); if (paymentMethod === 'CREDIT') setPaymentMethod('CASH'); void repriceCartForCustomer(null) }}
                     className="text-slate-400 hover:text-danger transition-colors shrink-0">
                     <X size={14} />
                   </button>
@@ -309,7 +341,7 @@ export function BulkOrderScreen() {
                     <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
                       {customerResults.map(c => (
                         <button key={c.id}
-                          onClick={() => { setCustomer(c); setCustomerQuery(''); setCustomerResults([]) }}
+                          onClick={() => { setCustomer(c); setCustomerQuery(''); setCustomerResults([]); void repriceCartForCustomer(c.id) }}
                           className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-brand/5 dark:hover:bg-brand/10 text-sm border-b border-slate-50 dark:border-slate-800 last:border-0">
                           <span className="text-dark">{c.customerName}</span>
                           {c.phone && <span className="text-xs text-slate-400">{c.phone}</span>}

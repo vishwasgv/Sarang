@@ -40,6 +40,7 @@ import { register as registerMetalRate } from './handlers/metal-rate.handler'
 import { register as registerMetalExchange } from './handlers/metal-exchange.handler'
 import { register as registerAi } from './handlers/ai.handler'
 import { register as registerDrawingRevision } from './handlers/drawing-revision.handler'
+import { register as registerMarketingCampaign } from './handlers/marketing-campaign.handler'
 import { register as registerSiteVisit } from './handlers/site-visit.handler'
 import { register as registerQuotations } from './handlers/quotation.handler'
 import { register as registerCreditNotes } from './handlers/credit-note.handler'
@@ -62,6 +63,8 @@ import { register as registerLabTestOrders } from './handlers/lab-test-order.han
 import { register as registerBloodBank } from './handlers/blood-bank.handler'
 // Phase 25 — Dental Clinic
 import { register as registerToothRecords } from './handlers/tooth-record.handler'
+// Phase 58 §2 — Beauty Salon
+import { register as registerProviderSkills } from './handlers/service-provider-skill.handler'
 import { register as registerTreatmentPlans } from './handlers/treatment-plan.handler'
 import { register as registerRecallRecords } from './handlers/recall-record.handler'
 // Phase 26 — Physiotherapy Clinic
@@ -79,6 +82,7 @@ import { register as registerHearing } from './handlers/hearing.handler'
 import { register as registerTimeEntry } from './handlers/time-entry.handler'
 // Phase 29 — CA + CS
 import { register as registerComplianceEvent } from './handlers/compliance-event.handler'
+import { register as registerClientDocumentChecklist } from './handlers/client-document-checklist.handler'
 import { register as registerComplianceTask } from './handlers/compliance-task.handler'
 import { register as registerEngagement } from './handlers/engagement.handler'
 import { register as registerROCFiling } from './handlers/roc-filing.handler'
@@ -97,15 +101,21 @@ import { register as registerCoachingBatch } from './handlers/coaching-batch.han
 import { register as registerEnrollment } from './handlers/coaching-batch-enrollment.handler'
 import { register as registerCoachingAttendance } from './handlers/coaching-batch-attendance.handler'
 import { register as registerCoachingFee } from './handlers/coaching-fee.handler'
+import { register as registerCoachingSyllabus } from './handlers/coaching-syllabus.handler'
+import { register as registerCoachingProgress } from './handlers/coaching-progress.handler'
 import { register as registerPerformance } from './handlers/performance.handler'
 import { register as registerStudentTestScore } from './handlers/student-test-score.handler'
 // Phase 32 — Photography, Event Management, Real Estate
 import { registerShootBooking } from './handlers/shoot-booking.handler'
 import { registerDeliveryTracker } from './handlers/delivery-tracker.handler'
+import { registerShootChecklist } from './handlers/shoot-checklist.handler'
+import { registerShootAddOn } from './handlers/shoot-addon.handler'
 import { registerEventBooking } from './handlers/event-booking.handler'
 import { registerEventVendorBooking } from './handlers/event-vendor-booking.handler'
+import { registerEventRunOfShow } from './handlers/event-run-of-show.handler'
 import { registerProperty } from './handlers/property.handler'
 import { registerPropertyInquiry } from './handlers/property-inquiry.handler'
+import { registerPropertySiteVisit } from './handlers/property-site-visit.handler'
 import { registerPropertyDeal } from './handlers/property-deal.handler'
 // Phase 33 — Car Service, Tailor Boutique, Pest Control
 import { registerCarJobCard } from './handlers/car-job-card.handler'
@@ -116,6 +126,7 @@ import { registerPestJobSheet } from './handlers/pest-job-sheet.handler'
 // Phase 34 — Placement Agency
 import { registerCandidate } from './handlers/candidate.handler'
 import { registerJobOrder } from './handlers/job-order.handler'
+import { registerInterviewRound } from './handlers/interview-round.handler'
 import { registerPlacement } from './handlers/placement.handler'
 // Phase 37 — Logistics & Supply Chain
 import { registerLogisticsVehicleHandlers } from './handlers/logistics-vehicle.handler'
@@ -126,6 +137,7 @@ import { registerLogisticsChallanHandlers } from './handlers/logistics-challan.h
 import { registerLogisticsFreightHandlers } from './handlers/logistics-freight.handler'
 import { registerLogisticsAnalyticsHandlers } from './handlers/logistics-analytics.handler'
 import { register as registerKitchenDisplay } from './handlers/kitchen-display.handler'
+import { register as registerRepairTickets } from './handlers/repair-ticket.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -183,6 +195,7 @@ export function registerAllIpcHandlers(): void {
   registerMetalRate(h)
   registerMetalExchange(h)
   registerDrawingRevision(h)
+  registerMarketingCampaign(h)
   registerSiteVisit(h)
   registerAi(h)
   registerQuotations(h)
@@ -204,6 +217,8 @@ export function registerAllIpcHandlers(): void {
   registerToothRecords(h)
   registerTreatmentPlans(h)
   registerRecallRecords(h)
+  // Phase 58 §2 — Beauty Salon
+  registerProviderSkills(h)
   // Phase 26 — Physio
   registerTreatmentPhases(h)
   registerExercisePrograms(h)
@@ -218,6 +233,7 @@ export function registerAllIpcHandlers(): void {
   registerTimeEntry(h)
   // Phase 29 — CA + CS
   registerComplianceEvent(h)
+  registerClientDocumentChecklist(h)
   registerComplianceTask(h)
   registerEngagement(h)
   registerROCFiling(h)
@@ -236,15 +252,21 @@ export function registerAllIpcHandlers(): void {
   registerEnrollment(h)
   registerCoachingAttendance(h)
   registerCoachingFee(h)
+  registerCoachingSyllabus(h)
+  registerCoachingProgress(h)
   registerPerformance(h)
   registerStudentTestScore(h)
   // Phase 32 — Photography, Event Management, Real Estate
   registerShootBooking(h)
   registerDeliveryTracker(h)
+  registerShootChecklist(h)
+  registerShootAddOn(h)
   registerEventBooking(h)
   registerEventVendorBooking(h)
+  registerEventRunOfShow(h)
   registerProperty(h)
   registerPropertyInquiry(h)
+  registerPropertySiteVisit(h)
   registerPropertyDeal(h)
   // Phase 33 — Car Service, Tailor Boutique, Pest Control
   registerCarJobCard(h)
@@ -255,6 +277,7 @@ export function registerAllIpcHandlers(): void {
   // Phase 34 — Placement Agency
   registerCandidate(h)
   registerJobOrder(h)
+  registerInterviewRound(h)
   registerPlacement(h)
   // Phase 37 — Logistics & Supply Chain
   registerLogisticsVehicleHandlers(h)
@@ -269,6 +292,8 @@ export function registerAllIpcHandlers(): void {
   // Phase 51 — Blood Bank
   registerBloodBank(h)
   registerKitchenDisplay(h)
+  // Phase 58 §2 — Electronics repair/RMA
+  registerRepairTickets(h)
 
   console.log('[IPC] All handlers registered')
 }

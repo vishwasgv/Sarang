@@ -47,12 +47,17 @@ const api: IpcChannels = {
     create: (p) => invoke('products:create', p),
     update: (p) => invoke('products:update', p),
     archive: (id) => invoke('products:archive', id),
+    setAvailability: (p) => invoke('products:setAvailability', p),
     search: (q) => invoke('products:search', q),
     getByBarcode: (barcode) => invoke('products:getByBarcode', barcode),
     generateBarcode: (p) => invoke('products:generateBarcode', p),
     bulkGenerateMissingBarcodes: () => invoke('products:bulkGenerateMissingBarcodes'),
     getByScannedBarcode: (p) => invoke('products:getByScannedBarcode', p),
-    generateWeightLabel: (p) => invoke('products:generateWeightLabel', p)
+    generateWeightLabel: (p) => invoke('products:generateWeightLabel', p),
+    resolveCustomerPrice: (p) => invoke('products:resolveCustomerPrice', p),
+    listCustomerClassPrices: (p) => invoke('products:listCustomerClassPrices', p),
+    upsertCustomerClassPrice: (p) => invoke('products:upsertCustomerClassPrice', p),
+    deleteCustomerClassPrice: (p) => invoke('products:deleteCustomerClassPrice', p)
   },
   categories: {
     list: () => invoke('categories:list'),
@@ -94,14 +99,23 @@ const api: IpcChannels = {
     create: (p) => invoke('purchaseOrders:create', p),
     approve: (id) => invoke('purchaseOrders:approve', id),
     receive: (id) => invoke('purchaseOrders:receive', id),
-    cancel: (p) => invoke('purchaseOrders:cancel', p)
+    cancel: (p) => invoke('purchaseOrders:cancel', p),
+    generateReorderDraftPOs: () => invoke('purchaseOrders:generateReorderDraftPOs')
   },
   billing: {
     createInvoice: (p) => invoke('billing:createInvoice', p),
     getInvoice: (id) => invoke('billing:getInvoice', id),
     listInvoices: (p) => invoke('billing:listInvoices', p),
     cancelInvoice: (p) => invoke('billing:cancelInvoice', p),
-    generateInvoiceNumber: () => invoke('billing:generateInvoiceNumber')
+    generateInvoiceNumber: () => invoke('billing:generateInvoiceNumber'),
+    getOrCreateTipProduct: () => invoke('billing:getOrCreateTipProduct'),
+    getFrequentlySoldProducts: (p) => invoke('billing:getFrequentlySoldProducts', p)
+  },
+  heldSale: {
+    hold: (p) => invoke('heldSale:hold', p),
+    list: () => invoke('heldSale:list'),
+    resume: (p) => invoke('heldSale:resume', p),
+    delete: (p) => invoke('heldSale:delete', p)
   },
   payments: {
     record: (p) => invoke('payments:record', p),
@@ -155,7 +169,19 @@ const api: IpcChannels = {
     bloodStock: () => invoke('reports:bloodStock'),
     jewellery: (p) => invoke('reports:jewellery', p),
     projects: (p) => invoke('reports:projects', p),
+    serviceProjects: (p) => invoke('reports:serviceProjects', p),
     jobCards: (p) => invoke('reports:jobCards', p),
+    carJobCards: (p) => invoke('reports:carJobCards', p),
+    tailoringOrders: (p) => invoke('reports:tailoringOrders', p),
+    pestContracts: (p) => invoke('reports:pestContracts', p),
+    realEstatePipeline: (p) => invoke('reports:realEstatePipeline', p),
+    retainers: (p) => invoke('reports:retainers', p),
+    shootBookings: (p) => invoke('reports:shootBookings', p),
+    eventBookings: (p) => invoke('reports:eventBookings', p),
+    placements: (p) => invoke('reports:placements', p),
+    drawingRegister: (p) => invoke('reports:drawingRegister', p),
+    siteVisitLog: (p) => invoke('reports:siteVisitLog', p),
+    prescriptionDrugSales: (p) => invoke('reports:prescriptionDrugSales', p),
     logistics: (p) => invoke('reports:logistics', p),
     attendance: (p) => invoke('reports:attendance', p),
     production: (p) => invoke('reports:production', p),
@@ -248,6 +274,7 @@ const api: IpcChannels = {
     listTables: () => invoke('restaurant:listTables'),
     createTable: (p) => invoke('restaurant:createTable', p),
     updateTableStatus: (p) => invoke('restaurant:updateTableStatus', p),
+    assignWaiter: (p) => invoke('restaurant:assignWaiter', p),
     deleteTable: (p) => invoke('restaurant:deleteTable', p),
     listKOTs: (p) => invoke('restaurant:listKOTs', p),
     createKOT: (p) => invoke('restaurant:createKOT', p),
@@ -272,6 +299,21 @@ const api: IpcChannels = {
     open: (p) => invoke('kitchenDisplay:open', p),
     close: () => invoke('kitchenDisplay:close'),
     getStatus: () => invoke('kitchenDisplay:getStatus'),
+  },
+  distributor: {
+    getFieldOrderStatus: () => invoke('distributor:getFieldOrderStatus'),
+    regenerateFieldOrderToken: () => invoke('distributor:regenerateFieldOrderToken'),
+    generateFieldOrderQr: () => invoke('distributor:generateFieldOrderQr'),
+    listFieldOrderRequests: (p) => invoke('distributor:listFieldOrderRequests', p),
+    acceptFieldOrderRequest: (p) => invoke('distributor:acceptFieldOrderRequest', p),
+    rejectFieldOrderRequest: (p) => invoke('distributor:rejectFieldOrderRequest', p),
+  },
+  repairTickets: {
+    create: (p) => invoke('repairTickets:create', p),
+    list: (p) => invoke('repairTickets:list', p),
+    get: (p) => invoke('repairTickets:get', p),
+    serviceHistory: (p) => invoke('repairTickets:serviceHistory', p),
+    updateStatus: (p) => invoke('repairTickets:updateStatus', p),
   },
   returns: {
     create: (p) => invoke('returns:create', p),
@@ -299,6 +341,8 @@ const api: IpcChannels = {
     delete: (p) => invoke('variants:delete', p),
     adjustStock: (p) => invoke('variants:adjustStock', p),
     summary: (p) => invoke('variants:summary', p),
+    generateBarcode: (p) => invoke('variants:generateBarcode', p),
+    bulkGenerateMissingBarcodes: (p) => invoke('variants:bulkGenerateMissingBarcodes', p),
   },
   // Phase 3 — Manufacturing Lite
   rawMaterials: {
@@ -308,6 +352,8 @@ const api: IpcChannels = {
     delete: (p) => invoke('rawMaterials:delete', p),
     adjustStock: (p) => invoke('rawMaterials:adjustStock', p),
     movements: (p) => invoke('rawMaterials:movements', p),
+    receiveBatch: (p) => invoke('rawMaterials:receiveBatch', p),
+    listBatches: (p) => invoke('rawMaterials:listBatches', p),
   },
   bom: {
     list: (p) => invoke('bom:list', p),
@@ -340,6 +386,7 @@ const api: IpcChannels = {
     create: (p) => invoke('projects:create', p),
     update: (p) => invoke('projects:update', p),
     delete: (p) => invoke('projects:delete', p),
+    generateInvoice: (p) => invoke('projects:generateInvoice', p),
     tasks: {
       list: (p) => invoke('projects:tasks:list', p),
       create: (p) => invoke('projects:tasks:create', p),
@@ -352,12 +399,17 @@ const api: IpcChannels = {
     create: (p) => invoke('tickets:create', p),
     update: (p) => invoke('tickets:update', p),
     delete: (p) => invoke('tickets:delete', p),
+    generateInvoice: (p) => invoke('tickets:generateInvoice', p),
   },
   jobCards: {
     list: (p) => invoke('jobCards:list', p),
     create: (p) => invoke('jobCards:create', p),
     update: (p) => invoke('jobCards:update', p),
     delete: (p) => invoke('jobCards:delete', p),
+    generateInvoice: (p) => invoke('jobCards:generateInvoice', p),
+    listParts: (p) => invoke('jobCards:listParts', p),
+    addPart: (p) => invoke('jobCards:addPart', p),
+    removePart: (p) => invoke('jobCards:removePart', p),
   },
   workLogs: {
     list: (p) => invoke('workLogs:list', p),
@@ -408,10 +460,12 @@ const api: IpcChannels = {
     extendBooking: (p) => invoke('rental:extendBooking', p),
     cancelBooking: (p) => invoke('rental:cancelBooking', p),
     generateInvoice: (p) => invoke('rental:generateInvoice', p),
+    createNextCycle: (p) => invoke('rental:createNextCycle', p),
     listUnits: (p) => invoke('rental:listUnits', p),
     createUnit: (p) => invoke('rental:createUnit', p),
     updateUnit: (p) => invoke('rental:updateUnit', p),
     deleteUnit: (p) => invoke('rental:deleteUnit', p),
+    markUnitServiced: (p) => invoke('rental:markUnitServiced', p),
   },
   hotel: {
     listRooms: (p) => invoke('hotel:listRooms', p),
@@ -430,8 +484,18 @@ const api: IpcChannels = {
     addExtraCharge: (p) => invoke('hotel:addExtraCharge', p),
     removeExtraCharge: (p) => invoke('hotel:removeExtraCharge', p),
     generateInvoice: (p) => invoke('hotel:generateInvoice', p),
+    generateGroupInvoice: (p) => invoke('hotel:generateGroupInvoice', p),
     occupancyReport: () => invoke('hotel:occupancyReport'),
     guestRegister: (p) => invoke('hotel:guestRegister', p),
+    listRateCalendar: () => invoke('hotel:listRateCalendar'),
+    createRateCalendarEntry: (p) => invoke('hotel:createRateCalendarEntry', p),
+    deleteRateCalendarEntry: (p) => invoke('hotel:deleteRateCalendarEntry', p),
+    listHousekeepingTasks: (p) => invoke('hotel:listHousekeepingTasks', p),
+    createHousekeepingTask: (p) => invoke('hotel:createHousekeepingTask', p),
+    assignHousekeepingTask: (p) => invoke('hotel:assignHousekeepingTask', p),
+    updateHousekeepingTaskStatus: (p) => invoke('hotel:updateHousekeepingTaskStatus', p),
+    deleteHousekeepingTask: (p) => invoke('hotel:deleteHousekeepingTask', p),
+    getCustomerStayHistory: (p) => invoke('hotel:getCustomerStayHistory', p),
   },
   metalRate: {
     list: () => invoke('metalRate:list'),
@@ -450,12 +514,33 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('drawingRevision:create', p),
     update: (p: unknown) => invoke('drawingRevision:update', p),
     delete: (p: unknown) => invoke('drawingRevision:delete', p),
+    issueNewRevision: (p: unknown) => invoke('drawingRevision:issueNewRevision', p),
+    getHistory: (p: unknown) => invoke('drawingRevision:getHistory', p),
   },
   siteVisit: {
     list: (p: unknown) => invoke('siteVisit:list', p),
     create: (p: unknown) => invoke('siteVisit:create', p),
     update: (p: unknown) => invoke('siteVisit:update', p),
     delete: (p: unknown) => invoke('siteVisit:delete', p),
+  },
+  materialTestResult: {
+    list: (p: unknown) => invoke('materialTestResult:list', p),
+    add: (p: unknown) => invoke('materialTestResult:add', p),
+    update: (p: unknown) => invoke('materialTestResult:update', p),
+    delete: (p: unknown) => invoke('materialTestResult:delete', p),
+  },
+  campaignPerformance: {
+    list: (p: unknown) => invoke('campaignPerformance:list', p),
+    add: (p: unknown) => invoke('campaignPerformance:add', p),
+    update: (p: unknown) => invoke('campaignPerformance:update', p),
+    delete: (p: unknown) => invoke('campaignPerformance:delete', p),
+    summary: (p: unknown) => invoke('campaignPerformance:summary', p),
+  },
+  contentCalendar: {
+    list: (p: unknown) => invoke('contentCalendar:list', p),
+    create: (p: unknown) => invoke('contentCalendar:create', p),
+    update: (p: unknown) => invoke('contentCalendar:update', p),
+    delete: (p: unknown) => invoke('contentCalendar:delete', p),
   },
   quotations: {
     list: (p?: unknown) => invoke('quotations:list', p),
@@ -533,6 +618,9 @@ const api: IpcChannels = {
     finalize: (p: unknown) => invoke('visitNotes:finalize', p),
     referToProvider: (p: unknown) => invoke('visitNotes:referToProvider', p),
     listReferrals: (p: unknown) => invoke('visitNotes:listReferrals', p),
+    listPrescriptionItems: (p: unknown) => invoke('visitNotes:listPrescriptionItems', p),
+    savePrescriptionItems: (p: unknown) => invoke('visitNotes:savePrescriptionItems', p),
+    getVitalsTrend: (p: unknown) => invoke('visitNotes:getVitalsTrend', p),
   },
   normalRange: {
     list: (p?: unknown) => invoke('normalRange:list', p),
@@ -565,6 +653,8 @@ const api: IpcChannels = {
     cancel: (p: unknown) => invoke('labTestOrders:cancel', p),
     delete: (p: unknown) => invoke('labTestOrders:delete', p),
     generateInvoice: (p: unknown) => invoke('labTestOrders:generateInvoice', p),
+    acknowledgeCritical: (p: unknown) => invoke('labTestOrders:acknowledgeCritical', p),
+    listPendingCriticalEscalations: () => invoke('labTestOrders:listPendingCriticalEscalations'),
   },
   // Phase 51 — Blood Bank
   bloodBank: {
@@ -591,6 +681,12 @@ const api: IpcChannels = {
   toothRecord: {
     getChart: (p: unknown) => invoke('toothRecord:getChart', p),
     upsert: (p: unknown) => invoke('toothRecord:upsert', p),
+    getHistory: (p: unknown) => invoke('toothRecord:getHistory', p),
+  },
+  providerSkills: {
+    listForEmployee: (p: unknown) => invoke('providerSkills:listForEmployee', p),
+    set: (p: unknown) => invoke('providerSkills:set', p),
+    listQualified: (p: unknown) => invoke('providerSkills:listQualified', p),
   },
   treatmentPlan: {
     list: (p: unknown) => invoke('treatmentPlan:list', p),
@@ -643,6 +739,7 @@ const api: IpcChannels = {
     deduct: (p: unknown) => invoke('sessionPack:deduct', p),
     logs: (p: unknown) => invoke('sessionPack:logs', p),
     generateInvoice: (p: unknown) => invoke('sessionPack:generateInvoice', p),
+    assignTrainer: (p: unknown) => invoke('sessionPack:assignTrainer', p),
   },
   // Phase 27 — Salon, Gym/Studio, Driving School
   staffCommission: {
@@ -667,6 +764,8 @@ const api: IpcChannels = {
     attendance: (p: unknown) => invoke('membership:attendance', p),
     expiring: (p?: unknown) => invoke('membership:expiring', p),
     generateInvoice: (p: unknown) => invoke('membership:generateInvoice', p),
+    freeze: (p: unknown) => invoke('membership:freeze', p),
+    resume: (p: unknown) => invoke('membership:resume', p),
   },
   batchClass: {
     list: (p?: unknown) => invoke('batchClass:list', p),
@@ -687,6 +786,8 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('drivingVehicle:create', p),
     update: (p: unknown) => invoke('drivingVehicle:update', p),
     delete: (p: unknown) => invoke('drivingVehicle:delete', p),
+    logMaintenance: (p: unknown) => invoke('drivingVehicle:logMaintenance', p),
+    listMaintenanceLogs: (p: unknown) => invoke('drivingVehicle:listMaintenanceLogs', p),
   },
   drivingSession: {
     list: (p?: unknown) => invoke('drivingSession:list', p),
@@ -696,6 +797,7 @@ const api: IpcChannels = {
     listTests: (p?: unknown) => invoke('drivingSession:listTests', p),
     createTest: (p: unknown) => invoke('drivingSession:createTest', p),
     updateTest: (p: unknown) => invoke('drivingSession:updateTest', p),
+    instructorPassRates: () => invoke('drivingSession:instructorPassRates'),
   },
   drivingPackage: {
     list: (p?: unknown) => invoke('drivingPackage:list', p),
@@ -716,6 +818,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('legalCase:create', p),
     update: (p: unknown) => invoke('legalCase:update', p),
     delete: (p: unknown) => invoke('legalCase:delete', p),
+    checkConflict: (p: unknown) => invoke('legalCase:checkConflict', p),
   },
   hearing: {
     list: (p?: unknown) => invoke('hearing:list', p),
@@ -733,6 +836,14 @@ const api: IpcChannels = {
   },
   complianceEvent: {
     list: (p?: unknown) => invoke('complianceEvent:list', p),
+    setClientAgmDate: (p: unknown) => invoke('complianceEvent:setClientAgmDate', p),
+  },
+  clientDocumentChecklist: {
+    list: (p: unknown) => invoke('clientDocumentChecklist:list', p),
+    add: (p: unknown) => invoke('clientDocumentChecklist:add', p),
+    seedStandard: (p: unknown) => invoke('clientDocumentChecklist:seedStandard', p),
+    update: (p: unknown) => invoke('clientDocumentChecklist:update', p),
+    remove: (p: unknown) => invoke('clientDocumentChecklist:remove', p),
   },
   complianceTask: {
     list: (p?: unknown) => invoke('complianceTask:list', p),
@@ -752,6 +863,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('rocFiling:create', p),
     update: (p: unknown) => invoke('rocFiling:update', p),
     delete: (p: unknown) => invoke('rocFiling:delete', p),
+    complianceRollup: (p: unknown) => invoke('rocFiling:complianceRollup', p),
   },
   boardMeeting: {
     list: (p?: unknown) => invoke('boardMeeting:list', p),
@@ -792,6 +904,7 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('retainer:update', p),
     delete: (p: unknown) => invoke('retainer:delete', p),
     generateInvoice: (p: unknown) => invoke('retainer:generateInvoice', p),
+    getHoursUsage: (p: unknown) => invoke('retainer:getHoursUsage', p),
   },
   issue: {
     list: (p?: unknown) => invoke('issue:list', p),
@@ -799,11 +912,24 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('issue:update', p),
     delete: (p: unknown) => invoke('issue:delete', p),
   },
+  issueComment: {
+    list: (p: unknown) => invoke('issueComment:list', p),
+    add: (p: unknown) => invoke('issueComment:add', p),
+    delete: (p: unknown) => invoke('issueComment:delete', p),
+  },
+  issueSubtask: {
+    list: (p: unknown) => invoke('issueSubtask:list', p),
+    create: (p: unknown) => invoke('issueSubtask:create', p),
+    toggle: (p: unknown) => invoke('issueSubtask:toggle', p),
+    delete: (p: unknown) => invoke('issueSubtask:delete', p),
+  },
   sprint: {
     list: (p: unknown) => invoke('sprint:list', p),
     create: (p: unknown) => invoke('sprint:create', p),
     update: (p: unknown) => invoke('sprint:update', p),
     delete: (p: unknown) => invoke('sprint:delete', p),
+    burndown: (p: unknown) => invoke('sprint:burndown', p),
+    velocity: (p: unknown) => invoke('sprint:velocity', p),
   },
   // Phase 31 — Coaching Institute
   student: {
@@ -826,6 +952,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('enrollment:create', p),
     update: (p: unknown) => invoke('enrollment:update', p),
     delete: (p: unknown) => invoke('enrollment:delete', p),
+    promoteFromWaitlist: (p: unknown) => invoke('enrollment:promoteFromWaitlist', p),
   },
   coachingAttendance: {
     get: (p: unknown) => invoke('coachingAttendance:get', p),
@@ -837,6 +964,16 @@ const api: IpcChannels = {
     list: (p?: unknown) => invoke('coachingFee:list', p),
     kpis: (p: unknown) => invoke('coachingFee:kpis', p),
     update: (p: unknown) => invoke('coachingFee:update', p),
+  },
+  syllabusTopic: {
+    list: (p: unknown) => invoke('syllabusTopic:list', p),
+    create: (p: unknown) => invoke('syllabusTopic:create', p),
+    update: (p: unknown) => invoke('syllabusTopic:update', p),
+    delete: (p: unknown) => invoke('syllabusTopic:delete', p),
+    progress: (p: unknown) => invoke('syllabusTopic:progress', p),
+  },
+  coachingProgress: {
+    getReport: (p: unknown) => invoke('coachingProgress:getReport', p),
   },
   performance: {
     list: (p?: unknown) => invoke('performance:list', p),
@@ -864,6 +1001,18 @@ const api: IpcChannels = {
     get: (p: unknown) => invoke('deliveryTracker:get', p),
     upsert: (p: unknown) => invoke('deliveryTracker:upsert', p),
   },
+  shootChecklist: {
+    list: (p: unknown) => invoke('shootChecklist:list', p),
+    add: (p: unknown) => invoke('shootChecklist:add', p),
+    toggle: (p: unknown) => invoke('shootChecklist:toggle', p),
+    delete: (p: unknown) => invoke('shootChecklist:delete', p),
+  },
+  shootAddOn: {
+    list: (p: unknown) => invoke('shootAddOn:list', p),
+    add: (p: unknown) => invoke('shootAddOn:add', p),
+    delete: (p: unknown) => invoke('shootAddOn:delete', p),
+    total: (p: unknown) => invoke('shootAddOn:total', p),
+  },
   eventBooking: {
     list: (p?: unknown) => invoke('eventBooking:list', p),
     create: (p: unknown) => invoke('eventBooking:create', p),
@@ -878,6 +1027,12 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('eventVendorBooking:update', p),
     delete: (p: unknown) => invoke('eventVendorBooking:delete', p),
   },
+  eventRunOfShow: {
+    list: (p: unknown) => invoke('eventRunOfShow:list', p),
+    create: (p: unknown) => invoke('eventRunOfShow:create', p),
+    update: (p: unknown) => invoke('eventRunOfShow:update', p),
+    delete: (p: unknown) => invoke('eventRunOfShow:delete', p),
+  },
   property: {
     list: (p?: unknown) => invoke('property:list', p),
     get: (p: unknown) => invoke('property:get', p),
@@ -891,6 +1046,12 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('propertyInquiry:create', p),
     update: (p: unknown) => invoke('propertyInquiry:update', p),
     delete: (p: unknown) => invoke('propertyInquiry:delete', p),
+  },
+  propertySiteVisit: {
+    list: (p: unknown) => invoke('propertySiteVisit:list', p),
+    schedule: (p: unknown) => invoke('propertySiteVisit:schedule', p),
+    update: (p: unknown) => invoke('propertySiteVisit:update', p),
+    delete: (p: unknown) => invoke('propertySiteVisit:delete', p),
   },
   propertyDeal: {
     list: (p?: unknown) => invoke('propertyDeal:list', p),
@@ -908,6 +1069,9 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('carJobCard:delete', p),
     generateInvoice: (p: unknown) => invoke('carJobCard:generateInvoice', p),
     kpis: () => invoke('carJobCard:kpis'),
+    vehicleHistory: (p: unknown) => invoke('carJobCard:vehicleHistory', p),
+    vehiclesDueForService: (p?: unknown) => invoke('carJobCard:vehiclesDueForService', p),
+    scheduleServiceReminder: (p: unknown) => invoke('carJobCard:scheduleServiceReminder', p),
   },
   measurementRecord: {
     list: (p: unknown) => invoke('measurementRecord:list', p),
@@ -924,6 +1088,9 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('tailoringOrder:delete', p),
     generateInvoice: (p: unknown) => invoke('tailoringOrder:generateInvoice', p),
     kpis: () => invoke('tailoringOrder:kpis'),
+    scheduleTrialAppointment: (p: unknown) => invoke('tailoringOrder:scheduleTrialAppointment', p),
+    setFabric: (p: unknown) => invoke('tailoringOrder:setFabric', p),
+    clearFabric: (p: unknown) => invoke('tailoringOrder:clearFabric', p),
   },
   pestContract: {
     list: (p?: unknown) => invoke('pestContract:list', p),
@@ -940,6 +1107,9 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('pestJobSheet:update', p),
     delete: (p: unknown) => invoke('pestJobSheet:delete', p),
     generateInvoice: (p: unknown) => invoke('pestJobSheet:generateInvoice', p),
+    listPesticides: (p: unknown) => invoke('pestJobSheet:listPesticides', p),
+    addPesticide: (p: unknown) => invoke('pestJobSheet:addPesticide', p),
+    removePesticide: (p: unknown) => invoke('pestJobSheet:removePesticide', p),
   },
   // Phase 34 — Placement Agency
   candidate: {
@@ -955,6 +1125,12 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('jobOrder:create', p),
     update: (p: unknown) => invoke('jobOrder:update', p),
     delete: (p: unknown) => invoke('jobOrder:delete', p),
+  },
+  interviewRound: {
+    list: (p?: unknown) => invoke('interviewRound:list', p),
+    create: (p: unknown) => invoke('interviewRound:create', p),
+    update: (p: unknown) => invoke('interviewRound:update', p),
+    delete: (p: unknown) => invoke('interviewRound:delete', p),
   },
   placement: {
     list: (p?: unknown) => invoke('placement:list', p),
@@ -987,6 +1163,9 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('logisticsShipment:update', p),
     updateStatus: (p: unknown) => invoke('logisticsShipment:updateStatus', p),
     delete: (p: unknown) => invoke('logisticsShipment:delete', p),
+    addStop: (p: unknown) => invoke('logisticsShipment:addStop', p),
+    updateStopStatus: (p: unknown) => invoke('logisticsShipment:updateStopStatus', p),
+    deleteStop: (p: unknown) => invoke('logisticsShipment:deleteStop', p),
   },
   logisticsGrn: {
     list: (p?: unknown) => invoke('logisticsGrn:list', p),

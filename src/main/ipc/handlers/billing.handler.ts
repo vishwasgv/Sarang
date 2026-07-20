@@ -3,6 +3,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { billingService } from '../../services/billing.service'
 import { printService } from '../../services/print.service'
+import { heldSaleService } from '../../services/held-sale.service'
 import { formatAmount as formatAmountLocaleAware } from '../../services/currency.service'
 import { requirePermission, requireSession, hasPermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
@@ -10,6 +11,7 @@ import { logAction } from '../../services/audit.service'
 import { getPrisma } from '../../database/db'
 import { CreateInvoiceSchema, CancelInvoiceSchema } from '../../validation/billing.validation'
 import { PrintLabelsSchema } from '../../validation/product.validation'
+import { HoldSaleSchema, HeldSaleIdSchema } from '../../validation/held-sale.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -24,6 +26,46 @@ export function register(handle: HandleFn): void {
   handle('billing:generateInvoiceNumber', async () => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
     return billingService.generateInvoiceNumber()
+  })
+
+  handle('billing:getOrCreateTipProduct', async () => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    return billingService.getOrCreateTipProduct()
+  })
+
+  handle('billing:getFrequentlySoldProducts', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const { limit } = (payload ?? {}) as { limit?: number }
+    return billingService.getFrequentlySoldProducts(limit)
+  })
+
+  handle('heldSale:hold', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = HoldSaleSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return heldSaleService.holdSale({ ...parsed.data, createdById: session?.userId })
+  })
+
+  handle('heldSale:list', async () => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    return heldSaleService.listHeldSales()
+  })
+
+  handle('heldSale:resume', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = HeldSaleIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return heldSaleService.resumeSale(parsed.data.id, session?.userId)
+  })
+
+  handle('heldSale:delete', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = HeldSaleIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return heldSaleService.deleteHeldSale(parsed.data.id, session?.userId)
   })
 
   handle('billing:createInvoice', async (payload) => {
@@ -230,11 +272,29 @@ export function register(handle: HandleFn): void {
     if (missing.length > 0) {
       return { ok: false, res: { success: false, error: { code: 'PRD-001', message: 'One or more selected products could not be found.' } } }
     }
+
+    // Phase 58 §2 — Clothing/Footwear variant-aware label printing. A line
+    // with variantId prints THAT specific size/colour's own barcode/price,
+    // never the parent product's generic one — resolving the plain product
+    // barcode for a variant-tracked item would print a label that scans as
+    // the wrong physical unit.
+    const variantIds = items.map(i => i.variantId).filter((id): id is string => !!id)
+    const variantRows = await db.productVariant.findMany({ where: { id: { in: variantIds } } })
+    const variantsById = new Map(variantRows.map(v => [v.id, v]))
+    const missingVariants = items.filter(i => i.variantId && (!variantsById.has(i.variantId) || variantsById.get(i.variantId)!.productId !== i.productId))
+    if (missingVariants.length > 0) {
+      return { ok: false, res: { success: false, error: { code: 'VAR-001', message: 'One or more selected variants could not be found.' } } }
+    }
+
     // A line with barcodeOverride (the weigh-and-print flow) carries its own
     // ad-hoc code and doesn't need the product's own Product.barcode at all.
-    const withoutBarcode = items.filter(i => !i.barcodeOverride && !byId.get(i.productId)?.barcode)
+    const withoutBarcode = items.filter(i => {
+      if (i.barcodeOverride) return false
+      if (i.variantId) return !variantsById.get(i.variantId)?.barcode
+      return !byId.get(i.productId)?.barcode
+    })
     if (withoutBarcode.length > 0) {
-      return { ok: false, res: { success: false, error: { code: 'BCD-011', message: 'Every selected product needs a barcode before printing labels — use "Generate Missing Barcodes" first.' } } }
+      return { ok: false, res: { success: false, error: { code: 'BCD-011', message: 'Every selected product/variant needs a barcode before printing labels — use "Generate Missing Barcodes" first.' } } }
     }
 
     const [profile, widthSetting, heightSetting, fmtSettingRows] = await Promise.all([
@@ -261,9 +321,22 @@ export function register(handle: HandleFn): void {
     // reprint-warning mechanism) — used after a successful print to record
     // Product.lastLabelPrintedAt/Price, so a later price change can warn that
     // the shelf label is now stale, the same idea generalized to every product.
+    // Deliberately keyed by productId only, even for a variant line — there is
+    // no ProductVariant.lastLabelPrintedAt/Price field (out of scope for this
+    // pass, see PHASE_58_VERTICAL_COVERAGE_PLAN.md's Clothing/Footwear entry);
+    // a variant line's price is never recorded into this reprint-warning map.
     const printedPrices = new Map<string, number>()
     const labels = items.map(i => {
       const p = byId.get(i.productId)!
+      const variant = i.variantId ? variantsById.get(i.variantId) : undefined
+
+      if (variant) {
+        const variantPrice = p.sellingPrice + variant.additionalPrice
+        const priceText = i.priceTextOverride ?? formatAmount(variantPrice, profile?.currencySymbol)
+        const variantLabel = [variant.size, variant.color].filter(Boolean).join(' / ')
+        return { productName: variantLabel ? `${p.productName} (${variantLabel})` : p.productName, barcode: i.barcodeOverride ?? variant.barcode!, priceText, copies: i.copies }
+      }
+
       const printedPrice = p.sellByWeight ? (p.pricePerWeightUnit ?? 0) : p.sellingPrice
       if (!i.barcodeOverride) printedPrices.set(i.productId, printedPrice)
       const priceText = i.priceTextOverride ?? (p.sellByWeight

@@ -8,6 +8,7 @@ import {
   ExtendBookingSchema,
   CancelBookingSchema,
   GenerateRentalInvoiceSchema,
+  CreateNextRentalCycleSchema,
   CreateRentalUnitSchema,
   UpdateRentalUnitSchema,
   RentalUnitIdSchema,
@@ -77,6 +78,22 @@ export function register(handle: HandleFn): void {
     const parsed = GenerateRentalInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return rentalService.generateRentalInvoice(parsed.data.bookingId)
+  })
+
+  handle('rental:createNextCycle', async (payload) => {
+    const deny = await requirePermission('rental.manage'); if (deny) return deny
+    const parsed = CreateNextRentalCycleSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return rentalService.createNextRentalCycle(parsed.data.bookingId, session?.userId)
+  })
+
+  handle('rental:markUnitServiced', async (payload) => {
+    const deny = await requirePermission('rental.manage'); if (deny) return deny
+    const parsed = RentalUnitIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return rentalService.markUnitServiced(parsed.data.id, session?.userId)
   })
 
   handle('rental:listUnits', async (payload) => {

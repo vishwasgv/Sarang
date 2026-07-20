@@ -8,6 +8,7 @@ import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ interface LegalCase {
   status: string
   filingDate: string | null
   nextHearingDate: string | null
+  opposingPartyName: string | null
+  limitationDate: string | null
   feeAgreed: number | null
   feeCollected: number
   notes: string | null
@@ -124,9 +127,22 @@ export function LegalCasesScreen() {
   const [showCaseForm, setShowCaseForm] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [caseForm, setCaseForm] = useState({ caseNumber: '', caseTitle: '', caseType: 'CIVIL', courtName: '', courtDistrict: '', courtState: '', eCourtId: '', clientId: '', advocateId: '', filingDate: '', feeAgreed: '', notes: '' })
+  const [caseForm, setCaseForm] = useState({ caseNumber: '', caseTitle: '', caseType: 'CIVIL', courtName: '', courtDistrict: '', courtState: '', eCourtId: '', clientId: '', advocateId: '', filingDate: '', opposingPartyName: '', limitationDate: '', feeAgreed: '', notes: '' })
   const [savingCase, setSavingCase] = useState(false)
   const [caseError, setCaseError] = useState<string | null>(null)
+
+  // Basic conflict-of-interest check (Phase 58 §2) — advisory, live-checked
+  // as the New Case form is filled, mirrors Blood Bank's live compatibility
+  // note pattern but never blocks submission (a real conflict call needs
+  // professional judgment, unlike an objective safety fact).
+  const [conflicts, setConflicts] = useState<Array<{ caseId: string; caseNumber: string; caseTitle: string; reason: string }>>([])
+  const [checkingConflicts, setCheckingConflicts] = useState(false)
+
+  // Inline limitation-date editor (Phase 58 §2) — a case may not have a
+  // known deadline at intake, so this is settable/updatable at any time from
+  // the detail panel rather than only at creation.
+  const [limitationForm, setLimitationForm] = useState('')
+  const [savingLimitation, setSavingLimitation] = useState(false)
 
   // Hearings state (global tab)
   const [hearings, setHearings] = useState<Hearing[]>([])
@@ -212,8 +228,13 @@ export function LegalCasesScreen() {
     setLoadingDetail(true)
     try {
       const res = await api.legalCase.get({ id })
-      if (res.success) setSelectedCase(res.data as LegalCaseDetail)
-      else toastError('Error', res.error?.message ?? 'Could not load case detail.')
+      if (res.success) {
+        const detail = res.data as LegalCaseDetail
+        setSelectedCase(detail)
+        setLimitationForm(detail.limitationDate ? detail.limitationDate.slice(0, 10) : '')
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not load case detail.')
+      }
     } catch {
       toastError('Error', 'Could not load case detail.')
     } finally {
@@ -252,6 +273,26 @@ export function LegalCasesScreen() {
     }
   }
 
+  // Live conflict-of-interest check, debounced, as the New Case form is
+  // filled — advisory only, never blocks handleSaveCase below.
+  useEffect(() => {
+    if (!showCaseForm) return
+    if (!caseForm.clientId && !caseForm.opposingPartyName.trim()) { setConflicts([]); return }
+    setCheckingConflicts(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.legalCase.checkConflict({
+          clientId: caseForm.clientId || undefined,
+          opposingPartyName: caseForm.opposingPartyName.trim() || undefined,
+        })
+        if (res.success) setConflicts((res.data as { conflicts: typeof conflicts }).conflicts)
+      } finally {
+        setCheckingConflicts(false)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [showCaseForm, caseForm.clientId, caseForm.opposingPartyName])
+
   // ── Case handlers ─────────────────────────────────────────────────────────────
 
   async function handleSaveCase() {
@@ -272,6 +313,8 @@ export function LegalCasesScreen() {
       clientId: caseForm.clientId,
       advocateId: caseForm.advocateId || undefined,
       filingDate: caseForm.filingDate || undefined,
+      opposingPartyName: caseForm.opposingPartyName.trim() || undefined,
+      limitationDate: caseForm.limitationDate || undefined,
       feeAgreed: caseForm.feeAgreed ? Number(caseForm.feeAgreed) : undefined,
       notes: caseForm.notes || undefined,
     })
@@ -282,6 +325,18 @@ export function LegalCasesScreen() {
       loadKpiStats()
     } else {
       setCaseError(res.error?.message ?? 'Could not save case.')
+    }
+  }
+
+  async function handleSaveLimitationDate() {
+    if (!selectedCase) return
+    setSavingLimitation(true)
+    const res = await api.legalCase.update({ id: selectedCase.id, limitationDate: limitationForm || null })
+    setSavingLimitation(false)
+    if (res.success) {
+      loadCaseDetail(selectedCase.id)
+    } else {
+      toastError('Error', res.error?.message ?? 'Could not update deadline.')
     }
   }
 
@@ -450,7 +505,7 @@ export function LegalCasesScreen() {
         </div>
         {tab === 'cases' && (
           <button
-            onClick={() => { setShowCaseForm(true); setCaseError(null); setCaseForm({ caseNumber: '', caseTitle: '', caseType: 'CIVIL', courtName: '', courtDistrict: '', courtState: '', eCourtId: '', clientId: '', advocateId: '', filingDate: '', feeAgreed: '', notes: '' }); loadFormData() }}
+            onClick={() => { setShowCaseForm(true); setCaseError(null); setConflicts([]); setCaseForm({ caseNumber: '', caseTitle: '', caseType: 'CIVIL', courtName: '', courtDistrict: '', courtState: '', eCourtId: '', clientId: '', advocateId: '', filingDate: '', opposingPartyName: '', limitationDate: '', feeAgreed: '', notes: '' }); loadFormData() }}
             className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"
           >
             <Plus size={16} /> New Case
@@ -598,6 +653,7 @@ export function LegalCasesScreen() {
                       <div><span className="text-muted-foreground">Court: </span><span className="text-foreground">{selectedCase.courtName}</span></div>
                       {selectedCase.advocate && <div><span className="text-muted-foreground">Advocate: </span><span className="text-foreground">{selectedCase.advocate.fullName}</span></div>}
                       {selectedCase.filingDate && <div><span className="text-muted-foreground">Filed: </span><span className="text-foreground">{formatDate(selectedCase.filingDate)}</span></div>}
+                      {selectedCase.opposingPartyName && <div className="col-span-2"><span className="text-muted-foreground">Opposing Party: </span><span className="text-foreground">{selectedCase.opposingPartyName}</span></div>}
                       {selectedCase.feeAgreed != null && (
                         <div className="col-span-2">
                           <span className="text-muted-foreground">Fee: </span>
@@ -612,6 +668,26 @@ export function LegalCasesScreen() {
                         <button onClick={() => handleCaseStatusChange(selectedCase.id, 'DISPOSED')} className="flex-1 h-8 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/50">Mark Disposed</button>
                       </div>
                     )}
+
+                    <div className="border border-border rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-foreground flex items-center gap-1.5"><Clock size={13} /> Limitation / Deadline Date</p>
+                        {selectedCase.limitationDate && (
+                          <span className={cn('text-xs font-medium', isSoon(selectedCase.limitationDate) || isToday(selectedCase.limitationDate) ? 'text-danger' : 'text-muted-foreground')}>
+                            {formatDate(selectedCase.limitationDate)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="date" value={limitationForm} onChange={(e) => setLimitationForm(e.target.value)} className="flex-1 h-9 px-2 rounded-lg border border-border bg-background text-foreground text-xs" />
+                        <button onClick={handleSaveLimitationDate} disabled={savingLimitation} className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">
+                          {savingLimitation ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Client gets a WhatsApp reminder 30 and 7 days before this date.</p>
+                    </div>
+
+                    <DocumentPanel entityType="LEGAL_CASE" entityId={selectedCase.id} compact />
                   </Card>
 
                   {/* Hearings */}
@@ -973,6 +1049,20 @@ export function LegalCasesScreen() {
                 <input value={caseForm.caseTitle} onChange={(e) => setCaseForm({ ...caseForm, caseTitle: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" placeholder="Ramesh Sharma vs State of Maharashtra" />
               </div>
               <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Opposing Party (for conflict check)</label>
+                <input value={caseForm.opposingPartyName} onChange={(e) => setCaseForm({ ...caseForm, opposingPartyName: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" placeholder="State of Maharashtra" />
+              </div>
+              {checkingConflicts && <p className="text-xs text-muted-foreground">Checking for conflicts of interest…</p>}
+              {conflicts.length > 0 && (
+                <div className="text-sm text-warning bg-warning/5 border border-warning/20 rounded-xl px-3 py-2 space-y-1">
+                  <p className="font-medium flex items-center gap-1.5"><AlertTriangle size={14} /> Possible conflict of interest</p>
+                  {conflicts.map((c) => (
+                    <p key={c.caseId} className="text-xs">{c.reason}</p>
+                  ))}
+                  <p className="text-xs text-muted-foreground">This is advisory only — review before proceeding.</p>
+                </div>
+              )}
+              <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Court Name *</label>
                 <input value={caseForm.courtName} onChange={(e) => setCaseForm({ ...caseForm, courtName: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" placeholder="District Court, Mumbai" />
               </div>
@@ -1003,6 +1093,11 @@ export function LegalCasesScreen() {
                   <label className="text-xs text-muted-foreground mb-1 block">Agreed Fee (₹)</label>
                   <input type="number" min="0" value={caseForm.feeAgreed} onChange={(e) => setCaseForm({ ...caseForm, feeAgreed: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" placeholder="50000" />
                 </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Limitation / Deadline Date</label>
+                <input type="date" value={caseForm.limitationDate} onChange={(e) => setCaseForm({ ...caseForm, limitationDate: e.target.value })} className="w-full h-12 px-3 rounded-xl border border-border bg-background text-foreground" />
+                <p className="text-xs text-muted-foreground mt-1">Statute-of-limitations / filing deadline — client gets a WhatsApp reminder 30 and 7 days before.</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">eCourt Case ID</label>

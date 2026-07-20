@@ -196,6 +196,9 @@ export async function getAppointment(id: string) {
         customer: true,
         provider: { select: { id: true, fullName: true, specialization: true, providerColor: true, phone: true } },
         serviceCatalog: true,
+        // Phase 58 §2 — Vet Clinic: lets VisitNoteScreen.tsx prefill from the
+        // PATIENT (the pet), not the owner, when this appointment is a vet visit.
+        pet: { select: { id: true, petName: true, species: true, breed: true, dateOfBirth: true, gender: true } },
       },
     })
     if (!item) return { success: false, error: { code: 'APT-003', message: 'Appointment not found.' } }
@@ -221,6 +224,11 @@ export async function createAppointment(payload: {
   createdBy?: string
   services?: string
   referredFromVisitNoteId?: string
+  // Phase 58 §2 — Vet Clinic: which pet this visit is for. Appointment.petId
+  // has existed in the schema since Phase 23 but this create payload never
+  // accepted it — a vet appointment could be booked but never actually
+  // linked to a patient.
+  petId?: string
 }) {
   try {
     const db = getPrisma()
@@ -266,6 +274,7 @@ export async function createAppointment(payload: {
           createdBy: payload.createdBy ?? 'system',
           services: payload.services ?? null,
           referredFromVisitNoteId: payload.referredFromVisitNoteId ?? null,
+          petId: payload.petId ?? null,
         },
       })
 
@@ -307,6 +316,7 @@ export async function updateAppointment(payload: {
   totalAmount?: number
   depositPaid?: number
   chairAssignment?: string | null
+  petId?: string | null
 }) {
   try {
     const db = getPrisma()
@@ -480,7 +490,37 @@ async function buildAppointmentInvoiceItems(
   return { success: true, items: [{ productId: product.id, quantity: 1, unitPrice: appt.totalAmount, taxRate: appt.serviceCatalog.taxRate }] }
 }
 
-export async function generateAppointmentInvoice(id: string) {
+// Phase 58 §2 — Beauty Salon: unify a retail product upsell (e.g. the
+// shampoo the stylist recommended) into the SAME invoice as the appointment
+// service, instead of a disconnected second Billing-screen transaction.
+// Price/tax are resolved fresh from the real Product record here — never
+// trusted from the client — same "never trust the client for a derived
+// fact" discipline this codebase applies everywhere else pricing is involved.
+async function resolveRetailInvoiceItems(
+  db: Db,
+  retailItems: Array<{ productId: string; quantity: number }>
+): Promise<{ success: true; items: InvoiceLineItem[] } | { success: false; error: { code: string; message: string } }> {
+  const items: InvoiceLineItem[] = []
+  for (const ri of retailItems) {
+    if (!Number.isFinite(ri.quantity) || ri.quantity <= 0) {
+      return { success: false, error: { code: 'APT-020', message: 'Retail item quantity must be greater than zero.' } }
+    }
+    const product = await db.product.findUnique({ where: { id: ri.productId } })
+    if (!product || !product.isActive) {
+      return { success: false, error: { code: 'APT-021', message: 'One of the added retail products is no longer available.' } }
+    }
+    items.push({ productId: product.id, quantity: ri.quantity, unitPrice: product.sellingPrice, taxRate: product.taxRate })
+  }
+  return { success: true, items }
+}
+
+export async function generateAppointmentInvoice(
+  id: string,
+  options?: {
+    retailItems?: Array<{ productId: string; quantity: number }>
+    paymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'
+  }
+) {
   const db = getPrisma()
   try {
     const claim = await db.appointment.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: APPT_CLAIM_SENTINEL } })
@@ -522,11 +562,21 @@ export async function generateAppointmentInvoice(id: string) {
         return { success: false, error: { code: 'APT-014', message: 'Set an amount greater than zero before generating an invoice.' } }
       }
 
+      let allItems = itemsResult.items
+      if (options?.retailItems && options.retailItems.length > 0) {
+        const retailResult = await resolveRetailInvoiceItems(db, options.retailItems)
+        if (!retailResult.success) {
+          await db.appointment.update({ where: { id }, data: { invoiceId: null } })
+          return retailResult
+        }
+        allItems = [...allItems, ...retailResult.items]
+      }
+
       const result = await billingService.createInvoice({
         customerId: appt.customerId,
-        paymentMethod: 'CREDIT',
+        paymentMethod: options?.paymentMethod ?? 'CREDIT',
         gstType: 'CGST_SGST',
-        items: itemsResult.items,
+        items: allItems,
         notes: `Appointment ${appt.appointmentNumber} — ${appt.serviceTitle}`,
         referenceNumber: id.slice(0, 12),
       })

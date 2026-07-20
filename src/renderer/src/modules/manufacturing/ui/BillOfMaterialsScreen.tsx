@@ -9,9 +9,13 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface BomItem {
   id: string
-  rawMaterialId: string
-  materialName: string
-  materialUnit: string
+  rawMaterialId: string | null
+  materialName: string | null
+  materialUnit: string | null
+  // Phase 58 §2 — multi-level BOM: set instead of the material* fields when
+  // this line is a component Product (sub-assembly).
+  componentProductId: string | null
+  componentProductName: string | null
   quantityNeeded: number
   wastagePercent: number
   effectiveQty: number
@@ -33,17 +37,25 @@ interface Bom {
 interface ProductOption { id: string; productName: string }
 interface RawMaterialOption { id: string; name: string; unit: string; unitCost: number }
 
+// Phase 58 §2 — multi-level BOM: a row is either a raw material or a
+// component Product (sub-assembly) — `kind` picks which of the two search
+// endpoints/id fields is active; switching kind clears whatever was picked
+// under the other kind.
 interface ItemRow {
+  kind: 'material' | 'component'
   rawMaterialId: string
   materialName: string
+  componentProductId: string
+  componentProductName: string
   quantityNeeded: string
   wastagePercent: string
   query: string
-  results: RawMaterialOption[]
+  materialResults: RawMaterialOption[]
+  componentResults: ProductOption[]
 }
 
 function emptyItemRow(): ItemRow {
-  return { rawMaterialId: '', materialName: '', quantityNeeded: '', wastagePercent: '', query: '', results: [] }
+  return { kind: 'material', rawMaterialId: '', materialName: '', componentProductId: '', componentProductName: '', quantityNeeded: '', wastagePercent: '', query: '', materialResults: [], componentResults: [] }
 }
 
 export function BillOfMaterialsScreen() {
@@ -102,21 +114,30 @@ export function BillOfMaterialsScreen() {
     return () => clearTimeout(t)
   }, [productQuery])
 
-  // Debounced per-row raw material search
+  // Debounced per-row search — raw materials or component products,
+  // depending on that row's `kind`.
   useEffect(() => {
     const timers = items.map((row, idx) => {
-      if (!row.query.trim()) { if (row.results.length) setItemResults(idx, []); return undefined }
+      if (!row.query.trim()) {
+        if (row.materialResults.length || row.componentResults.length) setItemResults(idx, [], [])
+        return undefined
+      }
       return setTimeout(async () => {
-        const res = await api.rawMaterials.list({ search: row.query.trim(), limit: 20 })
-        if (res.success && res.data) setItemResults(idx, (res.data as { materials: RawMaterialOption[] }).materials)
+        if (row.kind === 'material') {
+          const res = await api.rawMaterials.list({ search: row.query.trim(), limit: 20 })
+          if (res.success && res.data) setItemResults(idx, (res.data as { materials: RawMaterialOption[] }).materials, [])
+        } else {
+          const res = await api.products.search(row.query.trim())
+          if (res.success && res.data) setItemResults(idx, [], res.data as ProductOption[])
+        }
       }, 250)
     })
     return () => { timers.forEach(t => t && clearTimeout(t)) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.map(r => r.query).join('|')])
+  }, [items.map(r => `${r.kind}:${r.query}`).join('|')])
 
-  function setItemResults(idx: number, results: RawMaterialOption[]) {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, results } : item))
+  function setItemResults(idx: number, materialResults: RawMaterialOption[], componentResults: ProductOption[]) {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, materialResults, componentResults } : item))
   }
 
   function openNewBom() {
@@ -138,9 +159,11 @@ export function BillOfMaterialsScreen() {
     setDescription(bom.description ?? '')
     setOutputQty(String(bom.outputQty))
     setItems(bom.items.map(i => ({
-      rawMaterialId: i.rawMaterialId, materialName: i.materialName,
+      kind: i.componentProductId ? 'component' : 'material',
+      rawMaterialId: i.rawMaterialId ?? '', materialName: i.materialName ?? '',
+      componentProductId: i.componentProductId ?? '', componentProductName: i.componentProductName ?? '',
       quantityNeeded: String(i.quantityNeeded), wastagePercent: String(i.wastagePercent),
-      query: '', results: []
+      query: '', materialResults: [], componentResults: []
     })))
     setShowEditor(true)
   }
@@ -156,21 +179,35 @@ export function BillOfMaterialsScreen() {
   function updateItem(idx: number, field: 'quantityNeeded' | 'wastagePercent' | 'query', value: string) {
     setItems(p => p.map((row, i) => {
       if (i !== idx) return row
-      if (field === 'query') return { ...row, query: value, rawMaterialId: '', materialName: '' }
+      if (field === 'query') return { ...row, query: value, rawMaterialId: '', materialName: '', componentProductId: '', componentProductName: '' }
       return { ...row, [field]: value }
     }))
   }
 
+  function setItemKind(idx: number, kind: ItemRow['kind']) {
+    setItems(p => p.map((row, i) => i === idx
+      ? { ...row, kind, rawMaterialId: '', materialName: '', componentProductId: '', componentProductName: '', query: '', materialResults: [], componentResults: [] }
+      : row))
+  }
+
   function pickMaterial(idx: number, m: RawMaterialOption) {
     setItems(p => p.map((row, i) => i === idx
-      ? { ...row, rawMaterialId: m.id, materialName: `${m.name} (${m.unit})`, query: '', results: [] }
+      ? { ...row, rawMaterialId: m.id, materialName: `${m.name} (${m.unit})`, query: '', materialResults: [] }
+      : row))
+  }
+
+  function pickComponent(idx: number, prod: ProductOption) {
+    setItems(p => p.map((row, i) => i === idx
+      ? { ...row, componentProductId: prod.id, componentProductName: prod.productName, query: '', componentResults: [] }
       : row))
   }
 
   async function handleSave() {
     if (!selectedProductId) { toastError(t('manufacturing.selectProduct')); return }
-    const validItems = items.filter(i => i.rawMaterialId && parseFloat(i.quantityNeeded) > 0)
+    const validItems = items.filter(i => (i.rawMaterialId || i.componentProductId) && parseFloat(i.quantityNeeded) > 0)
     if (validItems.length === 0) { toastError(t('manufacturing.addMaterialRequired')); return }
+    const selfReference = validItems.find(i => i.componentProductId === selectedProductId)
+    if (selfReference) { toastError(t('manufacturing.selfReferenceError')); return }
 
     setSaving(true)
     const res = await api.bom.upsert({
@@ -178,7 +215,8 @@ export function BillOfMaterialsScreen() {
       description: description || undefined,
       outputQty: parseFloat(outputQty) || 1,
       items: validItems.map(i => ({
-        rawMaterialId: i.rawMaterialId,
+        rawMaterialId: i.rawMaterialId || undefined,
+        componentProductId: i.componentProductId || undefined,
         quantityNeeded: parseFloat(i.quantityNeeded),
         wastagePercent: parseFloat(i.wastagePercent) || 0
       }))
@@ -348,6 +386,7 @@ export function BillOfMaterialsScreen() {
                   <table className="w-full text-sm">
                     <thead className="bg-surface-alt">
                       <tr>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.componentType')}</th>
                         <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">{t('manufacturing.material')}</th>
                         <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-28">{t('manufacturing.qtyNeeded')}</th>
                         <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.wastagePercent')}</th>
@@ -357,21 +396,56 @@ export function BillOfMaterialsScreen() {
                     <tbody className="divide-y divide-border">
                       {items.map((row, idx) => (
                         <tr key={idx}>
+                          <td className="px-3 py-2">
+                            {/* Phase 58 §2 — multi-level BOM: pick whether this
+                                line consumes a raw material or another
+                                finished/semi-finished product (a sub-assembly). */}
+                            <select
+                              value={row.kind}
+                              onChange={e => setItemKind(idx, e.target.value as ItemRow['kind'])}
+                              className="w-full h-10 px-2 rounded-lg border border-border bg-surface text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                            >
+                              <option value="material">{t('manufacturing.material')}</option>
+                              <option value="component">{t('manufacturing.subAssembly')}</option>
+                            </select>
+                          </td>
                           <td className="px-3 py-2 relative">
-                            <input
-                              value={row.rawMaterialId ? row.materialName : row.query}
-                              onChange={e => updateItem(idx, 'query', e.target.value)}
-                              placeholder="Search material…"
-                              className="w-full h-10 px-3 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                            {row.results.length > 0 && !row.rawMaterialId && (
-                              <div className="absolute z-10 mt-1 w-full border border-border rounded-lg overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
-                                {row.results.map(m => (
-                                  <button key={m.id} type="button" onClick={() => pickMaterial(idx, m)}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
-                                    {m.name} ({m.unit})
-                                  </button>
-                                ))}
-                              </div>
+                            {row.kind === 'material' ? (
+                              <>
+                                <input
+                                  value={row.rawMaterialId ? row.materialName : row.query}
+                                  onChange={e => updateItem(idx, 'query', e.target.value)}
+                                  placeholder="Search material…"
+                                  className="w-full h-10 px-3 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                                {row.materialResults.length > 0 && !row.rawMaterialId && (
+                                  <div className="absolute z-10 mt-1 w-full border border-border rounded-lg overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
+                                    {row.materialResults.map(m => (
+                                      <button key={m.id} type="button" onClick={() => pickMaterial(idx, m)}
+                                        className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                                        {m.name} ({m.unit})
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  value={row.componentProductId ? row.componentProductName : row.query}
+                                  onChange={e => updateItem(idx, 'query', e.target.value)}
+                                  placeholder="Search product (sub-assembly)…"
+                                  className="w-full h-10 px-3 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                                {row.componentResults.length > 0 && !row.componentProductId && (
+                                  <div className="absolute z-10 mt-1 w-full border border-border rounded-lg overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
+                                    {row.componentResults.map(p => (
+                                      <button key={p.id} type="button" onClick={() => pickComponent(idx, p)}
+                                        className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                                        {p.productName}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
                             )}
                           </td>
                           <td className="px-3 py-2">
@@ -445,10 +519,13 @@ export function BillOfMaterialsScreen() {
                 <tbody className="divide-y divide-border">
                   {detailBom.items.map(item => (
                     <tr key={item.id}>
-                      <td className="py-2 font-medium text-text-primary">{item.materialName}</td>
-                      <td className="py-2 text-right text-text-secondary">{item.quantityNeeded} {item.materialUnit}</td>
+                      <td className="py-2 font-medium text-text-primary">
+                        {item.materialName ?? item.componentProductName}
+                        {item.componentProductId && <span className="ml-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
+                      </td>
+                      <td className="py-2 text-right text-text-secondary">{item.quantityNeeded} {item.materialUnit ?? ''}</td>
                       <td className="py-2 text-right text-text-secondary">{item.wastagePercent > 0 ? `${item.wastagePercent}%` : '—'}</td>
-                      <td className="py-2 text-right text-text-primary">{item.effectiveQty.toFixed(3)} {item.materialUnit}</td>
+                      <td className="py-2 text-right text-text-primary">{item.effectiveQty.toFixed(3)} {item.materialUnit ?? ''}</td>
                       <td className="py-2 text-right text-text-primary">{formatCurrency(item.lineCost)}</td>
                     </tr>
                   ))}

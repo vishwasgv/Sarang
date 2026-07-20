@@ -1,13 +1,21 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 
-// PropertyDeal.dealValue/brokeragePercent/brokerageAmount are Prisma
-// Decimal fields — Electron's IPC (structured clone) cannot serialize a
-// Decimal instance and throws "An object could not be cloned" on every
-// response that includes one. Exported so property.service.ts can apply it
-// to deals nested under a property (getProperty's `include: { deals }`).
-export function serializeDeal<T extends { dealValue: unknown; brokeragePercent: unknown; brokerageAmount: unknown }>(d: T): T {
-  return { ...d, dealValue: Number(d.dealValue), brokeragePercent: Number(d.brokeragePercent), brokerageAmount: Number(d.brokerageAmount) }
+// PropertyDeal.dealValue/brokeragePercent/brokerageAmount/coBrokerSharePercent/
+// coBrokerShareAmount are Prisma Decimal fields — Electron's IPC (structured
+// clone) cannot serialize a Decimal instance and throws "An object could not
+// be cloned" on every response that includes one. Exported so
+// property.service.ts can apply it to deals nested under a property
+// (getProperty's `include: { deals }`).
+export function serializeDeal<T extends { dealValue: unknown; brokeragePercent: unknown; brokerageAmount: unknown; coBrokerSharePercent?: unknown; coBrokerShareAmount?: unknown }>(d: T): T {
+  return {
+    ...d,
+    dealValue: Number(d.dealValue),
+    brokeragePercent: Number(d.brokeragePercent),
+    brokerageAmount: Number(d.brokerageAmount),
+    coBrokerSharePercent: d.coBrokerSharePercent == null ? null : Number(d.coBrokerSharePercent),
+    coBrokerShareAmount: d.coBrokerShareAmount == null ? null : Number(d.coBrokerShareAmount),
+  }
 }
 
 export async function listPropertyDeals(filters?: { status?: string; propertyId?: string }) {
@@ -28,6 +36,16 @@ export async function listPropertyDeals(filters?: { status?: string; propertyId?
   return { success: true, data: deals.map(serializeDeal) }
 }
 
+// coBrokerShareAmount is always computed here, never accepted directly from
+// the caller — keeps it from silently drifting out of sync with
+// brokerageAmount/coBrokerSharePercent (the same "never trust a client-sent
+// derived fact" discipline this codebase applies elsewhere, e.g. billing
+// line totals).
+function computeCoBrokerShare(brokerageAmount: number, coBrokerSharePercent?: number | null): number | null {
+  if (coBrokerSharePercent == null) return null
+  return (brokerageAmount * coBrokerSharePercent) / 100
+}
+
 export async function createPropertyDeal(payload: {
   propertyId: string
   buyerClientId: string
@@ -36,6 +54,8 @@ export async function createPropertyDeal(payload: {
   brokeragePercent: number
   expectedRegistrationDate?: string
   notes?: string
+  coBrokerName?: string
+  coBrokerSharePercent?: number
 }) {
   const db = getPrisma()
   const brokerageAmount = (payload.dealValue * payload.brokeragePercent) / 100
@@ -50,6 +70,9 @@ export async function createPropertyDeal(payload: {
       brokerageAmount,
       expectedRegistrationDate: payload.expectedRegistrationDate ? new Date(payload.expectedRegistrationDate) : null,
       notes: payload.notes || null,
+      coBrokerName: payload.coBrokerName?.trim() || null,
+      coBrokerSharePercent: payload.coBrokerSharePercent ?? null,
+      coBrokerShareAmount: computeCoBrokerShare(brokerageAmount, payload.coBrokerSharePercent),
     },
     include: {
       property: { select: { id: true, propertyType: true, location: true, listingType: true } },
@@ -71,20 +94,32 @@ export async function updatePropertyDeal(payload: {
   status?: string
   invoiceId?: string | null
   notes?: string | null
+  coBrokerName?: string | null
+  coBrokerSharePercent?: number | null
 }) {
   const db = getPrisma()
-  const { id, expectedRegistrationDate, dealValue, brokeragePercent, ...rest } = payload
+  const { id, expectedRegistrationDate, dealValue, brokeragePercent, coBrokerSharePercent, ...rest } = payload
 
   let brokerageUpdate: { brokerageAmount: number; dealValue?: number; brokeragePercent?: number } | undefined
-  if (dealValue !== undefined || brokeragePercent !== undefined) {
-    const existing = await db.propertyDeal.findUniqueOrThrow({ where: { id }, select: { dealValue: true, brokeragePercent: true } })
+  let coBrokerShareAmountUpdate: number | null | undefined
+  if (dealValue !== undefined || brokeragePercent !== undefined || coBrokerSharePercent !== undefined) {
+    const existing = await db.propertyDeal.findUniqueOrThrow({ where: { id }, select: { dealValue: true, brokeragePercent: true, coBrokerSharePercent: true } })
     const newDealValue = dealValue ?? Number(existing.dealValue)
     const newBrokeragePercent = brokeragePercent ?? Number(existing.brokeragePercent)
-    brokerageUpdate = {
-      brokerageAmount: (newDealValue * newBrokeragePercent) / 100,
-      ...(dealValue !== undefined ? { dealValue } : {}),
-      ...(brokeragePercent !== undefined ? { brokeragePercent } : {}),
+    const newBrokerageAmount = (newDealValue * newBrokeragePercent) / 100
+    if (dealValue !== undefined || brokeragePercent !== undefined) {
+      brokerageUpdate = {
+        brokerageAmount: newBrokerageAmount,
+        ...(dealValue !== undefined ? { dealValue } : {}),
+        ...(brokeragePercent !== undefined ? { brokeragePercent } : {}),
+      }
     }
+    // Recompute the co-broker share whenever ANY of the three inputs it
+    // depends on changes — not just when coBrokerSharePercent itself is
+    // touched — otherwise editing dealValue/brokeragePercent alone would
+    // silently leave a stale coBrokerShareAmount behind.
+    const effectiveCoBrokerPercent = coBrokerSharePercent !== undefined ? coBrokerSharePercent : (existing.coBrokerSharePercent == null ? null : Number(existing.coBrokerSharePercent))
+    coBrokerShareAmountUpdate = computeCoBrokerShare(newBrokerageAmount, effectiveCoBrokerPercent)
   }
 
   const deal = await db.propertyDeal.update({
@@ -92,6 +127,8 @@ export async function updatePropertyDeal(payload: {
     data: {
       ...rest,
       ...brokerageUpdate,
+      ...(coBrokerSharePercent !== undefined ? { coBrokerSharePercent } : {}),
+      ...(coBrokerShareAmountUpdate !== undefined ? { coBrokerShareAmount: coBrokerShareAmountUpdate } : {}),
       ...(expectedRegistrationDate !== undefined ? { expectedRegistrationDate: expectedRegistrationDate ? new Date(expectedRegistrationDate) : null } : {}),
     },
     include: {

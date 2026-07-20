@@ -54,8 +54,21 @@ interface PestJobSheet {
   createdAt: string
 }
 
+interface PesticideLine {
+  id: string
+  jobSheetId: string
+  productId?: string | null
+  product?: { productName: string } | null
+  pesticideName: string
+  quantityUsed: number
+  unit: string
+  dosageNote?: string | null
+  targetPest?: string | null
+}
+
 interface Customer { id: string; customerName: string; phone: string | null }
 interface Employee { id: string; fullName: string }
+interface PesticideProduct { id: string; productName: string; inventory?: { quantity: number } | null }
 
 const CONTRACT_STATUSES = ['ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED']
 // Verified exhaustive against PestServiceContract.status in prisma/schema.prisma ("ACTIVE|EXPIRED|CANCELLED|PENDING").
@@ -79,6 +92,11 @@ const JOB_STATUS_VARIANT: Record<string, 'info' | 'warning' | 'success' | 'dange
   CANCELLED: 'danger',
 }
 const JOB_STATUS_NEXT: Record<string, string> = { SCHEDULED: 'IN_PROGRESS', IN_PROGRESS: 'COMPLETED' }
+const PESTICIDE_UNITS = ['ML', 'L', 'G', 'KG', 'OTHER']
+
+function emptyPesticideLineForm() {
+  return { pesticideName: '', quantityUsed: '', unit: 'ML', dosageNote: '', targetPest: '', productSearch: '', pickedProduct: null as PesticideProduct | null }
+}
 
 const parseSafe = <T,>(raw: string, fallback: T): T => { try { return JSON.parse(raw) as T } catch { return fallback } }
 
@@ -144,6 +162,64 @@ export default function PestControlScreen() {
   const [deletingContract, setDeletingContract] = useState(false)
   const [deleteSheetTarget, setDeleteSheetTarget] = useState<PestJobSheet | null>(null)
   const [deletingSheet, setDeletingSheet] = useState(false)
+
+  // Structured pesticide dosage/quantity per visit (Phase 58 §2) — an
+  // add/remove ledger alongside the free-text pesticideUsed summary field.
+  const [pesticideLines, setPesticideLines] = useState<PesticideLine[]>([])
+  const [pesticideLinesLoading, setPesticideLinesLoading] = useState(false)
+  const [pesticideLineForm, setPesticideLineForm] = useState(emptyPesticideLineForm())
+  const [pesticideLineSaving, setPesticideLineSaving] = useState(false)
+  const [pesticideLineError, setPesticideLineError] = useState('')
+  const [pesticideProductResults, setPesticideProductResults] = useState<PesticideProduct[]>([])
+
+  useEffect(() => {
+    if (!pesticideLineForm.productSearch.trim()) { setPesticideProductResults([]); return }
+    const t = setTimeout(async () => {
+      const res = await api.products.search(pesticideLineForm.productSearch.trim())
+      if (res.success && res.data) setPesticideProductResults(res.data as PesticideProduct[])
+    }, 250)
+    return () => clearTimeout(t)
+  }, [pesticideLineForm.productSearch])
+
+  async function loadPesticideLines(jobSheetId: string) {
+    setPesticideLinesLoading(true)
+    const res = await api.pestJobSheet.listPesticides(jobSheetId)
+    if (res.success) setPesticideLines(res.data as PesticideLine[])
+    setPesticideLinesLoading(false)
+  }
+
+  async function handleAddPesticideLine() {
+    if (!editSheet) return
+    if (!pesticideLineForm.pesticideName.trim()) { setPesticideLineError('Pesticide name is required.'); return }
+    const qty = parseFloat(pesticideLineForm.quantityUsed)
+    if (!qty || qty <= 0) { setPesticideLineError('Enter a valid quantity used.'); return }
+    setPesticideLineSaving(true)
+    setPesticideLineError('')
+    const res = await api.pestJobSheet.addPesticide({
+      jobSheetId: editSheet.id,
+      productId: pesticideLineForm.pickedProduct?.id || undefined,
+      pesticideName: pesticideLineForm.pesticideName.trim(),
+      quantityUsed: qty,
+      unit: pesticideLineForm.unit,
+      dosageNote: pesticideLineForm.dosageNote.trim() || undefined,
+      targetPest: pesticideLineForm.targetPest.trim() || undefined,
+    })
+    setPesticideLineSaving(false)
+    if (res.success) {
+      setPesticideLineForm(emptyPesticideLineForm())
+      await loadPesticideLines(editSheet.id)
+    } else {
+      setPesticideLineError(res.error?.message ?? 'Could not add pesticide line.')
+    }
+  }
+
+  async function handleRemovePesticideLine(id: string) {
+    if (!editSheet) return
+    setPesticideLineError('')
+    const res = await api.pestJobSheet.removePesticide(id)
+    if (res.success) await loadPesticideLines(editSheet.id)
+    else setPesticideLineError(res.error?.message ?? 'Could not remove pesticide line.')
+  }
 
   const loadKpis = useCallback(() => {
     api.pestContract.kpis().then(r => { if (r.success) setKpis(r.data as typeof kpis) })
@@ -245,6 +321,9 @@ export default function PestControlScreen() {
     setSheetForm({ ...emptySheetForm(), contractId: contractId ?? '' })
     setPickedSheetClient(client ?? null)
     setSheetFormError('')
+    setPesticideLines([])
+    setPesticideLineForm(emptyPesticideLineForm())
+    setPesticideLineError('')
     setShowSheetForm(true)
   }
 
@@ -261,6 +340,9 @@ export default function PestControlScreen() {
       status: s.status,
     })
     setSheetFormError('')
+    setPesticideLineForm(emptyPesticideLineForm())
+    setPesticideLineError('')
+    loadPesticideLines(s.id)
     setShowSheetForm(true)
   }
 
@@ -727,10 +809,70 @@ export default function PestControlScreen() {
                   <input type="number" min="0" value={sheetForm.jobAmount} onChange={e => setSheetForm(f => ({ ...f, jobAmount: e.target.value }))} placeholder="0.00" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Pesticide Used</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Pesticide Used (quick summary)</label>
                   <input value={sheetForm.pesticideUsed} onChange={e => setSheetForm(f => ({ ...f, pesticideUsed: e.target.value }))} placeholder="e.g. Cypermethrin 25 EC" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                 </div>
               </div>
+
+              {editSheet && (
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+                  <label className="text-xs font-medium text-gray-600 block dark:text-slate-400">Pesticides Used — dosage &amp; quantity</label>
+                  {pesticideLineError && <div className="text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-1.5">{pesticideLineError}</div>}
+                  {pesticideLinesLoading ? (
+                    <div className="text-xs text-gray-400 dark:text-slate-500">Loading…</div>
+                  ) : pesticideLines.length === 0 ? (
+                    <div className="text-xs text-gray-400 dark:text-slate-500">No structured pesticide usage recorded yet.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {pesticideLines.map(line => (
+                        <div key={line.id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-slate-800 rounded px-3 py-2">
+                          <div className="min-w-0">
+                            <span className="font-medium text-gray-800 dark:text-slate-200">{line.pesticideName}</span>
+                            <span className="text-gray-500 dark:text-slate-400"> — {line.quantityUsed} {line.unit}{line.targetPest ? ` for ${line.targetPest}` : ''}{line.dosageNote ? ` (${line.dosageNote})` : ''}{line.product ? ' · linked to inventory' : ''}</span>
+                          </div>
+                          <button type="button" onClick={() => handleRemovePesticideLine(line.id)} className="text-gray-400 hover:text-red-600 shrink-0 ml-2"><X size={13} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={pesticideLineForm.pesticideName} onChange={e => setPesticideLineForm(f => ({ ...f, pesticideName: e.target.value }))} placeholder="Pesticide name *" className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                    <div className="flex gap-2">
+                      <input type="number" min="0" step="0.01" value={pesticideLineForm.quantityUsed} onChange={e => setPesticideLineForm(f => ({ ...f, quantityUsed: e.target.value }))} placeholder="Qty *" className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      <select value={pesticideLineForm.unit} onChange={e => setPesticideLineForm(f => ({ ...f, unit: e.target.value }))} className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                        {PESTICIDE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                    <input value={pesticideLineForm.targetPest} onChange={e => setPesticideLineForm(f => ({ ...f, targetPest: e.target.value }))} placeholder="Target pest (optional)" className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                    <input value={pesticideLineForm.dosageNote} onChange={e => setPesticideLineForm(f => ({ ...f, dosageNote: e.target.value }))} placeholder="Dosage note (e.g. 2% dilution)" className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                  </div>
+                  <div className="relative">
+                    <input
+                      value={pesticideLineForm.pickedProduct ? pesticideLineForm.pickedProduct.productName : pesticideLineForm.productSearch}
+                      onChange={e => setPesticideLineForm(f => ({ ...f, pickedProduct: null, productSearch: e.target.value }))}
+                      placeholder="Link to an inventory product (optional) — deducts real stock"
+                      className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                    />
+                    {pesticideLineForm.pickedProduct && (
+                      <button type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: null }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600"><X size={12} /></button>
+                    )}
+                    {!pesticideLineForm.pickedProduct && pesticideProductResults.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                        {pesticideProductResults.map(p => (
+                          <button key={p.id} type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: p, productSearch: '', pesticideName: f.pesticideName || p.productName }))} className="w-full text-left px-3 py-1.5 text-xs hover:bg-green-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
+                            <span className="text-gray-800 dark:text-slate-200">{p.productName}</span>
+                            <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">stock {p.inventory?.quantity ?? 0}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button type="button" onClick={handleAddPesticideLine} disabled={pesticideLineSaving} className="text-xs px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-800 text-white disabled:opacity-50">
+                    {pesticideLineSaving ? 'Adding…' : 'Add Pesticide Line'}
+                  </button>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-2 block dark:text-slate-400">Areas Serviced</label>
                 <div className="flex gap-2 flex-wrap">

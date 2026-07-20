@@ -20,12 +20,29 @@ export const UpdateDrawingRevisionSchema = z.object({
   status: z.string().max(50).optional(),
   issuedDate: z.string().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  approvedByName: z.string().max(200).nullable().optional(),
 })
 
 export const DeleteDrawingRevisionSchema = z.object({
   id: z.string().min(1, 'Drawing revision ID is required'),
 })
 
+export const IssueNewRevisionSchema = z.object({
+  previousRevisionId: z.string().min(1, 'Previous revision is required'),
+  revisionNumber: z.string().min(1, 'Revision number is required').max(20),
+  title: z.string().max(300).optional(),
+  discipline: z.string().max(100).optional(),
+  issuedDate: z.string().optional(),
+  notes: z.string().max(2000).optional(),
+})
+
+export const GetRevisionHistorySchema = z.object({
+  projectId: z.string().min(1, 'Project is required'),
+  drawingNumber: z.string().min(1, 'Drawing number is required'),
+})
+
 export type CreateDrawingRevisionPayload = z.infer<typeof CreateDrawingRevisionSchema>
 export type UpdateDrawingRevisionPayload = z.infer<typeof UpdateDrawingRevisionSchema>
 export type DeleteDrawingRevisionPayload = z.infer<typeof DeleteDrawingRevisionSchema>
+export type IssueNewRevisionPayload = z.infer<typeof IssueNewRevisionSchema>
+export type GetRevisionHistoryPayload = z.infer<typeof GetRevisionHistorySchema>

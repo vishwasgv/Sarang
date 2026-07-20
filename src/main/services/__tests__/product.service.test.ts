@@ -77,7 +77,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -91,7 +91,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Shirt', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Shirt', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 200, sellingPrice: 400, unit: 'PCS', taxRate: 5,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0, gender: 'MENS'
     })
@@ -106,7 +106,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -116,12 +116,46 @@ describe('productService.createProduct', () => {
     )
   })
 
+  it('persists Product.sellByPack/packUnit/unitsPerPack (Phase 58 §2 — Hardware carton/piece conversion)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await productService.createProduct({
+      productName: 'Screw', productType: 'STANDARD', sellByWeight: false, sellByPack: true,
+      packUnit: 'BOX', unitsPerPack: 50,
+      costPrice: 1, sellingPrice: 2, unit: 'PCS', taxRate: 18,
+      reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
+    })
+
+    expect(db._tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ sellByPack: true, packUnit: 'BOX', unitsPerPack: 50 }) })
+    )
+  })
+
+  it('nulls out packUnit/unitsPerPack when sellByPack is false, even if stale values are sent', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await productService.createProduct({
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      // Simulates a stale payload with leftover pack fields the caller forgot to clear —
+      // still valid at the type level (the superRefine only requires them when sellByPack is true).
+      packUnit: 'BOX', unitsPerPack: 50,
+      costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
+      reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
+    })
+
+    expect(db._tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ sellByPack: false, packUnit: null, unitsPerPack: null }) })
+    )
+  })
+
   it('persists Product.hsnCode (Phase 54F.17 — was captured nowhere despite being read by GST reports)', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0, hsnCode: '8471'
     })
@@ -136,7 +170,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -153,7 +187,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Copy', sku: 'W-001', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Copy', sku: 'W-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 10, sellingPrice: 20, unit: 'PCS', taxRate: 0,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -167,7 +201,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', sku: 'NEW-001', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', sku: 'NEW-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -182,7 +216,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 25
     })
@@ -200,7 +234,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -216,7 +250,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Consultation', productType: 'SERVICE', sellByWeight: false,
+      productName: 'Consultation', productType: 'SERVICE', sellByWeight: false, sellByPack: false,
       costPrice: 0, sellingPrice: 500, unit: 'HRS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -231,7 +265,7 @@ describe('productService.updateProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.updateProduct({
-      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, gender: 'UNISEX'
     })
@@ -246,7 +280,7 @@ describe('productService.updateProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.updateProduct({
-      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false,
+      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, hsnCode: '1006'
     })
@@ -309,5 +343,138 @@ describe('productService.searchProducts', () => {
     const result = await productService.searchProducts('Widget')
 
     expect(result.success).toBe(true)
+  })
+})
+
+// ─── Phase 58 §2 (2026-07-17) — setProductAvailability ("86 today") ────────
+
+describe('productService.setProductAvailability', () => {
+  it('sets unavailableUntil when 86ing a product', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const endOfToday = new Date(); endOfToday.setHours(23, 59, 59, 999)
+
+    const result = await productService.setProductAvailability('prod-1', endOfToday.toISOString())
+
+    expect(result.success).toBe(true)
+    expect(db.product.update).toHaveBeenCalledWith({ where: { id: 'prod-1' }, data: { unavailableUntil: endOfToday } })
+  })
+
+  it('clears unavailableUntil back to null when restoring availability', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.setProductAvailability('prod-1', null)
+
+    expect(result.success).toBe(true)
+    expect(db.product.update).toHaveBeenCalledWith({ where: { id: 'prod-1' }, data: { unavailableUntil: null } })
+  })
+})
+
+// Phase 58 §2 — Distributor customer-class/negotiated pricing. Resolved
+// fresh server-side at every add-to-cart/accept site — never trusted from
+// the client, exactly like Product.sellingPrice itself.
+describe('productService.resolveCustomerPrice', () => {
+  it('throws if the product does not exist', async () => {
+    const db = makeDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await expect(productService.resolveCustomerPrice('ghost')).rejects.toThrow('Product not found.')
+  })
+
+  it('returns the plain sellingPrice when no customerId is given', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const price = await productService.resolveCustomerPrice('prod-1')
+    expect(price).toBe(100)
+  })
+
+  it('returns the plain sellingPrice when the customer has no customerClass set', async () => {
+    const db = makeDb({ customer: { findUnique: vi.fn().mockResolvedValue({ customerClass: null }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const price = await productService.resolveCustomerPrice('prod-1', 'cust-1')
+    expect(price).toBe(100)
+  })
+
+  it('returns the plain sellingPrice when the customer has a class but no price is on file for it', async () => {
+    const db = makeDb({
+      customer: { findUnique: vi.fn().mockResolvedValue({ customerClass: 'RETAILER' }) },
+      customerClassPrice: { findUnique: vi.fn().mockResolvedValue(null) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const price = await productService.resolveCustomerPrice('prod-1', 'cust-1')
+    expect(price).toBe(100)
+  })
+
+  it('returns the negotiated class price when one is on file, overriding sellingPrice', async () => {
+    const findUniqueSpy = vi.fn().mockResolvedValue({ id: 'cp-1', price: 75 })
+    const db = makeDb({
+      customer: { findUnique: vi.fn().mockResolvedValue({ customerClass: 'WHOLESALER' }) },
+      customerClassPrice: { findUnique: findUniqueSpy }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const price = await productService.resolveCustomerPrice('prod-1', 'cust-1')
+    expect(price).toBe(75)
+    expect(findUniqueSpy).toHaveBeenCalledWith({
+      where: { productId_customerClass: { productId: 'prod-1', customerClass: 'WHOLESALER' } }
+    })
+  })
+})
+
+describe('productService.upsertCustomerClassPrice / listCustomerClassPrices / deleteCustomerClassPrice', () => {
+  it('rejects a negative price', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.upsertCustomerClassPrice({ productId: 'prod-1', customerClass: 'RETAILER', price: -1 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects when the product does not exist', async () => {
+    const db = makeDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.upsertCustomerClassPrice({ productId: 'ghost', customerClass: 'RETAILER', price: 10 })
+    expect(result.success).toBe(false)
+  })
+
+  it('upserts keyed on (productId, customerClass), creating on first call and updating on repeat', async () => {
+    const upsertSpy = vi.fn().mockResolvedValue({ id: 'cp-1', productId: 'prod-1', customerClass: 'RETAILER', price: 90 })
+    const db = makeDb({ customerClassPrice: { upsert: upsertSpy } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.upsertCustomerClassPrice({ productId: 'prod-1', customerClass: 'RETAILER', price: 90 })
+    expect(result.success).toBe(true)
+    expect(upsertSpy).toHaveBeenCalledWith({
+      where: { productId_customerClass: { productId: 'prod-1', customerClass: 'RETAILER' } },
+      create: { productId: 'prod-1', customerClass: 'RETAILER', price: 90 },
+      update: { price: 90 }
+    })
+  })
+
+  it('lists prices, optionally scoped to a product', async () => {
+    const findManySpy = vi.fn().mockResolvedValue([{ id: 'cp-1', productId: 'prod-1', customerClass: 'RETAILER', price: 90 }])
+    const db = makeDb({ customerClassPrice: { findMany: findManySpy } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.listCustomerClassPrices('prod-1')
+    expect(result.success).toBe(true)
+    expect(findManySpy).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'prod-1' } }))
+  })
+
+  it('deletes a price by id', async () => {
+    const deleteSpy = vi.fn().mockResolvedValue({})
+    const db = makeDb({ customerClassPrice: { delete: deleteSpy } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.deleteCustomerClassPrice('cp-1')
+    expect(result.success).toBe(true)
+    expect(deleteSpy).toHaveBeenCalledWith({ where: { id: 'cp-1' } })
   })
 })

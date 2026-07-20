@@ -25,7 +25,9 @@ export const BusinessProfileUpdateSchema = z.object({
   showLogoOnDashboard: z.boolean().optional(),
   enableDocumentWatermark: z.boolean().optional(),
   timezone: z.string().max(100).optional(),
-  clinicSpecialty: z.string().max(100).nullable().optional()
+  clinicSpecialty: z.string().max(100).nullable().optional(),
+  // Phase 58 §2 — Pharmacy regulatory identifier
+  drugLicenseNumber: z.string().max(100).nullable().optional()
 })
 
 export type BusinessProfileUpdatePayload = z.infer<typeof BusinessProfileUpdateSchema>

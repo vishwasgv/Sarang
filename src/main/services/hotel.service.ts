@@ -29,6 +29,63 @@ function computeNights(checkIn: Date, checkOut: Date): number {
   return Math.max(1, diffDays)
 }
 
+// Phase 58 §2 — seasonal/date-range pricing. Consulted once per night in the
+// stay (not once per booking) so a stay spanning a season boundary is priced
+// correctly night-by-night rather than at one flat rate for the whole stay.
+// A roomType-specific entry beats a blanket ("") entry for the same night;
+// among same-specificity ties the most recently created entry wins, so a
+// business correcting an old calendar entry doesn't have to delete the old
+// one first. Returns `fallback` (room.baseRate) untouched when no entry
+// matches — this is what keeps every pre-existing flat-rate booking's math
+// completely unchanged.
+async function resolveNightlyRate(
+  db: PrismaTx | ReturnType<typeof getPrisma>,
+  roomType: string,
+  date: Date,
+  fallback: number
+): Promise<number> {
+  const dayOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const entries = await db.hotelRateCalendar.findMany({
+    where: {
+      isActive: true,
+      startDate: { lte: dayOnly },
+      endDate: { gte: dayOnly },
+      OR: [{ roomType }, { roomType: '' }],
+    },
+  })
+  if (entries.length === 0) return fallback
+  const specific = entries.filter((e) => e.roomType === roomType)
+  const pool = specific.length > 0 ? specific : entries
+  pool.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  return pool[0].rate
+}
+
+// Sums the calendar-resolved rate for every night of the stay. Returns null
+// (not a computed total) when every single night fell back to the room's
+// flat baseRate — i.e. the calendar had nothing to say about this stay —
+// so the caller can leave roomChargeTotal unset and preserve the exact
+// legacy ratePerNight * nights math for a booking the calendar never
+// touched, rather than writing out a total that's numerically identical
+// but now takes a different code path on every future read.
+async function resolveCalendarRoomChargeTotal(
+  db: PrismaTx | ReturnType<typeof getPrisma>,
+  roomType: string,
+  checkIn: Date,
+  checkOut: Date,
+  baseRate: number
+): Promise<number | null> {
+  const nights = computeNights(checkIn, checkOut)
+  let sum = 0
+  let usedCalendar = false
+  for (let i = 0; i < nights; i++) {
+    const nightDate = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate() + i)
+    const resolved = await resolveNightlyRate(db, roomType, nightDate, baseRate)
+    if (resolved !== baseRate) usedCalendar = true
+    sum += resolved
+  }
+  return usedCalendar ? roundCurrency(sum) : null
+}
+
 // ─── Rooms ──────────────────────────────────────────────────────────────────
 
 export interface HotelRoomRecord {
@@ -38,6 +95,7 @@ export interface HotelRoomRecord {
   floor: string | null
   maxOccupancy: number
   baseRate: number
+  dayUseRate: number | null
   status: 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'OUT_OF_ORDER'
   amenities: string | null
   notes: string | null
@@ -48,7 +106,7 @@ export interface HotelRoomRecord {
 
 type RoomRow = {
   id: string; roomNumber: string; roomType: string; floor: string | null
-  maxOccupancy: number; baseRate: number; status: string
+  maxOccupancy: number; baseRate: number; dayUseRate: number | null; status: string
   amenities: string | null; notes: string | null; isActive: boolean
   createdAt: Date; updatedAt: Date
 }
@@ -56,7 +114,7 @@ type RoomRow = {
 function serializeRoom(r: RoomRow): HotelRoomRecord {
   return {
     id: r.id, roomNumber: r.roomNumber, roomType: r.roomType, floor: r.floor,
-    maxOccupancy: r.maxOccupancy, baseRate: r.baseRate,
+    maxOccupancy: r.maxOccupancy, baseRate: r.baseRate, dayUseRate: r.dayUseRate,
     status: r.status as HotelRoomRecord['status'],
     amenities: r.amenities, notes: r.notes, isActive: r.isActive,
     createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
@@ -82,13 +140,14 @@ export async function listRooms(filters?: { status?: string; roomType?: string; 
 
 export async function createRoom(payload: {
   roomNumber: string; roomType: string; floor?: string; maxOccupancy?: number
-  baseRate?: number; amenities?: string; notes?: string
+  baseRate?: number; dayUseRate?: number; amenities?: string; notes?: string
 }): Promise<{ success: boolean; data?: HotelRoomRecord; error?: { code: string; message: string } }> {
   try {
     if (!payload.roomNumber?.trim()) return { success: false, error: { code: 'HTL-002', message: 'Room number is required.' } }
     if (!payload.roomType?.trim()) return { success: false, error: { code: 'HTL-003', message: 'Room type is required.' } }
     if (payload.maxOccupancy !== undefined && payload.maxOccupancy <= 0) return { success: false, error: { code: 'HTL-004', message: 'Max occupancy must be greater than zero.' } }
     if (payload.baseRate !== undefined && payload.baseRate < 0) return { success: false, error: { code: 'HTL-005', message: 'Base rate cannot be negative.' } }
+    if (payload.dayUseRate !== undefined && payload.dayUseRate < 0) return { success: false, error: { code: 'HTL-005', message: 'Day-use rate cannot be negative.' } }
 
     const db = getPrisma()
     const existing = await db.hotelRoom.findUnique({ where: { roomNumber: payload.roomNumber.trim() } })
@@ -100,6 +159,7 @@ export async function createRoom(payload: {
         floor: payload.floor?.trim() || null,
         maxOccupancy: payload.maxOccupancy ?? 2,
         baseRate: payload.baseRate ?? 0,
+        dayUseRate: payload.dayUseRate ?? null,
         amenities: payload.amenities?.trim() || null,
         notes: payload.notes?.trim() || null,
       },
@@ -113,7 +173,7 @@ export async function createRoom(payload: {
 
 export async function updateRoom(payload: {
   id: string; roomType?: string; floor?: string; maxOccupancy?: number
-  baseRate?: number; status?: 'AVAILABLE' | 'CLEANING' | 'MAINTENANCE' | 'OUT_OF_ORDER'
+  baseRate?: number; dayUseRate?: number | null; status?: 'AVAILABLE' | 'CLEANING' | 'MAINTENANCE' | 'OUT_OF_ORDER'
   amenities?: string; notes?: string; isActive?: boolean
 }): Promise<{ success: boolean; data?: HotelRoomRecord; error?: { code: string; message: string } }> {
   try {
@@ -129,6 +189,7 @@ export async function updateRoom(payload: {
     }
     if (payload.maxOccupancy !== undefined && payload.maxOccupancy <= 0) return { success: false, error: { code: 'HTL-004', message: 'Max occupancy must be greater than zero.' } }
     if (payload.baseRate !== undefined && payload.baseRate < 0) return { success: false, error: { code: 'HTL-005', message: 'Base rate cannot be negative.' } }
+    if (payload.dayUseRate !== undefined && payload.dayUseRate !== null && payload.dayUseRate < 0) return { success: false, error: { code: 'HTL-005', message: 'Day-use rate cannot be negative.' } }
 
     const room = await db.hotelRoom.update({
       where: { id: payload.id },
@@ -137,6 +198,7 @@ export async function updateRoom(payload: {
         floor: payload.floor !== undefined ? (payload.floor.trim() || null) : undefined,
         maxOccupancy: payload.maxOccupancy,
         baseRate: payload.baseRate,
+        dayUseRate: payload.dayUseRate,
         status: existing.status === 'OCCUPIED' ? undefined : payload.status,
         amenities: payload.amenities !== undefined ? (payload.amenities.trim() || null) : undefined,
         notes: payload.notes !== undefined ? (payload.notes.trim() || null) : undefined,
@@ -259,11 +321,14 @@ export interface HotelBookingRecord {
   actualCheckInAt: string | null
   actualCheckOutAt: string | null
   ratePerNight: number
+  roomChargeTotal: number | null
   nights: number
   roomCharge: number
   extraChargesTotal: number
   estimatedTotal: number
   status: 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
+  channel: string
+  bookingType: 'OVERNIGHT' | 'DAY_USE'
   advanceAmount: number
   advancePaymentMethod: string
   cancelReason: string | null
@@ -279,7 +344,8 @@ type BookingRow = {
   id: string; bookingNumber: string; roomId: string; customerId: string | null
   guestName: string; guestPhone: string | null; guestEmail: string | null; numberOfGuests: number
   checkInDate: Date; checkOutDate: Date; actualCheckInAt: Date | null; actualCheckOutAt: Date | null
-  ratePerNight: number; status: string; advanceAmount: number; advancePaymentMethod: string
+  ratePerNight: number; roomChargeTotal: number | null; status: string; channel: string; bookingType: string
+  advanceAmount: number; advancePaymentMethod: string
   cancelReason: string | null; notes: string | null; invoiceId: string | null
   createdAt: Date; updatedAt: Date
   room: { roomNumber: string; roomType: string }
@@ -289,7 +355,7 @@ type BookingRow = {
 
 function serializeBooking(b: BookingRow): HotelBookingRecord {
   const nights = computeNights(b.checkInDate, b.checkOutDate)
-  const roomCharge = roundCurrency(b.ratePerNight * nights)
+  const roomCharge = b.roomChargeTotal != null ? roundCurrency(b.roomChargeTotal) : roundCurrency(b.ratePerNight * nights)
   const extraChargesTotal = roundCurrency(b.charges.reduce((s, c) => s + c.amount, 0))
   return {
     id: b.id, bookingNumber: b.bookingNumber, roomId: b.roomId,
@@ -299,9 +365,10 @@ function serializeBooking(b: BookingRow): HotelBookingRecord {
     checkInDate: b.checkInDate.toISOString(), checkOutDate: b.checkOutDate.toISOString(),
     actualCheckInAt: b.actualCheckInAt ? b.actualCheckInAt.toISOString() : null,
     actualCheckOutAt: b.actualCheckOutAt ? b.actualCheckOutAt.toISOString() : null,
-    ratePerNight: b.ratePerNight, nights, roomCharge, extraChargesTotal,
+    ratePerNight: b.ratePerNight, roomChargeTotal: b.roomChargeTotal, nights, roomCharge, extraChargesTotal,
     estimatedTotal: roundCurrency(roomCharge + extraChargesTotal),
     status: b.status as HotelBookingRecord['status'],
+    channel: b.channel, bookingType: b.bookingType as HotelBookingRecord['bookingType'],
     advanceAmount: b.advanceAmount, advancePaymentMethod: b.advancePaymentMethod,
     cancelReason: b.cancelReason, notes: b.notes, invoiceId: b.invoiceId,
     guests: b.guests.map((g) => ({
@@ -355,8 +422,10 @@ export async function createBooking(payload: {
   guestEmail?: string
   numberOfGuests?: number
   checkInDate: string
-  checkOutDate: string
+  checkOutDate?: string
   ratePerNight?: number
+  channel?: string
+  bookingType?: 'OVERNIGHT' | 'DAY_USE'
   advanceAmount?: number
   advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'
   notes?: string
@@ -364,8 +433,17 @@ export async function createBooking(payload: {
 }): Promise<{ success: boolean; data?: HotelBookingRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    const bookingType = payload.bookingType ?? 'OVERNIGHT'
     const checkIn = new Date(payload.checkInDate)
-    const checkOut = new Date(payload.checkOutDate)
+    // A DAY_USE stay always holds the room for the full calendar day (see
+    // the schema comment on HotelBooking.bookingType) — the checkout date
+    // the caller sends, if any, is ignored in favor of a computed
+    // checkIn+1-day range, keeping findConflict's interval-overlap check
+    // completely unmodified (no zero-width-interval double-booking risk).
+    const checkOut = bookingType === 'DAY_USE'
+      ? new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate() + 1)
+      : new Date(payload.checkOutDate ?? payload.checkInDate)
+    if (bookingType !== 'DAY_USE' && !payload.checkOutDate) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
     if (checkOut <= checkIn) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
     if (!payload.guestName?.trim()) return { success: false, error: { code: 'HTL-019', message: 'Guest name is required.' } }
     if (payload.numberOfGuests !== undefined && payload.numberOfGuests <= 0) return { success: false, error: { code: 'HTL-020', message: 'Number of guests must be greater than zero.' } }
@@ -402,6 +480,21 @@ export async function createBooking(payload: {
         }
       )
 
+      let ratePerNight = payload.ratePerNight ?? room.baseRate
+      let roomChargeTotal: number | null = null
+      if (bookingType === 'DAY_USE') {
+        // Flat day-use rate, calendar not consulted for this v1 — a
+        // deliberate scope decision, see the schema comment.
+        ratePerNight = room.dayUseRate ?? roundCurrency(room.baseRate / 2)
+        roomChargeTotal = ratePerNight
+      } else if (payload.ratePerNight === undefined) {
+        // No manual override — consult the seasonal calendar per night.
+        // Leaves roomChargeTotal null (legacy flat-rate math) when the
+        // calendar has nothing to say about this exact stay.
+        roomChargeTotal = await resolveCalendarRoomChargeTotal(tx, room.roomType, checkIn, checkOut, room.baseRate)
+        if (roomChargeTotal != null) ratePerNight = roundCurrency(roomChargeTotal / computeNights(checkIn, checkOut))
+      }
+
       const booking = await tx.hotelBooking.create({
         data: {
           bookingNumber, roomId: payload.roomId, customerId: payload.customerId ?? null,
@@ -409,7 +502,8 @@ export async function createBooking(payload: {
           guestEmail: payload.guestEmail?.trim() || null,
           numberOfGuests: payload.numberOfGuests ?? 1,
           checkInDate: checkIn, checkOutDate: checkOut,
-          ratePerNight: payload.ratePerNight ?? room.baseRate,
+          ratePerNight, roomChargeTotal,
+          channel: payload.channel?.trim() || 'WALK_IN', bookingType,
           advanceAmount, advancePaymentMethod: payload.advancePaymentMethod ?? 'CASH',
           notes: payload.notes?.trim() || null,
           createdById: payload.createdById ?? null,
@@ -488,6 +582,14 @@ export async function checkOutBooking(payload: { id: string; userId?: string }):
     await db.$transaction(async (tx) => {
       await tx.hotelBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_OUT', actualCheckOutAt: new Date() } })
       await tx.hotelRoom.update({ where: { id: booking.roomId }, data: { status: 'CLEANING' } })
+      // Gives housekeeping a real queued task the moment a room needs
+      // turning over, instead of the room just silently sitting in
+      // CLEANING with nothing tracking who's on it or whether it's done —
+      // see resolveRoomAfterTaskCompletion for the other half: completing
+      // every open task for a room flips it back to AVAILABLE.
+      await tx.hotelHousekeepingTask.create({
+        data: { roomId: booking.roomId, bookingId: payload.id, taskLabel: 'Clean & inspect room after checkout' },
+      })
     })
 
     await logAction({ userId: payload.userId, action: 'HOTEL_CHECKED_OUT', entityType: 'HotelBooking', entityId: payload.id })
@@ -579,6 +681,204 @@ export async function removeExtraCharge(payload: { chargeId: string; userId?: st
   }
 }
 
+// ─── Rate Calendar (seasonal/date-range pricing) ────────────────────────────
+
+export interface HotelRateCalendarRecord {
+  id: string; roomType: string; startDate: string; endDate: string
+  rate: number; label: string | null; isActive: boolean; createdAt: string
+}
+
+function serializeRateCalendarEntry(e: { id: string; roomType: string; startDate: Date; endDate: Date; rate: number; label: string | null; isActive: boolean; createdAt: Date }): HotelRateCalendarRecord {
+  return {
+    id: e.id, roomType: e.roomType, startDate: e.startDate.toISOString(), endDate: e.endDate.toISOString(),
+    rate: e.rate, label: e.label, isActive: e.isActive, createdAt: e.createdAt.toISOString(),
+  }
+}
+
+export async function listRateCalendar(): Promise<{ success: boolean; data?: { entries: HotelRateCalendarRecord[] }; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const rows = await db.hotelRateCalendar.findMany({ orderBy: { startDate: 'desc' } })
+    return { success: true, data: { entries: rows.map(serializeRateCalendarEntry) } }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-060', message: e instanceof Error ? e.message : 'Could not load rate calendar.' } }
+  }
+}
+
+export async function createRateCalendarEntry(payload: {
+  roomType?: string; startDate: string; endDate: string; rate: number; label?: string; createdById?: string
+}): Promise<{ success: boolean; data?: HotelRateCalendarRecord; error?: { code: string; message: string } }> {
+  try {
+    const start = new Date(payload.startDate)
+    const end = new Date(payload.endDate)
+    if (end < start) return { success: false, error: { code: 'HTL-061', message: 'End date must be on or after the start date.' } }
+    if (payload.rate < 0) return { success: false, error: { code: 'HTL-062', message: 'Rate cannot be negative.' } }
+
+    const db = getPrisma()
+    const entry = await db.hotelRateCalendar.create({
+      data: {
+        roomType: payload.roomType?.trim() || '', startDate: start, endDate: end, rate: payload.rate,
+        label: payload.label?.trim() || null, createdById: payload.createdById ?? null,
+      },
+    })
+    await logAction({ userId: payload.createdById, action: 'HOTEL_RATE_CALENDAR_CREATED', entityType: 'HotelRateCalendar', entityId: entry.id })
+    return { success: true, data: serializeRateCalendarEntry(entry) }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-063', message: e instanceof Error ? e.message : 'Could not create rate calendar entry.' } }
+  }
+}
+
+export async function deleteRateCalendarEntry(id: string, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    await db.hotelRateCalendar.delete({ where: { id } })
+    await logAction({ userId, action: 'HOTEL_RATE_CALENDAR_DELETED', entityType: 'HotelRateCalendar', entityId: id })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-064', message: e instanceof Error ? e.message : 'Could not delete rate calendar entry.' } }
+  }
+}
+
+// ─── Housekeeping ────────────────────────────────────────────────────────────
+
+export interface HotelHousekeepingTaskRecord {
+  id: string; roomId: string; roomNumber: string; bookingId: string | null
+  taskLabel: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE'
+  assignedToId: string | null; assignedToName: string | null
+  completedAt: string | null; notes: string | null; createdAt: string
+}
+
+const housekeepingInclude = {
+  room: { select: { roomNumber: true } },
+  assignedTo: { select: { id: true, fullName: true } },
+}
+
+function serializeHousekeepingTask(t: {
+  id: string; roomId: string; bookingId: string | null; taskLabel: string; status: string
+  assignedToId: string | null; completedAt: Date | null; notes: string | null; createdAt: Date
+  room: { roomNumber: string }; assignedTo: { id: string; fullName: string } | null
+}): HotelHousekeepingTaskRecord {
+  return {
+    id: t.id, roomId: t.roomId, roomNumber: t.room.roomNumber, bookingId: t.bookingId,
+    taskLabel: t.taskLabel, status: t.status as HotelHousekeepingTaskRecord['status'],
+    assignedToId: t.assignedToId, assignedToName: t.assignedTo?.fullName ?? null,
+    completedAt: t.completedAt ? t.completedAt.toISOString() : null, notes: t.notes,
+    createdAt: t.createdAt.toISOString(),
+  }
+}
+
+export async function listHousekeepingTasks(filters?: { status?: string; roomId?: string }): Promise<{ success: boolean; data?: { tasks: HotelHousekeepingTaskRecord[] }; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const rows = await db.hotelHousekeepingTask.findMany({
+      where: { status: filters?.status, roomId: filters?.roomId },
+      include: housekeepingInclude,
+      orderBy: { createdAt: 'desc' },
+    })
+    return { success: true, data: { tasks: rows.map(serializeHousekeepingTask) } }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-070', message: e instanceof Error ? e.message : 'Could not load housekeeping tasks.' } }
+  }
+}
+
+export async function createHousekeepingTask(payload: { roomId: string; taskLabel: string; bookingId?: string; notes?: string }): Promise<{ success: boolean; data?: HotelHousekeepingTaskRecord; error?: { code: string; message: string } }> {
+  try {
+    if (!payload.taskLabel?.trim()) return { success: false, error: { code: 'HTL-071', message: 'Task description is required.' } }
+    const db = getPrisma()
+    const room = await db.hotelRoom.findUnique({ where: { id: payload.roomId } })
+    if (!room) return { success: false, error: { code: 'HTL-072', message: 'Room not found.' } }
+    const task = await db.hotelHousekeepingTask.create({
+      data: { roomId: payload.roomId, bookingId: payload.bookingId ?? null, taskLabel: payload.taskLabel.trim(), notes: payload.notes?.trim() || null },
+      include: housekeepingInclude,
+    })
+    return { success: true, data: serializeHousekeepingTask(task) }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-073', message: e instanceof Error ? e.message : 'Could not create housekeeping task.' } }
+  }
+}
+
+export async function assignHousekeepingTask(payload: { id: string; assignedToId: string | null }): Promise<{ success: boolean; data?: HotelHousekeepingTaskRecord; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const task = await db.hotelHousekeepingTask.update({
+      where: { id: payload.id }, data: { assignedToId: payload.assignedToId }, include: housekeepingInclude,
+    })
+    return { success: true, data: serializeHousekeepingTask(task) }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-074', message: e instanceof Error ? e.message : 'Could not assign task.' } }
+  }
+}
+
+// Completing the LAST open task for a room is what actually turns it back
+// over to the front desk — a CLEANING room with zero remaining PENDING/
+// IN_PROGRESS tasks auto-flips to AVAILABLE, replacing the previously
+// unconditional manual dropdown with a real "housekeeping actually
+// finished" signal. A room in any other status (e.g. already re-booked,
+// or under MAINTENANCE) is left untouched — this only ever resolves a
+// CLEANING room forward, never overrides an unrelated status.
+export async function updateHousekeepingTaskStatus(payload: { id: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE'; userId?: string }): Promise<{ success: boolean; data?: HotelHousekeepingTaskRecord; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const existing = await db.hotelHousekeepingTask.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'HTL-075', message: 'Task not found.' } }
+
+    const task = await db.hotelHousekeepingTask.update({
+      where: { id: payload.id },
+      data: { status: payload.status, completedAt: payload.status === 'DONE' ? new Date() : null },
+      include: housekeepingInclude,
+    })
+
+    if (payload.status === 'DONE') {
+      const remaining = await db.hotelHousekeepingTask.count({ where: { roomId: existing.roomId, status: { in: ['PENDING', 'IN_PROGRESS'] } } })
+      if (remaining === 0) {
+        const room = await db.hotelRoom.findUnique({ where: { id: existing.roomId } })
+        if (room?.status === 'CLEANING') {
+          await db.hotelRoom.update({ where: { id: existing.roomId }, data: { status: 'AVAILABLE' } })
+        }
+      }
+    }
+
+    await logAction({ userId: payload.userId, action: 'HOTEL_HOUSEKEEPING_TASK_UPDATED', entityType: 'HotelHousekeepingTask', entityId: payload.id, newValue: { status: payload.status } })
+    return { success: true, data: serializeHousekeepingTask(task) }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-076', message: e instanceof Error ? e.message : 'Could not update task.' } }
+  }
+}
+
+export async function deleteHousekeepingTask(id: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    await db.hotelHousekeepingTask.delete({ where: { id } })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-077', message: e instanceof Error ? e.message : 'Could not delete task.' } }
+  }
+}
+
+// ─── Returning-guest lookup ──────────────────────────────────────────────────
+
+export interface CustomerStayHistory { stayCount: number; lastStayCheckOut: string | null }
+
+// customerId → Customer already exists on HotelBooking; this is the missing
+// piece that actually surfaces "this is a returning guest" to the front
+// desk, rather than a new guest entity — see the Phase 58 research note on
+// why Customer (not a new HotelGuest model) is the right thing to query.
+export async function getCustomerStayHistory(customerId: string): Promise<{ success: boolean; data?: CustomerStayHistory; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const stays = await db.hotelBooking.findMany({
+      where: { customerId, status: { in: ['CHECKED_OUT', 'CHECKED_IN'] } },
+      orderBy: { checkOutDate: 'desc' },
+      select: { checkOutDate: true },
+      take: 1,
+    })
+    const stayCount = await db.hotelBooking.count({ where: { customerId, status: { in: ['CHECKED_OUT', 'CHECKED_IN'] } } })
+    return { success: true, data: { stayCount, lastStayCheckOut: stays[0] ? stays[0].checkOutDate.toISOString() : null } }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-080', message: e instanceof Error ? e.message : 'Could not load stay history.' } }
+  }
+}
+
 // ─── Invoicing ───────────────────────────────────────────────────────────────
 
 const HOTEL_ROOM_CHARGE_PRODUCT_NAME = 'Hotel Room Charge'
@@ -625,7 +925,7 @@ export async function generateHotelInvoice(bookingId: string, userId?: string): 
       }
 
       const nights = computeNights(booking.checkInDate, booking.checkOutDate)
-      const roomCharge = roundCurrency(booking.ratePerNight * nights)
+      const roomCharge = booking.roomChargeTotal != null ? roundCurrency(booking.roomChargeTotal) : roundCurrency(booking.ratePerNight * nights)
 
       const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber}`)
       const invoiceItems: Array<{ productId: string; quantity: number; unitPrice: number }> = [
@@ -674,6 +974,102 @@ export async function generateHotelInvoice(bookingId: string, userId?: string): 
     }
   } catch (e) {
     return { success: false, error: { code: 'HTL-051', message: e instanceof Error ? e.message : 'Could not generate invoice.' } }
+  }
+}
+
+// A group/multi-room booking is created today as N separate HotelBooking
+// rows (the existing New Booking flow, run once per room) tied together by
+// sharing one Customer — there's no new "group booking" entity. What's
+// actually missing is billing them as ONE invoice instead of N separate
+// ones, which is what this does: claims every booking id atomically (all-
+// or-nothing, same reasoning generateHotelInvoice's single-booking claim
+// documents), then makes exactly one billingService.createInvoice() call
+// combining every room's charge + extra charges, and writes the resulting
+// invoice id back onto every booking in the group. HotelBooking.invoiceId
+// is deliberately not @unique (see the schema comment) — multiple rows
+// legally sharing one invoice id is not a constraint violation here the
+// way it would be for KOT.
+export async function generateGroupHotelInvoice(bookingIds: string[], userId?: string): Promise<{ success: boolean; data?: { invoiceId: string }; error?: { code: string; message: string } }> {
+  const db = getPrisma()
+  if (!bookingIds || bookingIds.length < 2) {
+    return { success: false, error: { code: 'HTL-055', message: 'Select at least two bookings to combine into one invoice.' } }
+  }
+  const uniqueIds = [...new Set(bookingIds)]
+
+  const claimed: string[] = []
+  try {
+    for (const id of uniqueIds) {
+      const claim = await db.hotelBooking.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: HOTEL_INVOICE_CLAIM_SENTINEL } })
+      if (claim.count === 0) {
+        // Roll back every booking claimed so far in this same call — an
+        // all-or-nothing group claim, not a partial one that would leave
+        // some bookings silently excluded from the combined bill.
+        if (claimed.length > 0) await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'HTL-056', message: 'One of the selected bookings was already invoiced or is being invoiced.' } }
+      }
+      claimed.push(id)
+    }
+
+    const bookings = await db.hotelBooking.findMany({ where: { id: { in: uniqueIds } }, include: { room: true, charges: true } })
+    if (bookings.length !== uniqueIds.length) {
+      await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'HTL-017', message: 'One or more bookings not found.' } }
+    }
+    if (bookings.some((b) => b.status !== 'CHECKED_OUT')) {
+      await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'HTL-057', message: 'Every booking in the group must be checked out before generating a combined bill.' } }
+    }
+    const customerId = bookings[0].customerId
+    if (!customerId || bookings.some((b) => b.customerId !== customerId)) {
+      await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'HTL-058', message: 'A combined bill requires every booking in the group to share the same linked customer.' } }
+    }
+
+    try {
+      const invoiceItems: Array<{ productId: string; quantity: number; unitPrice: number }> = []
+      for (const booking of bookings) {
+        const nights = computeNights(booking.checkInDate, booking.checkOutDate)
+        const roomCharge = booking.roomChargeTotal != null ? roundCurrency(booking.roomChargeTotal) : roundCurrency(booking.ratePerNight * nights)
+        const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber} (${booking.bookingNumber})`)
+        invoiceItems.push({ productId: roomChargeProduct.id, quantity: 1, unitPrice: roomCharge })
+        for (const charge of booking.charges) {
+          const chargeProduct = await findOrCreatePlaceholderProduct(`${charge.description} (${booking.bookingNumber})`)
+          invoiceItems.push({ productId: chargeProduct.id, quantity: charge.quantity, unitPrice: charge.unitPrice })
+        }
+      }
+
+      const result = await billingService.createInvoice({
+        customerId,
+        paymentMethod: 'CREDIT',
+        items: invoiceItems,
+        notes: `Combined hotel bill — ${bookings.length} rooms: ${bookings.map((b) => `${b.bookingNumber} (Room ${b.room.roomNumber})`).join(', ')}`,
+      })
+      if (!result.success) {
+        await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } })
+        return result as { success: false; error: { code: string; message: string } }
+      }
+
+      const invoice = result.data as { id: string; totalAmount: number }
+      await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: invoice.id } })
+
+      const totalAdvance = bookings.reduce((s, b) => s + b.advanceAmount, 0)
+      if (totalAdvance > 0) {
+        const { paymentService } = await import('./payment.service')
+        await paymentService.recordPayment({
+          invoiceId: invoice.id,
+          paymentMethod: bookings[0].advancePaymentMethod as 'CASH' | 'UPI' | 'CARD' | 'WALLET',
+          amount: Math.min(totalAdvance, invoice.totalAmount),
+        }, userId)
+      }
+
+      await logAction({ userId, action: 'HOTEL_GROUP_INVOICED', entityType: 'HotelBooking', entityId: claimed.join(','), newValue: { invoiceId: invoice.id, bookingCount: claimed.length } })
+      return { success: true, data: { invoiceId: invoice.id } }
+    } catch (err) {
+      await db.hotelBooking.updateMany({ where: { id: { in: claimed } }, data: { invoiceId: null } }).catch(() => {})
+      throw err
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-059', message: e instanceof Error ? e.message : 'Could not generate combined invoice.' } }
   }
 }
 
@@ -760,6 +1156,9 @@ export const hotelService = {
   listBookings, getBooking, createBooking,
   checkInBooking, checkOutBooking, cancelBooking, markNoShow,
   addExtraCharge, removeExtraCharge,
-  generateHotelInvoice,
+  generateHotelInvoice, generateGroupHotelInvoice,
   getOccupancyReport, getGuestRegister,
+  listRateCalendar, createRateCalendarEntry, deleteRateCalendarEntry,
+  listHousekeepingTasks, createHousekeepingTask, assignHousekeepingTask, updateHousekeepingTaskStatus, deleteHousekeepingTask,
+  getCustomerStayHistory,
 }

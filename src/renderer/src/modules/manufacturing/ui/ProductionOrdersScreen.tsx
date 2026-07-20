@@ -16,17 +16,27 @@ interface WorkOrderStep {
   stepNumber: number
   taskName: string
   status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'
+  // Phase 58 §2 — QC/inspection gate
+  isQcStep: boolean
+  qcResult: 'PASS' | 'FAIL' | null
+  qcNotes: string | null
   notes: string | null
 }
 
 interface MaterialUsage {
   id: string
-  rawMaterialId: string
-  materialName: string
-  materialUnit: string
+  rawMaterialId: string | null
+  materialName: string | null
+  materialUnit: string | null
+  // Phase 58 §2 — multi-level BOM: set instead of the material* fields for a
+  // component-Product (sub-assembly) usage row.
+  componentProductId: string | null
+  componentProductName: string | null
   quantityPlanned: number
   quantityActual: number
   unitCost: number
+  // Phase 58 §2 — raw-material lot/batch traceability
+  batchConsumption: Array<{ batchId: string; batchNumber: string; quantityConsumed: number }>
 }
 
 interface ProductionOrder {
@@ -36,6 +46,9 @@ interface ProductionOrder {
   productName: string
   plannedQty: number
   producedQty: number
+  // Phase 58 §2 — scrap/reject tracking + labor costing
+  scrapQty: number
+  laborCost: number
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   startDate: string | null
   completedDate: string | null
@@ -104,14 +117,24 @@ export function ProductionOrdersScreen() {
   const [workOrders, setWorkOrders] = useState<WorkOrderStep[]>([])
   const [actionBusy, setActionBusy] = useState(false)
   const [completeQty, setCompleteQty] = useState('')
+  // Phase 58 §2 — scrap/reject qty + labor cost, folded into the produced
+  // unit's cost basis on completion.
+  const [completeScrapQty, setCompleteScrapQty] = useState('')
+  const [completeLaborCost, setCompleteLaborCost] = useState('')
   const [cancelNotes, setCancelNotes] = useState('')
   const [showComplete, setShowComplete] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
 
   // Work order editor
   const [showWOEditor, setShowWOEditor] = useState(false)
-  const [woSteps, setWoSteps] = useState<Array<{ taskName: string; notes: string }>>([{ taskName: '', notes: '' }])
+  const [woSteps, setWoSteps] = useState<Array<{ taskName: string; notes: string; isQcStep: boolean }>>([{ taskName: '', notes: '', isQcStep: false }])
   const [savingWO, setSavingWO] = useState(false)
+
+  // Phase 58 §2 — QC pass/fail prompt, shown instead of a plain toggle when
+  // marking a QC-flagged step DONE (server requires a result either way —
+  // this just makes it a real prompt instead of a silent rejection).
+  const [qcTarget, setQcTarget] = useState<WorkOrderStep | null>(null)
+  const [qcNotesInput, setQcNotesInput] = useState('')
 
   // Start-order confirmation
   const [startTarget, setStartTarget] = useState<ProductionOrder | null>(null)
@@ -186,8 +209,10 @@ export function ProductionOrdersScreen() {
     if (!detailOrder) return
     const qty = parseFloat(completeQty)
     if (!qty || qty <= 0) { toastError(t('manufacturing.enterProducedQty')); return }
+    const scrapQty = parseFloat(completeScrapQty) || 0
+    const laborCost = parseFloat(completeLaborCost) || 0
     setActionBusy(true)
-    const res = await api.production.complete({ id: detailOrder.id, producedQty: qty })
+    const res = await api.production.complete({ id: detailOrder.id, producedQty: qty, scrapQty, laborCost })
     setActionBusy(false)
     if (res.success) {
       toastSuccess(t('manufacturing.orderCompleted', { qty }))
@@ -226,10 +251,35 @@ export function ProductionOrdersScreen() {
   }
 
   async function handleWorkOrderStatusToggle(wo: WorkOrderStep) {
-    const nextStatus: WorkOrderStep['status'] = wo.status === 'DONE' ? 'PENDING' : 'DONE'
-    const res = await api.workOrders.updateStatus({ id: wo.id, status: nextStatus })
+    if (wo.status === 'DONE') {
+      // Un-mark done — no QC result required to go backward.
+      const res = await api.workOrders.updateStatus({ id: wo.id, status: 'PENDING' })
+      if (res.success) setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'PENDING' } : w))
+      else toastError(res.error?.message ?? t('common.updated'))
+      return
+    }
+    // Phase 58 §2 — a QC-flagged step requires a real pass/fail result
+    // before it can be marked done (server-enforced too, not just this UI
+    // gate) — route to the QC prompt instead of a plain toggle.
+    if (wo.isQcStep) {
+      setQcTarget(wo)
+      setQcNotesInput('')
+      return
+    }
+    const res = await api.workOrders.updateStatus({ id: wo.id, status: 'DONE' })
     if (res.success) {
-      setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: nextStatus } : w))
+      setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'DONE' } : w))
+    } else {
+      toastError(res.error?.message ?? t('common.updated'))
+    }
+  }
+
+  async function submitQcResult(result: 'PASS' | 'FAIL') {
+    if (!qcTarget) return
+    const res = await api.workOrders.updateStatus({ id: qcTarget.id, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || undefined })
+    if (res.success) {
+      setWorkOrders(prev => prev.map(w => w.id === qcTarget.id ? { ...w, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || null } : w))
+      setQcTarget(null)
     } else {
       toastError(res.error?.message ?? t('common.updated'))
     }
@@ -238,8 +288,8 @@ export function ProductionOrdersScreen() {
   function openWOEditor() {
     setWoSteps(
       workOrders.length > 0
-        ? workOrders.map(w => ({ taskName: w.taskName, notes: w.notes ?? '' }))
-        : [{ taskName: '', notes: '' }]
+        ? workOrders.map(w => ({ taskName: w.taskName, notes: w.notes ?? '', isQcStep: w.isQcStep }))
+        : [{ taskName: '', notes: '', isQcStep: false }]
     )
     setShowWOEditor(true)
   }
@@ -251,7 +301,7 @@ export function ProductionOrdersScreen() {
     setSavingWO(true)
     const res = await api.workOrders.upsert({
       productionOrderId: detailOrder.id,
-      steps: valid.map((s, i) => ({ stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined }))
+      steps: valid.map((s, i) => ({ stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined, isQcStep: s.isQcStep }))
     })
     setSavingWO(false)
     if (res.success && res.data) {
@@ -459,6 +509,22 @@ export function ProductionOrdersScreen() {
                   className="text-center"
                 />
               </div>
+              {(detailOrder.scrapQty > 0 || detailOrder.laborCost > 0) && (
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <KpiCard
+                    label={t('manufacturing.scrapQtyLabel')}
+                    value={`${detailOrder.scrapQty} ${t('common.units')}`}
+                    color={detailOrder.scrapQty > 0 ? 'danger' : 'neutral'}
+                    className="text-center"
+                  />
+                  <KpiCard
+                    label={t('manufacturing.laborCostLabel')}
+                    value={formatCurrency(detailOrder.laborCost)}
+                    color="brand"
+                    className="text-center"
+                  />
+                </div>
+              )}
 
               {detailOrder.notes && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4 flex items-start gap-2">
@@ -483,9 +549,18 @@ export function ProductionOrdersScreen() {
                       <tbody className="divide-y divide-border">
                         {detailOrder.materialUsage.map(u => (
                           <tr key={u.id}>
-                            <td className="px-4 py-2.5 text-text-primary">{u.materialName}</td>
-                            <td className="px-4 py-2.5 text-right text-text-secondary">{formatNumber(u.quantityPlanned, { maximumFractionDigits: 3 })} {u.materialUnit}</td>
-                            <td className="px-4 py-2.5 text-right text-text-primary font-medium">{formatNumber(u.quantityActual, { maximumFractionDigits: 3 })} {u.materialUnit}</td>
+                            <td className="px-4 py-2.5 text-text-primary">
+                              {u.materialName ?? u.componentProductName}
+                              {u.componentProductId && <span className="ml-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
+                              {/* Phase 58 §2 — raw-material lot/batch traceability */}
+                              {u.batchConsumption.length > 0 && (
+                                <p className="text-xs text-text-secondary mt-0.5">
+                                  {t('manufacturing.lotsUsed')}: {u.batchConsumption.map(b => `${b.batchNumber} (${formatNumber(b.quantityConsumed, { maximumFractionDigits: 3 })})`).join(', ')}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-text-secondary">{formatNumber(u.quantityPlanned, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
+                            <td className="px-4 py-2.5 text-right text-text-primary font-medium">{formatNumber(u.quantityActual, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -525,9 +600,16 @@ export function ProductionOrdersScreen() {
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${wo.status === 'DONE' ? 'line-through text-text-secondary' : 'text-text-primary'}`}>
                               {wo.stepNumber}. {wo.taskName}
+                              {wo.isQcStep && <span className="ml-1.5 text-xs font-normal text-brand/70">{t('manufacturing.qcCheckpointTag')}</span>}
                             </p>
                             {wo.notes && <p className="text-xs text-text-secondary mt-0.5">{wo.notes}</p>}
+                            {wo.qcNotes && <p className="text-xs text-text-secondary mt-0.5">{t('manufacturing.qcNotesLabel')}: {wo.qcNotes}</p>}
                           </div>
+                          {wo.isQcStep && wo.qcResult && (
+                            <Badge variant={wo.qcResult === 'PASS' ? 'success' : 'danger'} size="sm" className="shrink-0">
+                              {wo.qcResult === 'PASS' ? t('manufacturing.qcPass') : t('manufacturing.qcFail')}
+                            </Badge>
+                          )}
                           <Badge variant={WO_STATUS_VARIANT[wo.status] ?? 'neutral'} size="sm" className="shrink-0">
                             {t(WO_STATUS_KEY[wo.status] ?? WO_STATUS_KEY.PENDING)}
                           </Badge>
@@ -553,7 +635,7 @@ export function ProductionOrdersScreen() {
                 )}
                 {detailOrder.status === 'IN_PROGRESS' && (
                   <button
-                    onClick={() => { setCompleteQty(String(detailOrder.plannedQty)); setShowComplete(true) }}
+                    onClick={() => { setCompleteQty(String(detailOrder.plannedQty)); setCompleteScrapQty(''); setCompleteLaborCost(''); setShowComplete(true) }}
                     className="flex-1 h-12 rounded-xl bg-green-600 text-white font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
                   >
                     <CheckCircle2 size={16} /> {t('manufacturing.markComplete')}
@@ -600,6 +682,15 @@ export function ProductionOrdersScreen() {
                       placeholder={`${t('common.notes')} (${t('common.optional')})`}
                       className="w-full h-9 rounded-xl border border-border px-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
+                    <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <input
+                        type="checkbox"
+                        checked={step.isQcStep}
+                        onChange={e => setWoSteps(prev => prev.map((s, j) => j === i ? { ...s, isQcStep: e.target.checked } : s))}
+                        className="h-3.5 w-3.5 rounded border-border text-brand focus:ring-brand"
+                      />
+                      {t('manufacturing.markAsQcStep')}
+                    </label>
                   </div>
                   <button
                     onClick={() => setWoSteps(prev => prev.filter((_, j) => j !== i))}
@@ -610,7 +701,7 @@ export function ProductionOrdersScreen() {
                   </button>
                 </div>
               ))}
-              <button onClick={() => setWoSteps(prev => [...prev, { taskName: '', notes: '' }])}
+              <button onClick={() => setWoSteps(prev => [...prev, { taskName: '', notes: '', isQcStep: false }])}
                 className="w-full h-9 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:border-brand hover:text-brand transition-colors">
                 {t('manufacturing.addStep')}
               </button>
@@ -649,12 +740,67 @@ export function ProductionOrdersScreen() {
                   placeholder={`${t('manufacturing.planLabel')}: ${detailOrder.plannedQty}`}
                 />
               </div>
+              {/* Phase 58 §2 — scrap/reject qty + labor cost, both optional
+                  (default 0, unchanged behavior if left blank), folded into
+                  the produced unit's cost basis on completion. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.scrapQtyLabel')} ({t('common.optional')})</label>
+                  <input
+                    type="number" min="0" step="0.001"
+                    value={completeScrapQty}
+                    onChange={e => setCompleteScrapQty(e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.laborCostLabel')} ({t('common.optional')})</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={completeLaborCost}
+                    onChange={e => setCompleteLaborCost(e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 px-6 pb-6">
               <button onClick={() => setShowComplete(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary hover:bg-surface-hover font-medium transition-colors">{t('billing.goBack')}</button>
               <button onClick={handleComplete} disabled={actionBusy} className="flex-1 h-12 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors">
                 {actionBusy ? t('cashClose.saving') : t('manufacturing.markComplete')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 58 §2 — QC pass/fail prompt */}
+      {qcTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-text-primary">{t('manufacturing.qcResultTitle')}</h2>
+              <button onClick={() => setQcTarget(null)} className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-text-secondary">{qcTarget.taskName}</p>
+              <input
+                autoFocus
+                value={qcNotesInput}
+                onChange={e => setQcNotesInput(e.target.value)}
+                placeholder={`${t('manufacturing.qcNotesLabel')} (${t('common.optional')})`}
+                className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+              <div className="flex gap-3">
+                <button onClick={() => submitQcResult('FAIL')} className="flex-1 h-12 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors">
+                  {t('manufacturing.qcFail')}
+                </button>
+                <button onClick={() => submitQcResult('PASS')} className="flex-1 h-12 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">
+                  {t('manufacturing.qcPass')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { serializeVendorBooking } from './event-vendor-booking.service'
+import { serializeVendorBooking, recomputePerHeadVendorBookings } from './event-vendor-booking.service'
 import { billingService } from './billing.service'
 
 // EventBooking.clientBudget/finalAmount are Prisma Decimal fields — Electron's
@@ -110,6 +110,20 @@ export async function updateEventBooking(payload: {
       },
     },
   })
+  // Phase 58 §2 — a changed guest count must keep every PER_HEAD vendor
+  // line's billable amount honest, not silently stale.
+  if (payload.expectedGuestCount !== undefined) {
+    await recomputePerHeadVendorBookings(id, payload.expectedGuestCount)
+    const refreshed = await db.eventBooking.findUnique({
+      where: { id },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        vendorBookings: { include: { vendor: { select: { id: true, supplierName: true, phone: true } } } },
+      },
+    })
+    await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'EventBooking', entityId: event.id } }).catch(() => {})
+    return { success: true, data: serializeEventBooking(refreshed!) }
+  }
   await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'EventBooking', entityId: event.id } }).catch(() => {})
   return { success: true, data: serializeEventBooking(event) }
 }

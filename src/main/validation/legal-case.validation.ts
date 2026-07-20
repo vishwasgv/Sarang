@@ -11,6 +11,8 @@ export const CreateLegalCaseSchema = z.object({
   clientId: z.string().min(1, 'Client is required'),
   advocateId: z.string().optional(),
   filingDate: z.string().optional(),
+  opposingPartyName: z.string().max(200).optional(),
+  limitationDate: z.string().optional(),
   feeAgreed: z.number().nonnegative('Fee agreed cannot be negative').finite().optional(),
   notes: z.string().max(2000).optional(),
 })
@@ -28,10 +30,19 @@ export const UpdateLegalCaseSchema = z.object({
   status: z.string().max(50).optional(),
   filingDate: z.string().nullable().optional(),
   nextHearingDate: z.string().nullable().optional(),
+  opposingPartyName: z.string().max(200).nullable().optional(),
+  limitationDate: z.string().nullable().optional(),
   feeAgreed: z.number().nonnegative('Fee agreed cannot be negative').finite().nullable().optional(),
   feeCollected: z.number().nonnegative('Fee collected cannot be negative').finite().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
 
+export const CheckConflictOfInterestSchema = z.object({
+  clientId: z.string().optional(),
+  opposingPartyName: z.string().max(200).optional(),
+  excludeCaseId: z.string().optional(),
+})
+
 export type CreateLegalCasePayload = z.infer<typeof CreateLegalCaseSchema>
 export type UpdateLegalCasePayload = z.infer<typeof UpdateLegalCaseSchema>
+export type CheckConflictOfInterestPayload = z.infer<typeof CheckConflictOfInterestSchema>

@@ -139,7 +139,8 @@
     "of": "ൽ",
     "description": "Description",
     "none": "None",
-    "thisWeek": "This Week"
+    "thisWeek": "This Week",
+    "inStock": "സ്റ്റോക്കിൽ"
   },
   "auth": {
     "username": "ഉപയോക്തൃ നാമം",
@@ -229,6 +230,8 @@
     "percentDiscount": "% കി.",
     "invoiceDate": "ഇ.തീ.",
     "dueDate": "ദ.തീ.",
+    "dueOn": "അവസാന തീയതി {{date}}",
+    "overdueSince": "{{date}} മുതൽ കുടിശ്ശിക",
     "notes": "കുറിപ്പുകൾ",
     "rounding": "റൗണ്ടിംഗ്",
     "invoiceCreated": "ഇൻവോയ്സ് സൃഷ്ടിച്ചു",
@@ -286,7 +289,40 @@
     "batchLabel": "ബാച്ച് {{batchNumber}} · {{status}}",
     "batchExpired": "കാലഹരണപ്പെട്ടു",
     "batchExpiresToday": "ഇന്ന് കാലഹരണപ്പെടും",
-    "batchExpiresIn": "{{days}} ദിവസത്തിൽ കാലഹരണപ്പെടും"
+    "batchExpiresIn": "{{days}} ദിവസത്തിൽ കാലഹരണപ്പെടും",
+    "addTipOrServiceCharge": "ടിപ്പ് / സേവന നിരക്ക് ചേർക്കുക",
+    "tipAmountLabel": "തുക",
+    "tipAmountInvalid": "പൂജ്യത്തേക്കാൾ കൂടുതലുള്ള തുക നൽകുക.",
+    "confirmAddToCart": "കാർട്ടിലേക്ക് ചേർക്കുക",
+    "unavailableToday": "ഇന്ന് ലഭ്യമല്ല",
+    "unavailableTodayMessage": "{{productName}} ഇന്ന് ലഭ്യമല്ലെന്ന് അടയാളപ്പെടുത്തിയിരിക്കുന്നു.",
+    "holdSale": "വിൽപ്പന ഹോൾഡ് ചെയ്യുക",
+    "resumeSale": "വിൽപ്പന പുനരാരംഭിക്കുക",
+    "heldSales": "ഹോൾഡ് ചെയ്ത വിൽപ്പനകൾ",
+    "noHeldSales": "ഹോൾഡ് ചെയ്ത വിൽപ്പനകൾ ഇല്ല.",
+    "holdSaleLabel": "കുറിപ്പ് (ഐച്ഛികം)",
+    "holdSaleLabelPlaceholder": "ഉദാ. രാഹുൽ - നീല ഷർട്ട്",
+    "confirmHold": "ഹോൾഡ് ചെയ്യുക",
+    "holdSaleSuccess": "വിൽപ്പന ഹോൾഡ് ചെയ്തു.",
+    "resumeSaleAction": "പുനരാരംഭിക്കുക",
+    "abandonHeldSale": "നീക്കം ചെയ്യുക",
+    "confirmAbandonHeldSale": "ഈ ഹോൾഡ് വിൽപ്പന നീക്കം ചെയ്യണോ? ഇത് പഴയപടിയാക്കാൻ കഴിയില്ല.",
+    "emptyCartCannotHold": "കാർട്ട് ശൂന്യമാണ് — ഹോൾഡ് ചെയ്യാൻ ഒന്നുമില്ല.",
+    "frequentlySold": "ഇടയ്ക്കിടെ വിറ്റത്",
+    "mrpLabel": "MRP",
+    "areaCalculator": "വിസ്തീർണ്ണ കാൽക്കുലേറ്റർ (നീളം × വീതി)",
+    "areaLabel": "വിസ്തീർണ്ണം",
+    "areaFormula": "നീളം × വീതി = വിസ്തീർണ്ണം",
+    "useAreaSq": "{{area}} ച. ഉപയോഗിക്കുക",
+    "rx": {
+      "title": "കുറിപ്പടി വിവരങ്ങൾ",
+      "description": "ഇത് കുറിപ്പടി മാത്രമുള്ള ഇനമാണ് (ഷെഡ്യൂൾ H/H1) — ഇത് വിൽക്കാൻ രോഗിയുടെയും ഡോക്ടറുടെയും പേര് ആവശ്യമാണ്.",
+      "patientName": "രോഗിയുടെ പേര് *",
+      "doctorName": "ഡോക്ടറുടെ പേര് *",
+      "date": "കുറിപ്പടി തീയതി (ഐച്ഛികം)",
+      "addToCart": "കാർട്ടിലേക്ക് ചേർക്കുക",
+      "required": "രോഗിയുടെ പേരും ഡോക്ടറുടെ പേരും ആവശ്യമാണ്."
+    }
   },
   "products": {
     "title": "ഉൽപ്പന്നങ്ങൾ",
@@ -298,6 +334,7 @@
     "unit": "യൂണിറ്റ്",
     "sellingPrice": "വി.വില",
     "costPrice": "ചെ.വില",
+    "mrp": "MRP (ഐച്ഛികം)",
     "taxRate": "നി.നിരക്ക് (%)",
     "stock": "ഇ.",
     "lowStockAlert": "കുറ.ഇ.മുന്ന.",
@@ -478,7 +515,15 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "reorder": {
+      "generateButton": "റീഓർഡർ PO സൃഷ്ടിക്കുക",
+      "title": "റീഓർഡർ PO സൃഷ്ടിച്ചു",
+      "nothingToOrder": "ഇപ്പോൾ കുറഞ്ഞ സ്റ്റോക്കുള്ള ഉൽപ്പന്നങ്ങളൊന്നും റീഓർഡർ ചെയ്യേണ്ടതില്ല.",
+      "created": "ഡ്രാഫ്റ്റ് PO സൃഷ്ടിച്ചു: {{count}}",
+      "skippedNoSupplier": "ഒഴിവാക്കി (ഡിഫോൾട്ട് സപ്ലയർ ഇല്ല): {{count}}",
+      "skippedOpenPO": "ഒഴിവാക്കി (ഇതിനകം തുറന്ന PO-യിൽ): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "വാങ്ങൽ ഓർഡറുകൾ",
@@ -746,6 +791,10 @@
       "hotelGuestRegister": {
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
+      },
+      "prescriptionDrugSales": {
+        "label": "കുറിപ്പടി മരുന്ന് വിൽപ്പന",
+        "description": "കുറിപ്പടി മാത്രമുള്ള മരുന്നുകളുടെ (ഷെഡ്യൂൾ H/H1) വിൽപ്പന രജിസ്റ്റർ, രോഗിയുടെയും ഡോക്ടറുടെയും പേരുകൾ സഹിതം."
       }
     },
     "summary": {
@@ -956,7 +1005,8 @@
       "documentSummary": "ഈ കാലയളവിൽ രേഖകളൊന്നും നൽകിയിട്ടില്ല.",
       "jewelleryStock": "ലോഹ ഭാരം രേഖപ്പെടുത്തിയ ആഭരണ ഉൽപ്പന്നങ്ങൾ ഇതുവരെയില്ല.",
       "projects": "ഈ കാലയളവിൽ പ്രോജക്ടുകൾ ഇല്ല.",
-      "jobCards": "ഈ കാലയളവിൽ ജോബ് കാർഡുകൾ ഇല്ല."
+      "jobCards": "ഈ കാലയളവിൽ ജോബ് കാർഡുകൾ ഇല്ല.",
+      "prescriptionDrugSales": "ഈ തീയതി പരിധിയിൽ കുറിപ്പടി മരുന്ന് വിൽപ്പന ഒന്നും ഇല്ല."
     },
     "col": {
       "invoiceNo": "ബിൽ #",
@@ -1566,7 +1616,27 @@
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
     "statusDelivered": "Delivered",
-    "movementType": "Movement Type"
+    "movementType": "Movement Type",
+    "componentType": "തരം",
+    "subAssembly": "ഉപ-അസംബ്ലി",
+    "searchSubAssembly": "ഉൽപ്പന്നം തിരയുക (ഉപ-അസംബ്ലി)…",
+    "subAssemblyTag": "(ഉപ-അസംബ്ലി)",
+    "selfReferenceError": "ഒരു ഉൽപ്പന്നത്തിന് സ്വന്തം BOM-ന്റെ ഘടകമാകാൻ കഴിയില്ല.",
+    "lotsUsed": "ഉപയോഗിച്ച ലോട്ടുകൾ",
+    "qcCheckpointTag": "(QC പരിശോധനാ പോയിന്റ്)",
+    "qcNotesLabel": "QC കുറിപ്പുകൾ",
+    "qcPass": "പാസ്",
+    "qcFail": "പരാജയം",
+    "qcResultTitle": "QC ഫലം രേഖപ്പെടുത്തുക",
+    "markAsQcStep": "QC പരിശോധനാ പോയിന്റ്",
+    "scrapQtyLabel": "സ്ക്രാപ്പ് / നിരസിച്ച അളവ്",
+    "laborCostLabel": "തൊഴിൽ ചെലവ്",
+    "batchNumber": "ബാച്ച് / ലോട്ട് നമ്പർ",
+    "receiveBatch": "ലോട്ട് സ്വീകരിക്കുക",
+    "receiveBatchTitle": "അസംസ്കൃത വസ്തു ലോട്ട് സ്വീകരിക്കുക",
+    "batchReceived": "ലോട്ട് ലഭിച്ചു.",
+    "noBatchesYet": "ഈ വസ്തുവിനായി ഇതുവരെ ലോട്ടുകളൊന്നും ലഭിച്ചിട്ടില്ല.",
+    "remainingQty": "ബാക്കി"
   },
   "service": {
     "projects": "പ്രൊ.",
@@ -1712,7 +1782,30 @@
     "projectStInProgress": "In Progress",
     "projectStOnHold": "On Hold",
     "projectStCompleted": "Completed",
-    "projectStCancelled": "Cancelled"
+    "projectStCancelled": "Cancelled",
+    "partsUsed": "ഉപയോഗിച്ച ഭാഗങ്ങൾ",
+    "addPart": "ഭാഗം ചേർക്കുക",
+    "searchProduct": "ഉൽപ്പന്നം തിരയുക...",
+    "partsTotal": "ഭാഗങ്ങളുടെ ആകെ",
+    "noPartsUsed": "ഇതുവരെ ഭാഗങ്ങളൊന്നും ഉപയോഗിച്ചിട്ടില്ല",
+    "removePart": "ഭാഗം നീക്കം ചെയ്യുക",
+    "invalidQuantity": "സാധുവായ അളവ് നൽകുക.",
+    "couldNotAddPart": "ഭാഗം ചേർക്കാൻ കഴിഞ്ഞില്ല.",
+    "couldNotRemovePart": "ഭാഗം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "warranty": "വാറന്റി",
+    "warrantyDays": "വാറന്റി (ദിവസങ്ങൾ)",
+    "warrantyUntil": "വരെ",
+    "underWarranty": "വാറന്റിയിൽ",
+    "warrantyExpired": "വാറന്റി കാലാവധി കഴിഞ്ഞു",
+    "saveWarranty": "സേവ് ചെയ്യുക",
+    "warrantySaved": "വാറന്റി സേവ് ചെയ്തു.",
+    "invalidWarrantyDays": "സാധുവായ വാറന്റി ദിവസങ്ങളുടെ എണ്ണം നൽകുക.",
+    "couldNotSaveWarranty": "വാറന്റി സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "warrantyAppliesOnDelivery": "വാറന്റി കാലയളവ് ഡെലിവറി തീയതി മുതൽ കണക്കാക്കുന്നു.",
+    "warrantyClaimAgainst": "വാറന്റി ക്ലെയിം ഇതിനെതിരെ",
+    "notAWarrantyClaim": "വാറന്റി ക്ലെയിം അല്ല",
+    "originalUnderWarranty": "യഥാർത്ഥ ജോലി ഇപ്പോഴും വാറന്റിയിലാണ്",
+    "originalWarrantyExpired": "യഥാർത്ഥ ജോലിയുടെ വാറന്റി കാലാവധി കഴിഞ്ഞു"
   },
   "setup": {
     "welcome": "സാരംഗിലേക്ക് സ്വാഗതം",
@@ -1748,6 +1841,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "യോഗ്യമായ സേവനങ്ങൾ",
+    "qualifiedServicesHint": "ഈ ജീവനക്കാരന് ചെയ്യാൻ കഴിയുന്ന സേവനങ്ങൾ. ഏത് സേവനവും അനുവദിക്കാൻ ശൂന്യമായി വിടുക (ഡിഫോൾട്ട്).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2039,7 +2134,20 @@
       "valuePlaceholder": "മൂല്യം {{symbol}}",
       "itemNotesPlaceholder": "ഇന കുറിപ്പുകൾ (ഐച്ഛികം)",
       "deleteConfirm": "കയറ്റുമതി {{number}} ഇല്ലാതാക്കണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.",
-      "destinationRequired": "ലക്ഷ്യസ്ഥാന വിലാസം ആവശ്യമാണ്."
+      "destinationRequired": "ലക്ഷ്യസ്ഥാന വിലാസം ആവശ്യമാണ്.",
+      "stops": {
+        "title": "സ്റ്റോപ്പുകൾ",
+        "addStop": "സ്റ്റോപ്പ് ചേർക്കുക",
+        "customerName": "ഉപഭോക്താവിന്റെ പേര് (ഓപ്ഷണൽ)",
+        "destinationAddress": "ലക്ഷ്യസ്ഥാന വിലാസം",
+        "notes": "കുറിപ്പുകൾ (ഓപ്ഷണൽ)",
+        "markDelivered": "ഡെലിവർ ചെയ്തതായി അടയാളപ്പെടുത്തുക",
+        "skip": "ഒഴിവാക്കുക",
+        "delete": "ഇല്ലാതാക്കുക",
+        "empty": "ഇതുവരെ അധിക സ്റ്റോപ്പുകളൊന്നും ചേർത്തിട്ടില്ല.",
+        "primaryHint": "മുകളിലെ ലക്ഷ്യസ്ഥാനം എപ്പോഴും ആദ്യത്തെ സ്റ്റോപ്പാണ് — മൾട്ടി-സ്റ്റോപ്പ് റൂട്ടിനായി താഴെ കൂടുതൽ ചേർക്കുക.",
+        "saveFirst": "ആദ്യം ഷിപ്‌മെന്റ് സേവ് ചെയ്യുക, തുടർന്ന് സ്റ്റോപ്പുകൾ ചേർക്കുക."
+      }
     },
     "grn": {
       "title": "ചരക്ക് സ്വീകരണ കുറിപ്പുകൾ (GRN)",
@@ -2237,7 +2345,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "ഇൻവോയ്സ് ഉണ്ടാക്കുക",
       "invoicing": "...",
-      "invoiced": "ഇൻവോയ്സ് ചെയ്തു"
+      "invoiced": "ഇൻവോയ്സ് ചെയ്തു",
+      "scheduleTrial": "ട്രയൽ ഷെഡ്യൂൾ ചെയ്യുക",
+      "trial": "ട്രയൽ",
+      "trialScheduled": "ട്രയൽ അപ്പോയിന്റ്മെന്റ് ഷെഡ്യൂൾ ചെയ്തു",
+      "setFabric": "തുണി സജ്ജമാക്കുക",
+      "fabricLinked": "തുണി ✓",
+      "clearFabric": "തുണിയുടെ ലിങ്ക് നീക്കം ചെയ്യുക (സ്റ്റോക്ക് പുനഃസ്ഥാപിക്കുന്നു)"
     },
     "invoiceBanner": {
       "success": "ഇൻവോയ്സ് സൃഷ്ടിച്ചു (SAC 998821, 5% GST).",
@@ -2254,7 +2368,9 @@
       "saveFailed": "സേവ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.",
       "deleteOrderFailed": "ഓർഡർ ഇല്ലാതാക്കുന്നതിൽ പരാജയപ്പെട്ടു.",
       "deleteMeasurementFailed": "അളവ് ഇല്ലാതാക്കുന്നതിൽ പരാജയപ്പെട്ടു.",
-      "updateStatusFailed": "നില പുതുക്കുന്നതിൽ പരാജയപ്പെട്ടു."
+      "updateStatusFailed": "നില പുതുക്കുന്നതിൽ പരാജയപ്പെട്ടു.",
+      "trialDateRequired": "ട്രയൽ തീയതി ആവശ്യമാണ്.",
+      "fabricQuantityInvalid": "സാധുവായ അളവ് നൽകുക."
     },
     "measurements": {
       "selectClient": "കസ്റ്റമറെ തിരഞ്ഞെടുക്കുക",
@@ -2325,6 +2441,20 @@
       "saving": "സേവ് ചെയ്യുന്നു...",
       "updateOrder": "ഓർഡർ പുതുക്കുക",
       "createOrder": "ഓർഡർ സൃഷ്ടിക്കുക"
+    },
+    "trial": {
+      "title": "ട്രയൽ / ഫിറ്റിംഗ് ഷെഡ്യൂൾ ചെയ്യുക",
+      "hint": "മറ്റേതൊരു അപ്പോയിന്റ്മെന്റും പോലെ ക്ലയന്റിന് അതേ വാട്ട്‌സ്ആപ്പ് ഓർമ്മപ്പെടുത്തലുകൾ ലഭിക്കും.",
+      "date": "തീയതി",
+      "time": "സമയം",
+      "schedule": "ഷെഡ്യൂൾ ചെയ്യുക"
+    },
+    "fabric": {
+      "title": "തുണി സജ്ജമാക്കുക",
+      "hint": "സജ്ജമാക്കുമ്പോൾ യഥാർത്ഥ ഇൻവെന്ററി കുറയ്ക്കുന്നു.",
+      "searchPlaceholder": "ഇൻവെന്ററിയിൽ തുണി തിരയുക…",
+      "quantity": "അളവ്",
+      "set": "തുണി സജ്ജമാക്കുക"
     }
   },
   "rental": {
@@ -2347,7 +2477,8 @@
       "customer": "ഉപഭോക്താവ്",
       "items": "ഇനങ്ങൾ",
       "item": "ഇനം",
-      "period": "കാലയളവ്"
+      "period": "കാലയളവ്",
+      "service": "സേവനം"
     },
     "confirmCancel": "ഈ റിസർവേഷൻ റദ്ദാക്കണോ? ഇത് പഴയപടിയാക്കാൻ കഴിയില്ല.",
     "lateFee": "വൈകി ഫീസ്",
@@ -2396,7 +2527,23 @@
     "empty": {
       "status": "നിലവിൽ ഒന്നും ചെക്ക്-ഔട്ട് ചെയ്തിട്ടില്ല.",
       "revenue": "ഈ കാലയളവിൽ വാടക വരുമാനമൊന്നുമില്ല."
-    }
+    },
+    "serviceIntervalRentals": "സേവന ഇടവേള (വാടകകൾ)",
+    "serviceIntervalDays": "സേവന ഇടവേള (ദിവസങ്ങൾ)",
+    "dueForService": "സർവീസിംഗ് ആവശ്യമാണ്",
+    "markServiced": "സർവീസ് ചെയ്തതായി അടയാളപ്പെടുത്തുക",
+    "lastServiced": "അവസാനം സർവീസ് ചെയ്തത്",
+    "neverServiced": "ഒരിക്കലുമില്ല",
+    "addItem": "ഇനം ചേർക്കുക",
+    "removeItem": "നീക്കം ചെയ്യുക",
+    "recurringRental": "ആവർത്തന വാടക",
+    "repeatEveryDays": "ഓരോ (ദിവസങ്ങളും) ആവർത്തിക്കുക",
+    "createNextCycle": "അടുത്ത സൈക്കിൾ സൃഷ്ടിക്കുക",
+    "nextCycleCreated": "അടുത്ത വാടക സൈക്കിൾ സൃഷ്ടിച്ചു.",
+    "conditionOutLabel": "ചെക്ക്-ഔട്ടിലെ അവസ്ഥ",
+    "conditionInLabel": "തിരികെ നൽകുമ്പോഴുള്ള അവസ്ഥ",
+    "itemDamageCharge": "നാശനഷ്ട ചാർജ് (ഈ ഇനം)",
+    "photos": "ഫോട്ടോകൾ"
   },
   "jewellery": {
     "metalRates": "ലോഹ നിരക്കുകൾ",
@@ -2465,7 +2612,15 @@
     "noRateSetDesc": "{{metalType}} {{purity}} ന് നിരക്ക് സജ്ജമാക്കിയിട്ടില്ല. ആഭരണങ്ങൾ → ലോഹ നിരക്കുകളിൽ ഇന്നത്തെ നിരക്ക് സജ്ജമാക്കുക, തുടർന്ന് ഈ ഇനം വീണ്ടും ചേർക്കുക.",
     "computeErrorDesc": "ആഭരണത്തിന്റെ വില കണക്കാക്കാൻ കഴിഞ്ഞില്ല. ദയവായി നിരക്ക് പരിശോധിച്ച് ഈ ഇനം വീണ്ടും ചേർക്കുക.",
     "priceNotSetTitle": "ആഭരണ വില സജ്ജമാക്കിയിട്ടില്ല",
-    "priceNotSetDesc": "{{productName}} ന് ഇതുവരെ വിലയില്ല — ആഭരണങ്ങൾ → ലോഹ നിരക്കുകളിൽ ഇന്നത്തെ നിരക്ക് സജ്ജമാക്കുക, തുടർന്ന് ഈ ഇനം നീക്കം ചെയ്ത് വീണ്ടും ചേർക്കുക."
+    "priceNotSetDesc": "{{productName}} ന് ഇതുവരെ വിലയില്ല — ആഭരണങ്ങൾ → ലോഹ നിരക്കുകളിൽ ഇന്നത്തെ നിരക്ക് സജ്ജമാക്കുക, തുടർന്ന് ഈ ഇനം നീക്കം ചെയ്ത് വീണ്ടും ചേർക്കുക.",
+    "makingCharge": "മേക്കിംഗ് ചാർജ്",
+    "makingChargeOverrideHint": "ഈ വിൽപ്പനയ്ക്ക് മാത്രം മേക്കിംഗ് ചാർജ് മാറ്റുക — ഉൽപ്പന്നത്തിന്റെ സ്വന്തം ക്രമീകരണം മാറില്ല.",
+    "applyExchange": "പഴയ ലോഹ വിനിമയം പ്രയോഗിക്കുക",
+    "applyExchangeDesc": "വിൽപ്പന പൂർത്തിയാക്കുമ്പോൾ ലിങ്ക് ചെയ്യാത്ത വിനിമയത്തിന്റെ ക്രെഡിറ്റ് ഈ ഇൻവോയ്സിൽ സ്വയമേവ ഡിസ്കൗണ്ടായി പ്രയോഗിക്കുന്നു.",
+    "exchangeSearchPlaceholder": "വിനിമയ നമ്പർ പ്രകാരം തിരയുക...",
+    "noUnlinkedExchanges": "ഈ ഉപഭോക്താവിന് ലിങ്ക് ചെയ്യാത്ത വിനിമയങ്ങളൊന്നും കണ്ടെത്തിയില്ല.",
+    "exchangeApplied": "വിനിമയം {{number}} — ചെക്ക്ഔട്ടിൽ {{amount}} ക്രെഡിറ്റ് പ്രയോഗിക്കും.",
+    "removeExchange": "നീക്കം ചെയ്യുക"
   },
   "manual": {
     "yourType": "നിങ്ങളുടേത്",
@@ -2475,5 +2630,73 @@
     "groupUniversal": "സാർവത്രിക സവിശേഷതകൾ",
     "groupAi": "AI അസിസ്റ്റന്റ്",
     "groupBusiness": "ബിസിനസ്സ് തരങ്ങൾ"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "ഫീൽഡ് ഓർഡറുകൾ",
+      "subtitle": "ഫീൽഡിലുള്ള പ്രതിനിധികൾ സമർപ്പിച്ച ഓർഡറുകൾ, സ്ഥിരീകരണത്തിനായി കാത്തിരിക്കുന്നു",
+      "refresh": "പുതുക്കുക",
+      "linkTitle": "ഫീൽഡ് ഓർഡർ ലിങ്ക്",
+      "linkDescription": "ഈ ലിങ്ക് (അല്ലെങ്കിൽ QR കോഡ്) നിങ്ങളുടെ ഫീൽഡ് പ്രതിനിധികളുമായി പങ്കിടുക — കടയുടെ വൈഫൈയിൽ അവരുടെ സ്വന്തം ഫോണിൽ നിന്ന് ഓർഡറുകൾ എടുക്കാം.",
+      "showQr": "QR കോഡ് കാണിക്കുക",
+      "regenerateLink": "ലിങ്ക് വീണ്ടും സൃഷ്ടിക്കുക",
+      "openDirectly": "അല്ലെങ്കിൽ നേരിട്ട് തുറക്കുക:",
+      "copied": "പകർത്തി",
+      "linkCopied": "ലിങ്ക് ക്ലിപ്‌ബോർഡിലേക്ക് പകർത്തി.",
+      "notRunning": "ഫീൽഡ് ഓർഡർ ക്യാപ്ചർ നിലവിൽ പ്രവർത്തിക്കുന്നില്ല. പ്രതിനിധികൾക്ക് അവരുടെ സ്വന്തം ഫോണിൽ നിന്ന് ഓർഡറുകൾ അയക്കാൻ ക്രമീകരണങ്ങളിൽ \"ഫീൽഡ് ഓർഡർ ക്യാപ്ചർ\" പ്രവർത്തനക്ഷമമാക്കുക.",
+      "pendingTitle": "തീർപ്പുകൽപ്പിക്കാത്ത ഫീൽഡ് ഓർഡറുകൾ",
+      "loading": "ലോഡ് ചെയ്യുന്നു…",
+      "empty": "സ്ഥിരീകരണത്തിനായി കാത്തിരിക്കുന്ന ഫീൽഡ് ഓർഡറുകളൊന്നുമില്ല.",
+      "noCustomer": "(ഉപഭോക്താവിനെ തിരഞ്ഞെടുത്തിട്ടില്ല)",
+      "accept": "സ്വീകരിക്കുക",
+      "reject": "നിരസിക്കുക",
+      "acceptTitle": "ഓർഡർ സ്വീകരിക്കുക — {{repName}}",
+      "paymentMethod": "പേയ്‌മെന്റ് രീതി",
+      "acceptHint": "സ്ഥിരീകരണ സമയത്ത് വിലകൾ വീണ്ടും പരിശോധിക്കും (ഏതെങ്കിലും അംഗീകൃത ഉപഭോക്തൃ വില ഉൾപ്പെടെ), കൂടാതെ ഒരു ഇൻവോയ്സ് സൃഷ്ടിക്കപ്പെടും.",
+      "confirmBill": "സ്ഥിരീകരിച്ച് ബില്ല് ചെയ്യുക",
+      "creating": "സൃഷ്ടിക്കുന്നു…",
+      "cancel": "റദ്ദാക്കുക",
+      "orderAccepted": "ഓർഡർ സ്വീകരിച്ചു",
+      "invoiceCreated": "ഈ ഫീൽഡ് ഓർഡറിൽ നിന്ന് ഇൻവോയ്സ് സൃഷ്ടിച്ചു.",
+      "error": "പിശക്",
+      "couldNotLoad": "വരുന്ന ഫീൽഡ് ഓർഡറുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+      "couldNotAccept": "ഓർഡർ സ്വീകരിക്കാൻ കഴിഞ്ഞില്ല.",
+      "couldNotReject": "ഓർഡർ നിരസിക്കാൻ കഴിഞ്ഞില്ല.",
+      "couldNotGenerateQr": "QR കോഡ് സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.",
+      "regenerated": "വീണ്ടും സൃഷ്ടിച്ചു",
+      "regeneratedMessage": "ഒരു പുതിയ ഫീൽഡ് ഓർഡർ ലിങ്ക് സൃഷ്ടിച്ചു.",
+      "couldNotRegenerate": "ലിങ്ക് വീണ്ടും സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.",
+      "regenerateConfirm": "വീണ്ടും സൃഷ്ടിക്കുന്നത് നിങ്ങളുടെ പ്രതിനിധികളുമായി ഇതിനകം പങ്കിട്ട ഏതെങ്കിലും ലിങ്ക്/QR കോഡ് അസാധുവാക്കും — അവർക്ക് പുതിയത് ആവശ്യമായി വരും. തുടരണോ?"
+    },
+    "pricing": {
+      "title": "ഉപഭോക്തൃ ക്ലാസ് വിലനിർണ്ണയം",
+      "subtitle": "ഓരോ ഉപഭോക്തൃ ക്ലാസിനും (ഉദാ. റീട്ടെയിലർ, ഹോൾസെയിലർ, VIP) അംഗീകൃത വിലകൾ സജ്ജമാക്കുക — ആ ക്ലാസിലുള്ള ഏതൊരു ഉപഭോക്താവിനും ലിസ്റ്റ് വില മാറ്റിസ്ഥാപിക്കുന്നു.",
+      "addTitle": "വില ചേർക്കുക / അപ്‌ഡേറ്റ് ചെയ്യുക",
+      "searchProduct": "ഉൽപ്പന്നം തിരയുക…",
+      "classPlaceholder": "ഉപഭോക്തൃ ക്ലാസ്, ഉദാ. റീട്ടെയിലർ",
+      "pricePlaceholder": "വില",
+      "save": "വില സേവ് ചെയ്യുക",
+      "saving": "സേവ് ചെയ്യുന്നു…",
+      "columnProduct": "ഉൽപ്പന്നം",
+      "columnClass": "ക്ലാസ്",
+      "columnListPrice": "ലിസ്റ്റ് വില",
+      "columnPrice": "വില",
+      "empty": "ഇതുവരെ ഉപഭോക്തൃ-ക്ലാസ് വിലകളൊന്നും സജ്ജമാക്കിയിട്ടില്ല.",
+      "loading": "ലോഡ് ചെയ്യുന്നു…",
+      "noProduct": "ഉൽപ്പന്നമില്ല",
+      "noProductMessage": "ആദ്യം ഒരു ഉൽപ്പന്നം തിരഞ്ഞെടുക്കുക.",
+      "noClass": "ഉപഭോക്തൃ ക്ലാസ് ഇല്ല",
+      "noClassMessage": "ഒരു ഉപഭോക്തൃ ക്ലാസ് നൽകുക, ഉദാ. റീട്ടെയിലർ.",
+      "invalidPrice": "അസാധുവായ വില",
+      "invalidPriceMessage": "സാധുവായതും നെഗറ്റീവ് അല്ലാത്തതുമായ ഒരു വില നൽകുക.",
+      "priceSet": "വില സജ്ജമാക്കി",
+      "priceSetMessage": "{{productName}} ന് {{customerClass}} വില സജ്ജമാക്കി.",
+      "error": "പിശക്",
+      "couldNotSave": "വില സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+      "couldNotLoad": "വില പട്ടിക ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+      "removed": "നീക്കം ചെയ്തു",
+      "removedMessage": "വില നീക്കം ചെയ്തു.",
+      "couldNotRemove": "വില നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല."
+    }
   }
 }

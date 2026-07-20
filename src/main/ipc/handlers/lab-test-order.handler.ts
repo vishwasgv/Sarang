@@ -4,7 +4,7 @@ import * as svc from '../../services/lab-test-order.service'
 import {
   CreateLabTestOrderSchema, UpdateLabTestOrderSchema, AddTestItemSchema, RemoveTestItemSchema,
   MarkSampleCollectedSchema, UpdateTestResultSchema, FinalizeReportSchema, LabTestOrderIdSchema,
-  CancelLabTestOrderSchema,
+  CancelLabTestOrderSchema, AcknowledgeCriticalResultSchema,
 } from '../../validation/lab-test-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -99,6 +99,20 @@ export function register(handle: HandleFn): void {
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const session = getCurrentSession()
     return svc.deleteLabTestOrder(parsed.data.id, session?.userId)
+  })
+
+  // Phase 58 §2 — critical/panic-value escalation workflow.
+  handle('labTestOrders:acknowledgeCritical', async (payload) => {
+    const deny = await requirePermission('labOrders.manage'); if (deny) return deny
+    const parsed = AcknowledgeCriticalResultSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return svc.acknowledgeCriticalResult(parsed.data, session?.userId)
+  })
+
+  handle('labTestOrders:listPendingCriticalEscalations', async () => {
+    const deny = await requirePermission('labOrders.view'); if (deny) return deny
+    return svc.listPendingCriticalEscalations()
   })
 
   handle('labTestOrders:generateInvoice', async (payload) => {

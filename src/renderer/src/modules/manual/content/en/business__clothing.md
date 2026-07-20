@@ -8,6 +8,10 @@ A clothing item usually isn't one single stock number — "Men's T-Shirt" might 
 
 Product records for a Clothing business also get an optional **Gender** field (Men's/Women's/Unisex) to help you organize your catalog.
 
+Stocking a lot of combinations at once? Use **Generate Size × Colour Matrix** at the bottom of Manage Variants — type your sizes and colours as comma-separated lists (e.g. "S, M, L" and "Black, White") and Sarang creates every combination as a new row in one go, skipping any pair you've already added by hand.
+
+Each variant row has its own **barcode** — generate one per row, or use **Generate Missing Barcodes** to fill in every variant that doesn't have one yet. When printing labels, a variant-tracked product opens a picker so the label carries that exact variant's own barcode and price, not the parent product's.
+
 ## Selling a variant
 
 In **Billing**, adding a product that has variants configured doesn't add it to the cart directly — it opens a picker so you choose the exact size/colour combination being sold, and that specific variant's stock and price (base price + its additional price, if any) is what actually goes into the cart. This keeps your per-size/colour stock counts accurate rather than just decrementing one shared number for the whole product.

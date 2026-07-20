@@ -12,9 +12,15 @@ Event Management is built on Sarang's shared service-business foundation — app
 
 Each event records the client, event name, event type (Wedding, Corporate, Birthday, Conference, Social, Pooja, Other), event date (and optional end date for multi-day events), venue name and address, expected guest count, and the client's budget. An event moves through a status pipeline: **Inquiry → Quoted → Confirmed → In Progress → Completed** (with Cancelled as a separate outcome).
 
+Switch to **Calendar** view (next to List, top right) to see every event plotted on a month grid — the fastest way to spot concurrent or overlapping bookings before you commit to a date. Click any event's chip to jump straight to its details.
+
 ## Vendors
 
-Expand any event to manage its **vendor bookings** — each one tied to a supplier and a category (Catering, Decoration, Photography, AV/Sound, Venue, Entertainment, Transport, Flowers, Other), with a quoted amount, advance paid, and its own status (Enquired, Booked, Confirmed, Completed). This lets you track every outsourced piece of the event separately from the client-facing final bill.
+Expand any event to manage its **vendor bookings** — each one tied to a supplier and a category (Catering, Decoration, Photography, AV/Sound, Venue, Entertainment, Transport, Flowers, Other), with a status (Enquired, Booked, Confirmed, Completed). Price a vendor line as a flat amount, or choose **Per guest** and enter a rate — Sarang computes the real total from your event's expected guest count automatically, and keeps it in sync if the guest count later changes. The row below shows your running total vendor cost and cost-per-guest across the whole event.
+
+## Run of Show
+
+Each event also has a **Run of Show** — the event-day execution timeline, separate from the vendor list above. Add items with a scheduled time, the activity ("Guests arrive", "Cake cutting"), and who's responsible, then check them off as the day unfolds.
 
 ## Billing
 

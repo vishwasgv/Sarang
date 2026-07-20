@@ -13,23 +13,38 @@ export async function listBoardResolutions(boardMeetingId: string) {
   }
 }
 
+// Phase 58 §2 — Company Secretary: auto-sequenced resolution numbering,
+// scoped PER CLIENT (COMPANY) — each client's resolutions restart/track
+// independently, since a real CS files these against separate companies
+// (numbering ABC Ltd's resolutions into the same sequence as XYZ Pvt Ltd's
+// would be wrong). Count-based rather than parsing the previous number: the
+// pre-existing free-text field may already hold non-integer formats (e.g.
+// "2024-03") from before auto-sequencing existed, and count-based numbering
+// never breaks on those.
+async function nextResolutionNumberForClient(db: ReturnType<typeof getPrisma>, clientId: string): Promise<string> {
+  const count = await db.boardResolution.count({ where: { boardMeeting: { clientId } } })
+  return String(count + 1)
+}
+
 export async function createBoardResolution(payload: {
   boardMeetingId: string
-  resolutionNumber: string
+  resolutionNumber?: string
   resolutionType?: string
   resolutionText: string
   passedUnanimously?: boolean
 }) {
   try {
     const db = getPrisma()
-    const meeting = await db.boardMeeting.findUnique({ where: { id: payload.boardMeetingId }, select: { id: true } })
+    const meeting = await db.boardMeeting.findUnique({ where: { id: payload.boardMeetingId }, select: { id: true, clientId: true } })
     if (!meeting) return { success: false, error: { code: 'BR-002', message: 'Board meeting not found.' } }
     if (!payload.resolutionText.trim()) return { success: false, error: { code: 'BR-003', message: 'Resolution text is required.' } }
+
+    const resolutionNumber = payload.resolutionNumber?.trim() || await nextResolutionNumberForClient(db, meeting.clientId)
 
     const resolution = await db.boardResolution.create({
       data: {
         boardMeetingId: payload.boardMeetingId,
-        resolutionNumber: payload.resolutionNumber.trim(),
+        resolutionNumber,
         resolutionType: payload.resolutionType ?? 'ORDINARY',
         resolutionText: payload.resolutionText.trim(),
         passedUnanimously: payload.passedUnanimously ?? true,

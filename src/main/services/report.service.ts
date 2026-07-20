@@ -2329,20 +2329,81 @@ async function generateComplianceTaskReport(): Promise<ComplianceTaskReport> {
 // own more specific reports.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Real bug found 2026-07-16: this report originally queried ServiceProject
+// (the model used by Independent Consultant/Marketing Agency/Software
+// Agency/Architect/Civil Engineer/Real Estate — the `service_projects`
+// module) but was gated in ReportsScreen.tsx behind the unrelated legacy
+// `projects` module (SERVICE/CONSULTANT, who write to the *different*
+// `Project` model). Net effect: SERVICE/CONSULTANT saw a "Projects" report
+// tile that was permanently empty, and the six ServiceProject-using verticals
+// had real data but no way to see it at all. Fixed by splitting into two
+// correctly-gated reports: this one now genuinely queries `Project` (legacy
+// SERVICE/CONSULTANT), and generateServiceProjectReport below covers the
+// ServiceProject-using verticals with the original logic, unchanged.
+
 export interface ProjectReportRow {
-  projectName: string; clientName: string; status: string; projectType: string
-  totalContractValue: number | null
-  startDate: string | null; expectedEndDate: string | null; completedDate: string | null
+  title: string; clientName: string | null; status: string; priority: string
+  estimatedAmount: number
+  startDate: string | null; dueDate: string | null; completedDate: string | null
 }
 export interface ProjectReportByStatus { status: string; count: number }
 export interface ProjectReport {
   dateFrom: string; dateTo: string
-  summary: { totalProjects: number; active: number; completed: number; onHold: number; cancelled: number; totalContractValue: number }
+  summary: { totalProjects: number; open: number; inProgress: number; completed: number; onHold: number; cancelled: number; totalEstimatedAmount: number }
   byStatus: ProjectReportByStatus[]
   rows: ProjectReportRow[]
 }
 
 async function generateProjectReport(params: { dateFrom: string; dateTo: string }): Promise<ProjectReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const projects = await db.project.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { customer: { select: { customerName: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const statusMap = new Map<string, number>()
+  for (const p of projects) statusMap.set(p.status, (statusMap.get(p.status) ?? 0) + 1)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalProjects: projects.length,
+      open: projects.filter(p => p.status === 'OPEN').length,
+      inProgress: projects.filter(p => p.status === 'IN_PROGRESS').length,
+      completed: projects.filter(p => p.status === 'COMPLETED').length,
+      onHold: projects.filter(p => p.status === 'ON_HOLD').length,
+      cancelled: projects.filter(p => p.status === 'CANCELLED').length,
+      totalEstimatedAmount: projects.reduce((s, p) => s + Number(p.estimatedAmount ?? 0), 0),
+    },
+    byStatus: Array.from(statusMap.entries()).map(([status, count]) => ({ status, count })),
+    rows: projects.map(p => ({
+      title: p.title, clientName: p.customer?.customerName ?? null, status: p.status, priority: p.priority,
+      estimatedAmount: Number(p.estimatedAmount ?? 0),
+      startDate: p.startDate ? p.startDate.toISOString().slice(0, 10) : null,
+      dueDate: p.dueDate ? p.dueDate.toISOString().slice(0, 10) : null,
+      completedDate: p.completedDate ? p.completedDate.toISOString().slice(0, 10) : null,
+    })),
+  }
+}
+
+export interface ServiceProjectReportRow {
+  projectName: string; clientName: string; status: string; projectType: string
+  totalContractValue: number | null
+  startDate: string | null; expectedEndDate: string | null; completedDate: string | null
+}
+export interface ServiceProjectReportByStatus { status: string; count: number }
+export interface ServiceProjectReport {
+  dateFrom: string; dateTo: string
+  summary: { totalProjects: number; active: number; completed: number; onHold: number; cancelled: number; totalContractValue: number }
+  byStatus: ServiceProjectReportByStatus[]
+  rows: ServiceProjectReportRow[]
+}
+
+async function generateServiceProjectReport(params: { dateFrom: string; dateTo: string }): Promise<ServiceProjectReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
   const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
@@ -2429,6 +2490,551 @@ async function generateJobCardReport(params: { dateFrom: string; dateTo: string 
       receivedDate: j.receivedDate.toISOString().slice(0, 10),
       expectedDate: j.expectedDate ? j.expectedDate.toISOString().slice(0, 10) : null,
       deliveredDate: j.deliveredDate ? j.deliveredDate.toISOString().slice(0, 10) : null,
+    })),
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 58 §1 — 10 new reports for verticals with rich structured data and
+// zero dedicated report before this (2026-07-17).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Car Service Center — labor vs. parts revenue, technician productivity ──
+
+export interface CarJobCardReportRow {
+  jobNumber: string; customerName: string; vehicleNumber: string; vehicleMake: string; vehicleModel: string
+  status: string; laborTotal: number; partsTotal: number
+  createdAt: string; deliveredDate: string | null
+}
+export interface CarJobCardTechnicianStat { technicianId: string; jobCount: number }
+export interface CarJobCardReport {
+  dateFrom: string; dateTo: string
+  summary: { totalJobs: number; delivered: number; totalLaborRevenue: number; totalPartsRevenue: number }
+  byTechnician: CarJobCardTechnicianStat[]
+  rows: CarJobCardReportRow[]
+}
+
+async function generateCarJobCardReport(params: { dateFrom: string; dateTo: string }): Promise<CarJobCardReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const jobs = await db.carJobCard.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const techCounts = new Map<string, number>()
+  for (const j of jobs) {
+    let techIds: string[] = []
+    try { techIds = JSON.parse(j.technicianIds || '[]') } catch { /* leave empty */ }
+    for (const tid of techIds) techCounts.set(tid, (techCounts.get(tid) ?? 0) + 1)
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalJobs: jobs.length,
+      delivered: jobs.filter(j => j.status === 'DELIVERED').length,
+      totalLaborRevenue: jobs.reduce((s, j) => s + Number(j.laborTotal), 0),
+      totalPartsRevenue: jobs.reduce((s, j) => s + Number(j.partsTotal), 0),
+    },
+    byTechnician: Array.from(techCounts.entries()).map(([technicianId, jobCount]) => ({ technicianId, jobCount })),
+    rows: jobs.map(j => ({
+      jobNumber: j.jobNumber, customerName: j.client.customerName, vehicleNumber: j.vehicleNumber,
+      vehicleMake: j.vehicleMake, vehicleModel: j.vehicleModel, status: j.status,
+      laborTotal: Number(j.laborTotal), partsTotal: Number(j.partsTotal),
+      createdAt: j.createdAt.toISOString().slice(0, 10),
+      deliveredDate: j.deliveredDate ? j.deliveredDate.toISOString().slice(0, 10) : null,
+    })),
+  }
+}
+
+// ── Tailor Boutique — orders by garment type ──────────────────────────────
+
+export interface TailoringOrderReportRow {
+  orderNumber: string; customerName: string; garmentType: string; status: string
+  quantity: number; totalAmount: number
+  createdAt: string; deliveryDate: string | null
+}
+export interface TailoringOrderByGarment { garmentType: string; count: number; totalAmount: number }
+export interface TailoringOrderReport {
+  dateFrom: string; dateTo: string
+  summary: { totalOrders: number; delivered: number; totalAmount: number }
+  byGarmentType: TailoringOrderByGarment[]
+  rows: TailoringOrderReportRow[]
+}
+
+async function generateTailoringOrderReport(params: { dateFrom: string; dateTo: string }): Promise<TailoringOrderReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const orders = await db.tailoringOrder.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const byGarment = new Map<string, { count: number; totalAmount: number }>()
+  for (const o of orders) {
+    const entry = byGarment.get(o.garmentType) ?? { count: 0, totalAmount: 0 }
+    entry.count += 1
+    entry.totalAmount += Number(o.totalAmount)
+    byGarment.set(o.garmentType, entry)
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalOrders: orders.length,
+      delivered: orders.filter(o => o.status === 'DELIVERED').length,
+      totalAmount: orders.reduce((s, o) => s + Number(o.totalAmount), 0),
+    },
+    byGarmentType: Array.from(byGarment.entries()).map(([garmentType, v]) => ({ garmentType, ...v })),
+    rows: orders.map(o => ({
+      orderNumber: o.orderNumber, customerName: o.client.customerName, garmentType: o.garmentType, status: o.status,
+      quantity: o.quantity, totalAmount: Number(o.totalAmount),
+      createdAt: o.createdAt.toISOString().slice(0, 10),
+      deliveryDate: o.deliveryDate ? o.deliveryDate.toISOString().slice(0, 10) : null,
+    })),
+  }
+}
+
+// ── Pest Control — contracts expiring, revenue by pest type ──────────────
+// Revenue-by-pest-type is attributed from PestJobSheet.jobAmount (actual
+// billed visits), joined back to the parent contract's pestTypes list —
+// job sheets don't carry pest type directly. A visit whose contract lists
+// multiple pest types has its jobAmount counted once per listed type (no
+// existing convention in this codebase splits amounts across tags).
+
+export interface PestContractExpiringRow {
+  contractNumber: string; customerName: string; pestTypes: string[]; endDate: string; daysUntilExpiry: number
+}
+export interface PestRevenueByType { pestType: string; revenue: number; visitCount: number }
+export interface PestContractReport {
+  dateFrom: string; dateTo: string
+  summary: { activeContracts: number; expiringWithin30Days: number; totalContractValue: number }
+  expiring: PestContractExpiringRow[]
+  byPestType: PestRevenueByType[]
+}
+
+async function generatePestContractReport(params: { dateFrom: string; dateTo: string }): Promise<PestContractReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const now = new Date()
+  const in30Days = new Date(now.getTime() + 30 * 86400000)
+
+  const [contracts, jobSheets] = await Promise.all([
+    db.pestServiceContract.findMany({
+      where: { status: 'ACTIVE' },
+      include: { client: { select: { customerName: true } } },
+      orderBy: { endDate: 'asc' },
+    }),
+    db.pestJobSheet.findMany({
+      where: { completedDate: { gte: from, lte: to }, status: 'COMPLETED' },
+      include: { contract: { select: { pestTypes: true } } },
+    }),
+  ])
+
+  const expiring = contracts.filter(c => c.endDate && c.endDate >= now && c.endDate <= in30Days)
+
+  const byType = new Map<string, { revenue: number; visitCount: number }>()
+  for (const js of jobSheets) {
+    let pestTypes: string[] = []
+    try { pestTypes = JSON.parse(js.contract?.pestTypes || '[]') } catch { /* leave empty */ }
+    if (pestTypes.length === 0) pestTypes = ['UNSPECIFIED']
+    for (const pt of pestTypes) {
+      const entry = byType.get(pt) ?? { revenue: 0, visitCount: 0 }
+      entry.revenue += Number(js.jobAmount)
+      entry.visitCount += 1
+      byType.set(pt, entry)
+    }
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      activeContracts: contracts.length,
+      expiringWithin30Days: expiring.length,
+      totalContractValue: contracts.reduce((s, c) => s + Number(c.contractValue), 0),
+    },
+    expiring: expiring.map(c => {
+      let pestTypes: string[] = []
+      try { pestTypes = JSON.parse(c.pestTypes || '[]') } catch { /* leave empty */ }
+      const daysUntilExpiry = Math.ceil((c.endDate!.getTime() - now.getTime()) / 86400000)
+      return { contractNumber: c.contractNumber, customerName: c.client.customerName, pestTypes, endDate: c.endDate!.toISOString().slice(0, 10), daysUntilExpiry }
+    }),
+    byPestType: Array.from(byType.entries()).map(([pestType, v]) => ({ pestType, ...v })),
+  }
+}
+
+// ── Real Estate — listings/deals pipeline ──────────────────────────────────
+
+export interface RealEstatePipelineByStage { stage: string; count: number; value: number }
+export interface RealEstateDealRow {
+  propertyLocation: string; buyerName: string; sellerName: string
+  dealValue: number; brokerageAmount: number; status: string; createdAt: string
+}
+export interface RealEstatePipelineReport {
+  dateFrom: string; dateTo: string
+  summary: { totalListings: number; availableListings: number; dealsInProgress: number; totalBrokerageEarned: number }
+  byInquiryStage: RealEstatePipelineByStage[]
+  deals: RealEstateDealRow[]
+}
+
+async function generateRealEstatePipelineReport(params: { dateFrom: string; dateTo: string }): Promise<RealEstatePipelineReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const [properties, inquiries, deals] = await Promise.all([
+    db.property.findMany({ where: { createdAt: { gte: from, lte: to } } }),
+    db.propertyInquiry.findMany({ where: { createdAt: { gte: from, lte: to } } }),
+    db.propertyDeal.findMany({
+      where: { createdAt: { gte: from, lte: to } },
+      include: {
+        property: { select: { location: true } },
+        buyer: { select: { customerName: true } },
+        seller: { select: { customerName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ])
+
+  const byStage = new Map<string, { count: number; value: number }>()
+  for (const i of inquiries) {
+    const entry = byStage.get(i.status) ?? { count: 0, value: 0 }
+    entry.count += 1
+    byStage.set(i.status, entry)
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalListings: properties.length,
+      availableListings: properties.filter(p => p.status === 'AVAILABLE').length,
+      dealsInProgress: deals.filter(d => d.status === 'IN_PROGRESS').length,
+      totalBrokerageEarned: deals.filter(d => d.status === 'REGISTERED').reduce((s, d) => s + Number(d.brokerageAmount), 0),
+    },
+    byInquiryStage: Array.from(byStage.entries()).map(([stage, v]) => ({ stage, ...v })),
+    deals: deals.map(d => ({
+      propertyLocation: d.property.location, buyerName: d.buyer.customerName, sellerName: d.seller.customerName,
+      dealValue: Number(d.dealValue), brokerageAmount: Number(d.brokerageAmount), status: d.status,
+      createdAt: d.createdAt.toISOString().slice(0, 10),
+    })),
+  }
+}
+
+// ── Independent Consultant/Marketing Agency/Software Agency — MRR/retainer ──
+// collection. No RetainerInvoice model exists — "collected" is a proxy via
+// lastInvoicedPeriod matching the report's target period (dateTo's month),
+// not a real payment-confirmed figure (see research notes on Retainer
+// invoicing — Invoice has no queryable FK back to RetainerAgreement).
+
+export interface RetainerReportRow {
+  title: string; clientName: string; status: string; monthlyAmount: number; billedThisPeriod: boolean
+}
+export interface RetainerReport {
+  dateFrom: string; dateTo: string; targetPeriod: string
+  summary: { activeRetainers: number; totalMRR: number; billedThisPeriodCount: number; billedThisPeriodAmount: number }
+  rows: RetainerReportRow[]
+}
+
+async function generateRetainerReport(params: { dateFrom: string; dateTo: string }): Promise<RetainerReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const targetPeriod = params.dateTo.slice(0, 7)
+
+  const retainers = await db.retainerAgreement.findMany({
+    where: { createdAt: { lte: to }, OR: [{ endDate: null }, { endDate: { gte: from } }] },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const active = retainers.filter(r => r.status === 'ACTIVE')
+  const billedThisPeriod = active.filter(r => r.lastInvoicedPeriod === targetPeriod)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, targetPeriod,
+    summary: {
+      activeRetainers: active.length,
+      totalMRR: active.reduce((s, r) => s + Number(r.monthlyAmount), 0),
+      billedThisPeriodCount: billedThisPeriod.length,
+      billedThisPeriodAmount: billedThisPeriod.reduce((s, r) => s + Number(r.monthlyAmount), 0),
+    },
+    rows: retainers.map(r => ({
+      title: r.title, clientName: r.client.customerName, status: r.status,
+      monthlyAmount: Number(r.monthlyAmount), billedThisPeriod: r.lastInvoicedPeriod === targetPeriod,
+    })),
+  }
+}
+
+// ── Photo Studio — shoot bookings by type ──────────────────────────────────
+
+export interface ShootBookingReportRow {
+  clientName: string; shootType: string; shootDate: string; status: string; finalAmount: number | null
+}
+export interface ShootBookingByType { shootType: string; count: number }
+export interface ShootBookingReport {
+  dateFrom: string; dateTo: string
+  summary: { totalBookings: number; delivered: number; totalRevenue: number }
+  byShootType: ShootBookingByType[]
+  rows: ShootBookingReportRow[]
+}
+
+async function generateShootBookingReport(params: { dateFrom: string; dateTo: string }): Promise<ShootBookingReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const bookings = await db.shootBooking.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { shootDate: 'desc' },
+  })
+
+  const byType = new Map<string, number>()
+  for (const b of bookings) byType.set(b.shootType, (byType.get(b.shootType) ?? 0) + 1)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalBookings: bookings.length,
+      delivered: bookings.filter(b => b.status === 'DELIVERED').length,
+      totalRevenue: bookings.reduce((s, b) => s + Number(b.finalAmount ?? 0), 0),
+    },
+    byShootType: Array.from(byType.entries()).map(([shootType, count]) => ({ shootType, count })),
+    rows: bookings.map(b => ({
+      clientName: b.client.customerName, shootType: b.shootType, shootDate: b.shootDate.toISOString().slice(0, 10),
+      status: b.status, finalAmount: b.finalAmount != null ? Number(b.finalAmount) : null,
+    })),
+  }
+}
+
+// ── Event Management — event bookings ──────────────────────────────────────
+
+export interface EventBookingReportRow {
+  clientName: string; eventName: string; eventType: string; eventDate: string; status: string; finalAmount: number | null
+}
+export interface EventBookingByStatus { status: string; count: number }
+export interface EventBookingReport {
+  dateFrom: string; dateTo: string
+  summary: { totalBookings: number; completed: number; totalRevenue: number }
+  byStatus: EventBookingByStatus[]
+  rows: EventBookingReportRow[]
+}
+
+async function generateEventBookingReport(params: { dateFrom: string; dateTo: string }): Promise<EventBookingReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const bookings = await db.eventBooking.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { eventDate: 'desc' },
+  })
+
+  const byStatus = new Map<string, number>()
+  for (const b of bookings) byStatus.set(b.status, (byStatus.get(b.status) ?? 0) + 1)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalBookings: bookings.length,
+      completed: bookings.filter(b => b.status === 'COMPLETED').length,
+      totalRevenue: bookings.reduce((s, b) => s + Number(b.finalAmount ?? 0), 0),
+    },
+    byStatus: Array.from(byStatus.entries()).map(([status, count]) => ({ status, count })),
+    rows: bookings.map(b => ({
+      clientName: b.client.customerName, eventName: b.eventName, eventType: b.eventType,
+      eventDate: b.eventDate.toISOString().slice(0, 10), status: b.status,
+      finalAmount: b.finalAmount != null ? Number(b.finalAmount) : null,
+    })),
+  }
+}
+
+// ── Placement Agency — candidate/placement pipeline with commission ────────
+
+export interface PlacementReportRow {
+  placementNumber: string; candidateName: string; jobTitle: string; clientName: string
+  status: string; joiningDate: string; offeredSalary: number; commissionAmount: number
+}
+export interface PlacementReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPlacements: number; joined: number; invoiced: number; totalCommission: number }
+  rows: PlacementReportRow[]
+}
+
+async function generatePlacementReport(params: { dateFrom: string; dateTo: string }): Promise<PlacementReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const placements = await db.placement.findMany({
+    where: { joiningDate: { gte: from, lte: to } },
+    include: {
+      candidate: { select: { fullName: true } },
+      jobOrder: { select: { jobTitle: true } },
+      client: { select: { customerName: true } },
+    },
+    orderBy: { joiningDate: 'desc' },
+  })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalPlacements: placements.length,
+      joined: placements.filter(p => p.status === 'JOINED' || p.status === 'INVOICED').length,
+      invoiced: placements.filter(p => p.status === 'INVOICED').length,
+      totalCommission: placements.reduce((s, p) => s + Number(p.commissionAmount), 0),
+    },
+    rows: placements.map(p => ({
+      placementNumber: p.placementNumber, candidateName: p.candidate.fullName, jobTitle: p.jobOrder.jobTitle,
+      clientName: p.client.customerName, status: p.status, joiningDate: p.joiningDate.toISOString().slice(0, 10),
+      offeredSalary: Number(p.offeredSalary), commissionAmount: Number(p.commissionAmount),
+    })),
+  }
+}
+
+// ── Architect — drawing register ────────────────────────────────────────────
+
+export interface DrawingRegisterRow {
+  drawingNumber: string; title: string; projectName: string; discipline: string
+  revisionNumber: string; status: string; issuedDate: string | null
+}
+export interface DrawingRegisterByStatus { status: string; count: number }
+export interface DrawingRegisterReport {
+  dateFrom: string; dateTo: string
+  summary: { totalDrawings: number; approved: number; pendingReview: number }
+  byStatus: DrawingRegisterByStatus[]
+  rows: DrawingRegisterRow[]
+}
+
+async function generateDrawingRegisterReport(params: { dateFrom: string; dateTo: string }): Promise<DrawingRegisterReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const drawings = await db.drawingRevision.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { project: { select: { projectName: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const byStatus = new Map<string, number>()
+  for (const d of drawings) byStatus.set(d.status, (byStatus.get(d.status) ?? 0) + 1)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalDrawings: drawings.length,
+      approved: drawings.filter(d => d.status === 'APPROVED').length,
+      pendingReview: drawings.filter(d => d.status === 'ISSUED_FOR_REVIEW').length,
+    },
+    byStatus: Array.from(byStatus.entries()).map(([status, count]) => ({ status, count })),
+    rows: drawings.map(d => ({
+      drawingNumber: d.drawingNumber, title: d.title, projectName: d.project.projectName, discipline: d.discipline,
+      revisionNumber: d.revisionNumber, status: d.status,
+      issuedDate: d.issuedDate ? d.issuedDate.toISOString().slice(0, 10) : null,
+    })),
+  }
+}
+
+// ── Civil Engineer — site visit log ─────────────────────────────────────────
+
+export interface SiteVisitLogRow {
+  projectName: string; visitDate: string; visitType: string; recordedByName: string | null; findings: string | null
+}
+export interface SiteVisitLogByType { visitType: string; count: number }
+export interface SiteVisitLogReport {
+  dateFrom: string; dateTo: string
+  summary: { totalVisits: number }
+  byVisitType: SiteVisitLogByType[]
+  rows: SiteVisitLogRow[]
+}
+
+async function generateSiteVisitLogReport(params: { dateFrom: string; dateTo: string }): Promise<SiteVisitLogReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const visits = await db.siteVisit.findMany({
+    where: { visitDate: { gte: from, lte: to } },
+    include: { project: { select: { projectName: true } }, recordedBy: { select: { fullName: true } } },
+    orderBy: { visitDate: 'desc' },
+  })
+
+  const byType = new Map<string, number>()
+  for (const v of visits) byType.set(v.visitType, (byType.get(v.visitType) ?? 0) + 1)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalVisits: visits.length },
+    byVisitType: Array.from(byType.entries()).map(([visitType, count]) => ({ visitType, count })),
+    rows: visits.map(v => ({
+      projectName: v.project.projectName, visitDate: v.visitDate.toISOString().slice(0, 10), visitType: v.visitType,
+      recordedByName: v.recordedBy?.fullName ?? null, findings: v.findings,
+    })),
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register.
+// Sourced from InvoiceItem's prescription snapshot fields (see
+// billing.service.ts), not a separate table — a prescription is captured
+// AT sale time and never exists independent of the invoice line it's on.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PrescriptionDrugSalesReportRow {
+  invoiceNumber: string; invoiceDate: string; productName: string; quantity: number
+  patientName: string | null; doctorName: string | null; prescriptionDate: string | null
+  customerName: string | null; lineTotal: number
+}
+export interface PrescriptionDrugSalesReport {
+  dateFrom: string; dateTo: string
+  summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }
+  rows: PrescriptionDrugSalesReportRow[]
+}
+
+async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; dateTo: string }): Promise<PrescriptionDrugSalesReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      createdAt: { gte: from, lte: to },
+      product: { isPrescriptionRequired: true },
+      invoice: { status: { not: 'CANCELLED' } },
+    },
+    include: {
+      invoice: { select: { invoiceNumber: true, createdAt: true, customer: { select: { customerName: true } } } },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalSales: items.length,
+      totalAmount: items.reduce((s, i) => s + i.lineTotal, 0),
+      // A prescription-flagged product's line should always carry a
+      // patient+doctor name by the time it reaches an invoice (billing.
+      // service.ts enforces this at sale time) — this only ever surfaces a
+      // pre-existing row from before the flag/check existed, never a new gap.
+      missingPrescriptionDetails: items.filter(i => !i.prescriptionPatientName || !i.prescriptionDoctorName).length,
+    },
+    rows: items.map(i => ({
+      invoiceNumber: i.invoice.invoiceNumber, invoiceDate: i.invoice.createdAt.toISOString().slice(0, 10),
+      productName: i.productName, quantity: i.quantity,
+      patientName: i.prescriptionPatientName, doctorName: i.prescriptionDoctorName,
+      prescriptionDate: i.prescriptionDate ? i.prescriptionDate.toISOString().slice(0, 10) : null,
+      customerName: i.invoice.customer?.customerName ?? null, lineTotal: i.lineTotal,
     })),
   }
 }
@@ -2575,5 +3181,17 @@ export const reportService = {
   generateTestScoreReport,
   generateComplianceTaskReport,
   generateProjectReport,
+  generateServiceProjectReport,
   generateJobCardReport,
+  generateCarJobCardReport,
+  generateTailoringOrderReport,
+  generatePestContractReport,
+  generateRealEstatePipelineReport,
+  generateRetainerReport,
+  generateShootBookingReport,
+  generateEventBookingReport,
+  generatePlacementReport,
+  generateDrawingRegisterReport,
+  generateSiteVisitLogReport,
+  generatePrescriptionDrugSalesReport,
 }

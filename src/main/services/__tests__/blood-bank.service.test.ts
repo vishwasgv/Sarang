@@ -397,13 +397,63 @@ describe('blood-bank.service', () => {
       expect(second.success).toBe(false)
     })
 
-    it('records a compatibility note reflecting a real incompatible pairing', async () => {
+    // Phase 58 §2 — this used to be advisory-only: an incompatible pairing
+    // got a note recorded, but nothing stopped the issuance. The default
+    // behavior is now to BLOCK, requiring an explicit, documented override.
+    it('BLOCKS an incompatible issuance by default (no longer just advisory)', async () => {
       const db = makeMockDb()
       vi.mocked(getPrisma).mockReturnValue(db as never)
       const donationId = await setupPassedUnit(db, 'PACKED_RBC', 'B+') // B+ donor
       const res = await createBloodIssue({ recipientName: 'City Hospital', recipientBloodGroup: 'A+', donationRecordIds: [donationId] })
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('BB-023')
+      // Blocked entirely — the unit must not have been consumed.
+      expect(db.__stores.donationRecords[donationId].isIssued).toBe(false)
+    })
+
+    it('rejects an override attempt with no documented reason', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donationId = await setupPassedUnit(db, 'PACKED_RBC', 'B+')
+      const res = await createBloodIssue({
+        recipientName: 'City Hospital', recipientBloodGroup: 'A+', donationRecordIds: [donationId],
+        overrideIncompatibility: true,
+      })
+      expect(res.success).toBe(false)
+      expect((res as { error: { code: string } }).error.code).toBe('BB-024')
+    })
+
+    it('allows an incompatible issuance through a documented emergency-release override', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donationId = await setupPassedUnit(db, 'PACKED_RBC', 'B+')
+      const res = await createBloodIssue({
+        recipientName: 'City Hospital', recipientBloodGroup: 'A+', donationRecordIds: [donationId],
+        overrideIncompatibility: true, overrideReason: 'No compatible unit in stock; life-threatening hemorrhage, physician-ordered emergency release.',
+      })
       expect(res.success).toBe(true)
-      expect((res.data as any).items[0].compatibilityNote).toContain('INCOMPATIBLE')
+      const item = (res.data as any).items[0]
+      expect(item.compatibilityNote).toContain('INCOMPATIBLE')
+      expect(item.compatibilityNote).toContain('override')
+      expect(item.overrideReason).toContain('physician-ordered')
+      expect(db.__stores.donationRecords[donationId].isIssued).toBe(true)
+    })
+
+    it('a compatible unit needs no override and issues normally', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donationId = await setupPassedUnit(db, 'PACKED_RBC', 'O-') // universal donor
+      const res = await createBloodIssue({ recipientName: 'City Hospital', recipientBloodGroup: 'A+', donationRecordIds: [donationId] })
+      expect(res.success).toBe(true)
+      expect((res.data as any).items[0].overrideReason).toBeFalsy()
+    })
+
+    it('never blocks when no recipientBloodGroup is provided (no check possible without it)', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donationId = await setupPassedUnit(db, 'PACKED_RBC', 'B+')
+      const res = await createBloodIssue({ recipientName: 'City Hospital', donationRecordIds: [donationId] })
+      expect(res.success).toBe(true)
     })
   })
 
@@ -508,6 +558,80 @@ describe('blood-bank.service', () => {
       await updateDonor({ id: donorId, isDeferred: true, deferralReason: 'Reactive test' })
       const res = await getDonor(donorId)
       expect((res.data as any).nextEligibleDate).toBeTruthy()
+    })
+  })
+
+  // Phase 58 §2 — the flat 90-day interval is replaced with one that varies
+  // by component type (an apheresis-only donation like platelets/plasma
+  // returns red cells to the donor, so it recovers much faster than a
+  // whole-blood/RBC draw) and, for whole-blood/RBC specifically, by donor sex.
+  describe('component/sex-aware donation cooldown (Phase 58 §2)', () => {
+    function daysBetween(a: string, b: Date): number {
+      return Math.round((new Date(a).getTime() - b.getTime()) / 86400000)
+    }
+
+    it('a whole-blood donation from a male donor gets the standard 90-day cooldown', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar', gender: 'MALE' })
+      const donorId = (donorRes.data as any).id
+      const lastDonation = new Date('2026-01-01')
+      db.__stores.donors[donorId].lastDonationDate = lastDonation
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await getDonor(donorId)
+      expect(daysBetween((res.data as any).nextEligibleDate, lastDonation)).toBe(90)
+    })
+
+    it('a whole-blood donation from a female donor gets a longer 120-day cooldown', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Priya Sharma', gender: 'FEMALE' })
+      const donorId = (donorRes.data as any).id
+      const lastDonation = new Date('2026-01-01')
+      db.__stores.donors[donorId].lastDonationDate = lastDonation
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await getDonor(donorId)
+      expect(daysBetween((res.data as any).nextEligibleDate, lastDonation)).toBe(120)
+    })
+
+    it('a platelet apheresis donation gets a much shorter 14-day cooldown regardless of sex', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Priya Sharma', gender: 'FEMALE' })
+      const donorId = (donorRes.data as any).id
+      const lastDonation = new Date('2026-01-01')
+      db.__stores.donors[donorId].lastDonationDate = lastDonation
+      db.__stores.donors[donorId].lastDonationComponentType = 'PLATELETS'
+
+      const res = await getDonor(donorId)
+      expect(daysBetween((res.data as any).nextEligibleDate, lastDonation)).toBe(14)
+    })
+
+    it('a plasma apheresis donation gets a 28-day cooldown', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar', gender: 'MALE' })
+      const donorId = (donorRes.data as any).id
+      const lastDonation = new Date('2026-01-01')
+      db.__stores.donors[donorId].lastDonationDate = lastDonation
+      db.__stores.donors[donorId].lastDonationComponentType = 'PLASMA'
+
+      const res = await getDonor(donorId)
+      expect(daysBetween((res.data as any).nextEligibleDate, lastDonation)).toBe(28)
+    })
+
+    it('updateScreeningStatus PASSED denormalizes lastDonationComponentType alongside lastDonationDate', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar' })
+      const donorId = (donorRes.data as any).id
+      const donationRes = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'PLATELETS' })
+
+      await updateScreeningStatus({ id: (donationRes.data as any).id, screeningStatus: 'PASSED' })
+
+      expect(db.__stores.donors[donorId].lastDonationComponentType).toBe('PLATELETS')
     })
   })
 

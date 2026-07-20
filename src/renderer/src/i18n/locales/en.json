@@ -54,6 +54,7 @@
     "edit": "Edit",
     "add": "Add",
     "search": "Search",
+    "inStock": "in stock",
     "loading": "Loading…",
     "noData": "No data found",
     "confirm": "Confirm",
@@ -230,6 +231,8 @@
     "percentDiscount": "% Discount",
     "invoiceDate": "Invoice Date",
     "dueDate": "Due Date",
+    "dueOn": "Due {{date}}",
+    "overdueSince": "Overdue since {{date}}",
     "notes": "Notes",
     "rounding": "Rounding",
     "invoiceCreated": "Invoice Created",
@@ -286,7 +289,40 @@
     "batchLabel": "Batch {{batchNumber}} · {{status}}",
     "batchExpired": "expired",
     "batchExpiresToday": "expires today",
-    "batchExpiresIn": "expires in {{days}}d"
+    "batchExpiresIn": "expires in {{days}}d",
+    "addTipOrServiceCharge": "Add Tip / Service Charge",
+    "tipAmountLabel": "Amount",
+    "tipAmountInvalid": "Enter an amount greater than zero.",
+    "confirmAddToCart": "Add to Cart",
+    "unavailableToday": "Unavailable Today",
+    "unavailableTodayMessage": "{{productName}} has been marked unavailable for today.",
+    "holdSale": "Hold Sale",
+    "resumeSale": "Resume Sale",
+    "heldSales": "Held Sales",
+    "noHeldSales": "No held sales.",
+    "holdSaleLabel": "Note (optional)",
+    "holdSaleLabelPlaceholder": "e.g. Rahul - blue shirt",
+    "confirmHold": "Hold",
+    "holdSaleSuccess": "Sale held.",
+    "resumeSaleAction": "Resume",
+    "abandonHeldSale": "Discard",
+    "confirmAbandonHeldSale": "Discard this held sale? This cannot be undone.",
+    "emptyCartCannotHold": "Cart is empty — nothing to hold.",
+    "frequentlySold": "Frequently Sold",
+    "mrpLabel": "MRP",
+    "areaCalculator": "Area calculator (L × W)",
+    "areaLabel": "Area",
+    "areaFormula": "L × W = Area",
+    "useAreaSq": "Use {{area}} sq",
+    "rx": {
+      "title": "Prescription Details",
+      "description": "This is a prescription-only (Schedule H/H1) item — patient and doctor name are required to sell it.",
+      "patientName": "Patient Name *",
+      "doctorName": "Doctor Name *",
+      "date": "Prescription Date (optional)",
+      "addToCart": "Add to Cart",
+      "required": "Patient name and doctor name are required."
+    }
   },
   "products": {
     "title": "Products",
@@ -298,6 +334,7 @@
     "unit": "Unit",
     "sellingPrice": "Selling Price",
     "costPrice": "Cost Price",
+    "mrp": "MRP (optional)",
     "taxRate": "Tax Rate (%)",
     "stock": "Stock",
     "lowStockAlert": "Low Stock Alert",
@@ -478,7 +515,16 @@
     "warrantyMonths": "Warranty (months)",
     "serialNumbers": "Serial Numbers",
     "devicesReady": "device(s) ready to import",
-    "defective": "Defective"
+    "defective": "Defective",
+    "repairTicket": "Repair",
+    "reorder": {
+      "generateButton": "Generate Reorder POs",
+      "title": "Reorder POs Generated",
+      "nothingToOrder": "No low-stock products need reordering right now.",
+      "created": "Draft POs created: {{count}}",
+      "skippedNoSupplier": "Skipped (no default supplier): {{count}}",
+      "skippedOpenPO": "Skipped (already on an open PO): {{count}}"
+    }
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
@@ -713,11 +759,55 @@
       },
       "projects": {
         "label": "Project Report",
-        "description": "Every project by status and contract value — for Service/Consultant/Agency businesses"
+        "description": "Every project by status and estimated amount — for Service Business and Consultant"
+      },
+      "serviceProjects": {
+        "label": "Project Report",
+        "description": "Every project by status and contract value — for Independent Consultant, Architect, Civil Engineer, Marketing Agency, Software Agency, and Real Estate Agent"
       },
       "jobCards": {
         "label": "Job Card Report",
         "description": "Every repair/service job by status, estimated vs. actual cost — for Repair Shops"
+      },
+      "carJobCards": {
+        "label": "Job Card Report",
+        "description": "Labor vs. parts revenue split and technician productivity — for Car Service Centers"
+      },
+      "tailoringOrders": {
+        "label": "Tailoring Orders Report",
+        "description": "Every order by garment type and status — for Tailor Boutiques"
+      },
+      "pestContracts": {
+        "label": "Pest Control Report",
+        "description": "Contracts expiring soon and revenue by pest type — for Pest Control Services"
+      },
+      "realEstatePipeline": {
+        "label": "Listings & Deals Pipeline",
+        "description": "Property listings, inquiry stages, and deal pipeline — for Real Estate Agents"
+      },
+      "retainers": {
+        "label": "Retainer / MRR Report",
+        "description": "Monthly recurring revenue and billing status by client retainer"
+      },
+      "shootBookings": {
+        "label": "Shoot Bookings Report",
+        "description": "Bookings by shoot type and revenue — for Photography Studios"
+      },
+      "eventBookings": {
+        "label": "Event Bookings Report",
+        "description": "Bookings by status and revenue — for Event Management"
+      },
+      "placements": {
+        "label": "Placement Report",
+        "description": "Candidate placements, joining status, and commission — for Placement Agencies"
+      },
+      "drawingRegister": {
+        "label": "Drawing Register",
+        "description": "Every drawing revision by discipline and approval status — for Architects"
+      },
+      "siteVisitLog": {
+        "label": "Site Visit Log",
+        "description": "Every recorded site visit by type — for Civil Engineers"
       },
       "logistics": {
         "label": "Logistics Report",
@@ -746,6 +836,10 @@
       "complianceTasks": {
         "label": "Compliance Task Report",
         "description": "Pending and overdue statutory tasks across every client"
+      },
+      "prescriptionDrugSales": {
+        "label": "Prescription Drug Sales",
+        "description": "Register of Schedule H/H1 prescription-only medicine sales, with patient and doctor names."
       }
     },
     "summary": {
@@ -950,13 +1044,25 @@
       "bloodUnits": "No available blood units.",
       "jewelleryStock": "No jewellery products with metal weight recorded yet.",
       "projects": "No projects in this date range.",
+      "serviceProjects": "No projects in this date range.",
       "jobCards": "No job cards in this date range.",
+      "carJobCards": "No job cards in this date range.",
+      "tailoringOrders": "No orders in this date range.",
+      "pestContracts": "No contracts expiring in this window.",
+      "realEstatePipeline": "No deals in this date range.",
+      "retainers": "No retainers found.",
+      "shootBookings": "No shoot bookings in this date range.",
+      "eventBookings": "No event bookings in this date range.",
+      "placements": "No placements in this date range.",
+      "drawingRegister": "No drawing revisions in this date range.",
+      "siteVisitLog": "No site visits in this date range.",
       "attendance": "No attendance records in this date range.",
       "productionOrders": "No production orders in this date range.",
       "serials": "No serial numbers found.",
       "variants": "No product variants found.",
       "testScores": "No test scores recorded yet.",
-      "complianceTasks": "No pending or overdue compliance tasks."
+      "complianceTasks": "No pending or overdue compliance tasks.",
+      "prescriptionDrugSales": "No prescription drug sales in this date range."
     },
     "col": {
       "invoiceNo": "Invoice #",
@@ -1113,7 +1219,8 @@
       "title": "Task",
       "dueDate": "Due Date",
       "daysUntilDue": "Days Until Due",
-      "priority": "Priority"
+      "priority": "Priority",
+      "projectTitle": "Project Title"
     },
     "val": {
       "walkIn": "Walk-in",
@@ -1439,6 +1546,11 @@
     "outputQtyBatch": "Output Qty per Batch",
     "addRow": "Add Row",
     "material": "Material",
+    "componentType": "Type",
+    "subAssembly": "Sub-assembly",
+    "searchSubAssembly": "Search product (sub-assembly)…",
+    "subAssemblyTag": "(sub-assembly)",
+    "selfReferenceError": "A product cannot be a component of its own BOM.",
     "qtyNeeded": "Qty Needed",
     "wastagePercent": "Wastage %",
     "outputLabel": "Output",
@@ -1575,7 +1687,22 @@
     "moveReturn": "Return",
     "statusReady": "Ready",
     "statusDispatched": "Dispatched",
-    "statusDelivered": "Delivered"
+    "statusDelivered": "Delivered",
+    "lotsUsed": "Lots used",
+    "qcCheckpointTag": "(QC checkpoint)",
+    "qcNotesLabel": "QC notes",
+    "qcPass": "Pass",
+    "qcFail": "Fail",
+    "qcResultTitle": "Record QC Result",
+    "markAsQcStep": "QC checkpoint",
+    "scrapQtyLabel": "Scrap / Rejected Qty",
+    "laborCostLabel": "Labor Cost",
+    "batchNumber": "Batch / Lot Number",
+    "receiveBatch": "Receive Lot",
+    "receiveBatchTitle": "Receive Raw Material Lot",
+    "batchReceived": "Lot received.",
+    "noBatchesYet": "No lots received yet for this material.",
+    "remainingQty": "Remaining"
   },
   "service": {
     "projects": "Projects",
@@ -1651,6 +1778,29 @@
     "actualCostLabel": "Actual Cost",
     "deleteJobCard": "Delete Job Card",
     "waitingForParts": "Waiting for Parts",
+    "partsUsed": "Parts Used",
+    "addPart": "Add Part",
+    "searchProduct": "Search product...",
+    "partsTotal": "Parts Total",
+    "noPartsUsed": "No parts used yet",
+    "removePart": "Remove part",
+    "invalidQuantity": "Enter a valid quantity.",
+    "couldNotAddPart": "Could not add part.",
+    "couldNotRemovePart": "Could not remove part.",
+    "warranty": "Warranty",
+    "warrantyDays": "Warranty (days)",
+    "warrantyUntil": "until",
+    "underWarranty": "Under Warranty",
+    "warrantyExpired": "Warranty Expired",
+    "saveWarranty": "Save",
+    "warrantySaved": "Warranty saved.",
+    "invalidWarrantyDays": "Enter a valid number of warranty days.",
+    "couldNotSaveWarranty": "Could not save warranty.",
+    "warrantyAppliesOnDelivery": "Warranty period is counted from the delivery date.",
+    "warrantyClaimAgainst": "Warranty Claim Against",
+    "notAWarrantyClaim": "Not a warranty claim",
+    "originalUnderWarranty": "Original job is still under warranty",
+    "originalWarrantyExpired": "Original job's warranty has expired",
     "cancelJob": "Cancel Job",
     "newProjectModal": "New Project",
     "projectTitleLabel": "Project Title *",
@@ -1757,6 +1907,8 @@
     "empTypeDAILY_WAGE": "Daily Wage",
     "joinDate": "Date of Joining",
     "joinedOn": "Joined on",
+    "qualifiedServices": "Qualified Services",
+    "qualifiedServicesHint": "Services this staff member can perform. Leave empty to allow any service (default).",
     "notes": "Notes",
     "deactivate": "Deactivate",
     "confirmDeactivate": "Deactivate {{name}}? They will no longer appear in attendance.",
@@ -2048,7 +2200,20 @@
       "valuePlaceholder": "Value {{symbol}}",
       "itemNotesPlaceholder": "Item notes (optional)",
       "deleteConfirm": "Delete shipment {{number}}? This cannot be undone.",
-      "destinationRequired": "Destination address is required."
+      "destinationRequired": "Destination address is required.",
+      "stops": {
+        "title": "Stops",
+        "addStop": "Add Stop",
+        "customerName": "Customer Name (optional)",
+        "destinationAddress": "Destination Address",
+        "notes": "Notes (optional)",
+        "markDelivered": "Mark Delivered",
+        "skip": "Skip",
+        "delete": "Delete",
+        "empty": "No additional stops added yet.",
+        "primaryHint": "The destination above is always the first stop — add more below for a multi-stop route.",
+        "saveFirst": "Save the shipment first, then add stops."
+      }
     },
     "grn": {
       "title": "Goods Receipt Notes (GRN)",
@@ -2246,7 +2411,13 @@
       "advanceTo": "→ {{status}}",
       "invoice": "Invoice",
       "invoicing": "...",
-      "invoiced": "Invoiced"
+      "invoiced": "Invoiced",
+      "scheduleTrial": "Schedule Trial",
+      "trial": "Trial",
+      "trialScheduled": "Trial appointment scheduled",
+      "setFabric": "Set Fabric",
+      "fabricLinked": "Fabric ✓",
+      "clearFabric": "Clear fabric link (restores stock)"
     },
     "invoiceBanner": {
       "success": "Invoice generated (SAC 998821, 5% GST).",
@@ -2263,7 +2434,23 @@
       "saveFailed": "Save failed.",
       "deleteOrderFailed": "Failed to delete order.",
       "deleteMeasurementFailed": "Failed to delete measurement.",
-      "updateStatusFailed": "Failed to update status."
+      "updateStatusFailed": "Failed to update status.",
+      "trialDateRequired": "Trial date is required.",
+      "fabricQuantityInvalid": "Enter a valid quantity."
+    },
+    "trial": {
+      "title": "Schedule Trial / Fitting",
+      "hint": "The client will get the same WhatsApp reminders as any other appointment.",
+      "date": "Date",
+      "time": "Time",
+      "schedule": "Schedule"
+    },
+    "fabric": {
+      "title": "Set Fabric",
+      "hint": "Deducts real inventory when set.",
+      "searchPlaceholder": "Search fabric in inventory…",
+      "quantity": "Quantity",
+      "set": "Set Fabric"
     },
     "measurements": {
       "selectClient": "Select Client",
@@ -2356,7 +2543,8 @@
       "customer": "Customer",
       "items": "Items",
       "item": "Item",
-      "period": "Period"
+      "period": "Period",
+      "service": "Service"
     },
     "confirmCancel": "Cancel this reservation? This cannot be undone.",
     "lateFee": "Late Fee",
@@ -2405,7 +2593,23 @@
     "empty": {
       "status": "Nothing is currently checked out.",
       "revenue": "No rental revenue in this period."
-    }
+    },
+    "serviceIntervalRentals": "Service Interval (Rentals)",
+    "serviceIntervalDays": "Service Interval (Days)",
+    "dueForService": "Due for Service",
+    "markServiced": "Mark Serviced",
+    "lastServiced": "Last Serviced",
+    "neverServiced": "Never",
+    "addItem": "Add Item",
+    "removeItem": "Remove",
+    "recurringRental": "Recurring Rental",
+    "repeatEveryDays": "Repeat Every (Days)",
+    "createNextCycle": "Create Next Cycle",
+    "nextCycleCreated": "Next rental cycle created.",
+    "conditionOutLabel": "Condition at Checkout",
+    "conditionInLabel": "Condition at Return",
+    "itemDamageCharge": "Damage Charge (this item)",
+    "photos": "Photos"
   },
   "jewellery": {
     "metalRates": "Metal Rates",
@@ -2474,6 +2678,82 @@
     "noRateSetDesc": "No rate configured for {{metalType}} {{purity}}. Set today's rate in Jewellery → Metal Rates, then re-add this item.",
     "computeErrorDesc": "Could not compute jewellery price. Please check the rate and re-add this item.",
     "priceNotSetTitle": "Jewellery Price Not Set",
-    "priceNotSetDesc": "{{productName}} has no price yet — set today's rate in Jewellery → Metal Rates, then remove and re-add this item."
+    "priceNotSetDesc": "{{productName}} has no price yet — set today's rate in Jewellery → Metal Rates, then remove and re-add this item.",
+    "makingCharge": "Making charge",
+    "makingChargeOverrideHint": "Override the making charge for this sale only — the product's own configured charge is unchanged.",
+    "applyExchange": "Apply Old-Metal Exchange",
+    "applyExchangeDesc": "Applies an unlinked exchange's credit as a discount on this invoice automatically when you complete the sale.",
+    "exchangeSearchPlaceholder": "Search by exchange number...",
+    "noUnlinkedExchanges": "No unlinked exchanges found for this customer.",
+    "exchangeApplied": "Exchange {{number}} — {{amount}} credit will be applied on checkout.",
+    "removeExchange": "Remove"
+  },
+  "distributor": {
+    "fieldOrders": {
+      "title": "Field Orders",
+      "subtitle": "Orders submitted by reps from the field, awaiting confirmation",
+      "refresh": "Refresh",
+      "linkTitle": "Field Order Link",
+      "linkDescription": "Share this link (or QR code) with your field reps — they can capture orders from their own phone on the shop's WiFi.",
+      "showQr": "Show QR Code",
+      "regenerateLink": "Regenerate Link",
+      "openDirectly": "Or open directly:",
+      "copied": "Copied",
+      "linkCopied": "Link copied to clipboard.",
+      "notRunning": "Field order capture is not currently running. Enable \"Field Order Capture\" in Settings to let reps submit orders from their own phone.",
+      "pendingTitle": "Pending Field Orders",
+      "loading": "Loading…",
+      "empty": "No field orders waiting for confirmation.",
+      "noCustomer": "(no customer selected)",
+      "accept": "Accept",
+      "reject": "Reject",
+      "acceptTitle": "Accept Order — {{repName}}",
+      "paymentMethod": "Payment Method",
+      "acceptHint": "Prices are re-checked (including any negotiated customer pricing) at confirmation, and an invoice is created.",
+      "confirmBill": "Confirm & Bill",
+      "creating": "Creating…",
+      "cancel": "Cancel",
+      "orderAccepted": "Order Accepted",
+      "invoiceCreated": "Invoice created from this field order.",
+      "error": "Error",
+      "couldNotLoad": "Could not load incoming field orders.",
+      "couldNotAccept": "Could not accept order.",
+      "couldNotReject": "Could not reject order.",
+      "couldNotGenerateQr": "Could not generate QR code.",
+      "regenerated": "Regenerated",
+      "regeneratedMessage": "A new field order link has been generated.",
+      "couldNotRegenerate": "Could not regenerate the link.",
+      "regenerateConfirm": "Regenerating breaks any link/QR code already shared with your reps — they will need the new one. Continue?"
+    },
+    "pricing": {
+      "title": "Customer Class Pricing",
+      "subtitle": "Set negotiated prices per customer class (e.g. RETAILER, WHOLESALER, VIP) — overrides the list price for any customer with that class.",
+      "addTitle": "Add / Update a Price",
+      "searchProduct": "Search product…",
+      "classPlaceholder": "Customer class, e.g. RETAILER",
+      "pricePlaceholder": "Price",
+      "save": "Save Price",
+      "saving": "Saving…",
+      "columnProduct": "Product",
+      "columnClass": "Class",
+      "columnListPrice": "List Price",
+      "columnPrice": "Price",
+      "empty": "No customer-class prices set yet.",
+      "loading": "Loading…",
+      "noProduct": "No Product",
+      "noProductMessage": "Select a product first.",
+      "noClass": "No Customer Class",
+      "noClassMessage": "Enter a customer class, e.g. RETAILER.",
+      "invalidPrice": "Invalid Price",
+      "invalidPriceMessage": "Enter a valid, non-negative price.",
+      "priceSet": "Price Set",
+      "priceSetMessage": "{{customerClass}} price set for {{productName}}.",
+      "error": "Error",
+      "couldNotSave": "Could not save price.",
+      "couldNotLoad": "Could not load price list.",
+      "removed": "Removed",
+      "removedMessage": "Price removed.",
+      "couldNotRemove": "Could not remove price."
+    }
   }
 }

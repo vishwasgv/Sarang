@@ -14,7 +14,10 @@ export interface ResultParameter {
   value: string
   unit?: string
   referenceRange?: string
-  flag?: 'LOW' | 'NORMAL' | 'HIGH' | 'ABNORMAL'
+  // Phase 58 §2 — CRITICAL is a real panic-value tier distinct from HIGH/LOW,
+  // auto-suggested by normalRange.evaluate when a test's saved reference has
+  // criticalLow/criticalHigh configured, same as LOW/NORMAL/HIGH already are.
+  flag?: 'LOW' | 'NORMAL' | 'HIGH' | 'ABNORMAL' | 'CRITICAL'
 }
 
 // Numeric-max sequence, not orderBy on the string column — string-sorting
@@ -309,12 +312,21 @@ export async function updateTestResult(payload: {
       return { success: false, error: { code: 'LAB-017', message: 'Collect the sample before entering results.' } }
     }
 
+    // Phase 58 §2 — a cached, derived flag so a pending-escalation dashboard
+    // never has to parse the resultParameters JSON of every item. Only
+    // recomputed when resultParameters is actually part of THIS save (a
+    // resultSummary-only edit leaves whatever critical state was already there).
+    const hasCriticalResult = payload.resultParameters
+      ? payload.resultParameters.some((p) => p.flag === 'CRITICAL')
+      : undefined
+
     const updated = await db.labTestOrderItem.update({
       where: { id: payload.itemId },
       data: {
         resultParameters: payload.resultParameters ? JSON.stringify(payload.resultParameters) : undefined,
         resultSummary: payload.resultSummary,
         status: 'RESULT_READY',
+        ...(hasCriticalResult !== undefined ? { hasCriticalResult } : {}),
       },
     })
 
@@ -329,6 +341,56 @@ export async function updateTestResult(payload: {
     return { success: true, data: updated }
   } catch (err) {
     return { success: false, error: { code: 'LAB-018', message: err instanceof Error ? err.message : 'Could not save test result.' } }
+  }
+}
+
+// Phase 58 §2 — the escalation workflow itself: recording that the
+// referring doctor was actually called about a critical/panic result, not
+// just flagging it. Idempotent-ish in spirit (a second call just overwrites
+// the notified stamp with the newer one) rather than erroring, since a real
+// lab might legitimately need to re-confirm a call was made.
+export async function acknowledgeCriticalResult(payload: {
+  itemId: string
+  notifiedById?: string
+  notes?: string
+}, userId?: string) {
+  const db = getPrisma()
+  try {
+    const item = await db.labTestOrderItem.findUnique({ where: { id: payload.itemId } })
+    if (!item) return { success: false, error: { code: 'LAB-019', message: 'Test item not found.' } }
+    if (!item.hasCriticalResult) return { success: false, error: { code: 'LAB-020', message: 'This item has no critical result to acknowledge.' } }
+
+    const updated = await db.labTestOrderItem.update({
+      where: { id: payload.itemId },
+      data: {
+        criticalNotifiedAt: new Date(),
+        criticalNotifiedById: payload.notifiedById ?? null,
+        criticalNotifiedNotes: payload.notes ?? null,
+      },
+    })
+
+    await logAction(userId, 'LAB_ORDER_CRITICAL_ACKNOWLEDGED', 'LabTestOrder', item.labTestOrderId, undefined, { testName: item.testName })
+    return { success: true, data: updated }
+  } catch (err) {
+    return { success: false, error: { code: 'LAB-021', message: err instanceof Error ? err.message : 'Could not record critical-result acknowledgement.' } }
+  }
+}
+
+// Escalation dashboard/alert source: every critical result that hasn't yet
+// had the "doctor was called" step recorded, most recent first.
+export async function listPendingCriticalEscalations() {
+  try {
+    const db = getPrisma()
+    const items = await db.labTestOrderItem.findMany({
+      where: { hasCriticalResult: true, criticalNotifiedAt: null },
+      include: {
+        labTestOrder: { select: { orderNumber: true, patientName: true, customerId: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    })
+    return { success: true, data: items }
+  } catch (err) {
+    return { success: false, error: { code: 'LAB-022', message: err instanceof Error ? err.message : 'Could not list pending critical escalations.' } }
   }
 }
 

@@ -13,6 +13,9 @@ import {
   listDrivingTests,
   createDrivingTest,
   updateDrivingTest,
+  getInstructorPassRates,
+  logVehicleMaintenance,
+  listVehicleMaintenanceLogs,
   listDrivingPackages,
   createDrivingPackage,
   updateDrivingPackage,
@@ -32,6 +35,8 @@ import {
   GenerateDrivingSessionInvoiceSchema,
   CreateDrivingTestSchema,
   UpdateDrivingTestSchema,
+  LogVehicleMaintenanceSchema,
+  ListVehicleMaintenanceLogsSchema,
   CreateDrivingPackageSchema,
   UpdateDrivingPackageSchema,
   DeleteDrivingPackageSchema,
@@ -132,6 +137,26 @@ export function register(handle: HandleFn): void {
     const parsed = UpdateDrivingTestSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateDrivingTest(parsed.data)
+  })
+
+  handle('drivingSession:instructorPassRates', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getInstructorPassRates()
+  })
+
+  // ── Vehicle Maintenance (Phase 58 §2) ───────────────────────────────────────
+  handle('drivingVehicle:logMaintenance', async (raw) => {
+    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const parsed = LogVehicleMaintenanceSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return logVehicleMaintenance(parsed.data)
+  })
+
+  handle('drivingVehicle:listMaintenanceLogs', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = ListVehicleMaintenanceLogsSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listVehicleMaintenanceLogs(parsed.data.vehicleId)
   })
 
   // ── Packages (Phase 41) ─────────────────────────────────────────────────────

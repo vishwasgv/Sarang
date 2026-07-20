@@ -40,17 +40,32 @@ export function getServerStatus(): { running: boolean; port: number | null; lanU
   return { running: servers.length > 0, port: activePort, lanUrls: activePort ? getLanUrls(activePort) : [] }
 }
 
+// Real bug found 2026-07-16: a printed/shown QR code silently encoded a
+// VirtualBox Host-Only Adapter address (192.168.56.x, the range VirtualBox
+// always defaults to) instead of the machine's actual WiFi/Ethernet LAN
+// address — completely unreachable from a real customer's phone, so the QR
+// code just didn't work. Object.keys() iteration order over
+// os.networkInterfaces() follows raw OS adapter enumeration, not "real
+// network first", so nothing previously stopped a virtual adapter from
+// landing at index 0 (the address this file always used for the QR/shown
+// URL). Now sorts real-looking adapters first — every address is still
+// returned (the server still binds every interface, matching prior
+// behavior), only the ORDER changes, which is what the QR/display code
+// actually keys off (lanUrls[0]).
+const VIRTUAL_ADAPTER_NAME_PATTERN = /virtualbox|vmware|hyper-v|vethernet|virtual|wsl|docker|loopback|tailscale|zerotier|tap-|npcap/i
+
 function getLanIPv4Addresses(): string[] {
-  const addresses: string[] = []
+  const real: string[] = []
+  const virtual: string[] = []
   const interfaces = networkInterfaces()
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name] ?? []) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        addresses.push(iface.address)
+        (VIRTUAL_ADAPTER_NAME_PATTERN.test(name) ? virtual : real).push(iface.address)
       }
     }
   }
-  return addresses
+  return [...real, ...virtual]
 }
 
 function getLanUrls(port: number): string[] {

@@ -9,6 +9,19 @@ export const DocumentEntityTypeSchema = z.enum([
   'PRODUCTION_ORDER',
   'DRAWING_REVISION',
   'SITE_VISIT',
+  'LEGAL_CASE',
+  'COMPLIANCE_TASK',
+  'ENGAGEMENT',
+  'ROC_FILING',
+  'BOARD_MEETING',
+  'VISIT_NOTE',
+  'TREATMENT_PLAN',
+  'LAB_TEST_ORDER',
+  'RENTAL_BOOKING_ITEM',
+  // Phase 58 §2 — Beauty Salon before/after photo attachment per appointment.
+  'APPOINTMENT',
+  // Phase 58 §2 — Placement Agency resume/CV attachment.
+  'CANDIDATE',
 ])
 
 export const AttachDocumentSchema = z.object({

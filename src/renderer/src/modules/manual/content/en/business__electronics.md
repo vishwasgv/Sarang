@@ -16,6 +16,12 @@ For phones and other IMEI-carrying devices, each device record can also carry tw
 
 Each device's warranty is stored as a length in months from its purchase/warranty-start date, and Sarang computes and displays the actual expiry date directly next to it — shown as still valid or clearly marked **Expired** once it's passed. Ask Sarang (if enabled) can also answer "Which items are still under warranty?" directly from this data.
 
+## Repair / RMA tickets
+
+A sold, serial-tracked device gets a **Repair** button on Serial Tracking — open it to see that unit's full service history, or start a new repair ticket for it. A ticket carries a claim number and moves through **Received → Diagnosed → Sent to Vendor → Awaiting Parts → Repaired/Replaced → Returned to Customer** (or Cancelled, only before a replacement has actually gone out). Record which vendor you sent it to and their own RMA number if it's going out for warranty repair.
+
+If the fix is a straight swap, choose **Replaced** and pick an in-stock unit of the same product as the replacement — Sarang marks the original unit Defective, the replacement Sold (inheriting the original sale's invoice), and deducts it from stock automatically, the same as any other sale. A repair can only be opened against a unit that was actually sold — an in-stock, never-sold device has no service history to track yet.
+
 ## Logistics & Supply Chain
 
 Because Electronics' default template includes the Logistics modules, you also get **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, and **Logistics Analytics** for tracking your own delivery vehicles and supplier shipments — see the Logistics screens under those names in the sidebar.

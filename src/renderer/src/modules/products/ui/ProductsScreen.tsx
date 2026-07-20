@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Edit, Archive, Package, FolderOpen, Layers } from 'lucide-react'
+import { Plus, Edit, Archive, Package, FolderOpen, Layers, UtensilsCrossed } from 'lucide-react'
 import { DataTable } from '@shared/ui/organisms/DataTable'
 import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
@@ -28,6 +28,7 @@ interface Product {
   sellingPrice: number
   taxRate: number
   isActive: boolean
+  unavailableUntil?: string | null
   category?: { id: string; name: string } | null
   inventory?: Inventory | null
 }
@@ -38,6 +39,7 @@ export function ProductsScreen() {
   const { hasPermission } = useAuthStore()
   const { isModuleEnabled } = useIndustryStore()
   const showVariants = isModuleEnabled('variant_tracking')
+  const showKot = isModuleEnabled('kot')
   const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal] = useState(0)
   const [categories, setCategories] = useState<Category[]>([])
@@ -96,16 +98,42 @@ export function ProductsScreen() {
     }
   }
 
+  // Phase 58 §2 — "86 today". unavailableUntil set to 23:59:59.999 local
+  // today marks it unavailable; clearing it back to null restores it
+  // immediately — the field naturally self-expires at midnight since every
+  // read-side check (menu listing, billing cart) compares against "now".
+  async function handleToggle86(product: Product) {
+    const isCurrently86d = product.unavailableUntil && new Date(product.unavailableUntil) > new Date()
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
+    const res = await window.api.products.setAvailability({
+      id: product.id,
+      unavailableUntil: isCurrently86d ? null : endOfToday.toISOString(),
+    })
+    if (res.success) {
+      toastSuccess(isCurrently86d ? 'Available Again' : '86\'d for Today', product.productName)
+      loadData()
+    } else {
+      toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    }
+  }
+
   const columns: ColumnDef<Product, unknown>[] = [
     {
       accessorKey: 'productName',
       header: t('products.productName'),
-      cell: ({ row }) => (
-        <div>
-          <p className="font-medium text-dark dark:text-slate-100">{row.original.productName}</p>
-          {row.original.sku && <p className="text-xs text-slate-400 mt-0.5">SKU: {row.original.sku}</p>}
-        </div>
-      )
+      cell: ({ row }) => {
+        const is86d = row.original.unavailableUntil && new Date(row.original.unavailableUntil) > new Date()
+        return (
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-dark dark:text-slate-100">{row.original.productName}</p>
+              {is86d && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-warning/10 text-warning">Unavailable Today</span>}
+            </div>
+            {row.original.sku && <p className="text-xs text-slate-400 mt-0.5">SKU: {row.original.sku}</p>}
+          </div>
+        )
+      }
     },
     {
       accessorFn: (r) => r.category?.name ?? '',
@@ -155,8 +183,17 @@ export function ProductsScreen() {
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const is86d = row.original.unavailableUntil && new Date(row.original.unavailableUntil) > new Date()
+        return (
         <div className="flex items-center gap-1 justify-end">
+          {showKot && (
+            <button onClick={(e) => { e.stopPropagation(); handleToggle86(row.original) }}
+              className={cn('p-2.5 rounded-lg transition-colors', is86d ? 'text-warning hover:bg-warning/10' : 'text-slate-400 hover:text-warning hover:bg-warning/10')}
+              title={is86d ? 'Mark available again' : "86 for today (mark unavailable until tomorrow)"}>
+              <UtensilsCrossed size={16} />
+            </button>
+          )}
           {showVariants && (
             <button onClick={(e) => { e.stopPropagation(); setVariantProduct(row.original) }}
               className="p-2.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors"
@@ -177,7 +214,8 @@ export function ProductsScreen() {
             </button>
           )}
         </div>
-      )
+        )
+      }
     }
   ]
 

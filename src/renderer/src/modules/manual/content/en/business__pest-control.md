@@ -14,6 +14,8 @@ An active contract with a value can be invoiced for its recurring fee with **Gen
 
 A job sheet is a single visit — optionally linked to a contract, or created as a one-time/ad-hoc visit — recording the visit date/time, assigned technicians, pesticide used, areas serviced (a quick-pick list: Kitchen, Bathrooms, Bedroom, Store Room, Terrace, Garden, Basement, Office, Warehouse, Restaurant Kitchen, Common Areas), treatment type (Spray, Gel, Fumigation, Trap, Bait, Combined), job amount, and whether the client's signature was obtained. A job sheet moves through **Scheduled → In Progress → Completed** (with Cancelled as a separate outcome); once Completed, **Generate Invoice** bills that visit (same SAC 998534, 18% GST).
 
+For a real, itemized record of what chemicals were actually used on a visit, add rows to **Pesticides Used** — name, quantity, unit, target pest, and an optional dosage note. Link a row to a real inventory product to have it deduct stock automatically when used, or leave it unlinked for a shop that doesn't track chemical stock in Sarang.
+
 The KPI bar shows active contracts, pending job sheets, and job sheets scheduled this week.
 
 ## Language

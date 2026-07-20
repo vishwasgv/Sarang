@@ -79,6 +79,8 @@ interface ClientSessionPack {
   notes: string | null
   isActive: boolean
   sessionLogs?: SessionLog[]
+  assignedTrainerId?: string | null
+  assignedTrainer?: { id: string; fullName: string } | null
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -133,6 +135,7 @@ export function PhysioPatientScreen() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [packs, setPacks] = useState<ClientSessionPack[]>([])
   const [activePack, setActivePack] = useState<ClientSessionPack | null>(null)
+  const [trainers, setTrainers] = useState<{ id: string; fullName: string }[]>([])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -149,11 +152,12 @@ export function PhysioPatientScreen() {
     if (!patientId) return
     setLoading(true)
     try {
-    const [custRes, phaseRes, hepRes, packRes] = await Promise.all([
+    const [custRes, phaseRes, hepRes, packRes, trainerRes] = await Promise.all([
       api.customers.get(patientId),
       hasPhysioNotes ? api.treatmentPhase.list({ patientId }) : Promise.resolve({ success: false, data: null }),
       hasPhysioNotes ? api.exerciseProgram.getActive({ patientId }) : Promise.resolve({ success: false, data: null }),
       hasSessionPacks ? api.sessionPack.list({ customerId: patientId }) : Promise.resolve({ success: false, data: null }),
+      hasSessionPacks ? api.hr.listEmployees({ isActive: true }) : Promise.resolve({ success: false, data: null }),
     ])
     if (custRes.success && custRes.data) setPatient(custRes.data as Patient)
     else toastError('Error', (custRes as { error?: { message: string } }).error?.message ?? 'Could not load patient.')
@@ -171,6 +175,9 @@ export function PhysioPatientScreen() {
       const allPacks = packRes.data as ClientSessionPack[]
       setPacks(allPacks)
       setActivePack(allPacks.find((pk) => pk.isActive && pk.usedSessions < pk.totalSessions) ?? null)
+    }
+    if (trainerRes.success && trainerRes.data) {
+      setTrainers((trainerRes.data as { employees: { id: string; fullName: string }[] }).employees)
     }
     } catch {
       toastError('Error', 'Could not load patient.')
@@ -313,6 +320,7 @@ export function PhysioPatientScreen() {
             showNewPack={showNewPack}
             setShowNewPack={setShowNewPack}
             onRefresh={load}
+            trainers={trainers}
           />
         )}
       </div>
@@ -713,9 +721,10 @@ interface SessionPacksTabProps {
   showNewPack: boolean
   setShowNewPack: (v: boolean) => void
   onRefresh: () => void
+  trainers: { id: string; fullName: string }[]
 }
 
-function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, showNewPack, setShowNewPack, onRefresh }: SessionPacksTabProps) {
+function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, showNewPack, setShowNewPack, onRefresh, trainers }: SessionPacksTabProps) {
   const [form, setForm] = useState({
     packName: '',
     totalSessions: 10,
@@ -725,11 +734,13 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
     taxRate: 18,
     sacCode: '',
     notes: '',
+    assignedTrainerId: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [generatingId, setGeneratingId] = useState<string | null>(null)
+  const [reassigningId, setReassigningId] = useState<string | null>(null)
 
   async function handleCreatePack() {
     if (!form.packName.trim()) { setError('Pack name is required.'); return }
@@ -746,14 +757,26 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
       taxRate: form.taxRate,
       sacCode: form.sacCode || undefined,
       notes: form.notes || undefined,
+      assignedTrainerId: form.assignedTrainerId || undefined,
     })
     setSaving(false)
     if (res.success) {
       setShowNewPack(false)
-      setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '' })
+      setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '', assignedTrainerId: '' })
       onRefresh()
     } else {
       setError(res.error?.message ?? 'Could not create pack.')
+    }
+  }
+
+  async function handleReassignTrainer(packId: string, trainerId: string) {
+    setReassigningId(packId)
+    const res = await api.sessionPack.assignTrainer({ packId, trainerId: trainerId || null })
+    setReassigningId(null)
+    if (res.success) {
+      onRefresh()
+    } else {
+      setInvoiceError(res.error?.message ?? 'Could not assign trainer.')
     }
   }
 
@@ -841,6 +864,16 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
                 onChange={(e) => setForm((f) => ({ ...f, sacCode: e.target.value }))} />
               <Input label="Notes (optional)" value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+              {trainers.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Assigned Trainer (optional)</label>
+                  <select value={form.assignedTrainerId} onChange={(e) => setForm((f) => ({ ...f, assignedTrainerId: e.target.value }))}
+                    className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand">
+                    <option value="">No standing trainer</option>
+                    {trainers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="secondary" onClick={() => setShowNewPack(false)}>Cancel</Button>
@@ -875,6 +908,24 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {pack.usedSessions}/{pack.totalSessions} sessions used · {currSym}{Number(pack.pricePerPack).toLocaleString('en-IN')} · {fmt(pack.purchaseDate)}
                   </p>
+                  {trainers.length > 0 && (
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <span className="text-xs text-slate-400">Trainer:</span>
+                      {canBilling ? (
+                        <select
+                          value={pack.assignedTrainerId ?? ''}
+                          disabled={reassigningId === pack.id}
+                          onChange={(e) => handleReassignTrainer(pack.id, e.target.value)}
+                          className="text-xs h-7 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 bg-white dark:bg-slate-900 text-dark dark:text-slate-100"
+                        >
+                          <option value="">Unassigned</option>
+                          {trainers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-slate-500">{pack.assignedTrainer?.fullName ?? 'Unassigned'}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className={cn('text-right shrink-0', remaining <= 2 && remaining > 0 ? 'text-warning' : remaining === 0 ? 'text-slate-400' : 'text-success')}>
                   <p className="text-lg font-bold">{remaining}</p>

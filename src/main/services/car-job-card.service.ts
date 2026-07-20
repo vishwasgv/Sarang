@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
+import { buildWhatsAppLink } from './notification-queue.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -154,9 +155,11 @@ export async function updateCarJobCard(payload: {
   invoiceId?: string | null
   notes?: string | null
   internalNotes?: string | null
+  nextServiceDueDate?: string | null
+  nextServiceDueKm?: number | null
 }) {
   const db = getPrisma()
-  const { id, serviceItems, partsItems, estimatedDelivery, deliveredDate, vehicleNumber, ...rest } = payload
+  const { id, serviceItems, partsItems, estimatedDelivery, deliveredDate, vehicleNumber, nextServiceDueDate, ...rest } = payload
 
   const data: Record<string, unknown> = { ...rest }
   if (vehicleNumber !== undefined) data.vehicleNumber = vehicleNumber.toUpperCase().replace(/\s+/g, ' ').trim()
@@ -170,6 +173,7 @@ export async function updateCarJobCard(payload: {
   }
   if (estimatedDelivery !== undefined) data.estimatedDelivery = estimatedDelivery ? new Date(estimatedDelivery) : null
   if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? new Date(deliveredDate) : null
+  if (nextServiceDueDate !== undefined) data.nextServiceDueDate = nextServiceDueDate ? new Date(nextServiceDueDate) : null
 
   const card = await db.carJobCard.update({
     where: { id },
@@ -275,4 +279,120 @@ export async function getCarJobCardKPIs() {
     db.carJobCard.count({ where: { status: 'DELIVERED', deliveredDate: { gte: monthStart, lte: monthEnd } } }),
   ])
   return { success: true, data: { active, readyForPickup, deliveredThisMonth } }
+}
+
+// Phase 58 §2 — Car Service Center: next-service-due tracking + a real
+// grouped vehicle service-history view. There is no separate Vehicle master
+// table (vehicleNumber is a free-standing field on each job card), so
+// "the current state of a vehicle" is always the MOST RECENT job card for
+// that registration number — computed here, not stored anywhere.
+
+function normalizeVehicleNumber(v: string): string {
+  return v.toUpperCase().replace(/\s+/g, ' ').trim()
+}
+
+// Returns every job card ever created for one exact registration number,
+// newest first — the real "grouped by vehicle" view the plan calls for,
+// distinct from the flat job-card list's free-text search box.
+export async function getVehicleServiceHistory(vehicleNumber: string) {
+  try {
+    const db = getPrisma()
+    const cards = await db.carJobCard.findMany({
+      where: { vehicleNumber: normalizeVehicleNumber(vehicleNumber) },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        serviceAdvisor: { select: { id: true, fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    return { success: true, data: cards.map(serializeCarJobCard) }
+  } catch (err) {
+    return { success: false, error: { code: 'CJC-005', message: err instanceof Error ? err.message : 'Could not load vehicle history.' } }
+  }
+}
+
+// One row per distinct vehicle (its MOST RECENT job card only), flagged
+// dueForService if either the date or the odometer threshold has been
+// crossed. dueSoonDays lets the UI ask "due within the next N days", not
+// just "already overdue".
+export async function listVehiclesDueForService(dueSoonDays = 14) {
+  try {
+    const db = getPrisma()
+    const cards = await db.carJobCard.findMany({
+      where: { status: { not: 'CANCELLED' } },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const latestByVehicle = new Map<string, (typeof cards)[number]>()
+    for (const card of cards) {
+      if (!latestByVehicle.has(card.vehicleNumber)) latestByVehicle.set(card.vehicleNumber, card)
+    }
+
+    const now = new Date()
+    const soonCutoff = new Date(now.getTime() + dueSoonDays * 86400000)
+
+    const vehicles = Array.from(latestByVehicle.values()).map((card) => {
+      const dueByDate = card.nextServiceDueDate != null && card.nextServiceDueDate <= soonCutoff
+      const dueByKm = card.nextServiceDueKm != null && card.kmOut != null && card.kmOut >= card.nextServiceDueKm
+      return {
+        vehicleNumber: card.vehicleNumber,
+        vehicleMake: card.vehicleMake,
+        vehicleModel: card.vehicleModel,
+        client: card.client,
+        latestJobCardId: card.id,
+        latestJobNumber: card.jobNumber,
+        lastKmOut: card.kmOut,
+        nextServiceDueDate: card.nextServiceDueDate,
+        nextServiceDueKm: card.nextServiceDueKm,
+        dueForService: dueByDate || dueByKm,
+        overdue: (card.nextServiceDueDate != null && card.nextServiceDueDate <= now) || dueByKm,
+      }
+    }).filter((v) => v.nextServiceDueDate != null || v.nextServiceDueKm != null)
+
+    return { success: true, data: vehicles }
+  } catch (err) {
+    return { success: false, error: { code: 'CJC-006', message: err instanceof Error ? err.message : 'Could not list vehicles due for service.' } }
+  }
+}
+
+// Schedules a real WhatsApp reminder via the same notificationQueue
+// mechanism appointment reminders already use — sent `daysBefore` days
+// ahead of nextServiceDueDate, addressed to the job card's own client.
+export async function scheduleNextServiceReminder(jobCardId: string, daysBefore = 3) {
+  try {
+    const db = getPrisma()
+    const card = await db.carJobCard.findUnique({
+      where: { id: jobCardId },
+      include: { client: { select: { customerName: true, phone: true } } },
+    })
+    if (!card) return { success: false, error: { code: 'CJC-007', message: 'Job card not found.' } }
+    if (!card.nextServiceDueDate) return { success: false, error: { code: 'CJC-008', message: 'No next-service-due date set on this job card.' } }
+    if (!card.client.phone) return { success: true, data: null }
+
+    const scheduledFor = new Date(card.nextServiceDueDate.getTime() - daysBefore * 86400000)
+    if (scheduledFor <= new Date()) return { success: false, error: { code: 'CJC-009', message: 'The reminder date has already passed — the due date is too close (or in the past) to schedule ahead.' } }
+
+    const dueDateStr = card.nextServiceDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const message = `Dear ${card.client.customerName}, your vehicle ${card.vehicleNumber} (${card.vehicleMake} ${card.vehicleModel}) is due for its next service around ${dueDateStr}. Please book an appointment. Thank you! Powered by Sarang | www.aszurex.com`
+    const link = await buildWhatsAppLink(card.client.phone, message)
+
+    await db.notificationQueue.create({
+      data: {
+        customerId: card.clientId,
+        customerName: card.client.customerName,
+        customerPhone: card.client.phone,
+        notificationType: 'CAR_SERVICE_DUE_REMINDER',
+        templateBody: message,
+        whatsappLink: link,
+        scheduledFor,
+        status: 'PENDING',
+      },
+    })
+    return { success: true, data: { message, link, scheduledFor: scheduledFor.toISOString() } }
+  } catch (err) {
+    return { success: false, error: { code: 'CJC-010', message: err instanceof Error ? err.message : 'Could not schedule reminder.' } }
+  }
 }

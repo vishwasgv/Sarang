@@ -68,17 +68,20 @@ export async function createEnrollment(payload: {
   const batch = await db.coachingBatch.findUnique({ where: { id: payload.batchId } })
   if (!batch) return { success: false, error: { code: 'ENR-002', message: 'Batch not found.' } }
 
+  // Phase 58 §2 — a batch at capacity used to hard-reject any new enrollment
+  // outright. Now it enrolls onto a real WAITLISTED queue instead — staff
+  // can promote a waitlisted student the moment a seat frees up, rather than
+  // the parent having to be told to come back and re-apply later.
   const activeCount = await db.coachingBatchEnrollment.count({
     where: { batchId: payload.batchId, status: 'ACTIVE' },
   })
-  if (activeCount >= batch.maxCapacity) {
-    return { success: false, error: { code: 'ENR-003', message: `Batch is at full capacity (${batch.maxCapacity} students).` } }
-  }
+  const waitlisted = activeCount >= batch.maxCapacity
 
   const enrollment = await db.coachingBatchEnrollment.create({
     data: {
       batchId: payload.batchId,
       studentId: payload.studentId,
+      status: waitlisted ? 'WAITLISTED' : 'ACTIVE',
       discountType: payload.discountType ?? 'NONE',
       discountAmount: payload.discountAmount ?? 0,
       effectiveFee: payload.effectiveFee,
@@ -89,8 +92,39 @@ export async function createEnrollment(payload: {
       student: { select: { id: true, customerName: true, phone: true } },
     },
   })
-  await db.auditLog.create({ data: { action: 'ENROLLED', entityType: 'CoachingBatchEnrollment', entityId: enrollment.id, newValue: JSON.stringify({ batchId: enrollment.batchId, studentId: enrollment.studentId }) } }).catch(() => {})
-  return { success: true, data: serializeEnrollment(enrollment) }
+  await db.auditLog.create({ data: { action: waitlisted ? 'WAITLISTED' : 'ENROLLED', entityType: 'CoachingBatchEnrollment', entityId: enrollment.id, newValue: JSON.stringify({ batchId: enrollment.batchId, studentId: enrollment.studentId }) } }).catch(() => {})
+  return { success: true, data: { ...serializeEnrollment(enrollment), waitlisted } }
+}
+
+// Phase 58 §2 — promotes a WAITLISTED enrollment to ACTIVE once a seat is
+// actually free. Re-checks capacity at promote time (not just trusting the
+// caller) since other students may have been promoted/enrolled since the
+// waitlist was last viewed.
+export async function promoteFromWaitlist(id: string) {
+  const db = getPrisma()
+  const enrollment = await db.coachingBatchEnrollment.findUnique({ where: { id } })
+  if (!enrollment) return { success: false, error: { code: 'ENR-004', message: 'Enrollment not found.' } }
+  if (enrollment.status !== 'WAITLISTED') {
+    return { success: false, error: { code: 'ENR-005', message: `Only a waitlisted enrollment can be promoted (current status: ${enrollment.status}).` } }
+  }
+
+  const batch = await db.coachingBatch.findUnique({ where: { id: enrollment.batchId } })
+  if (!batch) return { success: false, error: { code: 'ENR-002', message: 'Batch not found.' } }
+
+  const activeCount = await db.coachingBatchEnrollment.count({
+    where: { batchId: enrollment.batchId, status: 'ACTIVE' },
+  })
+  if (activeCount >= batch.maxCapacity) {
+    return { success: false, error: { code: 'ENR-006', message: `Batch is still at full capacity (${batch.maxCapacity} students).` } }
+  }
+
+  const promoted = await db.coachingBatchEnrollment.update({
+    where: { id },
+    data: { status: 'ACTIVE' },
+    include: { student: { select: { id: true, customerName: true, phone: true } } },
+  })
+  await db.auditLog.create({ data: { action: 'PROMOTED', entityType: 'CoachingBatchEnrollment', entityId: id } }).catch(() => {})
+  return { success: true, data: serializeEnrollment(promoted) }
 }
 
 export async function updateEnrollment(payload: {

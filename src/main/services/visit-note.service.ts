@@ -2,6 +2,15 @@ import { getPrisma } from '../database/db'
 import { computeVitalsFlags } from './normal-range.service'
 import { createAppointment } from './appointment.service'
 
+// Phase 58 §2 — Vet Clinic: looked up server-side (never trust a client-sent
+// species for a fact that changes how vitals get flagged) so a dog/cat's
+// vitals are evaluated against the right NormalRangeReference rows instead
+// of always falling back to the generic/human ones.
+async function getPetSpeciesForAppointment(db: ReturnType<typeof getPrisma>, appointmentId: string): Promise<string> {
+  const appt = await db.appointment.findUnique({ where: { id: appointmentId }, select: { pet: { select: { species: true } } } })
+  return appt?.pet?.species ?? 'ALL'
+}
+
 export async function getVisitNote(appointmentId: string) {
   try {
     const db = getPrisma()
@@ -18,6 +27,8 @@ export async function getVisitNote(appointmentId: string) {
             customerName: true,
             customer: { select: { id: true, customerName: true, phone: true } },
             provider: { select: { id: true, fullName: true, specialization: true } },
+            // Phase 58 §2 — Vet Clinic patient context (VisitNoteScreen.tsx)
+            pet: { select: { id: true, petName: true, species: true, breed: true, dateOfBirth: true, gender: true } },
           },
         },
       },
@@ -52,6 +63,7 @@ export async function createVisitNote(payload: {
   referralReason?: string
   treatmentDone?: string
   painScore?: number | null
+  functionalScore?: number | null
   treatmentGiven?: string
   bpSystolic?: number | null
   bpDiastolic?: number | null
@@ -63,10 +75,11 @@ export async function createVisitNote(payload: {
 }) {
   try {
     const db = getPrisma()
+    const species = await getPetSpeciesForAppointment(db, payload.appointmentId)
     const vitalsFlags = await computeVitalsFlags({
       bpSystolic: payload.bpSystolic, bpDiastolic: payload.bpDiastolic,
       pulseRate: payload.pulseRate, temperatureF: payload.temperatureF,
-    })
+    }, 'ALL', species)
     const note = await db.visitNote.create({
       data: {
         appointmentId: payload.appointmentId,
@@ -84,6 +97,7 @@ export async function createVisitNote(payload: {
         referralReason: payload.referralReason ?? null,
         treatmentDone: payload.treatmentDone ?? null,
         painScore: payload.painScore != null ? Math.min(10, Math.max(0, Math.round(payload.painScore))) : null,
+        functionalScore: payload.functionalScore != null ? Math.min(100, Math.max(0, Math.round(payload.functionalScore))) : null,
         treatmentGiven: payload.treatmentGiven ?? null,
         bpSystolic: payload.bpSystolic ?? null,
         bpDiastolic: payload.bpDiastolic ?? null,
@@ -122,6 +136,7 @@ export async function updateVisitNote(payload: {
   referralReason?: string | null
   treatmentDone?: string | null
   painScore?: number | null
+  functionalScore?: number | null
   treatmentGiven?: string | null
   bpSystolic?: number | null
   bpDiastolic?: number | null
@@ -133,19 +148,26 @@ export async function updateVisitNote(payload: {
   try {
     const db = getPrisma()
 
-    const existing = await db.visitNote.findUnique({ where: { id: payload.id }, select: { isFinalized: true, bpSystolic: true, bpDiastolic: true, pulseRate: true, temperatureF: true } })
+    const existing = await db.visitNote.findUnique({
+      where: { id: payload.id },
+      select: {
+        isFinalized: true, bpSystolic: true, bpDiastolic: true, pulseRate: true, temperatureF: true,
+        appointment: { select: { pet: { select: { species: true } } } }
+      }
+    })
     if (!existing) return { success: false, error: { code: 'VN-003', message: 'Visit note not found.' } }
     if (existing.isFinalized) return { success: false, error: { code: 'VN-003F', message: 'This note has been finalized and cannot be edited.' } }
 
-    const { id, followUpDate, referralDate, painScore, bpSystolic, bpDiastolic, pulseRate, temperatureF, ...rest } = payload
+    const { id, followUpDate, referralDate, painScore, functionalScore, bpSystolic, bpDiastolic, pulseRate, temperatureF, ...rest } = payload
     const anyVitalChanged = bpSystolic !== undefined || bpDiastolic !== undefined || pulseRate !== undefined || temperatureF !== undefined
+    const species = existing.appointment?.pet?.species ?? 'ALL'
     const vitalsFlags = anyVitalChanged
       ? await computeVitalsFlags({
           bpSystolic: bpSystolic !== undefined ? bpSystolic : existing.bpSystolic,
           bpDiastolic: bpDiastolic !== undefined ? bpDiastolic : existing.bpDiastolic,
           pulseRate: pulseRate !== undefined ? pulseRate : existing.pulseRate,
           temperatureF: temperatureF !== undefined ? temperatureF : existing.temperatureF,
-        })
+        }, 'ALL', species)
       : null
 
     const note = await db.visitNote.update({
@@ -153,6 +175,7 @@ export async function updateVisitNote(payload: {
       data: {
         ...rest,
         ...(painScore !== undefined ? { painScore: painScore !== null ? Math.min(10, Math.max(0, Math.round(painScore))) : null } : {}),
+        ...(functionalScore !== undefined ? { functionalScore: functionalScore !== null ? Math.min(100, Math.max(0, Math.round(functionalScore))) : null } : {}),
         ...(followUpDate !== undefined ? { followUpDate: followUpDate ? new Date(followUpDate) : null } : {}),
         ...(referralDate !== undefined ? { referralDate: referralDate ? new Date(referralDate) : null } : {}),
         ...(bpSystolic !== undefined ? { bpSystolic } : {}),
@@ -316,7 +339,7 @@ export async function listReferralsForVisitNote(visitNoteId: string) {
       where: { referredFromVisitNoteId: visitNoteId },
       select: {
         id: true, appointmentNumber: true, scheduledDate: true, scheduledTime: true,
-        status: true, serviceTitle: true,
+        status: true, serviceTitle: true, notes: true,
         provider: { select: { id: true, fullName: true, specialization: true } },
       },
       orderBy: { scheduledDate: 'desc' },
@@ -324,5 +347,104 @@ export async function listReferralsForVisitNote(visitNoteId: string) {
     return { success: true, data: referrals }
   } catch (err) {
     return { success: false, error: { code: 'VN-008', message: err instanceof Error ? err.message : 'Could not list referrals.' } }
+  }
+}
+
+// Phase 58 §2 — GP/Specialist Clinic: structured prescription, one row per
+// drug — distinct from the free-text `plan` field. Edited as a whole list
+// while drafting (same UX as a BOM editor), so saving replaces the full set
+// atomically rather than exposing per-row add/remove IPC calls.
+export async function listPrescriptionItems(visitNoteId: string) {
+  try {
+    const db = getPrisma()
+    const items = await db.prescriptionItem.findMany({
+      where: { visitNoteId },
+      orderBy: { sequence: 'asc' },
+    })
+    return { success: true, data: items }
+  } catch (err) {
+    return { success: false, error: { code: 'VN-009', message: err instanceof Error ? err.message : 'Could not list prescription items.' } }
+  }
+}
+
+export async function savePrescriptionItems(
+  visitNoteId: string,
+  items: Array<{ drugName: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }>
+) {
+  try {
+    const db = getPrisma()
+    const note = await db.visitNote.findUnique({ where: { id: visitNoteId }, select: { isFinalized: true } })
+    if (!note) return { success: false, error: { code: 'VN-010', message: 'Visit note not found.' } }
+    if (note.isFinalized) return { success: false, error: { code: 'VN-010F', message: 'This note has been finalized and cannot be edited.' } }
+
+    const saved = await db.$transaction(async (tx) => {
+      await tx.prescriptionItem.deleteMany({ where: { visitNoteId } })
+      if (items.length === 0) return []
+      await tx.prescriptionItem.createMany({
+        data: items.map((it, i) => ({
+          visitNoteId,
+          drugName: it.drugName,
+          dosage: it.dosage ?? null,
+          frequency: it.frequency ?? null,
+          duration: it.duration ?? null,
+          instructions: it.instructions ?? null,
+          sequence: i,
+        })),
+      })
+      return tx.prescriptionItem.findMany({ where: { visitNoteId }, orderBy: { sequence: 'asc' } })
+    })
+
+    await db.auditLog.create({
+      data: { action: 'UPDATE', entityType: 'VisitNote', entityId: visitNoteId, newValue: JSON.stringify({ prescriptionItemCount: items.length }) },
+    }).catch(() => {})
+
+    return { success: true, data: saved }
+  } catch (err) {
+    return { success: false, error: { code: 'VN-011', message: err instanceof Error ? err.message : 'Could not save prescription items.' } }
+  }
+}
+
+// Phase 58 §2 — GP/Specialist Clinic (and reusable by any visit_notes
+// vertical): vitals trend across a patient's OWN prior visits, same "chart
+// a value across time" pattern already built for pet weight
+// (PetProfileScreen.tsx's WeightChart). "Same patient" means the same
+// linked Pet for a vet visit, or the same Customer otherwise — VisitNote has
+// no dedicated Patient entity of its own, so this walks back through the
+// owning Appointment's identity field.
+export async function getVitalsTrend(appointmentId: string) {
+  try {
+    const db = getPrisma()
+    const appt = await db.appointment.findUnique({
+      where: { id: appointmentId },
+      select: { customerId: true, petId: true },
+    })
+    if (!appt) return { success: false, error: { code: 'VN-012', message: 'Appointment not found.' } }
+    if (!appt.customerId && !appt.petId) return { success: true, data: [] }
+
+    const notes = await db.visitNote.findMany({
+      where: {
+        appointment: appt.petId ? { petId: appt.petId } : { customerId: appt.customerId },
+      },
+      select: {
+        bpSystolic: true, bpDiastolic: true, pulseRate: true, temperatureF: true, weightKg: true,
+        // Phase 58 §2 — Physio Clinic: outcome measures trended the same way as vitals.
+        painScore: true, functionalScore: true,
+        appointment: { select: { scheduledDate: true } },
+      },
+      orderBy: { appointment: { scheduledDate: 'asc' } },
+    })
+
+    const trend = notes
+      .filter((n) => n.bpSystolic != null || n.bpDiastolic != null || n.pulseRate != null || n.temperatureF != null || n.weightKg != null || n.painScore != null || n.functionalScore != null)
+      .map((n) => ({
+        date: n.appointment.scheduledDate,
+        bpSystolic: n.bpSystolic, bpDiastolic: n.bpDiastolic, pulseRate: n.pulseRate,
+        temperatureF: n.temperatureF, weightKg: n.weightKg,
+        painScore: n.painScore, functionalScore: n.functionalScore,
+      }))
+
+    return { success: true, data: trend }
+  } catch (err) {
+    return { success: false, error: { code: 'VN-013', message: err instanceof Error ? err.message : 'Could not compute vitals trend.' } }
   }
 }

@@ -15,7 +15,9 @@ Opening an appointment's **Consultation Note** gives you the same structured SOA
 - **Referred By** and **Referral Date** — records who sent this patient to you (an outside doctor or another clinic) and when.
 - **Referral Reason** — free text.
 
-This is separate from **Refer to Another Provider**, a real in-app action lower on the same screen: once the note is saved, you can book an actual outbound appointment with another provider at your own clinic (pick the provider, date, time, and an optional reason) — this is a genuine booked appointment, not just a note. Each referral you send shows its own status (Scheduled / Completed / Cancelled / No-show) right there on the visit note.
+This is separate from **Refer to Another Provider**, a real in-app action lower on the same screen: once the note is saved, you can book an actual outbound appointment with another provider at your own clinic (pick the provider, date, time, and an optional reason) — this is a genuine booked appointment, not just a note. Each referral you send shows its own status (Scheduled / Completed / Cancelled / No-show) right there on the visit note, with a **Print Referral Letter** button producing a formal letter addressed to the referred-to provider.
+
+The note also carries the same itemized **Prescription** table and **Vitals Trend** chart described in the *GP Clinic* chapter — both work identically here.
 
 ## Token Queue
 

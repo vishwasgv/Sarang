@@ -16,7 +16,7 @@ import {
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
-  Hotel, BedDouble, Sparkles, HelpCircle,
+  Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -55,11 +55,18 @@ const NAV_ITEMS: NavItem[] = [
   // Distributor-only items
   { label: 'Bulk Orders', path: '/distributor/bulk-order', icon: PackagePlus, permissionKey: 'billing.createInvoice', requiredModule: 'bulk_orders' },
   { label: 'Outstanding', path: '/distributor/outstanding', icon: Activity, permissionKey: 'customers.view', requiredModule: 'outstanding_analytics' },
+  // Phase 58 §2 — Distributor field-rep order capture + customer-class pricing
+  { label: 'Field Orders', path: '/distributor/field-orders', icon: Send, permissionKey: 'distributor.manageFieldOrders', requiredModule: 'field_order_capture' },
+  { label: 'Customer Pricing', path: '/distributor/pricing', icon: Tag, permissionKey: 'products.modifyPricing', requiredModule: 'field_order_capture' },
+  // Phase 58 §2 — Agri Inputs combined consumables+equipment dashboard
+  { label: 'Agri Dashboard', path: '/agri/dashboard', icon: Sprout, permissionKey: 'inventory.view', requiredModule: 'agri_dashboard' },
   // Batch/expiry tracking — shared by any business type with the module on (Pharmacy, Phase 49 Agri Inputs, etc.)
   { label: 'Batch Tracking', path: '/pharmacy/batches', icon: Pill, permissionKey: 'inventory.view', requiredModule: 'batch_tracking' },
   // Serial/warranty tracking — shared by any business type with the module on (Electronics, Phase 49 Agri Inputs equipment, etc.).
   // The screen itself conditionally shows IMEI-specific UI only when imei_tracking is also enabled.
   { label: 'Serial Tracking', path: '/electronics/serials', icon: Smartphone, permissionKey: 'inventory.view', requiredModule: 'serial_tracking' },
+  // Phase 58 §2 — Electronics repair/RMA workflow
+  { label: 'Repair Tickets', path: '/electronics/repair-tickets', icon: Wrench, permissionKey: 'repairTickets.view', requiredModule: 'repair_rma' },
   // Manufacturing-only items
   { label: 'Raw Materials', path: '/manufacturing/raw-materials', icon: FlaskConical, permissionKey: 'inventory.view', requiredModule: 'raw_materials' },
   { label: 'Bill of Materials', path: '/manufacturing/bom', icon: BookMarked, permissionKey: 'inventory.view', requiredModule: 'bom' },
@@ -110,6 +117,7 @@ const NAV_ITEMS: NavItem[] = [
   // Hotel/Lodge vertical
   { label: 'Hotel Bookings', path: '/hotel/bookings', icon: Hotel, permissionKey: 'hotel.view', requiredModule: 'hotel_bookings' },
   { label: 'Rooms', path: '/hotel/rooms', icon: BedDouble, permissionKey: 'hotel.view', requiredModule: 'hotel_bookings' },
+  { label: 'Housekeeping', path: '/hotel/housekeeping', icon: Sparkles, permissionKey: 'hotel.view', requiredModule: 'hotel_bookings' },
   // Fresh-audit build (2026-07-12) — Jewellery
   { label: 'Metal Rates', path: '/jewellery/metal-rates', icon: Gem, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   { label: 'Old-Metal Exchange', path: '/jewellery/exchanges', icon: Repeat, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },

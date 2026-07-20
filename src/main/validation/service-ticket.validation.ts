@@ -25,6 +25,12 @@ export const DeleteTicketSchema = z.object({
   id: z.string().min(1, 'Ticket ID is required'),
 })
 
+export const GenerateTicketInvoiceSchema = z.object({
+  id: z.string().min(1, 'Ticket ID is required'),
+  amount: z.number().positive('Enter a billable amount greater than zero.').finite(),
+})
+
 export type CreateTicketPayload = z.infer<typeof CreateTicketSchema>
 export type UpdateTicketPayload = z.infer<typeof UpdateTicketSchema>
 export type DeleteTicketPayload = z.infer<typeof DeleteTicketSchema>
+export type GenerateTicketInvoicePayload = z.infer<typeof GenerateTicketInvoiceSchema>

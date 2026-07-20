@@ -14,7 +14,8 @@ export async function listTables() {
         kots: {
           where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
           select: { id: true, status: true }
-        }
+        },
+        waiter: { select: { id: true, fullName: true } }
       }
     })
     return { success: true, data: tables }
@@ -48,6 +49,23 @@ export async function updateTableStatus(tableId: string, status: string, userId?
     return { success: true, data: table }
   } catch (err) {
     return { success: false, error: { code: 'RST-005', message: err instanceof Error ? err.message : 'Could not update table status.' } }
+  }
+}
+
+// Phase 58 §2 (2026-07-17) — waiter/staff assignment per table for tip
+// pooling. null clears the assignment (e.g. shift change).
+export async function assignWaiter(tableId: string, waiterId: string | null, userId?: string) {
+  try {
+    const db = getPrisma()
+    const table = await db.restaurantTable.update({
+      where: { id: tableId },
+      data: { waiterId },
+      include: { waiter: { select: { id: true, fullName: true } } },
+    })
+    await logAction(userId, 'TABLE_WAITER_ASSIGNED', 'RestaurantTable', tableId, undefined, waiterId ?? 'unassigned')
+    return { success: true, data: table }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-013', message: err instanceof Error ? err.message : 'Could not assign waiter.' } }
   }
 }
 

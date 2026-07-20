@@ -7,6 +7,11 @@ export interface WorkOrderRecord {
   stepNumber: number
   taskName: string
   status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'
+  // Phase 58 §2 — QC/inspection gate: a step flagged as a checkpoint
+  // requires a pass/fail result before it can be marked DONE.
+  isQcStep: boolean
+  qcResult: 'PASS' | 'FAIL' | null
+  qcNotes: string | null
   notes: string | null
   completedAt: string | null
   createdAt: string
@@ -27,7 +32,7 @@ export async function listWorkOrders(productionOrderId: string): Promise<{ succe
 
 export async function upsertWorkOrders(payload: {
   productionOrderId: string
-  steps: Array<{ id?: string; stepNumber: number; taskName: string; notes?: string }>
+  steps: Array<{ id?: string; stepNumber: number; taskName: string; notes?: string; isQcStep?: boolean }>
 }, userId?: string): Promise<{ success: boolean; data?: WorkOrderRecord[]; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
@@ -47,6 +52,7 @@ export async function upsertWorkOrders(payload: {
           stepNumber: s.stepNumber,
           taskName: s.taskName.trim(),
           notes: s.notes?.trim() ?? null,
+          isQcStep: s.isQcStep ?? false,
           status: 'PENDING'
         }))
       })
@@ -66,30 +72,45 @@ export async function upsertWorkOrders(payload: {
 export async function updateWorkOrderStatus(payload: {
   id: string
   status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'
+  // Phase 58 §2 — required (server-enforced, not just a UI prompt) when
+  // marking a QC-flagged step DONE.
+  qcResult?: 'PASS' | 'FAIL'
+  qcNotes?: string
 }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    const existing = await db.workOrder.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'WO-006', message: 'Work order step not found.' } }
+
+    if (existing.isQcStep && payload.status === 'DONE' && !payload.qcResult) {
+      return { success: false, error: { code: 'WO-007', message: `"${existing.taskName}" is a QC checkpoint — record a pass/fail result before marking it done.` } }
+    }
+
     await db.workOrder.update({
       where: { id: payload.id },
       data: {
         status: payload.status,
-        completedAt: payload.status === 'DONE' ? new Date() : null
+        completedAt: payload.status === 'DONE' ? new Date() : null,
+        ...(existing.isQcStep && payload.qcResult ? { qcResult: payload.qcResult, qcNotes: payload.qcNotes?.trim() || null } : {})
       }
     })
-    await logAction(userId, 'WORK_ORDER_STATUS_UPDATED', 'WorkOrder', payload.id)
+    await logAction(userId, 'WORK_ORDER_STATUS_UPDATED', 'WorkOrder', payload.id, undefined, { status: payload.status, qcResult: payload.qcResult })
     return { success: true }
   } catch (err) {
     return { success: false, error: { code: 'WO-005', message: err instanceof Error ? err.message : 'Failed to update work order.' } }
   }
 }
 
-function toRecord(w: { id: string; productionOrderId: string; stepNumber: number; taskName: string; status: string; notes: string | null; completedAt: Date | null; createdAt: Date }): WorkOrderRecord {
+function toRecord(w: { id: string; productionOrderId: string; stepNumber: number; taskName: string; status: string; isQcStep: boolean; qcResult: string | null; qcNotes: string | null; notes: string | null; completedAt: Date | null; createdAt: Date }): WorkOrderRecord {
   return {
     id: w.id,
     productionOrderId: w.productionOrderId,
     stepNumber: w.stepNumber,
     taskName: w.taskName,
     status: w.status as WorkOrderRecord['status'],
+    isQcStep: w.isQcStep,
+    qcResult: w.qcResult as WorkOrderRecord['qcResult'],
+    qcNotes: w.qcNotes,
     notes: w.notes,
     completedAt: w.completedAt?.toISOString() ?? null,
     createdAt: w.createdAt.toISOString()

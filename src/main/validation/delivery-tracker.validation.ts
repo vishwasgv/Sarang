@@ -8,6 +8,7 @@ export const UpsertDeliveryTrackerSchema = z.object({
   albumProofSentDate: z.string().nullable().optional(),
   finalDeliveredDate: z.string().nullable().optional(),
   deliveryFormat: z.string().max(100).nullable().optional(),
+  deliveredPhotosCount: z.number().int().nonnegative().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
 

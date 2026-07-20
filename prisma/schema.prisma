@@ -30,6 +30,10 @@ model BusinessProfile {
   currencySymbol          String   @default("₹")
   taxModel                String   @default("GST")
   taxNumber               String?
+  // Phase 58 §2 — Pharmacy regulatory identifier, same flat/nullable shape
+  // as clinicSpecialty above — free text (drug-license format varies by
+  // jurisdiction), only meaningful/shown for PHARMACY.
+  drugLicenseNumber       String?
   upiId                   String?
   website                 String?
   logoPath                String?
@@ -70,6 +74,7 @@ model User {
   assignedJobCards   JobCard[]           @relation("JobCardAssignedTo")
   workLogs           WorkLog[]
   bloodIssuesHandled BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
+  issueComments      IssueComment[] // Phase 58 §2 — Software Agency
 }
 
 model Role {
@@ -123,31 +128,74 @@ model ProductCategory {
 }
 
 model Product {
-  id           String   @id @default(cuid())
-  categoryId   String?
-  sku          String?  @unique
-  barcode      String?  @unique
-  hsnCode      String?
-  productName  String
-  description  String?
-  productType  String   @default("STANDARD")
-  unit         String   @default("PCS")
-  costPrice    Float    @default(0)
-  sellingPrice Float
-  taxRate      Float    @default(0)
-  imagePath    String?
-  isActive     Boolean  @default(true)
+  id                     String    @id @default(cuid())
+  categoryId             String?
+  sku                    String?   @unique
+  barcode                String?   @unique
+  hsnCode                String?
+  productName            String
+  description            String?
+  productType            String    @default("STANDARD")
+  unit                   String    @default("PCS")
+  costPrice              Float     @default(0)
+  sellingPrice           Float
+  // Phase 58 §2 — Maximum Retail Price (Indian retail convention): the
+  // printed/legal ceiling price, distinct from sellingPrice (the actual
+  // billed price, which may sit at or below MRP). Nullable — only
+  // meaningful for retail-style businesses that print it, no effect
+  // elsewhere.
+  mrp                    Float?
+  taxRate                Float     @default(0)
+  imagePath              String?
+  isActive               Boolean   @default(true)
   // Phase 48 — MENS|WOMENS|UNISEX. Nullable/optional, no default forced —
   // only meaningful for apparel-style businesses (surfaced in the UI when
   // variant_tracking is enabled, CLOTHING/FOOTWEAR's default flag).
-  gender       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  gender                 String?
+  // Phase 58 §2 (2026-07-17) — Restaurant's "86 today" (industry term for a
+  // menu item temporarily unavailable, distinct from permanently
+  // deactivating it via isActive). Derived/computed at read time against
+  // "now" — never a stored boolean needing a daily-reset job — so it
+  // self-clears the moment this timestamp passes, same "derive, don't store
+  // a running counter" philosophy as getRetainerHoursUsage. Nullable/unused
+  // by every other vertical.
+  unavailableUntil       DateTime?
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag.
+  // Nullable-equivalent default false, unused by every other vertical —
+  // when true, billing.service.ts requires a prescription snapshot
+  // (patient/doctor/date) on the InvoiceItem before the sale is allowed.
+  isPrescriptionRequired Boolean   @default(false)
+  // Phase 58 §2 — generic reorder-automation field (not Pharmacy-specific,
+  // though Pharmacy is the vertical that motivated it): which supplier to
+  // draft a Purchase Order against when this product's stock is low. Null
+  // means "no default" — generateReorderDraftPOs() in
+  // purchase-order.service.ts skips a low-stock product with no default
+  // supplier rather than guessing.
+  defaultSupplierId      String?
+  // Phase 58 §2 — Agri Inputs category-specific expiry alert lead time. Null
+  // means "use the generic default (30 days)" — see product.validation.ts's
+  // comment for why this needs to vary by category (seeds/fertilizer vs.
+  // pharmacy-shaped medicines). Generic field, not Agri-specific.
+  expiryAlertLeadDays    Int?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   // Phase 38: loose/weight-based billing (opt-in, off by default — see barcode_generation/loose_billing TemplateModule flags)
   sellByWeight          Boolean   @default(false)
   weightUnit            String?
   pricePerWeightUnit    Float?
+  // Phase 58 §2 — Hardware's carton/box-to-loose-piece conversion. A
+  // different shape from sellByWeight above (discrete integer pack size,
+  // not a continuous fraction of the same stocking unit) — this product is
+  // STOCKED and SOLD in the base `unit` (e.g. "PCS") at all times;
+  // Inventory.quantity never changes meaning. unitsPerPack only converts
+  // how many base units a single purchased pack/carton/box contains, so
+  // "received 10 boxes of 50" becomes a single addStock({quantity: 500})
+  // call — every existing inventory-quantity read site (billing stock
+  // check, low-stock alerts, valuation) needs zero changes.
+  sellByPack            Boolean   @default(false)
+  packUnit              String? // e.g. "BOX", "CARTON", "CASE"
+  unitsPerPack          Float?
   barcodeSource         String?
   // Compact sequential reference (0-99999) embedded in weight-embedded barcode labels for this
   // product — distinct from Product.barcode (which may be a real manufacturer code, or absent).
@@ -189,25 +237,34 @@ model Product {
   makingChargeType  String? // 'FIXED' | 'PER_GRAM' | 'PERCENTAGE'
   makingChargeValue Float?
 
-  category           ProductCategory?    @relation(fields: [categoryId], references: [id])
-  inventory          Inventory?
-  movements          InventoryMovement[]
-  invoiceItems       InvoiceItem[]
-  purchaseItems      PurchaseOrderItem[]
-  recipeItems        RecipeItem[]
-  variants           ProductVariant[]
-  batches            ProductBatch[]
-  serials            ProductSerial[]
-  bom                BillOfMaterial?
-  productionOrders   ProductionOrder[]
-  dispatchRecords    DispatchRecord[]
-  labelPrintLogs     LabelPrintLog[]
-  rentalUnits        RentalUnit[]
-  rentalBookingItems RentalBookingItem[]
+  category                  ProductCategory?          @relation(fields: [categoryId], references: [id])
+  defaultSupplier           Supplier?                 @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id], onDelete: SetNull)
+  inventory                 Inventory?
+  movements                 InventoryMovement[]
+  jobCardParts              JobCardPart[] // Phase 58 §2 — Repair
+  tailoringOrdersAsFabric   TailoringOrder[] // Phase 58 §2 — Tailor Boutique
+  pestJobSheetPesticides    PestJobSheetPesticide[] // Phase 58 §2 — Pest Control
+  invoiceItems              InvoiceItem[]
+  purchaseItems             PurchaseOrderItem[]
+  recipeItems               RecipeItem[]
+  variants                  ProductVariant[]
+  batches                   ProductBatch[]
+  serials                   ProductSerial[]
+  bom                       BillOfMaterial?
+  productionOrders          ProductionOrder[]
+  dispatchRecords           DispatchRecord[]
+  labelPrintLogs            LabelPrintLog[]
+  rentalUnits               RentalUnit[]
+  rentalBookingItems        RentalBookingItem[]
+  classPrices               CustomerClassPrice[] // Phase 58 §2 — Distributor customer-class pricing
+  repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
+  bomComponentUsages        BillOfMaterialItem[]      @relation("BomComponentProduct") // Phase 58 §2 — Manufacturing multi-level BOM
+  productionComponentUsages ProductionMaterialUsage[] @relation("ProductionComponentUsage") // Phase 58 §2 — Manufacturing multi-level BOM
 
   @@index([productName])
   @@index([isActive])
   @@index([categoryId])
+  @@index([defaultSupplierId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,15 +298,25 @@ model LabelPrintLog {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model RentalUnit {
-  id             String    @id @default(cuid())
-  productId      String
-  unitLabel      String // e.g. "KA01AB1234", "Console #3", "Villa - Sea View"
-  status         String    @default("AVAILABLE") // AVAILABLE | RENTED | MAINTENANCE | RETIRED
-  conditionNotes String?
-  purchaseDate   DateTime?
-  unitCost       Float     @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  productId               String
+  unitLabel               String // e.g. "KA01AB1234", "Console #3", "Villa - Sea View"
+  status                  String    @default("AVAILABLE") // AVAILABLE | RENTED | MAINTENANCE | RETIRED
+  conditionNotes          String?
+  purchaseDate            DateTime?
+  unitCost                Float     @default(0)
+  // Phase 58 §2 — maintenance schedule tied to rental count or elapsed time.
+  // Either threshold left null means that dimension is never checked for
+  // this unit. Checked at returnBooking() time: a unit due for service is
+  // routed to MAINTENANCE instead of AVAILABLE, blocking re-rental via the
+  // exact same status check computeAvailability() already uses — no changes
+  // needed to availability logic itself.
+  serviceIntervalRentals  Int?
+  serviceIntervalDays     Int?
+  rentalCountSinceService Int       @default(0)
+  lastServicedAt          DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   bookingItems RentalBookingItem[]
@@ -268,7 +335,7 @@ model RentalBooking {
   securityDepositCollected Float     @default(0)
   securityDepositRefunded  Float?
   lateFeeAmount            Float     @default(0)
-  damageChargeAmount       Float     @default(0)
+  damageChargeAmount       Float     @default(0) // legacy aggregate — see RentalBookingItem.damageChargeAmount for the itemized amount this now sums from when item-level charges are used
   checkoutNotes            String?
   returnNotes              String?
   checkedOutAt             DateTime?
@@ -283,27 +350,46 @@ model RentalBooking {
   createdById              String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
+  // Phase 58 §2 — recurring/standing rentals. Matches this codebase's
+  // established manual-trigger recurrence pattern (see
+  // ServiceRetainerAgreement/PestServiceContract's lastInvoicedPeriod claim
+  // key) rather than a background scheduler, since no cron/timer infra for
+  // business logic exists anywhere in this app — a staff member clicks
+  // "Create Next Cycle", which is blocked from double-firing by the claim
+  // flag below, exactly like every other recurring feature here.
+  recurrenceIntervalDays   Int?
+  parentBookingId          String?
+  nextCycleGenerated       Boolean   @default(false)
 
-  customer Customer            @relation(fields: [customerId], references: [id])
-  items    RentalBookingItem[]
+  customer      Customer            @relation(fields: [customerId], references: [id])
+  items         RentalBookingItem[]
+  parentBooking RentalBooking?      @relation("RentalBookingRecurrence", fields: [parentBookingId], references: [id], onDelete: SetNull)
+  childCycles   RentalBooking[]     @relation("RentalBookingRecurrence")
 
   @@index([customerId])
   @@index([status])
   @@index([startDateTime, endDateTime])
+  @@index([parentBookingId])
 }
 
 model RentalBookingItem {
-  id           String   @id @default(cuid())
-  bookingId    String
-  productId    String
-  rentalUnitId String? // set only for UNIT-tracked items
-  quantity     Float    @default(1) // used for BULK items; always 1 for UNIT items
-  rateBasis    String // HOUR | DAY | WEEK | MONTH | YEAR — snapshot at booking time
-  rateAmount   Float // snapshot at booking time
-  lineTotal    Float // rateAmount x duration-in-rateBasis-units x quantity
-  conditionOut String?
-  conditionIn  String?
-  createdAt    DateTime @default(now())
+  id                 String   @id @default(cuid())
+  bookingId          String
+  productId          String
+  rentalUnitId       String? // set only for UNIT-tracked items
+  quantity           Float    @default(1) // used for BULK items; always 1 for UNIT items
+  rateBasis          String // HOUR | DAY | WEEK | MONTH | YEAR — snapshot at booking time
+  rateAmount         Float // snapshot at booking time
+  lineTotal          Float // rateAmount x duration-in-rateBasis-units x quantity
+  conditionOut       String?
+  conditionIn        String?
+  // Phase 58 §2 — itemized damage charge, attributable to this specific
+  // unit on a multi-unit booking. RentalBooking.damageChargeAmount becomes
+  // the sum of these when any item on the booking has one set; kept as a
+  // manual fallback for a BULK item (no single physical unit to attribute
+  // damage to) or a pre-existing booking created before this field existed.
+  damageChargeAmount Float    @default(0)
+  createdAt          DateTime @default(now())
 
   booking    RentalBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   product    Product       @relation(fields: [productId], references: [id])
@@ -331,6 +417,10 @@ model HotelRoom {
   floor        String?
   maxOccupancy Int      @default(2)
   baseRate     Float    @default(0) // per night
+  // Phase 58 §2 — flat day-use (few-daytime-hours, not overnight) rate for
+  // this room. Null falls back to half of baseRate at booking time — see
+  // hotel.service.ts's createBooking DAY_USE branch.
+  dayUseRate   Float?
   status       String   @default("AVAILABLE") // AVAILABLE | OCCUPIED | CLEANING | MAINTENANCE | OUT_OF_ORDER
   amenities    String?
   notes        String?
@@ -338,9 +428,57 @@ model HotelRoom {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  bookings HotelBooking[]
+  bookings          HotelBooking[]
+  housekeepingTasks HotelHousekeepingTask[]
 
   @@index([status])
+}
+
+// Phase 58 §2 — seasonal/date-range pricing. A blank roomType ("") is a
+// blanket tier applying to every room type; a specific roomType overrides
+// the blanket tier for that type on a matching date. Consulted per-night by
+// hotel.service.ts's resolveNightlyRate (not a single flat lookup) so a
+// booking spanning a season boundary is priced correctly night-by-night.
+model HotelRateCalendar {
+  id          String   @id @default(cuid())
+  roomType    String   @default("") // "" = all room types; non-empty = this room type only
+  startDate   DateTime
+  endDate     DateTime
+  rate        Float
+  label       String? // e.g. "Diwali Season", "Summer Peak"
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([roomType])
+  @@index([startDate, endDate])
+}
+
+// Phase 58 §2 — a real per-task housekeeping queue, replacing the bare
+// room-status dropdown as the only signal of cleaning progress. Mirrors
+// ProjectTask's shape (the closest existing structural cousin in this
+// schema) rather than reusing it directly, since ProjectTask is hard-scoped
+// to Project.
+model HotelHousekeepingTask {
+  id           String    @id @default(cuid())
+  roomId       String
+  bookingId    String? // the checkout that triggered this task, if any
+  taskLabel    String // business-defined free text, e.g. "Strip beds", "Deep clean bathroom"
+  status       String    @default("PENDING") // PENDING | IN_PROGRESS | DONE
+  assignedToId String?
+  completedAt  DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  room       HotelRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  booking    HotelBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  assignedTo Employee?     @relation("HotelHousekeepingAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([roomId])
+  @@index([status])
+  @@index([assignedToId])
 }
 
 model HotelBooking {
@@ -356,8 +494,25 @@ model HotelBooking {
   checkOutDate         DateTime // planned check-out
   actualCheckInAt      DateTime?
   actualCheckOutAt     DateTime?
-  ratePerNight         Float // snapshot at booking time — room.baseRate can change later without affecting this booking
+  ratePerNight         Float // average nightly rate for display/back-compat — see roomChargeTotal for the authoritative amount
+  // Phase 58 §2 — the real computed room charge: a per-night calendar-resolved
+  // sum for OVERNIGHT bookings that hit a HotelRateCalendar entry, or the
+  // flat day-use rate for a DAY_USE booking. Null means "no calendar entry
+  // matched and no override was given" — legacy behavior, roomCharge falls
+  // back to ratePerNight * nights (see hotel.service.ts's serializeBooking).
+  roomChargeTotal      Float?
   status               String    @default("CONFIRMED") // CONFIRMED | CHECKED_IN | CHECKED_OUT | CANCELLED | NO_SHOW
+  // Phase 58 §2 — OTA/channel tagging, same free-text-with-comment convention
+  // as Lead.source/Candidate.source (not a hard enum — the valid channel set
+  // is business-defined, e.g. a boutique lodge may add a channel this list
+  // doesn't anticipate).
+  channel              String    @default("WALK_IN") // WALK_IN | BOOKING_COM | MAKEMYTRIP | AGODA | EXPEDIA | OTHER
+  // Phase 58 §2 — day-use (few daytime hours) vs a normal overnight stay.
+  // A DAY_USE booking still reserves the room for the full calendar day (see
+  // createBooking) — a genuinely time-of-day-aware conflict check is out of
+  // scope; this is the same conservative "blocks the whole day" choice a
+  // real front desk already makes to give housekeeping a turnover window.
+  bookingType          String    @default("OVERNIGHT") // OVERNIGHT | DAY_USE
   advanceAmount        Float     @default(0)
   advancePaymentMethod String    @default("CASH") // CASH | UPI | CARD | WALLET — recorded as a real Payment against the invoice generated at checkout
   cancelReason         String?
@@ -365,15 +520,17 @@ model HotelBooking {
   invoiceId            String? // unenforced FK, deliberately — same atomic claim-sentinel
   // convention RentalBooking.invoiceId documents: a placeholder string is
   // written here before the real Invoice exists, which a real foreign key
-  // would reject.
+  // would reject. Also deliberately NOT @unique — a group booking's
+  // generateGroupInvoice writes the same invoiceId onto multiple rows.
   createdById          String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  room     HotelRoom          @relation(fields: [roomId], references: [id])
-  customer Customer?          @relation(fields: [customerId], references: [id])
-  guests   HotelGuestId[]
-  charges  HotelExtraCharge[]
+  room              HotelRoom               @relation(fields: [roomId], references: [id])
+  customer          Customer?               @relation(fields: [customerId], references: [id])
+  guests            HotelGuestId[]
+  charges           HotelExtraCharge[]
+  housekeepingTasks HotelHousekeepingTask[]
 
   @@index([roomId])
   @@index([status])
@@ -462,8 +619,8 @@ model InventoryMovement {
 // CUSTOMERS
 // ─────────────────────────────────────────────────────────────────────────────
 model Customer {
-  id                 String   @id @default(cuid())
-  customerCode       String?  @unique
+  id                 String    @id @default(cuid())
+  customerCode       String?   @unique
   customerName       String
   phone              String?
   email              String?
@@ -472,15 +629,28 @@ model Customer {
   state              String?
   country            String?
   taxNumber          String?
-  taxExempt          Boolean  @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
+  taxExempt          Boolean   @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
   taxExemptReason    String? // e.g. "Reverse charge — VAT Reg GB123456789" — printed on the invoice so it's not just a silent internal flag
-  creditLimit        Float    @default(0)
-  outstandingBalance Float    @default(0)
+  creditLimit        Float     @default(0)
+  outstandingBalance Float     @default(0)
   notes              String?
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text
+  // (e.g. "RETAILER"/"WHOLESALER"/"VIP"), not a Prisma enum — matches this
+  // schema's existing convention of validating category-style fields via a
+  // Zod .enum() at the validation layer rather than a DB-level enum.
+  customerClass      String?
+  // Phase 58 §2 — CA Firm/Company Secretary. Most recently held/known AGM
+  // date for a company client — feeds AGM-relative ROC event generation
+  // (MGT-7/AOC-4/ADT-1 due 60/30/15 days after this date). Only ever set for
+  // company clients; its mere presence (not a separate customerType flag,
+  // which doesn't exist in this schema) is what gates AGM-relative
+  // auto-generation for a given client.
+  lastAgmDate        DateTime?
 
+  documentChecklistItems    ClientDocumentChecklistItem[] // Phase 58 §2 — CA Firm
   ledgerEntries             CustomerLedger[]
   invoices                  Invoice[]
   payments                  Payment[]
@@ -503,9 +673,9 @@ model Customer {
   memberAttendances         MemberAttendance[] // Phase 27 — Gym
   batchClassAttendances     BatchClassAttendance[] // Phase 27 — Gym
   learnerProfile            LearnerProfile? // Phase 27 — Driving
-  drivingSessions           DrivingSession[]           @relation("DrivingLearner") // Phase 27 — Driving
+  drivingSessions           DrivingSession[]              @relation("DrivingLearner") // Phase 27 — Driving
   drivingTests              DrivingTest[] // Phase 27 — Driving
-  drivingPackageEnrollments DrivingPackageEnrollment[] @relation("DrivingPackageLearner") // Phase 41 — Driving package invoicing
+  drivingPackageEnrollments DrivingPackageEnrollment[]    @relation("DrivingPackageLearner") // Phase 41 — Driving package invoicing
   legalCases                LegalCase[] // Phase 28 — Legal
   complianceTasks           ComplianceTask[] // Phase 29 — CA/CS
   engagements               Engagement[] // Phase 29 — CA
@@ -517,21 +687,25 @@ model Customer {
   coachingEnrollments       CoachingBatchEnrollment[] // Phase 31 — Coaching
   shootBookings             ShootBooking[] // Phase 32 — Photography
   eventBookings             EventBooking[] // Phase 32 — Event
-  ownedProperties           Property[]                 @relation("PropertyOwner") // Phase 32 — Real Estate
-  propertyInquiries         PropertyInquiry[]          @relation("InquiryBuyer") // Phase 32 — Real Estate
-  dealsBuying               PropertyDeal[]             @relation("DealBuyer") // Phase 32 — Real Estate
-  dealsSelling              PropertyDeal[]             @relation("DealSeller") // Phase 32 — Real Estate
+  ownedProperties           Property[]                    @relation("PropertyOwner") // Phase 32 — Real Estate
+  propertyInquiries         PropertyInquiry[]             @relation("InquiryBuyer") // Phase 32 — Real Estate
+  dealsBuying               PropertyDeal[]                @relation("DealBuyer") // Phase 32 — Real Estate
+  dealsSelling              PropertyDeal[]                @relation("DealSeller") // Phase 32 — Real Estate
   carJobCards               CarJobCard[] // Phase 33 — Car Service
   measurementRecords        MeasurementRecord[] // Phase 33 — Tailor
   tailoringOrders           TailoringOrder[] // Phase 33 — Tailor
   pestContracts             PestServiceContract[] // Phase 33 — Pest Control
   pestJobSheets             PestJobSheet[] // Phase 33 — Pest Control
-  jobOrders                 JobOrder[]                 @relation("JobOrderClient") // Phase 34 — Placement
-  placements                Placement[]                @relation("PlacementClient") // Phase 34 — Placement
+  jobOrders                 JobOrder[]                    @relation("JobOrderClient") // Phase 34 — Placement
+  placements                Placement[]                   @relation("PlacementClient") // Phase 34 — Placement
   labTestOrders             LabTestOrder[] // Phase 50 — Diagnostic Labs
   bloodIssues               BloodIssue[] // Phase 51 — Blood Bank
   rentalBookings            RentalBooking[] // Phase 54G — Rental
   hotelBookings             HotelBooking[] // Hotel/Lodge vertical
+  heldSales                 HeldSale[] // Phase 58 §2 — Retail hold/park-sale
+  shipmentStops             ShipmentStop[] // Phase 58 §2 — Distributor route/beat planning
+  fieldOrderRequests        FieldOrderRequest[] // Phase 58 §2 — Distributor field-rep order capture
+  repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
 
   @@index([customerName])
   @@index([phone])
@@ -574,12 +748,15 @@ model Supplier {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  ledgerEntries       SupplierLedger[]
-  purchaseOrders      PurchaseOrder[]
-  batches             ProductBatch[]
-  rawMaterials        RawMaterial[]
-  debitNotes          DebitNote[]
-  eventVendorBookings EventVendorBooking[] // Phase 32 — Event
+  ledgerEntries         SupplierLedger[]
+  purchaseOrders        PurchaseOrder[]
+  batches               ProductBatch[]
+  rawMaterials          RawMaterial[]
+  debitNotes            DebitNote[]
+  eventVendorBookings   EventVendorBooking[] // Phase 32 — Event
+  defaultForProducts    Product[]            @relation("ProductDefaultSupplier") // Phase 58 §2 — reorder automation
+  repairTicketsAsVendor RepairTicket[] // Phase 58 §2 — Electronics repair/RMA (vendor RMA tracking)
+  rawMaterialBatches    RawMaterialBatch[] // Phase 58 §2 — Manufacturing raw-material lot traceability
 }
 
 model SupplierLedger {
@@ -691,32 +868,44 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id                    String   @id @default(cuid())
-  invoiceId             String
-  productId             String
-  productName           String   @default("")
-  productSku            String?
-  hsnCode               String?
-  quantity              Float
-  unitPrice             Float
-  discountAmount        Float    @default(0)
-  taxRate               Float    @default(0)
-  taxAmount             Float    @default(0)
-  lineTotal             Float
-  variantId             String?
-  variantInfo           String?
-  weightUnit            String?
+  id                      String    @id @default(cuid())
+  invoiceId               String
+  productId               String
+  productName             String    @default("")
+  productSku              String?
+  hsnCode                 String?
+  quantity                Float
+  unitPrice               Float
+  discountAmount          Float     @default(0)
+  taxRate                 Float     @default(0)
+  taxAmount               Float     @default(0)
+  lineTotal               Float
+  variantId               String?
+  variantInfo             String?
+  weightUnit              String?
   // Fresh-audit fix (2026-07-12): snapshot of the purity/weight/making-charge
   // breakdown a jewellery line was actually priced from — previously this was
   // computed correctly at billing time then silently discarded, so a printed
   // jewellery invoice could never show it and it was unrecoverable after the
   // sale. Null/absent for a non-jewellery line.
-  jewelleryMetalType    String?
-  jewelleryPurity       String?
-  jewelleryNetWeight    Float?
-  jewelleryRatePerGram  Float?
-  jewelleryMakingCharge Float?
-  createdAt             DateTime @default(now())
+  jewelleryMetalType      String?
+  jewelleryPurity         String?
+  jewelleryNetWeight      Float?
+  jewelleryRatePerGram    Float?
+  jewelleryMakingCharge   Float?
+  // Phase 58 §2 — hallmark/HUID number (BIS HUID in India, or equivalent),
+  // snapshotted from Product.hallmarkNumber at sale time — same reasoning as
+  // the jewellery fields above: a printed invoice needs the exact mark the
+  // piece carried at sale, not a later-edited product record. Null/absent
+  // for a non-jewellery line or a piece with no recorded hallmark.
+  jewelleryHallmarkNumber String?
+  // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture, same
+  // "snapshot at sale time, discarded otherwise" reasoning as the jewellery
+  // fields above. Null/absent for a non-prescription line.
+  prescriptionPatientName String?
+  prescriptionDoctorName  String?
+  prescriptionDate        DateTime?
+  createdAt               DateTime  @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -889,10 +1078,17 @@ model RestaurantTable {
   tableNumber String   @unique
   tableName   String?
   status      String   @default("AVAILABLE")
+  // Phase 58 §2 (2026-07-17) — waiter/staff assignment for tip pooling.
+  // Nullable FK to Employee, onDelete: SetNull, mirroring the established
+  // TailoringOrder.assignedToId/PestServiceContract.assignedToId pattern.
+  waiterId    String?
   createdAt   DateTime @default(now())
 
   kots          KOT[]
   orderRequests TableOrderRequest[]
+  waiter        Employee?           @relation("RestaurantTableWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+
+  @@index([waiterId])
 }
 
 // Phase 47 — a customer's QR-scanned order. Never becomes an Invoice/KOT on
@@ -921,6 +1117,60 @@ model TableOrderRequestItem {
   quantity  Int
 
   request TableOrderRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+// Phase 58 §2 — Distributor customer-class / negotiated price list. A
+// price here is looked up by (productId, customerClass) — resolved fresh
+// server-side at every add-to-cart/accept site (see resolveCustomerPrice
+// in product.service.ts), never trusted from the client, exactly like
+// Product.sellingPrice itself.
+model CustomerClassPrice {
+  id            String   @id @default(cuid())
+  productId     String
+  customerClass String
+  price         Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, customerClass])
+  @@index([productId])
+}
+
+// Phase 58 §2 — Distributor field-rep order capture. Structural mirror of
+// TableOrderRequest/TableOrderRequestItem: captures only productId+quantity
+// (no price, no financial check) from a rep away from the billing counter;
+// price is re-resolved fresh server-side and the credit-limit check happens
+// exactly once, inside the normal billingService.createInvoice path, at
+// accept time — never duplicated at capture time.
+model FieldOrderRequest {
+  id           String    @id @default(cuid())
+  repName      String
+  customerId   String?
+  customerName String?
+  status       String    @default("PENDING") // PENDING | ACCEPTED | REJECTED
+  notes        String?
+  invoiceId    String?
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+
+  customer Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    FieldOrderRequestItem[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model FieldOrderRequestItem {
+  id        String @id @default(cuid())
+  requestId String
+  productId String
+  quantity  Int
+
+  request FieldOrderRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([requestId])
 }
@@ -969,6 +1219,12 @@ model ProductVariant {
   color           String?
   sku             String?  @unique
   barcode         String?  @unique
+  // Phase 58 §2 — Clothing/Footwear variant-aware barcode generation. Same
+  // "GENERATED vs. possibly-legacy-manual" distinction as Product.barcodeSource
+  // — a shop migrating existing SKUs could plausibly type in a "20…"-prefixed
+  // legacy code, and folding that into the shared generated-code counter
+  // (see barcode.service.ts) would corrupt the numbering.
+  barcodeSource   String?
   additionalPrice Float    @default(0)
   stockQty        Float    @default(0)
   isActive        Boolean  @default(true)
@@ -1023,11 +1279,64 @@ model ProductSerial {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product                   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  repairTicketsAsOriginal   RepairTicket[] @relation("RepairTicketOriginalSerial") // Phase 58 §2 — Electronics repair/RMA
+  repairTicketAsReplacement RepairTicket?  @relation("RepairTicketReplacementSerial") // Phase 58 §2 — Electronics repair/RMA
 
   @@index([productId])
   @@index([status])
   @@index([imeiNumber])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 58 §2 — ELECTRONICS REPAIR / RMA
+// ─────────────────────────────────────────────────────────────────────────────
+// A post-sale service ticket linked to a specific already-sold ProductSerial/
+// IMEI — distinct from JobCard (Phase 4's generic service work order, no
+// serial linkage) and CarJobCard (vehicle-specific). Tracks the unit's whole
+// repair lifecycle: intake, optional vendor RMA (sent out for manufacturer-
+// side repair), and optional unit replacement — reusing ProductSerial.status
+// (AVAILABLE/SOLD/RETURNED/DEFECTIVE) rather than inventing a parallel status
+// enum, so billing/serial-picker screens don't need to learn new vocabulary.
+model RepairTicket {
+  id                  String    @id @default(cuid())
+  claimNumber         String    @unique
+  serialId            String
+  productId           String
+  customerId          String?
+  issueDescription    String
+  // RECEIVED → DIAGNOSED → SENT_TO_VENDOR → AWAITING_PARTS → REPAIRED →
+  // RETURNED_TO_CUSTOMER (or → REPLACED → RETURNED_TO_CUSTOMER). CANCELLED is
+  // reachable only before REPAIRED/REPLACED — see repair-ticket.service.ts's
+  // ALLOWED_TRANSITIONS.
+  status              String    @default("RECEIVED")
+  receivedDate        DateTime  @default(now())
+  deliveredDate       DateTime?
+  vendorId            String?
+  vendorRmaNumber     String?
+  sentToVendorDate    DateTime?
+  vendorResponseDate  DateTime?
+  // Set only when status becomes REPLACED — the NEW physical unit (must be an
+  // AVAILABLE serial of the SAME product) handed to the customer in place of
+  // the original. @unique so one replacement unit can never be assigned to
+  // two different tickets.
+  replacementSerialId String?   @unique
+  repairCost          Float?
+  notes               String?
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  serial            ProductSerial  @relation("RepairTicketOriginalSerial", fields: [serialId], references: [id])
+  product           Product        @relation(fields: [productId], references: [id])
+  customer          Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  vendor            Supplier?      @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  replacementSerial ProductSerial? @relation("RepairTicketReplacementSerial", fields: [replacementSerialId], references: [id], onDelete: SetNull)
+
+  @@index([serialId])
+  @@index([status])
+  @@index([customerId])
+  @@index([productId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1068,6 +1377,7 @@ model RawMaterial {
   movements       RawMaterialMovement[]
   bomItems        BillOfMaterialItem[]
   productionUsage ProductionMaterialUsage[]
+  batches         RawMaterialBatch[] // Phase 58 §2 — lot/batch traceability
 
   @@index([isActive])
   @@index([supplierId])
@@ -1109,17 +1419,26 @@ model BillOfMaterial {
 }
 
 model BillOfMaterialItem {
-  id             String @id @default(cuid())
-  bomId          String
-  rawMaterialId  String
-  quantityNeeded Float
-  wastagePercent Float  @default(0)
+  id                 String  @id @default(cuid())
+  bomId              String
+  // Phase 58 §2 — multi-level BOM: a line is EITHER a raw material OR
+  // another finished/semi-finished Product with its own BOM (a
+  // sub-assembly), never both — enforced in bom.service.ts, not at the DB
+  // level (SQLite has no portable CHECK-constraint-on-two-columns story in
+  // this project's migration workflow). rawMaterialId is now nullable to
+  // make room for componentProductId; existing single-level BOMs are
+  // unaffected (componentProductId stays null for every pre-existing row).
+  rawMaterialId      String?
+  componentProductId String?
+  quantityNeeded     Float
+  wastagePercent     Float   @default(0)
 
-  bom         BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
-  rawMaterial RawMaterial    @relation(fields: [rawMaterialId], references: [id])
+  bom              BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  rawMaterial      RawMaterial?   @relation(fields: [rawMaterialId], references: [id])
+  componentProduct Product?       @relation("BomComponentProduct", fields: [componentProductId], references: [id])
 
-  @@unique([bomId, rawMaterialId])
   @@index([bomId])
+  @@index([componentProductId])
 }
 
 model ProductionOrder {
@@ -1129,6 +1448,16 @@ model ProductionOrder {
   bomId         String
   plannedQty    Float
   producedQty   Float     @default(0)
+  // Phase 58 §2 — units consumed material (and labor) but failed QC / were
+  // rejected, distinct from a simple "produced less than planned" shortfall.
+  // producedQty is GOOD units added to inventory; scrapQty is additional
+  // units attempted (material+labor spent) that are NOT sellable.
+  scrapQty      Float     @default(0)
+  // Phase 58 §2 — folded into the produced unit's cost basis alongside
+  // material cost (see completeProductionOrder), instead of every
+  // manufactured good silently carrying a material-only cost that never
+  // reflected the labor that went into making it.
+  laborCost     Float     @default(0)
   status        String    @default("DRAFT")
   startDate     DateTime?
   completedDate DateTime?
@@ -1148,17 +1477,69 @@ model ProductionOrder {
 }
 
 model ProductionMaterialUsage {
-  id                String @id @default(cuid())
-  productionOrderId String
-  rawMaterialId     String
-  quantityPlanned   Float
-  quantityActual    Float  @default(0)
+  id                 String  @id @default(cuid())
+  productionOrderId  String
+  // Phase 58 §2 — mirrors BillOfMaterialItem: exactly one of
+  // rawMaterialId/componentProductId is set, matching whichever kind of BOM
+  // line this usage row was generated from.
+  rawMaterialId      String?
+  componentProductId String?
+  quantityPlanned    Float
+  quantityActual     Float   @default(0)
 
-  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
-  rawMaterial     RawMaterial     @relation(fields: [rawMaterialId], references: [id])
+  productionOrder  ProductionOrder                      @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  rawMaterial      RawMaterial?                         @relation(fields: [rawMaterialId], references: [id])
+  componentProduct Product?                             @relation("ProductionComponentUsage", fields: [componentProductId], references: [id])
+  batchConsumption ProductionMaterialBatchConsumption[]
 
-  @@unique([productionOrderId, rawMaterialId])
   @@index([productionOrderId])
+}
+
+// Phase 58 §2 — raw-material lot/batch traceability: which specific
+// received lot(s) of a raw material were actually consumed by a given
+// production order. A join table (not a single batchId on
+// ProductionMaterialUsage) because FIFO consumption of one usage row can
+// legitimately span multiple batches (e.g. 8kg needed, batch A has 5kg
+// left, batch B covers the remaining 3kg) — same reasoning
+// InventoryMovement/ProductBatch don't collapse a sale's FIFO draw into one
+// row either.
+model ProductionMaterialBatchConsumption {
+  id                        String @id @default(cuid())
+  productionMaterialUsageId String
+  rawMaterialBatchId        String
+  quantityConsumed          Float
+
+  productionMaterialUsage ProductionMaterialUsage @relation(fields: [productionMaterialUsageId], references: [id], onDelete: Cascade)
+  rawMaterialBatch        RawMaterialBatch        @relation(fields: [rawMaterialBatchId], references: [id])
+
+  @@index([productionMaterialUsageId])
+  @@index([rawMaterialBatchId])
+}
+
+// Phase 58 §2 — a received lot of raw material, mirroring ProductBatch's
+// shape for finished goods. RawMaterial.currentStock remains the
+// authoritative aggregate stock figure (unchanged) — this is an ADDITIONAL
+// ledger for traceability, same "aggregate figure + a separate lot ledger"
+// relationship ProductBatch already has with Inventory.quantity.
+model RawMaterialBatch {
+  id                String   @id @default(cuid())
+  rawMaterialId     String
+  batchNumber       String
+  receivedDate      DateTime @default(now())
+  quantityReceived  Float
+  quantityRemaining Float
+  unitCost          Float    @default(0)
+  supplierId        String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  rawMaterial RawMaterial                          @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  supplier    Supplier?                            @relation(fields: [supplierId], references: [id])
+  consumption ProductionMaterialBatchConsumption[]
+
+  @@unique([rawMaterialId, batchNumber])
+  @@index([rawMaterialId])
+  @@index([isActive])
 }
 
 model WorkOrder {
@@ -1167,6 +1548,13 @@ model WorkOrder {
   stepNumber        Int
   taskName          String
   status            String    @default("PENDING")
+  // Phase 58 §2 — QC/inspection gate: a step flagged as a QC checkpoint
+  // requires a pass/fail result before it can be marked DONE (enforced in
+  // work-order.service.ts). Ordinary (non-QC) steps are unaffected — this is
+  // additive, not a behavior change for existing production workflows.
+  isQcStep          Boolean   @default(false)
+  qcResult          String?
+  qcNotes           String?
   notes             String?
   completedAt       DateTime?
   createdAt         DateTime  @default(now())
@@ -1223,6 +1611,10 @@ model Project {
   completedDate   DateTime?
   notes           String?
   createdById     String?
+  // Phase 58 §1 (2026-07-17) — legacy Service/Consultant invoicing bridge,
+  // same invoiceId-on-the-entity convention every other invoiceable model
+  // in this schema already uses (CarJobCard, Placement, ShootBooking, etc.).
+  invoiceId       String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -1269,6 +1661,7 @@ model ServiceTicket {
   closedAt     DateTime?
   resolution   String?
   createdById  String?
+  invoiceId    String? // Phase 58 §1 — legacy Service/Consultant invoicing bridge
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -1283,32 +1676,69 @@ model ServiceTicket {
 }
 
 model JobCard {
-  id              String    @id @default(cuid())
-  jobNumber       String    @unique
-  title           String
-  itemDescription String?
-  status          String    @default("RECEIVED")
-  priority        String    @default("MEDIUM")
-  customerId      String?
-  assignedToId    String?
-  estimatedCost   Float     @default(0)
-  actualCost      Float     @default(0)
-  receivedDate    DateTime  @default(now())
-  expectedDate    DateTime?
-  deliveredDate   DateTime?
-  notes           String?
-  internalNotes   String?
-  createdById     String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                     String    @id @default(cuid())
+  jobNumber              String    @unique
+  title                  String
+  itemDescription        String?
+  status                 String    @default("RECEIVED")
+  priority               String    @default("MEDIUM")
+  customerId             String?
+  assignedToId           String?
+  estimatedCost          Float     @default(0)
+  actualCost             Float     @default(0)
+  receivedDate           DateTime  @default(now())
+  expectedDate           DateTime?
+  deliveredDate          DateTime?
+  notes                  String?
+  internalNotes          String?
+  createdById            String?
+  invoiceId              String? // Phase 58 §1 — legacy Repair Shop invoicing bridge
+  // Phase 58 §2 — Repair: a NEW warranty period covering the repair work
+  // itself, distinct from any original manufacturer warranty tracked on a
+  // sold SerialNumber elsewhere. warrantyDays is entered any time; the
+  // concrete warrantyExpiryDate is only ever computed once deliveredDate is
+  // known (deliveredDate + warrantyDays) — a job still in progress has no
+  // real delivery date to count from yet.
+  warrantyDays           Int?
+  warrantyExpiryDate     DateTime?
+  // If this job is itself a comeback under a PRIOR job's repair warranty,
+  // this points at that original job — informational only (never blocks
+  // creating a new job card, since a shop may still choose to accept an
+  // out-of-warranty comeback as a fresh paid job).
+  warrantyClaimAgainstId String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  customer   Customer? @relation(fields: [customerId], references: [id])
-  assignedTo User?     @relation("JobCardAssignedTo", fields: [assignedToId], references: [id])
-  workLogs   WorkLog[]
+  customer             Customer?     @relation(fields: [customerId], references: [id])
+  assignedTo           User?         @relation("JobCardAssignedTo", fields: [assignedToId], references: [id])
+  workLogs             WorkLog[]
+  parts                JobCardPart[]
+  warrantyClaimAgainst JobCard?      @relation("JobCardWarrantyClaim", fields: [warrantyClaimAgainstId], references: [id], onDelete: SetNull)
+  warrantyClaims       JobCard[]     @relation("JobCardWarrantyClaim")
 
   @@index([status])
   @@index([customerId])
   @@index([createdAt])
+  @@index([warrantyClaimAgainstId])
+}
+
+// Phase 58 §2 — Repair: parts actually consumed on a job card, backed by
+// REAL inventory deduction (not the free-text JSON blob CarJobCard's
+// partsItems uses) — unitPrice is snapshotted at time of use so a later
+// price change on the Product doesn't retroactively rewrite history.
+model JobCardPart {
+  id        String   @id @default(cuid())
+  jobCardId String
+  productId String
+  quantity  Float
+  unitPrice Float
+  createdAt DateTime @default(now())
+
+  jobCard JobCard @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([jobCardId])
+  @@index([productId])
 }
 
 model WorkLog {
@@ -1395,6 +1825,9 @@ model Employee {
   appointments              Appointment[]             @relation("AppointmentProvider")
   providerSchedules         ProviderSchedule[]
   toothRecordings           ToothRecord[]             @relation("ToothRecordRecordedBy") // Phase 25 — Dental
+  toothRecordHistoryEntries ToothRecordHistory[]      @relation("ToothRecordHistoryRecordedBy") // Phase 58 §2 — Dental
+  serviceSkills             ServiceProviderSkill[] // Phase 58 §2 — Beauty Salon: which services this staff member can perform
+  assignedSessionPacks      ClientSessionPack[]       @relation("SessionPackAssignedTrainer") // Phase 58 §2 — Gym/Studio: PT packages this trainer is the standing assignee for
   treatmentPlansCreated     TreatmentPlan[]           @relation("TreatmentPlanCreatedBy") // Phase 25 — Dental
   treatmentPhasesCreated    TreatmentPhase[]          @relation("TreatmentPhaseCreatedBy") // Phase 26 — Physio
   exerciseProgramsCreated   ExerciseProgram[]         @relation("ExerciseProgramCreatedBy") // Phase 26 — Physio
@@ -1402,6 +1835,7 @@ model Employee {
   batchClassesInstructed    BatchClass[]              @relation("BatchClassInstructor") // Phase 27 — Gym
   drivingSessionsTaught     DrivingSession[]          @relation("DrivingSessionInstructor") // Phase 27 — Driving
   drivingVehiclesAssigned   DrivingVehicle[]          @relation("VehicleInstructor") // Phase 27 — Driving
+  drivingTestsInstructed    DrivingTest[]             @relation("DrivingTestInstructor") // Phase 58 §2 — Driving
   legalCasesAsAdvocate      LegalCase[]               @relation("CaseAdvocate") // Phase 28 — Legal
   timeEntries               TimeEntry[] // Phase 28 — Legal
   complianceTasks           ComplianceTask[]          @relation("TaskStaff") // Phase 29 — CA/CS
@@ -1418,9 +1852,12 @@ model Employee {
   measurementsTaken         MeasurementRecord[]       @relation("MeasurementTakenBy") // Phase 33
   tailoringOrdersAssigned   TailoringOrder[]          @relation("TailoringAssignedTo") // Phase 33
   pestContractsAssigned     PestServiceContract[]     @relation("PestContractAssignee") // Phase 33
+  restaurantTablesWaited    RestaurantTable[]         @relation("RestaurantTableWaiter") // Phase 58 §2
+  hotelHousekeepingTasks    HotelHousekeepingTask[]   @relation("HotelHousekeepingAssignee") // Phase 58 §2
   labOrdersReferred         LabTestOrder[]            @relation("LabOrderReferrer") // Phase 50
   labOrdersSampleCollected  LabTestOrder[]            @relation("LabOrderSampleCollector") // Phase 50
   labOrdersReported         LabTestOrder[]            @relation("LabOrderReporter") // Phase 50
+  labItemsCriticalNotified  LabTestOrderItem[]        @relation("LabItemCriticalNotifiedBy") // Phase 58 §2
   salaryPayments            SalaryPayment[] // Phase 54F.16
   siteVisitsRecorded        SiteVisit[]               @relation("SiteVisitRecordedBy") // Fresh-audit build — Civil Engineer
 
@@ -1515,6 +1952,31 @@ model SalaryPayment {
 }
 
 // ─── Phase 20: Billing Feature Depth ─────────────────────────────────────────
+
+// Phase 58 §2 — hold/park-sale on the Billing/POS screen. Deliberately NOT
+// built on Quotation: a hold would otherwise burn a real customer-facing
+// QT-xxxxx sequence number on every park (even ones resumed 30 seconds
+// later), clutter QuotationsScreen/quotation reports with throwaway rows,
+// and can't round-trip the cart's variant/serial/batch/jewellery detail or
+// its currency-amount (not percentage) per-line discount. A single JSON
+// blob snapshot of the cart — same precedent as Product.rentalRates — is
+// the cheapest correct fit for something this ephemeral: a row existing
+// means it's held, deleting it (on resume or explicit abandon) is the only
+// lifecycle. No stock reservation, no notification, no sequence number.
+model HeldSale {
+  id          String   @id @default(cuid())
+  label       String? // optional cashier note, e.g. "Rahul - blue shirt"
+  customerId  String?
+  cartJson    String // serialized cart snapshot: items[], customer, discount, paymentMethod, notes, referenceNumber
+  itemCount   Int // denormalized for the resume-list UI, avoids parsing cartJson just to show a count
+  totalAmount Float // denormalized for the resume-list UI, same reason
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
 
 model Quotation {
   id              String    @id @default(cuid())
@@ -1619,10 +2081,32 @@ model ServiceCatalog {
 
   appointments      Appointment[]
   labTestOrderItems LabTestOrderItem[] // Phase 50 — Diagnostic Labs: test/panel catalog reuses this model
+  providerSkills    ServiceProviderSkill[] // Phase 58 §2 — Beauty Salon: which staff can perform this service
 
   @@index([isActive])
   @@index([category])
   @@index([serviceName])
+}
+
+// Phase 58 §2 — Beauty Salon: stylist skill-matching, replacing any-staff-
+// any-service. Deliberately an OPT-IN join table, not a required field on
+// either side: a service with ZERO configured rows here means "any provider
+// can perform it" (the booking form's provider picker falls back to showing
+// everyone) — a business that never configures skills sees no behavior
+// change at all, same additive-by-default convention as this session's
+// other opt-in module flags.
+model ServiceProviderSkill {
+  id               String   @id @default(cuid())
+  employeeId       String
+  serviceCatalogId String
+  createdAt        DateTime @default(now())
+
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  serviceCatalog ServiceCatalog @relation(fields: [serviceCatalogId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, serviceCatalogId])
+  @@index([employeeId])
+  @@index([serviceCatalogId])
 }
 
 model Appointment {
@@ -1663,6 +2147,7 @@ model Appointment {
   sessionLog            SessionLog? // Phase 26 — Physio: session pack deduction
   staffCommission       StaffCommission? // Phase 27 — Salon/Gym: commission record
   labTestOrder          LabTestOrder? // Phase 50 — Diagnostic Labs: sample-collection visit link
+  tailoringTrialFor     TailoringOrder? // Phase 58 §2 — Tailor Boutique: this appointment IS the order's trial/fitting visit
 
   @@index([customerId])
   @@index([providerId])
@@ -1725,24 +2210,37 @@ model LabTestOrder {
 // productName) so a later rename/deactivation of the catalog entry doesn't
 // change historical orders.
 model LabTestOrderItem {
-  id               String   @id @default(cuid())
-  labTestOrderId   String
-  serviceCatalogId String?
-  testName         String
-  category         String?
-  sampleType       String   @default("BLOOD") // BLOOD|URINE|STOOL|SWAB|IMAGING|OTHER
-  price            Float    @default(0)
-  status           String   @default("PENDING") // PENDING|COLLECTED|RESULT_READY|REPORTED
-  resultParameters String   @default("[]")
-  resultSummary    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  labTestOrderId        String
+  serviceCatalogId      String?
+  testName              String
+  category              String?
+  sampleType            String    @default("BLOOD") // BLOOD|URINE|STOOL|SWAB|IMAGING|OTHER
+  price                 Float     @default(0)
+  status                String    @default("PENDING") // PENDING|COLLECTED|RESULT_READY|REPORTED
+  resultParameters      String    @default("[]")
+  resultSummary         String?
+  // Phase 58 §2 — critical/panic-value escalation. hasCriticalResult is a
+  // derived, cached flag (recomputed server-side from resultParameters on
+  // every save, same "derived, cached for fast querying" convention as
+  // other boolean summary columns in this codebase) so a pending-escalation
+  // dashboard query never has to parse the JSON blob of every item. The
+  // notified fields record that the referring doctor was actually called —
+  // the escalation workflow itself, not just the flag.
+  hasCriticalResult     Boolean   @default(false)
+  criticalNotifiedAt    DateTime?
+  criticalNotifiedById  String?
+  criticalNotifiedNotes String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  labTestOrder   LabTestOrder    @relation(fields: [labTestOrderId], references: [id], onDelete: Cascade)
-  serviceCatalog ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id], onDelete: SetNull)
+  labTestOrder       LabTestOrder    @relation(fields: [labTestOrderId], references: [id], onDelete: Cascade)
+  serviceCatalog     ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id], onDelete: SetNull)
+  criticalNotifiedBy Employee?       @relation("LabItemCriticalNotifiedBy", fields: [criticalNotifiedById], references: [id], onDelete: SetNull)
 
   @@index([labTestOrderId])
   @@index([status])
+  @@index([hasCriticalResult])
 }
 
 // ─── Phase 51: Blood Bank ─────────────────────────────────────────────────────
@@ -1761,24 +2259,30 @@ model LabTestOrderItem {
 // all times) and has no blood-group grouping — Blood Bank gets its own
 // dedicated stock screen with per-component-type alert thresholds instead.
 model Donor {
-  id               String    @id @default(cuid())
-  donorCode        String    @unique
-  fullName         String
-  phone            String?
-  email            String?
-  dateOfBirth      DateTime?
-  gender           String?
-  bloodGroup       String? // A+|A-|B+|B-|AB+|AB-|O+|O-|UNKNOWN
-  weightKg         Float?
-  address          String?
-  lastDonationDate DateTime?
-  isDeferred       Boolean   @default(false)
-  deferralReason   String?
-  deferredUntil    DateTime?
-  notes            String?
-  isActive         Boolean   @default(true)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  donorCode                 String    @unique
+  fullName                  String
+  phone                     String?
+  email                     String?
+  dateOfBirth               DateTime?
+  gender                    String?
+  bloodGroup                String? // A+|A-|B+|B-|AB+|AB-|O+|O-|UNKNOWN
+  weightKg                  Float?
+  address                   String?
+  lastDonationDate          DateTime?
+  // Phase 58 §2 — denormalized alongside lastDonationDate (same write site,
+  // updateScreeningStatus's PASSED branch) so the donor-list eligibility
+  // calculation can vary the cooldown by component type without an N+1
+  // query per donor — the same reasoning every other denormalized snapshot
+  // field in this codebase already documents.
+  lastDonationComponentType String?
+  isDeferred                Boolean   @default(false)
+  deferralReason            String?
+  deferredUntil             DateTime?
+  notes                     String?
+  isActive                  Boolean   @default(true)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   donations DonationRecord[]
 
@@ -1872,6 +2376,10 @@ model BloodIssueItem {
   componentType     String
   price             Float    @default(0)
   compatibilityNote String? // e.g. "O- recipient, issued A+ unit — INCOMPATIBLE, issued on override"
+  // Phase 58 §2 — the documented reason for the emergency-release override,
+  // required by createBloodIssue whenever an actually-incompatible unit is
+  // issued anyway (default behavior is now to BLOCK, not just warn).
+  overrideReason    String?
   createdAt         DateTime @default(now())
 
   bloodIssue     BloodIssue     @relation(fields: [bloodIssueId], references: [id], onDelete: Cascade)
@@ -2012,42 +2520,65 @@ model VaccinationRecord {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model VisitNote {
-  id             String    @id @default(cuid())
-  appointmentId  String    @unique
-  patientName    String
-  patientAge     String? // "35 years" or "6 months"
-  chiefComplaint String?
-  subjective     String? // patient-reported history
-  objective      String? // vitals and examination findings
-  assessment     String? // diagnosis / differential
-  plan           String? // treatment plan, medications, procedures
-  followUpDate   DateTime?
-  followUpNotes  String?
-  referredBy     String? // specialist: who referred this patient
-  referralDate   DateTime?
-  referralReason String?
-  treatmentDone  String? // Phase 25 — Dental: what was done this session
-  painScore      Int? // Phase 26 — Physio: pain score 0–10
-  treatmentGiven String? // Phase 26 — Physio: modalities applied this session
-  bpSystolic     Int? // Phase 54B — structured vitals, mmHg
-  bpDiastolic    Int? // Phase 54B — structured vitals, mmHg
-  pulseRate      Int? // Phase 54B — bpm
-  temperatureF   Float? // Phase 54B — °F
-  heightCm       Float? // Phase 54B
-  weightKg       Float? // Phase 54B
-  vitalsFlags    String? // Phase 54B — JSON: computed LOW|NORMAL|HIGH per vital, from NormalRangeReference
-  isFinalized    Boolean   @default(false)
-  finalizedAt    DateTime?
-  createdBy      String // userId who created the note
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  appointmentId   String    @unique
+  patientName     String
+  patientAge      String? // "35 years" or "6 months"
+  chiefComplaint  String?
+  subjective      String? // patient-reported history
+  objective       String? // vitals and examination findings
+  assessment      String? // diagnosis / differential
+  plan            String? // treatment plan, medications, procedures
+  followUpDate    DateTime?
+  followUpNotes   String?
+  referredBy      String? // specialist: who referred this patient
+  referralDate    DateTime?
+  referralReason  String?
+  treatmentDone   String? // Phase 25 — Dental: what was done this session
+  painScore       Int? // Phase 26 — Physio: pain score 0–10
+  functionalScore Int? // Phase 58 §2 — Physio: structured functional outcome measure, 0-100 (higher = better function), trended across sessions alongside pain score
+  treatmentGiven  String? // Phase 26 — Physio: modalities applied this session
+  bpSystolic      Int? // Phase 54B — structured vitals, mmHg
+  bpDiastolic     Int? // Phase 54B — structured vitals, mmHg
+  pulseRate       Int? // Phase 54B — bpm
+  temperatureF    Float? // Phase 54B — °F
+  heightCm        Float? // Phase 54B
+  weightKg        Float? // Phase 54B
+  vitalsFlags     String? // Phase 54B — JSON: computed LOW|NORMAL|HIGH per vital, from NormalRangeReference
+  isFinalized     Boolean   @default(false)
+  finalizedAt     DateTime?
+  createdBy       String // userId who created the note
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  appointment          Appointment   @relation("AppointmentOwnVisitNote", fields: [appointmentId], references: [id], onDelete: Cascade)
-  referralAppointments Appointment[] @relation("ReferralSource") // Phase 54F — real in-app referrals booked FROM this note (see Appointment.referredFromVisitNoteId)
+  appointment          Appointment        @relation("AppointmentOwnVisitNote", fields: [appointmentId], references: [id], onDelete: Cascade)
+  referralAppointments Appointment[]      @relation("ReferralSource") // Phase 54F — real in-app referrals booked FROM this note (see Appointment.referredFromVisitNoteId)
+  prescriptionItems    PrescriptionItem[] // Phase 58 §2 — GP/Specialist Clinic: structured drug/dosage/frequency/duration rows, replacing the single free-text `plan` field for anything meant to print as an actual prescription.
 
   @@index([createdBy])
   @@index([isFinalized])
   @@index([createdAt])
+}
+
+// Phase 58 §2 — GP/Specialist Clinic: a real structured prescription, distinct
+// from the free-text `VisitNote.plan` field (which stays as a general
+// treatment-plan note). One row per drug so a printable prescription can list
+// dosage/frequency/duration per item instead of one paragraph a pharmacist
+// has to parse by hand.
+model PrescriptionItem {
+  id           String   @id @default(cuid())
+  visitNoteId  String
+  drugName     String
+  dosage       String? // e.g. "500mg"
+  frequency    String? // e.g. "1-0-1" or "Twice daily"
+  duration     String? // e.g. "5 days"
+  instructions String? // e.g. "After food"
+  sequence     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  visitNote VisitNote @relation(fields: [visitNoteId], references: [id], onDelete: Cascade)
+
+  @@index([visitNoteId])
 }
 
 // Phase 54B — a single reusable "what's normal for this test" library shared
@@ -2056,18 +2587,34 @@ model VisitNote {
 // place to define/save a normal range instead of every lab tech retyping it
 // per result and every doctor eyeballing vitals with no saved reference.
 model NormalRangeReference {
-  id        String   @id @default(cuid())
-  testName  String // e.g. "Blood Pressure - Systolic", "Fasting Blood Sugar"
-  unit      String? // e.g. "mmHg", "mg/dL"
-  minValue  Float?
-  maxValue  Float?
-  gender    String   @default("ALL") // ALL | MALE | FEMALE
-  notes     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  testName     String // e.g. "Blood Pressure - Systolic", "Fasting Blood Sugar"
+  unit         String? // e.g. "mmHg", "mg/dL"
+  minValue     Float?
+  maxValue     Float?
+  // Phase 58 §2 — Diagnostic Lab: panic/critical-value thresholds, DISTINCT
+  // from minValue/maxValue — a real clinical lab's "critical" tier sits
+  // outside the normal range, not at its edge (e.g. FBS <40 or >400 mg/dL is
+  // a life-threatening panic value, well past the merely-abnormal 70-100
+  // normal band). Optional — most tests never need one; evaluateAgainstNormalRange
+  // checks these FIRST, before falling back to the ordinary LOW/HIGH bounds.
+  criticalLow  Float?
+  criticalHigh Float?
+  gender       String   @default("ALL") // ALL | MALE | FEMALE
+  // Phase 58 §2 — Vet Clinic: a species dimension alongside gender, same
+  // "ALL sentinel, not nullable" convention (a nullable column lets SQLite's
+  // unique index treat every NULL as distinct, silently allowing duplicate
+  // "generic" rows — the exact trap gender's own ALL default already avoids).
+  // "ALL" here means human/species-agnostic; a vet's dog/cat-specific rows
+  // (e.g. a dog's real body temperature range is nothing like a human's)
+  // take priority when present, falling back to ALL exactly like gender does.
+  species      String   @default("ALL")
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@unique([testName, gender])
+  @@unique([testName, gender, species])
   @@index([testName])
 }
 
@@ -2108,12 +2655,37 @@ model ToothRecord {
   recordedById String?
   updatedAt    DateTime @updatedAt
 
-  patient    Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  recordedBy Employee? @relation("ToothRecordRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  patient    Customer             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedBy Employee?            @relation("ToothRecordRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  history    ToothRecordHistory[]
 
   @@unique([patientId, toothNumber])
   @@index([patientId])
   @@index([condition])
+}
+
+// Phase 58 §2 — Dental Clinic: ToothRecord above is a single row per
+// (patientId, toothNumber) that every save OVERWRITES — no way to see a
+// tooth's progression across visits. This is an ADDITIONAL append-only
+// ledger alongside it (never replacing it — ToothRecord stays the fast
+// "current state" read the chart itself uses), same "ledger alongside the
+// aggregate" pattern as RawMaterialBatch/ProductBatch: one new row is
+// written every time upsertTooth() saves, snapshotting exactly what was
+// saved, so the tooth's real history is a real queryable timeline.
+model ToothRecordHistory {
+  id            String   @id @default(cuid())
+  toothRecordId String
+  condition     String
+  surface       String   @default("[]")
+  notes         String?
+  recordedDate  DateTime
+  recordedById  String?
+  createdAt     DateTime @default(now())
+
+  toothRecord ToothRecord @relation(fields: [toothRecordId], references: [id], onDelete: Cascade)
+  recordedBy  Employee?   @relation("ToothRecordHistoryRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([toothRecordId])
 }
 
 model TreatmentPlan {
@@ -2199,28 +2771,37 @@ model ExerciseProgram {
 }
 
 model ClientSessionPack {
-  id            String    @id @default(cuid())
-  customerId    String
-  packName      String
-  totalSessions Int
-  usedSessions  Int       @default(0)
-  purchaseDate  DateTime  @default(now())
-  expiryDate    DateTime?
-  pricePerPack  Decimal   @default(0)
-  taxRate       Float     @default(18) // Phase 41: set at pack creation, mirrors ServiceCatalog.taxRate — business owner configures per-pack, no hardcoded guess
-  sacCode       String? // Phase 41
-  invoiceId     String? // Phase 41: set by generateSessionPackInvoice
-  notes         String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  customerId        String
+  packName          String
+  totalSessions     Int
+  usedSessions      Int       @default(0)
+  purchaseDate      DateTime  @default(now())
+  expiryDate        DateTime?
+  pricePerPack      Decimal   @default(0)
+  taxRate           Float     @default(18) // Phase 41: set at pack creation, mirrors ServiceCatalog.taxRate — business owner configures per-pack, no hardcoded guess
+  sacCode           String? // Phase 41
+  invoiceId         String? // Phase 41: set by generateSessionPackInvoice
+  notes             String?
+  isActive          Boolean   @default(true)
+  // Phase 58 §2 — Gym/Studio: a standing trainer-client relationship for a
+  // PT package, instead of re-picking a provider every single session. Kept
+  // OPTIONAL (any session_packs vertical, e.g. Physio, can leave this null
+  // and nothing changes) — the booking form only ever uses it to PRE-FILL
+  // the provider picker, never to force it, so a substitute session with a
+  // different trainer is still always possible.
+  assignedTrainerId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  sessionLogs SessionLog[]
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedTrainer Employee?    @relation("SessionPackAssignedTrainer", fields: [assignedTrainerId], references: [id], onDelete: SetNull)
+  sessionLogs     SessionLog[]
 
   @@index([customerId])
   @@index([isActive])
   @@index([expiryDate])
+  @@index([assignedTrainerId])
 }
 
 model SessionLog {
@@ -2375,21 +2956,55 @@ model LearnerProfile {
 }
 
 model DrivingVehicle {
-  id                 String   @id @default(cuid())
-  registrationNumber String   @unique
-  make               String
-  model              String
-  vehicleClass       String   @default("LMV") // LMV|TWO_WHEELER|HMV
-  instructorId       String?
-  status             String   @default("ACTIVE") // ACTIVE|MAINTENANCE|RETIRED
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                      String    @id @default(cuid())
+  registrationNumber      String    @unique
+  make                    String
+  model                   String
+  vehicleClass            String    @default("LMV") // LMV|TWO_WHEELER|HMV
+  instructorId            String?
+  status                  String    @default("ACTIVE") // ACTIVE|MAINTENANCE|RETIRED
+  // Phase 58 §2 — Driving School: maintenance scheduling tied to actual
+  // vehicle usage. odometerKm is staff-entered (there's no telematics feed),
+  // updated whenever a service is logged; sessionsSinceService increments
+  // automatically every time a DrivingSession for this vehicle is marked
+  // COMPLETED and resets to 0 on the next service log — so "due for
+  // service" can be computed from real usage instead of a fixed calendar
+  // reminder no one maintains.
+  odometerKm              Int       @default(0)
+  serviceIntervalKm       Int       @default(5000)
+  serviceIntervalSessions Int       @default(30)
+  lastServiceOdometerKm   Int       @default(0)
+  lastServiceDate         DateTime?
+  sessionsSinceService    Int       @default(0)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  instructor      Employee?        @relation("VehicleInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  instructor      Employee?                      @relation("VehicleInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
   drivingSessions DrivingSession[]
+  maintenanceLogs DrivingVehicleMaintenanceLog[]
 
   @@index([status])
   @@index([vehicleClass])
+}
+
+// Phase 58 §2 — Driving School: a real service history ledger alongside
+// DrivingVehicle's aggregate fields (lastServiceDate/lastServiceOdometerKm),
+// same "ledger alongside the aggregate, never replacing it" pattern used
+// elsewhere in this phase (e.g. ToothRecordHistory).
+model DrivingVehicleMaintenanceLog {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  serviceDate DateTime @default(now())
+  odometerKm  Int
+  serviceType String // free text, e.g. "General Service", "Brake Pads", "Oil Change"
+  cost        Decimal?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  vehicle DrivingVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([serviceDate])
 }
 
 model DrivingSession {
@@ -2456,20 +3071,27 @@ model DrivingPackageEnrollment {
 }
 
 model DrivingTest {
-  id         String    @id @default(cuid())
-  learnerId  String
-  testType   String // LL_TEST|DL_TEST
-  testDate   DateTime
-  testCenter String
-  result     String    @default("PENDING") // PENDING|PASSED|FAILED
-  retestDate DateTime?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  learnerId    String
+  testType     String // LL_TEST|DL_TEST
+  testDate     DateTime
+  testCenter   String
+  result       String    @default("PENDING") // PENDING|PASSED|FAILED
+  retestDate   DateTime?
+  notes        String?
+  // Phase 58 §2 — Driving School: which instructor actually taught this
+  // learner, so pass-rate-by-instructor becomes a real, queryable fact
+  // instead of untracked. Nullable — a test can be logged even if no
+  // specific instructor is on record for that learner.
+  instructorId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  learner Customer @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  learner    Customer  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  instructor Employee? @relation("DrivingTestInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
 
   @@index([learnerId])
+  @@index([instructorId])
   @@index([testType])
   @@index([result])
 }
@@ -2482,24 +3104,26 @@ model DrivingTest {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model LegalCase {
-  id              String    @id @default(cuid())
-  caseNumber      String // Court-assigned number
-  caseTitle       String // "Ramesh Sharma vs State"
-  caseType        String    @default("CIVIL") // CIVIL|CRIMINAL|FAMILY|CORPORATE|PROPERTY|ARBITRATION|OTHER
-  courtName       String // "District Court, Lucknow"
-  courtDistrict   String?
-  courtState      String?
-  eCourtId        String? // eCourts case reference for link-out
-  clientId        String
-  advocateId      String?
-  status          String    @default("ACTIVE") // ACTIVE|CLOSED|STAYED|DISPOSED|TRANSFERRED
-  filingDate      DateTime?
-  nextHearingDate DateTime?
-  feeAgreed       Decimal?
-  feeCollected    Decimal   @default(0)
-  notes           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  caseNumber        String // Court-assigned number
+  caseTitle         String // "Ramesh Sharma vs State"
+  caseType          String    @default("CIVIL") // CIVIL|CRIMINAL|FAMILY|CORPORATE|PROPERTY|ARBITRATION|OTHER
+  courtName         String // "District Court, Lucknow"
+  courtDistrict     String?
+  courtState        String?
+  eCourtId          String? // eCourts case reference for link-out
+  clientId          String
+  advocateId        String?
+  status            String    @default("ACTIVE") // ACTIVE|CLOSED|STAYED|DISPOSED|TRANSFERRED
+  filingDate        DateTime?
+  nextHearingDate   DateTime?
+  opposingPartyName String? // structured, distinct from the free-text caseTitle — feeds the conflict-of-interest check
+  limitationDate    DateTime? // statute-of-limitations / filing deadline, reminders scheduled the same way as hearings
+  feeAgreed         Decimal?
+  feeCollected      Decimal   @default(0)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   client      Customer    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   advocate    Employee?   @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
@@ -2538,6 +3162,14 @@ model TimeEntry {
   employeeId  String?
   caseId      String? // For LAWYER; null = freestanding (CA, Arch etc.)
   projectId   String? // For ARCHITECT|CIVIL_ENGINEER|CONSULTANT|AGENCY
+  // Phase 58 §1 (2026-07-17) — lets a logged hour count against a specific
+  // HOURLY_BUCKET retainer's monthly hour allowance (see
+  // retainer.service.ts's getRetainerHoursUsage, which sums TimeEntry.hours
+  // by retainerId+period rather than mutating a stored running counter —
+  // avoids the whole "did the monthly reset job run" class of bug).
+  // Independent of caseId/projectId — a retainer-billed hour may or may not
+  // also be tagged to a project.
+  retainerId  String?
   date        DateTime
   description String
   hours       Decimal
@@ -2548,13 +3180,15 @@ model TimeEntry {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  employee Employee?       @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-  case     LegalCase?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  project  ServiceProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  employee Employee?          @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  case     LegalCase?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  project  ServiceProject?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  retainer RetainerAgreement? @relation(fields: [retainerId], references: [id], onDelete: SetNull)
 
   @@index([employeeId])
   @@index([caseId])
   @@index([projectId])
+  @@index([retainerId])
   @@index([date])
   @@index([isBilled])
 }
@@ -2562,12 +3196,12 @@ model TimeEntry {
 // ─── Phase 29 — CA + CS ───────────────────────────────────────────────────────
 
 model ComplianceEvent {
-  id           String   @id @default(cuid())
-  title        String // "GSTR-3B Filing"
-  category     String // INCOME_TAX|GST|TDS|ROC|MCA|AUDIT|OTHER
-  frequency    String   @default("ANNUAL") // ANNUAL|QUARTERLY|MONTHLY|ONE_TIME
-  applicableTo String   @default("ALL") // ALL|COMPANY|INDIVIDUAL|LLP|FIRM
-  description  String? // due date hint text
+  id            String   @id @default(cuid())
+  title         String // "GSTR-3B Filing"
+  category      String // INCOME_TAX|GST|TDS|ROC|MCA|AUDIT|OTHER
+  frequency     String   @default("ANNUAL") // ANNUAL|QUARTERLY|MONTHLY|ONE_TIME
+  applicableTo  String   @default("ALL") // ALL|COMPANY|INDIVIDUAL|LLP|FIRM
+  description   String? // due date hint text
   // Structured due date, additive — nullable so AGM-relative ROC/MCA events
   // (whose real due date depends on each client's own AGM date, not tracked
   // anywhere in this schema) can stay unset and are simply excluded from
@@ -2575,11 +3209,19 @@ model ComplianceEvent {
   // "this day of every month" (GSTR-1/GSTR-3B); both set means a single fixed
   // calendar date recurring once a year (covers ANNUAL and the pre-split
   // per-quarter QUARTERLY rows alike).
-  dueMonth     Int? // 1-12, null = monthly recurrence
-  dueDay       Int? // 1-31, null = not auto-computable (AGM-relative)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  dueMonth      Int? // 1-12, null = monthly recurrence
+  dueDay        Int? // 1-31, null = not auto-computable (AGM-relative)
+  // Phase 58 §2 — set ONLY for the 3 events with a precise, non-negotiable
+  // statutory offset from a company's AGM date (MGT-7:60, AOC-4:30, ADT-1:15
+  // days). The AGM event itself deliberately stays un-auto-computable — its
+  // real due date depends on FY-end + board scheduling, not a fixed offset
+  // from the PREVIOUS AGM, so guessing it would risk asserting a wrong
+  // statutory deadline (this codebase's "never guess a derived fact"
+  // discipline, same reasoning as `dueDay` staying null above).
+  agmOffsetDays Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tasks ComplianceTask[]
 
@@ -2612,6 +3254,29 @@ model ComplianceTask {
   @@index([status])
   @@index([staffId])
   @@index([complianceEventId])
+}
+
+// Phase 58 §2 — CA Firm client-wise document checklist (PAN/Aadhaar/bank
+// statements etc. collected vs. pending). Deliberately standalone, NOT
+// linked to the generic Document/DocumentPanel attachment system — this is
+// a collection-status tracker (has the client SUBMITTED it yet), not a file
+// store; a CA can separately attach the actual scanned file elsewhere via
+// the same DocumentPanel already wired onto ComplianceTask/Engagement.
+model ClientDocumentChecklistItem {
+  id            String    @id @default(cuid())
+  clientId      String
+  documentType  String // PAN|AADHAAR|BANK_STATEMENT|GST_CERTIFICATE|OTHER
+  label         String? // custom label when documentType = OTHER
+  status        String    @default("PENDING") // PENDING|COLLECTED
+  collectedDate DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  client Customer @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([status])
 }
 
 model Engagement {
@@ -2756,18 +3421,64 @@ model ServiceProject {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  client           Customer                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  assignedTo       Employee?                 @relation("ServiceProjectAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  milestones       ServiceProjectMilestone[]
-  timeEntries      TimeEntry[]
-  issues           Issue[]
-  sprints          Sprint[]
-  drawingRevisions DrawingRevision[]
-  siteVisits       SiteVisit[]
+  client                     Customer                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignedTo                 Employee?                  @relation("ServiceProjectAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  milestones                 ServiceProjectMilestone[]
+  timeEntries                TimeEntry[]
+  issues                     Issue[]
+  sprints                    Sprint[]
+  drawingRevisions           DrawingRevision[]
+  siteVisits                 SiteVisit[]
+  campaignPerformanceEntries CampaignPerformanceEntry[] // Phase 58 §2 — Marketing Agency
+  contentCalendarItems       ContentCalendarItem[] // Phase 58 §2 — Marketing Agency
 
   @@index([clientId])
   @@index([status])
   @@index([assignedToId])
+}
+
+// Phase 58 §2 — Marketing Agency: real campaign performance data entry
+// (impressions/clicks/conversions/actual spend per period), distinct from
+// ServiceProject.adSpendBudget (the PLANNED budget) — this is what actually
+// happened, logged periodically so a real trend/summary can be built,
+// instead of the agency having no way to record outcomes at all.
+model CampaignPerformanceEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  periodStart DateTime
+  periodEnd   DateTime
+  impressions Int?
+  clicks      Int?
+  conversions Int?
+  actualSpend Decimal?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([periodStart])
+}
+
+// Phase 58 §2 — Marketing Agency: a real content calendar per campaign,
+// instead of tracking upcoming content ad hoc in notes/spreadsheets.
+model ContentCalendarItem {
+  id            String   @id @default(cuid())
+  projectId     String
+  scheduledDate DateTime
+  contentType   String   @default("SOCIAL_POST") // SOCIAL_POST|BLOG|EMAIL|AD_CREATIVE|VIDEO|OTHER
+  title         String
+  platform      String?
+  status        String   @default("PLANNED") // PLANNED|IN_PROGRESS|PUBLISHED|CANCELLED
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([scheduledDate])
 }
 
 // Fresh-audit build (2026-07-12) — Architect real depth. A drawing register
@@ -2788,11 +3499,25 @@ model DrawingRevision {
   notes          String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  // Phase 58 §2 — links successive revisions of the SAME drawing number into
+  // a real chain (Rev A -> Rev B -> Rev C) instead of independent rows a
+  // mutable revisionNumber field could silently overwrite. issueNewRevision()
+  // is the only path that sets this — it creates a NEW row pointing back at
+  // its predecessor and flips the predecessor's status to SUPERSEDED, so the
+  // full history stays queryable and comparable.
+  supersedesId   String?   @unique
+  // Client approval/sign-off trail — WHO approved and WHEN, not just a
+  // status label. Required together whenever status moves to APPROVED.
+  approvedByName String?
+  approvedDate   DateTime?
 
-  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      ServiceProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supersedes   DrawingRevision? @relation("RevisionChain", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy DrawingRevision? @relation("RevisionChain")
 
   @@index([projectId])
   @@index([status])
+  @@index([drawingNumber])
 }
 
 // Fresh-audit build (2026-07-12) — Civil Engineer real depth. A site visit
@@ -2809,12 +3534,45 @@ model SiteVisit {
   recordedById      String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  // Phase 58 §2 — GPS tagging, captured from the device's real Geolocation
+  // API reading at time of logging (with a manual-entry fallback — desktop
+  // hardware without a real GPS chip falls back to coarse IP-based
+  // geolocation, self-documented by a large locationAccuracy value rather
+  // than hidden).
+  latitude          Float?
+  longitude         Float?
+  locationAccuracy  Float? // meters, as reported by the Geolocation API
 
-  project    ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  recordedBy Employee?      @relation("SiteVisitRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  project             ServiceProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recordedBy          Employee?            @relation("SiteVisitRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  materialTestResults MaterialTestResult[]
 
   @@index([projectId])
   @@index([visitDate])
+}
+
+// Phase 58 §2 — structured material-test-result fields (value + pass/fail),
+// not buried in SiteVisit's free-text `findings`. result is auto-computed
+// server-side ONLY when a real pass/fail threshold (requiredMinValue) is
+// supplied alongside the measured value — never guessed otherwise (stays
+// PENDING for manual entry, e.g. tests that aren't a simple >= threshold).
+model MaterialTestResult {
+  id                  String    @id @default(cuid())
+  siteVisitId         String
+  testType            String // CONCRETE_CUBE_STRENGTH|SOIL_COMPACTION|STEEL_TENSILE|SLUMP_TEST|OTHER
+  materialDescription String? // e.g. "M25 grade concrete, Column C4"
+  testValue           Float?
+  unit                String? // e.g. "MPa", "%", "mm"
+  requiredMinValue    Float? // pass threshold, optional
+  result              String    @default("PENDING") // PENDING|PASS|FAIL
+  testedDate          DateTime?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  siteVisit SiteVisit @relation(fields: [siteVisitId], references: [id], onDelete: Cascade)
+
+  @@index([siteVisitId])
 }
 
 model ServiceProjectMilestone {
@@ -2855,8 +3613,9 @@ model RetainerAgreement {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  client     Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  assignedTo Employee? @relation("RetainerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  client      Customer    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignedTo  Employee?   @relation("RetainerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  timeEntries TimeEntry[]
 
   @@index([clientId])
   @@index([status])
@@ -2872,6 +3631,7 @@ model Issue {
   status       String    @default("OPEN") // OPEN|IN_PROGRESS|RESOLVED|CLOSED
   assignedToId String?
   sprintId     String?
+  storyPoints  Int? // Phase 58 §2 — Software Agency: basic estimate, feeds burndown/velocity
   reportedDate DateTime  @default(now())
   resolvedDate DateTime?
   createdAt    DateTime  @default(now())
@@ -2880,11 +3640,41 @@ model Issue {
   project    ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignedTo Employee?      @relation("IssueAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   sprint     Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  comments   IssueComment[]
+  subtasks   IssueSubtask[]
 
   @@index([projectId])
   @@index([status])
   @@index([assignedToId])
   @@index([sprintId])
+}
+
+// Phase 58 §2 — Software Agency: real issue depth (comments)
+model IssueComment {
+  id        String   @id @default(cuid())
+  issueId   String
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([issueId])
+}
+
+// Phase 58 §2 — Software Agency: real issue depth (checklist-style subtasks)
+model IssueSubtask {
+  id        String   @id @default(cuid())
+  issueId   String
+  title     String
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
 }
 
 model Sprint {
@@ -2944,14 +3734,35 @@ model CoachingBatch {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  instructor   Employee?                 @relation("CoachingBatchInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
-  enrollments  CoachingBatchEnrollment[]
-  attendances  CoachingBatchAttendance[]
-  performances Performance[]
-  feeRecords   CoachingFeeRecord[]
+  instructor     Employee?                 @relation("CoachingBatchInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  enrollments    CoachingBatchEnrollment[]
+  attendances    CoachingBatchAttendance[]
+  performances   Performance[]
+  feeRecords     CoachingFeeRecord[]
+  syllabusTopics SyllabusTopic[] // Phase 58 §2 — Coaching Institute
 
   @@index([status])
   @@index([instructorId])
+}
+
+// Phase 58 §2 — Coaching Institute: topic-by-topic syllabus coverage per
+// batch, so "how much of the syllabus is actually done" is a real tracked
+// fact instead of living only in an instructor's head.
+model SyllabusTopic {
+  id            String    @id @default(cuid())
+  batchId       String
+  topicName     String
+  sequenceOrder Int       @default(0)
+  plannedDate   DateTime?
+  status        String    @default("PENDING") // PENDING|COMPLETED
+  completedDate DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  batch CoachingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
 }
 
 model CoachingBatchEnrollment {
@@ -2959,7 +3770,11 @@ model CoachingBatchEnrollment {
   batchId        String
   studentId      String
   enrolledDate   DateTime @default(now())
-  status         String   @default("ACTIVE") // ACTIVE|DROPPED|COMPLETED
+  // Phase 58 §2 — Coaching Institute: WAITLISTED added. A batch at capacity
+  // used to hard-reject any new enrollment; now it enrolls as WAITLISTED
+  // instead (excluded from generateMonthlyFees, which only ever queries
+  // status: 'ACTIVE' — a waitlisted student is never billed until promoted).
+  status         String   @default("ACTIVE") // ACTIVE|WAITLISTED|DROPPED|COMPLETED
   discountType   String   @default("NONE") // NONE|SCHOLARSHIP|SIBLING|REFERRAL|CUSTOM
   discountAmount Decimal  @default(0)
   effectiveFee   Decimal
@@ -3096,9 +3911,11 @@ model ShootBooking {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  client   Customer         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  editor   Employee?        @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
-  delivery DeliveryTracker?
+  client     Customer          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editor     Employee?         @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
+  delivery   DeliveryTracker?
+  checklist  ShootChecklistItem[] // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist
+  addOnItems ShootAddOnItem[] // Phase 58 §2 — Photo Studio: itemized add-ons
 
   @@index([clientId])
   @@index([shootDate])
@@ -3114,11 +3931,43 @@ model DeliveryTracker {
   albumProofSentDate    DateTime?
   finalDeliveredDate    DateTime?
   deliveryFormat        String?
+  deliveredPhotosCount  Int? // Phase 58 §2 — Photo Studio: actual delivered count, vs. ShootBooking.expectedPhotosCount
   notes                 String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   shootBooking ShootBooking @relation(fields: [shootBookingId], references: [id], onDelete: Cascade)
+}
+
+// Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist, per booking
+model ShootChecklistItem {
+  id             String   @id @default(cuid())
+  shootBookingId String
+  category       String   @default("EQUIPMENT") // EQUIPMENT|CREW
+  label          String
+  isDone         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shootBooking ShootBooking @relation(fields: [shootBookingId], references: [id], onDelete: Cascade)
+
+  @@index([shootBookingId])
+}
+
+// Phase 58 §2 — Photo Studio: itemized add-ons (extra prints, album copies,
+// etc.) feeding into the final invoiced amount alongside the base package fee.
+model ShootAddOnItem {
+  id             String   @id @default(cuid())
+  shootBookingId String
+  description    String
+  quantity       Int      @default(1)
+  unitPrice      Decimal
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shootBooking ShootBooking @relation(fields: [shootBookingId], references: [id], onDelete: Cascade)
+
+  @@index([shootBookingId])
 }
 
 model EventBooking {
@@ -3141,6 +3990,7 @@ model EventBooking {
 
   client         Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   vendorBookings EventVendorBooking[]
+  runOfShowItems EventRunOfShowItem[] // Phase 58 §2 — Event Management
 
   @@index([clientId])
   @@index([eventDate])
@@ -3153,6 +4003,14 @@ model EventVendorBooking {
   vendorId       String
   vendorCategory String // CATERING|DECORATION|PHOTOGRAPHY|AV_SOUND|VENUE|ENTERTAINMENT|TRANSPORT|FLOWERS|OTHER
   quotedAmount   Decimal
+  // Phase 58 §2 — Event Management: guest-count-to-costing. When
+  // pricingType is PER_HEAD, quotedAmount is ALWAYS server-computed from
+  // perHeadRate × the event's current expectedGuestCount (never trusted
+  // from the client) and kept in sync whenever either input changes — same
+  // "recompute on any relevant change, never accept the derived number
+  // directly" discipline as Real Estate's coBrokerShareAmount.
+  pricingType    String   @default("FLAT") // FLAT|PER_HEAD
+  perHeadRate    Decimal?
   advancePaid    Decimal  @default(0)
   status         String   @default("ENQUIRED") // ENQUIRED|BOOKED|CONFIRMED|COMPLETED
   notes          String?
@@ -3165,6 +4023,24 @@ model EventVendorBooking {
   @@index([eventId])
   @@index([vendorId])
   @@index([status])
+}
+
+// Phase 58 §2 — Event Management: event-day run-of-show/execution timeline,
+// distinct from the vendor procurement checklist (EventVendorBooking) above.
+model EventRunOfShowItem {
+  id               String   @id @default(cuid())
+  eventId          String
+  scheduledTime    DateTime
+  activity         String
+  responsibleParty String?
+  isDone           Boolean  @default(false)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  event EventBooking @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
 }
 
 model Property {
@@ -3208,12 +4084,34 @@ model PropertyInquiry {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  buyer    Customer @relation("InquiryBuyer", fields: [buyerClientId], references: [id], onDelete: Cascade)
+  property   Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer      Customer            @relation("InquiryBuyer", fields: [buyerClientId], references: [id], onDelete: Cascade)
+  siteVisits PropertySiteVisit[]
 
   @@index([propertyId])
   @@index([buyerClientId])
   @@index([status])
+}
+
+// Phase 58 §2 — Real Estate: structured site-visit scheduling with feedback
+// capture, replacing PropertyInquiry.status's bare "SITE_VISIT_SCHEDULED"
+// label (previously not backed by any real date/time/outcome record).
+model PropertySiteVisit {
+  id            String    @id @default(cuid())
+  inquiryId     String
+  scheduledDate DateTime
+  scheduledTime String?
+  status        String    @default("SCHEDULED") // SCHEDULED|COMPLETED|CANCELLED|NO_SHOW
+  feedback      String?
+  interestLevel String? // HIGH|MEDIUM|LOW|NONE — captured post-visit
+  completedDate DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  inquiry PropertyInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@index([scheduledDate])
 }
 
 model PropertyDeal {
@@ -3230,6 +4128,14 @@ model PropertyDeal {
   notes                    String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
+  // Phase 58 §2 — co-broker commission-split tracking. coBrokerShareAmount
+  // is always computed server-side from brokerageAmount * coBrokerSharePercent
+  // / 100 (never entered directly) — this firm's own retained share is
+  // brokerageAmount - coBrokerShareAmount, derivable on the fly rather than
+  // stored separately (avoids two numbers silently drifting out of sync).
+  coBrokerName             String?
+  coBrokerSharePercent     Decimal?
+  coBrokerShareAmount      Decimal?
 
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   buyer    Customer @relation("DealBuyer", fields: [buyerClientId], references: [id], onDelete: Restrict)
@@ -3242,30 +4148,38 @@ model PropertyDeal {
 // ─── Phase 33 — Car Service, Tailor Boutique, Pest Control ────────────────────
 
 model CarJobCard {
-  id                String    @id @default(cuid())
-  jobNumber         String    @unique
-  clientId          String
-  vehicleNumber     String
-  vehicleMake       String
-  vehicleModel      String
-  vehicleYear       Int?
-  vehicleType       String    @default("4W") // 2W|4W|COMMERCIAL|OTHER
-  kmIn              Int?
-  kmOut             Int?
-  serviceAdvisorId  String?
-  technicianIds     String    @default("[]") // JSON array of Employee IDs
-  serviceItems      String    @default("[]") // JSON: [{name,quantity,unitPrice}]
-  partsItems        String    @default("[]") // JSON: [{name,partNumber?,quantity,unitPrice}]
-  laborTotal        Decimal   @default(0)
-  partsTotal        Decimal   @default(0)
-  estimatedDelivery DateTime?
-  deliveredDate     DateTime?
-  status            String    @default("RECEIVED") // RECEIVED|INSPECTION|IN_PROGRESS|WAITING_PARTS|READY|DELIVERED|CANCELLED
-  invoiceId         String?
-  notes             String?
-  internalNotes     String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  jobNumber          String    @unique
+  clientId           String
+  vehicleNumber      String
+  vehicleMake        String
+  vehicleModel       String
+  vehicleYear        Int?
+  vehicleType        String    @default("4W") // 2W|4W|COMMERCIAL|OTHER
+  kmIn               Int?
+  kmOut              Int?
+  serviceAdvisorId   String?
+  technicianIds      String    @default("[]") // JSON array of Employee IDs
+  serviceItems       String    @default("[]") // JSON: [{name,quantity,unitPrice}]
+  partsItems         String    @default("[]") // JSON: [{name,partNumber?,quantity,unitPrice}]
+  laborTotal         Decimal   @default(0)
+  partsTotal         Decimal   @default(0)
+  estimatedDelivery  DateTime?
+  deliveredDate      DateTime?
+  status             String    @default("RECEIVED") // RECEIVED|INSPECTION|IN_PROGRESS|WAITING_PARTS|READY|DELIVERED|CANCELLED
+  invoiceId          String?
+  notes              String?
+  internalNotes      String?
+  // Phase 58 §2 — Car Service Center: next-service-due tracking by date or
+  // odometer. Both nullable/independent — a shop may recommend either or
+  // both. There is no separate Vehicle master table (vehicleNumber is a
+  // free-standing field on each job card, same as every other field here),
+  // so "due for service" is always computed from the MOST RECENT job card
+  // for a given vehicleNumber, not a mutable running counter.
+  nextServiceDueDate DateTime?
+  nextServiceDueKm   Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   client         Customer  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   serviceAdvisor Employee? @relation("CarJobAdvisor", fields: [serviceAdvisorId], references: [id], onDelete: SetNull)
@@ -3338,17 +4252,35 @@ model TailoringOrder {
   invoiceId           String?
   specialInstructions String?
   notes               String?
+  // Phase 58 §2 — Tailor Boutique: the trial/fitting date used to be a bare
+  // field with no real reminder behind it. A real `Appointment` gets
+  // created and linked here so it rides the SAME 24h/2h WhatsApp reminder
+  // pipeline every other appointment type already uses — no new reminder
+  // mechanism invented. trialDate stays in sync (denormalized) for any
+  // existing reader (e.g. reports) that only ever expected a bare date.
+  trialAppointmentId  String?   @unique
+  // Fabric-stock deduction — only meaningful when fabricSupplied='SHOP'.
+  // Set once via a dedicated action (setOrderFabric), mirroring the
+  // add/remove pair pattern used for Repair's JobCardPart — not a plain
+  // mutable field, since changing it after stock has been deducted needs
+  // an explicit restore step first.
+  fabricProductId     String?
+  fabricQuantity      Float?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  client      Customer           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  measurement MeasurementRecord? @relation(fields: [measurementRecordId], references: [id], onDelete: SetNull)
-  assignedTo  Employee?          @relation("TailoringAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  client           Customer           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  measurement      MeasurementRecord? @relation(fields: [measurementRecordId], references: [id], onDelete: SetNull)
+  assignedTo       Employee?          @relation("TailoringAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  trialAppointment Appointment?       @relation(fields: [trialAppointmentId], references: [id], onDelete: SetNull)
+  fabricProduct    Product?           @relation(fields: [fabricProductId], references: [id], onDelete: SetNull)
 
   @@index([clientId])
   @@index([status])
   @@index([deliveryDate])
   @@index([createdAt])
+  @@index([trialAppointmentId])
+  @@index([fabricProductId])
 }
 
 model PestServiceContract {
@@ -3399,13 +4331,41 @@ model PestJobSheet {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  contract PestServiceContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
-  client   Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contract       PestServiceContract?    @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  client         Customer                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pesticideLines PestJobSheetPesticide[] // Phase 58 §2
 
   @@index([contractId])
   @@index([clientId])
   @@index([status])
   @@index([visitDate])
+}
+
+// Phase 58 §2 — Pest Control: structured pesticide dosage/quantity per job
+// sheet visit, replacing the single free-text PestJobSheet.pesticideUsed
+// field (kept as-is for a quick summary/search string). A visit commonly
+// uses more than one chemical across different areas, so this is a real
+// add/remove ledger (mirrors JobCardPart), not a set-once field. productId
+// is OPTIONAL — unlike JobCardPart, not every shop tracks its pesticide
+// stock as an Inventory Product; when it IS linked, adding a line deducts
+// real stock via the same inventoryService.reduceStockTx every other
+// consumption path uses, and removing restores it.
+model PestJobSheetPesticide {
+  id            String   @id @default(cuid())
+  jobSheetId    String
+  productId     String?
+  pesticideName String
+  quantityUsed  Float
+  unit          String   @default("ML") // ML|L|G|KG|OTHER
+  dosageNote    String? // e.g. "2% dilution, 50ml per 5L water"
+  targetPest    String? // e.g. "Cockroach", "Termite"
+  createdAt     DateTime @default(now())
+
+  jobSheet PestJobSheet @relation(fields: [jobSheetId], references: [id], onDelete: Cascade)
+  product  Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([jobSheetId])
+  @@index([productId])
 }
 
 // ─── Phase 34 — Placement Agency ──────────────────────────────────────────────
@@ -3432,7 +4392,8 @@ model Candidate {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  placements Placement[]
+  placements      Placement[]
+  interviewRounds InterviewRound[] // Phase 58 §2 — Placement Agency
 
   @@index([status])
   @@index([createdAt])
@@ -3456,16 +4417,50 @@ model JobOrder {
   targetDate        DateTime?
   commissionType    String    @default("PERCENTAGE") // PERCENTAGE|FIXED
   commissionValue   Decimal   @default(0)
+  // Phase 58 §2 — Placement Agency: fee-agreement/replacement-guarantee
+  // terms per job order. Plain String/Int, deliberately NOT Decimal — this
+  // phase has repeatedly hit a real bug where a new Decimal column gets
+  // added to a model without updating its IPC serializer; a free-text terms
+  // field and a plain day-count sidestep that whole bug class outright.
+  feeAgreementTerms        String?
+  replacementGuaranteeDays Int?
   notes             String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  client     Customer    @relation("JobOrderClient", fields: [clientId], references: [id], onDelete: Cascade)
-  placements Placement[]
+  client          Customer         @relation("JobOrderClient", fields: [clientId], references: [id], onDelete: Cascade)
+  placements      Placement[]
+  interviewRounds InterviewRound[] // Phase 58 §2 — Placement Agency
 
   @@index([clientId])
   @@index([status])
   @@index([createdAt])
+}
+
+// Phase 58 §2 — Placement Agency: interview-round tracking as a real
+// sub-record of a candidate/job-order pairing (stage, date, per-round
+// client feedback), distinct from Placement — which only exists once an
+// actual offer/join happens.
+model InterviewRound {
+  id               String    @id @default(cuid())
+  candidateId      String
+  jobOrderId       String
+  roundNumber      Int
+  roundType        String    @default("PHONE_SCREEN") // PHONE_SCREEN|TECHNICAL|HR|FINAL|OTHER
+  scheduledDate    DateTime?
+  status           String    @default("SCHEDULED") // SCHEDULED|COMPLETED|PASSED|REJECTED|NO_SHOW
+  interviewerName  String?
+  clientFeedback   String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobOrder  JobOrder  @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([jobOrderId])
+  @@index([status])
 }
 
 model Placement {
@@ -3578,6 +4573,15 @@ model Shipment {
   grns          GoodsReceiptNote[]
   challans      DeliveryChallan[]
   freightLedger FreightLedger[]
+  // Phase 58 §2 — Distributor's route/beat planning. The top-level
+  // destinationAddress/customerId above stay exactly as they were (the
+  // "primary" stop, backward compatible with every existing single-stop
+  // shipment) — stops is an ADDITIVE list of further beat points on the
+  // same run. Vehicle.status availability stays keyed off the whole
+  // Shipment (a vehicle is "in transit" for the entire beat, not per stop)
+  // — deliberately NOT modeled per-stop, matching how status transitions
+  // already worked before this feature existed.
+  stops         ShipmentStop[]
 
   @@index([status])
   @@index([carrierId])
@@ -3598,10 +4602,40 @@ model ShipmentItem {
   batchNumber  String?
   serialNumber String?
   notes        String?
+  // Phase 58 §2 — which beat stop this line is destined for. Nullable —
+  // every pre-existing shipment (and any line not assigned to a specific
+  // stop) stays attributed to the shipment's own primary destination.
+  stopId       String?
 
-  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  shipment Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  stop     ShipmentStop? @relation(fields: [stopId], references: [id], onDelete: SetNull)
 
   @@index([shipmentId])
+  @@index([stopId])
+}
+
+// Phase 58 §2 — a beat/route stop. sequenceNumber is assigned in add-order
+// (the order a dispatcher builds the run), not separately reorderable in
+// v1 — real, sufficient sequencing for "visit these N customers on this
+// trip", not a route-optimization feature.
+model ShipmentStop {
+  id                 String    @id @default(cuid())
+  shipmentId         String
+  sequenceNumber     Int
+  customerId         String?
+  customerName       String?
+  destinationAddress String
+  status             String    @default("PENDING") // PENDING | DELIVERED | SKIPPED
+  deliveredAt        DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+
+  shipment Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  customer Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    ShipmentItem[]
+
+  @@index([shipmentId])
+  @@index([customerId])
 }
 
 model GoodsReceiptNote {

@@ -14,7 +14,7 @@ type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown
 export function register(handle: HandleFn): void {
   handle('timeEntry:list', async (raw) => {
     const deny = await requirePermission('billing.view'); if (deny) return deny
-    const payload = (raw ?? {}) as { caseId?: string; projectId?: string; employeeId?: string; isBilled?: boolean; fromDate?: string; toDate?: string }
+    const payload = (raw ?? {}) as { caseId?: string; projectId?: string; retainerId?: string; employeeId?: string; isBilled?: boolean; fromDate?: string; toDate?: string }
     return listTimeEntries(payload)
   })
 
