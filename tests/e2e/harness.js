@@ -282,6 +282,11 @@ async function switchBusinessType(page, tileLabel) {
     return { changed: false, from: current, to: current }
   }
   await applyBtn.click()
+  // 2026-07-21: Apply Template now opens a confirmation dialog first
+  // (IndustrySettingsScreen.tsx's ConfirmDialog) instead of saving
+  // immediately — click through it the same way a real user would.
+  await page.waitForTimeout(300)
+  await page.locator('button:has-text("Switch Business")').click()
   await page.waitForTimeout(1500)
   const after = await getBusinessType()
   return { changed: true, from: current, to: after }
