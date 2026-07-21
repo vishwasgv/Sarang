@@ -25,6 +25,14 @@ Ouvrez **Réservations de location** dans la barre latérale. Une réservation t
 
 Une réservation Réservée peut aussi être **Annulée** (avant le retrait) ou **Prolongée** à une date/heure de fin ultérieure (tant que l'article reste disponible pendant la nouvelle plage).
 
+Une réservation peut inclure plusieurs articles en une seule fois — chacun obtient son propre **frais de dommage** au retour, afin que la facture d'une réservation à plusieurs articles détaille exactement quelle unité a été endommagée plutôt qu'une seule ligne de réparation globale. Attachez de vraies **photos d'état** à la fois au retrait et au retour pour chaque article, ce qui vous donne un dossier avant/après documenté en cas de litige.
+
+## Entretien et locations récurrentes
+
+Définissez un **intervalle d'entretien** sur un article suivi en UNITÉ — soit un nombre de locations, soit un nombre de jours — et Sarang le fait automatiquement passer au statut Entretien au retour une fois l'intervalle atteint, ce qui bloque sa relocation jusqu'à ce que vous le marquiez comme entretenu. Ouvrez **Unités de Location** pour voir quels articles sont dus et pour enregistrer un entretien terminé.
+
+Pour un client qui loue régulièrement la même chose selon un calendrier récurrent, définissez un **intervalle de récurrence** sur la réservation et utilisez **Créer le Prochain Cycle** une fois la période actuelle terminée pour générer la réservation suivante en un clic au lieu de tout ressaisir depuis le début.
+
 ## La disponibilité est toujours en direct, jamais une décrémentation de stock
 
 Sarang ne décrémente jamais une quantité de stock lorsqu'une location est retirée. Au lieu de cela, la disponibilité — pour les articles UNITÉ comme VRAC — est calculée en direct à partir de chaque réservation actuellement Réservée ou Retirée qui chevauche la plage de dates demandée. Cela compte parce qu'une réservation doit bloquer la disponibilité *avant* le retrait — deux clients essayant de réserver la même dernière tente pour des dates qui se chevauchent ne doivent pas réussir tous les deux, ce qu'un modèle « décrémenter seulement au retrait » manquerait.

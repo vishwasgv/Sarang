@@ -8,6 +8,10 @@ Un artículo de ropa por lo general no es un único número de stock — "Camise
 
 Los registros de producto para un negocio de Ropa también obtienen un campo opcional de **Género** (Hombre/Mujer/Unisex) para ayudarlo a organizar su catálogo.
 
+¿Necesita cargar muchas combinaciones a la vez? Use **Generate Size × Colour Matrix** al final de Manage Variants — escriba sus tallas y colores como listas separadas por comas (p. ej. "S, M, L" y "Negro, Blanco") y Sarang crea cada combinación como una fila nueva de una sola vez, omitiendo cualquier par que ya haya agregado a mano.
+
+Cada fila de variante tiene su propio **código de barras** — genere uno por fila, o use **Generate Missing Barcodes** para completar todas las variantes que aún no tienen uno. Al imprimir etiquetas, un producto con seguimiento de variantes abre un selector para que la etiqueta lleve el código de barras y el precio propios de esa variante exacta, no los del producto principal.
+
 ## Vender una variante
 
 En **Facturación**, agregar un producto que tiene variantes configuradas no lo agrega directamente al carrito — abre un selector para que elija la combinación exacta de talla/color que se vende, y el stock y precio de esa variante específica (precio base + su precio adicional, si lo hay) es lo que realmente entra al carrito. Esto mantiene sus conteos de stock por talla/color precisos, en lugar de simplemente decrementar un número compartido para todo el producto.

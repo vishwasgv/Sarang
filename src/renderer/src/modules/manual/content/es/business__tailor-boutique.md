@@ -10,6 +10,10 @@ Cada pedido registra el tipo de prenda (Camisa, Pantalón, Traje, Kurta, Salwar 
 
 Un pedido se puede vincular a uno de los registros de medidas guardados del cliente, y pasa por una tubería de estados: **Recibido → En Corte → En Confección → Prueba Programada → (Ajustes, si es necesario) → Listo → Entregado**, con Cancelado como un resultado separado. Las fechas de prueba y entrega se rastrean por separado, y las entregas atrasadas se marcan en rojo. Una vez en estado Listo, un botón de **Generar Factura** factura el pedido.
 
+**Programar Prueba** convierte la prueba de ajuste en una cita real y reservable — Sarang envía al cliente un recordatorio por WhatsApp un día antes y de nuevo un par de horas antes, el mismo sistema de recordatorios usado para cualquier otra cita, así que no necesita acordarse de llamar.
+
+Cuando la tienda suministra la tela, **Definir Tela** vincula el pedido a un producto de inventario real y una cantidad — descuenta stock real, no solo una nota, y **Quitar Tela** lo restaura si el pedido cambia.
+
 ## Medidas
 
 La pestaña de **Medidas** mantiene un historial corriente de las medidas corporales de un cliente — pecho, cintura, cadera, hombro, cuello, manga, entrepierna, costura exterior, muslo, altura, sisa, profundidad de cuello delantero/trasero, largo de la prenda y puño — junto con quién tomó la medida y cuándo. Un cliente puede tener más de un registro de medidas a lo largo del tiempo, y cualquiera de ellos se puede adjuntar a un pedido nuevo.

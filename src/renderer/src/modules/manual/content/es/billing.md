@@ -14,6 +14,10 @@ Abra **Facturación** desde la barra lateral (`/billing`) para llegar a la panta
 
 El carrito muestra un subtotal en curso, descuento, impuesto, ajuste de redondeo y total mientras lo va armando. **Clear Cart** en la parte inferior reinicia todo sin guardar.
 
+Una cuadrícula de mosaicos con sus **productos más vendidos** aparece encima del cuadro de búsqueda — un toque lo agrega directamente al carrito, sin necesidad de escribir, ordenados según lo que realmente más se vende.
+
+¿En medio de una venta necesita atender a otro cliente sin perder el carrito actual? Haga clic en **Retener venta** para dejarlo en espera y empezar de nuevo; **Reanudar venta** muestra sus carritos retenidos para continuar exactamente donde los dejó. El **MRP** de un producto, cuando está configurado por encima de su precio de venta, se muestra como un precio de referencia tachado junto al precio real en los resultados de búsqueda.
+
 ## Historial y detalle de facturas
 
 **Invoice List** (`/billing`, mediante la vista de lista de facturas) muestra cada factura con su cliente, cantidad de artículos, total, saldo pendiente y estado de pago (SIN PAGAR / PARCIAL / PAGADA / CANCELADA). Busque por número de factura o cliente, filtre por rango de fechas o por estado Activa/Cancelada.

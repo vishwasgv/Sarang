@@ -16,6 +16,12 @@ Para teléfonos y otros dispositivos con IMEI, cada registro de dispositivo tamb
 
 La garantía de cada dispositivo se almacena como una duración en meses desde su fecha de compra/inicio de garantía, y Sarang calcula y muestra la fecha de vencimiento real justo al lado — mostrada como aún válida o claramente marcada **Vencida** una vez que ha pasado. Ask Sarang (si está activado) también puede responder "¿Qué artículos todavía están en garantía?" directamente a partir de estos datos.
 
+## Tickets de reparación / RMA
+
+Un dispositivo vendido y con seguimiento de número de serie obtiene un botón **Repair** en Serial Tracking — ábralo para ver el historial completo de servicio de esa unidad, o iniciar un nuevo ticket de reparación para ella. Un ticket lleva un número de reclamo y avanza por **Recibido → Diagnosticado → Enviado al Proveedor → Esperando Repuestos → Reparado/Reemplazado → Devuelto al Cliente** (o Cancelado, solo antes de que un reemplazo realmente haya salido). Registre a qué proveedor lo envió y su propio número de RMA si va a reparación bajo garantía.
+
+Si la solución es un cambio directo, elija **Reemplazado** y seleccione una unidad en stock del mismo producto como reemplazo — Sarang marca la unidad original como Defectuosa, el reemplazo como Vendido (heredando la factura de la venta original) y lo descuenta del stock automáticamente, igual que cualquier otra venta. Un ticket de reparación solo puede abrirse contra una unidad que realmente fue vendida — un dispositivo en stock que nunca se vendió aún no tiene historial de servicio que rastrear.
+
 ## Logística y Cadena de Suministro
 
 Debido a que la plantilla predeterminada de Electrónica incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.

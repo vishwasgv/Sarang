@@ -10,9 +10,11 @@ Le stock ne bouge que via **Ajuster le stock**, qui enregistre l'un de trois typ
 
 ## 2. Nomenclature (BOM)
 
-Une nomenclature définit ce dont un produit fini a réellement besoin : choisissez le produit, définissez une quantité de sortie par lot, et listez les matières premières qu'il consomme avec une quantité nécessaire et un pourcentage de déchet facultatif. Le déchet gonfle la quantité effectivement consommée (par ex. 5 % de déchet sur 10 kg nécessaires signifie que 10,5 kg sont réellement planifiés pour la consommation). Sarang totalise le coût des matières par lot à partir du coût unitaire actuel de chaque ingrédient — c'est la base de coût qu'un ordre de production utilisera ensuite.
+Une nomenclature définit ce dont un produit fini a réellement besoin : choisissez le produit, définissez une quantité de sortie par lot, et listez ce qu'il consomme — soit une matière première, soit **un autre produit fabriqué en tant que sous-ensemble** (basculez le type de la ligne), avec une quantité nécessaire et un pourcentage de déchet facultatif. Le déchet gonfle la quantité effectivement consommée (par ex. 5 % de déchet sur 10 kg nécessaires signifie que 10,5 kg sont réellement planifiés pour la consommation). Lors de la construction d'un produit à plusieurs niveaux — par exemple une Voiture qui nécessite un Moteur, lui-même fabriqué à partir d'Acier brut — Sarang vérifie les références circulaires (un composant qui finirait par avoir besoin de lui-même) et empêche l'enregistrement d'une telle nomenclature. Sarang totalise le coût des matières par lot à partir du coût unitaire actuel de chaque ingrédient — c'est la base de coût qu'un ordre de production utilisera ensuite.
 
-Une seule nomenclature par produit est autorisée ; modifier une nomenclature existante permet de changer les quantités et le déchet mais pas le produit auquel elle correspond.
+Une seule nomenclature par produit est autorisée ; modifier une nomenclature existante permet de changer les quantités, le déchet, et les lignes de composants, mais pas le produit auquel elle correspond.
+
+Les matières premières reçues en lots distincts (une livraison aujourd'hui peut coûter différemment de celle du mois dernier) peuvent être suivies comme des **lots de matière** depuis Matières premières — réceptionnez un lot avec sa propre quantité, et un ordre de production puise automatiquement en priorité dans le lot le plus ancien (FIFO), afin que vous sachiez toujours exactement quel lot est entré dans quelle production.
 
 ## 3. Ordres de production
 
@@ -20,10 +22,10 @@ C'est le flux de travail central de la fabrication, et il traverse quatre états
 
 - **Brouillon** — vous choisissez un produit avec une nomenclature et une quantité planifiée ; Sarang calcule exactement combien de chaque matière première ce plan nécessite.
 - **En cours** — démarrer un ordre vérifie que chaque matière première requise a suffisamment de stock ; si quelque chose manque, il vous indique exactement quoi et de combien, et refuse de démarrer. Une fois démarrées, les matières premières sont déduites immédiatement (enregistrées comme un mouvement « Consommé » contre chaque matière) — cela se produit au démarrage, pas à l'achèvement.
-- **Terminé** — vous saisissez la quantité réellement produite (elle n'a pas besoin de correspondre au plan). Sarang ajoute cette quantité au stock du produit fini et recalcule son coût moyen en utilisant la même formule de moyenne pondérée que tout autre chemin d'entrée de stock dans Sarang, afin que la base de coût d'un lot fabriqué s'intègre correctement dans votre valorisation de stock et vos rapports de bénéfice.
+- **Terminé** — vous saisissez la quantité réellement produite, une **quantité de rebut/rejetée** (unités ayant consommé matière et main-d'œuvre mais n'ayant rien donné de vendable), et le **coût de main-d'œuvre** de l'ordre. Sarang ajoute la quantité produite au stock du produit fini et recalcule son coût moyen à partir du coût des matières plus le coût de main-d'œuvre, réparti uniquement sur les unités produites bonnes — le coût des unités rebutées est absorbé dans le coût des unités bonnes, puisqu'elles ont tout de même consommé de vraies ressources.
 - **Annulé** — disponible depuis Brouillon ou En cours, avec un motif facultatif. Annuler un ordre ayant déjà consommé des matières premières les restitue au stock.
 
-Chaque ordre de production peut aussi porter une liste de contrôle facultative d'**étapes d'ordre de travail** (par ex. « Mélange », « Cuisson », « Emballage ») que vous cochez une par une au fur et à mesure que la production se déroule réellement sur le terrain — ceci est séparé du suivi des matières/quantités et sert uniquement à suivre le processus physique.
+Chaque ordre de production peut aussi porter une liste de contrôle facultative d'**étapes d'ordre de travail** (par ex. « Mélange », « Cuisson », « Emballage ») que vous cochez une par une au fur et à mesure que la production se déroule réellement sur le terrain. Marquez une étape comme **point de contrôle qualité** et Sarang exige un véritable résultat Réussi/Échoué avant qu'elle puisse être cochée — un contrôle qualité ne peut pas être silencieusement contourné par une simple coche.
 
 ## 4. Suivi des expéditions
 

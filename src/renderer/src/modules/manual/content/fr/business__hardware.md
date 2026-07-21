@@ -4,7 +4,15 @@ Choisir **Quincaillerie** comme type d'entreprise active la **tarification par s
 
 ## Tarification par surface (calculateur L × l)
 
-Les quincailleries vendent souvent des produits tarifés au pied carré/mètre carré — carreaux, plaques, verre, contreplaqué — où le client ne connaît pas la surface de tête. Dans **Facturation**, toute ligne de panier pour une entreprise Quincaillerie affiche un petit bouton **Surface** à côté de son sélecteur de quantité. L'appuyer ouvre un calculateur longueur × largeur : saisissez les deux dimensions, et Sarang calcule la surface et la définit directement comme quantité de la ligne, dans l'unité de vente du produit. Cela ne change pas la façon dont le produit est tarifé — c'est un calculateur pratique qui remplit la bonne quantité afin que vous n'ayez pas besoin d'une application de calcul séparée au comptoir.
+Les quincailleries vendent souvent des produits tarifés au pied carré/mètre carré — carreaux, plaques, verre, contreplaqué — où le client ne connaît pas la surface de tête. Dans **Facturation**, toute ligne de panier pour une entreprise Quincaillerie affiche un petit bouton **Surface** à côté de son sélecteur de quantité. L'appuyer ouvre un calculateur longueur × largeur : saisissez les deux dimensions, et Sarang calcule la surface et la définit directement comme quantité de la ligne, dans l'unité de vente du produit. Cela ne change pas la façon dont le produit est tarifé — c'est un calculateur pratique qui remplit la bonne quantité afin que vous n'ayez pas besoin d'une application de calcul séparée au comptoir. Le même calculateur est disponible lors de la création d'un **Devis**, afin qu'une estimation tarifée à la surface soit tout aussi facile à préparer qu'une vente en direct.
+
+## Conversion d'unité carton/boîte
+
+Si vous achetez par cartons mais vendez à l'unité, activez la **facturation par lot (pack)** pour un produit et indiquez combien de pièces contient un lot. Lorsque vous recevez du stock, l'Ajustement de Stock propose un mode de saisie « lots reçus » — indiquez le nombre de lots/cartons et Sarang calcule pour vous le nombre de pièces équivalent. Tout le reste (facturation, alertes de stock faible, valorisation) continue de fonctionner en pièces comme d'habitude ; cela ne change que la façon dont vous *saisissez* le stock nouvellement reçu.
+
+## Mise au rebut pour dommage / casse
+
+Lorsque vous diminuez le stock pour un dommage ou une casse réels plutôt que pour une correction de routine, choisissez **Dommage** comme catégorie de motif sur le formulaire d'Ajustement de Stock. Cela l'enregistre distinctement d'un ajustement générique, afin que votre historique des Mouvements de Stock et vos rapports puissent distinguer les pertes par casse des corrections de stock ordinaires.
 
 ## Application de la limite de crédit
 

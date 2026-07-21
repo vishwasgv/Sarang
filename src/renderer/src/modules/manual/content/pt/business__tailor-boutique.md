@@ -10,6 +10,10 @@ Cada pedido registra o tipo de peça (Camisa, Calça, Terno, Kurta, Salwar Kamee
 
 Um pedido pode ser vinculado a um dos registros de medidas salvos do cliente, e passa por um pipeline de status: **Recebido → Em Corte → Em Costura → Prova Agendada → (Ajustes, se necessário) → Pronto → Entregue**, com Cancelado como um resultado separado. As datas de prova e entrega são rastreadas separadamente, e entregas atrasadas são sinalizadas em vermelho. Assim que estiver Pronto, um botão **Gerar Fatura** fatura o pedido.
 
+**Agendar Prova** transforma a prova de roupa em um compromisso real e reservável — o Sarang envia ao cliente um lembrete por WhatsApp um dia antes e novamente algumas horas antes, o mesmo sistema de lembretes usado para qualquer outro agendamento, para que você não precise se lembrar de ligar.
+
+Quando é a loja quem fornece o tecido, **Definir Tecido** vincula o pedido a um produto real do estoque e a uma quantidade — isso deduz o estoque de verdade, não apenas uma anotação, e **Remover vínculo do tecido** o restaura se o pedido mudar.
+
 ## Medidas
 
 A aba **Medidas** mantém um histórico corrente das medidas corporais de um cliente — busto, cintura, quadril, ombro, pescoço, manga, entrepernas (interior), entrepernas (exterior), coxa, altura, cava, profundidade do decote frontal/traseiro, comprimento da peça e punho — junto com quem tirou a medida e quando. Um cliente pode ter mais de um registro de medidas ao longo do tempo, e qualquer um deles pode ser anexado a um novo pedido.

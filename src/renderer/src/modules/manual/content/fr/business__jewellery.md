@@ -22,9 +22,15 @@ Ouvrez **Cours des métaux** dans la barre latérale pour définir le cours du j
 
 Au moment de la facturation, ajouter un article de bijouterie au panier recherche le cours actuel de son type de métal et de sa pureté, calcule la valeur du métal (poids net × cours), ajoute le frais de façon, et utilise cela comme prix unitaire de la ligne. Si aucun cours n'a encore été défini pour cette combinaison métal/pureté, Sarang ne vous laissera pas facturer à zéro — vous serez invité à définir d'abord le cours du jour.
 
+Besoin de négocier le frais de façon pour une vente particulière sans modifier le tarif configuré du produit lui-même ? Modifiez-le directement sur la ligne du panier — le prix de la ligne se recalcule immédiatement, et une ligne modifiée est signalée visuellement afin qu'il soit évident en un coup d'œil qu'elle n'utilise pas le frais standard.
+
+Si l'article a un **numéro de poinçon/HUID** enregistré sur le produit, il est capturé lors de la vente et imprimé automatiquement sur la facture.
+
 ## Échange d'ancien métal
 
-Ouvrez **Échange d'ancien métal** pour enregistrer un client échangeant de l'ancien or ou argent contre un nouvel achat. Saisissez le poids brut, un poids de déduction (pour tout contenu non métallique), le type de métal, et la pureté — Sarang recherche le cours du jour pour cette combinaison et calcule la valeur à donner au client (poids net × cours). Ceci est une tenue de registre autonome : la valeur calculée n'est pas automatiquement câblée dans une facture. Le personnel l'applique manuellement comme une remise sur la facture de nouvel achat du client, puis relie l'enregistrement d'échange à cette facture ensuite afin que les deux restent connectés pour vos registres.
+Ouvrez **Échange d'ancien métal** pour enregistrer un client échangeant de l'ancien or ou argent contre un nouvel achat. Saisissez le poids brut, un poids de déduction (pour tout contenu non métallique), le type de métal, et la pureté — Sarang recherche le cours du jour pour cette combinaison et calcule la valeur à donner au client (poids net × cours).
+
+Pour l'utiliser, cliquez sur **Appliquer un Échange de Métal Usagé** lors de la facturation de ce client — Sarang affiche le crédit et l'intègre directement dans la remise de la facture au moment de la création de la vente, et marque l'échange comme utilisé afin qu'il ne puisse jamais être appliqué accidentellement une seconde fois à une facture différente.
 
 ## Retours
 

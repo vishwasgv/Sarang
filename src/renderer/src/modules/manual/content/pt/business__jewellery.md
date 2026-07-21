@@ -22,9 +22,15 @@ Abra **Cotações de Metais** na barra lateral para definir a cotação de hoje 
 
 No momento do faturamento, adicionar um item de joalheria ao carrinho busca a cotação atual do seu tipo de metal e pureza, calcula o valor do metal (peso líquido × cotação), soma a taxa de fabricação e usa isso como o preço unitário da linha. Se nenhuma cotação ainda tiver sido definida para a combinação de metal/pureza daquele item, o Sarang não permitirá que você o fature a zero — você será solicitado a definir a cotação de hoje primeiro.
 
+Precisa negociar a taxa de fabricação para uma venda específica sem alterar a taxa configurada do próprio produto? Edite-a diretamente na linha do carrinho — o preço da linha é recalculado imediatamente, e uma linha com valor sobrescrito é sinalizada visualmente, para que fique óbvio à primeira vista que ela não está usando a taxa padrão.
+
+Se o item tiver um **número de marca/HUID** registrado no produto, ele é capturado na venda e impresso automaticamente na nota fiscal.
+
 ## Troca de Metal Usado
 
-Abra **Troca de Metal Usado** para registrar um cliente trocando ouro ou prata usados por uma nova compra. Informe o peso bruto, um peso de dedução (para qualquer conteúdo não metálico), o tipo de metal e a pureza — o Sarang consulta a cotação de hoje para essa combinação e calcula o valor a dar ao cliente (peso líquido × cotação). Isso é um registro independente: o valor calculado não é conectado automaticamente a uma nota fiscal. A equipe aplica-o manualmente como um desconto na nota de nova compra do cliente, depois vincula o registro de troca de volta a essa nota, para que os dois permaneçam conectados nos seus registros.
+Abra **Troca de Metal Usado** para registrar um cliente trocando ouro ou prata usados por uma nova compra. Informe o peso bruto, um peso de dedução (para qualquer conteúdo não metálico), o tipo de metal e a pureza — o Sarang consulta a cotação de hoje para essa combinação e calcula o valor a dar ao cliente (peso líquido × cotação).
+
+Para usá-lo, clique em **Aplicar Troca de Metal Usado** durante o faturamento daquele cliente — o Sarang mostra o crédito e o incorpora diretamente ao desconto da nota fiscal assim que a venda é criada, e marca a troca como utilizada para que ela nunca possa ser aplicada acidentalmente uma segunda vez a uma nota diferente.
 
 ## Devoluções
 

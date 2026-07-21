@@ -16,6 +16,12 @@ Pour les téléphones et autres appareils porteurs d'IMEI, chaque fiche d'appare
 
 La garantie de chaque appareil est stockée sous forme de durée en mois à partir de sa date d'achat/début de garantie, et Sarang calcule et affiche la date d'expiration réelle directement à côté — affichée comme toujours valide ou clairement marquée **Expirée** une fois passée. Demander à Sarang (si activé) peut aussi répondre à « Quels articles sont encore sous garantie ? » directement à partir de ces données.
 
+## Tickets de réparation / RMA
+
+Un appareil vendu et suivi par numéro de série obtient un bouton **Réparation** sur Suivi série — ouvrez-le pour voir l'historique complet d'entretien de cette unité, ou démarrez un nouveau ticket de réparation pour elle. Un ticket porte un numéro de réclamation et progresse à travers **Reçu → Diagnostiqué → Envoyé au Fournisseur → En Attente de Pièces → Réparé/Remplacé → Retourné au Client** (ou Annulé, seulement avant qu'un remplacement n'ait réellement été expédié). Notez à quel fournisseur vous l'avez envoyé et son propre numéro de RMA s'il part pour une réparation sous garantie.
+
+Si la solution est un simple échange, choisissez **Remplacé** et sélectionnez une unité en stock du même produit comme remplacement — Sarang marque l'unité d'origine Défectueuse, le remplacement Vendu (héritant de la facture de la vente d'origine), et la déduit automatiquement du stock, comme pour toute autre vente. Une réparation ne peut être ouverte que pour une unité réellement vendue — un appareil en stock, jamais vendu, n'a pas encore d'historique d'entretien à suivre.
+
 ## Logistique & Chaîne d'approvisionnement
 
 Comme le modèle par défaut d'Électronique inclut les modules Logistique, vous obtenez aussi **Flotte**, **Transporteurs**, **Expéditions**, **Bon de Réception**, **Bon de Livraison**, **Registre de Fret**, et **Analyses Logistiques** pour suivre vos propres véhicules de livraison et les expéditions fournisseurs — voir les écrans Logistique sous ces noms dans la barre latérale.

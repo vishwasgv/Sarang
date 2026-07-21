@@ -4,9 +4,15 @@ Choisir **Restaurant** comme type d'entreprise lors de la configuration active q
 
 ## Tables
 
-Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rsv** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier — une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif.
+Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rsv** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier — une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif. Attribuez un **serveur** à une table depuis sa carte afin de toujours savoir qui la sert ; retirez l'attribution à tout moment.
 
 **Fin de journée** est un bouton sur cet écran : il marque toutes les tables occupées comme à nouveau disponibles et affiche un résumé de clôture en une ligne (KOT servis et chiffre d'affaires du jour) afin que vous puissiez clôturer la salle à la fin d'un service.
+
+## Pourboire / frais de service et articles « 86 »
+
+Sur l'écran Facturation, utilisez **Ajouter un pourboire / frais de service** pour ajouter une ligne de pourboire à une facture sans qu'elle soit liée à un article de menu spécifique ni taxée comme un produit.
+
+Sur l'écran Produits, basculez n'importe quel article du menu en **86** (argot de cuisine pour « en rupture pour aujourd'hui ») pour le masquer instantanément du panier de facturation et du menu QR destiné aux clients, sans désactiver le produit lui-même — parfait pour un plat épuisé pour la journée mais qui reviendra au menu demain.
 
 ## Tickets de commande de cuisine (KOT)
 

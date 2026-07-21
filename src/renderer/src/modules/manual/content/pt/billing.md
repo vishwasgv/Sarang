@@ -14,6 +14,10 @@ Abra **Faturamento** na barra lateral (`/billing`) para acessar a tela de ponto 
 
 O carrinho mostra um subtotal, desconto, imposto, ajuste de arredondamento e total em tempo real, conforme você o monta. **Limpar Tudo**, na parte inferior, zera tudo sem salvar.
 
+Uma grade de blocos com seus **produtos mais vendidos** aparece acima da caixa de busca — um toque adiciona o item direto ao carrinho, sem precisar digitar, ordenados pelo que realmente mais vende.
+
+No meio de uma venda, precisa atender outro cliente sem perder o carrinho atual? Clique em **Reter Venda** para colocá-lo em espera e começar do zero; **Retomar Venda** traz de volta seus carrinhos retidos para continuar exatamente de onde parou. O **MRP** de um produto, quando definido acima do seu preço de venda, aparece como um preço de referência riscado ao lado do preço real nos resultados de busca.
+
 ## Histórico e detalhes das notas
 
 A **lista de notas** (`/billing`, na visualização de lista) mostra todas as notas com cliente, quantidade de itens, total, saldo pendente e status de pagamento (PENDENTE / PARCIAL / PAGA / CANCELADA). Busque por número da nota ou cliente, filtre por período ou por status Ativa/Cancelada.

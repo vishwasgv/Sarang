@@ -16,6 +16,18 @@ Tratores, pulverizadores motorizados, bombas d'água e outros equipamentos durá
 
 Quando um cliente traz um equipamento para reparo ou manutenção programada, abra uma ordem de serviço em **Ordens de Serviço** na barra lateral — o mesmo fluxo genérico de ordem de serviço que o tipo de negócio Repair do Sarang usa. Registre o que foi trazido, o trabalho a ser feito, as peças usadas e os custos de mão de obra, e a ordem de serviço pode ser faturada assim que o trabalho for concluído.
 
+## Condições de crédito atreladas à colheita
+
+Um cliente agricultor frequentemente precisa pagar depois da colheita, não no momento da compra. Ao faturar uma venda a Crédito, defina uma **data de vencimento** real — o Sarang mostra um selo de atraso na nota fiscal somente depois que essa data passar (não a data da venda), e o relatório de antiguidade da Análise de Saldos Pendentes também os agrupa pela data de vencimento real, para que um pagamento deliberadamente adiado até a colheita não seja sinalizado como atrasado apenas porque o tempo passou desde a venda.
+
+## Alertas de validade específicos por categoria
+
+Diferentes categorias de insumos agrícolas precisam de avisos antecipados diferentes — sementes e fertilizantes costumam precisar de um aviso mais longo do que um item de giro rápido. Defina um **prazo de antecedência do alerta de validade** (em dias) por produto para sobrepor a janela padrão de aviso de 30 dias; os lotes daquele produto passam então a mostrar seu selo de aviso com base no seu próprio prazo configurado.
+
+## Painel Combinado
+
+Abra **Painel Agrícola** para uma visão em uma única tela de ambas as metades do negócio ao mesmo tempo — consumíveis com estoque baixo, lotes vencendo/vencidos, contagem total de equipamentos e equipamentos com garantias vencendo em breve — em vez de conferir duas telas separadas.
+
 ## Logística e Cadeia de Suprimentos
 
 Como varejistas de insumos agrícolas recebem rotineiramente entregas formais de fornecedores (sacos de fertilizante e equipamentos chegando de caminhão), o conjunto completo de módulos de Logística e Cadeia de Suprimentos é ativado por padrão — Frota, Transportadoras, Remessas, GRN (recebimento de mercadorias), Guia de Remessa, Livro de Fretes e Análise de Logística aparecem todos na barra lateral sem precisar ser ativados separadamente.

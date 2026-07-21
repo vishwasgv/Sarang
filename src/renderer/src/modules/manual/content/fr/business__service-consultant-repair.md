@@ -21,11 +21,17 @@ Ouvrir l'écran de détail d'un projet vous donne deux choses supplémentaires :
 
 ## Fiches de travail (Réparation, Service via le modèle générique)
 
-Une fiche de travail est construite pour un article physique qu'un client dépose : un titre, une description d'article, une priorité, un coût estimé, et des dates de réception/attendue/livraison. Elle a son propre cycle de vie en sept étapes — **Reçu → Diagnostic → En réparation → (éventuellement En attente de pièces) → Prêt → Livré**, ou **Annulé** à tout moment avant la livraison. La vue de détail affiche cela comme un suivi visuel d'étapes et fait toujours ressortir le bouton d'action suivante unique (par ex. « Marquer en réparation »), plus une action dédiée « En attente de pièces » pendant qu'une fiche est en réparation. Livrer une fiche de travail est le moment où vous saisissez le coût final réel, séparé de l'estimation d'origine.
+Une fiche de travail est construite pour un article physique qu'un client dépose : un titre, une description d'article, une priorité, un coût estimé, et des dates de réception/attendue/livraison. Elle a son propre cycle de vie en sept étapes — **Reçu → Diagnostic → En réparation → (éventuellement En attente de pièces) → Prêt → Livré**, ou **Annulé** à tout moment avant la livraison. La vue de détail affiche cela comme un suivi visuel d'étapes et fait toujours ressortir le bouton d'action suivante unique (par ex. « Marquer en réparation »), plus une action dédiée « En attente de pièces » pendant qu'une fiche est en réparation. Livrer une fiche de travail est le moment où vous saisissez le coût final réel, séparé de l'estimation d'origine — **Générer une Facture** transforme ce coût final en une véritable facture une fois le travail livré.
+
+Ajoutez de véritables **pièces utilisées** à une fiche de travail depuis sa vue de détail — recherchez un produit, définissez la quantité, et Sarang la déduit de votre stock réel (pas une simple note en texte libre) ; retirer une pièce restitue le stock. Définissez une **période de garantie** en jours à la livraison, et un véritable badge Sous Garantie / Expirée s'affiche automatiquement à partir de ce moment-là. Si le même article revient pour un problème de garantie, démarrez une nouvelle fiche de travail et liez-la comme une **réclamation de garantie** contre l'originale — le statut de garantie en direct de l'originale s'affiche directement dans le formulaire de la nouvelle fiche de travail.
 
 ## Tickets de service (Service, Réparation)
 
-Un ticket est une demande de support plus légère : titre, description, priorité, une étiquette de catégorie facultative, et un client/assigné facultatifs. Il traverse **Ouvert → En cours → Résolu → Fermé**, et résoudre un ticket permet d'y attacher une note de résolution. Les tickets urgents et non résolus sont signalés par un indicateur de drapeau rouge sur la liste afin qu'ils ne soient pas enterrés.
+Un ticket est une demande de support plus légère : titre, description, priorité, une étiquette de catégorie facultative, et un client/assigné facultatifs. Il traverse **Ouvert → En cours → Résolu → Fermé**, et résoudre un ticket permet d'y attacher une note de résolution. Les tickets urgents et non résolus sont signalés par un indicateur de drapeau rouge sur la liste afin qu'ils ne soient pas enterrés. Saisissez un montant et **Générer une Facture** pour facturer un ticket résolu.
+
+## Rendez-vous et facturation des Projets
+
+Ces trois types d'entreprise obtiennent aussi **Rendez-vous** (réservation, plannings des prestataires, et rappels — voir les chapitres *Facturation* et universels) pour planifier des rendez-vous clients ou des créneaux de dépôt, et un Projet peut être facturé directement avec **Générer une Facture** une fois prêt, de la même façon qu'une Fiche de travail ou un Ticket.
 
 ## Suivi du travail
 

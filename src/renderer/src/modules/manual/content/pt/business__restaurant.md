@@ -4,9 +4,15 @@ Escolher **Restaurante** como seu tipo de negócio durante a configuração ativ
 
 ## Mesas
 
-Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Rsv** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo — uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa.
+Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Rsv** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo — uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa. Atribua um **garçom** a uma mesa a partir do seu cartão para sempre saber quem está atendendo; remova a atribuição a qualquer momento.
 
 **End of Day** é um botão nesta tela: ele marca toda mesa ocupada como disponível novamente e mostra um resumo de fechamento em uma linha (KOTs atendidos e a receita do dia), para que você possa encerrar o salão ao final de um turno.
+
+## Gorjeta / taxa de serviço e itens "86"
+
+Na tela de Faturamento, use **Adicionar gorjeta / taxa de serviço** para adicionar uma linha de gorjeta a uma conta sem que ela fique vinculada a nenhum item específico do cardápio nem seja tributada como um produto.
+
+Na tela de Produtos, marque qualquer item do cardápio como **86** (gíria de cozinha para "esgotado por hoje") para ocultá-lo instantaneamente do carrinho de faturamento e do cardápio QR voltado ao cliente, sem desativar o produto em si — perfeito para um prato que esgotou por hoje mas voltará ao cardápio amanhã.
 
 ## Comandas de Cozinha (KOT)
 

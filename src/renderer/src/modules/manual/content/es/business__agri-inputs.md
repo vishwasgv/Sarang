@@ -16,6 +16,18 @@ Los tractores, pulverizadores motorizados, bombas de agua y otros equipos durade
 
 Cuando un cliente trae un equipo para reparación o mantenimiento programado, abra una orden de trabajo desde **Job Cards** en la barra lateral — el mismo flujo de trabajo genérico de órdenes de trabajo que usa el tipo de negocio Reparación de Sarang. Registre qué se trajo, el trabajo a realizar, los repuestos usados y los cargos de mano de obra, y la orden de trabajo se puede facturar una vez que el trabajo esté completo.
 
+## Condiciones de crédito ligadas a la cosecha
+
+Un cliente agricultor a menudo necesita pagar después de la cosecha, no en el momento de la compra. Al facturar una venta a Crédito, establezca una **fecha de vencimiento** real — Sarang muestra una insignia de vencido en la factura una vez que pasa esa fecha (no la fecha de venta), y el informe de antigüedad de Análisis de Pendientes también la agrupa según la fecha de vencimiento real, de modo que un pago diferido hasta la cosecha no se marque como vencido solo porque ha pasado tiempo desde la venta.
+
+## Alertas de caducidad específicas por categoría
+
+Las distintas categorías de insumos agrícolas necesitan diferentes plazos de aviso previo — las semillas y los fertilizantes a menudo necesitan más anticipación que un artículo de rotación rápida. Configure un **plazo de alerta de caducidad** (en días) por producto para anular la ventana de aviso estándar de 30 días; los lotes de ese producto mostrarán entonces su insignia de aviso según el plazo configurado específicamente para él.
+
+## Panel combinado
+
+Abra **Agri Dashboard** para una vista en una sola pantalla de ambas mitades del negocio a la vez — consumibles con poco stock, lotes por vencer/vencidos, cantidad total de equipos y equipos con garantías por vencer pronto — en lugar de revisar dos pantallas separadas.
+
 ## Logística y Cadena de Suministro
 
 Debido a que los distribuidores de insumos agrícolas reciben rutinariamente entregas formales de proveedores (sacos de fertilizante y equipo llegando por camión), el conjunto completo de módulos de Logística y Cadena de Suministro está activado por defecto — Flota, Transportistas, Envíos, GRN (recepción de mercancía), Albarán de Entrega, Libro de Fletes y Análisis de Logística aparecen todos en la barra lateral sin necesidad de activarlos por separado.

@@ -8,6 +8,10 @@ Un article de vêtement n'est généralement pas une seule référence de stock 
 
 Les fiches produit pour une entreprise Vêtements obtiennent aussi un champ **Genre** facultatif (Homme/Femme/Unisexe) pour vous aider à organiser votre catalogue.
 
+Vous stockez beaucoup de combinaisons à la fois ? Utilisez **Générer une Matrice Taille × Couleur** en bas de Gérer les variantes — saisissez vos tailles et couleurs sous forme de listes séparées par des virgules (par ex. « S, M, L » et « Noir, Blanc ») et Sarang crée chaque combinaison comme une nouvelle ligne en une seule fois, en ignorant toute paire que vous avez déjà ajoutée manuellement.
+
+Chaque ligne de variante a son propre **code-barres** — générez-en un par ligne, ou utilisez **Générer les Codes-barres Manquants** pour compléter chaque variante qui n'en a pas encore. Lors de l'impression des étiquettes, un produit à variantes ouvre un sélecteur afin que l'étiquette porte le code-barres et le prix propres à cette variante exacte, et non ceux du produit parent.
+
 ## Vendre une variante
 
 Dans **Facturation**, ajouter un produit ayant des variantes configurées ne l'ajoute pas directement au panier — cela ouvre un sélecteur pour choisir la combinaison exacte taille/couleur vendue, et c'est le stock et le prix de cette variante spécifique (prix de base + son prix supplémentaire, le cas échéant) qui entre réellement dans le panier. Cela garde vos comptes de stock par taille/couleur exacts plutôt que de simplement décrémenter un seul chiffre partagé pour tout le produit.

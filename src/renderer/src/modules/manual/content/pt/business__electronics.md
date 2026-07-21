@@ -16,6 +16,12 @@ Para celulares e outros dispositivos que carregam IMEI, cada registro de disposi
 
 A garantia de cada dispositivo é armazenada como uma duração em meses a partir da sua data de compra/início de garantia, e o Sarang calcula e exibe a data real de vencimento diretamente ao lado dela — mostrada como ainda válida ou claramente marcada como **Vencida** depois que ela passa. O Ask Sarang (se ativado) também pode responder "Quais itens ainda estão na garantia?" diretamente a partir desses dados.
 
+## Ordens de reparo / RMA
+
+Um dispositivo vendido e rastreado por número de série ganha um botão **Reparo** em Rastreamento de Série — abra-o para ver o histórico de atendimento completo daquela unidade, ou iniciar uma nova ordem de reparo para ela. Uma ordem carrega um número de reclamação e avança pelos estágios **Recebido → Diagnosticado → Enviado ao Fornecedor → Aguardando Peças → Reparado/Substituído → Devolvido ao Cliente** (ou Cancelado, somente antes de uma substituição já ter sido de fato enviada). Registre para qual fornecedor você enviou o item e o número de RMA dele próprio, caso esteja saindo para reparo em garantia.
+
+Se a solução for uma troca direta, escolha **Substituído** e selecione uma unidade em estoque do mesmo produto como substituta — o Sarang marca a unidade original como Defeituosa, a substituta como Vendida (herdando a nota fiscal da venda original) e deduz do estoque automaticamente, da mesma forma que qualquer outra venda. Um reparo só pode ser aberto contra uma unidade que tenha realmente sido vendida — um dispositivo em estoque, nunca vendido, ainda não tem histórico de atendimento para rastrear.
+
 ## Logística e Cadeia de Suprimentos
 
 Como o modelo padrão de Eletrônicos inclui os módulos de Logística, você também tem **Frota**, **Transportadoras**, **Remessas**, **Nota de Recebimento (GRN)**, **Guia de Remessa**, **Livro de Fretes** e **Análise de Logística** para rastrear seus próprios veículos de entrega e as remessas de fornecedores — veja as telas de Logística sob esses nomes na barra lateral.

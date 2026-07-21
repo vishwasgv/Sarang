@@ -14,6 +14,10 @@ Ouvrez **Facturation** depuis la barre latérale (`/billing`) pour accéder à l
 
 Le panier affiche un sous-total, une remise, une taxe, un ajustement d'arrondi et un total mis à jour au fur et à mesure. **Tout effacer** en bas réinitialise tout sans enregistrer.
 
+Une grille de vignettes de vos produits **souvent vendus** apparaît au-dessus de la zone de recherche — un tap l'ajoute directement au panier, sans avoir besoin de taper quoi que ce soit, classée selon ce qui se vend réellement le plus.
+
+En pleine vente, besoin d'aider un autre client sans perdre le panier en cours ? Cliquez sur **Mettre la vente en attente** pour le mettre de côté et repartir de zéro ; **Reprendre la vente** affiche vos paniers en attente pour reprendre exactement là où vous vous étiez arrêté. Le **MRP** d'un produit, lorsqu'il est défini plus haut que son prix de vente, s'affiche comme un prix de référence barré à côté du prix réel dans les résultats de recherche.
+
 ## Historique et détail des factures
 
 La **liste des factures** (`/billing`, via la vue liste des factures) affiche chaque facture avec son client, le nombre d'articles, le total, le solde dû et le statut de paiement (IMPAYÉ / PARTIEL / PAYÉ / ANNULÉ). Recherchez par numéro de facture ou par client, filtrez par plage de dates ou par statut Actif/Annulé.

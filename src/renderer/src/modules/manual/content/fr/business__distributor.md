@@ -12,6 +12,18 @@ Ouvrez **Saisie de commande en gros** depuis la barre latérale pour construire 
 
 Le palier le plus élevé auquel la ligne est éligible s'applique ; les petites quantités ordinaires n'obtiennent aucune remise. Recherchez et rattachez un client grossiste à la commande (requis si vous choisissez Crédit comme mode de paiement — les commandes en Espèces, UPI, et Carte n'ont pas besoin de client), notez éventuellement une référence de commande et des notes de livraison, et validez — cela crée une facture normale que vous retrouverez ensuite dans Factures, marquée avec la référence de commande en gros dans ses notes.
 
+## Tarification négociée par client
+
+Regroupez vos clients en une **classe de client** (depuis leur fiche dans Clients — par ex. « Grossiste », « Détaillant ») et définissez des prix spécifiques par classe et par produit depuis le nouvel écran **Tarification par Classe de Client**. Une fois définis, la Saisie de commande en gros (et la commande d'un représentant terrain ci-dessous) tarife automatiquement le panier de ce client à son tarif négocié plutôt qu'au prix de vente normal — un client sans prix de classe enregistré est simplement facturé au prix catalogue comme auparavant.
+
+## Planification des tournées / itinéraires
+
+Une expédition peut comporter plusieurs **arrêts** au lieu d'une seule adresse de destination — ouvrez le détail d'une expédition et ajoutez chaque arrêt le long de l'itinéraire avec sa propre adresse et son propre statut de livraison, afin qu'une tournée à plusieurs dépôts soit suivie comme le véritable itinéraire qu'elle est, et non comme une seule destination avec tout le reste supposé livré en même temps.
+
+## Saisie de commande par représentant terrain
+
+Activez **Saisie de Commande Terrain** pour permettre à vos représentants commerciaux de soumettre des commandes depuis leur propre téléphone pendant leurs visites clients, sur le WiFi de votre magasin — aucune application à installer. Ouvrez **Commandes Terrain** pour voir le lien LAN/code QR à partager avec les représentants, et pour **Accepter** ou **Refuser** les demandes entrantes. Un représentant ne fait que choisir des produits et des quantités — Sarang revérifie toujours le véritable prix négocié du client (et votre limite de crédit) au moment où vous acceptez, et non ce que le téléphone du représentant avait estimé, de sorte que la facture réellement créée est toujours tarifée correctement.
+
 ## Analyses des créances en cours
 
 Ouvrez **Analyses des créances en cours** pour voir votre exposition totale au crédit à travers tous les clients grossistes ayant un solde impayé : total en cours, combien de clients dépassent actuellement leur limite de crédit, et le solde en cours moyen par client. Une répartition par **ancienneté** montre depuis combien de temps chaque montant est en cours — Courant, 1 à 30 jours, 31 à 60 jours, 61 à 90 jours, 90+ jours — afin que vous puissiez voir non seulement combien est dû mais aussi à quel point c'est en retard. La liste de clients ci-dessous affiche la limite de crédit de chacun, son solde en cours actuel (avec une barre de progression vers sa limite), et son chiffre à 90+ jours, et est triée de sorte que quiconque dépasse sa limite se distingue en rouge. Appuyez sur n'importe quel client pour accéder à sa fiche complète.

@@ -10,9 +10,11 @@ El stock solo se mueve a través de **Adjust Stock**, que registra uno de tres t
 
 ## 2. Lista de Materiales (LDM)
 
-Una LDM define lo que un producto terminado realmente necesita: elija el producto, establezca una cantidad de salida por lote, y liste las materias primas que consume con una cantidad necesaria y un porcentaje de merma opcional. La merma infla la cantidad efectiva consumida (p. ej. 5% de merma sobre 10 kg necesarios significa que en realidad se planifican 10.5 kg para el consumo). Sarang totaliza el costo de material por lote a partir del costo unitario actual de cada ingrediente — esta es la base de costo que usará después una orden de producción.
+Una LDM define lo que un producto terminado realmente necesita: elija el producto, establezca una cantidad de salida por lote, y liste lo que consume — ya sea una materia prima, o **otro producto fabricado como subensamble** (alterne el tipo de la fila), con una cantidad necesaria y un porcentaje de merma opcional. La merma infla la cantidad efectiva consumida (p. ej. 5% de merma sobre 10 kg necesarios significa que en realidad se planifican 10.5 kg para el consumo). Al construir un producto de varios niveles — digamos un Auto que necesita un Motor, que a su vez se fabrica a partir de Acero crudo — Sarang verifica referencias circulares (un componente que eventualmente necesitaría de sí mismo) y bloquea guardarlo. Sarang totaliza el costo de material por lote a partir del costo unitario actual de cada ingrediente — esta es la base de costo que usará después una orden de producción.
 
-Solo se permite una LDM por producto; editar una LDM existente le permite cambiar cantidades y merma, pero no para qué producto es.
+Solo se permite una LDM por producto; editar una LDM existente le permite cambiar cantidades, merma y las filas de componentes, pero no para qué producto es.
+
+Las materias primas recibidas en lotes distintos (una entrega de hoy puede costar diferente a la del mes pasado) pueden rastrearse como **lotes de material** desde Materias Primas — reciba un lote con su propia cantidad, y una orden de producción automáticamente toma del lote más antiguo primero (FIFO), para que siempre sepa exactamente qué lote entró en qué corrida de producción.
 
 ## 3. Órdenes de Producción
 
@@ -20,10 +22,10 @@ Este es el flujo de trabajo central de fabricación, y pasa por cuatro estados:
 
 - **Draft** (Borrador) — elige un producto con una LDM y una cantidad planificada; Sarang calcula exactamente cuánto de cada materia prima necesita ese plan.
 - **In Progress** (En Proceso) — iniciar una orden verifica que cada materia prima requerida tenga suficiente stock; si algo falta, le indica exactamente qué y cuánto, y se niega a iniciar. Una vez iniciada, las materias primas se deducen de inmediato (registradas como un movimiento "Consumido" contra cada material) — esto sucede al inicio, no al completarse.
-- **Completed** (Completada) — ingresa la cantidad realmente producida (no tiene que coincidir con el plan). Sarang agrega esa cantidad al stock del producto terminado y recalcula su costo promedio usando la misma fórmula de promedio ponderado que usa cualquier otra vía de entrada de stock en Sarang, de modo que la base de costo de un lote fabricado fluya correctamente hacia su valoración de inventario e informes de ganancias.
+- **Completed** (Completada) — ingresa la cantidad realmente producida, una **cantidad de desecho/rechazo** (unidades que consumieron material y mano de obra pero no produjeron nada vendible), y el **costo de mano de obra** de la corrida. Sarang agrega la cantidad producida al stock del producto terminado y recalcula su costo promedio a partir del costo de material más el costo de mano de obra, dividido solo entre las unidades producidas buenas — el costo de las unidades desechadas se absorbe en el costo de las unidades buenas, ya que igualmente consumieron recursos reales.
 - **Cancelled** (Cancelada) — disponible desde Draft o In Progress, con un motivo opcional. Cancelar una orden que ya consumió materias primas las devuelve al stock.
 
-Cada orden de producción también puede llevar una lista de verificación opcional de **pasos de orden de trabajo** (p. ej. "Mezclado", "Horneado", "Empaquetado") que usted marca uno por uno a medida que la producción realmente sucede en la planta — esto es independiente del seguimiento de material/cantidad y es puramente para seguir el proceso físico.
+Cada orden de producción también puede llevar una lista de verificación opcional de **pasos de orden de trabajo** (p. ej. "Mezclado", "Horneado", "Empaquetado") que usted marca uno por uno a medida que la producción realmente sucede en la planta. Marque un paso como **punto de control de calidad** y Sarang exigirá un resultado real de Aprobado/Rechazado antes de poder marcarlo — un control de calidad no puede omitirse silenciosamente con una simple marca.
 
 ## 4. Seguimiento de Despacho
 

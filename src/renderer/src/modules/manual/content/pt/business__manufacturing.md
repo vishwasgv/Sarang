@@ -10,9 +10,11 @@ O estoque só se movimenta através de **Ajustar Estoque**, que registra um dent
 
 ## 2. Lista de Materiais (BOM)
 
-Uma BOM (Lista de Materiais) define o que um produto acabado realmente precisa: escolha o produto, defina uma quantidade de saída por lote e liste as matérias-primas que ele consome, com uma quantidade necessária e uma porcentagem opcional de desperdício. O desperdício infla a quantidade efetivamente consumida (por exemplo, 5% de desperdício sobre 10 kg necessários significa que 10,5 kg são realmente planejados para consumo). O Sarang totaliza o custo do material por lote a partir do custo unitário atual de cada ingrediente — essa é a base de custo que uma ordem de produção usará mais tarde.
+Uma BOM (Lista de Materiais) define o que um produto acabado realmente precisa: escolha o produto, defina uma quantidade de saída por lote e liste o que ele consome — uma matéria-prima, ou **outro produto fabricado como subconjunto** (alterne o tipo da linha), com uma quantidade necessária e uma porcentagem opcional de desperdício. O desperdício infla a quantidade efetivamente consumida (por exemplo, 5% de desperdício sobre 10 kg necessários significa que 10,5 kg são realmente planejados para consumo). Ao montar um produto de múltiplos níveis — digamos, um Carro que precisa de um Motor, que por sua vez é fabricado a partir de Aço bruto — o Sarang verifica referências circulares (um componente que acabaria precisando de si mesmo) e bloqueia salvar uma delas. O Sarang totaliza o custo do material por lote a partir do custo unitário atual de cada ingrediente — essa é a base de custo que uma ordem de produção usará mais tarde.
 
-Apenas uma BOM por produto é permitida; editar uma BOM existente permite alterar quantidades e desperdício, mas não para qual produto ela é.
+Apenas uma BOM por produto é permitida; editar uma BOM existente permite alterar quantidades, desperdício e linhas de componentes, mas não para qual produto ela é.
+
+Matérias-primas recebidas em lotes distintos (uma entrega hoje pode ter um custo diferente da do mês passado) podem ser rastreadas como **lotes de material** a partir de Matérias-Primas — receba um lote com sua própria quantidade, e uma ordem de produção consome automaticamente primeiro do lote mais antigo (FIFO), para que você sempre saiba exatamente qual lote entrou em qual execução de produção.
 
 ## 3. Ordens de Produção
 
@@ -20,10 +22,10 @@ Este é o fluxo de trabalho central da fabricação, e ele passa por quatro esta
 
 - **Rascunho** — você escolhe um produto com uma BOM e uma quantidade planejada; o Sarang calcula exatamente quanto de cada matéria-prima esse plano precisa.
 - **Em Andamento** — iniciar uma ordem verifica se cada matéria-prima necessária tem estoque suficiente; se algo estiver faltando, ela informa exatamente o quê e quanto, e se recusa a iniciar. Uma vez iniciada, as matérias-primas são deduzidas imediatamente (registradas como um movimento "Consumido" contra cada material) — isso acontece no início, não na conclusão.
-- **Concluída** — você informa a quantidade realmente produzida (ela não precisa corresponder ao plano). O Sarang adiciona essa quantidade ao estoque do produto acabado e recalcula seu custo médio usando a mesma fórmula de média ponderada que todo outro caminho de entrada de estoque no Sarang usa, para que a base de custo de um lote fabricado flua corretamente para a sua avaliação de estoque e relatórios de lucro.
+- **Concluída** — você informa a quantidade realmente produzida, uma **quantidade de descarte/rejeitado** (unidades que consumiram material e mão de obra mas não renderam nada vendável) e o **custo de mão de obra** da execução. O Sarang adiciona a quantidade produzida ao estoque do produto acabado e recalcula seu custo médio a partir do custo de material somado ao custo de mão de obra, dividido apenas entre as unidades produzidas — o custo das unidades descartadas é absorvido pelo custo das unidades boas, já que elas também consumiram recursos reais.
 - **Cancelada** — disponível a partir de Rascunho ou Em Andamento, com um motivo opcional. Cancelar uma ordem que já consumiu matérias-primas devolve-as ao estoque.
 
-Cada ordem de produção também pode ter uma lista opcional de **etapas da ordem de serviço** (por exemplo, "Mistura", "Cozimento", "Embalagem") que você marca uma a uma conforme a produção realmente acontece no chão de fábrica — isso é separado do rastreamento de material/quantidade e serve puramente para acompanhar o processo físico.
+Cada ordem de produção também pode ter uma lista opcional de **etapas da ordem de serviço** (por exemplo, "Mistura", "Cozimento", "Embalagem") que você marca uma a uma conforme a produção realmente acontece no chão de fábrica. Marque uma etapa como **ponto de controle de qualidade** e o Sarang exige um resultado real de Aprovado/Reprovado antes que ela possa ser marcada — um controle de qualidade não pode ser silenciosamente pulado com uma simples marcação.
 
 ## 4. Rastreamento de Despacho
 

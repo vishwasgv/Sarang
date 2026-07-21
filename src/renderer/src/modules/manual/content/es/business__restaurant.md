@@ -4,9 +4,15 @@ Elegir **Restaurante** como su tipo de negocio durante la configuración activa 
 
 ## Mesas
 
-Abra **Restaurant Tables** desde la barra lateral para ver cada mesa que ha configurado, cada una mostrada como una tarjeta con su estado actual: **Free** (Libre), **Busy** (Ocupada) o **Rsv** (Reservada). Agregue una mesa con un número de mesa (p. ej. "T1") y un nombre para mostrar opcional. Toque un botón de estado en la tarjeta de una mesa para cambiarlo — una mesa no se puede eliminar mientras tenga una comanda de cocina activa.
+Abra **Restaurant Tables** desde la barra lateral para ver cada mesa que ha configurado, cada una mostrada como una tarjeta con su estado actual: **Free** (Libre), **Busy** (Ocupada) o **Rsv** (Reservada). Agregue una mesa con un número de mesa (p. ej. "T1") y un nombre para mostrar opcional. Toque un botón de estado en la tarjeta de una mesa para cambiarlo — una mesa no se puede eliminar mientras tenga una comanda de cocina activa. Asigne un **mesero** a una mesa desde su tarjeta para siempre saber quién la está atendiendo; borre la asignación en cualquier momento.
 
 **End of Day** (Fin del Día) es un botón en esta pantalla: marca cada mesa ocupada como disponible de nuevo y muestra un resumen de cierre de una línea (KOT servidos e ingresos de hoy), para que pueda cerrar el comedor al final de un turno.
+
+## Propina / cargo por servicio y artículos "86"
+
+En la pantalla de Facturación, use **Agregar propina / cargo por servicio** para añadir una línea de propina a una cuenta sin que esté vinculada a ningún artículo del menú específico ni se grave como producto.
+
+En la pantalla de Productos, marque cualquier artículo del menú como **86** (jerga de cocina para "agotado por hoy") para ocultarlo instantáneamente del carrito de facturación y del menú QR de cara al cliente, sin desactivar el producto en sí — perfecto para un platillo que se agotó por el día pero que volverá al menú mañana.
 
 ## Comandas de Cocina (KOT)
 

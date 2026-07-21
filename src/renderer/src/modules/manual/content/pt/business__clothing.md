@@ -8,6 +8,10 @@ Um item de vestuário geralmente não é um único número de estoque — "Camis
 
 Registros de produto para um negócio de Vestuário também têm um campo opcional de **Gênero** (Masculino/Feminino/Unissex) para ajudar a organizar seu catálogo.
 
+Precisa estocar várias combinações de uma vez? Use **Gerar Matriz de Tamanho × Cor** na parte inferior de Gerenciar Variações — digite seus tamanhos e cores como listas separadas por vírgula (por exemplo, "P, M, G" e "Preto, Branco") e o Sarang cria cada combinação como uma nova linha de uma só vez, ignorando qualquer combinação que você já tenha adicionado manualmente.
+
+Cada linha de variação tem seu próprio **código de barras** — gere um por linha, ou use **Gerar Códigos de Barras Ausentes** para preencher toda variação que ainda não tenha um. Ao imprimir etiquetas, um produto com variações rastreadas abre um seletor para que a etiqueta traga o código de barras e o preço exatos daquela variação, não os do produto principal.
+
 ## Vendendo uma variação
 
 No **Faturamento**, adicionar um produto que tem variações configuradas não o adiciona diretamente ao carrinho — abre-se um seletor para você escolher exatamente qual combinação de tamanho/cor está sendo vendida, e é o estoque e o preço daquela variação específica (preço base + seu preço adicional, se houver) que realmente entra no carrinho. Isso mantém suas contagens de estoque por tamanho/cor precisas, em vez de simplesmente decrementar um único número compartilhado para o produto inteiro.

@@ -25,6 +25,14 @@ Abra **Reservas de Aluguel** na barra lateral. Uma reserva passa por:
 
 Uma reserva Reservada também pode ser **Cancelada** (antes da retirada) ou **Estendida** para uma data/hora de término posterior (desde que o item permaneça disponível durante o novo intervalo).
 
+Uma reserva pode incluir vários itens de uma vez — cada um recebe sua própria **cobrança por dano** na devolução, de modo que a nota fiscal de uma reserva com múltiplos itens detalha exatamente qual unidade foi danificada, em vez de uma única linha de reparo genérica. Anexe **fotos de condição** reais tanto na retirada quanto na devolução de cada item, dando a você um registro documentado de antes/depois caso surja alguma disputa.
+
+## Manutenção e aluguéis recorrentes
+
+Defina um **intervalo de manutenção** em um item rastreado por UNIT — seja um número de aluguéis ou um número de dias — e o Sarang o encaminha automaticamente para o status Em Manutenção na devolução assim que o intervalo é atingido, bloqueando-o de ser alugado novamente até que você o marque como revisado. Abra **Unidades de Aluguel** para ver quais itens estão pendentes e para registrar uma manutenção concluída.
+
+Para um cliente que aluga a mesma coisa em uma programação regular, defina um **intervalo de recorrência** na reserva e use **Criar Próximo Ciclo** assim que o período atual terminar, para gerar a próxima reserva com um único clique em vez de reinserir tudo do zero.
+
 ## A disponibilidade é sempre ao vivo, nunca um decremento de estoque
 
 O Sarang nunca decrementa uma quantidade de estoque quando um aluguel é retirado. Em vez disso, a disponibilidade — tanto para itens UNIT quanto BULK — é calculada ao vivo a partir de toda reserva atualmente Reservada ou Retirada que se sobrepõe ao intervalo de datas solicitado. Isso importa porque uma reserva precisa bloquear a disponibilidade *antes* da retirada — dois clientes tentando reservar a mesma última tenda para datas sobrepostas não podem ambos ter sucesso, o que um modelo de "decrementar apenas na retirada" deixaria passar.

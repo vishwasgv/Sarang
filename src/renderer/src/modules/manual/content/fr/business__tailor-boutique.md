@@ -10,6 +10,10 @@ Chaque commande enregistre le type de vêtement (Chemise, Pantalon, Costume, Kur
 
 Une commande peut être liée à l'une des fiches de mesures enregistrées du client, et traverse un pipeline de statuts : **Reçu → En coupe → En couture → Essai prévu → (Retouches, si nécessaire) → Prêt → Livré**, avec Annulé comme résultat séparé. Les dates d'essai et de livraison sont suivies séparément, et les livraisons en retard sont signalées en rouge. Une fois Prêt, un bouton **Générer la facture** facture la commande.
 
+**Planifier l'Essayage** transforme la séance d'essayage en un véritable rendez-vous réservable — Sarang envoie au client un rappel WhatsApp la veille puis à nouveau quelques heures avant, le même système de rappel utilisé pour tout autre rendez-vous, afin que vous n'ayez pas besoin de penser à appeler.
+
+Lorsque la boutique fournit le tissu, **Définir le Tissu** relie la commande à un véritable produit d'inventaire et une quantité — cela déduit un stock réel, pas juste une note, et **Retirer le tissu** le restitue si la commande change.
+
 ## Mesures
 
 L'onglet **Mesures** conserve un historique courant des mesures corporelles d'un client — poitrine, taille, hanches, épaule, cou, manche, entrejambe, longueur extérieure de jambe, cuisse, hauteur, emmanchure, profondeur de cou devant/derrière, longueur du vêtement, et poignet — ainsi que qui a pris la mesure et quand. Un client peut avoir plusieurs fiches de mesures au fil du temps, et n'importe laquelle d'entre elles peut être rattachée à une nouvelle commande.

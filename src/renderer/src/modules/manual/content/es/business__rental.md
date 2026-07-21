@@ -25,6 +25,14 @@ Abra **Rental Bookings** en la barra lateral. Una reserva pasa por:
 
 Una reserva en estado Reserved también se puede **Cancelar** (antes del retiro) o **Extender** a una fecha/hora de fin posterior (siempre que el artículo permanezca disponible durante el nuevo rango).
 
+Una reserva puede incluir varios artículos a la vez — cada uno obtiene su propio **cargo por daño** en la devolución, de modo que la factura de una reserva con varios artículos detalle exactamente qué unidad se dañó en lugar de una sola línea de reparación global. Adjunte **fotos de condición** reales tanto en el retiro como en la devolución de cada artículo, dándole un registro documentado de antes/después si alguna vez surge una disputa.
+
+## Mantenimiento y alquileres recurrentes
+
+Establezca un **intervalo de servicio** en un artículo con seguimiento UNIT — ya sea un número de alquileres o un número de días — y Sarang lo enruta automáticamente al estado Maintenance (Mantenimiento) al devolverse una vez alcanzado el intervalo, bloqueándolo de volver a alquilarse hasta que lo marque como reparado. Abra **Rental Units** para ver qué artículos están pendientes y registrar un servicio completado.
+
+Para un cliente que alquila lo mismo en un horario regular, establezca un **intervalo de recurrencia** en la reserva y use **Crear siguiente ciclo** una vez que termine el período actual para generar la siguiente reserva con un clic en lugar de volver a ingresar todo desde cero.
+
 ## La disponibilidad siempre es en vivo, nunca un decremento de stock
 
 Sarang nunca decrementa una cantidad de stock cuando se retira un alquiler. En cambio, la disponibilidad — tanto para artículos UNIT como BULK — se calcula en vivo a partir de cada reserva actualmente Reservada o Entregada que se superponga con el rango de fechas solicitado. Esto importa porque una reserva tiene que bloquear la disponibilidad *antes* del retiro — dos clientes que intentan reservar la misma última carpa para fechas superpuestas no deben poder tener éxito ambos, algo que un modelo de "decrementar solo al retirar" pasaría por alto.

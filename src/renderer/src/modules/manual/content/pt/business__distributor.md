@@ -12,6 +12,18 @@ Abra **Bulk Order Entry** na barra lateral para montar rapidamente um grande ped
 
 Aplica-se a maior faixa para a qual a linha se qualifica; quantidades pequenas comuns não recebem desconto. Busque e vincule um cliente atacadista ao pedido (obrigatório se você escolher Crédito como forma de pagamento — pedidos em Dinheiro, UPI e Cartão não precisam de cliente), opcionalmente anote uma referência do pedido e observações de entrega, e envie — isso cria uma nota normal que você encontrará depois em Notas, marcada com a referência do pedido em atacado em suas observações.
 
+## Precificação negociada por cliente
+
+Agrupe clientes em uma **classe de cliente** (a partir do registro dele em Clientes — por exemplo, "Atacadista", "Varejista") e defina preços específicos por classe para cada produto na nova tela **Preços por Classe de Cliente**. Uma vez definido, a Entrada de Pedidos em Atacado (e o pedido de um representante de campo abaixo) precifica automaticamente o carrinho daquele cliente pela sua taxa negociada, em vez do preço de venda normal — um cliente sem preço de classe cadastrado simplesmente é faturado pelo preço de tabela, como antes.
+
+## Planejamento de rota / roteiro
+
+Uma remessa pode carregar várias **paradas** em vez de apenas seu único endereço de destino — abra o detalhe de uma remessa e adicione cada parada ao longo da rota com seu próprio endereço e status de entrega, para que uma corrida com múltiplas entregas seja rastreada como a rota real que é, e não como um único destino com tudo o mais presumido como entregue de uma só vez.
+
+## Captura de pedidos por representante de campo
+
+Ative **Captura de Pedido de Campo** para permitir que seus representantes de vendas enviem pedidos pelo próprio celular enquanto visitam clientes, pelo WiFi da sua loja — sem precisar instalar nenhum app. Abra **Pedidos de Campo** para ver o link/código QR da rede local a compartilhar com os representantes, e para **Aceitar** ou **Rejeitar** as solicitações recebidas. Um representante só escolhe produtos e quantidades — o Sarang sempre reverifica o preço negociado real do cliente (e seu limite de crédito) no momento em que você aceita, não o que o celular do representante estimou, de modo que a nota fiscal realmente criada sempre sai precificada corretamente.
+
 ## Análise de Saldos Pendentes
 
 Abra **Outstanding Analytics** para ver sua exposição total de crédito entre todos os clientes atacadistas com saldo em aberto: total pendente, quantos clientes estão atualmente acima do limite de crédito e o saldo pendente médio por cliente. Uma divisão por **antiguidade** mostra há quanto tempo cada valor está pendente — Atual, 1–30 dias, 31–60 dias, 61–90 dias, 90+ dias — para que você veja não apenas quanto é devido, mas o quanto está atrasado. A lista de clientes abaixo mostra o limite de crédito de cada um, o saldo pendente atual (com uma barra de progresso em relação ao limite) e seu valor de 90+ dias, e é ordenada para que quem estiver acima do limite se destaque em vermelho. Toque em qualquer cliente para ir direto ao registro completo dele.

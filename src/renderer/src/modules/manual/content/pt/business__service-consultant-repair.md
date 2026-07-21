@@ -21,11 +21,17 @@ Abrir a tela de detalhes de um projeto oferece mais duas coisas:
 
 ## Ordens de Serviço (Repair, Service via o modelo genérico)
 
-Uma ordem de serviço é criada para um item físico que um cliente deixa: um título, descrição do item, prioridade, custo estimado e datas de recebimento/previsão/entrega. Ela tem seu próprio ciclo de vida de sete estágios — **Recebido → Diagnosticando → Em Reparo → (opcionalmente Aguardando Peças) → Pronto → Entregue**, ou **Cancelado** a qualquer momento antes da entrega. A tela de detalhes exibe isso como um rastreador visual de estágios e sempre destaca o único próximo botão de ação (por exemplo, "Marcar Em Reparo"), além de uma ação dedicada "Aguardando Peças" enquanto uma ordem está em reparo. Entregar uma ordem de serviço é o momento em que você informa o custo final real, separado da estimativa original.
+Uma ordem de serviço é criada para um item físico que um cliente deixa: um título, descrição do item, prioridade, custo estimado e datas de recebimento/previsão/entrega. Ela tem seu próprio ciclo de vida de sete estágios — **Recebido → Diagnosticando → Em Reparo → (opcionalmente Aguardando Peças) → Pronto → Entregue**, ou **Cancelado** a qualquer momento antes da entrega. A tela de detalhes exibe isso como um rastreador visual de estágios e sempre destaca o único próximo botão de ação (por exemplo, "Marcar Em Reparo"), além de uma ação dedicada "Aguardando Peças" enquanto uma ordem está em reparo. Entregar uma ordem de serviço é o momento em que você informa o custo final real, separado da estimativa original — **Gerar Fatura** transforma esse custo final em uma nota fiscal real assim que a ordem for entregue.
+
+Adicione **peças utilizadas** reais a uma ordem de serviço a partir da sua tela de detalhes — busque um produto, defina a quantidade, e o Sarang deduz do seu estoque de verdade (não uma anotação em texto livre); remover uma peça restaura o estoque. Defina um **período de garantia** em dias na entrega, e um selo real de Em Garantia / Vencida passa a ser exibido automaticamente a partir daquele momento. Se o mesmo item voltar por um problema coberto por garantia, inicie uma nova ordem de serviço e vincule-a como uma **reclamação de garantia** contra a original — o status de garantia ao vivo da original aparece diretamente no formulário da nova ordem de serviço.
 
 ## Tickets de Serviço (Service, Repair)
 
-Um ticket é uma solicitação de suporte mais leve: título, descrição, prioridade, uma etiqueta de categoria opcional e um cliente/responsável opcionais. Ele passa por **Aberto → Em Andamento → Resolvido → Fechado**, e resolver um ticket permite anexar uma nota de resolução. Tickets urgentes e não resolvidos são destacados com um indicador de bandeira vermelha na lista, para que não fiquem esquecidos.
+Um ticket é uma solicitação de suporte mais leve: título, descrição, prioridade, uma etiqueta de categoria opcional e um cliente/responsável opcionais. Ele passa por **Aberto → Em Andamento → Resolvido → Fechado**, e resolver um ticket permite anexar uma nota de resolução. Tickets urgentes e não resolvidos são destacados com um indicador de bandeira vermelha na lista, para que não fiquem esquecidos. Informe um valor e **Gerar Fatura** para faturar um ticket resolvido.
+
+## Agendamentos e faturamento de Projetos
+
+Todos os três tipos de negócio também recebem **Agendamentos** (reserva, horários de prestadores e lembretes — veja os capítulos de *Faturamento* e os capítulos universais) para agendar reuniões com clientes ou horários de entrega, e um Projeto pode ser faturado diretamente com **Gerar Fatura** assim que estiver pronto, da mesma forma que uma Ordem de Serviço ou um Ticket.
 
 ## Controle de Trabalho
 

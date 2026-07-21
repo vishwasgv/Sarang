@@ -16,6 +16,18 @@ Les tracteurs, pulvérisateurs motorisés, pompes à eau, et autres équipements
 
 Lorsqu'un client apporte un équipement pour réparation ou entretien planifié, ouvrez une fiche de travail depuis **Fiches de travail** dans la barre latérale — le même flux de travail générique de fiche de travail que le type d'entreprise Réparation de Sarang utilise. Enregistrez ce qui a été apporté, le travail à effectuer, les pièces utilisées, et les frais de main-d'œuvre, et la fiche de travail peut être facturée une fois le travail terminé.
 
+## Conditions de crédit liées à la récolte
+
+Un client agriculteur a souvent besoin de payer après la récolte, et non au moment de l'achat. Lors de la facturation d'une vente à Crédit, définissez une vraie **date d'échéance** — Sarang affiche un badge de retard sur la facture une fois cette date dépassée (et non la date de vente), et le rapport d'ancienneté des Analyses des Impayés la classe elle aussi par la date d'échéance réelle, afin qu'un paiement différé jusqu'à la récolte ne soit pas signalé comme en retard simplement parce que du temps s'est écoulé depuis la vente.
+
+## Alertes de péremption spécifiques par catégorie
+
+Différentes catégories d'intrants agricoles ont besoin d'un préavis différent — les semences et engrais ont souvent besoin d'un délai plus long qu'un article à rotation rapide. Définissez un **délai d'alerte de péremption** (en jours) par produit pour remplacer la fenêtre d'avertissement standard de 30 jours ; les lots de ce produit affichent alors leur badge d'avertissement selon son propre délai configuré.
+
+## Tableau de bord combiné
+
+Ouvrez **Tableau de bord Agri** pour une vue sur un seul écran des deux moitiés de l'entreprise à la fois — consommables en stock faible, lots expirant/expirés, nombre total d'équipements, et équipements dont la garantie expire bientôt — au lieu de vérifier deux écrans séparés.
+
 ## Logistique & Chaîne d'approvisionnement
 
 Comme les détaillants d'intrants agricoles reçoivent régulièrement des livraisons fournisseurs formelles (sacs d'engrais et équipements arrivant par camion), l'ensemble complet des modules Logistique & Chaîne d'approvisionnement est activé par défaut — Flotte, Transporteurs, Expéditions, Bon de Réception (réception de marchandises), Bon de Livraison, Registre de Fret, et Analyses Logistiques apparaissent tous dans la barre latérale sans avoir besoin de les activer séparément.

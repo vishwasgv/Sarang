@@ -22,9 +22,15 @@ Abra **Metal Rates** en la barra lateral para establecer la tarifa de hoy por gr
 
 Al momento de facturar, agregar un artículo de joyería al carrito busca la tarifa actual de su tipo de metal y pureza, calcula el valor del metal (peso neto × tarifa), agrega el cargo por elaboración, y usa eso como el precio unitario de la línea. Si aún no se ha configurado una tarifa para la combinación de metal/pureza de ese artículo, Sarang no le permitirá facturarlo en cero — se le pedirá que primero configure la tarifa de hoy.
 
+¿Necesita negociar el cargo por elaboración para una venta en particular sin cambiar la tarifa configurada del producto? Edítelo directamente en la línea del carrito — el precio de la línea se recalcula de inmediato, y una línea modificada se marca visualmente para que sea evidente de un vistazo que no está usando el cargo estándar.
+
+Si el artículo tiene un **número de sello/HUID** registrado en el producto, se captura en la venta y se imprime en la factura automáticamente.
+
 ## Cambio de metal usado
 
-Abra **Old-Metal Exchange** para registrar a un cliente que entrega oro o plata usados a cambio de una nueva compra. Ingrese el peso bruto, un peso de deducción (por cualquier contenido que no sea metal), tipo de metal y pureza — Sarang busca la tarifa de hoy para esa combinación y calcula el valor a entregar al cliente (peso neto × tarifa). Esto es un registro independiente: el valor calculado no se conecta automáticamente a una factura. El personal lo aplica manualmente como un descuento en la nueva factura de compra del cliente, y luego vincula el registro de cambio de vuelta a esa factura después, para que ambos permanezcan conectados en sus registros.
+Abra **Old-Metal Exchange** para registrar a un cliente que entrega oro o plata usados a cambio de una nueva compra. Ingrese el peso bruto, un peso de deducción (por cualquier contenido que no sea metal), tipo de metal y pureza — Sarang busca la tarifa de hoy para esa combinación y calcula el valor a entregar al cliente (peso neto × tarifa).
+
+Para usarlo, haga clic en **Aplicar Cambio de Metal Usado** mientras factura a ese cliente — Sarang muestra el crédito y lo incorpora directamente al descuento de la factura a medida que se crea la venta, y marca el cambio como usado para que nunca pueda aplicarse accidentalmente por segunda vez a otra factura.
 
 ## Devoluciones
 
