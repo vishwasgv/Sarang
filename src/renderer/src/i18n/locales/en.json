@@ -791,7 +791,7 @@
         "description": "Every project by status and estimated amount — for Service Business and Consultant"
       },
       "serviceProjects": {
-        "label": "Project Report",
+        "label": "Service Project Report",
         "description": "Every project by status and contract value — for Independent Consultant, Architect, Civil Engineer, Marketing Agency, Software Agency, and Real Estate Agent"
       },
       "jobCards": {

@@ -142,10 +142,21 @@ async function run() {
       r.log('debit-note-thermal-print-button-present', await receiptBtn.count() > 0)
     })
 
-    // ── Project Report (SERVICE/CONSULTANT zero-coverage fix) ───────────────
+    // ── Service Project Report (SERVICE/CONSULTANT zero-coverage fix) ───────
+    // Real bug found 2026-07-21 (unrelated to that day's own changes): the
+    // 'projects' report queries the legacy Project model while
+    // window.api.serviceProject.create() writes to the separate ServiceProject
+    // model queried by the 'serviceProjects' report — and both tiles were
+    // labeled identically "Project Report" (fixed in en.json). "Service
+    // Business / Agency / IT" only has the legacy 'projects' module enabled,
+    // never 'service_projects', so this test needs a business type that
+    // actually has 'service_projects' (e.g. Independent Consultant). "Consultant"
+    // alone is ambiguous with the legacy "Consultant / Freelancer" tile (same
+    // gotcha documented in project_electron_live_verification.md) — matching on
+    // "retainer billing" (unique to Independent Consultant's description) instead.
     await r.step('project-report', async () => {
-      const res = await h.switchBusinessType(page, 'Service Business / Agency / IT')
-      r.log('business-type-switched-to-service', res.changed, JSON.stringify(res))
+      const res = await h.switchBusinessType(page, 'retainer billing')
+      r.log('business-type-switched-to-independent-consultant', res.changed, JSON.stringify(res))
 
       const custRes = await page.evaluate(async (prefix) => window.api.customers.create({
         customerName: `${prefix} Project Client`, phone: `5${String(Date.now()).slice(-9)}`,
@@ -155,7 +166,7 @@ async function run() {
       }), { clientId: custRes?.data?.id, prefix: TEST_PREFIX })
       r.log('service-project-created', !!projRes?.success, JSON.stringify(projRes?.error || ''))
 
-      const ok = await generateReport(page, r, 'Project Report', { needsDateRange: true })
+      const ok = await generateReport(page, r, 'Service Project Report', { needsDateRange: true })
       if (ok) {
         const projText = page.locator(`text=/${TEST_PREFIX} Website Build/`)
         r.log('project-report-shows-created-project', await projText.count() > 0)

@@ -221,15 +221,20 @@ async function run() {
       })
     }
 
-    console.log('\n=== Suite 49 Summary ===')
-    console.log(r.summary())
   } finally {
     h.randomizeAdminPassword()
     await h.closeApp(app)
   }
 
-  const s = r.summary()
-  if (s.fail > 0) process.exitCode = 1
+  return r
 }
 
-run()
+if (require.main === module) {
+  run().then((r) => {
+    const s = r.summary()
+    console.log(`\nSuite 49: ${s.pass}/${s.total} passed`)
+    process.exit(s.fail > 0 ? 1 : 0)
+  }).catch((e) => { console.error('FATAL', e); process.exit(1) })
+}
+
+module.exports = { run }

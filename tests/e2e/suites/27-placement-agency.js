@@ -48,7 +48,16 @@ async function run() {
       await panel.getByLabel('Hiring Company').selectOption(hiringCompanyId)
       await panel.locator('input').first().fill('E2E Plc Backend Engineer')
       // Commission Type defaults to PERCENTAGE; set Commission % to 10.
-      const commissionValueInput = panel.locator('input[type="number"]').last()
+      // Was `input[type="number"]').last()` — broke once Phase 58 added a
+      // "Replacement Guarantee (days)" number field AFTER this one, which
+      // .last() then matched instead (real, reproducible: the created job
+      // order's commissionValue came back 0, cascading into every
+      // downstream commission assertion). getByLabel doesn't work here (the
+      // label has no htmlFor/wrapping association with the input, a raw
+      // sibling <label>/<input> pair) — a CSS sibling-combinator selector as
+      // ONE compound string is the established working pattern in this
+      // codebase for exactly this markup shape.
+      const commissionValueInput = panel.locator('label:has-text("Commission %") + input')
       await commissionValueInput.fill('10')
       await page.waitForTimeout(300)
 
