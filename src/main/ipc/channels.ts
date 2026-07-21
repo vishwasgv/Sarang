@@ -161,6 +161,9 @@ export interface IpcChannels {
     generateInvoiceNumber: () => Promise<ApiResponse<string>>
     getOrCreateTipProduct: () => Promise<ApiResponse>
     getFrequentlySoldProducts: (payload?: { limit?: number }) => Promise<ApiResponse>
+    // Phase 58 §2 (2026-07-21) — real split-bill: divides one invoice's
+    // (allocated) line quantities across N brand-new invoices.
+    splitInvoice: (payload: unknown) => Promise<ApiResponse<{ invoiceIds: string[] }>>
   }
   heldSale: {
     hold: (payload: { cartJson: string; itemCount: number; totalAmount: number; label?: string; customerId?: string }) => Promise<ApiResponse>
@@ -379,6 +382,19 @@ export interface IpcChannels {
     getKitchenDisplayStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
     regenerateKitchenDisplayToken: () => Promise<ApiResponse<{ token: string }>>
     generateKitchenDisplayQr: () => Promise<ApiResponse<{ qrDataUrl: string; boardUrl: string }>>
+    // Phase 58 §2 (2026-07-21) — ad-hoc table merge (mid-service, after an
+    // order is already running); merging AT order-open time instead goes
+    // through billing.createInvoice's own tableIds array.
+    mergeTableIntoInvoice: (payload: { tableId: string; invoiceId: string }) => Promise<ApiResponse>
+  }
+  // Phase 58 §2 (2026-07-21) — real reservation records (replacing the old
+  // bare RESERVED status string with no metadata).
+  reservations: {
+    create: (payload: { customerName: string; phone: string; partySize: number; reservedFor: string; tableId?: string; notes?: string }) => Promise<ApiResponse>
+    list: (payload?: { status?: string; dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    upcomingByTable: (payload?: { withinHours?: number }) => Promise<ApiResponse>
   }
   // Kitchen Display (second monitor, same billing PC) — opens/closes a
   // BrowserWindow showing the #/kitchen-display board on a chosen display.

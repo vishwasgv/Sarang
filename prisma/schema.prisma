@@ -842,20 +842,36 @@ model Invoice {
   notes             String?
   quotationId       String?   @unique
   originalInvoiceId String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
+  // Phase 58 §2 (2026-07-21) — restaurant table↔order binding. Snapshot of
+  // the primary dine-in table this invoice was opened for (nullable — only
+  // ever set for restaurant dine-in invoices). The reverse/live pointer
+  // ("which invoice is this table currently running?") lives on
+  // RestaurantTable.currentInvoiceId instead, since a merge lets MULTIPLE
+  // tables point at the same invoice — a single scalar here can only ever
+  // record the one table the order was opened at.
+  tableId           String?
+  // Set only on a new invoice produced by splitInvoice() — real FK back to
+  // the original (now status='SPLIT') invoice it was divided from, mirroring
+  // originalInvoiceId's return-lineage pattern above.
+  splitFromInvoiceId String?
   createdById       String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  customer        Customer?         @relation(fields: [customerId], references: [id])
-  createdBy       User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
-  items           InvoiceItem[]
-  payments        Payment[]
-  kot             KOT?
-  creditNotes     CreditNote[]
-  quotation       Quotation?        @relation("QuotationToInvoice", fields: [quotationId], references: [id])
-  challans        DeliveryChallan[] @relation("ChallanInvoice")
-  originalInvoice Invoice?          @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
-  returns         Invoice[]         @relation("InvoiceReturns")
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  items            InvoiceItem[]
+  payments         Payment[]
+  kot              KOT?
+  creditNotes      CreditNote[]
+  quotation        Quotation?        @relation("QuotationToInvoice", fields: [quotationId], references: [id])
+  challans         DeliveryChallan[] @relation("ChallanInvoice")
+  originalInvoice  Invoice?          @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
+  returns          Invoice[]         @relation("InvoiceReturns")
+  table            RestaurantTable?  @relation("InvoiceTable", fields: [tableId], references: [id], onDelete: SetNull)
+  occupiedTables   RestaurantTable[] @relation("TableCurrentInvoice")
+  splitFromInvoice Invoice?          @relation("InvoiceSplitLineage", fields: [splitFromInvoiceId], references: [id])
+  splitInvoices    Invoice[]         @relation("InvoiceSplitLineage")
 
   @@index([customerId])
   @@index([invoiceDate])
@@ -865,6 +881,8 @@ model Invoice {
   @@index([createdAt])
   @@index([createdById])
   @@index([originalInvoiceId])
+  @@index([tableId])
+  @@index([splitFromInvoiceId])
 }
 
 model InvoiceItem {
@@ -1082,13 +1100,52 @@ model RestaurantTable {
   // Nullable FK to Employee, onDelete: SetNull, mirroring the established
   // TailoringOrder.assignedToId/PestServiceContract.assignedToId pattern.
   waiterId    String?
+  // Phase 58 §2 (2026-07-21) — live pointer to this table's currently
+  // running dine-in order. Set when an order is opened at this table (see
+  // billingService.createInvoice's optional tableIds) or when another table
+  // is merged into an existing one (restaurantService.mergeTableIntoInvoice)
+  // — multiple RestaurantTable rows can point at the same invoiceId, which
+  // is exactly how a merge is represented (no separate join table needed).
+  // Cleared back to null (and status reset to AVAILABLE) the moment that
+  // invoice reaches a terminal state — see releaseTablesForInvoice in
+  // restaurant.service.ts, called from payments.service.ts on full
+  // settlement and from billing.service.ts on cancel/split.
+  currentInvoiceId String?
   createdAt   DateTime @default(now())
 
-  kots          KOT[]
-  orderRequests TableOrderRequest[]
-  waiter        Employee?           @relation("RestaurantTableWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  kots            KOT[]
+  orderRequests   TableOrderRequest[]
+  waiter          Employee?           @relation("RestaurantTableWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  currentInvoice  Invoice?            @relation("TableCurrentInvoice", fields: [currentInvoiceId], references: [id], onDelete: SetNull)
+  invoicesOpened  Invoice[]           @relation("InvoiceTable")
+  reservations    Reservation[]
 
   @@index([waiterId])
+  @@index([currentInvoiceId])
+}
+
+// Phase 58 §2 (2026-07-21) — real reservation record, replacing the old
+// bare "RESERVED" status string on RestaurantTable which carried zero
+// metadata (no time, no party size, no contact). tableId is optional: a
+// reservation can be taken without pre-assigning a specific table (common
+// for a phone booking made before the floor plan is known for that slot).
+model Reservation {
+  id           String    @id @default(cuid())
+  customerName String
+  phone        String
+  partySize    Int
+  reservedFor  DateTime
+  tableId      String?
+  notes        String?
+  status       String    @default("CONFIRMED") // CONFIRMED | SEATED | CANCELLED | NO_SHOW
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  table RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+
+  @@index([reservedFor])
+  @@index([status])
+  @@index([tableId])
 }
 
 // Phase 47 — a customer's QR-scanned order. Never becomes an Invoice/KOT on

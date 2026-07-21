@@ -9,7 +9,8 @@ import { decrementVariantStockTx } from './variant.service'
 import { deductBatchStockFIFO, restoreBatchStockFIFO, hasEnoughNonExpiredBatchStock } from './batch.service'
 import { markSerialSoldTx, markSerialAvailableTx } from './serial.service'
 import { SequenceContendedError } from './sequence.service'
-import type { CreateInvoicePayload, CancelInvoicePayload } from '../validation/billing.validation'
+import { releaseTablesForInvoiceTx } from './restaurant.service'
+import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
 export async function generateInvoiceNumber(tx?: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]): Promise<string> {
@@ -424,6 +425,7 @@ export const billingService = {
             gstType: payload.gstType ?? 'CGST_SGST',
             buyerState: payload.buyerState ?? null,
             dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+            tableId: payload.tableIds?.[0] ?? null,
             notes: customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
               : (payload.notes ?? null),
@@ -431,6 +433,35 @@ export const billingService = {
             status: 'ACTIVE'
           }
         })
+
+        // Phase 58 §2 (2026-07-21) — Restaurant table↔order binding.
+        // Atomically claim each selected table (same conditional-update
+        // claim shape as the metal-exchange claim right below) — a table
+        // already pointing at another running invoice can't be silently
+        // re-claimed by a second concurrent dine-in order; selecting more
+        // than one table here is exactly what a "merge tables for a large
+        // party" order is (see RestaurantTable.currentInvoiceId's schema
+        // comment).
+        if (payload.tableIds && payload.tableIds.length > 0) {
+          const tableClaim = await tx.restaurantTable.updateMany({
+            where: { id: { in: payload.tableIds }, currentInvoiceId: null },
+            data: { currentInvoiceId: inv.id, status: 'OCCUPIED' }
+          })
+          if (tableClaim.count !== payload.tableIds.length) {
+            throw new ServiceError('INVOC-015', 'One or more selected tables are already part of another running order.')
+          }
+          // A CASH/UPI/CARD/WALLET dine-in order pays in full in this same
+          // call (paymentStatus is already 'PAID' below, computed earlier
+          // from payload.paymentMethod) — there's no later recordPayment
+          // call coming to trigger the usual release hook, so without this
+          // the table would stay OCCUPIED forever after an already-fully-
+          // settled walk-in sale. Only a CREDIT/SPLIT order (paymentStatus
+          // stays UNPAID here) is a real "running tab" that keeps the table
+          // occupied until it's actually paid via payments.record later.
+          if (paymentStatus === 'PAID') {
+            await releaseTablesForInvoiceTx(tx, inv.id)
+          }
+        }
 
         // Atomically claim the metal exchange for this invoice — a
         // conditional update (not a plain unconditional one) so a second
@@ -779,6 +810,10 @@ export const billingService = {
           where: { id: payload.invoiceId },
           data: { status: 'CANCELLED', balanceAmount: 0, paymentStatus: 'CANCELLED', notes: cancelNote }
         })
+
+        // Phase 58 §2 — a cancelled dine-in order is also a terminal state
+        // for whichever table(s) it was running on.
+        await releaseTablesForInvoiceTx(tx, invoice.id)
       })
 
       await logAction({ userId, action: 'INVOICE_CANCELLED', entityType: 'Invoice', entityId: payload.invoiceId, newValue: { reason: payload.reason } })
@@ -786,6 +821,158 @@ export const billingService = {
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       const msg = err instanceof Error ? err.message : 'Failed to cancel invoice.'
+      return { success: false, error: { code: 'SYS-001', message: msg } }
+    }
+  },
+
+  // Phase 58 §2 (2026-07-21) — real split-bill. KOT.invoiceId is a strict
+  // 1:1 @unique FK, so an existing KOT (and the ingredient deduction/kitchen
+  // ticket it represents) intentionally stays pointed at the now-SPLIT
+  // original invoice — the food was already one ticket; splitting only
+  // divides how the BILL is paid, not how it was cooked/tracked. Only
+  // callable while nothing has been paid yet (paidAmount === 0), which
+  // keeps this from ever having to reconcile an existing payment against a
+  // bill that no longer exists in its original shape.
+  async splitInvoice(payload: SplitInvoicePayload, userId?: string) {
+    const db = getPrisma()
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+
+    try {
+      const newInvoiceIds = await db.$transaction(async (tx) => {
+        const original = await tx.invoice.findUnique({ where: { id: payload.invoiceId }, include: { items: true } })
+        if (!original) throw new ServiceError('SPLIT-001', 'Invoice not found.')
+        if (original.paidAmount > 0.01) throw new ServiceError('SPLIT-002', 'Cannot split an invoice that already has a payment recorded — reverse the payment first.')
+        if (original.invoiceType === 'RETURN') throw new ServiceError('SPLIT-003', 'Cannot split a return invoice.')
+
+        // Atomic claim: ACTIVE -> SPLIT right here, guarded by a
+        // conditional update — mirrors generateTimeEntryInvoice's
+        // atomic-claim pattern, so two concurrent split calls on the same
+        // invoice can't both succeed. Also zero out the original's own
+        // financial totals (safe — paidAmount is guaranteed 0 by the guard
+        // above): its value has fully moved to the new split invoices, and
+        // several report.service.ts queries filter invoices by
+        // `status: { not: 'CANCELLED' }` rather than `status: 'ACTIVE'` —
+        // zeroing here (not just relying on every such query to also know
+        // about 'SPLIT') is what actually prevents the original + its
+        // children from double-counting revenue/outstanding.
+        const claim = await tx.invoice.updateMany({
+          where: { id: payload.invoiceId, status: 'ACTIVE' },
+          data: { status: 'SPLIT', subtotal: 0, discountAmount: 0, taxAmount: 0, totalAmount: 0, balanceAmount: 0, paymentStatus: 'PAID' }
+        })
+        if (claim.count === 0) throw new ServiceError('SPLIT-004', 'This invoice is not in a splittable state (already split or cancelled).')
+
+        // Validate every allocated item belongs to this invoice and the
+        // total allocated quantity per line never exceeds what was
+        // originally billed on that line.
+        const itemById = new Map(original.items.map(i => [i.id, i]))
+        const allocatedByItem = new Map<string, number>()
+        for (const split of payload.splits) {
+          for (const alloc of split.allocations) {
+            if (!itemById.has(alloc.invoiceItemId)) {
+              throw new ServiceError('SPLIT-005', 'One of the selected items does not belong to this invoice.')
+            }
+            allocatedByItem.set(alloc.invoiceItemId, (allocatedByItem.get(alloc.invoiceItemId) ?? 0) + alloc.quantity)
+          }
+        }
+        for (const [itemId, allocatedQty] of allocatedByItem) {
+          const item = itemById.get(itemId)!
+          if (allocatedQty > item.quantity + 0.001) {
+            throw new ServiceError('SPLIT-006', `Allocated quantity for "${item.productName}" (${allocatedQty}) exceeds the original billed quantity (${item.quantity}).`)
+          }
+        }
+
+        const createdInvoiceIds: string[] = []
+        for (const split of payload.splits) {
+          const invoiceNumber = await generateInvoiceNumber(tx)
+
+          const lineRows: Array<ReturnType<typeof calculateLineTotal> & { itemId: string }> = split.allocations.map(alloc => {
+            const item = itemById.get(alloc.invoiceItemId)!
+            // Discount is prorated by the fraction of the line's original
+            // quantity this check is taking, then a fresh line is computed
+            // from scratch via the same calculateLineTotal() every other
+            // invoice line in this app goes through — not a proration of
+            // the original (already-rounded) lineTotal, which would
+            // compound rounding error across N splits.
+            const proratedDiscount = roundCurrency(item.discountAmount * (alloc.quantity / item.quantity), currencyDecimals)
+            return { itemId: item.id, ...calculateLineTotal(alloc.quantity, item.unitPrice, proratedDiscount, item.taxRate, currencyDecimals) }
+          })
+
+          const subtotal = sumCurrency(lineRows.map(r => r.subtotal), currencyDecimals)
+          const discountAmount = sumCurrency(lineRows.map(r => r.discountAmount), currencyDecimals)
+          const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount), currencyDecimals)
+          const totalAmount = sumCurrency(lineRows.map(r => r.lineTotal), currencyDecimals)
+
+          const newInv = await tx.invoice.create({
+            data: {
+              invoiceNumber,
+              customerId: split.customerId ?? original.customerId,
+              subtotal,
+              discountAmount,
+              taxAmount,
+              roundingAmount: 0,
+              totalAmount,
+              paidAmount: 0,
+              balanceAmount: totalAmount,
+              paymentStatus: 'UNPAID',
+              gstType: original.gstType,
+              buyerState: original.buyerState,
+              tableId: original.tableId,
+              splitFromInvoiceId: original.id,
+              notes: `Split from ${original.invoiceNumber}`,
+              createdById: userId ?? null,
+              status: 'ACTIVE'
+            }
+          })
+
+          for (const row of lineRows) {
+            const item = itemById.get(row.itemId)!
+            const alloc = split.allocations.find(a => a.invoiceItemId === row.itemId)!
+            await tx.invoiceItem.create({
+              data: {
+                invoiceId: newInv.id,
+                productId: item.productId,
+                productName: item.productName,
+                productSku: item.productSku,
+                hsnCode: item.hsnCode,
+                quantity: alloc.quantity,
+                unitPrice: item.unitPrice,
+                discountAmount: row.discountAmount,
+                taxRate: item.taxRate,
+                taxAmount: row.taxAmount,
+                lineTotal: row.lineTotal,
+                variantId: item.variantId,
+                variantInfo: item.variantInfo,
+                weightUnit: item.weightUnit,
+              }
+            })
+          }
+
+          createdInvoiceIds.push(newInv.id)
+        }
+
+        // A table's currentInvoiceId can only ever point at ONE invoice —
+        // splitting into N checks means the table isn't done yet (guests
+        // are still settling separate checks), so it stays OCCUPIED, just
+        // re-pointed at the first split check instead of the now-zeroed
+        // original (which would otherwise fail mergeTableIntoInvoice's
+        // "must be ACTIVE" guard). Staff releases the table normally once
+        // every split check is actually paid.
+        if (createdInvoiceIds.length > 0) {
+          await tx.restaurantTable.updateMany({
+            where: { currentInvoiceId: original.id },
+            data: { currentInvoiceId: createdInvoiceIds[0] }
+          })
+        }
+
+        return createdInvoiceIds
+      }, { timeout: 15000, maxWait: 10000 })
+
+      await logAction({ userId, action: 'INVOICE_SPLIT', entityType: 'Invoice', entityId: payload.invoiceId, newValue: { splitInto: newInvoiceIds } })
+      return { success: true, data: { invoiceIds: newInvoiceIds } }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      const msg = err instanceof Error ? err.message : 'Failed to split invoice.'
       return { success: false, error: { code: 'SYS-001', message: msg } }
     }
   }

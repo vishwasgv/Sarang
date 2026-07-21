@@ -55,6 +55,13 @@ export const CreateInvoiceSchema = z.object({
   // the schema and report.service.ts's aging already reads it — this was
   // the only missing piece (nothing ever wrote it).
   dueDate: z.string().optional(),
+  // Phase 58 §2 (2026-07-21) — Restaurant dine-in table binding. The first
+  // ID is the primary table (stored on Invoice.tableId); every ID in the
+  // array (including the primary) gets its RestaurantTable.currentInvoiceId
+  // pointed at this invoice — that's what a "merged" multi-table order for
+  // a large party actually is (see restaurant.service.ts). Absent/empty for
+  // every non-restaurant invoice and for restaurant takeaway/counter sales.
+  tableIds: z.array(z.string()).max(20).optional(),
 })
 
 export const CancelInvoiceSchema = z.object({
@@ -62,5 +69,23 @@ export const CancelInvoiceSchema = z.object({
   reason: z.string().min(1, 'Cancellation reason is required').max(500),
 })
 
+// Phase 58 §2 (2026-07-21) — real split-bill. Each entry in `splits` becomes
+// one brand-new invoice; `allocations` divides the ORIGINAL invoice's line
+// quantities across them (a shared item like one dessert can be split
+// quantity-1-and-1 across two checks, not just whole-line-per-check).
+const SplitAllocationSchema = z.object({
+  invoiceItemId: z.string().min(1),
+  quantity: z.number().positive('Allocated quantity must be greater than zero'),
+})
+
+export const SplitInvoiceSchema = z.object({
+  invoiceId: z.string().min(1, 'Invoice ID is required'),
+  splits: z.array(z.object({
+    customerId: z.string().optional(),
+    allocations: z.array(SplitAllocationSchema).min(1, 'Each check needs at least one item'),
+  })).min(2, 'Splitting requires at least 2 checks'),
+})
+
 export type CreateInvoicePayload = z.input<typeof CreateInvoiceSchema>
+export type SplitInvoicePayload = z.input<typeof SplitInvoiceSchema>
 export type CancelInvoicePayload = z.infer<typeof CancelInvoiceSchema>

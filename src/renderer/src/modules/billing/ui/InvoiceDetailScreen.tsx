@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed } from 'lucide-react'
+import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed, Scissors } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { Button } from '@shared/ui/atoms/Button'
@@ -35,6 +35,9 @@ interface Invoice {
   dueDate?: string | null
   notes?: string | null
   gstType?: string | null
+  // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
+  // only; null for every other sale).
+  tableId?: string | null
   customer: { id: string; customerName: string; phone?: string | null; customerCode?: string | null } | null
   createdBy: { id: string; fullName: string } | null
   items: InvoiceItem[]
@@ -88,6 +91,16 @@ export function InvoiceDetailScreen() {
   // Reverse payment modal
   const [reversingPaymentId, setReversingPaymentId] = useState<string | null>(null)
   const [reverseReason, setReverseReason] = useState('')
+
+  // Phase 58 §2 (2026-07-21) — split-bill modal. checkQty[itemId] is an
+  // array of per-check quantities, one entry per check, always summing to
+  // that item's original billed quantity — enforced client-side before
+  // submit as a fast fail, then re-validated server-side (SPLIT-006) as the
+  // real source of truth.
+  const [showSplitModal, setShowSplitModal] = useState(false)
+  const [splitCheckCount, setSplitCheckCount] = useState(2)
+  const [splitAllocations, setSplitAllocations] = useState<Record<string, number[]>>({})
+  const [splitting, setSplitting] = useState(false)
 
   const [printing, setPrinting] = useState(false)
 
@@ -154,6 +167,75 @@ export function InvoiceDetailScreen() {
     } finally { setCancelling(false) }
   }
 
+  function openSplitModal() {
+    if (!invoice) return
+    // Default: every unit of every line starts on check 1 — staff moves
+    // units to the other checks from there, rather than starting from an
+    // even split that's rarely what a real table actually wants.
+    const initial: Record<string, number[]> = {}
+    for (const item of invoice.items) {
+      initial[item.id] = Array(splitCheckCount).fill(0)
+      initial[item.id][0] = item.quantity
+    }
+    setSplitAllocations(initial)
+    setShowSplitModal(true)
+  }
+
+  function setCheckCount(n: number) {
+    setSplitCheckCount(n)
+    setSplitAllocations(prev => {
+      const next: Record<string, number[]> = {}
+      for (const [itemId, qtys] of Object.entries(prev)) {
+        const resized = Array(n).fill(0)
+        for (let i = 0; i < Math.min(n, qtys.length); i++) resized[i] = qtys[i]
+        // If shrinking the check count, any quantity that was on a
+        // now-removed check falls back onto check 1 rather than vanishing.
+        for (let i = n; i < qtys.length; i++) resized[0] += qtys[i]
+        next[itemId] = resized
+      }
+      return next
+    })
+  }
+
+  function setItemCheckQty(itemId: string, checkIndex: number, value: number) {
+    setSplitAllocations(prev => ({ ...prev, [itemId]: prev[itemId].map((q, i) => i === checkIndex ? Math.max(0, value) : q) }))
+  }
+
+  async function handleSplitInvoice() {
+    if (!invoice) return
+    const mismatched = invoice.items.filter(item => {
+      const total = (splitAllocations[item.id] ?? []).reduce((s, q) => s + q, 0)
+      return Math.abs(total - item.quantity) > 0.001
+    })
+    if (mismatched.length > 0) {
+      toastError(t('billing.splitMismatchTitle'), t('billing.splitMismatchMessage', { productName: mismatched[0].product.productName, quantity: mismatched[0].quantity }))
+      return
+    }
+    const splits = Array.from({ length: splitCheckCount }, (_, checkIndex) => ({
+      allocations: invoice.items
+        .map(item => ({ invoiceItemId: item.id, quantity: splitAllocations[item.id]?.[checkIndex] ?? 0 }))
+        .filter(a => a.quantity > 0)
+    })).filter(split => split.allocations.length > 0)
+    if (splits.length < 2) {
+      toastError(t('billing.splitNothingTitle'), t('billing.splitNothingMessage'))
+      return
+    }
+
+    setSplitting(true)
+    try {
+      const res = await window.api.billing.splitInvoice({ invoiceId: invoice.id, splits })
+      if (res.success) {
+        toastSuccess(t('billing.splitSuccessTitle'), t('billing.splitSuccessMessage', { invoiceNumber: invoice.invoiceNumber, count: splits.length }))
+        setShowSplitModal(false)
+        loadInvoice()
+      } else {
+        toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('billing.splitFailedMessage'))
+      }
+    } catch {
+      toastError(t('common.error'), t('billing.splitFailedMessage'))
+    } finally { setSplitting(false) }
+  }
+
   async function handleReversePayment() {
     if (!reversingPaymentId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reversal reason.'); return }
     try {
@@ -174,7 +256,7 @@ export function InvoiceDetailScreen() {
     if (!invoice) return
     setSendingToKitchen(true)
     try {
-      const res = await api.restaurant.createKOT({ invoiceId: invoice.id })
+      const res = await api.restaurant.createKOT({ invoiceId: invoice.id, tableId: invoice.tableId ?? undefined })
       if (res.success) {
         toastSuccess('Sent to Kitchen', `KOT created for ${invoice.invoiceNumber}.`)
         loadInvoice()
@@ -272,6 +354,20 @@ export function InvoiceDetailScreen() {
           {kotEnabled && invoice.kot && (
             <span className="text-xs font-medium bg-warning/10 text-warning px-3 py-1.5 rounded-xl border border-warning/20">
               KOT: {invoice.kot.status.replace('_', ' ')}
+            </span>
+          )}
+          {/* Split Bill — only while nothing has been paid yet; once a
+              payment exists there's a real amount to reconcile across the
+              new checks, which this deliberately doesn't attempt (see
+              billing.service.ts's splitInvoice guard). */}
+          {invoice.status === 'ACTIVE' && invoice.paidAmount === 0 && invoice.invoiceType !== 'RETURN' && canCancel && (
+            <Button size="sm" variant="outline" onClick={openSplitModal}>
+              <Scissors size={14} className="mr-1" /> {t('billing.splitBill')}
+            </Button>
+          )}
+          {invoice.status === 'SPLIT' && (
+            <span className="text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-xl">
+              {t('billing.splitIntoSeparateChecks')}
             </span>
           )}
           {!isCancelled && invoice.balanceAmount > 0.01 && canRecordPayment && (
@@ -477,6 +573,74 @@ export function InvoiceDetailScreen() {
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setShowCancelModal(false)}>{t('billing.goBack')}</Button>
               <Button variant="danger" className="flex-1" onClick={handleCancel} loading={cancelling}>{t('billing.confirmCancel')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split Bill Modal */}
+      {showSplitModal && invoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('billing.splitBillTitle', { invoiceNumber: invoice.invoiceNumber })}</h2>
+              <button onClick={() => setShowSplitModal(false)} className="text-slate-400 hover:text-danger transition-colors"><XCircle size={18} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.splitNumberOfChecks')}</label>
+                <div className="flex gap-1.5">
+                  {[2, 3, 4, 5, 6].map(n => (
+                    <button key={n} onClick={() => setCheckCount(n)}
+                      className={cn('w-8 h-8 rounded-lg text-xs font-semibold border transition-colors',
+                        splitCheckCount === n ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand')}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-slate-400">{t('billing.splitInstructions')}</p>
+              <div className="border border-slate-100 dark:border-slate-700 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700">
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableItem')}</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableBilled')}</th>
+                      {Array.from({ length: splitCheckCount }, (_, i) => (
+                        <th key={i} className="text-center px-2 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableCheck', { number: i + 1 })}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoice.items.map(item => {
+                      const allocated = (splitAllocations[item.id] ?? []).reduce((s, q) => s + q, 0)
+                      const mismatch = Math.abs(allocated - item.quantity) > 0.001
+                      return (
+                        <tr key={item.id} className="border-b border-slate-50 dark:border-slate-800">
+                          <td className="px-4 py-2.5">
+                            <p className="font-medium text-dark dark:text-slate-100">{item.product.productName}</p>
+                            {mismatch && <p className="text-xs text-danger">{t('billing.splitMismatch', { allocated, billed: item.quantity })}</p>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-slate-500">{item.quantity}</td>
+                          {Array.from({ length: splitCheckCount }, (_, i) => (
+                            <td key={i} className="px-2 py-2.5 text-center">
+                              <input type="number" min="0" step="1" value={splitAllocations[item.id]?.[i] ?? 0}
+                                onChange={e => setItemCheckQty(item.id, i, parseInt(e.target.value, 10) || 0)}
+                                className="w-14 h-8 text-center text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+              <Button variant="outline" className="flex-1" onClick={() => setShowSplitModal(false)}>{t('common.cancel')}</Button>
+              <Button className="flex-1" onClick={handleSplitInvoice} loading={splitting}>
+                <Scissors size={14} className="mr-1" /> {t('billing.splitSubmit', { count: splitCheckCount })}
+              </Button>
             </div>
           </div>
         </div>

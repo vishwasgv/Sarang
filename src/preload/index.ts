@@ -109,7 +109,8 @@ const api: IpcChannels = {
     cancelInvoice: (p) => invoke('billing:cancelInvoice', p),
     generateInvoiceNumber: () => invoke('billing:generateInvoiceNumber'),
     getOrCreateTipProduct: () => invoke('billing:getOrCreateTipProduct'),
-    getFrequentlySoldProducts: (p) => invoke('billing:getFrequentlySoldProducts', p)
+    getFrequentlySoldProducts: (p) => invoke('billing:getFrequentlySoldProducts', p),
+    splitInvoice: (p) => invoke('billing:splitInvoice', p)
   },
   heldSale: {
     hold: (p) => invoke('heldSale:hold', p),
@@ -293,6 +294,14 @@ const api: IpcChannels = {
     getKitchenDisplayStatus: () => invoke('restaurant:getKitchenDisplayStatus'),
     regenerateKitchenDisplayToken: () => invoke('restaurant:regenerateKitchenDisplayToken'),
     generateKitchenDisplayQr: () => invoke('restaurant:generateKitchenDisplayQr'),
+    mergeTableIntoInvoice: (p) => invoke('restaurant:mergeTableIntoInvoice', p),
+  },
+  reservations: {
+    create: (p) => invoke('reservations:create', p),
+    list: (p) => invoke('reservations:list', p),
+    updateStatus: (p) => invoke('reservations:updateStatus', p),
+    delete: (p) => invoke('reservations:delete', p),
+    upcomingByTable: (p) => invoke('reservations:upcomingByTable', p),
   },
   kitchenDisplay: {
     listDisplays: () => invoke('kitchenDisplay:listDisplays'),

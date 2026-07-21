@@ -16,7 +16,7 @@ import * as fieldOrderService from '../../services/field-order.service'
 import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
   DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
-  AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema,
+  AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema, MergeTableIntoInvoiceSchema,
 } from '../../validation/industry.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -150,6 +150,13 @@ export function register(handle: HandleFn): void {
   handle('restaurant:performDailyClose', async () => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
     return restaurantService.performDailyClose(getCurrentSession()?.userId)
+  })
+
+  handle('restaurant:mergeTableIntoInvoice', async (payload) => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const parsed = MergeTableIntoInvoiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.mergeTableIntoInvoice(parsed.data.tableId, parsed.data.invoiceId, getCurrentSession()?.userId)
   })
 
   // ── Phase 47 — QR Table Ordering ────────────────────────────────────────────

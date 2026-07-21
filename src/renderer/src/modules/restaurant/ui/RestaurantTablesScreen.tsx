@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, RefreshCw, UtensilsCrossed, Trash2, CheckCircle2, Clock, AlertTriangle, MoonStar, QrCode, X } from 'lucide-react'
+import { Plus, RefreshCw, UtensilsCrossed, Trash2, CheckCircle2, Clock, AlertTriangle, MoonStar, QrCode, X, Receipt, Merge, CalendarClock } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
@@ -18,9 +19,21 @@ interface RestaurantTable {
   kots: { id: string; status: string }[]
   waiterId?: string | null
   waiter?: { id: string; fullName: string } | null
+  // Phase 58 §2 (2026-07-21) — live pointer to this table's currently
+  // running dine-in order (set by billing.createInvoice's tableIds, or by
+  // an ad-hoc merge). Null for a free table.
+  currentInvoiceId?: string | null
 }
 
 interface Employee { id: string; fullName: string }
+
+interface UpcomingReservation { id: string; customerName: string; partySize: number; reservedFor: string }
+
+interface Reservation {
+  id: string; customerName: string; phone: string; partySize: number; reservedFor: string
+  tableId?: string | null; notes?: string | null; status: string
+  table?: { id: string; tableNumber: string; tableName?: string | null } | null
+}
 
 const STATUS_CONFIG = {
   AVAILABLE: { label: 'Available', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
@@ -29,7 +42,8 @@ const STATUS_CONFIG = {
 }
 
 export function RestaurantTablesScreen() {
-  const { error: toastError } = useNotificationStore()
+  const navigate = useNavigate()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -52,6 +66,23 @@ export function RestaurantTablesScreen() {
   const [qrModalTable, setQrModalTable] = useState<RestaurantTable | null>(null)
   const [qrImage, setQrImage] = useState<{ qrDataUrl: string; orderUrl: string } | null>(null)
   const [qrModalError, setQrModalError] = useState<string | null>(null)
+
+  // Phase 58 §2 (2026-07-21) — upcoming reservations, table merge, and the
+  // Reservations panel.
+  const [upcomingByTable, setUpcomingByTable] = useState<Record<string, UpcomingReservation>>({})
+  const [mergeTarget, setMergeTarget] = useState<RestaurantTable | null>(null)
+  const [merging, setMerging] = useState(false)
+  const [showReservations, setShowReservations] = useState(false)
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loadingReservations, setLoadingReservations] = useState(false)
+  const [addingReservation, setAddingReservation] = useState(false)
+  const [rsvName, setRsvName] = useState('')
+  const [rsvPhone, setRsvPhone] = useState('')
+  const [rsvPartySize, setRsvPartySize] = useState('2')
+  const [rsvDateTime, setRsvDateTime] = useState('')
+  const [rsvTableId, setRsvTableId] = useState('')
+  const [rsvNotes, setRsvNotes] = useState('')
+  const [savingReservation, setSavingReservation] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -82,7 +113,28 @@ export function RestaurantTablesScreen() {
     }
   }, [toastError])
 
-  useEffect(() => { load(); loadQrStatus() }, [load, loadQrStatus])
+  const loadUpcomingReservations = useCallback(async () => {
+    try {
+      const res = await api.reservations.upcomingByTable()
+      if (res.success && res.data) setUpcomingByTable(res.data as Record<string, UpcomingReservation>)
+    } catch { /* badge is supplementary — table list itself already surfaces errors */ }
+  }, [])
+
+  const loadReservations = useCallback(async () => {
+    setLoadingReservations(true)
+    try {
+      const res = await api.reservations.list({ status: 'CONFIRMED' })
+      if (res.success && res.data) setReservations(res.data as Reservation[])
+      else toastError('Error', res.error?.message ?? 'Could not load reservations.')
+    } catch {
+      toastError('Error', 'Could not load reservations.')
+    } finally {
+      setLoadingReservations(false)
+    }
+  }, [toastError])
+
+  useEffect(() => { load(); loadQrStatus(); loadUpcomingReservations() }, [load, loadQrStatus, loadUpcomingReservations])
+  useEffect(() => { if (showReservations) loadReservations() }, [showReservations, loadReservations])
 
   useEffect(() => {
     api.hr.listEmployees({ isActive: true }).then((res) => {
@@ -184,6 +236,69 @@ export function RestaurantTablesScreen() {
     }
   }
 
+  function startOrder(table: RestaurantTable) {
+    const label = table.tableName || table.tableNumber
+    navigate(`/billing/new?tableId=${encodeURIComponent(table.id)}&tableLabel=${encodeURIComponent(label)}`)
+  }
+
+  async function handleMerge(freeTableId: string) {
+    if (!mergeTarget?.currentInvoiceId) return
+    setMerging(true)
+    try {
+      const res = await api.restaurant.mergeTableIntoInvoice({ tableId: freeTableId, invoiceId: mergeTarget.currentInvoiceId })
+      if (res.success) {
+        toastSuccess('Merged', 'Table merged into the running order.')
+        setMergeTarget(null)
+        load()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not merge table.')
+      }
+    } catch {
+      toastError('Error', 'Could not merge table.')
+    } finally {
+      setMerging(false)
+    }
+  }
+
+  async function handleAddReservation() {
+    if (!rsvName.trim() || !rsvPhone.trim() || !rsvDateTime) {
+      toastError('Missing Details', 'Name, phone, and date/time are required.')
+      return
+    }
+    setSavingReservation(true)
+    try {
+      const res = await api.reservations.create({
+        customerName: rsvName.trim(), phone: rsvPhone.trim(),
+        partySize: parseInt(rsvPartySize, 10) || 1,
+        reservedFor: new Date(rsvDateTime).toISOString(),
+        tableId: rsvTableId || undefined,
+        notes: rsvNotes.trim() || undefined,
+      })
+      if (res.success) {
+        toastSuccess('Reservation Added', `${rsvName} — ${new Date(rsvDateTime).toLocaleString()}`)
+        setRsvName(''); setRsvPhone(''); setRsvPartySize('2'); setRsvDateTime(''); setRsvTableId(''); setRsvNotes('')
+        setAddingReservation(false)
+        loadReservations(); loadUpcomingReservations()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not add reservation.')
+      }
+    } catch {
+      toastError('Error', 'Could not add reservation.')
+    } finally {
+      setSavingReservation(false)
+    }
+  }
+
+  async function handleReservationStatus(id: string, status: string) {
+    try {
+      const res = await api.reservations.updateStatus({ id, status })
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update reservation.')
+      loadReservations(); loadUpcomingReservations(); load()
+    } catch {
+      toastError('Error', 'Could not update reservation.')
+    }
+  }
+
   async function handleDailyClose() {
     setShowDailyCloseConfirm(false)
     setClosingDay(true)
@@ -214,6 +329,12 @@ export function RestaurantTablesScreen() {
         <div className="flex gap-2">
           <button onClick={load} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
             <RefreshCw size={14} /> Refresh
+          </button>
+          <button
+            onClick={() => setShowReservations(v => !v)}
+            className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors',
+              showReservations ? 'bg-brand/10 border-brand text-brand' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300')}>
+            <CalendarClock size={14} /> Reservations
           </button>
           <button
             onClick={() => setShowDailyCloseConfirm(true)}
@@ -253,6 +374,77 @@ export function RestaurantTablesScreen() {
         )}
       </Card>
 
+      {/* Phase 58 §2 (2026-07-21) — Reservations panel */}
+      {showReservations && (
+        <Card padding="lg" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> Reservations</h3>
+            <button onClick={() => setAddingReservation(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand/90 transition-colors">
+              <Plus size={13} /> Add Reservation
+            </button>
+          </div>
+
+          {addingReservation && (
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input value={rsvName} onChange={e => setRsvName(e.target.value)} placeholder="Customer name"
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                <input value={rsvPhone} onChange={e => setRsvPhone(e.target.value)} placeholder="Phone"
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                <input type="number" min="1" value={rsvPartySize} onChange={e => setRsvPartySize(e.target.value)} placeholder="Party size"
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                <input type="datetime-local" value={rsvDateTime} onChange={e => setRsvDateTime(e.target.value)}
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                <select value={rsvTableId} onChange={e => setRsvTableId(e.target.value)}
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand">
+                  <option value="">— No table pre-assigned —</option>
+                  {tables.map(t => <option key={t.id} value={t.id}>{t.tableName || t.tableNumber}</option>)}
+                </select>
+                <input value={rsvNotes} onChange={e => setRsvNotes(e.target.value)} placeholder="Notes (optional)"
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setAddingReservation(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">Cancel</button>
+                <button onClick={handleAddReservation} disabled={savingReservation}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
+                  {savingReservation && <RefreshCw size={12} className="animate-spin" />} Save Reservation
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loadingReservations ? (
+            <div className="flex justify-center py-6"><RefreshCw size={18} className="animate-spin text-brand" /></div>
+          ) : reservations.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">No upcoming reservations.</p>
+          ) : (
+            <div className="divide-y divide-slate-50 dark:divide-slate-800">
+              {reservations.map(r => (
+                <div key={r.id} className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-dark dark:text-slate-100">
+                      {r.customerName} <span className="text-slate-400 font-normal">· {r.partySize} guests · {r.phone}</span>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {new Date(r.reservedFor).toLocaleString()}{r.table ? ` · ${r.table.tableName || r.table.tableNumber}` : ''}
+                      {r.notes ? ` · ${r.notes}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => handleReservationStatus(r.id, 'SEATED')}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors">Seat</button>
+                    <button onClick={() => handleReservationStatus(r.id, 'NO_SHOW')}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition-colors">No-show</button>
+                    <button onClick={() => handleReservationStatus(r.id, 'CANCELLED')}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors">Cancel</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {closeResult && (
         <div className={`rounded-xl px-4 py-3 text-sm ${closeResult.startsWith('Day closed') ? 'bg-success/5 border border-success/20 text-success' : 'bg-danger/5 border border-danger/20 text-danger'}`}>
@@ -342,6 +534,32 @@ export function RestaurantTablesScreen() {
                   )}
                 </div>
 
+                {upcomingByTable[table.id] && (
+                  <p className="text-xs text-warning flex items-center gap-1">
+                    <CalendarClock size={11} /> Reserved {new Date(upcomingByTable[table.id].reservedFor).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} — {upcomingByTable[table.id].customerName}
+                  </p>
+                )}
+
+                {/* Phase 58 §2 — start/continue a real dine-in order, and
+                    merge another table into one already running */}
+                {table.currentInvoiceId ? (
+                  <div className="flex gap-1.5">
+                    <button onClick={() => navigate(`/billing/invoices/${table.currentInvoiceId}`)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-brand/10 text-brand hover:bg-brand/20 transition-colors">
+                      <Receipt size={12} /> View Bill
+                    </button>
+                    <button onClick={() => setMergeTarget(table)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-brand/10 hover:text-brand transition-colors">
+                      <Merge size={12} /> Merge In
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => startOrder(table)}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg font-semibold bg-brand text-white hover:bg-brand/90 transition-colors">
+                    <UtensilsCrossed size={12} /> Start Order
+                  </button>
+                )}
+
                 <div className="flex gap-1">
                   {(['AVAILABLE', 'OCCUPIED', 'RESERVED'] as const).map(s => (
                     <button key={s}
@@ -395,6 +613,31 @@ export function RestaurantTablesScreen() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {mergeTarget && (
+        <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-dark dark:text-slate-100">Merge into {mergeTarget.tableName || mergeTarget.tableNumber}</h2>
+              <button onClick={() => setMergeTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Pick a free table to add to this same running bill — for a large party spread across tables.</p>
+            {tables.filter(t => t.id !== mergeTarget.id && !t.currentInvoiceId).length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4 text-center">No free tables to merge in.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {tables.filter(t => t.id !== mergeTarget.id && !t.currentInvoiceId).map(t => (
+                  <button key={t.id} onClick={() => handleMerge(t.id)} disabled={merging}
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
+                    <span>{t.tableName || t.tableNumber}</span>
+                    <Merge size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

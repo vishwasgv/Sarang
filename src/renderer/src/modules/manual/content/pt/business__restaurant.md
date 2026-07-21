@@ -4,9 +4,23 @@ Escolher **Restaurante** como seu tipo de negócio durante a configuração ativ
 
 ## Mesas
 
-Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Rsv** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo — uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa. Atribua um **garçom** a uma mesa a partir do seu cartão para sempre saber quem está atendendo; remova a atribuição a qualquer momento.
+Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Rsv** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo manualmente — ou deixe o status de uma mesa seguir um pedido real automaticamente, veja abaixo. Uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa. Atribua um **garçom** a uma mesa a partir do seu cartão para sempre saber quem está atendendo; remova a atribuição a qualquer momento.
+
+**Start Order** no cartão de uma mesa livre abre o Faturamento com essa mesa já anexada — monte o carrinho normalmente e confirme a venda. A mesa agora está realmente vinculada a essa conta: seu cartão mostra **View Bill** (vai direto para a fatura) e **Merge In** no lugar de Start Order, e a mesa se libera automaticamente assim que a conta é totalmente paga ou cancelada — sem precisar lembrar de mudar seu status manualmente.
+
+**Merge In** junta uma segunda mesa à mesma conta em andamento — para um grupo grande sentado em duas ou mais mesas que quer uma única conta no final. Toque nele na mesa que já tem o pedido em andamento, escolha qualquer mesa livre na lista, e essa mesa agora mostra o mesmo par **View Bill**/**Merge In**, apontando para a mesma fatura. Adicione quantas mesas o grupo realmente ocupar.
 
 **End of Day** é um botão nesta tela: ele marca toda mesa ocupada como disponível novamente e mostra um resumo de fechamento em uma linha (KOTs atendidos e a receita do dia), para que você possa encerrar o salão ao final de um turno.
+
+## Reservas
+
+Toque em **Reservations** no topo de Mesas do Restaurante para ver as reservas futuras e adicionar novas — nome do cliente, telefone, tamanho do grupo, data/hora, uma mesa opcional e uma observação em texto livre (necessidades alimentares, uma ocasião especial, qualquer coisa que valha a pena saber na hora de acomodá-los). Uma mesa com uma reserva chegando nas próximas horas mostra um pequeno selo "Reserved 7:30 PM" direto no seu cartão, para você ver de relance no salão.
+
+Quando o grupo chega, toque em **Seat** — isso marca a mesa como Ocupada e a reserva como Seated; a reserva em si não cria uma conta, então use **Start Order** na mesa normalmente quando estiverem prontos para pedir. **No-show** e **Cancel** encerram uma reserva que não aconteceu, sem tocar na mesa.
+
+## Dividindo uma conta
+
+Depois que um pedido está registrado mas antes de qualquer pagamento, **Split Bill** na tela da fatura a divide em duas ou mais contas separadas — escolha quantas contas, depois defina quanto de cada item vai em cada uma (um item compartilhado, como uma sobremesa que duas pessoas estão dividindo, pode ser dividido até a unidade). Cada conta se torna sua própria fatura real, faturada e paga separadamente a partir daí. A mesa permanece Ocupada, agora apontando para a primeira conta, até que cada conta dividida seja realmente quitada. Dividir só muda como a conta é paga — a comanda de cozinha original e o estoque já deduzido permanecem intocados.
 
 ## Gorjeta / taxa de serviço e itens "86"
 

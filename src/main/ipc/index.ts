@@ -113,6 +113,7 @@ import { registerShootAddOn } from './handlers/shoot-addon.handler'
 import { registerEventBooking } from './handlers/event-booking.handler'
 import { registerEventVendorBooking } from './handlers/event-vendor-booking.handler'
 import { registerEventRunOfShow } from './handlers/event-run-of-show.handler'
+import { registerReservations } from './handlers/reservation.handler'
 import { registerProperty } from './handlers/property.handler'
 import { registerPropertyInquiry } from './handlers/property-inquiry.handler'
 import { registerPropertySiteVisit } from './handlers/property-site-visit.handler'
@@ -264,6 +265,7 @@ export function registerAllIpcHandlers(): void {
   registerEventBooking(h)
   registerEventVendorBooking(h)
   registerEventRunOfShow(h)
+  registerReservations(h)
   registerProperty(h)
   registerPropertyInquiry(h)
   registerPropertySiteVisit(h)

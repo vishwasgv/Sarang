@@ -4,9 +4,23 @@ Choisir **Restaurant** comme type d'entreprise lors de la configuration active q
 
 ## Tables
 
-Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rsv** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier — une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif. Attribuez un **serveur** à une table depuis sa carte afin de toujours savoir qui la sert ; retirez l'attribution à tout moment.
+Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rsv** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier manuellement — ou laissez le statut d'une table suivre automatiquement une vraie commande, voir ci-dessous. Une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif. Attribuez un **serveur** à une table depuis sa carte afin de toujours savoir qui la sert ; retirez l'attribution à tout moment.
+
+**Démarrer la commande** sur la carte d'une table libre ouvre la Facturation avec cette table déjà attachée — construisez le panier normalement et confirmez la vente. La table est maintenant réellement liée à cette addition : sa carte affiche **Voir l'addition** (accède directement à la facture) et **Fusionner** à la place de Démarrer la commande, et la table redevient Libre automatiquement dès que l'addition est entièrement payée ou annulée — pas besoin de penser à changer son statut manuellement.
+
+**Fusionner** rattache une deuxième table à la même addition en cours — pour un grand groupe installé sur deux tables ou plus qui veut une seule addition à la fin. Appuyez dessus sur la table qui a déjà la commande en cours, choisissez n'importe quelle table libre dans la liste, et cette table affiche maintenant la même paire **Voir l'addition**/**Fusionner**, pointant vers la même facture. Ajoutez autant de tables que le groupe en occupe réellement.
 
 **Fin de journée** est un bouton sur cet écran : il marque toutes les tables occupées comme à nouveau disponibles et affiche un résumé de clôture en une ligne (KOT servis et chiffre d'affaires du jour) afin que vous puissiez clôturer la salle à la fin d'un service.
+
+## Réservations
+
+Appuyez sur **Réservations** en haut de Tables du restaurant pour voir les réservations à venir et en ajouter — nom du client, téléphone, taille du groupe, date/heure, une table facultative, et une note libre (besoins alimentaires, occasion spéciale, tout ce qui vaut la peine d'être su au moment de les installer). Une table avec une réservation dans les prochaines heures affiche un petit badge « Reserved 19h30 » directement sur sa carte, visible d'un coup d'œil sur la salle.
+
+Quand le groupe arrive, appuyez sur **Installer** — cela marque la table comme Occupée et la réservation comme Installée ; la réservation elle-même ne crée pas d'addition, utilisez donc **Démarrer la commande** sur la table normalement une fois qu'ils sont prêts à commander. **Absent** et **Annuler** clôturent une réservation qui n'a pas eu lieu, sans toucher à la table.
+
+## Diviser une addition
+
+Une fois qu'une commande est enregistrée mais avant tout paiement, **Diviser l'Addition** sur l'écran de la facture la divise en deux additions séparées ou plus — choisissez le nombre d'additions, puis indiquez combien de chaque article va sur chacune (un article partagé, comme un dessert que deux personnes se partagent, peut être divisé jusqu'à l'unité). Chaque addition devient sa propre facture réelle, facturée et payée séparément à partir de là. La table reste Occupée, pointant maintenant vers la première addition, jusqu'à ce que chaque addition divisée soit réellement réglée. Diviser ne change que la façon dont l'addition est payée — le ticket de cuisine original et le stock déjà déduit restent intacts.
 
 ## Pourboire / frais de service et articles « 86 »
 

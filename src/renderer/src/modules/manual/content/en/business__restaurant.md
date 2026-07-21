@@ -4,9 +4,23 @@ Choosing **Restaurant** as your business type during setup turns on four things 
 
 ## Tables
 
-Open **Restaurant Tables** from the sidebar to see every table you've configured, each shown as a card with its current status: **Free**, **Busy**, or **Rsv** (Reserved). Add a table with a table number (e.g. "T1") and an optional display name. Tap a status button on a table's card to change it — a table can't be deleted while it has an active kitchen ticket. Assign a **waiter** to a table from its card so you always know who's serving it; clear the assignment any time.
+Open **Restaurant Tables** from the sidebar to see every table you've configured, each shown as a card with its current status: **Free**, **Busy**, or **Rsv** (Reserved). Add a table with a table number (e.g. "T1") and an optional display name. Tap a status button on a table's card to change it manually — or let a table's status follow a real order automatically, see below. A table can't be deleted while it has an active kitchen ticket. Assign a **waiter** to a table from its card so you always know who's serving it; clear the assignment any time.
+
+**Start Order** on a free table's card opens Billing with that table already attached — build the cart as normal and confirm the sale. The table is now genuinely linked to that bill: its card shows **View Bill** (jumps straight to the invoice) and **Merge In** instead of Start Order, and the table frees itself back to Free automatically the moment the bill is fully paid or cancelled — no need to remember to flip its status by hand.
+
+**Merge In** joins a second table onto the same running bill — for a large party seated across two or more tables who want one check at the end. Tap it on the table that already has the order running, pick any free table from the list, and that table now shows the same **View Bill**/**Merge In** pair, pointing at the same invoice. Add as many tables as the party actually spans.
 
 **End of Day** is a button on this screen: it marks every occupied table available again and shows a one-line closing summary (KOTs served and today's revenue) so you can close out the dining room at the end of a shift.
+
+## Reservations
+
+Tap **Reservations** at the top of Restaurant Tables to see upcoming bookings and add new ones — customer name, phone, party size, date/time, an optional table, and a free-text note (dietary needs, a special occasion, anything worth knowing at seating time). A table with a reservation coming up in the next few hours shows a small "Reserved 7:30 PM" badge right on its card, so you see it while just glancing at the floor.
+
+When the party arrives, tap **Seat** — this marks the table Busy and the reservation Seated; the reservation itself doesn't create a bill, so use **Start Order** on the table as normal once they're ready to order. **No-show** and **Cancel** close out a reservation that didn't happen, without touching the table.
+
+## Splitting a bill
+
+Once an order is on the books but before anything has been paid, **Split Bill** on the invoice screen divides it into two or more separate checks — pick how many checks, then set how many of each item goes on each one (a shared item, like one dessert two people are splitting, can be divided down to the individual unit). Each check becomes its own real invoice, billed and paid separately from there. The table stays Busy, now pointing at the first check, until every split check is actually settled. Splitting only changes how the bill is paid — the original kitchen ticket and the stock it already deducted are untouched.
 
 ## Tip / service charge and "86" items
 

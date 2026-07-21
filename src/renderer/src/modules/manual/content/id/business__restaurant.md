@@ -4,9 +4,23 @@ Memilih **Restaurant** sebagai jenis bisnis Anda saat setup mengaktifkan empat h
 
 ## Tables
 
-Buka **Restaurant Tables** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Free**, **Busy**, atau **Rsv** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya — sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif. Tetapkan seorang **pelayan** ke sebuah meja dari kartunya sehingga Anda selalu tahu siapa yang melayaninya; hapus penugasan tersebut kapan saja.
+Buka **Restaurant Tables** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Free**, **Busy**, atau **Rsv** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya secara manual — atau biarkan status meja mengikuti pesanan sungguhan secara otomatis, lihat di bawah. Sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif. Tetapkan seorang **pelayan** ke sebuah meja dari kartunya sehingga Anda selalu tahu siapa yang melayaninya; hapus penugasan tersebut kapan saja.
+
+**Start Order** pada kartu meja kosong membuka Billing dengan meja itu sudah terpasang — susun keranjang seperti biasa dan konfirmasi penjualan. Meja sekarang benar-benar terhubung ke tagihan itu: kartunya menampilkan **View Bill** (langsung ke invoice) dan **Merge In** menggantikan Start Order, dan meja otomatis bebas kembali ke Free begitu tagihan lunas sepenuhnya atau dibatalkan — tidak perlu mengingat untuk mengubah statusnya secara manual.
+
+**Merge In** menggabungkan meja kedua ke tagihan yang sama yang sedang berjalan — untuk rombongan besar yang duduk di dua meja atau lebih dan ingin satu tagihan di akhir. Ketuk pada meja yang sudah menjalankan pesanan, pilih meja kosong mana pun dari daftar, dan meja itu sekarang menampilkan pasangan **View Bill**/**Merge In** yang sama, mengarah ke invoice yang sama. Tambahkan sebanyak mungkin meja sesuai luas rombongan itu.
 
 **End of Day** adalah tombol pada layar ini: ia menandai setiap meja yang terisi menjadi tersedia kembali dan menampilkan ringkasan penutupan satu baris (KOT yang dilayani dan pendapatan hari ini) sehingga Anda dapat menutup ruang makan di akhir shift.
+
+## Reservasi
+
+Ketuk **Reservations** di bagian atas Restaurant Tables untuk melihat pemesanan mendatang dan menambah yang baru — nama pelanggan, telepon, jumlah rombongan, tanggal/waktu, meja opsional, dan catatan bebas (kebutuhan makanan khusus, acara spesial, apa pun yang perlu diketahui saat mendudukkan mereka). Meja dengan reservasi yang akan datang dalam beberapa jam ke depan menampilkan lencana kecil "Reserved 7:30 PM" langsung di kartunya, jadi Anda bisa melihatnya sekilas di lantai.
+
+Saat rombongan tiba, ketuk **Seat** — ini menandai meja sebagai Busy dan reservasi sebagai Seated; reservasi itu sendiri tidak membuat tagihan, jadi gunakan **Start Order** pada meja seperti biasa begitu mereka siap memesan. **No-show** dan **Cancel** menutup reservasi yang tidak terjadi, tanpa menyentuh meja.
+
+## Memisah tagihan
+
+Setelah pesanan tercatat tapi sebelum ada pembayaran, **Split Bill** pada layar invoice membaginya menjadi dua tagihan terpisah atau lebih — pilih berapa banyak tagihan, lalu tentukan berapa banyak dari setiap item masuk ke masing-masing tagihan (item yang dibagi bersama, seperti satu makanan penutup yang dibagi dua orang, bisa dipecah hingga per unit). Setiap tagihan menjadi invoice sungguhan sendiri, ditagih dan dibayar terpisah dari situ. Meja tetap Busy, sekarang mengarah ke tagihan pertama, hingga setiap tagihan yang terpisah benar-benar lunas. Memisah hanya mengubah cara tagihan dibayar — tiket dapur asli dan stok yang sudah dikurangi tidak tersentuh.
 
 ## Tip / biaya layanan dan item "86"
 

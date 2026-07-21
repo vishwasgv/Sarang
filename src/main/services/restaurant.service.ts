@@ -83,6 +83,57 @@ export async function deleteTable(tableId: string, userId?: string) {
   }
 }
 
+// Phase 58 §2 (2026-07-21) — releases every table currently pointing at
+// `invoiceId` back to AVAILABLE (clears currentInvoiceId). Called from
+// INSIDE the same transaction that flips an invoice to a terminal state
+// (payment.service.ts's recordPayment/recordSplitPayment reaching PAID,
+// billing.service.ts's cancelInvoice, and the split-bill service's original
+// invoice going to SPLIT) — never as a separate follow-up call, so a crash
+// between "invoice settled" and "table released" can't happen. Accepts a tx
+// client with the same shape decrementVariantStockTx/reduceStockTx already
+// use for this exact reason.
+export async function releaseTablesForInvoiceTx(
+  tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
+  invoiceId: string
+): Promise<void> {
+  await tx.restaurantTable.updateMany({
+    where: { currentInvoiceId: invoiceId },
+    data: { currentInvoiceId: null, status: 'AVAILABLE' }
+  })
+}
+
+// Phase 58 §2 (2026-07-21) — ad-hoc merge: staff realizes mid-service that
+// a second table needs to join an already-running order (rather than
+// selecting both tables up front at order-open time, which
+// billingService.createInvoice's tableIds already supports directly).
+// Atomic claim — same shape as the createInvoice table claim — so a table
+// that's already part of another running order can't be silently
+// re-claimed.
+export async function mergeTableIntoInvoice(tableId: string, invoiceId: string, userId?: string) {
+  try {
+    const db = getPrisma()
+    const invoice = await db.invoice.findUnique({ where: { id: invoiceId } })
+    if (!invoice) return { success: false, error: { code: 'RST-040', message: 'Invoice not found.' } }
+    if (invoice.status !== 'ACTIVE' || invoice.paymentStatus === 'PAID') {
+      return { success: false, error: { code: 'RST-041', message: 'Can only merge into a running, unpaid order.' } }
+    }
+
+    const claim = await db.restaurantTable.updateMany({
+      where: { id: tableId, currentInvoiceId: null },
+      data: { currentInvoiceId: invoiceId, status: 'OCCUPIED' }
+    })
+    if (claim.count === 0) {
+      return { success: false, error: { code: 'RST-042', message: 'This table is already part of another running order (or does not exist).' } }
+    }
+
+    await logAction(userId, 'TABLE_MERGED_INTO_INVOICE', 'RestaurantTable', tableId, undefined, invoiceId)
+    const table = await db.restaurantTable.findUnique({ where: { id: tableId } })
+    return { success: true, data: table }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-043', message: err instanceof Error ? err.message : 'Could not merge table.' } }
+  }
+}
+
 // ─── KOT ──────────────────────────────────────────────────────────────────────
 
 export async function listKOTs(filters?: { status?: string; tableId?: string }) {

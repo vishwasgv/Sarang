@@ -9,7 +9,7 @@ import { requirePermission, requireSession, hasPermission } from '../permission-
 import { getCurrentSession } from '../../services/auth.service'
 import { logAction } from '../../services/audit.service'
 import { getPrisma } from '../../database/db'
-import { CreateInvoiceSchema, CancelInvoiceSchema } from '../../validation/billing.validation'
+import { CreateInvoiceSchema, CancelInvoiceSchema, SplitInvoiceSchema } from '../../validation/billing.validation'
 import { PrintLabelsSchema } from '../../validation/product.validation'
 import { HoldSaleSchema, HeldSaleIdSchema } from '../../validation/held-sale.validation'
 
@@ -91,6 +91,15 @@ export function register(handle: HandleFn): void {
     const parsed = CancelInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return billingService.cancelInvoice(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('billing:splitInvoice', async (payload) => {
+    // Same permission as cancelInvoice — both mutate an already-created
+    // invoice's financial shape, not just record a new sale.
+    const deny = await requirePermission('billing.cancelInvoice'); if (deny) return deny
+    const parsed = SplitInvoiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return billingService.splitInvoice(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('print:invoice', async (payload) => {

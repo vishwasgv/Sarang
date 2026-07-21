@@ -34,6 +34,9 @@ function makeMockDb(invoiceOverrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
     },
+    // Phase 58 §2 — recordPayment/recordSplitPayment release any restaurant
+    // table(s) still pointing at the invoice once it reaches PAID.
+    restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }
   // getPayments uses the array form db.$transaction([...]) instead of the
   // callback form — support both.
@@ -96,6 +99,29 @@ describe('paymentService.recordPayment', () => {
     const findCallOrder = vi.mocked(db.invoice.findUnique).mock.invocationCallOrder[0]
     expect(txCallOrder).toBeLessThan(findCallOrder)
   })
+
+  it('releases any restaurant table(s) once the balance reaches zero (PAID)', async () => {
+    const db = makeMockDb({ balanceAmount: 100 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 100, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    expect(db.restaurantTable.updateMany).toHaveBeenCalledWith({
+      where: { currentInvoiceId: 'inv-1' },
+      data: { currentInvoiceId: null, status: 'AVAILABLE' }
+    })
+  })
+
+  it('does NOT release a table on a partial payment (balance still owed)', async () => {
+    const db = makeMockDb({ balanceAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 400, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    expect(db.restaurantTable.updateMany).not.toHaveBeenCalled()
+  })
 })
 
 describe('paymentService.recordSplitPayment', () => {
@@ -145,6 +171,22 @@ describe('paymentService.recordSplitPayment', () => {
     })
 
     expect(res.success).toBe(true)
+  })
+
+  it('a split payment always settles the invoice in full, so it always releases the table', async () => {
+    const db = makeMockDb({ balanceAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordSplitPayment({
+      invoiceId: 'inv-1',
+      legs: [{ paymentMethod: 'CASH', amount: 600 }, { paymentMethod: 'UPI', amount: 400 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.restaurantTable.updateMany).toHaveBeenCalledWith({
+      where: { currentInvoiceId: 'inv-1' },
+      data: { currentInvoiceId: null, status: 'AVAILABLE' }
+    })
   })
 })
 

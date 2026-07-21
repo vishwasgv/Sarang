@@ -56,6 +56,15 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    restaurantTable: {
+      // Claims every requested table by default (tests that want a partial
+      // claim — simulating an already-occupied table — override this). The
+      // release call shape (releaseTablesForInvoiceTx) has no `where.id.in`
+      // at all — just returns a fixed count for that case.
+      updateMany: vi.fn().mockImplementation(({ where }: { where: { id?: { in: string[] } } }) =>
+        Promise.resolve({ count: where.id ? where.id.in.length : 1 })
+      ),
+    },
   }
   // listInvoices uses the array form db.$transaction([...]) instead of the
   // callback form createInvoice/cancelInvoice use — support both.
@@ -486,6 +495,85 @@ describe('billingService.createInvoice — Phase 58 §2 credit-terms due date', 
     expect(res.success).toBe(true)
     const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
     expect(createCall.data.dueDate).toBeNull()
+  })
+})
+
+describe('billingService.createInvoice — Phase 58 §2 restaurant table binding', () => {
+  it('stores the first tableId as the invoice\'s primary table', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, tableIds: ['table-5', 'table-6'] })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { tableId: string | null } }
+    expect(createCall.data.tableId).toBe('table-5')
+  })
+
+  it('claims every selected table (merge = selecting more than one)', async () => {
+    const db = makeMockDb()
+    db.restaurantTable.updateMany = vi.fn().mockResolvedValue({ count: 2 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, tableIds: ['table-5', 'table-6'] })
+
+    expect(res.success).toBe(true)
+    expect(db.restaurantTable.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['table-5', 'table-6'] }, currentInvoiceId: null },
+      data: { currentInvoiceId: 'inv-1', status: 'OCCUPIED' }
+    })
+  })
+
+  it('fails the whole invoice if any selected table is already part of another running order', async () => {
+    const db = makeMockDb()
+    // Only 1 of the 2 requested tables was actually free to claim.
+    db.restaurantTable.updateMany = vi.fn().mockResolvedValue({ count: 1 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, tableIds: ['table-5', 'table-6'] })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-015')
+  })
+
+  it('leaves tableId null and never touches RestaurantTable for a non-restaurant/counter sale', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { tableId: string | null } }
+    expect(createCall.data.tableId).toBeNull()
+    expect(db.restaurantTable.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('releases the table immediately for a CASH order — it was fully paid in this same call, no later recordPayment is coming', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, paymentMethod: 'CASH', tableIds: ['table-5'] })
+
+    expect(res.success).toBe(true)
+    // First call is the claim (sets OCCUPIED), second is the release
+    // (releaseTablesForInvoiceTx — clears currentInvoiceId, back to
+    // AVAILABLE) — both against the same invoice within the one transaction.
+    expect(db.restaurantTable.updateMany).toHaveBeenCalledTimes(2)
+    expect(db.restaurantTable.updateMany).toHaveBeenLastCalledWith({
+      where: { currentInvoiceId: 'inv-1' },
+      data: { currentInvoiceId: null, status: 'AVAILABLE' }
+    })
+  })
+
+  it('leaves the table occupied for a CREDIT order — it\'s a real running tab until paid later', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1', tableIds: ['table-5'] })
+
+    expect(res.success).toBe(true)
+    // Only the claim call — no release, since paymentStatus stays UNPAID.
+    expect(db.restaurantTable.updateMany).toHaveBeenCalledTimes(1)
   })
 })
 

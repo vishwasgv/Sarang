@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -100,6 +100,15 @@ function computeTotals(items: CartItem[], globalDiscount: number) {
 export function BillingScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Phase 58 §2 (2026-07-21) — dine-in table binding. Set only when this
+  // cart was opened from RestaurantTablesScreen's "Start Order" button
+  // (`/billing/new?tableId=...&tableLabel=...`) — every other entry point
+  // (counter sale, takeaway, non-restaurant vertical) leaves this null and
+  // the invoice is created with no table at all, exactly like before this
+  // feature existed.
+  const tableId = searchParams.get('tableId')
+  const tableLabel = searchParams.get('tableLabel')
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   const areaPricingEnabled = isModuleEnabled('area_pricing')
@@ -799,7 +808,8 @@ export function BillingScreen() {
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
-        dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined
+        dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined,
+        tableIds: tableId ? [tableId] : undefined
       })
 
       if (res.success) {
@@ -876,6 +886,11 @@ export function BillingScreen() {
             <ShoppingCart size={18} className="text-brand" />
           </div>
           <h1 className="text-lg font-bold text-dark flex-1">{t('billing.newInvoice')}</h1>
+          {tableId && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand/10 text-brand">
+              <UtensilsCrossed size={13} /> {tableLabel || 'Table'}
+            </span>
+          )}
           <button
             onClick={() => setShowHoldModal(true)}
             disabled={cart.length === 0}

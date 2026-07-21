@@ -41,6 +41,7 @@ let sharedTx: {
   payment: { updateMany: ReturnType<typeof vi.fn> }
   productBatch: { findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
   productSerial: { findMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
+  restaurantTable: { updateMany: ReturnType<typeof vi.fn> }
 }
 
 function makeDb(invoiceOverride?: Record<string, unknown>) {
@@ -56,7 +57,11 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
     // Batch/serial restoration on cancel — no batches/sold-serials in these
     // fixtures, so these are no-ops (matching a plain, untracked product).
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
-    productSerial: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() }
+    productSerial: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
+    // Phase 58 §2 — cancelInvoice releases any restaurant table(s) still
+    // pointing at this invoice; count: 0 here (no tables involved) matches
+    // a plain non-restaurant invoice fixture.
+    restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) }
   }
 
   const db = sharedTx as unknown as Record<string, any>
@@ -198,5 +203,18 @@ describe('billingService.cancelInvoice', () => {
     const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
     const findCallOrder = vi.mocked(sharedTx.invoice.findUnique).mock.invocationCallOrder[0]
     expect(txCallOrder).toBeLessThan(findCallOrder)
+  })
+
+  it('releases any restaurant table(s) still pointing at the cancelled invoice', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await billingService.cancelInvoice(makeCancelPayload())
+
+    expect(result.success).toBe(true)
+    expect(sharedTx.restaurantTable.updateMany).toHaveBeenCalledWith({
+      where: { currentInvoiceId: 'inv-1' },
+      data: { currentInvoiceId: null, status: 'AVAILABLE' }
+    })
   })
 })

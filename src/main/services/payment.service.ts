@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { customerLedgerService } from './customer-ledger.service'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
+import { releaseTablesForInvoiceTx } from './restaurant.service'
 import type { RecordPaymentPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
 
 export const paymentService = {
@@ -56,6 +57,14 @@ export const paymentService = {
             paymentStatus: newPaymentStatus
           }
         })
+
+        // Phase 58 §2 — a restaurant table's currentInvoiceId only ever
+        // means "still running an unpaid tab"; the moment that flips to
+        // PAID, free the table(s) for the next party in the same
+        // transaction that settled the bill.
+        if (newPaymentStatus === 'PAID') {
+          await releaseTablesForInvoiceTx(tx, payload.invoiceId)
+        }
 
         // Credit customer ledger — they paid this amount
         if (invoice.customerId) {
@@ -137,6 +146,9 @@ export const paymentService = {
             paymentStatus: 'PAID'
           }
         })
+
+        // Phase 58 §2 — see the same call in recordPayment above.
+        await releaseTablesForInvoiceTx(tx, payload.invoiceId)
 
         return created
       })

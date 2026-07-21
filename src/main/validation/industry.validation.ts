@@ -32,6 +32,12 @@ export const UpdateKOTStatusSchema = z.object({
   status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE', 'CANCELLED']),
 })
 
+// Phase 58 §2 (2026-07-21) — ad-hoc table merge, mid-service.
+export const MergeTableIntoInvoiceSchema = z.object({
+  tableId: z.string().min(1, 'tableId is required'),
+  invoiceId: z.string().min(1, 'invoiceId is required'),
+})
+
 export const UpsertRecipeSchema = z.object({
   productId: z.string().min(1, 'productId is required'),
   recipeName: z.string().min(1, 'recipeName is required'),
