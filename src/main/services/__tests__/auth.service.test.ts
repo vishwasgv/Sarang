@@ -12,7 +12,10 @@ vi.mock('../../security/session-persistence', () => ({
 import bcrypt from 'bcryptjs'
 import { getPrisma } from '../../database/db'
 import { loadSavedSession, clearSavedSession, saveSession } from '../../security/session-persistence'
-import { loginWithToken, getPasswordMinLength, checkPasswordLength, changePassword } from '../auth.service'
+import {
+  loginWithToken, getPasswordMinLength, checkPasswordLength, changePassword,
+  generateRecoveryCode, resetPasswordWithRecoveryCode, regenerateRecoveryCode
+} from '../auth.service'
 
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -224,4 +227,150 @@ describe('changePassword', () => {
 
     expect(result.success).toBe(true)
   }, 15000)
+})
+
+describe('generateRecoveryCode', () => {
+  it('produces a 19-character code in 4 groups of 4 separated by dashes, from an unambiguous alphabet', () => {
+    const code = generateRecoveryCode()
+    expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/)
+  })
+
+  it('produces different codes on successive calls (not a fixed/predictable value)', () => {
+    const codes = new Set(Array.from({ length: 20 }, () => generateRecoveryCode()))
+    expect(codes.size).toBe(20)
+  })
+})
+
+describe('resetPasswordWithRecoveryCode', () => {
+  const RECOVERY_CODE = 'AB3D-EFGH-JK4M-N9PQ'
+  const codeHash = bcrypt.hashSync(RECOVERY_CODE, 12)
+
+  function makeRecoveryDb(overrides: Record<string, unknown> = {}) {
+    return {
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'recovery_code_hash', settingValue: codeHash }) },
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'user-1', username: 'admin', isActive: true, passwordHash: 'irrelevant' }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      ...overrides
+    }
+  }
+
+  it('returns AUTH-005 when no recovery code has ever been generated for this install', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ setting: { findUnique: vi.fn().mockResolvedValue(null) } } as never)
+
+    const result = await resetPasswordWithRecoveryCode('admin', RECOVERY_CODE, 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-005')
+  })
+
+  it('rejects an unknown username with a generic error (no user enumeration)', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeRecoveryDb({ user: { findUnique: vi.fn().mockResolvedValue(null) } }) as never)
+
+    const result = await resetPasswordWithRecoveryCode('nobody', RECOVERY_CODE, 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-001')
+  })
+
+  it('rejects a deactivated user even with the correct code', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeRecoveryDb({
+      user: { findUnique: vi.fn().mockResolvedValue({ id: 'user-1', username: 'admin', isActive: false, passwordHash: 'x' }) }
+    }) as never)
+
+    const result = await resetPasswordWithRecoveryCode('admin', RECOVERY_CODE, 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-001')
+  })
+
+  it('rejects an incorrect recovery code', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeRecoveryDb() as never)
+
+    const result = await resetPasswordWithRecoveryCode('admin', 'WRONG-CODE-0000-0000', 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-001')
+  })
+
+  it('accepts the code regardless of case/spacing (normalized before comparison)', async () => {
+    const db = makeRecoveryDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await resetPasswordWithRecoveryCode('accept-case-test-user', 'ab3d efgh jk4m n9pq', 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(true)
+  })
+
+  it('succeeds with the correct code, hashes the new password, and clears any session token', async () => {
+    const db = makeRecoveryDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await resetPasswordWithRecoveryCode('succeeds-test-user', RECOVERY_CODE, 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(true)
+    const updateCall = vi.mocked(db.user.update).mock.calls[0][0] as { data: { passwordHash: string; sessionToken: null; tokenExpiresAt: null } }
+    expect(bcrypt.compareSync('NewLongEnoughPassword1', updateCall.data.passwordHash)).toBe(true)
+    expect(updateCall.data.sessionToken).toBeNull()
+    expect(updateCall.data.tokenExpiresAt).toBeNull()
+  })
+
+  it('rejects a new password shorter than the configured minimum', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeRecoveryDb() as never)
+
+    const result = await resetPasswordWithRecoveryCode('short-pw-test-user', RECOVERY_CODE, 'short')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('VAL-001')
+  })
+
+  it('locks out after 5 failed attempts for the same username (AUTH-004)', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeRecoveryDb() as never)
+
+    let lastResult
+    for (let i = 0; i < 6; i++) {
+      lastResult = await resetPasswordWithRecoveryCode('lockout-test-user', 'WRONG-CODE-0000-0000', 'NewLongEnoughPassword1')
+    }
+
+    expect(lastResult!.success).toBe(false)
+    expect((lastResult as { error: { code: string } }).error.code).toBe('AUTH-004')
+  }, 15000)
+})
+
+describe('regenerateRecoveryCode', () => {
+  const CURRENT_PASSWORD = 'CurrentAdminPassword1'
+  const currentHash = bcrypt.hashSync(CURRENT_PASSWORD, 12)
+
+  function makeRegenDb() {
+    return {
+      user: { findUnique: vi.fn().mockResolvedValue({ id: 'user-1', passwordHash: currentHash }) },
+      setting: { upsert: vi.fn().mockResolvedValue({}) },
+    }
+  }
+
+  it('rejects an incorrect current password and does not rotate the code', async () => {
+    const db = makeRegenDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await regenerateRecoveryCode('user-1', 'WrongPassword')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-001')
+    expect(db.setting.upsert).not.toHaveBeenCalled()
+  })
+
+  it('succeeds with the correct current password, storing only the hash and returning the plaintext code once', async () => {
+    const db = makeRegenDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await regenerateRecoveryCode('user-1', CURRENT_PASSWORD)
+
+    expect(result.success).toBe(true)
+    const returnedCode = (result.data as { recoveryCode: string }).recoveryCode
+    expect(returnedCode).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/)
+    const upsertCall = vi.mocked(db.setting.upsert).mock.calls[0][0] as { update: { settingValue: string } }
+    expect(upsertCall.update.settingValue).not.toBe(returnedCode)
+    expect(bcrypt.compareSync(returnedCode, upsertCall.update.settingValue)).toBe(true)
+  })
 })

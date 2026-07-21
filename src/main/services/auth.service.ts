@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import type { ApiResponse } from '../ipc/channels'
@@ -241,6 +241,109 @@ export async function changePassword(userId: string, oldPassword: string, newPas
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Offline recovery code — the ONLY password-reset path this app has when no
+// other logged-in Admin is available (there is no SMS/email/cloud to reset
+// via). One code per business, generated once at setup and shown exactly
+// once; only its bcrypt hash is ever persisted (Setting key
+// 'recovery_code_hash'). Modeled on how BitLocker/FileVault recovery keys
+// work: a single high-entropy offline secret the owner is responsible for
+// saving. If it's lost, there is deliberately no reset — a printed/typed
+// secret you must protect is the correct tradeoff for offline-first
+// software with zero support channel, not a flaw.
+// ─────────────────────────────────────────────────────────────────────────
+const RECOVERY_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no 0/O/1/I/L — avoids transcription errors
+const RECOVERY_CODE_GROUPS = 4
+const RECOVERY_CODE_GROUP_LEN = 4
+
+/** Generates a fresh recovery code like "AB3D-EFGH-JK4M-N9PQ" (~80 bits of entropy). */
+export function generateRecoveryCode(): string {
+  const bytes = randomBytes(RECOVERY_CODE_GROUPS * RECOVERY_CODE_GROUP_LEN)
+  let out = ''
+  for (let i = 0; i < bytes.length; i++) {
+    out += RECOVERY_CODE_ALPHABET[bytes[i] % RECOVERY_CODE_ALPHABET.length]
+  }
+  const groups: string[] = []
+  for (let i = 0; i < out.length; i += RECOVERY_CODE_GROUP_LEN) groups.push(out.slice(i, i + RECOVERY_CODE_GROUP_LEN))
+  return groups.join('-')
+}
+
+/** Uppercases and re-groups whatever the user typed so "ab3defgh jk4mn9pq" still matches the canonical stored form. */
+function normalizeRecoveryCode(input: string): string {
+  const stripped = input.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const groups: string[] = []
+  for (let i = 0; i < stripped.length; i += RECOVERY_CODE_GROUP_LEN) groups.push(stripped.slice(i, i + RECOVERY_CODE_GROUP_LEN))
+  return groups.join('-')
+}
+
+const recoveryRateLimiter = makeRateLimiter(MAX_ATTEMPTS, WINDOW_MS)
+
+/** Pre-login password reset using the offline recovery code — no session required by design. */
+export async function resetPasswordWithRecoveryCode(username: string, recoveryCode: string, newPassword: string): Promise<ApiResponse> {
+  try {
+    const rateCheck = recoveryRateLimiter.check(username)
+    if (rateCheck.blocked) {
+      const waitMin = Math.ceil((rateCheck.remainingMs ?? 0) / 60000)
+      return { success: false, error: { code: 'AUTH-004', message: `Too many attempts. Please try again in ${waitMin} minute(s).` } }
+    }
+
+    const db = getPrisma()
+    const codeSetting = await db.setting.findUnique({ where: { settingKey: 'recovery_code_hash' } })
+    if (!codeSetting) {
+      return { success: false, error: { code: 'AUTH-005', message: 'No recovery code has been set up for this installation. Ask another administrator to reset your password, or restore from a backup.' } }
+    }
+
+    const user = await db.user.findUnique({ where: { username } })
+    // Generic message either way (unknown username vs. wrong code) — this
+    // path is unauthenticated, no reason to confirm which usernames exist.
+    const genericError = { success: false as const, error: { code: 'AUTH-001', message: 'Incorrect username or recovery code.' } }
+    if (!user || !user.isActive) return genericError
+
+    const codeValid = await bcrypt.compare(normalizeRecoveryCode(recoveryCode), codeSetting.settingValue)
+    if (!codeValid) return genericError
+
+    const lengthError = await checkPasswordLength(newPassword)
+    if (lengthError) return lengthError
+
+    recoveryRateLimiter.reset(username)
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
+    // Same invalidation as changePassword — a stolen remember-me token must not survive a recovery reset either.
+    await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })
+    await logAction({ userId: user.id, action: 'PASSWORD_RESET_VIA_RECOVERY_CODE', entityType: 'User', entityId: user.id, newValue: { username } })
+
+    return { success: true }
+  } catch (err) {
+    console.error('[Auth] resetPasswordWithRecoveryCode error:', err)
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+/** Rotates the recovery code. Requires the caller's CURRENT password even though they're already logged in — a sensitive secret rotation, same re-auth discipline as changing your own password. Returns the new plaintext code exactly once. */
+export async function regenerateRecoveryCode(userId: string, currentPassword: string): Promise<ApiResponse<{ recoveryCode: string }>> {
+  try {
+    const db = getPrisma()
+    const user = await db.user.findUnique({ where: { id: userId } })
+    if (!user) return { success: false, error: { code: 'AUTH-001', message: 'User not found.' } }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!valid) return { success: false, error: { code: 'AUTH-001', message: 'Current password is incorrect.' } }
+
+    const recoveryCode = generateRecoveryCode()
+    const hash = await bcrypt.hash(recoveryCode, SALT_ROUNDS)
+    await db.setting.upsert({
+      where: { settingKey: 'recovery_code_hash' },
+      create: { settingKey: 'recovery_code_hash', settingValue: hash, settingType: 'STRING' },
+      update: { settingValue: hash }
+    })
+    await logAction({ userId, action: 'RECOVERY_CODE_REGENERATED', entityType: 'User', entityId: userId })
+
+    return { success: true, data: { recoveryCode } }
+  } catch (err) {
+    console.error('[Auth] regenerateRecoveryCode error:', err)
+    return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
 export async function getPermissions(): Promise<ApiResponse> {
   if (!currentSession) {
     return { success: false, error: { code: 'PERM-001', message: 'You do not have permission to perform this action.' } }
@@ -294,5 +397,8 @@ export const authService = {
   getCurrentSession,
   getPermissions,
   changePassword,
-  hashPassword
+  hashPassword,
+  generateRecoveryCode,
+  resetPasswordWithRecoveryCode,
+  regenerateRecoveryCode
 }

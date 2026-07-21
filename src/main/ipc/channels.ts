@@ -63,10 +63,12 @@ export interface IpcChannels {
     changePassword: (payload: { userId: string; oldPassword: string; newPassword: string }) => Promise<ApiResponse>
     getCurrentUser: () => Promise<ApiResponse>
     getPermissions: () => Promise<ApiResponse>
+    resetPasswordWithRecoveryCode: (payload: { username: string; recoveryCode: string; newPassword: string }) => Promise<ApiResponse>
+    regenerateRecoveryCode: (payload: { currentPassword: string }) => Promise<ApiResponse<{ recoveryCode: string }>>
   }
   setup: {
     isSetupComplete: () => Promise<ApiResponse<boolean>>
-    completeSetup: (payload: SetupPayload) => Promise<ApiResponse>
+    completeSetup: (payload: SetupPayload) => Promise<ApiResponse<{ recoveryCode: string }>>
   }
   users: {
     list: () => Promise<ApiResponse>

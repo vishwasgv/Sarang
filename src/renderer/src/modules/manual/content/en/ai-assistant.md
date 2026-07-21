@@ -4,7 +4,7 @@
 
 Ask Sarang is a built-in assistant that answers plain-English questions about **your own business data** — sales, inventory, customers, suppliers, credit, and profit. It runs a small AI model **entirely on your own computer**. Your question and your business data never leave this device — there is no internet call, no cloud service, and no data sent to Aszurex or anyone else, ever.
 
-Because it runs locally on ordinary hardware rather than in the cloud, answers can take anywhere from a couple of seconds to under a minute depending on your computer — you'll see "Thinking…" while it works.
+Because it runs locally on ordinary hardware rather than in the cloud, answers can take anywhere from a couple of seconds to under a minute depending on your computer — you'll see "Thinking…" while it works. **The first question you ask in a session is usually the slowest** (the model has to load into memory first); after about 8 seconds of waiting you'll see a note confirming it can take up to a minute, especially for that first answer — this is normal, just let it finish.
 
 ## How to turn it on
 

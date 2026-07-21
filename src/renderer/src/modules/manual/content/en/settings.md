@@ -16,11 +16,11 @@ If your business type is **Specialist Clinic**, an extra **Specialty** field app
 
 **Settings → Currency & Locale** sets your currency (Sarang supports roughly 150 world currencies), your number format (Indian grouping like 1,00,000.00, US/International, European, British, Arabic, or Indonesian), and decimal places (0, 2, or 3). A live preview shows exactly how an amount will be formatted before you save.
 
-## Industry Template
+## Switch Business / Industry Template
 
-**Settings → Industry Template** is where you pick your business type — Restaurant, Retail, Pharmacy, Hardware, Distributor, Hotel/Lodge, Jewellery, Manufacturing, one of the professional-service types (Lawyer, Architect, CA Firm, and many more), and so on. Each template turns on a specific set of feature modules — for example, Restaurant enables Table Management, KOT printing, and recipe/ingredient tracking, while Pharmacy enables batch and expiry tracking. The screen shows the exact module list under each option so you know what you're getting.
+**Settings → Switch Business / Industry Template** is where you pick your business type — Restaurant, Retail, Pharmacy, Hardware, Distributor, Hotel/Lodge, Jewellery, Manufacturing, one of the professional-service types (Lawyer, Architect, CA Firm, and many more), and so on. Each template turns on a specific set of feature modules — for example, Restaurant enables Table Management, KOT printing, and recipe/ingredient tracking, while Pharmacy enables batch and expiry tracking. The screen shows the exact module list under each option so you know what you're getting.
 
-Switching templates changes your sidebar navigation and feature set immediately — no restart required — and **all existing data is preserved**, only which features are visible changes. Since this is a single-select choice, switching to a new template replaces your current module set rather than adding to it (a Retail shop that switches to Distributor loses the Retail-specific Returns module unless it's also turned on separately — see below).
+Yes, **you can switch business types at any time** — pick a different template and click "Apply Template" (a confirmation dialog will ask you to confirm the switch first). This changes your sidebar navigation and feature set immediately — no restart required — and **all existing data is preserved**: every customer, product, invoice, and record stays exactly as it is, only which features are visible changes. Since this is a single-select choice, switching to a new template replaces your current module set rather than adding to it (a Retail shop that switches to Distributor loses the Retail-specific Returns module unless it's also turned on separately — see below).
 
 ## Additional Business Features
 

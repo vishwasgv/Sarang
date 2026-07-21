@@ -16,12 +16,13 @@ import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/
 // anything from ai-llama-provider.ts's internals.
 //
 // Latency is real for any question the deterministic fast-path doesn't
-// match (~20-30s, actual model inference, not just a one-time load cost —
-// PHASE_57_COMPLETION_REPORT.md Addendum 4's real measured numbers). Kept
-// deliberately simple, per founder feedback (2026-07-13): just show
-// "Thinking..." for the whole wait, no escalating/qualifying message — an
-// earlier version added a "can take up to a minute" message after a delay,
-// which was more accurate but was explicitly asked to be simplified back.
+// match (~20-30s typical, up to ~60s for the FIRST answer in a session while
+// the local model warms up — PHASE_57_COMPLETION_REPORT.md Addendum 4's real
+// measured numbers). "Thinking..." shows immediately; after 8s an escalating
+// "This can take up to a minute..." line appears so a long first-run wait
+// doesn't look stuck. (Re-added 2026-07-21 — a 2026-07-13 pass removed this
+// for simplicity, but the founder asked for the honest expectation-setting
+// back given warm-up time is real and can approach a full minute.)
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -83,6 +84,7 @@ export function AiAssistantScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
+  const [slowWait, setSlowWait] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const navigate = useNavigate()
@@ -91,6 +93,12 @@ export function AiAssistantScreen() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, asking])
+
+  useEffect(() => {
+    if (!asking) { setSlowWait(false); return }
+    const t = setTimeout(() => setSlowWait(true), 8000)
+    return () => clearTimeout(t)
+  }, [asking])
 
   async function handleAsk(override?: string) {
     // override lets a caller (the initialQuestion effect below) submit a
@@ -196,7 +204,10 @@ export function AiAssistantScreen() {
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
-                Thinking...
+                <span>
+                  Thinking...
+                  {slowWait && <span className="block text-xs mt-0.5 text-slate-400 dark:text-slate-500">This can take up to a minute, especially for the first question — please wait.</span>}
+                </span>
               </div>
             </div>
           )}

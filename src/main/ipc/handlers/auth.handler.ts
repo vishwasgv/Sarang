@@ -4,7 +4,7 @@ import * as settingsService from '../../services/settings.service'
 import * as auditService from '../../services/audit.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { getPrisma } from '../../database/db'
-import { LoginSchema, ChangePasswordSchema } from '../../validation/auth.validation'
+import { LoginSchema, ChangePasswordSchema, ResetPasswordWithRecoveryCodeSchema, RegenerateRecoveryCodeSchema } from '../../validation/auth.validation'
 import { SetupPayloadSchema } from '../../validation/setup.validation'
 import { BusinessProfileUpdateSchema } from '../../validation/business-profile.validation'
 import { unlink } from 'fs/promises'
@@ -45,6 +45,32 @@ export function register(handle: HandleFn): void {
       return { success: false, error: { code: 'PERM-001', message: 'You do not have permission to perform this action.' } }
     }
     return authService.changePassword(parsed.data.userId, parsed.data.oldPassword, parsed.data.newPassword)
+  })
+
+  // Deliberately NO requireSession() — this is the pre-login "forgot
+  // password" path. Security comes from the recovery code itself (~80 bits
+  // of entropy, only its bcrypt hash is ever stored) plus per-username rate
+  // limiting inside authService, not from an authenticated session.
+  handle('auth:resetPasswordWithRecoveryCode', async (payload) => {
+    const parsed = ResetPasswordWithRecoveryCodeSchema.safeParse(payload)
+    if (!parsed.success) {
+      return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    }
+    return authService.resetPasswordWithRecoveryCode(parsed.data.username, parsed.data.recoveryCode, parsed.data.newPassword)
+  })
+
+  // settings.modify is Admin-exclusive in the seeded role matrix (no other
+  // role lists it) — reused here rather than adding a new permission, since
+  // rotating the one secret that can reset any account's password needs the
+  // same trust tier as changing business-wide settings.
+  handle('auth:regenerateRecoveryCode', async (payload) => {
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    const parsed = RegenerateRecoveryCodeSchema.safeParse(payload)
+    if (!parsed.success) {
+      return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    }
+    const userId = authService.getCurrentSession()!.userId
+    return authService.regenerateRecoveryCode(userId, parsed.data.currentPassword)
   })
 
   handle('setup:isSetupComplete', async () => setupService.isSetupComplete())

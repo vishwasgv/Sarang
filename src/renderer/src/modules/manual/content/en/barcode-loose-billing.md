@@ -28,6 +28,8 @@ Open **Print Labels** (reachable once Barcode Label Printing is on). Search for 
 
 The thermal label's physical size (width and height in millimetres) is configured once under **Settings → Barcode & Loose Billing → Thermal Label Size** to match your printer's stickers; it doesn't affect A4/sheet printing.
 
+By default, printing labels opens the normal print dialog so you pick a printer each time — this keeps label printing completely separate from your billing/receipt printer, and Windows automatically lists any newly connected USB label printer there the moment it's installed, no setup needed in Sarang. If you'd rather not pick a printer every time, set **Settings → Barcode & Loose Billing → Label Printer** to your label printer once — after that, labels print straight away without a dialog, the same way Kitchen Printer works for restaurants.
+
 ## Weighing and printing a loose item
 
 On the same **Print Labels** screen, under **Weigh & Print a Loose Item**: search for a loose-billed product, weigh it on any scale, enter the weight in grams, and click **Print Label**. Sarang works out the price for that exact weight and prints a one-off label with a special barcode that encodes both the product and the weighed amount. Scanning that label at checkout adds it to the bill in a single scan, already priced correctly — no manual weight entry needed at the till.

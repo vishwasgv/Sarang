@@ -369,6 +369,14 @@ export function register(handle: HandleFn): void {
     const built = await buildLabelHtml(payload)
     if (!built.ok) return built.res
 
+    // A remembered Label Printer (Settings → Barcode & Loose Billing) prints
+    // silently to that exact device, same convenience as Kitchen Printer —
+    // added 2026-07-21 per founder request. Left unset, behaviour is
+    // unchanged from before: the OS print dialog opens so the user picks a
+    // printer (and can preview) every time.
+    const labelPrinterSetting = await getPrisma().setting.findUnique({ where: { settingKey: 'label_printer_name' } })
+    const labelDeviceName = labelPrinterSetting?.settingValue || undefined
+
     const tmpPath = join(app.getPath('temp'), `sarang_labels_${Date.now()}.html`)
     await writeFile(tmpPath, built.html, 'utf-8')
     const printed = await new Promise<boolean>((resolve) => {
@@ -392,7 +400,12 @@ export function register(handle: HandleFn): void {
         // Small delay lets the inline JsBarcode script render the SVG bars
         // before the print dialog captures the page.
         setTimeout(() => {
-          win.webContents.print({ silent: false, printBackground: true }, (success: boolean) => finish(success))
+          win.webContents.print(
+            labelDeviceName
+              ? { silent: true, printBackground: true, deviceName: labelDeviceName }
+              : { silent: false, printBackground: true },
+            (success: boolean) => finish(success)
+          )
         }, 200)
       })
     })

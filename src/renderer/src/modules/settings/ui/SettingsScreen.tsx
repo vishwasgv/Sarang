@@ -74,8 +74,8 @@ const SECTIONS: SettingsSection[] = [
   },
   {
     id: 'industry',
-    label: 'Industry Template',
-    description: 'Switch between Restaurant, Retail, Hardware, Distributor',
+    label: 'Switch Business / Industry Template',
+    description: 'Change your business type — Restaurant, Retail, Hardware, Distributor, and 40+ more. All your data is kept.',
     icon: <Layers size={18} />,
     permission: 'settings.modify',
     status: 'available'
@@ -1102,7 +1102,89 @@ function SecuritySection() {
       {hasPermission('settings.modify') && (
         <PasswordPolicyCard minLen={minLen} onSaved={(value) => setSettings({ ...settings, password_min_length: value })} />
       )}
+
+      {hasPermission('settings.modify') && <RecoveryCodeCard />}
     </div>
+  )
+}
+
+// Admin-only (settings.modify) — regenerates the single offline recovery
+// code used by the pre-login "Forgot password?" flow. Re-authenticates with
+// the current password before rotating, since this replaces the one secret
+// that can reset any account's password.
+function RecoveryCodeCard() {
+  const [currentPwd, setCurrentPwd] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [newCode, setNewCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  async function handleRegenerate() {
+    setError(null)
+    if (!currentPwd) { setError('Enter your current password to continue.'); return }
+    setSaving(true)
+    try {
+      const res = await window.api.auth.regenerateRecoveryCode({ currentPassword: currentPwd })
+      if (res.success && res.data) {
+        setNewCode((res.data as { recoveryCode: string }).recoveryCode)
+        setCurrentPwd('')
+      } else {
+        setError(res.error?.message ?? 'Failed to generate a new recovery code.')
+      }
+    } catch {
+      setError('Failed to generate a new recovery code.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function copyCode() {
+    if (!newCode) return
+    try {
+      await navigator.clipboard.writeText(newCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* clipboard permission denied — code is still shown on screen */ }
+  }
+
+  return (
+    <Card padding="lg" className="space-y-4">
+      <div>
+        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Password Recovery Code</h4>
+        <p className="text-xs text-slate-500 mt-1">Sarang works fully offline, so this code — not email or SMS — is what lets you (or any admin) reset a forgotten password from the Login screen. Regenerating it immediately invalidates your old code.</p>
+      </div>
+      {error && <div className="bg-danger/10 text-danger text-sm rounded-lg px-3 py-2">{error}</div>}
+
+      {newCode ? (
+        <div className="bg-warning/5 border-2 border-warning/30 rounded-lg p-3">
+          <p className="text-xs font-semibold text-dark dark:text-slate-100 mb-2">New recovery code — save it now, it will never be shown again:</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-center text-sm font-mono font-bold tracking-wider text-dark dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-2 select-all">
+              {newCode}
+            </code>
+            <Button size="sm" variant="secondary" onClick={copyCode}>{copied ? 'Copied' : 'Copy'}</Button>
+          </div>
+          <Button size="sm" variant="secondary" className="mt-3" onClick={() => setNewCode(null)}>Done</Button>
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your Current Password</label>
+            <div className="relative">
+              <input type={showPwd ? 'text' : 'password'} value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
+                className="w-full h-11 pl-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+              <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button size="sm" onClick={handleRegenerate} disabled={saving}>{saving ? 'Generating…' : 'Generate New Recovery Code'}</Button>
+          </div>
+        </>
+      )}
+    </Card>
   )
 }
 
@@ -1949,6 +2031,18 @@ function BarcodeSection() {
   const [labelHeight, setLabelHeight] = useState<string>(() => getSetting('label_height_mm', '30'))
   const [backfilling, setBackfilling] = useState(false)
   const [backfillResult, setBackfillResult] = useState<string | null>(null)
+  const [labelPrinter, setLabelPrinter] = useState<string>(() => getSetting('label_printer_name', ''))
+  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string; isDefault: boolean }>>([])
+  const [printersLoading, setPrintersLoading] = useState(false)
+  const barcodePrintOnForFetch = enabledModules.includes('barcode_printing')
+
+  useEffect(() => {
+    if (!barcodePrintOnForFetch) return
+    setPrintersLoading(true)
+    window.api.print.listPrinters()
+      .then(res => { if (res.success && res.data) setPrinters(res.data) })
+      .finally(() => setPrintersLoading(false))
+  }, [barcodePrintOnForFetch])
 
   const MODULES: Array<{ key: 'barcode_generation' | 'barcode_printing' | 'loose_billing' | 'pack_billing'; label: string; desc: string }> = [
     { key: 'barcode_generation', label: 'Barcode Generation & Scanning', desc: 'Auto-generate barcodes for products, and scan barcodes at checkout and stock lookup' },
@@ -1984,6 +2078,23 @@ function BarcodeSection() {
       }
     } catch {
       toastError('Error', 'Failed to save label size.')
+    }
+  }
+
+  async function saveLabelPrinter(value: string) {
+    const previous = labelPrinter
+    setLabelPrinter(value)
+    try {
+      const res = await window.api.settings.set({ key: 'label_printer_name', value })
+      if (res.success) {
+        toastSuccess('Label printer saved')
+      } else {
+        setLabelPrinter(previous)
+        toastError('Error', res.error?.message ?? 'Failed to save label printer.')
+      }
+    } catch {
+      setLabelPrinter(previous)
+      toastError('Error', 'Failed to save label printer.')
     }
   }
 
@@ -2061,6 +2172,27 @@ function BarcodeSection() {
             </div>
             <Button size="sm" onClick={saveLabelSize}>Save</Button>
           </div>
+        </Card>
+      )}
+
+      {barcodePrintOn && (
+        <Card padding="none" className="px-5 py-4">
+          <p className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">Label Printer</p>
+          <p className="text-xs text-slate-400 mb-3">Optional — remember a printer here so barcode labels print straight away without asking every time, the same way Kitchen Printer works. Leave unset to keep picking a printer each time you print labels.</p>
+          <Select
+            value={labelPrinter}
+            onChange={e => saveLabelPrinter(e.target.value)}
+            disabled={printersLoading}
+          >
+            <option value="">Ask every time (show print dialog)</option>
+            {printers.map(p => (
+              <option key={p.name} value={p.name}>{p.displayName || p.name}{p.isDefault ? ' (Windows default)' : ''}</option>
+            ))}
+          </Select>
+          {printersLoading && <p className="text-xs text-slate-400 mt-1">Loading printers…</p>}
+          {!printersLoading && printers.length === 0 && (
+            <p className="text-xs text-slate-400 mt-1">No printers found. Make sure your label printer is installed in Windows.</p>
+          )}
         </Card>
       )}
 

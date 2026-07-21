@@ -155,7 +155,17 @@
     "changePassword": "Change Password",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
-    "confirmPassword": "Confirm Password"
+    "confirmPassword": "Confirm Password",
+    "forgotPasswordLink": "Forgot password?",
+    "forgotPasswordTitle": "Reset Password",
+    "forgotPasswordExplain": "Sarang works fully offline, so there's no email or SMS reset link. Enter your username and the Recovery Code you saved during setup (or that an administrator gave you) to set a new password.",
+    "forgotPasswordFillAll": "Please fill in all fields.",
+    "passwordsDontMatch": "Passwords do not match.",
+    "recoveryCode": "Recovery Code",
+    "resetPassword": "Reset Password",
+    "passwordResetSuccessTitle": "Password Reset",
+    "passwordResetSuccessBody": "Your password has been changed. You can now sign in with your new password.",
+    "backToSignIn": "Back to Sign In"
   },
   "dashboard": {
     "title": "Dashboard",

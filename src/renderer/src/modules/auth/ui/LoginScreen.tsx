@@ -14,6 +14,7 @@ import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { api } from '@renderer/services/ipc-client'
 import type { User } from '@shared/types/api.types'
+import { ForgotPasswordModal } from './ForgotPasswordModal'
 
 const schema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -29,6 +30,7 @@ export function LoginScreen() {
   const { error: toastError } = useNotificationStore()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [forgotOpen, setForgotOpen] = useState(false)
 
   const {
     register,
@@ -127,6 +129,13 @@ export function LoginScreen() {
                 </button>
               </div>
               {errors.password && <p className="text-sm text-danger">{errors.password.message}</p>}
+              <button
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="self-end text-sm text-brand font-medium hover:underline"
+              >
+                {t('auth.forgotPasswordLink')}
+              </button>
             </div>
 
             {serverError && (
@@ -150,6 +159,8 @@ export function LoginScreen() {
           {t('about.poweredBy')} <AszurexMark width={14} /> · {t('about.tagline')}
         </p>
       </motion.div>
+
+      <ForgotPasswordModal open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>
   )
 }

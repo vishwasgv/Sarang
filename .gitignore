@@ -26,3 +26,5 @@ release/
 # rewrite). Place Qwen2.5-1.5B-Instruct-Q4_K_M.gguf here manually before
 # running a real installer build (npm run dist) — see resources/models/README.md.
 resources/models/*.gguf
+
+.claude/settings.local.json

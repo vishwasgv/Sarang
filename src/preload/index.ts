@@ -14,7 +14,9 @@ const api: IpcChannels = {
     logout: () => invoke('auth:logout'),
     changePassword: (p) => invoke('auth:changePassword', p),
     getCurrentUser: () => invoke('auth:getCurrentUser'),
-    getPermissions: () => invoke('auth:getPermissions')
+    getPermissions: () => invoke('auth:getPermissions'),
+    resetPasswordWithRecoveryCode: (p) => invoke('auth:resetPasswordWithRecoveryCode', p),
+    regenerateRecoveryCode: (p) => invoke('auth:regenerateRecoveryCode', p)
   },
   setup: {
     isSetupComplete: () => invoke('setup:isSetupComplete'),

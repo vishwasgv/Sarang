@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, Check, Upload, X, Sparkles } from 'lucide-react'
+import { ChevronRight, Check, Upload, X, Sparkles, Copy, ShieldAlert } from 'lucide-react'
 import { BrandIcon, AszurexMark } from '@shared/ui/atoms/Brand'
 import { useForm, FormProvider, useFormContext } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -158,6 +158,7 @@ interface SetupWizardProps {
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -205,6 +206,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       return
     }
 
+    setRecoveryCode((res.data as { recoveryCode?: string } | undefined)?.recoveryCode ?? null)
     setStep(TOTAL_ACTIVE_STEPS)
   }
 
@@ -272,7 +274,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   {step === 4 && <TaxStep />}
                   {step === 5 && <LogoStep />}
                   {step === 6 && <AdminStep submitError={submitError} />}
-                  {step === 7 && <CompleteStep onComplete={onComplete} />}
+                  {step === 7 && <CompleteStep onComplete={onComplete} recoveryCode={recoveryCode} />}
                 </motion.div>
               </AnimatePresence>
 
@@ -648,7 +650,19 @@ function AdminStep({ submitError }: { submitError: string | null }) {
   )
 }
 
-function CompleteStep({ onComplete }: { onComplete: () => void }) {
+function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; recoveryCode: string | null }) {
+  const [saved, setSaved] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  async function copyCode() {
+    if (!recoveryCode) return
+    try {
+      await navigator.clipboard.writeText(recoveryCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* clipboard permission denied — the code is still shown on screen to copy by hand */ }
+  }
+
   return (
     <div className="text-center py-4">
       <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
@@ -658,7 +672,32 @@ function CompleteStep({ onComplete }: { onComplete: () => void }) {
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
         Your business has been configured. Let's start managing your operations.
       </p>
-      <Button onClick={onComplete} size="lg" className="w-full">
+
+      {recoveryCode && (
+        <div className="mb-6 p-4 bg-warning/5 border-2 border-warning/30 rounded-lg text-left">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert size={16} className="text-warning shrink-0" />
+            <p className="text-sm font-bold text-dark dark:text-slate-100">Save your Password Recovery Code</p>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            Sarang works fully offline — there's no email or SMS to reset a forgotten password. This code is the <strong>only</strong> way to reset your password if you ever forget it. Write it down or print it and keep it somewhere safe. <strong>It will never be shown again.</strong>
+          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <code className="flex-1 text-center text-base font-mono font-bold tracking-wider text-dark dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 select-all">
+              {recoveryCode}
+            </code>
+            <Button type="button" variant="secondary" size="sm" onClick={copyCode} icon={<Copy size={13} />}>
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          </div>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5" />
+            <span className="text-xs text-slate-600 dark:text-slate-300">I've saved this recovery code somewhere safe.</span>
+          </label>
+        </div>
+      )}
+
+      <Button onClick={onComplete} size="lg" className="w-full" disabled={!!recoveryCode && !saved}>
         Launch Dashboard
       </Button>
       <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-left">

@@ -38,6 +38,14 @@ Click the delete icon next to an active user to deactivate them (requires the di
 
 Click the shield icon next to a user (not available for your own account) to set a new password for them directly — useful if they've forgotten theirs. This immediately invalidates any of their existing logged-in sessions.
 
+## Forgot your password? (offline recovery code)
+
+Sarang works fully offline, so there is no email or SMS "reset link" — instead, a **Recovery Code** is generated once, during first-time setup, and shown to you exactly once on the final "You're all set!" screen. **Write it down or print it and keep it somewhere safe** — it will never be shown again after that screen.
+
+If you forget your password, click **Forgot password?** on the Login screen, enter your username and your saved Recovery Code, then choose a new password. This works even if no other administrator is logged in or available — it's the only offline-safe way to recover access, so protecting the code is important: anyone who has it (and knows a username) can reset that account's password.
+
+If you ever lose the code, an Admin can generate a brand-new one from **Settings → Security → Password Recovery Code** (requires re-entering your current password first, and immediately invalidates the old code). If the sole Admin is both locked out AND has lost the recovery code, there is genuinely no way back into that account — restoring a recent backup to a fresh install is the only remaining option, which is exactly why saving the code when it's first shown matters.
+
 ## Changing your own password
 
 Go to **Settings → Security**, enter your current password, then your new password twice. Your new password must meet the configured minimum length (10 characters by default). After a successful change you'll need to log in again.

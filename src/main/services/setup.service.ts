@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { hashPassword } from './auth.service'
+import { hashPassword, generateRecoveryCode } from './auth.service'
 import { seedDefaultData } from '../database/seed'
 import { logAction } from './audit.service'
 import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.service'
@@ -38,6 +38,12 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
     }
 
     const passwordHash = await hashPassword(payload.adminPassword)
+
+    // Offline recovery code — the only password-reset path this app has
+    // (no SMS/email/cloud exists). Generated once here, shown to the owner
+    // exactly once by SetupWizard, and never persisted in plaintext.
+    const recoveryCode = generateRecoveryCode()
+    const recoveryCodeHash = await hashPassword(recoveryCode)
 
     // Use transaction for atomicity
     await db.$transaction(async (tx) => {
@@ -86,6 +92,12 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
 
       // Seed default tax configurations and expense categories
       await seedBusinessDefaults(tx, payload.country, payload.taxModel)
+
+      await tx.setting.upsert({
+        where: { settingKey: 'recovery_code_hash' },
+        create: { settingKey: 'recovery_code_hash', settingValue: recoveryCodeHash, settingType: 'STRING' },
+        update: { settingValue: recoveryCodeHash }
+      })
     })
 
     // Seed default service catalog entries for this template (outside transaction — not critical)
@@ -93,7 +105,7 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
       await seedDefaultServicesForTemplate(payload.businessType)
     }
 
-    return { success: true }
+    return { success: true, data: { recoveryCode } }
   } catch (err) {
     logger.error('[Setup] completeSetup error:', err instanceof Error ? (err.stack ?? err.message) : String(err))
     return { success: false, error: { code: 'SYS-001', message: 'Setup could not be completed. Please try again.' } }

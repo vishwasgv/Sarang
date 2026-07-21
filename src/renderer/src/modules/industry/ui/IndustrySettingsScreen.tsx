@@ -7,6 +7,7 @@ import {
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
 import { Badge } from '@shared/ui/atoms/Badge'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Template {
   type: string
@@ -376,9 +377,11 @@ export function IndustrySettingsScreen() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   async function handleSave() {
     if (selected === businessType) return
+    setConfirmOpen(false)
     setSaving(true)
     setError(null)
     try {
@@ -399,8 +402,8 @@ export function IndustrySettingsScreen() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-dark dark:text-slate-100">Industry Template</h2>
-        <p className="text-sm text-slate-400">Choose your business type to activate industry-specific features. Changes take effect immediately — no restart required.</p>
+        <h2 className="text-lg font-bold text-dark dark:text-slate-100">Switch Business / Industry Template</h2>
+        <p className="text-sm text-slate-400">Change your business type to activate a different set of features — Restaurant, Retail, Hardware, and 40+ more. Your customers, products, invoices, and every other record are kept exactly as they are; only which features/menus are shown changes.</p>
       </div>
 
       {error && (
@@ -461,13 +464,24 @@ export function IndustrySettingsScreen() {
       )}
 
       <div className="flex justify-end">
-        <button onClick={handleSave}
+        <button onClick={() => setConfirmOpen(true)}
           disabled={saving || selected === businessType}
           className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
           {saving && <RefreshCw size={14} className="animate-spin" />}
           {saving ? 'Saving…' : 'Apply Template'}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleSave}
+        title="Switch Business Type?"
+        message={`Switch to "${TEMPLATES.find(t => t.type === selected)?.label ?? selected}"? Your sidebar menu and available features will change to match. All existing data — customers, products, invoices, and everything else — is kept exactly as it is; nothing is deleted or modified.`}
+        confirmLabel="Switch Business"
+        confirmVariant="primary"
+        loading={saving}
+      />
     </div>
   )
 }
