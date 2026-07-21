@@ -459,7 +459,7 @@ export function IndustrySettingsScreen() {
       {selected !== businessType && (
         <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300">
           <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
-          <p>Switching templates will change the sidebar navigation and enable/disable features. All existing data is preserved — only the feature set changes.</p>
+          <p>Switching templates will change the sidebar navigation and enable/disable features. All existing data is preserved — only the feature set changes, and each business type remembers its own feature toggles independently (switching back later restores exactly what you had). One real consequence to know: most professional/service business types (Lawyer, CA Firm, Architect, and similar) only support English — if you're using Sarang in another language, switching to one of those will switch your interface to English. Switching to a product-based business (Retail, Hardware, Pharmacy, etc.) restores full multi-language support.</p>
         </div>
       )}
 
@@ -477,7 +477,7 @@ export function IndustrySettingsScreen() {
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleSave}
         title="Switch Business Type?"
-        message={`Switch to "${TEMPLATES.find(t => t.type === selected)?.label ?? selected}"? Your sidebar menu and available features will change to match. All existing data — customers, products, invoices, and everything else — is kept exactly as it is; nothing is deleted or modified.`}
+        message={`Switch to "${TEMPLATES.find(t => t.type === selected)?.label ?? selected}"? Your sidebar menu and available features will change to match. All existing data — customers, products, invoices, and everything else — is kept exactly as it is; nothing is deleted or modified. Your current business type's feature toggles are also remembered and will be exactly as you left them if you switch back later. One thing to know: most professional/service business types only support English — if you're using Sarang in another language, this may switch your interface to English.`}
         confirmLabel="Switch Business"
         confirmVariant="primary"
         loading={saving}
