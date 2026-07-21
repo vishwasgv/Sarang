@@ -485,7 +485,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'sales.totalToday': {
     category: 'sales',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `Today's sales: ${formatAmountForSpeech(kpis.todaySales, sym)}`,
         details: [`${kpis.todayTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.todayTrend).toFixed(1)}% compared to yesterday`],
@@ -496,7 +504,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'sales.totalThisWeek': {
     category: 'sales',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `This week's sales: ${formatAmountForSpeech(kpis.weekSales, sym)}`,
         details: [`${kpis.weekTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.weekTrend).toFixed(1)}% compared to last week`],
@@ -507,7 +523,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'sales.totalThisMonth': {
     category: 'sales',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `This month's sales: ${formatAmountForSpeech(kpis.monthSales, sym)}`,
         details: [`${kpis.monthTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.monthTrend).toFixed(1)}% compared to last month`],
@@ -587,7 +611,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'sales.compareToPreviousPeriod': {
     category: 'sales',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `This month's sales are ${formatAmountForSpeech(kpis.monthSales, sym)}, ${kpis.monthTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.monthTrend).toFixed(1)}% vs last month`,
         details: [
@@ -1531,7 +1563,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'finance.expenseTrend': {
     category: 'finance',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `This month's expenses: ${formatAmountForSpeech(kpis.monthExpenses, sym)}, ${kpis.expenseTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.expenseTrend).toFixed(1)}% vs last month`,
         details: [],
@@ -1542,7 +1582,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
   'finance.profitTrend': {
     category: 'finance',
     async execute(_params, sym) {
-      const kpis = await getDashboardKpis()
+      // forceRefresh=true — a real bug found via live UAT (2026-07-21): the
+      // Dashboard screen's 60s KPI cache is fine for a continuously-viewed
+      // screen, but an AI answer is a one-shot factual claim ("restates the
+      // actual numbers it found, never estimates" per this feature's own
+      // onboarding copy). Without forcing a refresh, a sale made seconds
+      // before asking "how much did I sell today?" could be answered from a
+      // stale pre-sale snapshot, or even trigger the "not enough
+      // information" fallback if the cached total was zero.
+      const kpis = await getDashboardKpis(true)
       return {
         headline: `This month's estimated profit: ${formatAmountForSpeech(kpis.estimatedProfit, sym)}, ${kpis.profitTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.profitTrend).toFixed(1)}% vs last month`,
         details: [],

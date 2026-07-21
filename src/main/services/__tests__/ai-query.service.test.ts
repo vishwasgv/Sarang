@@ -133,6 +133,33 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(res.data?.template).toBe('sales.totalToday')
   })
 
+  // Real bug found via live UAT (2026-07-21): getDashboardKpis() was called
+  // with no args (forceRefresh defaults to false), so a sale made seconds
+  // before asking "how much did I sell today?" could return the Dashboard
+  // screen's 60s-stale cached KPI snapshot -- wrongly answering ₹0 sales
+  // (or even the "not enough information" fallback) despite the sale being
+  // right there in the database. An AI answer is a one-shot factual claim
+  // and must never be stale, unlike the continuously-viewed Dashboard
+  // screen the cache TTL was designed for.
+  it('forces a fresh (non-cached) KPI read for a KPI-backed template, not the Dashboard screen\'s cached snapshot', async () => {
+    vi.mocked(getDashboardKpis).mockResolvedValue({
+      todaySales: 200, todayTrend: 5, weekSales: 0, weekTrend: 0, monthSales: 0, monthTrend: 0,
+      totalInvoices: 1, outstanding: 0, inventoryValue: 0, monthExpenses: 0, expenseTrend: 0,
+      estimatedProfit: 0, profitTrend: 0, lowStockCount: 0, customerCount: 0, supplierCount: 0,
+      inventoryStats: {} as never
+    })
+    const fake = new FakeAIProvider(
+      { 'How much did I sell today?': { template: 'sales.totalToday', category: 'sales', params: {} } },
+      'You sold ₹200 today.'
+    )
+    setAIProvider(fake)
+
+    const res = await askQuestion('How much did I sell today?')
+
+    expect(res.success).toBe(true)
+    expect(getDashboardKpis).toHaveBeenCalledWith(true)
+  })
+
   it('refuses when the AI module is disabled for this business, without calling the model at all', async () => {
     vi.mocked(isModuleEnabled).mockResolvedValue(false)
     const fake = new FakeAIProvider()
