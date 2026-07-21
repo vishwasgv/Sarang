@@ -10,9 +10,11 @@ Stok hanya bergerak melalui **Adjust Stock**, yang mencatat salah satu dari tiga
 
 ## 2. Bill of Materials (BOM)
 
-Sebuah BOM mendefinisikan apa yang sebenarnya dibutuhkan sebuah produk jadi: pilih produk, tetapkan kuantitas output per batch, dan daftarkan bahan baku yang dikonsumsinya dengan kuantitas yang dibutuhkan dan persentase wastage opsional. Wastage menggelembungkan kuantitas efektif yang dikonsumsi (misalnya wastage 5% pada kebutuhan 10 kg berarti 10.5 kg yang sebenarnya direncanakan untuk dikonsumsi). Sarang menjumlahkan biaya bahan per batch dari biaya satuan setiap bahan saat ini — ini adalah basis biaya yang akan digunakan sebuah perintah produksi nanti.
+Sebuah BOM mendefinisikan apa yang sebenarnya dibutuhkan sebuah produk jadi: pilih produk, tetapkan kuantitas output per batch, dan daftarkan apa yang dikonsumsinya — baik berupa bahan baku, maupun **produk manufaktur lain sebagai sub-rakitan (sub-assembly)** (alihkan jenis barisnya), dengan kuantitas yang dibutuhkan dan persentase wastage opsional. Wastage menggelembungkan kuantitas efektif yang dikonsumsi (misalnya wastage 5% pada kebutuhan 10 kg berarti 10.5 kg yang sebenarnya direncanakan untuk dikonsumsi). Saat membangun produk multi-level — misalnya sebuah Mobil yang membutuhkan sebuah Mesin, yang sendiri dibuat dari bahan baku Baja — Sarang memeriksa referensi sirkular (sebuah komponen yang pada akhirnya akan membutuhkan dirinya sendiri) dan memblokir penyimpanannya. Sarang menjumlahkan biaya bahan per batch dari biaya satuan setiap bahan saat ini — ini adalah basis biaya yang akan digunakan sebuah perintah produksi nanti.
 
-Hanya satu BOM per produk yang diizinkan; mengedit BOM yang sudah ada memungkinkan Anda mengubah kuantitas dan wastage tetapi bukan untuk produk mana ia berlaku.
+Hanya satu BOM per produk yang diizinkan; mengedit BOM yang sudah ada memungkinkan Anda mengubah kuantitas, wastage, dan baris komponen tetapi bukan untuk produk mana ia berlaku.
+
+Bahan baku yang diterima dalam lot yang berbeda (sebuah pengiriman hari ini mungkin berbeda biayanya dari bulan lalu) dapat dilacak sebagai **material batches** dari Raw Materials — terima sebuah lot dengan kuantitasnya sendiri, dan sebuah perintah produksi otomatis mengambil dari lot tertua terlebih dahulu (FIFO), sehingga Anda selalu tahu persis lot mana yang masuk ke perintah produksi yang mana.
 
 ## 3. Production Orders
 
@@ -20,10 +22,10 @@ Ini adalah alur kerja inti manufacturing, dan bergerak melalui empat status:
 
 - **Draft** — Anda memilih produk dengan sebuah BOM dan kuantitas yang direncanakan; Sarang menghitung persis berapa banyak setiap bahan baku yang dibutuhkan rencana tersebut.
 - **In Progress** — memulai sebuah perintah memeriksa apakah setiap bahan baku yang dibutuhkan memiliki stok yang cukup; jika ada yang kurang, ia memberi tahu Anda persis apa dan seberapa banyak, dan menolak untuk memulai. Setelah dimulai, bahan baku langsung dikurangi (dicatat sebagai pergerakan "Consumed" terhadap setiap bahan) — ini terjadi saat mulai, bukan saat selesai.
-- **Completed** — Anda memasukkan kuantitas yang benar-benar diproduksi (tidak harus sesuai rencana). Sarang menambahkan kuantitas itu ke stok produk jadi dan menghitung ulang biaya rata-ratanya menggunakan rumus rata-rata tertimbang yang sama yang digunakan setiap jalur stok-masuk lain di Sarang, sehingga basis biaya sebuah batch yang diproduksi mengalir dengan benar ke penilaian inventaris dan laporan laba Anda.
+- **Completed** — Anda memasukkan kuantitas yang benar-benar diproduksi, sebuah **kuantitas scrap/reject** (unit yang mengonsumsi bahan dan tenaga kerja tetapi tidak menghasilkan apa pun yang bisa dijual), dan **biaya tenaga kerja** untuk perintah tersebut. Sarang menambahkan kuantitas yang diproduksi ke stok produk jadi dan menghitung ulang biaya rata-ratanya dari biaya bahan ditambah biaya tenaga kerja, dibagi hanya di antara unit yang diproduksi baik — biaya unit yang di-scrap diserap ke dalam biaya unit yang baik, karena unit-unit tersebut tetap mengonsumsi sumber daya nyata.
 - **Cancelled** — tersedia dari Draft atau In Progress, dengan alasan opsional. Membatalkan sebuah perintah yang sudah mengonsumsi bahan baku mengembalikannya ke stok.
 
-Setiap perintah produksi juga bisa membawa daftar periksa opsional dari **langkah perintah kerja** (misalnya "Mixing", "Baking", "Packing") yang Anda centang satu per satu saat produksi benar-benar terjadi di lantai pabrik — ini terpisah dari pelacakan bahan/kuantitas dan murni untuk mengikuti proses fisik.
+Setiap perintah produksi juga bisa membawa daftar periksa opsional dari **langkah perintah kerja** (misalnya "Mixing", "Baking", "Packing") yang Anda centang satu per satu saat produksi benar-benar terjadi di lantai pabrik. Tandai sebuah langkah sebagai **QC checkpoint** dan Sarang mewajibkan hasil Pass/Fail yang sungguhan sebelum langkah itu bisa dicentang — sebuah gerbang kualitas tidak bisa dilewati diam-diam hanya dengan centang biasa.
 
 ## 4. Dispatch Tracking
 

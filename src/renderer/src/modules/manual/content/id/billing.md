@@ -14,6 +14,10 @@ Buka **Penagihan** dari sidebar (`/billing`) untuk masuk ke layar point-of-sale.
 
 Keranjang menampilkan subtotal berjalan, diskon, pajak, penyesuaian pembulatan, dan total saat Anda menyusunnya. **Clear Cart** di bagian bawah mengatur ulang semuanya tanpa menyimpan.
 
+Sebuah kisi ubin berisi **produk yang sering terjual** muncul di atas kotak pencarian — sekali ketuk langsung menambahkannya ke keranjang, tanpa perlu mengetik, diurutkan berdasarkan yang benar-benar paling laku.
+
+Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang saat ini? Klik **Hold Sale** untuk menahannya sementara dan mulai dari awal; **Resume Sale** menampilkan keranjang-keranjang yang ditahan untuk dilanjutkan persis dari titik terakhir. **MRP** sebuah produk, ketika diatur lebih tinggi daripada harga jualnya, ditampilkan sebagai harga referensi yang dicoret di samping harga sebenarnya dalam hasil pencarian.
+
 ## Riwayat dan detail faktur
 
 **Invoice List** (`/billing`, melalui tampilan daftar faktur) menampilkan setiap faktur beserta pelanggannya, jumlah item, total, saldo terutang, dan status pembayaran (BELUM LUNAS / SEBAGIAN / LUNAS / DIBATALKAN). Cari berdasarkan nomor faktur atau pelanggan, filter berdasarkan rentang tanggal atau status Aktif/Dibatalkan.

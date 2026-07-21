@@ -21,11 +21,17 @@ Membuka layar detail sebuah proyek memberi Anda dua hal lagi:
 
 ## Job Cards (Repair, Service lewat model generik)
 
-Sebuah job card dibuat untuk barang fisik yang dibawa pelanggan: judul, deskripsi barang, prioritas, estimasi biaya, dan tanggal diterima/diharapkan/diserahkan. Ia memiliki siklus hidup tujuh-tahap sendiri — **Received → Diagnosing → In Repair → (opsional Pending Parts) → Ready → Delivered**, atau **Cancelled** pada titik mana pun sebelum diserahkan. Tampilan detail menunjukkan ini sebagai pelacak tahap visual dan selalu menampilkan satu tombol tindakan-berikutnya (misalnya "Mark In Repair"), plus tindakan "Waiting for Parts" khusus saat sebuah kartu sedang dalam perbaikan. Menyerahkan sebuah job card adalah tempat Anda memasukkan biaya akhir sebenarnya, terpisah dari estimasi aslinya.
+Sebuah job card dibuat untuk barang fisik yang dibawa pelanggan: judul, deskripsi barang, prioritas, estimasi biaya, dan tanggal diterima/diharapkan/diserahkan. Ia memiliki siklus hidup tujuh-tahap sendiri — **Received → Diagnosing → In Repair → (opsional Pending Parts) → Ready → Delivered**, atau **Cancelled** pada titik mana pun sebelum diserahkan. Tampilan detail menunjukkan ini sebagai pelacak tahap visual dan selalu menampilkan satu tombol tindakan-berikutnya (misalnya "Mark In Repair"), plus tindakan "Waiting for Parts" khusus saat sebuah kartu sedang dalam perbaikan. Menyerahkan sebuah job card adalah tempat Anda memasukkan biaya akhir sebenarnya, terpisah dari estimasi aslinya — **Generate Invoice** mengubah biaya akhir tersebut menjadi faktur sungguhan begitu pekerjaan telah diserahkan.
+
+Tambahkan **suku cadang terpakai** yang sungguhan ke sebuah job card dari tampilan detailnya — cari sebuah produk, atur kuantitasnya, dan Sarang menguranginya dari inventaris Anda yang sebenarnya (bukan sekadar catatan teks bebas); menghapus sebuah suku cadang mengembalikan stoknya. Atur **periode garansi** dalam hari saat penyerahan, dan sebuah lencana Under Warranty / Expired yang sungguhan otomatis muncul sejak titik itu. Jika barang yang sama kembali karena masalah garansi, mulai sebuah job card baru dan tautkan sebagai sebuah **klaim garansi** terhadap yang asli — status garansi langsung dari job card asli ditampilkan tepat di formulir job card baru tersebut.
 
 ## Service Tickets (Service, Repair)
 
-Sebuah tiket adalah permintaan dukungan yang lebih ringan: judul, deskripsi, prioritas, tag kategori opsional, dan pelanggan/penerima tugas opsional. Ia bergerak melalui **Open → In Progress → Resolved → Closed**, dan menyelesaikan satu memungkinkan Anda melampirkan catatan resolusi. Tiket urgent yang belum terselesaikan ditandai dengan indikator bendera-merah pada daftar sehingga tidak terkubur.
+Sebuah tiket adalah permintaan dukungan yang lebih ringan: judul, deskripsi, prioritas, tag kategori opsional, dan pelanggan/penerima tugas opsional. Ia bergerak melalui **Open → In Progress → Resolved → Closed**, dan menyelesaikan satu memungkinkan Anda melampirkan catatan resolusi. Tiket urgent yang belum terselesaikan ditandai dengan indikator bendera-merah pada daftar sehingga tidak terkubur. Masukkan sebuah jumlah dan **Generate Invoice** untuk menagih sebuah tiket yang telah diselesaikan.
+
+## Appointments dan penagihan Projects
+
+Ketiga jenis bisnis ini juga mendapatkan **Appointments** (pemesanan, jadwal penyedia, dan pengingat — lihat bab *Billing* dan bab-bab universal) untuk menjadwalkan pertemuan klien atau slot drop-off, dan sebuah Project dapat ditagih langsung dengan **Generate Invoice** begitu sudah siap, dengan cara yang sama seperti sebuah Job Card atau Ticket.
 
 ## Work Tracking
 

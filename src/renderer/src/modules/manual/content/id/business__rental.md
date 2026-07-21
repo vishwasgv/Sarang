@@ -25,6 +25,14 @@ Buka **Rental Bookings** di sidebar. Sebuah booking bergerak melalui:
 
 Sebuah booking Reserved juga dapat **Dibatalkan** (sebelum checkout) atau **Diperpanjang** ke tanggal/waktu akhir yang lebih lambat (selama barang tetap tersedia sepanjang rentang baru).
 
+Sebuah booking dapat mencakup beberapa barang sekaligus — masing-masing mendapatkan **biaya kerusakan**-nya sendiri saat pengembalian, sehingga faktur sebuah booking multi-barang merinci persis unit mana yang rusak alih-alih satu baris perbaikan gabungan. Lampirkan **foto kondisi** yang sebenarnya baik saat checkout maupun pengembalian untuk setiap barang, memberi Anda catatan sebelum/sesudah yang terdokumentasi jika sebuah perselisihan pernah muncul.
+
+## Pemeliharaan dan sewa berkala tetap
+
+Atur **interval servis** pada sebuah barang yang dilacak-UNIT — baik berupa jumlah penyewaan maupun jumlah hari — dan Sarang otomatis mengalihkannya ke status Maintenance saat pengembalian begitu interval tersebut tercapai, memblokirnya untuk disewakan lagi sampai Anda menandainya sudah diservis. Buka **Rental Units** untuk melihat barang mana yang jatuh tempo dan untuk mencatat sebuah servis yang telah selesai.
+
+Untuk pelanggan yang menyewa barang yang sama secara berkala, atur **interval pengulangan** pada booking tersebut dan gunakan **Create Next Cycle** setelah periode saat ini berakhir untuk membuat booking berikutnya dengan satu klik alih-alih memasukkan ulang semuanya dari awal.
+
 ## Ketersediaan selalu langsung, tidak pernah pengurangan stok
 
 Sarang tidak pernah mengurangi kuantitas stok saat sebuah sewa di-checkout. Sebaliknya, ketersediaan — untuk barang UNIT maupun BULK — dihitung langsung dari setiap booking Reserved atau Checked-Out saat ini yang tumpang tindih dengan rentang tanggal yang diminta. Ini penting karena sebuah reservasi harus memblokir ketersediaan *sebelum* checkout — dua pelanggan yang mencoba memesan tenda terakhir yang sama untuk tanggal yang tumpang tindih tidak boleh keduanya berhasil, yang akan terlewat oleh model "kurangi hanya saat checkout".

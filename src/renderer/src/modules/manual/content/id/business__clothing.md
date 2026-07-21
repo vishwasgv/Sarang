@@ -8,6 +8,10 @@ Sebuah item pakaian biasanya bukan satu nomor stok tunggal — "Kaos Pria" mungk
 
 Catatan produk untuk bisnis Clothing juga mendapatkan kolom opsional **Gender** (Men's/Women's/Unisex) untuk membantu Anda mengorganisir katalog.
 
+Menyetok banyak kombinasi sekaligus? Gunakan **Generate Size × Colour Matrix** di bagian bawah Manage Variants — ketik ukuran dan warna Anda sebagai daftar dipisah koma (mis. "S, M, L" dan "Black, White") dan Sarang membuat setiap kombinasi sebagai baris baru sekaligus, melewati pasangan mana pun yang sudah Anda tambahkan secara manual.
+
+Setiap baris varian memiliki **barcode** sendiri — buat satu per baris, atau gunakan **Generate Missing Barcodes** untuk mengisi setiap varian yang belum memilikinya. Saat mencetak label, produk yang dilacak-varian membuka sebuah picker sehingga label membawa barcode dan harga varian yang tepat itu sendiri, bukan milik produk induknya.
+
 ## Menjual sebuah varian
 
 Di **Billing**, menambahkan produk yang memiliki varian yang dikonfigurasi tidak langsung menambahkannya ke keranjang — ini membuka picker sehingga Anda memilih kombinasi ukuran/warna yang tepat yang dijual, dan stok serta harga varian spesifik itu (harga dasar + tambahan harganya, jika ada) yang benar-benar masuk ke keranjang. Ini menjaga hitungan stok per-ukuran/warna Anda akurat alih-alih hanya mengurangi satu angka bersama untuk seluruh produk.

@@ -4,9 +4,15 @@ Memilih **Restaurant** sebagai jenis bisnis Anda saat setup mengaktifkan empat h
 
 ## Tables
 
-Buka **Restaurant Tables** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Free**, **Busy**, atau **Rsv** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya — sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif.
+Buka **Restaurant Tables** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Free**, **Busy**, atau **Rsv** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya — sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif. Tetapkan seorang **pelayan** ke sebuah meja dari kartunya sehingga Anda selalu tahu siapa yang melayaninya; hapus penugasan tersebut kapan saja.
 
 **End of Day** adalah tombol pada layar ini: ia menandai setiap meja yang terisi menjadi tersedia kembali dan menampilkan ringkasan penutupan satu baris (KOT yang dilayani dan pendapatan hari ini) sehingga Anda dapat menutup ruang makan di akhir shift.
+
+## Tip / biaya layanan dan item "86"
+
+Pada layar Billing, gunakan **Add Tip / Service Charge** untuk menambahkan baris tip ke sebuah bill tanpa itu terikat pada item menu tertentu atau dikenai pajak sebagai sebuah produk.
+
+Pada layar Products, alihkan sebuah item menu mana pun menjadi **86** (istilah slang dapur untuk "stok habis untuk hari ini") untuk langsung menyembunyikannya dari keranjang billing dan menu QR yang menghadap pelanggan, tanpa menonaktifkan produk itu sendiri — cocok untuk sebuah hidangan yang habis terjual untuk hari itu tetapi akan kembali ke menu besok.
 
 ## Kitchen Order Tickets (KOT)
 

@@ -4,7 +4,15 @@ Memilih **Hardware Store** sebagai jenis bisnis Anda mengaktifkan **penetapan ha
 
 ## Harga area (kalkulator P × L)
 
-Toko hardware sering menjual produk yang dihargai per kaki/meter persegi — ubin, lembaran, kaca, tripleks — di mana pelanggan tidak tahu luasnya secara langsung. Di **Billing**, setiap baris keranjang untuk bisnis Hardware menampilkan tombol kecil **Area** di samping stepper kuantitasnya. Mengetuknya membuka kalkulator panjang × lebar: masukkan kedua dimensi, dan Sarang menghitung luasnya serta menetapkannya langsung sebagai kuantitas baris tersebut, dalam satuan apa pun produk itu dijual. Ini tidak mengubah cara produk dihargai — ini adalah kalkulator praktis yang mengisi kuantitas yang benar sehingga Anda tidak perlu aplikasi kalkulator terpisah di konter.
+Toko hardware sering menjual produk yang dihargai per kaki/meter persegi — ubin, lembaran, kaca, tripleks — di mana pelanggan tidak tahu luasnya secara langsung. Di **Billing**, setiap baris keranjang untuk bisnis Hardware menampilkan tombol kecil **Area** di samping stepper kuantitasnya. Mengetuknya membuka kalkulator panjang × lebar: masukkan kedua dimensi, dan Sarang menghitung luasnya serta menetapkannya langsung sebagai kuantitas baris tersebut, dalam satuan apa pun produk itu dijual. Ini tidak mengubah cara produk dihargai — ini adalah kalkulator praktis yang mengisi kuantitas yang benar sehingga Anda tidak perlu aplikasi kalkulator terpisah di konter. Kalkulator yang sama juga tersedia saat menyusun sebuah **Quotation**, sehingga perkiraan harga berbasis-area sama mudahnya disusun seperti penjualan langsung.
+
+## Konversi satuan karton/boks
+
+Jika Anda membeli dalam karton tetapi menjual per satuan, aktifkan **pack billing** untuk sebuah produk dan atur berapa banyak satuan dalam satu pak. Saat Anda menerima stok, Stock Adjustment menawarkan mode entri "packs received" — masukkan jumlah pak/karton dan Sarang menghitungkan jumlah satuan yang setara untuk Anda. Semua yang lain (penagihan, peringatan stok rendah, valuasi) tetap bekerja dalam satuan seperti biasa; ini hanya mengubah cara Anda *memasukkan* stok yang baru diterima.
+
+## Penghapusan kerusakan/kerugian
+
+Saat menyesuaikan stok turun karena kerusakan atau kerugian yang sebenarnya, bukan koreksi rutin, pilih **Damage** sebagai kategori alasan pada formulir Stock Adjustment. Ini mencatatnya secara terpisah dari penyesuaian umum, sehingga riwayat Inventory Movements dan laporan Anda bisa membedakan kerugian akibat kerusakan dari koreksi stok biasa.
 
 ## Penerapan batas kredit
 

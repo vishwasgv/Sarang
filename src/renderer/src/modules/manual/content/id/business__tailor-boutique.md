@@ -10,6 +10,10 @@ Setiap pesanan mencatat jenis pakaian (Kemeja, Celana, Setelan Jas, Kurta, Salwa
 
 Sebuah pesanan dapat ditautkan ke salah satu catatan ukuran tersimpan klien, dan bergerak melalui pipeline status: **Diterima → Sedang Dipotong → Sedang Dijahit → Fitting → (Perbaikan, jika diperlukan) → Siap → Terkirim**, dengan Dibatalkan sebagai hasil terpisah. Tanggal fitting dan pengiriman dilacak secara terpisah, dan pengiriman yang terlambat ditandai merah. Setelah Siap, tombol **Buat Faktur** menagih pesanan tersebut.
 
+**Jadwalkan Uji Coba** mengubah sesi fitting percobaan menjadi sebuah janji temu yang sungguhan dan bisa dipesan — Sarang mengirim pengingat WhatsApp kepada klien satu hari sebelumnya dan sekali lagi beberapa jam sebelumnya, sistem pengingat yang sama yang digunakan untuk setiap janji temu lainnya, sehingga Anda tidak perlu mengingat untuk menelepon.
+
+Saat toko yang menyediakan kain, **Atur Kain** menautkan pesanan ke sebuah produk dan kuantitas inventaris yang nyata — ini mengurangi stok sungguhan, bukan hanya sebuah catatan, dan **Hapus tautan kain** mengembalikannya jika pesanan berubah.
+
 ## Ukuran
 
 Tab **Ukuran** menyimpan riwayat berjalan dari ukuran tubuh seorang klien — dada, pinggang, pinggul, bahu, leher, lengan, selangkangan dalam, panjang luar, paha, tinggi, lubang lengan, kedalaman leher depan/belakang, panjang pakaian, dan manset — beserta siapa yang mengambil ukuran tersebut dan kapan. Seorang klien bisa memiliki lebih dari satu catatan ukuran dari waktu ke waktu, dan salah satunya bisa dilampirkan ke pesanan baru.

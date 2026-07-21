@@ -22,9 +22,15 @@ Buka **Metal Rates** di sidebar untuk menetapkan tarif per gram hari ini untuk s
 
 Pada saat penagihan, menambahkan sebuah barang perhiasan ke keranjang mencari tarif jenis-logam dan kadarnya saat ini, menghitung nilai logam (berat bersih × tarif), menambahkan biaya pembuatan, dan menggunakan itu sebagai harga satuan baris tersebut. Jika belum ada tarif yang ditetapkan untuk kombinasi logam/kadar barang itu, Sarang tidak akan membiarkan Anda menagihnya dengan harga nol — Anda akan diminta untuk menetapkan tarif hari ini terlebih dahulu.
 
+Perlu menegosiasikan biaya pembuatan untuk satu penjualan tertentu tanpa mengubah konfigurasi tarif produk itu sendiri? Edit langsung pada baris keranjang — harga baris tersebut dihitung ulang seketika, dan sebuah baris yang di-override ditandai secara visual sehingga terlihat jelas sekilas bahwa baris itu tidak menggunakan biaya standar.
+
+Jika barang tersebut memiliki **nomor cap/HUID** yang tercatat pada produk, nomor itu ikut tercatat pada penjualan dan tercetak otomatis pada faktur.
+
 ## Tukar tambah logam lama
 
-Buka **Old-Metal Exchange** untuk mencatat seorang pelanggan yang menukar emas atau perak lama terhadap pembelian baru. Masukkan berat kotor, berat pengurangan (untuk konten non-logam apa pun), jenis logam, dan kadar — Sarang mencari tarif hari ini untuk kombinasi tersebut dan menghitung nilai yang diberikan kepada pelanggan (berat bersih × tarif). Ini adalah pencatatan mandiri: nilai yang dihitung tidak secara otomatis terhubung ke sebuah faktur. Staf menerapkannya secara manual sebagai diskon pada faktur pembelian-baru pelanggan, lalu menautkan catatan pertukaran tersebut kembali ke faktur itu setelahnya sehingga keduanya tetap terhubung untuk catatan Anda.
+Buka **Old-Metal Exchange** untuk mencatat seorang pelanggan yang menukar emas atau perak lama terhadap pembelian baru. Masukkan berat kotor, berat pengurangan (untuk konten non-logam apa pun), jenis logam, dan kadar — Sarang mencari tarif hari ini untuk kombinasi tersebut dan menghitung nilai yang diberikan kepada pelanggan (berat bersih × tarif).
+
+Untuk menggunakannya, klik **Apply Old-Metal Exchange** saat menagih pelanggan tersebut — Sarang menampilkan kredit itu dan langsung memasukkannya ke dalam diskon faktur saat penjualan dibuat, serta menandai pertukaran tersebut sebagai sudah terpakai sehingga tidak bisa secara tidak sengaja diterapkan kedua kalinya ke faktur yang berbeda.
 
 ## Returns
 

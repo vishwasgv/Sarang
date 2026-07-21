@@ -16,6 +16,18 @@ Traktor, sprayer bertenaga, pompa air, dan peralatan tahan lama lainnya dilacak 
 
 Ketika seorang pelanggan membawa sepotong peralatan untuk perbaikan atau servis terjadwal, buka sebuah job card dari **Job Cards** di sidebar — alur kerja job-card generik yang sama yang digunakan jenis bisnis Repair Sarang. Catat apa yang dibawa, pekerjaan yang harus dilakukan, suku cadang yang digunakan, dan biaya tenaga kerja, dan job card tersebut dapat ditagih setelah pekerjaan selesai.
 
+## Persyaratan kredit terkait musim panen
+
+Seorang pelanggan petani sering perlu membayar setelah panen, bukan pada saat pembelian. Saat menagih penjualan Kredit, atur **due date** yang sebenarnya — Sarang menampilkan lencana jatuh tempo pada faktur begitu tanggal tersebut terlewati (bukan tanggal penjualan), dan laporan aging Outstanding Analytics juga mengelompokkannya berdasarkan due date sebenarnya, sehingga pembayaran yang ditunda hingga panen tidak ditandai sebagai jatuh tempo hanya karena waktu telah berlalu sejak penjualan.
+
+## Peringatan kedaluwarsa khusus-kategori
+
+Kategori input-agri yang berbeda membutuhkan peringatan dini yang berbeda pula — benih dan pupuk sering membutuhkan ancang-ancang lebih panjang daripada barang yang cepat laku. Atur **expiry alert lead time** (dalam hari) per produk untuk menggantikan jendela peringatan standar 30 hari; batch dari produk tersebut kemudian menampilkan lencana peringatannya berdasarkan lead time yang dikonfigurasi sendiri.
+
+## Dasbor Gabungan
+
+Buka **Agri Dashboard** untuk tampilan satu layar di kedua separuh bisnis sekaligus — barang habis pakai berstok rendah, batch yang mendekati/sudah kedaluwarsa, jumlah total peralatan, dan peralatan dengan garansi yang segera berakhir — alih-alih memeriksa dua layar terpisah.
+
 ## Logistics & Supply Chain
 
 Karena peritel input-agri secara rutin menerima pengiriman formal dari pemasok (karung pupuk dan peralatan yang tiba dengan truk), set modul Logistics & Supply Chain penuh diaktifkan secara default — Fleet, Carriers, Shipments, GRN (penerimaan barang), Delivery Challan, Freight Ledger, dan Logistics Analytics semuanya muncul di sidebar tanpa perlu diaktifkan secara terpisah.
