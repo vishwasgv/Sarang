@@ -46,7 +46,7 @@ async function run() {
 
       await modal.getByPlaceholder('e.g. Sharma Wedding').fill('E2E Evt Test Wedding')
       const dateInput = modal.locator('input[type="date"]').first()
-      await dateInput.fill(new Date(Date.now() + 30 * 24 * 3600000).toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date(Date.now() + 30 * 24 * 3600000)))
       await modal.getByPlaceholder('e.g. The Grand Ballroom').fill('E2E Evt Test Venue')
       await page.waitForTimeout(300)
 

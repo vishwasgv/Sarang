@@ -47,7 +47,7 @@ async function run() {
 
       await modal.getByPlaceholder('Venue / address').fill('E2E Photo Test Venue')
       const dateInput = modal.locator('input[type="date"]').first()
-      await dateInput.fill(new Date(Date.now() + 7 * 24 * 3600000).toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date(Date.now() + 7 * 24 * 3600000)))
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Save Booking' }).click()
@@ -108,7 +108,7 @@ async function run() {
     })
 
     await r.step('delivery-milestone-tracker-works', async () => {
-      const res = await page.evaluate((id) => window.api.deliveryTracker.upsert({ shootBookingId: id, proofsSentDate: new Date().toISOString().slice(0, 10) }), bookingId)
+      const res = await page.evaluate((id) => window.api.deliveryTracker.upsert({ shootBookingId: id, proofsSentDate: h.toLocalISODate(new Date()) }), bookingId)
       r.log('delivery-milestone-updated', !!res?.success, JSON.stringify(res?.error || ''))
     })
 

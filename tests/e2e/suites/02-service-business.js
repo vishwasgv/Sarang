@@ -52,7 +52,7 @@ async function run() {
 
     await r.step('create-provider-and-customer', async () => {
       const empRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Svc Provider', phone: `9${String(Date.now()).slice(-9)}`, joinDate: new Date().toISOString().slice(0, 10),
+        fullName: 'E2E Svc Provider', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
       }))
       r.log('provider-created', !!empRes?.success, JSON.stringify(empRes?.error || ''))
       providerId = empRes?.data?.id
@@ -90,7 +90,7 @@ async function run() {
       await page.waitForTimeout(300)
 
       const tomorrow = new Date(Date.now() + 24 * 3600000)
-      const dateStr = tomorrow.toISOString().slice(0, 10)
+      const dateStr = h.toLocalISODate(tomorrow)
       await modal.getByLabel('Date').fill(dateStr)
       await modal.getByLabel('Time').fill('10:00')
       await page.waitForTimeout(300)
@@ -110,7 +110,7 @@ async function run() {
     await r.step('double-booking-rejected-at-service-layer', async () => {
       if (!providerId) return r.log('double-booking-rejected-at-service-layer', false, 'no providerId captured')
       const tomorrow = new Date(Date.now() + 24 * 3600000)
-      const scheduledDate = tomorrow.toISOString().slice(0, 10)
+      const scheduledDate = h.toLocalISODate(tomorrow)
       // The conflict check only runs when a providerId is set (the UI path
       // above deliberately used "Any provider" to sidestep the
       // working-hours dependency) — exercise it directly via the same IPC

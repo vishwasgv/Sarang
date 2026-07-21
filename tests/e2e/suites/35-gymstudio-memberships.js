@@ -146,7 +146,7 @@ async function run() {
       const timeInput = modal.locator('input[type="time"]')
       await timeInput.fill('07:00')
       const dateInput = modal.locator('input[type="date"]').first()
-      await dateInput.fill(new Date().toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date()))
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Save Class' }).click()

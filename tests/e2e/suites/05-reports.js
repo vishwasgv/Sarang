@@ -29,8 +29,8 @@ async function generateReport(page, r, tileLabel, { needsDateRange }) {
   await page.waitForTimeout(500)
   if (needsDateRange) {
     const dateInputs = page.locator('input[type="date"]')
-    const from = new Date(Date.now() - 30 * 24 * 3600000).toISOString().slice(0, 10)
-    const to = new Date().toISOString().slice(0, 10)
+    const from = h.toLocalISODate(new Date(Date.now() - 30 * 24 * 3600000))
+    const to = h.toLocalISODate(new Date())
     await dateInputs.nth(0).fill(from)
     await dateInputs.nth(1).fill(to)
   }

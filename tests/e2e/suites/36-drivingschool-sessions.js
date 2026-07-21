@@ -88,7 +88,7 @@ async function run() {
 
     await r.step('create-instructor', async () => {
       const empRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Drive Instructor', phone: `8${String(Date.now()).slice(-9)}`, joinDate: new Date().toISOString().slice(0, 10),
+        fullName: 'E2E Drive Instructor', phone: `8${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
       }))
       instructorId = empRes?.data?.id
       r.log('instructor-created', !!empRes?.success)
@@ -116,7 +116,7 @@ async function run() {
       await selects.nth(0).selectOption(instructorId)
       await selects.nth(1).selectOption(vehicleId)
       const dateInput = modal.locator('input[type="date"]').first()
-      await dateInput.fill(new Date().toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date()))
       await modal.locator('input[type="time"]').fill('09:00')
       await modal.getByPlaceholder('e.g. 500').fill('600')
       await page.waitForTimeout(300)

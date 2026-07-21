@@ -30,11 +30,11 @@ async function run() {
 
     await r.step('create-prerequisites', async () => {
       const p1Res = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Spec Provider One', phone: `9${String(Date.now()).slice(-9)}`, joinDate: new Date().toISOString().slice(0, 10),
+        fullName: 'E2E Spec Provider One', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
       }))
       providerId = p1Res?.data?.id
       const p2Res = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Spec Provider Two', phone: `8${String(Date.now()).slice(-9)}`, joinDate: new Date().toISOString().slice(0, 10),
+        fullName: 'E2E Spec Provider Two', phone: `8${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
       }))
       provider2Id = p2Res?.data?.id
       const custRes = await page.evaluate(async () => window.api.customers.create({
@@ -45,7 +45,7 @@ async function run() {
 
       const apptRes = await page.evaluate(async ({ providerId, customerId }) => window.api.appointments.create({
         providerId, customerId, serviceTitle: 'E2E Spec Consult',
-        scheduledDate: new Date().toISOString().slice(0, 10), scheduledTime: '11:00', durationMinutes: 30,
+        scheduledDate: h.toLocalISODate(new Date()), scheduledTime: '11:00', durationMinutes: 30,
       }), { providerId, customerId })
       appointmentId = apptRes?.data?.id
       r.log('appointment-created', !!appointmentId, JSON.stringify(apptRes?.error || ''))
@@ -83,7 +83,7 @@ async function run() {
 
       const referSection = page.locator('div.rounded-2xl').filter({ hasText: 'Refer to Another Provider' })
       await referSection.locator('select').first().selectOption(provider2Id)
-      const referDate = new Date(Date.now() + 3 * 24 * 3600000).toISOString().slice(0, 10)
+      const referDate = h.toLocalISODate(new Date(Date.now() + 3 * 24 * 3600000))
       await referSection.locator('input[type="date"]').first().fill(referDate)
       await referSection.locator('input[type="time"]').first().fill('14:00')
       await page.waitForTimeout(300)

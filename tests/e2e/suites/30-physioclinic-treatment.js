@@ -43,7 +43,7 @@ async function run() {
       await page.waitForTimeout(400)
 
       await page.getByLabel('Phase Title').fill('E2E Physio Post-op Rehab')
-      await page.getByLabel('Start Date').fill(new Date().toISOString().slice(0, 10))
+      await page.getByLabel('Start Date').fill(h.toLocalISODate(new Date()))
       await page.waitForTimeout(300)
 
       await page.getByRole('button', { name: 'Save Phase' }).click()

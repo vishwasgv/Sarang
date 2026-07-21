@@ -68,7 +68,7 @@ async function run() {
       await modal.getByPlaceholder('e.g. BT-2026-001').fill('E2E-BATCH-001')
       await modal.getByPlaceholder('0', { exact: true }).fill('50')
 
-      const expiry = new Date(Date.now() + 90 * 24 * 3600000).toISOString().slice(0, 10)
+      const expiry = h.toLocalISODate(new Date(Date.now() + 90 * 24 * 3600000))
       const dateInputs = modal.locator('input[type="date"]')
       await dateInputs.first().fill(expiry)
       await page.waitForTimeout(300)
@@ -97,7 +97,7 @@ async function run() {
     await r.step('expired-batch-sale-blocked', async () => {
       // Create a second batch that's already expired, then attempt to sell
       // past the non-expired batch's stock so FIFO is forced to draw from it.
-      const expiredDate = new Date(Date.now() - 5 * 24 * 3600000).toISOString().slice(0, 10)
+      const expiredDate = h.toLocalISODate(new Date(Date.now() - 5 * 24 * 3600000))
       const expiredRes = await page.evaluate(async ({ productId, expiredDate }) => window.api.batches.create({
         productId, batchNumber: 'E2E-BATCH-EXPIRED', expiryDate: expiredDate, quantityReceived: 10,
       }), { productId, expiredDate })

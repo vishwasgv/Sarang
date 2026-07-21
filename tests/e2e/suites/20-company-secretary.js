@@ -46,7 +46,7 @@ async function run() {
       await modal.getByLabel('Client *').selectOption(clientId)
       await modal.getByPlaceholder('e.g. GSTR-3B Filing — July 2026').fill('E2E CS Annual Filing Task')
       const dateInput = modal.locator('input[type="date"]').first()
-      await dateInput.fill(new Date(Date.now() + 30 * 24 * 3600000).toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date(Date.now() + 30 * 24 * 3600000)))
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Add Task' }).click()
@@ -98,7 +98,7 @@ async function run() {
       const modal = h.topModal(page)
 
       await modal.getByLabel('Client').selectOption(clientId)
-      const meetingDate = new Date(Date.now() + 14 * 24 * 3600000).toISOString().slice(0, 10)
+      const meetingDate = h.toLocalISODate(new Date(Date.now() + 14 * 24 * 3600000))
       const dateInput = modal.locator('input[type="date"]').first()
       await dateInput.fill(meetingDate)
       await modal.getByPlaceholder('e.g. Registered Office').fill('E2E CS Registered Office')

@@ -72,7 +72,7 @@ async function run() {
 
       const today = new Date()
       const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
-      const fmt = (d) => d.toISOString().slice(0, 10)
+      const fmt = (d) => h.toLocalISODate(d)
       await modal.getByLabel('Check-In Date').fill(fmt(today))
       await modal.getByLabel('Check-Out Date').fill(fmt(tomorrow))
       await modal.getByRole('button', { name: 'Check Available Rooms' }).click()

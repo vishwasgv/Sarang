@@ -61,7 +61,7 @@ async function run() {
       const monthlyAmountInput = modal.locator('input[type="number"]').first()
       await monthlyAmountInput.fill('20000')
       const startDateInput = modal.locator('input[type="date"]').first()
-      await startDateInput.fill(new Date().toISOString().slice(0, 10))
+      await startDateInput.fill(h.toLocalISODate(new Date()))
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Create Retainer' }).click()

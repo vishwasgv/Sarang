@@ -308,6 +308,25 @@ function fmtLocalDateTime(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+// Real bug found live 2026-07-22 (not hypothetical): 37 call sites across
+// 18 suites computed a "today"/"tomorrow"/"N days ago" date string via
+// `date.toISOString().slice(0, 10)` — that extracts the UTC calendar date,
+// which for any timezone ahead of UTC (IST is +5:30) lags behind the real
+// local calendar date for the first several hours after local midnight
+// every single day. Suite 11 hit this for real: a ServiceProject created
+// at 00:1x AM IST got excluded from a report whose "to" date was
+// (incorrectly) still "yesterday" in UTC terms, because
+// `to.setHours(23,59,59,999)` sets LOCAL 23:59:59 while the date was
+// parsed as UTC midnight — an inconsistent mix of UTC-parse + local-set
+// that silently loses the last ~5.5 hours of "today" for IST. Matches this
+// app's own internal `toLocalISODate()` convention (ai-query.service.ts) —
+// always use local calendar components, never toISOString(), for a
+// date-only (no time-of-day) string.
+function toLocalISODate(date) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 // ─── Result collection (shared shape across every suite) ───────────────────
 
 function makeResults() {
@@ -338,6 +357,6 @@ module.exports = {
   gotoHash, hasErrorBoundary, shot,
   login, withDb, resetAdminPasswordForSuite, randomizeAdminPassword,
   checkpointWal, cleanupByNamePrefix, getBusinessType,
-  switchBusinessType, topModal, closeTopModal, fmtLocalDateTime,
+  switchBusinessType, topModal, closeTopModal, fmtLocalDateTime, toLocalISODate,
   makeResults, retryFsOp, sleep,
 }

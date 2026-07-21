@@ -63,7 +63,7 @@ async function run() {
         await page.waitForTimeout(500)
       }
 
-      const tomorrow = new Date(Date.now() + 24 * 3600000).toISOString().slice(0, 10)
+      const tomorrow = h.toLocalISODate(new Date(Date.now() + 24 * 3600000))
       await modal.getByLabel('Date').fill(tomorrow)
       await modal.getByLabel('Time').fill('11:00')
       await page.waitForTimeout(300)
@@ -88,13 +88,13 @@ async function run() {
 
     await r.step('staff-commission-auto-triggers-on-completed', async () => {
       const provRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Salon Stylist', phone: `9${String(Date.now()).slice(-9)}`, joinDate: new Date().toISOString().slice(0, 10),
+        fullName: 'E2E Salon Stylist', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
       }))
       providerId = provRes?.data?.id
 
       const apptRes = await page.evaluate(async (pid) => window.api.appointments.create({
         providerId: pid, customerName: 'E2E Salon Commission Client', serviceTitle: 'E2E Salon Manicure',
-        scheduledDate: new Date().toISOString().slice(0, 10), scheduledTime: '15:00', durationMinutes: 30,
+        scheduledDate: h.toLocalISODate(new Date()), scheduledTime: '15:00', durationMinutes: 30,
         totalAmount: 500,
       }), providerId)
       commissionAppointmentId = apptRes?.data?.id

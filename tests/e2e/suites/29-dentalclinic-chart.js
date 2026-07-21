@@ -75,8 +75,8 @@ async function run() {
       await page.waitForTimeout(500)
 
       const dateInputs = page.locator('input[type="date"]')
-      const lastVisit = new Date().toISOString().slice(0, 10)
-      const nextRecall = new Date(Date.now() + 180 * 24 * 3600000).toISOString().slice(0, 10)
+      const lastVisit = h.toLocalISODate(new Date())
+      const nextRecall = h.toLocalISODate(new Date(Date.now() + 180 * 24 * 3600000))
       await dateInputs.nth(0).fill(lastVisit)
       await dateInputs.nth(1).fill(nextRecall)
       await page.waitForTimeout(300)

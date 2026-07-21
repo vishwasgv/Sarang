@@ -117,7 +117,7 @@ async function run() {
       await page.waitForTimeout(300)
 
       const dateInput = panel.locator('input[type="date"]').first()
-      await dateInput.fill(new Date().toISOString().slice(0, 10))
+      await dateInput.fill(h.toLocalISODate(new Date()))
 
       // Offered Salary is the first number input, Commission Amount the second.
       const numberInputs = panel.locator('input[type="number"]')
