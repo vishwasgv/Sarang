@@ -161,7 +161,14 @@ export function BillingScreen() {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   // Discount mode per item: 'amount' (₹) or 'percent' (%)
-  const [discountMode, setDiscountMode] = useState<Record<string, 'amount' | 'percent'>>({})
+  // 'finalPrice' — bargained/negotiated pricing (very common in Indian retail,
+  // hardware, and wholesale trade): the cashier types the AGREED FINAL PRICE
+  // for the line instead of doing mental-math into a percent/amount discount.
+  // Converts to the exact same discountAmount storage the other two modes
+  // already use — no schema change, and every downstream consumer (tax
+  // calc, invoice generation, print templates, reports) already handles
+  // discountAmount correctly regardless of how it was arrived at.
+  const [discountMode, setDiscountMode] = useState<Record<string, 'amount' | 'percent' | 'finalPrice'>>({})
   // Inline split payment amounts
   const [splitCash, setSplitCash] = useState('')
   const [splitUpi, setSplitUpi] = useState('')
@@ -1099,31 +1106,43 @@ export function BillingScreen() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => {
-                              const mode = discountMode[ck] === 'percent' ? 'amount' : 'percent'
+                              const cycle = { percent: 'amount', amount: 'finalPrice', finalPrice: 'percent' } as const
+                              const mode = cycle[discountMode[ck] ?? 'percent']
                               setDiscountMode(prev => ({ ...prev, [ck]: mode }))
-                              updateDiscount(ck, 0)
+                              if (mode !== 'finalPrice') updateDiscount(ck, item.discountAmount)
                             }}
                             className="text-xs text-brand border border-brand/30 rounded px-1 py-0.5 hover:bg-brand/5 transition-colors min-w-[24px] text-center"
-                            title={`Toggle ${currSym} / %`}
+                            title={t('billing.bargainedPriceToggleHint', { currSym })}
                           >
-                            {discountMode[ck] === 'percent' ? '%' : currSym}
+                            {discountMode[ck] === 'percent' ? '%' : discountMode[ck] === 'finalPrice' ? '=' : currSym}
                           </button>
                           <input
                             type="number" min="0" step={discountMode[ck] === 'percent' ? '1' : '0.50'}
-                            max={discountMode[ck] === 'percent' ? '100' : item.quantity * item.unitPrice}
+                            max={discountMode[ck] === 'percent' ? '100' : undefined}
+                            title={discountMode[ck] === 'finalPrice' ? (t('billing.bargainedPriceInputHint') as string) : undefined}
                             value={discountMode[ck] === 'percent'
                               ? (item.discountAmount > 0 ? ((item.discountAmount / (item.quantity * item.unitPrice)) * 100).toFixed(0) : '')
-                              : (item.discountAmount || '')}
+                              : discountMode[ck] === 'finalPrice'
+                                ? (Math.max(0, item.quantity * item.unitPrice - item.discountAmount) || '')
+                                : (item.discountAmount || '')}
                             onChange={e => {
                               const v = parseFloat(e.target.value) || 0
+                              const lineGross = item.quantity * item.unitPrice
                               if (discountMode[ck] === 'percent') {
-                                updateDiscount(ck, Math.min(100, v) / 100 * item.quantity * item.unitPrice)
+                                updateDiscount(ck, Math.min(100, v) / 100 * lineGross)
+                              } else if (discountMode[ck] === 'finalPrice') {
+                                // Bargaining only ever reduces price — clamp so this
+                                // field can never be used to charge MORE than list price.
+                                updateDiscount(ck, Math.max(0, lineGross - Math.min(v, lineGross)))
                               } else {
                                 updateDiscount(ck, v)
                               }
                             }}
-                            placeholder="0"
-                            className="w-14 h-5 text-xs px-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-brand text-right"
+                            placeholder={discountMode[ck] === 'finalPrice' ? formatCurrency(item.quantity * item.unitPrice) : '0'}
+                            className={cn(
+                              'h-5 text-xs px-1.5 rounded border focus:outline-none focus:ring-1 focus:ring-brand text-right',
+                              discountMode[ck] === 'finalPrice' ? 'w-20 border-brand text-brand font-semibold' : 'w-14 border-slate-200'
+                            )}
                           />
                         </div>
                       </div>

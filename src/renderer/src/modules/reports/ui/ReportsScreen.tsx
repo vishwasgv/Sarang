@@ -7,7 +7,7 @@ import {
   Activity, UserCheck, Award, QrCode, PackageSearch, FlaskConical, Droplet,
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp,
   Briefcase, Wrench, BedDouble, FolderOpen,
-  Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill
+  Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area
@@ -31,6 +31,11 @@ interface SalesReportRow { invoiceNumber: string; date: string; customer: string
 interface SalesReportGroup { label: string; revenue: number; invoiceCount: number; taxAmount: number }
 interface SalesReportHourRow { hour: string; revenue: number; invoiceCount: number }
 interface SalesReport { dateFrom?: string; dateTo?: string; groupBy?: string; summary: { totalRevenue: number; totalInvoices: number; totalTax: number; averageOrderValue: number; cancelledInvoices: number }; groups: SalesReportGroup[]; byHour: SalesReportHourRow[]; rows: SalesReportRow[]; total: number }
+
+interface DiscountReportRow { invoiceNumber: string; date: string; customer: string | null; productName: string; quantity: number; lineGross: number; discountAmount: number; discountPercent: number; staffName: string | null }
+interface DiscountByStaffRow { staffName: string; discountGiven: number; lineCount: number }
+interface DiscountByProductRow { productName: string; discountGiven: number; lineCount: number }
+interface DiscountReport { dateFrom: string; dateTo: string; summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }; byStaff: DiscountByStaffRow[]; byProduct: DiscountByProductRow[]; rows: DiscountReportRow[]; total: number }
 
 interface InventoryReportRow { sku: string | null; productName: string; category: string | null; productType: string; currentStock: number; unit: string; costPrice: number; sellingPrice: number; stockValue: number; lowStockAlert: boolean }
 interface InventoryReport { asOf?: string; summary: { totalProducts: number; totalStockValue: number; lowStockItems: number; outOfStockItems: number }; rows: InventoryReportRow[] }
@@ -300,7 +305,7 @@ type ReportType =
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
   | 'foodCost' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
-  | 'orderVolume' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
+  | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
   | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'variantStock'
   | 'testScores' | 'complianceTasks'
   | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'serviceProjects' | 'jobCards'
@@ -336,6 +341,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
   { id: 'orderVolume', icon: <QrCode size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'qr_table_ordering' },
+  // No requiredModule — bargained/negotiated line pricing writes to the
+  // same InvoiceItem.discountAmount every PRODUCT-category business's
+  // billing cart already uses, so this report is universal like 'sales'.
+  { id: 'discounts', icon: <HandCoins size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'gstr1', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'hsnSummary', icon: <ScanLine size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'documentSummary', icon: <FileStack size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
@@ -578,6 +587,9 @@ export function ReportsScreen() {
           break
         case 'orderVolume':
           res = await window.api.reports.orderVolume({ dateFrom, dateTo })
+          break
+        case 'discounts':
+          res = await window.api.reports.discounts({ dateFrom, dateTo })
           break
         case 'batchExpiry':
           res = await window.api.reports.batchExpiry()
@@ -906,6 +918,13 @@ export function ReportsScreen() {
         return {
           headers: [t('common.date'), t('reports.col.tableLabel'), t('common.status'), t('reports.col.itemCount'), t('reports.col.resolvedAt')],
           rows: d.rows.map(r => [r.createdAt, r.tableLabel, r.status, r.itemCount, r.resolvedAt])
+        }
+      }
+      case 'discounts': {
+        const d = reportData as DiscountReport
+        return {
+          headers: [t('reports.col.invoiceNo'), t('common.date'), t('reports.col.customer'), t('reports.col.product'), t('reports.col.quantity'), t('reports.col.lineGross'), t('reports.col.discountGiven'), t('reports.col.discountPercent'), t('reports.col.staff')],
+          rows: d.rows.map(r => [r.invoiceNumber, r.date, r.customer ?? '', r.productName, r.quantity, r.lineGross, r.discountAmount, r.discountPercent, r.staffName ?? ''])
         }
       }
       case 'batchExpiry': {
@@ -1302,6 +1321,15 @@ export function ReportsScreen() {
           { label: t('reports.summary.pendingOrders'), value: String(d.summary.pending) }
         ]
       }
+      case 'discounts': {
+        const d = reportData as DiscountReport
+        return [
+          { label: t('reports.summary.totalDiscountGiven'), value: fmt(d.summary.totalDiscountGiven) },
+          { label: t('reports.summary.discountedLines'), value: `${d.summary.discountedLineCount} / ${d.summary.totalLineCount}` },
+          { label: t('reports.summary.discountIncidence'), value: `${d.summary.discountIncidencePercent}%` },
+          { label: t('reports.summary.avgDiscountPercent'), value: `${d.summary.averageDiscountPercent}%` }
+        ]
+      }
       case 'batchExpiry': {
         const d = reportData as BatchExpiryReport
         return [
@@ -1665,6 +1693,11 @@ export function ReportsScreen() {
             { name: t('reports.summary.rejected'), color: STATUS_COLORS.danger },
           ],
         }]
+      }
+      case 'discounts': {
+        const d = reportData as DiscountReport
+        if (d.byProduct.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.topDiscountedProducts'), data: d.byProduct.slice(0, 10).map(p => ({ label: p.productName, value: p.discountGiven })), valueIsCurrency: true }]
       }
       case 'batchExpiry': {
         const d = reportData as BatchExpiryReport
@@ -2120,6 +2153,7 @@ function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChang
     case 'clientRetention': return <ClientRetentionView data={data as ClientRetentionReport} />
     case 'commission': return <CommissionReportView data={data as CommissionReport} fmt={fmt} />
     case 'orderVolume': return <OrderVolumeView data={data as OrderVolumeReport} />
+    case 'discounts': return <DiscountsView data={data as DiscountReport} fmt={fmt} />
     case 'batchExpiry': return <BatchExpiryView data={data as BatchExpiryReport} fmt={fmt} />
     case 'labThroughput': return <LabThroughputView data={data as LabThroughputReport} />
     case 'bloodStock': return <BloodStockView data={data as BloodStockReport} />
@@ -2970,6 +3004,54 @@ function OrderVolumeView({ data }: { data: OrderVolumeReport }) {
           headers={[t('common.date'), t('reports.col.tableLabel'), t('common.status'), t('reports.col.itemCount'), t('reports.col.resolvedAt')]}
           rows={data.rows.map(r => [formatDate(r.createdAt, true), r.tableLabel, r.status, r.itemCount, r.resolvedAt ? formatDate(r.resolvedAt, true) : '—'])}
           emptyText={t('reports.empty.orders')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function DiscountsView({ data, fmt }: { data: DiscountReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const topProducts = data.byProduct.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalDiscountGiven'), value: fmt(s.totalDiscountGiven) },
+        { label: t('reports.summary.discountedLines'), value: `${s.discountedLineCount} / ${s.totalLineCount}` },
+        { label: t('reports.summary.discountIncidence'), value: `${s.discountIncidencePercent}%` },
+        { label: t('reports.summary.avgDiscountPercent'), value: `${s.averageDiscountPercent}%` }
+      ]} />
+      {topProducts.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.topDiscountedProducts')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={topProducts.map(p => ({ label: p.productName, value: p.discountGiven }))} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" fill={STATUS_COLORS.warning} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      {data.byStaff.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.byStaff')}</h3>
+          <DataTable
+            headers={[t('reports.col.staff'), t('reports.col.discountGiven'), t('reports.col.count')]}
+            rows={data.byStaff.map(r => [r.staffName, fmt(r.discountGiven), String(r.lineCount)])}
+            emptyText={t('reports.empty.discounts')}
+          />
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.discountDetails')}</h3>
+        <DataTable
+          headers={[t('reports.col.invoiceNo'), t('common.date'), t('reports.col.customer'), t('reports.col.product'), t('reports.col.quantity'), t('reports.col.lineGross'), t('reports.col.discountGiven'), t('reports.col.discountPercent'), t('reports.col.staff')]}
+          rows={data.rows.map(r => [r.invoiceNumber, formatDate(r.date), r.customer ?? '—', r.productName, String(r.quantity), fmt(r.lineGross), fmt(r.discountAmount), `${r.discountPercent}%`, r.staffName ?? '—'])}
+          emptyText={t('reports.empty.discounts')}
         />
       </div>
     </div>

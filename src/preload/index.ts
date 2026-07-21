@@ -167,6 +167,7 @@ const api: IpcChannels = {
     clientRetention: (p) => invoke('reports:clientRetention', p),
     commission: (p) => invoke('reports:commission', p),
     orderVolume: (p) => invoke('reports:orderVolume', p),
+    discounts: (p) => invoke('reports:discounts', p),
     batchExpiry: () => invoke('reports:batchExpiry'),
     labThroughput: (p) => invoke('reports:labThroughput', p),
     bloodStock: () => invoke('reports:bloodStock'),

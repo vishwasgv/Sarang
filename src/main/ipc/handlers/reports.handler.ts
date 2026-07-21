@@ -3,7 +3,7 @@ import { requirePermission } from '../permission-guard'
 import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
-  OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema,
+  OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
   CashBookReportSchema, TrialBalanceReportSchema
 } from '../../validation/report.validation'
 
@@ -173,6 +173,14 @@ export function register(handle: HandleFn): void {
     const parsed = OrderVolumeReportSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateOrderVolumeReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:discounts', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DiscountReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateDiscountReport(parsed.data)
     return { success: true, data }
   })
 

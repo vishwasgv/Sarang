@@ -202,6 +202,8 @@
   },
   "billing": {
     "title": "Billing",
+    "bargainedPriceToggleHint": "Toggle {{currSym}} / % / Bargained (Final) Price",
+    "bargainedPriceInputHint": "Type the final agreed price for this line — the discount is calculated for you.",
     "newInvoice": "New Invoice",
     "invoiceList": "Invoices",
     "invoiceNumber": "Invoice #",
@@ -872,6 +874,10 @@
     "summary": {
       "balanced": "Balanced",
       "notBalanced": "Not Balanced",
+      "totalDiscountGiven": "Total Discount Given",
+      "discountedLines": "Discounted / Total Lines",
+      "discountIncidence": "Lines Discounted",
+      "avgDiscountPercent": "Avg. Discount",
       "totalRevenue": "Total Revenue",
       "totalInvoices": "Total Invoices",
       "totalTaxAmount": "Total Tax",
@@ -991,6 +997,8 @@
       "d90plusShort": "90+"
     },
     "section": {
+      "topDiscountedProducts": "Top Discounted Products",
+      "discountDetails": "Discount Details",
       "summaryByGroup": "Summary by {{groupBy}}",
       "invoiceDetails": "Invoice Details ({{count}} records)",
       "customerDues": "Customer Dues",
@@ -1049,6 +1057,7 @@
       "complianceTaskDetails": "Compliance Task Details"
     },
     "empty": {
+      "discounts": "No discounts or bargained prices given in this date range.",
       "invoices": "No invoices in this date range.",
       "products": "No products found.",
       "taxable": "No taxable transactions in this period.",
@@ -1191,6 +1200,10 @@
       "newQ": "New?",
       "atRiskQ": "At Risk?",
       "staff": "Staff",
+      "quantity": "Quantity",
+      "lineGross": "List Price Total",
+      "discountGiven": "Discount Given",
+      "discountPercent": "Discount %",
       "period": "Period",
       "serviceRevenue": "Service Revenue",
       "commission": "Commission",

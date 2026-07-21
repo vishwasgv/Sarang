@@ -10,6 +10,8 @@ Click a report to select it, set its filters (most take a date range; a few take
 
 The Sales Report breaks down revenue, discounts, and tax collected, grouped by day, week, month, or year as you choose.
 
+The **Discounts & Bargained Pricing** report (also under Sales) shows exactly how much was given away via any per-line discount or bargained/Final-Price entry on the Billing screen — total discount given, what share of all sold lines were discounted, a breakdown by product (which items get haggled the most) and by staff member (useful for spotting a cashier who discounts unusually often). Every row links back to its invoice.
+
 ## Inventory
 
 The Inventory Report shows current stock levels and valuation with low-stock alerts flagged, and can be filtered to low-stock items only. Related inventory-category entries appear once the matching feature is on: Batch & Expiry (batch tracking), Serial & Warranty (serial/IMEI tracking), Variant Stock (size/color variants), and Production (production orders).

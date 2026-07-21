@@ -220,6 +220,7 @@ export interface IpcChannels {
     clientRetention: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     commission: (payload: { dateFrom: string; dateTo: string; staffId?: string }) => Promise<ApiResponse>
     orderVolume: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    discounts: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     batchExpiry: () => Promise<ApiResponse>
     labThroughput: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     bloodStock: () => Promise<ApiResponse>

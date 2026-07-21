@@ -2589,3 +2589,129 @@ describe('reportService.generatePrescriptionDrugSalesReport', () => {
     expect(result.rows).toEqual([])
   })
 })
+
+// ─── Discounts & Bargained Pricing Report ──────────────────────────────────────
+
+function makeDiscountInvoice(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'inv-1', invoiceNumber: 'INV-2024-000001', invoiceType: 'RETAIL',
+    invoiceDate: new Date('2024-01-15'), status: 'ACTIVE',
+    customer: { customerName: 'Walk-in' }, createdBy: { fullName: 'Cashier One' },
+    items: [{ productName: 'Widget', quantity: 2, unitPrice: 500, discountAmount: 100 }],
+    ...overrides
+  }
+}
+
+describe('reportService.generateDiscountReport', () => {
+  it('only counts lines with a positive discount, computing the correct percent per line', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          makeDiscountInvoice({
+            items: [
+              { productName: 'Bargained Widget', quantity: 2, unitPrice: 500, discountAmount: 200 }, // 1000 gross, 20% off
+              { productName: 'Full Price Item', quantity: 1, unitPrice: 300, discountAmount: 0 },
+            ]
+          })
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary.totalLineCount).toBe(2)
+    expect(result.summary.discountedLineCount).toBe(1)
+    expect(result.summary.totalDiscountGiven).toBe(200)
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].discountPercent).toBe(20)
+  })
+
+  it('computes discount incidence and average discount percent across multiple invoices', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          makeDiscountInvoice({ items: [{ productName: 'A', quantity: 1, unitPrice: 100, discountAmount: 10 }] }), // 10%
+          makeDiscountInvoice({ items: [{ productName: 'B', quantity: 1, unitPrice: 100, discountAmount: 30 }] }), // 30%
+          makeDiscountInvoice({ items: [{ productName: 'C', quantity: 1, unitPrice: 100, discountAmount: 0 }] }),  // no discount
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary.totalLineCount).toBe(3)
+    expect(result.summary.discountedLineCount).toBe(2)
+    expect(result.summary.discountIncidencePercent).toBe(66.67)
+    expect(result.summary.averageDiscountPercent).toBe(20)
+  })
+
+  it('aggregates discount given by staff member and by product', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          makeDiscountInvoice({
+            createdBy: { fullName: 'Alice' },
+            items: [{ productName: 'Widget', quantity: 1, unitPrice: 100, discountAmount: 20 }]
+          }),
+          makeDiscountInvoice({
+            createdBy: { fullName: 'Bob' },
+            items: [{ productName: 'Widget', quantity: 1, unitPrice: 100, discountAmount: 30 }]
+          }),
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.byStaff).toEqual([
+      { staffName: 'Bob', discountGiven: 30, lineCount: 1 },
+      { staffName: 'Alice', discountGiven: 20, lineCount: 1 },
+    ])
+    expect(result.byProduct).toEqual([{ productName: 'Widget', discountGiven: 50, lineCount: 2 }])
+  })
+
+  // Same sign-correction idiom as generateSalesReport's totalDiscount — a
+  // RETURN invoice's item-level discountAmount is stored as a positive
+  // magnitude, so it must be NEGATED when aggregated, or a return would
+  // double-count as if it were an additional sale's discount.
+  it('negates discount for RETURN invoices so they reverse, not double-count', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          makeDiscountInvoice({ invoiceType: 'RETURN', items: [{ productName: 'Widget', quantity: 1, unitPrice: 100, discountAmount: 20 }] })
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary.totalDiscountGiven).toBe(-20)
+    expect(result.rows[0].discountAmount).toBe(-20)
+  })
+
+  it('excludes CANCELLED invoices entirely', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    const whereArg = vi.mocked(db.invoice.findMany).mock.calls[0][0] as { where: { status: { not: string } } }
+    expect(whereArg.where.status).toEqual({ not: 'CANCELLED' })
+  })
+
+  it('returns zero-value summary and empty arrays when nothing matches the range', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary).toEqual({ totalDiscountGiven: 0, discountedLineCount: 0, totalLineCount: 0, discountIncidencePercent: 0, averageDiscountPercent: 0 })
+    expect(result.rows).toEqual([])
+    expect(result.byStaff).toEqual([])
+    expect(result.byProduct).toEqual([])
+  })
+})

@@ -84,6 +84,33 @@ export interface ExpenseReport {
   rows: ExpenseReportRow[]
 }
 
+// Discounts & Bargained Pricing Report — covers BOTH kinds of price
+// reduction: the pre-existing overall bill-level discount and the new
+// per-line "Final Price" bargaining mode added to BillingScreen.tsx (both
+// ultimately just write to InvoiceItem.discountAmount, so this report
+// doesn't need to know which UI path produced a given line's discount).
+// Common in Indian retail/hardware/wholesale trade where a haggled final
+// price is the norm — this gives an owner visibility into how much margin
+// is being negotiated away, by product and by staff member.
+export interface DiscountReportRow {
+  invoiceNumber: string; date: string; customer: string | null
+  productName: string; quantity: number; lineGross: number
+  discountAmount: number; discountPercent: number
+  staffName: string | null
+}
+
+export interface DiscountByStaffRow { staffName: string; discountGiven: number; lineCount: number }
+export interface DiscountByProductRow { productName: string; discountGiven: number; lineCount: number }
+
+export interface DiscountReport {
+  dateFrom: string; dateTo: string
+  summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }
+  byStaff: DiscountByStaffRow[]
+  byProduct: DiscountByProductRow[]
+  rows: DiscountReportRow[]
+  total: number
+}
+
 export interface AuditReportRow {
   date: string; user: string; action: string; entityType: string | null; entityId: string | null; details: string | null
 }
@@ -1631,6 +1658,96 @@ export interface OrderVolumeReport {
   rows: OrderVolumeRow[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Discounts & Bargained Pricing Report
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generateDiscountReport(params: { dateFrom: string; dateTo: string }): Promise<DiscountReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+
+  const invoices = await db.invoice.findMany({
+    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    include: {
+      customer: { select: { customerName: true } },
+      createdBy: { select: { fullName: true } },
+      items: { select: { productName: true, quantity: true, unitPrice: true, discountAmount: true } }
+    },
+    orderBy: { invoiceDate: 'asc' }
+  })
+
+  // A RETURN invoice's item-level discountAmount is stored as a positive
+  // magnitude, same sign-correction idiom as generateSalesReport's
+  // totalDiscount — without it, a return's discount would double-count as
+  // if it were an additional sale's discount rather than reversing one.
+  const sign = (inv: (typeof invoices)[number]) => (inv.invoiceType === 'RETURN' ? -1 : 1)
+
+  let totalDiscountGiven = 0
+  let discountedLineCount = 0
+  let totalLineCount = 0
+  let discountPercentSum = 0
+  const staffMap = new Map<string, DiscountByStaffRow>()
+  const productMap = new Map<string, DiscountByProductRow>()
+  const rows: DiscountReportRow[] = []
+
+  for (const inv of invoices) {
+    const staffName = inv.createdBy?.fullName ?? 'Unknown'
+    for (const item of inv.items) {
+      totalLineCount += 1
+      if (item.discountAmount <= 0) continue
+
+      const s = sign(inv)
+      const discount = s * item.discountAmount
+      const lineGross = item.quantity * item.unitPrice
+      const discountPercent = lineGross > 0 ? (item.discountAmount / lineGross) * 100 : 0
+
+      totalDiscountGiven += discount
+      discountedLineCount += 1
+      discountPercentSum += discountPercent
+
+      const staffRow = staffMap.get(staffName) ?? { staffName, discountGiven: 0, lineCount: 0 }
+      staffRow.discountGiven += discount
+      staffRow.lineCount += 1
+      staffMap.set(staffName, staffRow)
+
+      const productRow = productMap.get(item.productName) ?? { productName: item.productName, discountGiven: 0, lineCount: 0 }
+      productRow.discountGiven += discount
+      productRow.lineCount += 1
+      productMap.set(item.productName, productRow)
+
+      rows.push({
+        invoiceNumber: inv.invoiceNumber,
+        date: new Date(inv.invoiceDate).toISOString().slice(0, 10),
+        customer: inv.customer?.customerName ?? null,
+        productName: item.productName,
+        quantity: item.quantity,
+        lineGross,
+        discountAmount: discount,
+        discountPercent: roundCurrency(discountPercent),
+        staffName: inv.createdBy?.fullName ?? null
+      })
+    }
+  }
+
+  const discountIncidencePercent = totalLineCount > 0 ? (discountedLineCount / totalLineCount) * 100 : 0
+  const averageDiscountPercent = discountedLineCount > 0 ? discountPercentSum / discountedLineCount : 0
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalDiscountGiven: roundCurrency(totalDiscountGiven),
+      discountedLineCount, totalLineCount,
+      discountIncidencePercent: roundCurrency(discountIncidencePercent),
+      averageDiscountPercent: roundCurrency(averageDiscountPercent)
+    },
+    byStaff: Array.from(staffMap.values()).sort((a, b) => b.discountGiven - a.discountGiven),
+    byProduct: Array.from(productMap.values()).sort((a, b) => b.discountGiven - a.discountGiven),
+    rows,
+    total: rows.length
+  }
+}
+
 async function generateOrderVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<OrderVolumeReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
@@ -3169,6 +3286,7 @@ export const reportService = {
   generateClientRetentionReport,
   generateCommissionReport,
   generateOrderVolumeReport,
+  generateDiscountReport,
   generateBatchExpiryReport,
   generateLabThroughputReport,
   generateBloodStockReport,

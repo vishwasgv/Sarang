@@ -53,6 +53,7 @@ export const AuditReportSchema = z.object({
 
 export const OrderVolumeReportSchema = DateRangeSchema
 export const LabThroughputReportSchema = DateRangeSchema
+export const DiscountReportSchema = DateRangeSchema
 
 export type SalesReportPayload = z.infer<typeof SalesReportSchema>
 export type ExpenseReportPayload = z.infer<typeof ExpenseReportSchema>
