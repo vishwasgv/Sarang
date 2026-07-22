@@ -183,7 +183,6 @@ export async function generateEngagementInvoice(engagementId: string, period?: s
           productId: product.id,
           quantity: 1,
           unitPrice: Number(engagement.feeAmount),
-          taxRate: 18,
         }],
         notes: `Engagement fee: ${engagement.title} — ${targetPeriod}`,
         referenceNumber: engagementId.slice(0, 12),

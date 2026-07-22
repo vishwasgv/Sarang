@@ -268,7 +268,6 @@ export async function generateContractInvoice(contractId: string, period?: strin
           productId: product.id,
           quantity: 1,
           unitPrice: Number(contract.contractValue),
-          taxRate: 18,
         }],
         notes: `Pest control contract: ${contract.contractNumber} — ${targetPeriod}`,
         referenceNumber: contractId.slice(0, 12),

@@ -222,7 +222,7 @@ export async function generateCarJobInvoice(id: string) {
         data: { productName: 'Automotive Service / Labor', productType: 'SERVICE', hsnCode: '998731', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
       })
     }
-    items.push({ productId: laborProduct.id, quantity: 1, unitPrice: laborTotal, taxRate: 18 })
+    items.push({ productId: laborProduct.id, quantity: 1, unitPrice: laborTotal })
   }
 
   // Parts linked to a real catalog product become their own STANDARD invoice
@@ -248,7 +248,7 @@ export async function generateCarJobInvoice(id: string) {
         data: { productName: 'Automobile Parts & Accessories', productType: 'PRODUCT', hsnCode: '87089990', sellingPrice: 0, taxRate: 28, unit: 'NOS', isActive: true },
       })
     }
-    items.push({ productId: partsProduct.id, quantity: 1, unitPrice: unlinkedPartsTotal, taxRate: 28 })
+    items.push({ productId: partsProduct.id, quantity: 1, unitPrice: unlinkedPartsTotal })
   }
 
   const result = await billingService.createInvoice({

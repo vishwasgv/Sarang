@@ -343,7 +343,6 @@ export async function generateMembershipInvoice(membershipId: string) {
           productId: product.id,
           quantity: 1,
           unitPrice: Number(membership.plan.price),
-          taxRate: 18,
         }],
         notes: `Membership: ${membership.plan.planName}`,
         referenceNumber: membershipId.slice(0, 12),

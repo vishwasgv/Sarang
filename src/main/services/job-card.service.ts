@@ -390,7 +390,7 @@ export async function generateJobCardInvoice(id: string, userId?: string) {
       customerId: job.customerId,
       paymentMethod: 'CREDIT',
       gstType: 'CGST_SGST',
-      items: [{ productId: product.id, quantity: 1, unitPrice: billAmount, taxRate: 18 }],
+      items: [{ productId: product.id, quantity: 1, unitPrice: billAmount }],
       notes: `Job Card ${job.jobNumber} — ${job.title}`,
       referenceNumber: job.jobNumber,
     })

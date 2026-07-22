@@ -194,6 +194,24 @@ describe('billingService.cancelInvoice', () => {
     expect((result as { error: { code: string } }).error.code).toBe('INVOC-006')
   })
 
+  // Regression for a real bug found 2026-07-22: cancelInvoice had no guard
+  // against cancelling a RETURN-type invoice, unlike splitInvoice (SPLIT-003)
+  // and createReturn (RET-004), which both reject the same case explicitly.
+  // Reaching this path would double-restore inventory (the original return
+  // already restored it once) and never find a ledger entry to reverse
+  // (returns post referenceType: 'RETURN', not 'INVOICE').
+  it('returns INVOC-016 and does not touch inventory when cancelling a RETURN invoice', async () => {
+    const db = makeDb({ invoiceType: 'RETURN' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await billingService.cancelInvoice(makeCancelPayload())
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('INVOC-016')
+    expect(sharedTx.inventory.update).not.toHaveBeenCalled()
+    expect(sharedTx.invoice.update).not.toHaveBeenCalled()
+  })
+
   it('reads the invoice inside the transaction (no double-cancel race)', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

@@ -190,10 +190,15 @@ describe('driving.service — generateDrivingSessionInvoice', () => {
     expect(res.success).toBe(true)
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
       customerId: 'learner-1',
-      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 500, taxRate: 18 })],
+      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 500 })],
     }))
     expect(db.product.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ hsnCode: '999293' }) }))
     expect(db.drivingSession.update).toHaveBeenCalledWith({ where: { id: 'session-1' }, data: { invoiceId: 'invoice-1' } })
+    // Regression: the invoice item must NOT hardcode a taxRate — it must fall
+    // through to the product's own (editable) taxRate, so an owner changing
+    // the tax rate on "Driving Lesson" in Settings actually takes effect.
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(call.items[0]).not.toHaveProperty('taxRate')
   })
 
   it('propagates a billing failure without linking an invoice, and releases the claim', async () => {
@@ -339,9 +344,11 @@ describe('driving.service — generateDrivingPackageInvoice', () => {
     expect(res.success).toBe(true)
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
       customerId: 'learner-1',
-      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 5000, taxRate: 18 })],
+      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 5000 })],
     }))
     expect(db.drivingPackageEnrollment.update).toHaveBeenCalledWith({ where: { id: 'enr-1' }, data: { invoiceId: 'invoice-1' } })
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(call.items[0]).not.toHaveProperty('taxRate')
   })
 
   it('propagates a billing failure without linking an invoice, and releases the claim', async () => {

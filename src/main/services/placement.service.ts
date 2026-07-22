@@ -190,7 +190,7 @@ export async function generatePlacementInvoice(id: string) {
     customerId: placement.clientId,
     paymentMethod: 'CREDIT',
     gstType: 'CGST_SGST',
-    items: [{ productId: product.id, quantity: 1, unitPrice: Number(placement.commissionAmount), taxRate: 18 }],
+    items: [{ productId: product.id, quantity: 1, unitPrice: Number(placement.commissionAmount) }],
     notes: `Placement ${placement.placementNumber}`,
     referenceNumber: placement.placementNumber,
   })

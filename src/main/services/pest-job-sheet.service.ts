@@ -224,7 +224,7 @@ export async function generatePestJobInvoice(id: string) {
     customerId: sheet.clientId,
     paymentMethod: 'CREDIT',
     gstType: 'CGST_SGST',
-    items: [{ productId: pestProduct.id, quantity: 1, unitPrice: Number(sheet.jobAmount), taxRate: 18 }],
+    items: [{ productId: pestProduct.id, quantity: 1, unitPrice: Number(sheet.jobAmount) }],
     notes: `Job Sheet ${sheet.jobNumber}${address ? ` — ${address}` : ''}`,
     referenceNumber: sheet.jobNumber,
   })

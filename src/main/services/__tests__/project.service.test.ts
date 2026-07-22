@@ -81,7 +81,9 @@ describe('project.service.generateProjectInvoice', () => {
     expect(res.success).toBe(true)
     expect(db.product.create).not.toHaveBeenCalled()
     const call = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ productId: string; unitPrice: number }> }
-    expect(call.items).toEqual([{ productId: 'prod-existing-consulting', quantity: 1, unitPrice: 50000, taxRate: 18 }])
+    // Regression: no hardcoded taxRate — it must fall through to the
+    // product's own (editable) taxRate rather than silently override it.
+    expect(call.items).toEqual([{ productId: 'prod-existing-consulting', quantity: 1, unitPrice: 50000 }])
   })
 
   it('creates the SAC consulting-services product on first use, then marks the project invoiced', async () => {

@@ -720,6 +720,20 @@ export const billingService = {
         if (invoice.status === 'CANCELLED') {
           throw new ServiceError('INVOC-006', 'This invoice is already cancelled.')
         }
+        // BUG FOUND 2026-07-22: every sibling mutation that must not touch a
+        // RETURN invoice (splitInvoice's SPLIT-003, createReturn's RET-004)
+        // has this exact guard; cancelInvoice didn't, relying only on the UI
+        // hiding the Cancel button for return invoices. If ever reached
+        // directly (the IPC handler only does a Zod shape check), this
+        // function's inventory-restore loop below would increment stock a
+        // second time for quantities the original return already restored
+        // once, while its ledger-reversal query (filtered on
+        // referenceType: 'INVOICE') would find nothing to reverse — because
+        // the return posted its own ledger entry as referenceType: 'RETURN'
+        // — so the return's credit would never be clawed back either.
+        if (invoice.invoiceType === 'RETURN') {
+          throw new ServiceError('INVOC-016', 'Cannot cancel a return invoice.')
+        }
 
         // Serials aren't stored on InvoiceItem (linked the other way, via
         // ProductSerial.invoiceId, to avoid a schema migration) — look up

@@ -194,7 +194,6 @@ export async function generateEventInvoice(id: string) {
           productId: product.id,
           quantity: 1,
           unitPrice: Number(booking.finalAmount),
-          taxRate: 18,
         }],
         notes: `${booking.eventType} — ${booking.eventName}`,
         referenceNumber: id.slice(0, 12),

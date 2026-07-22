@@ -4,6 +4,7 @@ import { generateSequenceNumber } from './sequence.service'
 import { ServiceError } from '../errors/service-error'
 import { restoreBatchStockFIFO } from './batch.service'
 import { restoreVariantStockTx } from './variant.service'
+import { customerLedgerService } from './customer-ledger.service'
 
 export interface ReturnItem {
   productId: string
@@ -240,33 +241,32 @@ export async function createReturn(
         })
       }
 
-      // Credit customer ledger if there was a customer
+      // Credit customer ledger if there was a customer.
+      //
+      // BUG FOUND 2026-07-22: this used to hand-roll the balance calculation
+      // (`findFirst` "last" ledger row ordered by createdAt, minus the credit)
+      // instead of using the shared customerLedgerService.addEntry() helper
+      // that credit-note.service.ts and every other ledger-writing path uses.
+      // That's exactly the anti-pattern credit-note.service.ts's own comment
+      // warns about: (1) `orderBy: createdAt desc` with no tie-breaker can
+      // pick the wrong "last" row if two entries share a millisecond
+      // timestamp, and (2) using `{decrement: creditAmount}` on
+      // customer.outstandingBalance (relative) instead of recomputing from a
+      // fresh SUM over the whole ledger means any prior drift is preserved
+      // and compounded here instead of self-correcting — and this exact
+      // field is what billing.service.ts's real-money credit-limit
+      // enforcement reads. addEntry() always recomputes from an aggregate
+      // SUM, so it can never drift regardless of ordering/timing.
       if (original.customerId) {
         const creditAmount = Math.abs(returnTotal)
-        const last = await tx.customerLedger.findFirst({
-          where: { customerId: original.customerId },
-          orderBy: { createdAt: 'desc' },
-          select: { balance: true }
-        })
-        const prevBalance = last?.balance ?? 0
-        const newBalance = prevBalance - creditAmount // credit reduces outstanding
-
-        await tx.customerLedger.create({
-          data: {
-            customerId: original.customerId,
-            referenceType: 'RETURN',
-            referenceId: returnInvoice.id,
-            debitAmount: 0,
-            creditAmount,
-            balance: newBalance,
-            remarks: `Credit for return — ${returnInvoice.invoiceNumber}`
-          }
-        })
-
-        await tx.customer.update({
-          where: { id: original.customerId },
-          data: { outstandingBalance: { decrement: creditAmount } }
-        })
+        await customerLedgerService.addEntry({
+          customerId: original.customerId,
+          referenceType: 'RETURN',
+          referenceId: returnInvoice.id,
+          debitAmount: 0,
+          creditAmount,
+          remarks: `Credit for return — ${returnInvoice.invoiceNumber}`
+        }, tx)
       }
 
       return returnInvoice

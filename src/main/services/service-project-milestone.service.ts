@@ -142,7 +142,6 @@ export async function generateMilestoneInvoice(milestoneId: string) {
           productId: product.id,
           quantity: 1,
           unitPrice: Number(milestone.milestoneAmount),
-          taxRate: 18,
         }],
         notes: `Milestone: ${milestone.milestoneName} — ${milestone.project.projectName}`,
         referenceNumber: milestoneId.slice(0, 12),

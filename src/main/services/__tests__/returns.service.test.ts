@@ -2,9 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
+vi.mock('../customer-ledger.service', () => ({
+  customerLedgerService: { addEntry: vi.fn().mockResolvedValue(undefined) }
+}))
 
 import { getPrisma } from '../../database/db'
 import { createReturn, getTodayReturnsSummary, listReturns } from '../returns.service'
+import { customerLedgerService } from '../customer-ledger.service'
 
 const ORIGINAL_INVOICE_ID = 'inv-orig-1'
 
@@ -66,11 +70,6 @@ function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: u
         (opts.variants ?? []).find(v => v.id === where.id) ?? null),
       update: vi.fn(),
     },
-    customerLedger: {
-      findFirst: vi.fn().mockResolvedValue(null),
-      create: vi.fn(),
-    },
-    customer: { update: vi.fn() },
     setting: {
       findUnique: vi.fn(async () => settingRow),
       update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
@@ -141,16 +140,27 @@ describe('returns.service.createReturn', () => {
     expect(db.invoice.update).not.toHaveBeenCalled()
   })
 
-  it('credits the customer ledger with the full tax-inclusive refund amount', async () => {
+  // Regression for a real bug found 2026-07-22: this used to hand-roll the
+  // ledger balance (findFirst "last" row minus credit, then a relative
+  // customer.outstandingBalance decrement) instead of the shared
+  // customerLedgerService.addEntry() helper every other ledger-writing path
+  // uses — that hand-rolled version could drift the customer's outstanding
+  // balance, which real-money credit-limit enforcement reads directly.
+  it('credits the customer ledger via the shared addEntry helper with the full tax-inclusive refund amount', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 5 }], 'Defective')
 
-    const ledgerCall = db.customerLedger.create.mock.calls[0][0]
-    expect(ledgerCall.data.creditAmount).toBeCloseTo(531, 2)
-    const customerUpdateCall = db.customer.update.mock.calls[0][0]
-    expect(customerUpdateCall.data.outstandingBalance.decrement).toBeCloseTo(531, 2)
+    expect(customerLedgerService.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: 'cust-1',
+        referenceType: 'RETURN',
+        debitAmount: 0,
+        creditAmount: expect.closeTo(531, 2)
+      }),
+      expect.anything()
+    )
   })
 
   it('rejects a return that exceeds the ORIGINAL quantity outright', async () => {

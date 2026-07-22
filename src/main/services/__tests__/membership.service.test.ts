@@ -201,10 +201,12 @@ describe('membership.service — generateMembershipInvoice', () => {
     expect((res as { data: { invoiceId: string } }).data.invoiceId).toBe('invoice-1')
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
       customerId: 'cust-1',
-      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 1500, taxRate: 18 })],
+      items: [expect.objectContaining({ productId: 'product-1', unitPrice: 1500 })],
     }))
     expect(db.product.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ hsnCode: '999723' }) }))
     expect(db.membership.update).toHaveBeenCalledWith({ where: { id: 'mem-1' }, data: { invoiceId: 'invoice-1', paymentStatus: 'PAID' } })
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(call.items[0]).not.toHaveProperty('taxRate')
   })
 
   it('propagates a billing failure without linking an invoice, and releases the claim', async () => {

@@ -253,7 +253,7 @@ export async function generateProjectInvoice(id: string, userId?: string) {
       customerId: project.customerId,
       paymentMethod: 'CREDIT',
       gstType: 'CGST_SGST',
-      items: [{ productId: product.id, quantity: 1, unitPrice: project.estimatedAmount, taxRate: 18 }],
+      items: [{ productId: product.id, quantity: 1, unitPrice: project.estimatedAmount }],
       notes: `Project ${project.projectNumber} — ${project.title}`,
       referenceNumber: project.projectNumber,
     })

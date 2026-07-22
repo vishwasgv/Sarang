@@ -199,7 +199,6 @@ export async function generateInvoiceForRetainer(retainerId: string, period?: st
           productId: product.id,
           quantity: 1,
           unitPrice: Number(retainer.monthlyAmount),
-          taxRate: 18,
         }],
         notes: `Retainer: ${retainer.title} — ${targetPeriod}`,
         referenceNumber: retainerId.slice(0, 12),

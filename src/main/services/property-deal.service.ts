@@ -190,7 +190,6 @@ export async function generateCommissionInvoice(dealId: string) {
       productId: commissionProduct.id,
       quantity: 1,
       unitPrice: Number(deal.brokerageAmount),
-      taxRate: 18,
     }],
     notes: `Commission on deal: ${deal.property.propertyType} at ${deal.property.location}`,
     referenceNumber: dealId.slice(0, 12),
