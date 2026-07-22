@@ -77,11 +77,21 @@ function printAttendanceSheet(
   win.print()
 }
 
+// Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+// date, lagging the real local date for ~5.5 hours after local midnight in
+// any timezone ahead of UTC (IST is +5:30) -- this screen would default to
+// YESTERDAY's date for marking attendance during that window every day.
+function todayLocalISODate(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export default function AttendanceScreen() {
   const { error: toastError } = useNotificationStore()
   const [batches, setBatches] = useState<CoachingBatch[]>([])
   const [selectedBatchId, setSelectedBatchId] = useState('')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayLocalISODate())
   const [enrollments, setEnrollments] = useState<EnrolledStudent[]>([])
   const [attendance, setAttendance] = useState<Record<string, boolean>>({}) // studentId → present
   const [existingRecord, setExistingRecord] = useState<AttendanceRecord | null>(null)

@@ -11,7 +11,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDate } from '@shared/utils/locale.util'
+import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 
 interface ExpenseCategory { id: string; categoryName: string }
@@ -24,8 +24,12 @@ interface Expense {
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'BANK_TRANSFER', 'CARD', 'CHEQUE', 'OTHER']
 
+// Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+// date, lagging the real local date for ~5.5 hours after local midnight in
+// any timezone ahead of UTC (IST is +5:30) -- this filter would silently
+// exclude today's own expenses from the default view during that window.
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return toLocalISODate(new Date())
 }
 
 export function ExpensesScreen() {
@@ -45,7 +49,7 @@ export function ExpensesScreen() {
 
   // Filters
   const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
+    const d = new Date(); d.setDate(1); return toLocalISODate(d)
   })
   const [dateTo, setDateTo] = useState(today)
   const [catFilter, setCatFilter] = useState('')

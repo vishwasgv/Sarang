@@ -49,10 +49,20 @@ function varianceIcon(v: number) {
   return <XCircle size={16} className="text-danger" />
 }
 
+// Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+// date, lagging the real local date for ~5.5 hours after local midnight in
+// any timezone ahead of UTC (IST is +5:30) -- this screen would default to
+// closing out YESTERDAY's cash instead of today's during that window.
+function todayLocalISODate(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export function CashCloseScreen() {
   const { t } = useTranslation()
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayLocalISODate()
   const [date, setDate] = useState(today)
   const [summary, setSummary] = useState<DaySummary | null>(null)
   const [loading, setLoading] = useState(false)

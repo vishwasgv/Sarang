@@ -39,6 +39,23 @@ export function formatDateTime(dateStr: string | Date | null | undefined): strin
   return formatDate(dateStr, true)
 }
 
+// Real bug found live 2026-07-22: several screens computed "today" (or a
+// date used to QUERY/select which records to fetch — an attendance day, a
+// cash-close day, an appointments day-view) via `date.toISOString().split('T')[0]`.
+// That extracts the UTC calendar date, which for any timezone ahead of UTC
+// (IST is +5:30) lags behind the real local calendar date for the first
+// ~5.5 hours after local midnight, every single day — not a one-off. A
+// user in that window could view/mark attendance, cash-close, or
+// appointments for the WRONG day while the on-screen date label (usually
+// built with toLocaleDateString, which IS local-correct) shows the right
+// one — a real display-vs-query mismatch, not just a cosmetic label issue.
+// Always use this for a date-only (no time-of-day) string used in a query
+// or state key; toLocaleDateString remains correct for pure display.
+export function toLocalISODate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 export function formatTime(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '—'
   try {

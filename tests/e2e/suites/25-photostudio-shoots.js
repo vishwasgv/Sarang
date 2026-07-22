@@ -108,7 +108,10 @@ async function run() {
     })
 
     await r.step('delivery-milestone-tracker-works', async () => {
-      const res = await page.evaluate((id) => window.api.deliveryTracker.upsert({ shootBookingId: id, proofsSentDate: h.toLocalISODate(new Date()) }), bookingId)
+      // h.toLocalISODate must be called out here -- page.evaluate's callback
+      // runs in the browser context, where `h` doesn't exist.
+      const proofsSentDate = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ id, proofsSentDate }) => window.api.deliveryTracker.upsert({ shootBookingId: id, proofsSentDate }), { id: bookingId, proofsSentDate })
       r.log('delivery-milestone-updated', !!res?.success, JSON.stringify(res?.error || ''))
     })
 

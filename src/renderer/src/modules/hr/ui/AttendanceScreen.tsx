@@ -53,10 +53,20 @@ const STATUS_VARIANT: Record<string, 'success' | 'danger' | 'warning' | 'info' |
   WEEK_OFF: 'neutral'
 }
 
+// Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+// date, lagging the real local date for ~5.5 hours after local midnight in
+// any timezone ahead of UTC (IST is +5:30) -- this screen would default to
+// YESTERDAY's date for marking attendance during that window every day.
+function todayLocalISODate(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export function AttendanceScreen() {
   const { t } = useTranslation()
   const today = new Date()
-  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayLocalISODate())
   const [viewMonth, setViewMonth] = useState({ year: today.getFullYear(), month: today.getMonth() + 1 })
   const [mode, setMode] = useState<'daily' | 'monthly'>('daily')
 

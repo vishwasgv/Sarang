@@ -74,8 +74,16 @@ const NEXT_STATUS: Partial<Record<AppointmentStatus, AppointmentStatus>> = {
   IN_PROGRESS: 'COMPLETED',
 }
 
+// Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+// date, which lags the real local date for ~5.5 hours after local midnight
+// in any timezone ahead of UTC (IST is +5:30) — the day header (built with
+// toLocaleDateString elsewhere) could correctly say "Thursday" while this
+// function queried the backend for "Wednesday"'s appointments. Local
+// calendar components, never toISOString(), for a date-only string used to
+// select which day's data to fetch.
 function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 function addDays(d: Date, n: number): Date {

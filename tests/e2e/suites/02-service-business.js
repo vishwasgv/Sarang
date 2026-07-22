@@ -51,9 +51,12 @@ async function run() {
     let providerId, appointmentId
 
     await r.step('create-provider-and-customer', async () => {
-      const empRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Svc Provider', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
-      }))
+      // h.toLocalISODate must be called out here (Node scope) -- page.evaluate's
+      // callback runs inside the browser/renderer context, where `h` doesn't exist.
+      const joinDate = h.toLocalISODate(new Date())
+      const empRes = await page.evaluate(async (joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E Svc Provider', phone: `9${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
       r.log('provider-created', !!empRes?.success, JSON.stringify(empRes?.error || ''))
       providerId = empRes?.data?.id
 

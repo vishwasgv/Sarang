@@ -8,6 +8,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface Employee {
   id: string
@@ -59,7 +60,7 @@ export function EmployeesScreen() {
   const [form, setForm] = useState({
     fullName: '', employeeNumber: '', phone: '', email: '',
     department: '', designation: '', employeeType: 'FULL_TIME',
-    joinDate: new Date().toISOString().split('T')[0],
+    joinDate: toLocalISODate(new Date()),
     salaryType: 'MONTHLY', basicSalary: '', notes: '',
     allowances: [] as { name: string; amount: number }[]
   })
@@ -104,7 +105,7 @@ export function EmployeesScreen() {
     setForm({
       fullName: '', employeeNumber: '', phone: '', email: '',
       department: '', designation: '', employeeType: 'FULL_TIME',
-      joinDate: new Date().toISOString().split('T')[0],
+      joinDate: toLocalISODate(new Date()),
       salaryType: 'MONTHLY', basicSalary: '', notes: '',
       allowances: []
     })

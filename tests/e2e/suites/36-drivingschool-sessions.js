@@ -87,9 +87,12 @@ async function run() {
     let instructorId
 
     await r.step('create-instructor', async () => {
-      const empRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Drive Instructor', phone: `8${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
-      }))
+      // h.toLocalISODate must be called out here -- page.evaluate's callback
+      // runs in the browser context, where `h` doesn't exist.
+      const joinDate = h.toLocalISODate(new Date())
+      const empRes = await page.evaluate(async (joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E Drive Instructor', phone: `8${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
       instructorId = empRes?.data?.id
       r.log('instructor-created', !!empRes?.success)
     })

@@ -87,16 +87,20 @@ async function run() {
     let providerId, commissionAppointmentId
 
     await r.step('staff-commission-auto-triggers-on-completed', async () => {
-      const provRes = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Salon Stylist', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
-      }))
+      // h.toLocalISODate must be called out here -- page.evaluate's callback
+      // runs in the browser context, where `h` doesn't exist.
+      const joinDate = h.toLocalISODate(new Date())
+      const provRes = await page.evaluate(async (joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E Salon Stylist', phone: `9${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
       providerId = provRes?.data?.id
 
-      const apptRes = await page.evaluate(async (pid) => window.api.appointments.create({
+      const scheduledDate = h.toLocalISODate(new Date())
+      const apptRes = await page.evaluate(async ({ pid, scheduledDate }) => window.api.appointments.create({
         providerId: pid, customerName: 'E2E Salon Commission Client', serviceTitle: 'E2E Salon Manicure',
-        scheduledDate: h.toLocalISODate(new Date()), scheduledTime: '15:00', durationMinutes: 30,
+        scheduledDate, scheduledTime: '15:00', durationMinutes: 30,
         totalAmount: 500,
-      }), providerId)
+      }), { pid: providerId, scheduledDate })
       commissionAppointmentId = apptRes?.data?.id
       r.log('commission-test-appointment-created', !!commissionAppointmentId, JSON.stringify(apptRes?.error || ''))
 

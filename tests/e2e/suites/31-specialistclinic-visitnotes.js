@@ -29,13 +29,16 @@ async function run() {
     let providerId, provider2Id, customerId, appointmentId
 
     await r.step('create-prerequisites', async () => {
-      const p1Res = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Spec Provider One', phone: `9${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
-      }))
+      // h.toLocalISODate must be called out here -- page.evaluate's callback
+      // runs in the browser context, where `h` doesn't exist.
+      const joinDate = h.toLocalISODate(new Date())
+      const p1Res = await page.evaluate(async (joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E Spec Provider One', phone: `9${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
       providerId = p1Res?.data?.id
-      const p2Res = await page.evaluate(async () => window.api.hr.createEmployee({
-        fullName: 'E2E Spec Provider Two', phone: `8${String(Date.now()).slice(-9)}`, joinDate: h.toLocalISODate(new Date()),
-      }))
+      const p2Res = await page.evaluate(async (joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E Spec Provider Two', phone: `8${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
       provider2Id = p2Res?.data?.id
       const custRes = await page.evaluate(async () => window.api.customers.create({
         customerName: 'E2E Spec Patient', phone: `7${String(Date.now()).slice(-9)}`,
@@ -43,10 +46,11 @@ async function run() {
       customerId = custRes?.data?.id
       r.log('prerequisites-created', !!providerId && !!provider2Id && !!customerId)
 
-      const apptRes = await page.evaluate(async ({ providerId, customerId }) => window.api.appointments.create({
+      const scheduledDate = h.toLocalISODate(new Date())
+      const apptRes = await page.evaluate(async ({ providerId, customerId, scheduledDate }) => window.api.appointments.create({
         providerId, customerId, serviceTitle: 'E2E Spec Consult',
-        scheduledDate: h.toLocalISODate(new Date()), scheduledTime: '11:00', durationMinutes: 30,
-      }), { providerId, customerId })
+        scheduledDate, scheduledTime: '11:00', durationMinutes: 30,
+      }), { providerId, customerId, scheduledDate })
       appointmentId = apptRes?.data?.id
       r.log('appointment-created', !!appointmentId, JSON.stringify(apptRes?.error || ''))
     })
