@@ -6,6 +6,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface BatchClass {
   id: string
@@ -54,7 +55,7 @@ export function BatchClassesScreen() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingClass, setEditingClass] = useState<BatchClass | null>(null)
-  const [form, setForm] = useState({ className: '', instructorId: '', maxCapacity: 20, scheduleDays: [] as string[], scheduleTime: '07:00', startDate: new Date().toISOString().slice(0, 10), endDate: '', roomOrLocation: '' })
+  const [form, setForm] = useState({ className: '', instructorId: '', maxCapacity: 20, scheduleDays: [] as string[], scheduleTime: '07:00', startDate: toLocalISODate(new Date()), endDate: '', roomOrLocation: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -67,7 +68,7 @@ export function BatchClassesScreen() {
 
   // Attendance
   const [attendanceClass, setAttendanceClass] = useState<BatchClass | null>(null)
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10))
+  const [attendanceDate, setAttendanceDate] = useState(toLocalISODate(new Date()))
   const [presentIds, setPresentIds] = useState<Set<string>>(new Set())
   const [savingAttendance, setSavingAttendance] = useState(false)
   const [attendanceSaved, setAttendanceSaved] = useState(false)
@@ -121,7 +122,7 @@ export function BatchClassesScreen() {
       roomOrLocation: cls.roomOrLocation ?? '',
     } : {
       className: '', instructorId: '', maxCapacity: 20, scheduleDays: [], scheduleTime: '07:00',
-      startDate: new Date().toISOString().slice(0, 10), endDate: '', roomOrLocation: '',
+      startDate: toLocalISODate(new Date()), endDate: '', roomOrLocation: '',
     })
     setSaveError(null)
     setShowForm(true)
@@ -205,11 +206,11 @@ export function BatchClassesScreen() {
 
   async function openAttendance(cls: BatchClass) {
     setAttendanceClass(cls)
-    setAttendanceDate(new Date().toISOString().slice(0, 10))
+    setAttendanceDate(toLocalISODate(new Date()))
     setAttendanceSaved(false)
     await loadCustomers()
     // Pre-fetch today's existing attendance for this class
-    const res = await api.batchClass.getAttendance({ classId: cls.id, sessionDate: new Date().toISOString().slice(0, 10) })
+    const res = await api.batchClass.getAttendance({ classId: cls.id, sessionDate: toLocalISODate(new Date()) })
     if (res.success) {
       const existing = (res.data as { memberId: string }[]).map((r) => r.memberId)
       setPresentIds(new Set(existing))

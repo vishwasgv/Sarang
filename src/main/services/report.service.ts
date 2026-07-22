@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { toLocalISODate } from '../utils/date.util'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -128,15 +129,15 @@ export interface AuditReport {
 function toDate(s: string): Date { return new Date(s) }
 
 function groupLabel(date: Date, groupBy: string): string {
-  if (groupBy === 'day') return date.toISOString().slice(0, 10)
+  if (groupBy === 'day') return toLocalISODate(date)
   if (groupBy === 'week') {
     const d = new Date(date)
     d.setDate(d.getDate() - d.getDay())
-    return `Week of ${d.toISOString().slice(0, 10)}`
+    return `Week of ${toLocalISODate(d)}`
   }
   if (groupBy === 'month') return date.toISOString().slice(0, 7)
   if (groupBy === 'year') return String(date.getFullYear())
-  return date.toISOString().slice(0, 10)
+  return toLocalISODate(date)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ async function generateSalesReport(params: {
 
   const rows: SalesReportRow[] = invoices.map(inv => ({
     invoiceNumber: inv.invoiceNumber,
-    date: new Date(inv.invoiceDate).toISOString().slice(0, 10),
+    date: toLocalISODate(new Date(inv.invoiceDate)),
     customer: inv.customer?.customerName ?? null,
     // Phase 38: was sum(quantity) across all lines, which silently mixed whole-
     // unit counts with fractional loose-billed weights into one meaningless
@@ -639,7 +640,7 @@ async function generateExpenseReport(params: { dateFrom: string; dateTo: string;
   )
 
   const rows: ExpenseReportRow[] = expenses.map(e => ({
-    date: new Date(e.expenseDate).toISOString().slice(0, 10),
+    date: toLocalISODate(new Date(e.expenseDate)),
     expenseName: e.expenseName,
     category: e.category.categoryName,
     paymentMethod: e.paymentMethod,
@@ -1104,7 +1105,7 @@ async function generateGSTR1(params: { dateFrom: string; dateTo: string }): Prom
           gstin: inv.customer.taxNumber,
           receiverName: inv.customer.customerName,
           invoiceNumber: inv.invoiceNumber,
-          invoiceDate: new Date(inv.invoiceDate).toISOString().slice(0, 10),
+          invoiceDate: toLocalISODate(new Date(inv.invoiceDate)),
           invoiceValue: inv.totalAmount,
           placeOfSupply,
           reverseCharge: 'N',
@@ -1460,7 +1461,7 @@ async function generateAppointmentUtilisationReport(params: {
 
   const rows: AppointmentUtilisationRow[] = appointments.map(a => ({
     appointmentNumber: a.appointmentNumber,
-    date: new Date(a.scheduledDate).toISOString().slice(0, 10),
+    date: toLocalISODate(new Date(a.scheduledDate)),
     time: a.scheduledTime,
     customer: a.customer?.customerName ?? a.customerName ?? 'Walk-in',
     provider: a.provider?.fullName ?? 'Unassigned',
@@ -1557,8 +1558,8 @@ async function generateClientRetentionReport(params: { dateFrom: string; dateTo:
     rows.push({
       customerName: details?.customerName ?? 'Unknown',
       phone: details?.phone ?? null,
-      firstVisitEver: data.firstEver.toISOString().slice(0, 10),
-      lastVisit: data.lastVisit.toISOString().slice(0, 10),
+      firstVisitEver: toLocalISODate(data.firstEver),
+      lastVisit: toLocalISODate(data.lastVisit),
       visitsInPeriod: data.visitsInPeriod, isNew, atRisk,
     })
   }
@@ -1634,7 +1635,7 @@ async function generateCommissionReport(params: { dateFrom: string; dateTo: stri
     commissionType: r.commissionType,
     commissionRate: Number(r.commissionRate),
     isPaid: r.isPaid,
-    paidDate: r.paidDate ? r.paidDate.toISOString().slice(0, 10) : null,
+    paidDate: r.paidDate ? toLocalISODate(r.paidDate) : null,
   }))
 
   return {
@@ -1718,7 +1719,7 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
 
       rows.push({
         invoiceNumber: inv.invoiceNumber,
-        date: new Date(inv.invoiceDate).toISOString().slice(0, 10),
+        date: toLocalISODate(new Date(inv.invoiceDate)),
         customer: inv.customer?.customerName ?? null,
         productName: item.productName,
         quantity: item.quantity,
@@ -1767,7 +1768,7 @@ async function generateOrderVolumeReport(params: { dateFrom: string; dateTo: str
 
   const dayMap = new Map<string, OrderVolumeByDay>()
   for (const o of orders) {
-    const day = o.createdAt.toISOString().slice(0, 10)
+    const day = toLocalISODate(o.createdAt)
     const existing = dayMap.get(day) ?? { date: day, pending: 0, accepted: 0, rejected: 0, total: 0 }
     if (o.status === 'ACCEPTED') existing.accepted += 1
     else if (o.status === 'REJECTED') existing.rejected += 1
@@ -2142,7 +2143,7 @@ async function generateAttendanceReport(params: { dateFrom: string; dateTo: stri
     .sort((a, b) => b.attendanceRate - a.attendanceRate)
 
   const rows: AttendanceReportRow[] = records.map(r => ({
-    employeeName: r.employee.fullName, date: r.date.toISOString().slice(0, 10),
+    employeeName: r.employee.fullName, date: toLocalISODate(r.date),
     status: r.status, checkIn: r.checkIn, checkOut: r.checkOut,
   }))
 
@@ -2196,8 +2197,8 @@ async function generateProductionReport(params: { dateFrom: string; dateTo: stri
   const rows: ProductionReportRow[] = orders.map(o => ({
     orderNumber: o.orderNumber, productName: o.product.productName,
     plannedQty: o.plannedQty, producedQty: o.producedQty, status: o.status,
-    startDate: o.startDate ? o.startDate.toISOString().slice(0, 10) : null,
-    completedDate: o.completedDate ? o.completedDate.toISOString().slice(0, 10) : null,
+    startDate: o.startDate ? toLocalISODate(o.startDate) : null,
+    completedDate: o.completedDate ? toLocalISODate(o.completedDate) : null,
   }))
 
   return {
@@ -2500,9 +2501,9 @@ async function generateProjectReport(params: { dateFrom: string; dateTo: string 
     rows: projects.map(p => ({
       title: p.title, clientName: p.customer?.customerName ?? null, status: p.status, priority: p.priority,
       estimatedAmount: Number(p.estimatedAmount ?? 0),
-      startDate: p.startDate ? p.startDate.toISOString().slice(0, 10) : null,
-      dueDate: p.dueDate ? p.dueDate.toISOString().slice(0, 10) : null,
-      completedDate: p.completedDate ? p.completedDate.toISOString().slice(0, 10) : null,
+      startDate: p.startDate ? toLocalISODate(p.startDate) : null,
+      dueDate: p.dueDate ? toLocalISODate(p.dueDate) : null,
+      completedDate: p.completedDate ? toLocalISODate(p.completedDate) : null,
     })),
   }
 }
@@ -2548,9 +2549,9 @@ async function generateServiceProjectReport(params: { dateFrom: string; dateTo: 
     rows: projects.map(p => ({
       projectName: p.projectName, clientName: p.client.customerName, status: p.status, projectType: p.projectType,
       totalContractValue: p.totalContractValue != null ? Number(p.totalContractValue) : null,
-      startDate: p.startDate ? p.startDate.toISOString().slice(0, 10) : null,
-      expectedEndDate: p.expectedEndDate ? p.expectedEndDate.toISOString().slice(0, 10) : null,
-      completedDate: p.completedDate ? p.completedDate.toISOString().slice(0, 10) : null,
+      startDate: p.startDate ? toLocalISODate(p.startDate) : null,
+      expectedEndDate: p.expectedEndDate ? toLocalISODate(p.expectedEndDate) : null,
+      completedDate: p.completedDate ? toLocalISODate(p.completedDate) : null,
     })),
   }
 }
@@ -2604,9 +2605,9 @@ async function generateJobCardReport(params: { dateFrom: string; dateTo: string 
     rows: jobs.map(j => ({
       jobNumber: j.jobNumber, title: j.title, customerName: j.customer?.customerName ?? null, status: j.status, priority: j.priority,
       estimatedCost: j.estimatedCost, actualCost: j.actualCost,
-      receivedDate: j.receivedDate.toISOString().slice(0, 10),
-      expectedDate: j.expectedDate ? j.expectedDate.toISOString().slice(0, 10) : null,
-      deliveredDate: j.deliveredDate ? j.deliveredDate.toISOString().slice(0, 10) : null,
+      receivedDate: toLocalISODate(j.receivedDate),
+      expectedDate: j.expectedDate ? toLocalISODate(j.expectedDate) : null,
+      deliveredDate: j.deliveredDate ? toLocalISODate(j.deliveredDate) : null,
     })),
   }
 }
@@ -2662,8 +2663,8 @@ async function generateCarJobCardReport(params: { dateFrom: string; dateTo: stri
       jobNumber: j.jobNumber, customerName: j.client.customerName, vehicleNumber: j.vehicleNumber,
       vehicleMake: j.vehicleMake, vehicleModel: j.vehicleModel, status: j.status,
       laborTotal: Number(j.laborTotal), partsTotal: Number(j.partsTotal),
-      createdAt: j.createdAt.toISOString().slice(0, 10),
-      deliveredDate: j.deliveredDate ? j.deliveredDate.toISOString().slice(0, 10) : null,
+      createdAt: toLocalISODate(j.createdAt),
+      deliveredDate: j.deliveredDate ? toLocalISODate(j.deliveredDate) : null,
     })),
   }
 }
@@ -2713,8 +2714,8 @@ async function generateTailoringOrderReport(params: { dateFrom: string; dateTo: 
     rows: orders.map(o => ({
       orderNumber: o.orderNumber, customerName: o.client.customerName, garmentType: o.garmentType, status: o.status,
       quantity: o.quantity, totalAmount: Number(o.totalAmount),
-      createdAt: o.createdAt.toISOString().slice(0, 10),
-      deliveryDate: o.deliveryDate ? o.deliveryDate.toISOString().slice(0, 10) : null,
+      createdAt: toLocalISODate(o.createdAt),
+      deliveryDate: o.deliveryDate ? toLocalISODate(o.deliveryDate) : null,
     })),
   }
 }
@@ -2782,7 +2783,7 @@ async function generatePestContractReport(params: { dateFrom: string; dateTo: st
       let pestTypes: string[] = []
       try { pestTypes = JSON.parse(c.pestTypes || '[]') } catch { /* leave empty */ }
       const daysUntilExpiry = Math.ceil((c.endDate!.getTime() - now.getTime()) / 86400000)
-      return { contractNumber: c.contractNumber, customerName: c.client.customerName, pestTypes, endDate: c.endDate!.toISOString().slice(0, 10), daysUntilExpiry }
+      return { contractNumber: c.contractNumber, customerName: c.client.customerName, pestTypes, endDate: toLocalISODate(c.endDate!), daysUntilExpiry }
     }),
     byPestType: Array.from(byType.entries()).map(([pestType, v]) => ({ pestType, ...v })),
   }
@@ -2840,7 +2841,7 @@ async function generateRealEstatePipelineReport(params: { dateFrom: string; date
     deals: deals.map(d => ({
       propertyLocation: d.property.location, buyerName: d.buyer.customerName, sellerName: d.seller.customerName,
       dealValue: Number(d.dealValue), brokerageAmount: Number(d.brokerageAmount), status: d.status,
-      createdAt: d.createdAt.toISOString().slice(0, 10),
+      createdAt: toLocalISODate(d.createdAt),
     })),
   }
 }
@@ -2926,7 +2927,7 @@ async function generateShootBookingReport(params: { dateFrom: string; dateTo: st
     },
     byShootType: Array.from(byType.entries()).map(([shootType, count]) => ({ shootType, count })),
     rows: bookings.map(b => ({
-      clientName: b.client.customerName, shootType: b.shootType, shootDate: b.shootDate.toISOString().slice(0, 10),
+      clientName: b.client.customerName, shootType: b.shootType, shootDate: toLocalISODate(b.shootDate),
       status: b.status, finalAmount: b.finalAmount != null ? Number(b.finalAmount) : null,
     })),
   }
@@ -2969,7 +2970,7 @@ async function generateEventBookingReport(params: { dateFrom: string; dateTo: st
     byStatus: Array.from(byStatus.entries()).map(([status, count]) => ({ status, count })),
     rows: bookings.map(b => ({
       clientName: b.client.customerName, eventName: b.eventName, eventType: b.eventType,
-      eventDate: b.eventDate.toISOString().slice(0, 10), status: b.status,
+      eventDate: toLocalISODate(b.eventDate), status: b.status,
       finalAmount: b.finalAmount != null ? Number(b.finalAmount) : null,
     })),
   }
@@ -3012,7 +3013,7 @@ async function generatePlacementReport(params: { dateFrom: string; dateTo: strin
     },
     rows: placements.map(p => ({
       placementNumber: p.placementNumber, candidateName: p.candidate.fullName, jobTitle: p.jobOrder.jobTitle,
-      clientName: p.client.customerName, status: p.status, joiningDate: p.joiningDate.toISOString().slice(0, 10),
+      clientName: p.client.customerName, status: p.status, joiningDate: toLocalISODate(p.joiningDate),
       offeredSalary: Number(p.offeredSalary), commissionAmount: Number(p.commissionAmount),
     })),
   }
@@ -3057,7 +3058,7 @@ async function generateDrawingRegisterReport(params: { dateFrom: string; dateTo:
     rows: drawings.map(d => ({
       drawingNumber: d.drawingNumber, title: d.title, projectName: d.project.projectName, discipline: d.discipline,
       revisionNumber: d.revisionNumber, status: d.status,
-      issuedDate: d.issuedDate ? d.issuedDate.toISOString().slice(0, 10) : null,
+      issuedDate: d.issuedDate ? toLocalISODate(d.issuedDate) : null,
     })),
   }
 }
@@ -3094,7 +3095,7 @@ async function generateSiteVisitLogReport(params: { dateFrom: string; dateTo: st
     summary: { totalVisits: visits.length },
     byVisitType: Array.from(byType.entries()).map(([visitType, count]) => ({ visitType, count })),
     rows: visits.map(v => ({
-      projectName: v.project.projectName, visitDate: v.visitDate.toISOString().slice(0, 10), visitType: v.visitType,
+      projectName: v.project.projectName, visitDate: toLocalISODate(v.visitDate), visitType: v.visitType,
       recordedByName: v.recordedBy?.fullName ?? null, findings: v.findings,
     })),
   }
@@ -3147,10 +3148,10 @@ async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; d
       missingPrescriptionDetails: items.filter(i => !i.prescriptionPatientName || !i.prescriptionDoctorName).length,
     },
     rows: items.map(i => ({
-      invoiceNumber: i.invoice.invoiceNumber, invoiceDate: i.invoice.createdAt.toISOString().slice(0, 10),
+      invoiceNumber: i.invoice.invoiceNumber, invoiceDate: toLocalISODate(i.invoice.createdAt),
       productName: i.productName, quantity: i.quantity,
       patientName: i.prescriptionPatientName, doctorName: i.prescriptionDoctorName,
-      prescriptionDate: i.prescriptionDate ? i.prescriptionDate.toISOString().slice(0, 10) : null,
+      prescriptionDate: i.prescriptionDate ? toLocalISODate(i.prescriptionDate) : null,
       customerName: i.invoice.customer?.customerName ?? null, lineTotal: i.lineTotal,
     })),
   }

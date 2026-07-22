@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { inventoryService } from './inventory.service'
 import { logAction } from './audit.service'
 import { createNotification } from './notification.service'
+import { toLocalISODate } from '../utils/date.util'
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -440,7 +441,7 @@ export async function getDailyClosingSummary(date?: string) {
     return {
       success: true,
       data: {
-        date: dayStart.toISOString().split('T')[0],
+        date: toLocalISODate(dayStart),
         kots: kotsByStatus,
         revenue,
         openTables: occupiedTables

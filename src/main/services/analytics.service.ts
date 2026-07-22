@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from './industry-template.service'
+import { toLocalISODate } from '../utils/date.util'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -281,14 +282,14 @@ export async function getRevenueTrend(
     }
     case '7d': {
       fromDate = dayStart(addDays(now, -6))
-      labels = Array.from({ length: 7 }, (_, i) => addDays(today, -(6 - i)).toISOString().slice(0, 10))
-      keyFn = (d) => dayStart(d).toISOString().slice(0, 10)
+      labels = Array.from({ length: 7 }, (_, i) => toLocalISODate(addDays(today, -(6 - i))))
+      keyFn = (d) => toLocalISODate(dayStart(d))
       break
     }
     case '30d': {
       fromDate = dayStart(addDays(now, -29))
-      labels = Array.from({ length: 30 }, (_, i) => addDays(today, -(29 - i)).toISOString().slice(0, 10))
-      keyFn = (d) => dayStart(d).toISOString().slice(0, 10)
+      labels = Array.from({ length: 30 }, (_, i) => toLocalISODate(addDays(today, -(29 - i))))
+      keyFn = (d) => toLocalISODate(dayStart(d))
       break
     }
     case '90d': {
@@ -296,7 +297,7 @@ export async function getRevenueTrend(
       keyFn = (d) => {
         const day = dayStart(d)
         const dow = day.getDay()
-        return addDays(day, -(dow === 0 ? 6 : dow - 1)).toISOString().slice(0, 10)
+        return toLocalISODate(addDays(day, -(dow === 0 ? 6 : dow - 1)))
       }
       const weekSet = new Set<string>()
       for (let i = 0; i <= 89; i++) weekSet.add(keyFn(addDays(fromDate, i)))
@@ -320,13 +321,13 @@ export async function getRevenueTrend(
       const rangeDays = Math.max(1, Math.round((ct.getTime() - cf.getTime()) / 86400000))
 
       if (rangeDays <= 31) {
-        labels = Array.from({ length: rangeDays + 1 }, (_, i) => addDays(fromDate, i).toISOString().slice(0, 10))
-        keyFn = (d) => dayStart(d).toISOString().slice(0, 10)
+        labels = Array.from({ length: rangeDays + 1 }, (_, i) => toLocalISODate(addDays(fromDate, i)))
+        keyFn = (d) => toLocalISODate(dayStart(d))
       } else if (rangeDays <= 90) {
         keyFn = (d) => {
           const day = dayStart(d)
           const dow = day.getDay()
-          return addDays(day, -(dow === 0 ? 6 : dow - 1)).toISOString().slice(0, 10)
+          return toLocalISODate(addDays(day, -(dow === 0 ? 6 : dow - 1)))
         }
         const wkSet = new Set<string>()
         for (let i = 0; i <= rangeDays; i++) wkSet.add(keyFn(addDays(fromDate, i)))

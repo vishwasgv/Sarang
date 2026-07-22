@@ -8,6 +8,7 @@ import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface LearnerProfile {
   id: string
@@ -228,7 +229,10 @@ export function DrivingSchoolScreen() {
     setLoading(true)
     setError(null)
     const filters: Record<string, unknown> = {}
-    if (sessionFilter === 'today') filters.date = new Date().toISOString().slice(0, 10)
+    // Real bug found live 2026-07-22: toISOString() extracts the UTC calendar
+    // date, wrongly querying "yesterday" during the ~5.5h window after local
+    // midnight in IST. See src/main/utils/date.util.ts for the full writeup.
+    if (sessionFilter === 'today') filters.date = toLocalISODate(new Date())
     else if (sessionFilter !== 'all') filters.status = sessionFilter
     const res = await api.drivingSession.list(filters)
     if (res.success) setSessions(res.data as DrivingSession[])

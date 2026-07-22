@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { toLocalISODate } from '../utils/date.util'
 
 function startOfDay(d: Date): Date {
   const s = new Date(d); s.setHours(0, 0, 0, 0); return s
@@ -34,7 +35,7 @@ export const cashCloseService = {
     return {
       success: true,
       data: {
-        date: from.toISOString().slice(0, 10),
+        date: toLocalISODate(from),
         expectedCash,
         totalCollected,
         byMethod,

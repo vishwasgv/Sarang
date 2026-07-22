@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { toLocalISODate } from '../utils/date.util'
 
 // TimeEntry.hours/ratePerHour/amount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws
@@ -228,7 +229,7 @@ export async function generateTimeEntryInvoice(entryIds: string[]) {
         quantity: 1,
         unitPrice: Number(e.amount),
         taxRate: 18,
-        variantInfo: `${e.date.toISOString().slice(0, 10)} — ${e.description} (${Number(e.hours)}h @ ${Number(e.ratePerHour)}/h)`.slice(0, 100),
+        variantInfo: `${toLocalISODate(e.date)} — ${e.description} (${Number(e.hours)}h @ ${Number(e.ratePerHour)}/h)`.slice(0, 100),
       }))
 
       const result = await billingService.createInvoice({

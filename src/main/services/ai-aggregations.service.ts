@@ -8,6 +8,7 @@
 // analytics.service.ts, replicated here — a RETURN invoice item stores
 // quantity as POSITIVE, only lineTotal is signed negative).
 import { getPrisma } from '../database/db'
+import { toLocalISODate } from '../utils/date.util'
 
 function daysAgo(days: number): Date {
   const d = new Date()
@@ -40,7 +41,7 @@ export async function getDeadStock(days = 90): Promise<DeadStockItem[]> {
       productName: p.productName,
       sku: p.sku,
       currentStock: p.inventory?.quantity ?? 0,
-      lastSoldDate: p.invoiceItems[0]?.invoice.invoiceDate.toISOString().slice(0, 10) ?? null
+      lastSoldDate: p.invoiceItems[0]?.invoice.invoiceDate ? toLocalISODate(p.invoiceItems[0].invoice.invoiceDate) : null
     }))
     .filter((p) => !p.lastSoldDate || new Date(p.lastSoldDate) < cutoff)
     .sort((a, b) => (a.lastSoldDate ?? '').localeCompare(b.lastSoldDate ?? ''))
@@ -121,7 +122,7 @@ export async function getCustomersWithNoRecentPurchases(days = 90): Promise<Inac
   })
 
   return customers
-    .map((c) => ({ customerName: c.customerName, phone: c.phone, lastPurchaseDate: c.invoices[0]?.invoiceDate.toISOString().slice(0, 10) ?? null }))
+    .map((c) => ({ customerName: c.customerName, phone: c.phone, lastPurchaseDate: c.invoices[0]?.invoiceDate ? toLocalISODate(c.invoices[0].invoiceDate) : null }))
     // Only customers with at least one prior purchase — someone who's never
     // bought anything is a different question (a lead, not a lapsed
     // customer), and would otherwise dominate this list meaninglessly.
@@ -145,7 +146,7 @@ export async function getInactiveSuppliers(days = 90): Promise<InactiveSupplier[
   })
 
   return suppliers
-    .map((s) => ({ supplierName: s.supplierName, phone: s.phone, lastOrderDate: s.purchaseOrders[0]?.orderDate.toISOString().slice(0, 10) ?? null }))
+    .map((s) => ({ supplierName: s.supplierName, phone: s.phone, lastOrderDate: s.purchaseOrders[0]?.orderDate ? toLocalISODate(s.purchaseOrders[0].orderDate) : null }))
     .filter((s) => s.lastOrderDate && new Date(s.lastOrderDate) < cutoff)
     .sort((a, b) => (a.lastOrderDate ?? '').localeCompare(b.lastOrderDate ?? ''))
 }

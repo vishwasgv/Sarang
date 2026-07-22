@@ -3,6 +3,7 @@ import { billingService } from './billing.service'
 import { generateWhatsAppLink } from './notification-queue.service'
 import { logAction } from './audit.service'
 import { roundCurrency } from './currency.service'
+import { toLocalISODate } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -355,7 +356,7 @@ export async function createDonationRecord(payload: {
     // deferredUntil as "not blocking," which defeated permanent deferral
     // entirely (found by independent review).
     if (donor.isDeferred && (!donor.deferredUntil || donor.deferredUntil > new Date())) {
-      const until = donor.deferredUntil ? `until ${donor.deferredUntil.toISOString().slice(0, 10)}` : 'indefinitely'
+      const until = donor.deferredUntil ? `until ${toLocalISODate(donor.deferredUntil)}` : 'indefinitely'
       return { success: false, error: { code: 'BB-013', message: `This donor is deferred ${until}${donor.deferralReason ? `: ${donor.deferralReason}` : '.'}` } }
     }
 

@@ -7,6 +7,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 const api = window.api
 
@@ -394,7 +395,7 @@ export default function PestControlScreen() {
     const next = JOB_STATUS_NEXT[sheet.status]
     if (!next) return
     setActionError(null)
-    const payload = { id: sheet.id, status: next, ...(next === 'COMPLETED' ? { completedDate: new Date().toISOString().slice(0, 10) } : {}) }
+    const payload = { id: sheet.id, status: next, ...(next === 'COMPLETED' ? { completedDate: toLocalISODate(new Date()) } : {}) }
     const res = await api.pestJobSheet.update(payload)
     if (res.success) { await loadJobs(jobStatusFilter || undefined, jobSearch || undefined); loadKpis() }
     else setActionError(res.error?.message ?? 'Failed to update status.')

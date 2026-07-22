@@ -11,6 +11,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 const api = window.api
 
@@ -378,7 +379,7 @@ export default function TailoringScreen() {
     const next = STATUS_NEXT[order.status]
     if (!next) return
     setActionError(null)
-    const payload = { id: order.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: new Date().toISOString().slice(0, 10) } : {}) }
+    const payload = { id: order.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: toLocalISODate(new Date()) } : {}) }
     const res = await api.tailoringOrder.update(payload)
     if (res.success) { await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
     else setActionError(res.error?.message ?? t('tailoring.errors.updateStatusFailed'))

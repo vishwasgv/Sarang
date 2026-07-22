@@ -8,6 +8,7 @@ import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 const api = window.api
 
@@ -333,7 +334,7 @@ export default function CarJobCardsScreen() {
     const next = STATUS_NEXT[card.status]
     if (!next) return
     setActionError(null)
-    const res = await api.carJobCard.update({ id: card.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: new Date().toISOString().slice(0, 10) } : {}) })
+    const res = await api.carJobCard.update({ id: card.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: toLocalISODate(new Date()) } : {}) })
     if (res.success) { await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
     else setActionError(res.error?.message ?? 'Failed to update status.')
   }

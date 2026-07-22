@@ -13,6 +13,7 @@
 // ai-vertical-templates.service.ts since which ones apply depends on the
 // one business type actually installed).
 import { getPrisma } from '../database/db'
+import { toLocalISODate } from '../utils/date.util'
 import { getReadOnlyPrisma } from '../database/ai-readonly-db'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
@@ -294,25 +295,16 @@ function categoryOf(template: string): string {
 // strictly more reliable for this than asking a 1.5B model to compute dates
 // in its head, and costs microseconds instead of reintroducing the extra
 // model-generation time that caused the original slowdown.
-// Real, verified bug fix, 2026-07 — NEVER use Date.prototype.toISOString()
-// to stringify a date that represents a LOCAL calendar boundary ("today",
-// start of month, a specific date the user asked about). toISOString()
-// converts to UTC, which silently shifts the calendar day backward for any
-// positive UTC-offset timezone — including IST (UTC+5:30), this app's
-// primary market. Reproduced directly: `new Date(2025, 0, 15).toISOString()`
-// on an IST machine returns "2025-01-14T18:30:00.000Z", so `.slice(0, 10)`
-// silently returns Jan 14 for a question about Jan 15. The same class of bug
-// hits "today" during the local 00:00-05:29 window (`new Date().toISOString()`
-// still reports the previous UTC day) and every "start of this month/week"
-// boundary, always, for any IST user regardless of time of day. Caught by a
-// new test for the specific-date parser; the fix applies everywhere in this
-// file that stringifies a LOCAL calendar boundary, not just that one path.
-function toLocalISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+// toLocalISODate is now shared (src/main/utils/date.util.ts) — this file
+// was the ONLY place that had this fix until 2026-07-22, when the same bug
+// class was found live in 5 more app screens (AppointmentsScreen.tsx, HR
+// Attendance x2, CashCloseScreen, ExpensesScreen) and ~40 more spots in
+// report.service.ts. NEVER use Date.prototype.toISOString() to stringify a
+// date that represents a LOCAL calendar boundary ("today", start of month,
+// a specific date the user asked about) — it converts to UTC, silently
+// shifting the calendar day backward for any positive UTC-offset timezone,
+// including IST (this app's primary market). See date.util.ts for the full
+// writeup and the reproduction case.
 
 // Month-name → zero-indexed month map, longest keys first when built into a
 // regex alternation (matched via MONTH_PATTERN below) so "september" isn't
