@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { inventoryService } from './inventory.service'
 import { logAction } from './audit.service'
 import { createNotification } from './notification.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -404,7 +404,14 @@ export async function deleteRecipe(recipeId: string, userId?: string) {
 export async function getDailyClosingSummary(date?: string) {
   try {
     const db = getPrisma()
-    const dayStart = date ? new Date(date) : new Date()
+    // Real bug found 2026-07-23: `date ? new Date(date) : new Date()`
+    // followed by setHours(0,0,0,0) parses an explicit "YYYY-MM-DD" input
+    // as UTC midnight FIRST, then re-anchors it to LOCAL midnight of
+    // whatever calendar day that UTC instant falls on — one day EARLIER
+    // than intended in any negative-UTC-offset timezone (same root cause
+    // already fixed in cash-close.service.ts's getDrawerSummary). The
+    // `new Date()` "today" branch is unaffected (already real local "now").
+    const dayStart = date ? parseLocalDateStart(date) : new Date()
     dayStart.setHours(0, 0, 0, 0)
     const dayEnd = new Date(dayStart)
     dayEnd.setHours(23, 59, 59, 999)

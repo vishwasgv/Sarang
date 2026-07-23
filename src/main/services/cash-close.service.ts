@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 
 function startOfDay(d: Date): Date {
   const s = new Date(d); s.setHours(0, 0, 0, 0); return s
@@ -12,7 +12,16 @@ function endOfDay(d: Date): Date {
 export const cashCloseService = {
   async getDrawerSummary(date?: string) {
     const db = getPrisma()
-    const d = date ? new Date(date) : new Date()
+    // BUG FOUND 2026-07-22: new Date(date) on an explicit "YYYY-MM-DD" input
+    // parses as UTC midnight, then startOfDay's setHours(0,0,0,0) re-anchors
+    // it to LOCAL wall-clock time of that UTC instant. For any timezone
+    // BEHIND UTC (e.g. US), UTC midnight of day D is day D-1 evening
+    // locally, so the whole close-out window silently shifts back one day —
+    // an owner explicitly closing cash for "yesterday" would reconcile the
+    // wrong day's transactions. IST (ahead of UTC) never manifests this,
+    // which is why it went unnoticed. parseLocalDateStart avoids the
+    // UTC round-trip entirely.
+    const d = date ? parseLocalDateStart(date) : new Date()
     const from = startOfDay(d)
     const to = endOfDay(d)
 
@@ -47,7 +56,9 @@ export const cashCloseService = {
 
   async create(payload: { date: string; actualCash: number; notes?: string }, userId?: string) {
     const db = getPrisma()
-    const d = new Date(payload.date)
+    // BUG FOUND 2026-07-22: same UTC-vs-local parsing issue as
+    // getDrawerSummary above.
+    const d = parseLocalDateStart(payload.date)
     const from = startOfDay(d)
     const to = endOfDay(d)
 
@@ -98,7 +109,9 @@ export const cashCloseService = {
     const where: Record<string, unknown> = {}
     if (filters?.dateFrom || filters?.dateTo) {
       where.closeDate = {
-        ...(filters?.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        // BUG FOUND 2026-07-22: gte used to be new Date(filters.dateFrom),
+        // parsed as UTC midnight instead of local midnight.
+        ...(filters?.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
         ...(filters?.dateTo ? { lte: new Date(filters.dateTo + 'T23:59:59') } : {})
       }
     }

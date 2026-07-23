@@ -166,42 +166,71 @@ export async function deletePlacement(id: string) {
   return { success: true }
 }
 
+// Real bug found 2026-07-23: this had no atomic claim on invoiceId — just a
+// plain read-then-check (`if (placement.invoiceId) return error`) with the
+// actual write only happening via a plain update() AFTER
+// billingService.createInvoice() had already run. Two concurrent "Generate
+// Invoice" calls for the same placement could both pass the stale check and
+// each create a real, separate Invoice — a genuine double-bill of the
+// client for the same recruitment commission. Fixed with the same atomic
+// conditional-claim + release-on-failure shape used by
+// car-job-card.service.ts / job-card.service.ts / project.service.ts.
+const PLACEMENT_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generatePlacementInvoice(id: string) {
   const db = getPrisma()
-  const placement = await db.placement.findUnique({
-    where: { id },
-    include: { client: { select: { id: true } } },
-  })
-  if (!placement) return { success: false, error: { code: 'PLC-001', message: 'Placement not found.' } }
-  if (placement.invoiceId) return { success: false, error: { code: 'PLC-003', message: 'Invoice already generated for this placement.' } }
-  if (Number(placement.commissionAmount) === 0) {
-    return { success: false, error: { code: 'PLC-004', message: 'Commission amount is zero. Set a commission amount before generating an invoice.' } }
+  const claim = await db.placement.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: PLACEMENT_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.placement.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'PLC-001', message: 'Placement not found.' } }
+    return { success: false, error: { code: 'PLC-003', message: 'Invoice already generated for this placement.' } }
   }
 
-  // SAC 999132 — Manpower Recruitment and Placement Services, 18% GST
-  let product = await db.product.findFirst({ where: { hsnCode: '999132', isActive: true } })
-  if (!product) {
-    product = await db.product.create({
-      data: { productName: 'Placement / Recruitment Services', productType: 'SERVICE', hsnCode: '999132', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+  try {
+    const placement = await db.placement.findUnique({
+      where: { id },
+      include: { client: { select: { id: true } } },
     })
+    if (!placement) {
+      await db.placement.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PLC-001', message: 'Placement not found.' } }
+    }
+    if (Number(placement.commissionAmount) === 0) {
+      await db.placement.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PLC-004', message: 'Commission amount is zero. Set a commission amount before generating an invoice.' } }
+    }
+
+    // SAC 999132 — Manpower Recruitment and Placement Services, 18% GST
+    let product = await db.product.findFirst({ where: { hsnCode: '999132', isActive: true } })
+    if (!product) {
+      product = await db.product.create({
+        data: { productName: 'Placement / Recruitment Services', productType: 'SERVICE', hsnCode: '999132', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+      })
+    }
+
+    const result = await billingService.createInvoice({
+      customerId: placement.clientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: product.id, quantity: 1, unitPrice: Number(placement.commissionAmount) }],
+      notes: `Placement ${placement.placementNumber}`,
+      referenceNumber: placement.placementNumber,
+    })
+    if (!result.success) {
+      await db.placement.update({ where: { id }, data: { invoiceId: null } })
+      return result
+    }
+
+    const invoice = result.data as { id: string }
+    await db.placement.update({ where: { id }, data: { invoiceId: invoice.id, status: 'INVOICED' } })
+    await db.auditLog.create({
+      data: { action: 'INVOICED', entityType: 'Placement', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) },
+    }).catch(() => {})
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    await db.placement.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
+    return { success: false, error: { code: 'PLC-005', message: err instanceof Error ? err.message : 'Could not generate placement invoice.' } }
   }
-
-  const result = await billingService.createInvoice({
-    customerId: placement.clientId,
-    paymentMethod: 'CREDIT',
-    gstType: 'CGST_SGST',
-    items: [{ productId: product.id, quantity: 1, unitPrice: Number(placement.commissionAmount) }],
-    notes: `Placement ${placement.placementNumber}`,
-    referenceNumber: placement.placementNumber,
-  })
-  if (!result.success) return result
-
-  const invoice = result.data as { id: string }
-  await db.placement.update({ where: { id }, data: { invoiceId: invoice.id, status: 'INVOICED' } })
-  await db.auditLog.create({
-    data: { action: 'INVOICED', entityType: 'Placement', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) },
-  }).catch(() => {})
-  return { success: true, data: { invoiceId: invoice.id } }
 }
 
 export async function getPlacementKPIs() {

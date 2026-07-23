@@ -8,7 +8,7 @@
 // analytics.service.ts, replicated here — a RETURN invoice item stores
 // quantity as POSITIVE, only lineTotal is signed negative).
 import { getPrisma } from '../database/db'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 
 function daysAgo(days: number): Date {
   const d = new Date()
@@ -54,7 +54,10 @@ export async function getBottomRevenueProducts(limit = 10, dateFrom?: string, da
     where: {
       invoice: {
         status: 'ACTIVE',
-        ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
+        // BUG FOUND 2026-07-22: gte used to be new Date(dateFrom), parsed as
+        // UTC midnight instead of local midnight — same bug as
+        // report.service.ts's toDate() / analytics.service.ts's getTopProducts.
+        ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: parseLocalDateStart(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
       }
     },
     select: { productId: true, quantity: true, lineTotal: true, invoice: { select: { invoiceType: true } }, product: { select: { productName: true, sku: true } } }
@@ -86,7 +89,8 @@ export async function getTopCustomersByRevenue(limit = 10, dateFrom?: string, da
     where: {
       status: 'ACTIVE',
       customerId: { not: null },
-      ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
+      // BUG FOUND 2026-07-22: same UTC-vs-local "from" bound bug as above.
+      ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: parseLocalDateStart(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
     },
     select: { customerId: true, totalAmount: true, invoiceType: true, customer: { select: { customerName: true, phone: true } } }
   })

@@ -360,6 +360,16 @@ export async function createDonationRecord(payload: {
       return { success: false, error: { code: 'BB-013', message: `This donor is deferred ${until}${donor.deferralReason ? `: ${donor.deferralReason}` : '.'}` } }
     }
 
+    // BUG FOUND 2026-07-22: cooldownDaysFor/computeNextEligibleDate were
+    // computed correctly but only ever used for DISPLAY (listDonors/getDonor)
+    // — nothing actually stopped a donation from being recorded before the
+    // donor's real eligibility date. A real donor safety rule that existed
+    // in code but was never wired to the one place that needed it.
+    const nextEligible = computeNextEligibleDate(donor.lastDonationDate, donor.lastDonationComponentType, donor.gender)
+    if (nextEligible && new Date(nextEligible) > new Date()) {
+      return { success: false, error: { code: 'BB-035', message: `This donor is not yet eligible to donate again until ${toLocalISODate(new Date(nextEligible))} (cooldown period based on their last donation's component type).` } }
+    }
+
     const record = await db.$transaction(async (tx) => {
       const donationNumber = await nextNumber(tx, 'donationRecord', 'donationNumber', 'DON')
       return tx.donationRecord.create({

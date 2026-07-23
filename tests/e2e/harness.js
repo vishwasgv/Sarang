@@ -149,6 +149,14 @@ async function dismissBackupPrompt(page) {
 
 function withDb(fn) {
   const db = new DatabaseSync(DEV_DB_PATH)
+  // The app's own Prisma connection runs in WAL mode with a 5s busy_timeout
+  // (see db.ts's "Phase 55 stress-test finding" comment) specifically so a
+  // transient writer-lock from another connection waits instead of failing.
+  // This harness opens its own separate connection to the same file — without
+  // the same pragma here, a suite starting right as the just-launched app is
+  // still doing its own startup queries can hit an immediate "database is
+  // locked" (SQLITE_BUSY) instead of just waiting the extra few ms.
+  db.exec('PRAGMA busy_timeout=5000')
   try {
     return fn(db)
   } finally {

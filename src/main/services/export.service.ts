@@ -13,6 +13,20 @@ export type ReportChartSpec =
   | { type: 'pie'; title: string; data: { label: string; value: number; color?: string }[]; valueIsCurrency?: boolean }
 // db is accessed via getPrisma() inside generateReportHtml
 
+// BUG FOUND 2026-07-22: generateReportHtml interpolated every field — table
+// cells, headers, title, business name/address — directly into the HTML
+// string with no escaping at all, unlike print.service.ts's identically-
+// purposed escHtml(), applied consistently on every field there. A
+// customer/product/business name containing `<`, `>`, or `"` (real,
+// user-enterable data — Customers/Products screens don't restrict these
+// characters) could corrupt this exported report's HTML/table structure.
+// Mirrors print.service.ts's escHtml exactly; kept as a small local
+// duplicate rather than a cross-module export for a 4-line pure function.
+function escHtml(s: string | number | null | undefined): string {
+  if (s == null) return ''
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
 // Plain-text form — used for CSV rows and Excel cells (line 40/78 below), where
 // an embedded image isn't possible. The HTML report footer (line ~204) uses
 // aszurexFooterHtml() instead, which adds the partnership mark inline.
@@ -171,25 +185,25 @@ export async function generateReportHtml(params: {
     <div class="summary-grid">
       ${params.summaryCards.map(c => `
         <div class="summary-card">
-          <div class="summary-label">${c.label}</div>
-          <div class="summary-value">${c.value}</div>
+          <div class="summary-label">${escHtml(c.label)}</div>
+          <div class="summary-value">${escHtml(c.value)}</div>
         </div>`).join('')}
     </div>` : ''
 
   const tablesHtml = params.tables.map(t => `
-    ${t.heading ? `<h3 class="table-heading">${t.heading}</h3>` : ''}
+    ${t.heading ? `<h3 class="table-heading">${escHtml(t.heading)}</h3>` : ''}
     <table>
       <thead>
-        <tr>${t.headers.map(h => `<th>${h}</th>`).join('')}</tr>
+        <tr>${t.headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr>
       </thead>
       <tbody>
-        ${t.rows.map(row => `<tr>${row.map(cell => `<td>${cell ?? '—'}</td>`).join('')}</tr>`).join('')}
+        ${t.rows.map(row => `<tr>${row.map(cell => `<td>${cell == null ? '—' : escHtml(cell)}</td>`).join('')}</tr>`).join('')}
         ${t.rows.length === 0 ? `<tr><td colspan="${t.headers.length}" class="empty">No data</td></tr>` : ''}
       </tbody>
     </table>`).join('<div style="margin-top:24px"></div>')
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
-<title>${params.title}</title>
+<title>${escHtml(params.title)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 32px; background: #fff; }
@@ -221,19 +235,19 @@ export async function generateReportHtml(params: {
 </style></head><body>
 <div class="header">
   <div>
-    <div class="biz-name">${bizName}</div>
-    <div class="biz-info">${bizAddr}${taxNo ? ` | Tax: ${taxNo}` : ''}</div>
+    <div class="biz-name">${escHtml(bizName)}</div>
+    <div class="biz-info">${escHtml(bizAddr)}${taxNo ? ` | Tax: ${escHtml(taxNo)}` : ''}</div>
   </div>
   <div class="report-meta">
-    <div class="report-title">${params.title}</div>
-    ${params.subtitle ? `<div class="report-subtitle">${params.subtitle}</div>` : ''}
-    ${params.dateRange ? `<div class="report-subtitle">${params.dateRange}</div>` : ''}
-    <div class="report-date">Generated: ${generatedAt}</div>
+    <div class="report-title">${escHtml(params.title)}</div>
+    ${params.subtitle ? `<div class="report-subtitle">${escHtml(params.subtitle)}</div>` : ''}
+    ${params.dateRange ? `<div class="report-subtitle">${escHtml(params.dateRange)}</div>` : ''}
+    <div class="report-date">Generated: ${escHtml(generatedAt)}</div>
   </div>
 </div>
 ${summaryHtml}
 ${chartsWrapperHtml}
 ${tablesHtml}
-<div class="footer">${await aszurexFooterHtml(9)} | Currency: ${currencySym}</div>
+<div class="footer">${await aszurexFooterHtml(9)} | Currency: ${escHtml(currencySym)}</div>
 </body></html>`
 }

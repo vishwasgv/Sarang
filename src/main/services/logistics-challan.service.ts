@@ -152,15 +152,31 @@ export async function updateChallanStatus(payload: { id: string; status: string 
     if (payload.status === 'ISSUED') data.dispatchDate = existing.dispatchDate ?? now
     if (payload.status === 'RETURNED') data.returnedAt = now
 
+    // BUG FOUND 2026-07-22: "the state machine only ever allows [DRAFT→ISSUED]
+    // once per challan" is only true for SEQUENTIAL calls — two concurrent
+    // updateChallanStatus(ISSUED) calls both read existing.status: 'DRAFT'
+    // before either commits, both pass VALID_TRANSITIONS, and both call
+    // reduceStockTx, double-decrementing stock for one physical dispatch
+    // (reduceStockTx's own negative-stock guard only catches the case where
+    // there isn't enough physical stock to cover BOTH decrements — it can't
+    // know a second logical dispatch shouldn't be happening at all). Fixed
+    // to re-read the challan's status fresh INSIDE the transaction and
+    // re-validate the transition against that, not the pre-transaction
+    // snapshot — the loser of the race now genuinely fails instead of
+    // silently double-decrementing.
     const row = await db.$transaction(async (tx) => {
-      // Physical dispatch happens on the DRAFT→ISSUED transition, which the state
-      // machine only ever allows once per challan — no double-decrement risk.
-      if (payload.status === 'ISSUED' && movesInventory(existing)) {
-        for (const item of existing.items) {
+      const fresh = await tx.deliveryChallan.findUnique({ where: { id: payload.id }, include: { items: true } })
+      if (!fresh) throw new ServiceError('NF-001', 'Challan not found.')
+      const freshAllowed = VALID_TRANSITIONS[fresh.status] ?? []
+      if (!freshAllowed.includes(payload.status)) {
+        throw new ServiceError('VAL-003', `Cannot transition challan from ${fresh.status} to ${payload.status}.`)
+      }
+      if (payload.status === 'ISSUED' && movesInventory(fresh)) {
+        for (const item of fresh.items) {
           if (!item.productId) continue
           await inventoryService.reduceStockTx(
             tx, item.productId, item.quantity,
-            `Dispatched via Challan ${existing.challanNumber}`, 'DELIVERY_CHALLAN', existing.id, userId
+            `Dispatched via Challan ${fresh.challanNumber}`, 'DELIVERY_CHALLAN', fresh.id, userId
           )
         }
       }
@@ -267,16 +283,27 @@ export async function recordChallanReturn(payload: {
         return { success: false, error: { code: 'VAL-003', message: `Return qty for ${item.productName} exceeds dispatched qty.` } }
     }
 
+    // BUG FOUND 2026-07-22: the `existing.status !== 'ISSUED'` check above
+    // ran against a pre-transaction snapshot — two concurrent return
+    // submissions for the same challan could both pass it and both call
+    // addStockTx, double-crediting stock for one physical return. Re-checked
+    // fresh inside the transaction below, mirroring updateChallanStatus's fix
+    // for the symmetric issue on the dispatch side.
     // All item updates + status change + inventory restore are atomic in one transaction
     const row = await db.$transaction(async (tx) => {
+      const fresh = await tx.deliveryChallan.findUnique({ where: { id: payload.id }, include: { items: true } })
+      if (!fresh) throw new ServiceError('NF-001', 'Challan not found.')
+      if (fresh.status !== 'ISSUED') {
+        throw new ServiceError('VAL-003', 'Only ISSUED challans can be returned.')
+      }
       for (const ret of payload.items) {
-        const item = existing.items.find(i => i.id === ret.itemId)
+        const item = fresh.items.find(i => i.id === ret.itemId)
         if (!item) continue
         await tx.challanItem.update({ where: { id: ret.itemId }, data: { returnedQty: ret.returnedQty } })
 
         // Mirror the dispatch-time decrement: only restore stock for items that
         // actually left inventory when this challan was issued.
-        if (item.productId && ret.returnedQty > 0 && movesInventory(existing)) {
+        if (item.productId && ret.returnedQty > 0 && movesInventory(fresh)) {
           const inv = await tx.inventory.findUnique({ where: { productId: item.productId } })
           if (inv) {
             // Pass the product's current average cost back in so a return doesn't
@@ -297,6 +324,7 @@ export async function recordChallanReturn(payload: {
     return { success: true, data: toRecord(row) }
   } catch (err: any) {
     if (err?.code === 'P2025') return { success: false, error: { code: 'NF-001', message: 'Challan not found.' } }
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'LOG-044', message: err instanceof Error ? err.message : 'Failed to record return.' } }
   }
 }

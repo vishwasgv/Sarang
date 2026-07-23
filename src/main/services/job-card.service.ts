@@ -368,15 +368,41 @@ export async function removeJobCardPart(id: string, userId?: string) {
 // etc. Bills actualCost if the shop has recorded one (the real, final
 // figure), falling back to estimatedCost so a job can still be invoiced
 // before actualCost is filled in.
+// Real bug found 2026-07-23: this had no atomic claim on invoiceId (unlike
+// car-job-card.service.ts's sibling generateCarJobInvoice, membership,
+// session-pack, driving, etc.) — just a plain read-then-check
+// (`if (job.invoiceId) return error`) with the actual write only happening
+// via a plain update() AFTER billingService.createInvoice() had already
+// run. Two concurrent "Generate Invoice" calls for the same job card could
+// both pass the stale check and each create a real, separate Invoice — a
+// genuine double-bill. Fixed with the same atomic conditional-claim +
+// release-on-failure shape already proven elsewhere in this codebase.
+const JOB_CARD_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generateJobCardInvoice(id: string, userId?: string) {
+  const db = getPrisma()
+  const claim = await db.jobCard.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: JOB_CARD_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.jobCard.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'JC-003', message: 'Job card not found.' } }
+    return { success: false, error: { code: 'JC-005', message: 'Invoice already generated for this job card.' } }
+  }
+
   try {
-    const db = getPrisma()
     const job = await db.jobCard.findUnique({ where: { id } })
-    if (!job) return { success: false, error: { code: 'JC-003', message: 'Job card not found.' } }
-    if (!job.customerId) return { success: false, error: { code: 'JC-004', message: 'This job card has no linked customer. Set a customer before generating an invoice.' } }
-    if (job.invoiceId) return { success: false, error: { code: 'JC-005', message: 'Invoice already generated for this job card.' } }
+    if (!job) {
+      await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'JC-003', message: 'Job card not found.' } }
+    }
+    if (!job.customerId) {
+      await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'JC-004', message: 'This job card has no linked customer. Set a customer before generating an invoice.' } }
+    }
     const billAmount = job.actualCost > 0 ? job.actualCost : job.estimatedCost
-    if (billAmount <= 0) return { success: false, error: { code: 'JC-006', message: 'This job card has no billable amount. Set a cost before generating an invoice.' } }
+    if (billAmount <= 0) {
+      await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'JC-006', message: 'This job card has no billable amount. Set a cost before generating an invoice.' } }
+    }
 
     // SAC 998719 — Repair and maintenance services, 18% GST
     let product = await db.product.findFirst({ where: { hsnCode: '998719', isActive: true } })
@@ -394,13 +420,17 @@ export async function generateJobCardInvoice(id: string, userId?: string) {
       notes: `Job Card ${job.jobNumber} — ${job.title}`,
       referenceNumber: job.jobNumber,
     })
-    if (!result.success) return { success: false as const, error: result.error }
+    if (!result.success) {
+      await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false as const, error: result.error }
+    }
 
     const invoice = result.data as { id: string }
     await db.jobCard.update({ where: { id }, data: { invoiceId: invoice.id } })
     if (userId) await logAction(userId, 'INVOICED', 'JOB_CARD', id, null, { invoiceId: invoice.id })
     return { success: true, data: { invoiceId: invoice.id } }
   } catch (e: any) {
+    await db.jobCard.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
     console.error('[JC_INVOICE_FAIL]', e)
     return { success: false, error: { code: 'JC_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
   }

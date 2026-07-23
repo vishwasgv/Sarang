@@ -27,6 +27,10 @@ function makeMockDb(project: ReturnType<typeof makeProject> | null, opts: { exis
     project: {
       findUnique: vi.fn().mockResolvedValue(project),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...project, ...data })),
+      // Atomic invoiceId claim (see generateProjectInvoice) — succeeds only
+      // while the row's invoiceId is genuinely still null, mirroring the
+      // real `where: { id, invoiceId: null }` conditional update.
+      updateMany: vi.fn().mockImplementation(() => Promise.resolve({ count: project && !project.invoiceId ? 1 : 0 })),
     },
     product: {
       findFirst: vi.fn().mockResolvedValue(opts.existingProduct ?? null),
@@ -109,6 +113,46 @@ describe('project.service.generateProjectInvoice', () => {
     const res = await generateProjectInvoice('prj-1')
 
     expect(res.success).toBe(false)
-    expect(db.project.update).not.toHaveBeenCalled()
+    // The invoiceId claim taken before billing was attempted must be
+    // released (not left stuck at the sentinel value) — never "marked
+    // invoiced" with a real invoice id.
+    expect(db.project.update).toHaveBeenCalledWith({ where: { id: 'prj-1' }, data: { invoiceId: null } })
+  })
+})
+
+// Real bug found 2026-07-23: generateProjectInvoice had no atomic claim on
+// invoiceId — two concurrent calls for the same project could both pass a
+// stale "already invoiced?" check and each create a real, separate
+// Invoice. Fixed with the same atomic conditional-claim + release-on-
+// failure shape as car-job-card.service.ts's generateCarJobInvoice.
+
+describe('project.service.generateProjectInvoice — invoice-claim atomicity', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects without calling billingService.createInvoice when the claim fails (already invoiced)', async () => {
+    const project = makeProject({ invoiceId: 'inv-existing' })
+    const db = makeMockDb(project)
+    db.project.updateMany = vi.fn().mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateProjectInvoice('prj-1')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('PRJ-005')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('claims invoiceId atomically before calling billingService.createInvoice', async () => {
+    const project = makeProject()
+    const db = makeMockDb(project, { existingProduct: { id: 'prod-1' } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await generateProjectInvoice('prj-1')
+
+    expect(db.project.updateMany).toHaveBeenCalledWith({ where: { id: 'prj-1', invoiceId: null }, data: { invoiceId: 'PENDING_INVOICE_GENERATION' } })
+    const claimCallOrder = db.project.updateMany.mock.invocationCallOrder[0]
+    const createInvoiceCallOrder = vi.mocked(billingService.createInvoice).mock.invocationCallOrder[0]
+    expect(claimCallOrder).toBeLessThan(createInvoiceCallOrder)
   })
 })

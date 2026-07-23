@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { receiveRawMaterialBatch, listRawMaterialBatches } from '../raw-material.service'
+import { receiveRawMaterialBatch, listRawMaterialBatches, adjustRawMaterialStock } from '../raw-material.service'
 
 function makeMockDb(material: { id: string; unitCost: number } | null = { id: 'rm-1', unitCost: 5 }) {
   const db: Record<string, any> = {
@@ -74,6 +74,85 @@ describe('raw-material.service.receiveRawMaterialBatch — Phase 58 §2 lot/batc
 
     expect(db.rawMaterialBatch.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ unitCost: 5 })
+    }))
+  })
+})
+
+describe('raw-material.service.adjustRawMaterialStock', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeAdjustDb(currentStock = 50) {
+    const db: Record<string, any> = {
+      rawMaterial: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'rm-1', unitCost: 5, currentStock }),
+        update: vi.fn().mockImplementation(({ data }: any) =>
+          Promise.resolve({ currentStock: typeof data.currentStock === 'object' ? currentStock + data.currentStock.increment : data.currentStock })
+        ),
+      },
+      rawMaterialMovement: { create: vi.fn().mockResolvedValue({}) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    return db
+  }
+
+  // Regression for a real defect found 2026-07-22: PURCHASE and RETURN both
+  // flowed into the same atomic increment on the documented-but-unenforced
+  // assumption that "both are positive quantities" — a negative PURCHASE
+  // quantity flowed straight through, silently decreasing stock while
+  // recording a movement mislabeled as an increase.
+  it('rejects a negative PURCHASE quantity', async () => {
+    const db = makeAdjustDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await adjustRawMaterialStock({ id: 'rm-1', type: 'PURCHASE', quantity: -10 })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RM-011')
+    expect(db.rawMaterial.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a zero PURCHASE quantity', async () => {
+    const db = makeAdjustDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await adjustRawMaterialStock({ id: 'rm-1', type: 'PURCHASE', quantity: 0 })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RM-011')
+  })
+
+  it('rejects a negative RETURN quantity', async () => {
+    const db = makeAdjustDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await adjustRawMaterialStock({ id: 'rm-1', type: 'RETURN', quantity: -5 })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RM-011')
+    expect(db.rawMaterial.update).not.toHaveBeenCalled()
+  })
+
+  it('allows a positive PURCHASE quantity and increments stock', async () => {
+    const db = makeAdjustDb(50)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await adjustRawMaterialStock({ id: 'rm-1', type: 'PURCHASE', quantity: 20 })
+
+    expect(res.success).toBe(true)
+    expect(db.rawMaterial.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { currentStock: { increment: 20 } }
+    }))
+  })
+
+  it('still allows a negative ADJUSTMENT-target that is actually a valid absolute value of zero or more (ADJUSTMENT is absolute, not incremental)', async () => {
+    const db = makeAdjustDb(50)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await adjustRawMaterialStock({ id: 'rm-1', type: 'ADJUSTMENT', quantity: 30 })
+
+    expect(res.success).toBe(true)
+    expect(db.rawMaterial.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { currentStock: 30 }
     }))
   })
 })

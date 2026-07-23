@@ -12,8 +12,9 @@ import { createAppointment } from '../appointment.service'
 import { createAppointmentReminder } from '../notification-queue.service'
 import {
   listTailoringOrders, getTailoringOrder, createTailoringOrder, updateTailoringOrder,
-  scheduleTrialAppointment, setOrderFabric, clearOrderFabric,
+  scheduleTrialAppointment, setOrderFabric, clearOrderFabric, generateTailoringInvoice,
 } from '../tailoring-order.service'
+import { billingService } from '../billing.service'
 import { ServiceError } from '../../errors/service-error'
 
 // Regression coverage for the Phase 33 re-audit finding: TailoringOrder.
@@ -356,5 +357,104 @@ describe('tailoring-order.service.clearOrderFabric', () => {
     expect(db.tailoringOrder.update).toHaveBeenCalledWith(expect.objectContaining({
       data: { fabricProductId: null, fabricQuantity: null, fabricSupplied: 'CLIENT' },
     }))
+  })
+})
+
+describe('tailoring-order.service.generateTailoringInvoice', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeInvoiceMockDb(opts: { invoiceId?: string | null; totalAmount?: number; existingProduct?: { id: string; taxRate: number } | null } = {}) {
+    const order = {
+      id: 'to-1', orderNumber: 'TO-00001', clientId: 'cust-1', garmentType: 'Suit',
+      quantity: 2, unitPrice: 500, totalAmount: opts.totalAmount ?? 1000,
+      invoiceId: opts.invoiceId ?? null,
+      client: { id: 'cust-1', customerName: 'Test Client' },
+    }
+    let currentInvoiceId = opts.invoiceId ?? null
+    const db: Record<string, any> = {
+      tailoringOrder: {
+        updateMany: vi.fn(async ({ where, data }: any) => {
+          if (currentInvoiceId !== null) return { count: 0 }
+          if (where.invoiceId !== null) return { count: 0 }
+          currentInvoiceId = data.invoiceId
+          return { count: 1 }
+        }),
+        findUnique: vi.fn(async () => ({ ...order, invoiceId: currentInvoiceId })),
+        update: vi.fn(async ({ data }: any) => { currentInvoiceId = data.invoiceId; return { ...order, ...data } }),
+      },
+      product: {
+        findFirst: vi.fn().mockResolvedValue(opts.existingProduct ?? null),
+        create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'prod-tailoring', ...data })),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    return db
+  }
+
+  it('generates an invoice and does not hardcode a taxRate override on the item — falls through to the product\'s own configurable rate', async () => {
+    const db = makeInvoiceMockDb({ existingProduct: { id: 'prod-tailoring', taxRate: 5 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(true)
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(call.items[0]).not.toHaveProperty('taxRate')
+    expect(call.items[0]).toMatchObject({ productId: 'prod-tailoring', quantity: 2, unitPrice: 500 })
+  })
+
+  it('rejects generating a second invoice for an already-invoiced order', async () => {
+    const db = makeInvoiceMockDb({ invoiceId: 'inv-existing' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('TO-003')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('rejects a zero-total order', async () => {
+    const db = makeInvoiceMockDb({ totalAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('TO-004')
+    // The claim must be released, not left stuck on the sentinel, so the
+    // order can still be invoiced later once a price is set.
+    expect(db.tailoringOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: { invoiceId: null } }))
+  })
+
+  // Regression for a real double-invoice race found 2026-07-22: the old
+  // code checked `order.invoiceId` then wrote it later with no atomic claim
+  // in between. Simulates a second concurrent call arriving while the first
+  // call's claim is already in place — it must be rejected outright, never
+  // reach billingService.createInvoice a second time.
+  it('rejects a concurrent second call while the first call\'s invoice generation is still in progress (atomic claim)', async () => {
+    const db = makeInvoiceMockDb()
+    // Simulate the claim already being held by another in-flight call.
+    db.tailoringOrder.updateMany = vi.fn().mockResolvedValue({ count: 0 })
+    db.tailoringOrder.findUnique = vi.fn().mockResolvedValue({ id: 'to-1', invoiceId: 'CLAIMING' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('TO-005')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('releases the claim (resets invoiceId to null) if billing invoice creation fails', async () => {
+    const db = makeInvoiceMockDb({ existingProduct: { id: 'prod-tailoring', taxRate: 5 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'INVOC-001', message: 'boom' } } as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(false)
+    expect(db.tailoringOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: { invoiceId: null } }))
   })
 })

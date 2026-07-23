@@ -43,19 +43,54 @@ export async function upsertWorkOrders(payload: {
       return { success: false, error: { code: 'WO-003', message: `Cannot edit work orders on a ${order.status} order.` } }
     }
 
+    // BUG FOUND 2026-07-22: this used to unconditionally deleteMany+createMany
+    // EVERY step on EVERY save, resetting status/qcResult/qcNotes/completedAt
+    // to PENDING/null even for steps that already had real progress on them —
+    // adding one new step to an order that had 3 DONE steps silently wiped
+    // all 3 back to PENDING. Fixed to a real per-step upsert: a step whose id
+    // matches an existing row is UPDATED in place (task/notes/QC-flag/order
+    // only — status/qcResult/qcNotes/completedAt are left untouched), a step
+    // with no id (or an id that doesn't match anything, e.g. a race with a
+    // concurrent delete) is CREATED fresh as PENDING, and any existing row
+    // whose id is no longer present in the incoming payload is deleted (the
+    // user removed that step) — the only guard already in place, blocking
+    // edits on COMPLETED/CANCELLED orders, still applies before any of this
+    // runs.
     const result = await db.$transaction(async (tx) => {
-      // Replace all steps for this order
-      await tx.workOrder.deleteMany({ where: { productionOrderId: payload.productionOrderId } })
-      await tx.workOrder.createMany({
-        data: payload.steps.map(s => ({
-          productionOrderId: payload.productionOrderId,
-          stepNumber: s.stepNumber,
-          taskName: s.taskName.trim(),
-          notes: s.notes?.trim() ?? null,
-          isQcStep: s.isQcStep ?? false,
-          status: 'PENDING'
-        }))
-      })
+      const existing = await tx.workOrder.findMany({ where: { productionOrderId: payload.productionOrderId }, select: { id: true } })
+      const existingIds = new Set(existing.map(e => e.id))
+      const incomingIds = new Set(payload.steps.filter(s => s.id).map(s => s.id))
+
+      const toDelete = [...existingIds].filter(id => !incomingIds.has(id))
+      if (toDelete.length > 0) {
+        await tx.workOrder.deleteMany({ where: { id: { in: toDelete } } })
+      }
+
+      for (const s of payload.steps) {
+        if (s.id && existingIds.has(s.id)) {
+          await tx.workOrder.update({
+            where: { id: s.id },
+            data: {
+              stepNumber: s.stepNumber,
+              taskName: s.taskName.trim(),
+              notes: s.notes?.trim() ?? null,
+              isQcStep: s.isQcStep ?? false
+            }
+          })
+        } else {
+          await tx.workOrder.create({
+            data: {
+              productionOrderId: payload.productionOrderId,
+              stepNumber: s.stepNumber,
+              taskName: s.taskName.trim(),
+              notes: s.notes?.trim() ?? null,
+              isQcStep: s.isQcStep ?? false,
+              status: 'PENDING'
+            }
+          })
+        }
+      }
+
       return tx.workOrder.findMany({
         where: { productionOrderId: payload.productionOrderId },
         orderBy: { stepNumber: 'asc' }

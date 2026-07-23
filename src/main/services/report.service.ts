@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -126,7 +126,27 @@ export interface AuditReport {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function toDate(s: string): Date { return new Date(s) }
+// BUG FOUND 2026-07-22: this used to be `new Date(s)`, which parses a bare
+// "YYYY-MM-DD" string (exactly what every report's date-range filter sends)
+// as UTC midnight, not local midnight -- silently excluding the first ~5.5
+// hours of the "from" date on every report in this file for IST users. All
+// ~40 report functions route through this one helper, so fixing it here
+// fixes every one of them at once. See date.util.ts's parseLocalDateStart
+// for the full explanation.
+function toDate(s: string): Date { return parseLocalDateStart(s) }
+
+// Real bug found 2026-07-23: every one of the ~35 call sites below built the
+// "to" (end) bound as `new Date(dateToString); d.setHours(23,59,59,999)` —
+// this parses the bare "YYYY-MM-DD" string as UTC midnight FIRST (one full
+// calendar day earlier than intended in any negative-UTC-offset timezone),
+// then setHours() only rewrites the H/M/S/ms fields, never the Year/Month/
+// Date that was already wrong. The net effect: the entire actually-selected
+// end date was silently dropped from every date-ranged report in this file
+// for any user not in a positive UTC offset (IST never triggers it, which is
+// exactly why this went unnoticed by the otherwise-thorough "from"-bound fix
+// right above). See date.util.ts's parseLocalDateEnd for the full
+// explanation — same fix shape as toDate()/parseLocalDateStart above.
+function toDateEnd(s: string): Date { return parseLocalDateEnd(s) }
 
 function groupLabel(date: Date, groupBy: string): string {
   if (groupBy === 'day') return toLocalISODate(date)
@@ -135,7 +155,12 @@ function groupLabel(date: Date, groupBy: string): string {
     d.setDate(d.getDate() - d.getDay())
     return `Week of ${toLocalISODate(d)}`
   }
-  if (groupBy === 'month') return date.toISOString().slice(0, 7)
+  // BUG FOUND 2026-07-22: `date.toISOString().slice(0, 7)` extracts the UTC
+  // year-month, which is the same anti-pattern as the day-level bug this
+  // whole helper exists to fix -- an invoice timestamped in the first ~5.5
+  // hours of a calendar month (IST) was bucketed into the PREVIOUS month in
+  // any monthly-grouped report/chart. Local year/month components instead.
+  if (groupBy === 'month') return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
   if (groupBy === 'year') return String(date.getFullYear())
   return toLocalISODate(date)
 }
@@ -153,7 +178,7 @@ async function generateSalesReport(params: {
 }): Promise<SalesReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
   const gby = params.groupBy ?? 'day'
   const dateField = params.dateGroupBy ?? 'invoiceDate'
 
@@ -303,7 +328,7 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
 async function generateTaxReport(params: { dateFrom: string; dateTo: string }): Promise<TaxReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const taxItemWhere = {
     invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' as const } },
@@ -517,7 +542,7 @@ async function generateCustomerLedgerReport(params: { customerId: string; dateFr
   const dateFilter = params.dateFrom || params.dateTo ? {
     createdAt: {
       ...(params.dateFrom ? { gte: toDate(params.dateFrom) } : {}),
-      ...(params.dateTo ? { lte: (() => { const d = new Date(params.dateTo); d.setHours(23, 59, 59, 999); return d })() } : {})
+      ...(params.dateTo ? { lte: toDateEnd(params.dateTo) } : {})
     }
   } : {}
 
@@ -568,7 +593,7 @@ async function generateSupplierLedgerReport(params: { supplierId: string; dateFr
   const dateFilter = params.dateFrom || params.dateTo ? {
     createdAt: {
       ...(params.dateFrom ? { gte: toDate(params.dateFrom) } : {}),
-      ...(params.dateTo ? { lte: (() => { const d = new Date(params.dateTo); d.setHours(23, 59, 59, 999); return d })() } : {})
+      ...(params.dateTo ? { lte: toDateEnd(params.dateTo) } : {})
     }
   } : {}
 
@@ -613,7 +638,7 @@ async function generateSupplierLedgerReport(params: { supplierId: string; dateFr
 async function generateExpenseReport(params: { dateFrom: string; dateTo: string; categoryId?: string }): Promise<ExpenseReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const expenses = await db.expense.findMany({
     where: {
@@ -685,7 +710,7 @@ export interface ProfitAndLossReport {
 async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: string }): Promise<ProfitAndLossReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const [invoices, expenses] = await Promise.all([
     db.invoice.findMany({
@@ -797,7 +822,7 @@ async function fetchCashMovements(upTo: Date): Promise<{ date: Date; description
 
 async function generateCashBookReport(params: { dateFrom: string; dateTo: string; paymentMethod?: string }): Promise<CashBookReport> {
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const allUpToEnd = await fetchCashMovements(to)
   const filtered = params.paymentMethod
@@ -867,7 +892,7 @@ export interface TrialBalanceReport {
 
 async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: string }): Promise<TrialBalanceReport> {
   const db = getPrisma()
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const [pnl, taxInvoices, customers, supplierBalances, cashMovements] = await Promise.all([
     generateProfitAndLossReport({ dateFrom: params.dateFrom, dateTo: params.dateTo }),
@@ -951,7 +976,7 @@ async function generateAuditReport(params?: {
   const db = getPrisma()
 
   const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
-  const to = params?.dateTo ? (() => { const d = new Date(params.dateTo!); d.setHours(23, 59, 59, 999); return d })() : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
   const page = params?.page ?? 1
   const limit = Math.min(params?.limit ?? 200, 1000)
   const skip = (page - 1) * limit
@@ -1003,7 +1028,7 @@ async function generateFoodCostReport(params?: { dateFrom?: string; dateTo?: str
   const db = getPrisma()
 
   const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
-  const to = params?.dateTo ? (() => { const d = new Date(params.dateTo!); d.setHours(23, 59, 59, 999); return d })() : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
 
   // Find all inventory movements triggered by KOT ingredient deductions
   const movements = await db.inventoryMovement.findMany({
@@ -1071,7 +1096,7 @@ export interface GSTR1Report {
 async function generateGSTR1(params: { dateFrom: string; dateTo: string }): Promise<GSTR1Report> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
@@ -1162,7 +1187,7 @@ const NO_HSN_CODE = 'No HSN Code'
 async function generateHSNSummaryReport(params: { dateFrom: string; dateTo: string }): Promise<HSNSummaryReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
@@ -1237,7 +1262,7 @@ export interface DocumentSummaryReport {
 async function generateDocumentSummaryReport(params: { dateFrom: string; dateTo: string }): Promise<DocumentSummaryReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const rows: DocumentSummaryRow[] = []
 
@@ -1314,7 +1339,7 @@ export interface GSTR3BPreview {
 async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string }): Promise<GSTR3BPreview> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
@@ -1403,7 +1428,7 @@ async function generateAppointmentUtilisationReport(params: {
 }): Promise<AppointmentUtilisationReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const appointments = await db.appointment.findMany({
     where: {
@@ -1495,7 +1520,7 @@ export interface ClientRetentionReport {
 async function generateClientRetentionReport(params: { dateFrom: string; dateTo: string }): Promise<ClientRetentionReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
   // "At risk" is relative to the end of the period being viewed, not wall-clock
   // now — otherwise a historical report (e.g. for a month 90 days ago) would
   // mark nearly every client "at risk" just because today is far past that
@@ -1666,7 +1691,7 @@ export interface OrderVolumeReport {
 async function generateDiscountReport(params: { dateFrom: string; dateTo: string }): Promise<DiscountReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
@@ -1752,7 +1777,7 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
 async function generateOrderVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<OrderVolumeReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const orders = await db.tableOrderRequest.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -1889,7 +1914,7 @@ export interface LabThroughputReport {
 async function generateLabThroughputReport(params: { dateFrom: string; dateTo: string }): Promise<LabThroughputReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const orders = await db.labTestOrder.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2000,7 +2025,7 @@ export interface JewelleryReport {
 async function generateJewelleryReport(params: { dateFrom: string; dateTo: string }): Promise<JewelleryReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const products = await db.product.findMany({
     where: { isActive: true, metalType: { not: null } },
@@ -2106,7 +2131,7 @@ export interface AttendanceReport {
 async function generateAttendanceReport(params: { dateFrom: string; dateTo: string }): Promise<AttendanceReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const records = await db.attendance.findMany({
     where: { date: { gte: from, lte: to } },
@@ -2176,7 +2201,7 @@ export interface ProductionReport {
 async function generateProductionReport(params: { dateFrom: string; dateTo: string }): Promise<ProductionReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const orders = await db.productionOrder.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2329,11 +2354,18 @@ export interface TestScoreReport {
 async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: string; batchId?: string }): Promise<TestScoreReport> {
   const db = getPrisma()
 
+  // BUG FOUND 2026-07-22: this was the one report in the file that bypassed
+  // the shared toDate() helper AND never applied the standard end-of-day
+  // adjustment every other report's "to" bound uses -- `lte: new
+  // Date(dateTo)` is UTC midnight of that date, so almost any real
+  // testDate (which carries a real time-of-day) on the "to" day itself was
+  // excluded. Fixed to match the standard pattern used everywhere else in
+  // this file: local-midnight "from", end-of-local-day "to".
   const where: Record<string, unknown> = {}
   if (params.dateFrom || params.dateTo) {
     where.testDate = {
-      ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
-      ...(params.dateTo ? { lte: new Date(params.dateTo) } : {}),
+      ...(params.dateFrom ? { gte: toDate(params.dateFrom) } : {}),
+      ...(params.dateTo ? { lte: toDateEnd(params.dateTo) } : {}),
     }
   }
   if (params.batchId) where.enrollment = { batchId: params.batchId }
@@ -2475,7 +2507,7 @@ export interface ProjectReport {
 async function generateProjectReport(params: { dateFrom: string; dateTo: string }): Promise<ProjectReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const projects = await db.project.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2524,7 +2556,7 @@ export interface ServiceProjectReport {
 async function generateServiceProjectReport(params: { dateFrom: string; dateTo: string }): Promise<ServiceProjectReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const projects = await db.serviceProject.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2580,7 +2612,7 @@ export interface JobCardReport {
 async function generateJobCardReport(params: { dateFrom: string; dateTo: string }): Promise<JobCardReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const jobs = await db.jobCard.findMany({
     where: { receivedDate: { gte: from, lte: to } },
@@ -2635,7 +2667,7 @@ export interface CarJobCardReport {
 async function generateCarJobCardReport(params: { dateFrom: string; dateTo: string }): Promise<CarJobCardReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const jobs = await db.carJobCard.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2687,7 +2719,7 @@ export interface TailoringOrderReport {
 async function generateTailoringOrderReport(params: { dateFrom: string; dateTo: string }): Promise<TailoringOrderReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const orders = await db.tailoringOrder.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2741,7 +2773,7 @@ export interface PestContractReport {
 async function generatePestContractReport(params: { dateFrom: string; dateTo: string }): Promise<PestContractReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
   const now = new Date()
   const in30Days = new Date(now.getTime() + 30 * 86400000)
 
@@ -2806,7 +2838,7 @@ export interface RealEstatePipelineReport {
 async function generateRealEstatePipelineReport(params: { dateFrom: string; dateTo: string }): Promise<RealEstatePipelineReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const [properties, inquiries, deals] = await Promise.all([
     db.property.findMany({ where: { createdAt: { gte: from, lte: to } } }),
@@ -2864,7 +2896,7 @@ export interface RetainerReport {
 async function generateRetainerReport(params: { dateFrom: string; dateTo: string }): Promise<RetainerReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
   const targetPeriod = params.dateTo.slice(0, 7)
 
   const retainers = await db.retainerAgreement.findMany({
@@ -2907,7 +2939,7 @@ export interface ShootBookingReport {
 async function generateShootBookingReport(params: { dateFrom: string; dateTo: string }): Promise<ShootBookingReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const bookings = await db.shootBooking.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2949,7 +2981,7 @@ export interface EventBookingReport {
 async function generateEventBookingReport(params: { dateFrom: string; dateTo: string }): Promise<EventBookingReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const bookings = await db.eventBooking.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -2991,7 +3023,7 @@ export interface PlacementReport {
 async function generatePlacementReport(params: { dateFrom: string; dateTo: string }): Promise<PlacementReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const placements = await db.placement.findMany({
     where: { joiningDate: { gte: from, lte: to } },
@@ -3036,7 +3068,7 @@ export interface DrawingRegisterReport {
 async function generateDrawingRegisterReport(params: { dateFrom: string; dateTo: string }): Promise<DrawingRegisterReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const drawings = await db.drawingRevision.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -3079,7 +3111,7 @@ export interface SiteVisitLogReport {
 async function generateSiteVisitLogReport(params: { dateFrom: string; dateTo: string }): Promise<SiteVisitLogReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const visits = await db.siteVisit.findMany({
     where: { visitDate: { gte: from, lte: to } },
@@ -3122,7 +3154,7 @@ export interface PrescriptionDrugSalesReport {
 async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; dateTo: string }): Promise<PrescriptionDrugSalesReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
 
   const items = await db.invoiceItem.findMany({
     where: {
@@ -3215,7 +3247,7 @@ export interface RentalRevenueReport {
 async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: string }): Promise<RentalRevenueReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
-  const to = new Date(params.dateTo); to.setHours(23, 59, 59, 999)
+  const to = toDateEnd(params.dateTo)
   const rangeDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000))
 
   const items = await db.rentalBookingItem.findMany({

@@ -869,7 +869,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, splitCash, splitUpi, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {

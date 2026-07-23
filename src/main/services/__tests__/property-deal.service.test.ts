@@ -4,7 +4,8 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
-import { listPropertyDeals, createPropertyDeal, updatePropertyDeal, serializeDeal } from '../property-deal.service'
+import { billingService } from '../billing.service'
+import { listPropertyDeals, createPropertyDeal, updatePropertyDeal, serializeDeal, generateCommissionInvoice } from '../property-deal.service'
 
 // Regression coverage for the Phase 32 re-audit finding: PropertyDeal.
 // dealValue/brokeragePercent/brokerageAmount are Prisma Decimal fields,
@@ -40,12 +41,21 @@ function makeMockDb(existing: ReturnType<typeof makeDeal> | null = null) {
     propertyDeal: {
       findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
       findUniqueOrThrow: vi.fn().mockResolvedValue(existing),
+      findUnique: vi.fn().mockResolvedValue(existing),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeDeal({ id: 'deal-new', ...data }))
       ),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeDeal({ ...existing, ...data }))
       ),
+      // Atomic invoiceId claim (see generateCommissionInvoice) — succeeds
+      // only while the row's invoiceId is genuinely still null, mirroring
+      // the real `where: { id, invoiceId: null }` conditional update.
+      updateMany: vi.fn().mockImplementation(() => Promise.resolve({ count: existing && !existing.invoiceId ? 1 : 0 })),
+    },
+    product: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'prod-commission', ...data })),
     },
     property: { update: vi.fn().mockResolvedValue({}) },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
@@ -162,5 +172,67 @@ describe('property-deal.service — co-broker commission split', () => {
     const withoutCoBroker = serializeDeal(makeDeal())
     expect(withoutCoBroker.coBrokerSharePercent).toBeNull()
     expect(withoutCoBroker.coBrokerShareAmount).toBeNull()
+  })
+})
+
+// Real bug found 2026-07-23: generateCommissionInvoice had no atomic claim
+// on invoiceId — just a plain read-then-check (`if (deal.invoiceId) return
+// error`) with the actual write only happening via a plain update() AFTER
+// billingService.createInvoice() had already run. Two concurrent "Generate
+// Commission Invoice" calls for the same deal could both pass the stale
+// check and each create a real, separate Invoice — a genuine double-bill.
+// Fixed with the same atomic conditional-claim + release-on-failure shape
+// used by car-job-card.service.ts / job-card.service.ts.
+
+describe('property-deal.service.generateCommissionInvoice', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('generates a commission invoice for brokerageAmount', async () => {
+    const db = makeMockDb(makeDeal())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    const res = await generateCommissionInvoice('deal-1')
+
+    expect(res.success).toBe(true)
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ unitPrice: number }> }
+    expect(call.items[0].unitPrice).toBe(100000)
+    expect(db.propertyDeal.update).toHaveBeenCalledWith({ where: { id: 'deal-1' }, data: { invoiceId: 'inv-1' } })
+  })
+
+  it('rejects without calling billingService.createInvoice when the claim fails (already invoiced)', async () => {
+    const db = makeMockDb(makeDeal({ invoiceId: 'inv-existing' }))
+    db.propertyDeal.updateMany = vi.fn().mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateCommissionInvoice('deal-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PROP-003')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('claims invoiceId atomically before calling billingService.createInvoice', async () => {
+    const db = makeMockDb(makeDeal())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await generateCommissionInvoice('deal-1')
+
+    expect(db.propertyDeal.updateMany).toHaveBeenCalledWith({ where: { id: 'deal-1', invoiceId: null }, data: { invoiceId: 'PENDING_INVOICE_GENERATION' } })
+    const claimCallOrder = db.propertyDeal.updateMany.mock.invocationCallOrder[0]
+    const createInvoiceCallOrder = vi.mocked(billingService.createInvoice).mock.invocationCallOrder[0]
+    expect(claimCallOrder).toBeLessThan(createInvoiceCallOrder)
+  })
+
+  it('releases the claim (sets invoiceId back to null) when billingService.createInvoice fails', async () => {
+    const db = makeMockDb(makeDeal())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'BILL-001', message: 'failed' } } as never)
+
+    const res = await generateCommissionInvoice('deal-1')
+
+    expect(res.success).toBe(false)
+    expect(db.propertyDeal.update).toHaveBeenCalledWith({ where: { id: 'deal-1' }, data: { invoiceId: null } })
   })
 })

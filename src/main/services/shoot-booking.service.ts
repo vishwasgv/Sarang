@@ -192,7 +192,13 @@ export async function generateShootInvoice(id: string) {
             data: { productName: addOn.description, productType: 'SERVICE', hsnCode: '998314', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
           })
         }
-        addOnLineItems.push({ productId: addOnProduct.id, quantity: addOn.quantity, unitPrice: Number(addOn.unitPrice), taxRate: 18 })
+        // BUG FOUND 2026-07-22: `taxRate: 18` was hardcoded on both invoice
+        // items here, permanently overriding the product's own configurable
+        // rate — the same bug class fixed across many other vertical
+        // services this session. Removed so both fall through to
+        // product.taxRate / addOnProduct.taxRate, owner-editable via
+        // Settings > Products.
+        addOnLineItems.push({ productId: addOnProduct.id, quantity: addOn.quantity, unitPrice: Number(addOn.unitPrice) })
       }
 
       const result = await billingService.createInvoice({
@@ -200,7 +206,7 @@ export async function generateShootInvoice(id: string) {
         paymentMethod: 'CREDIT',
         gstType: 'CGST_SGST',
         items: [
-          { productId: product.id, quantity: 1, unitPrice: Number(booking.finalAmount), taxRate: 18 },
+          { productId: product.id, quantity: 1, unitPrice: Number(booking.finalAmount) },
           ...addOnLineItems,
         ],
         notes: `${booking.shootType} shoot — ${booking.shootLocation}`,

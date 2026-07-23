@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
+import { customerLedgerService } from './customer-ledger.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateCustomerPayload, UpdateCustomerPayload } from '../validation/customer.validation'
 
@@ -105,8 +106,16 @@ export async function getCustomerLedger(customerId: string): Promise<ApiResponse
       take: 100
     })
 
-    // C003: Outstanding = sum of all debit - sum of all credit
-    const outstanding = ledger.reduce((acc, e) => acc + e.debitAmount - e.creditAmount, 0)
+    // BUG FOUND 2026-07-22: this summed only the 100 most-recent rows
+    // returned above — wrong for any customer with more than 100 ledger
+    // entries (routine for a long-running account: every invoice, payment,
+    // credit note, and return writes a row). The correct implementation
+    // already exists (customerLedgerService.calculateBalance — a true
+    // aggregate SUM over the whole ledger) but wasn't wired to this
+    // screen. `ledger` itself stays capped at the 100 most recent entries
+    // for display, a reasonable UX choice — only the balance figure was
+    // wrong, and that's what's fixed here.
+    const outstanding = await customerLedgerService.calculateBalance(customerId)
 
     return { success: true, data: { customer, ledger, outstanding } }
   } catch {

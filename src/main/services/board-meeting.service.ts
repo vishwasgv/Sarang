@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 // meetingDate/createdAt/updatedAt are Prisma DateTime fields, preserved as
 // real Date instances across IPC's structured clone — but ROCFilingsScreen.tsx's
@@ -27,9 +28,19 @@ export async function listBoardMeetings(filters?: {
     if (filters?.clientId) where.clientId = filters.clientId
     if (filters?.meetingType) where.meetingType = filters.meetingType
     if (filters?.fromDate || filters?.toDate) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight; toDate also
+      // lacked an end-of-day adjustment, excluding same-day meetings with
+      // a real time-of-day.
+      // Real bug found 2026-07-23: the toDate fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. parseLocalDateEnd constructs local end-of-day
+      // directly from the string's Y/M/D instead.
       where.meetingDate = {
-        ...(filters?.fromDate ? { gte: new Date(filters.fromDate) } : {}),
-        ...(filters?.toDate   ? { lte: new Date(filters.toDate)   } : {}),
+        ...(filters?.fromDate ? { gte: parseLocalDateStart(filters.fromDate) } : {}),
+        ...(filters?.toDate ? { lte: parseLocalDateEnd(filters.toDate) } : {}),
       }
     }
     const meetings = await db.boardMeeting.findMany({

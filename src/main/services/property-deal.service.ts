@@ -151,57 +151,85 @@ export async function updatePropertyDeal(payload: {
   return { success: true, data: serializeDeal(deal) }
 }
 
+// Real bug found 2026-07-23: this had no atomic claim on invoiceId — just a
+// plain read-then-check (`if (deal.invoiceId) return error`) with the
+// actual write only happening via a plain update() AFTER
+// billingService.createInvoice() had already run. Two concurrent "Generate
+// Commission Invoice" calls for the same deal could both pass the stale
+// check and each create a real, separate Invoice — a genuine double-bill
+// of the buyer for the same brokerage. Fixed with the same atomic
+// conditional-claim + release-on-failure shape used by
+// car-job-card.service.ts / job-card.service.ts / membership.service.ts.
+const PROPERTY_DEAL_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generateCommissionInvoice(dealId: string) {
   const db = getPrisma()
 
-  const deal = await db.propertyDeal.findUnique({
-    where: { id: dealId },
-    include: {
-      buyer: { select: { id: true, customerName: true } },
-      property: { select: { id: true, location: true, propertyType: true } },
-    },
-  })
-  if (!deal) return { success: false, error: { code: 'PROP-002', message: 'Deal not found.' } }
-  if (deal.invoiceId) return { success: false, error: { code: 'PROP-003', message: 'Commission invoice already generated for this deal.' } }
-
-  // Find or create a "Real Estate Commission" service product (SAC 997212, 18% GST)
-  let commissionProduct = await db.product.findFirst({
-    where: { hsnCode: '997212', isActive: true },
-  })
-  if (!commissionProduct) {
-    commissionProduct = await db.product.create({
-      data: {
-        productName: 'Real Estate Commission',
-        productType: 'SERVICE',
-        hsnCode: '997212',
-        sellingPrice: 0,
-        taxRate: 18,
-        unit: 'NOS',
-        isActive: true,
-      },
-    })
+  const claim = await db.propertyDeal.updateMany({ where: { id: dealId, invoiceId: null }, data: { invoiceId: PROPERTY_DEAL_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.propertyDeal.findUnique({ where: { id: dealId }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'PROP-002', message: 'Deal not found.' } }
+    return { success: false, error: { code: 'PROP-003', message: 'Commission invoice already generated for this deal.' } }
   }
 
-  const result = await billingService.createInvoice({
-    customerId: deal.buyerClientId,
-    paymentMethod: 'CREDIT',
-    gstType: 'CGST_SGST',
-    items: [{
-      productId: commissionProduct.id,
-      quantity: 1,
-      unitPrice: Number(deal.brokerageAmount),
-    }],
-    notes: `Commission on deal: ${deal.property.propertyType} at ${deal.property.location}`,
-    referenceNumber: dealId.slice(0, 12),
-  })
+  try {
+    const deal = await db.propertyDeal.findUnique({
+      where: { id: dealId },
+      include: {
+        buyer: { select: { id: true, customerName: true } },
+        property: { select: { id: true, location: true, propertyType: true } },
+      },
+    })
+    if (!deal) {
+      await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PROP-002', message: 'Deal not found.' } }
+    }
 
-  if (!result.success) return result
+    // Find or create a "Real Estate Commission" service product (SAC 997212, 18% GST)
+    let commissionProduct = await db.product.findFirst({
+      where: { hsnCode: '997212', isActive: true },
+    })
+    if (!commissionProduct) {
+      commissionProduct = await db.product.create({
+        data: {
+          productName: 'Real Estate Commission',
+          productType: 'SERVICE',
+          hsnCode: '997212',
+          sellingPrice: 0,
+          taxRate: 18,
+          unit: 'NOS',
+          isActive: true,
+        },
+      })
+    }
 
-  const invoice = result.data as { id: string }
-  await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: invoice.id } })
-  await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'PropertyDeal', entityId: dealId, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
+    const result = await billingService.createInvoice({
+      customerId: deal.buyerClientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{
+        productId: commissionProduct.id,
+        quantity: 1,
+        unitPrice: Number(deal.brokerageAmount),
+      }],
+      notes: `Commission on deal: ${deal.property.propertyType} at ${deal.property.location}`,
+      referenceNumber: dealId.slice(0, 12),
+    })
 
-  return { success: true, data: { invoiceId: invoice.id } }
+    if (!result.success) {
+      await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: null } })
+      return result
+    }
+
+    const invoice = result.data as { id: string }
+    await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: invoice.id } })
+    await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'PropertyDeal', entityId: dealId, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
+
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: null } }).catch(() => {})
+    return { success: false, error: { code: 'PROP-005', message: err instanceof Error ? err.message : 'Could not generate commission invoice.' } }
+  }
 }
 
 export async function deletePropertyDeal(id: string) {

@@ -441,6 +441,33 @@ describe('rental.service — extendBooking', () => {
     expect(db.rentalBookingItem.update).toHaveBeenCalledWith({ where: { id: 'item-1' }, data: expect.objectContaining({ lineTotal: 2000 * 5 }) })
   })
 
+  // Regression for a real TOCTOU double-booking race found 2026-07-22:
+  // computeAvailability used to be called against a pre-transaction `db`
+  // read, with the actual extension committed in a separate, later
+  // transaction. Simulates a concurrent booking landing on the same unit
+  // between the outer read and this call's transaction actually running —
+  // the availability check must be re-evaluated fresh (inside the same
+  // transaction as the write) and correctly reject, not rely on a stale
+  // pre-transaction snapshot that no longer reflects reality.
+  it('re-checks unit availability fresh inside the transaction, catching a conflict that only appears after a concurrent booking landed in between', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({
+      status: 'CHECKED_OUT',
+      items: [{ id: 'item-1', productId: 'prod-car', rentalUnitId: 'unit-1', quantity: 1, rateBasis: 'DAY', rateAmount: 2000, product: makeUnitProduct() }],
+    }))
+    db.rentalUnit.findMany.mockResolvedValue([{ id: 'unit-1', unitLabel: 'Car #1' }])
+    // A concurrent booking claimed unit-1 for the overlapping range in
+    // between — the fresh in-transaction conflict lookup now finds it.
+    db.rentalBookingItem.findMany.mockResolvedValue([{ rentalUnitId: 'unit-1' }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await extendBooking({ id: 'booking-1', newEndDateTime: '2026-08-10T00:00:00Z' })
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('RENT-020')
+    expect(db.rentalBooking.update).not.toHaveBeenCalled()
+  })
+
   it('BULK: rejects an extension that would exceed available stock', async () => {
     const db = makeBaseMockDb()
     db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({

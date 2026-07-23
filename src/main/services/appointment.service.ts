@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -132,9 +133,20 @@ export async function listAppointments(filters?: {
     if (filters?.customerId) where.customerId = filters.customerId
     if (filters?.status) where.status = filters.status
     if (filters?.dateFrom || filters?.dateTo) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight — same bug class
+      // fixed across many other files this session. dateTo also lacked the
+      // end-of-day adjustment every correctly-fixed "to" bound elsewhere
+      // uses, so it excluded same-day appointments with a real time-of-day.
+      // Real bug found 2026-07-23: the dateTo fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. parseLocalDateEnd constructs local end-of-day
+      // directly from the string's Y/M/D instead.
       where.scheduledDate = {
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
-        ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
+        ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
+        ...(filters.dateTo ? { lte: parseLocalDateEnd(filters.dateTo) } : {}),
       }
     }
 

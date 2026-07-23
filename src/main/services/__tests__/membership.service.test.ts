@@ -6,7 +6,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice, freezeMembership, resumeMembership } from '../membership.service'
+import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice, freezeMembership, resumeMembership, checkInMember } from '../membership.service'
 
 // Regression coverage for the Phase 27 re-audit finding: MembershipPlan.price
 // is a Prisma Decimal — Electron's IPC can't serialize a Decimal instance and
@@ -355,6 +355,93 @@ describe('membership.service — freezeMembership / resumeMembership', () => {
     const updateCall = db.membership.update.mock.calls[0][0]
     expect(updateCall.data.status).toBe('ACTIVE')
     expect(updateCall.data.endDate).toBeUndefined()
+  })
+})
+
+// Real bug found 2026-07-23: checkInMember's status/expiry/session-cap
+// checks used to run against a pre-transaction read, with only the
+// attendance-create + sessionsUsed-increment committed atomically together
+// (a plain array passed to $transaction) — atomic with each other, but not
+// with the checks gating them. Two near-simultaneous check-ins one session
+// below the cap could each pass the stale check and both increment,
+// letting a member check in over their paid session cap. Fixed by moving
+// the whole read-check-write sequence inside one interactive
+// db.$transaction(), mirroring session-pack.service.ts's deductSession fix.
+
+function makeCheckInMockDb(membership: Record<string, unknown> | null) {
+  const db: Record<string, any> = {
+    membership: {
+      findUnique: vi.fn().mockResolvedValue(membership),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ ...membership, ...data })
+      ),
+    },
+    memberAttendance: {
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'attendance-1', ...data })
+      ),
+    },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
+  }
+  db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
+  return db
+}
+
+describe('membership.service — checkInMember atomicity', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('checks in a member under the session cap and increments sessionsUsed', async () => {
+    const db = makeCheckInMockDb({ id: 'mem-1', status: 'ACTIVE', sessionsUsed: 3, endDate: new Date('2099-01-01'), plan: { sessionsIncluded: 10 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkInMember('cust-1', 'mem-1')
+
+    expect(res.success).toBe(true)
+    expect(db.memberAttendance.create).toHaveBeenCalledTimes(1)
+    expect(db.membership.update).toHaveBeenCalledWith({ where: { id: 'mem-1' }, data: { sessionsUsed: { increment: 1 } } })
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a missing membership', async () => {
+    const db = makeCheckInMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkInMember('cust-1', 'mem-missing')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-NO-MEMBERSHIP')
+  })
+
+  it('rejects a membership that has already used all sessions in its plan, without checking in', async () => {
+    const db = makeCheckInMockDb({ id: 'mem-1', status: 'ACTIVE', sessionsUsed: 10, endDate: new Date('2099-01-01'), plan: { sessionsIncluded: 10 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkInMember('cust-1', 'mem-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-SESSION-CAP')
+    expect(db.memberAttendance.create).not.toHaveBeenCalled()
+    expect(db.membership.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects an expired membership without checking in', async () => {
+    const db = makeCheckInMockDb({ id: 'mem-1', status: 'ACTIVE', sessionsUsed: 0, endDate: new Date('2020-01-01'), plan: { sessionsIncluded: null } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkInMember('cust-1', 'mem-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('M27-EXPIRED')
+    expect(db.memberAttendance.create).not.toHaveBeenCalled()
+  })
+
+  it('runs the cap check and the write inside a single transaction', async () => {
+    const db = makeCheckInMockDb({ id: 'mem-1', status: 'ACTIVE', sessionsUsed: 0, endDate: new Date('2099-01-01'), plan: { sessionsIncluded: null } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await checkInMember('cust-1', 'mem-1')
+
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
   })
 })
 

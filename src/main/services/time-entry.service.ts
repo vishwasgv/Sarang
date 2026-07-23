@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 
 // TimeEntry.hours/ratePerHour/amount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws
@@ -29,9 +29,13 @@ export async function listTimeEntries(filters?: {
     if (filters?.employeeId) where.employeeId = filters.employeeId
     if (filters?.isBilled !== undefined) where.isBilled = filters.isBilled
     if (filters?.fromDate || filters?.toDate) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight — date is a pure
+      // calendar-date field here (always local-midnight-constructed), so
+      // parseLocalDateStart on both bounds keeps a same-day match inclusive.
       where.date = {
-        ...(filters?.fromDate ? { gte: new Date(filters.fromDate) } : {}),
-        ...(filters?.toDate ? { lte: new Date(filters.toDate) } : {}),
+        ...(filters?.fromDate ? { gte: parseLocalDateStart(filters.fromDate) } : {}),
+        ...(filters?.toDate ? { lte: parseLocalDateStart(filters.toDate) } : {}),
       }
     }
 
@@ -71,7 +75,9 @@ export async function createTimeEntry(payload: {
         projectId: payload.projectId ?? null,
         retainerId: payload.retainerId ?? null,
         employeeId: payload.employeeId ?? null,
-        date: new Date(payload.date),
+        // BUG FOUND 2026-07-22: same UTC-vs-local parsing issue as the
+        // date-range filter above.
+        date: parseLocalDateStart(payload.date),
         description: payload.description.trim(),
         hours: payload.hours,
         ratePerHour: payload.ratePerHour,
@@ -118,7 +124,7 @@ export async function updateTimeEntry(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(date !== undefined ? { date: new Date(date) } : {}),
+        ...(date !== undefined ? { date: parseLocalDateStart(date) } : {}),
         ...(hours !== undefined ? { hours } : {}),
         ...(ratePerHour !== undefined ? { ratePerHour } : {}),
         ...amountUpdate,
@@ -224,11 +230,14 @@ export async function generateTimeEntryInvoice(entryIds: string[]) {
         ? await findOrCreateServiceProduct('998212', 'Legal Advisory Services')
         : await findOrCreateServiceProduct('998311', 'Professional Consulting Services')
 
+      // BUG FOUND 2026-07-22: `taxRate: 18` was hardcoded here too,
+      // permanently overriding the product's own configurable rate — same
+      // bug class fixed across many other vertical services this session.
+      // Removed so it falls through to product.taxRate.
       const items = entries.map((e) => ({
         productId: product.id,
         quantity: 1,
         unitPrice: Number(e.amount),
-        taxRate: 18,
         variantInfo: `${toLocalISODate(e.date)} — ${e.description} (${Number(e.hours)}h @ ${Number(e.ratePerHour)}/h)`.slice(0, 100),
       }))
 

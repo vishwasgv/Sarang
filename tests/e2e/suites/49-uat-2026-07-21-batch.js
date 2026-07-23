@@ -27,12 +27,24 @@ async function run() {
       const custRes = await page.evaluate(async () => window.api.customers.create({ customerName: `${'E2E Uat0721'} Switch Marker`, phone: '9990001111' }))
       r.log('marker-customer-created', !!custRes?.success, JSON.stringify(custRes?.error || ''))
 
-      const res = await h.switchBusinessType(page, 'Retail / General Store')
+      // Every earlier suite in the full sequential run restores the business
+      // type to RETAIL before finishing, so by the time suite 49 runs the app
+      // is always already on Retail — switching "to Retail" would be a no-op
+      // (the Apply button is correctly disabled for the current type, which
+      // is real, correct app behavior, not a bug). Switch to a different tile
+      // first so this actually exercises the confirm-dialog/data-preservation
+      // path, then switch back to Retail before the rest of the suite runs.
+      const target = originalBusinessType === 'RETAIL' ? 'Service Business / Agency / IT' : 'Retail / General Store'
+      const res = await h.switchBusinessType(page, target)
       r.log('switched-to-retail-via-confirm-dialog', res.changed, JSON.stringify(res))
 
       const stillThere = await page.evaluate(async () => window.api.customers.list({ search: 'E2E Uat0721 Switch Marker' }))
       const found = (stillThere?.data?.customers || stillThere?.data || []).some((c) => c.customerName === 'E2E Uat0721 Switch Marker')
       r.log('data-preserved-across-switch', found, JSON.stringify(stillThere?.data))
+
+      if (res.changed && originalBusinessType) {
+        await h.switchBusinessType(page, 'Retail / General Store')
+      }
     })
 
     // ── Label Printer remembered device (Settings > Barcode & Loose Billing) ─
@@ -50,7 +62,10 @@ async function run() {
       await h.gotoHash(page, '#/settings')
       await page.waitForTimeout(600)
       await page.locator('button:has-text("Barcode & Loose Billing")').click()
-      await page.waitForTimeout(500)
+      // A fixed sleep here was flaky under load (observed failing once in a full
+      // 50-suite sequential run but passing in isolation) — wait for the actual
+      // element instead of guessing a fixed delay.
+      await page.locator('text=Label Printer').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       r.log('label-printer-card-visible', (await page.locator('text=Label Printer').count()) > 0)
       r.log('label-printer-select-present', (await page.locator('option:has-text("Ask every time")').count()) > 0)
     })

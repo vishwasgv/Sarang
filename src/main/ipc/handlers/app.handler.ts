@@ -109,6 +109,16 @@ export function register(handle: HandleFn): void {
   })
 
   handle('dialog:openFile', async (payload) => {
+    // Deliberately no requireSession() check here (unlike this file's other
+    // handlers): SetupWizard.tsx calls this same channel to pick a business logo
+    // BEFORE setup completes, when no session exists yet. A prior audit flagged
+    // the lack of a session check as a real (if minor) inconsistency — but
+    // gating this shared channel behind requireSession() would break first-run
+    // setup entirely, a far worse regression than the gap it would close.
+    // Accepted trade-off: this handler is reachable pre-auth, but its only
+    // effect is copying a locally-picked file into userData/logos (no data
+    // read/exposed), and every actually sensitive follow-up action (assigning
+    // the copied path to a real business profile) is separately permission-gated.
     const parsed = OpenFileDialogSchema.safeParse(payload ?? {})
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const opts = parsed.data

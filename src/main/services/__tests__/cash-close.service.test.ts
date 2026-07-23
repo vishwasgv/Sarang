@@ -95,6 +95,34 @@ describe('cashCloseService.create', () => {
   })
 })
 
+// Regression for a real defect found 2026-07-22: `new Date(date)` on an
+// explicit "YYYY-MM-DD" input parses as UTC midnight, then startOfDay's
+// setHours(0,0,0,0) re-anchors it to LOCAL wall-clock time of that UTC
+// instant — for any timezone BEHIND UTC (e.g. US), this silently shifts
+// the whole close-out window back one day. parseLocalDateStart fixes it by
+// constructing local midnight directly, with no UTC round-trip at all.
+describe('cashCloseService date-boundary correctness', () => {
+  it('queries the exact requested local calendar day, not a UTC-shifted one', async () => {
+    const db = makeMockDb({ payments: [], existing: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await cashCloseService.getDrawerSummary('2026-07-31')
+
+    const whereArg = db.payment.findMany.mock.calls[0][0].where
+    const gte = whereArg.paymentDate.gte as Date
+    const lte = whereArg.paymentDate.lte as Date
+    // Local calendar components must read July 31st for both bounds —
+    // new Date('2026-07-31') (UTC midnight) would read July 30th in any
+    // timezone behind UTC once local components are inspected.
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(6) // 0-indexed: July
+    expect(gte.getDate()).toBe(31)
+    expect(gte.getHours()).toBe(0)
+    expect(lte.getDate()).toBe(31)
+    expect(lte.getHours()).toBe(23)
+  })
+})
+
 describe('cashCloseService.getDrawerSummary', () => {
   it('returns correct breakdown by payment method', async () => {
     const db = makeMockDb({

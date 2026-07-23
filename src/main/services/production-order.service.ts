@@ -208,7 +208,10 @@ export async function startProductionOrder(id: string, userId?: string): Promise
     if (!order) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
     if (order.status !== 'DRAFT') return { success: false, error: { code: 'PO-007', message: `Cannot start: order is ${order.status}.` } }
 
-    // Check raw material AND component-product availability
+    // Fast pre-check outside the transaction — a cheap way to reject an
+    // obviously-short order without opening a transaction at all. This is
+    // NOT the real guard (see below); it's just an early exit for the
+    // common case.
     const shortfalls: string[] = []
     for (const usage of order.materialUsage) {
       if (usage.rawMaterial) {
@@ -226,9 +229,24 @@ export async function startProductionOrder(id: string, userId?: string): Promise
       return { success: false, error: { code: 'PO-008', message: `Insufficient stock:\n${shortfalls.join('\n')}` } }
     }
 
+    // BUG FOUND 2026-07-22: the shortfall check above ran against a
+    // pre-transaction read, then the decrement below ran unconditionally in
+    // a separate transaction with no re-validation — two startProductionOrder
+    // calls issued close together (a double-click, or two orders both
+    // drawing the same scarce material) could both pass the stale check and
+    // both decrement, driving currentStock negative with no error surfaced.
+    // Fixed to match the pattern logistics-grn.service.ts's postGRN already
+    // uses for the identical race: re-check fresh, INSIDE the transaction,
+    // immediately before each decrement, and abort the whole transaction
+    // (rolling back every decrement already applied this call) the moment
+    // any material comes up short against its real current value.
     const result = await db.$transaction(async (tx) => {
       for (const usage of order.materialUsage) {
         if (usage.rawMaterial) {
+          const fresh = await tx.rawMaterial.findUniqueOrThrow({ where: { id: usage.rawMaterialId! }, select: { currentStock: true, name: true, unit: true } })
+          if (fresh.currentStock < usage.quantityPlanned) {
+            throw Object.assign(new Error(`Insufficient stock: ${fresh.name} — need ${usage.quantityPlanned} ${fresh.unit}, have ${fresh.currentStock}.`), { _code: 'PO-008' })
+          }
           const updated = await tx.rawMaterial.update({
             where: { id: usage.rawMaterialId! },
             data: { currentStock: { decrement: usage.quantityPlanned } },
@@ -248,6 +266,10 @@ export async function startProductionOrder(id: string, userId?: string): Promise
           })
           await consumeRawMaterialBatchesFIFO(tx, usage.id, usage.rawMaterialId!, usage.quantityPlanned)
         } else if (usage.componentProduct) {
+          const freshInv = await tx.inventory.findUnique({ where: { productId: usage.componentProductId! }, select: { quantity: true } })
+          if ((freshInv?.quantity ?? 0) < usage.quantityPlanned) {
+            throw Object.assign(new Error(`Insufficient stock: ${usage.componentProduct.productName} (sub-assembly) — need ${usage.quantityPlanned}, have ${freshInv?.quantity ?? 0}.`), { _code: 'PO-008' })
+          }
           // Sub-assembly consumption — same weighted-average-preserving
           // decrement inventory.service.ts's reduceStockTx uses for a sale,
           // hand-rolled here so the InventoryMovement reads as production
@@ -285,6 +307,7 @@ export async function startProductionOrder(id: string, userId?: string): Promise
     await logAction(userId, 'PRODUCTION_ORDER_STARTED', 'ProductionOrder', id)
     return { success: true, data: toRecord(result) }
   } catch (err) {
+    if ((err as { _code?: string })?._code === 'PO-008') return { success: false, error: { code: 'PO-008', message: (err as Error).message } }
     return { success: false, error: { code: 'PO-009', message: err instanceof Error ? err.message : 'Failed to start production order.' } }
   }
 }

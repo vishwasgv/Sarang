@@ -127,7 +127,12 @@ export function ProductionOrdersScreen() {
 
   // Work order editor
   const [showWOEditor, setShowWOEditor] = useState(false)
-  const [woSteps, setWoSteps] = useState<Array<{ taskName: string; notes: string; isQcStep: boolean }>>([{ taskName: '', notes: '', isQcStep: false }])
+  // BUG FOUND 2026-07-22: this never carried the existing step's id back
+  // into the editor, so every save looked like an all-new set of steps to
+  // the backend — silently wiping status/QC progress on steps that already
+  // had it. `id` is now preserved so unchanged existing steps update in
+  // place instead of being deleted and recreated.
+  const [woSteps, setWoSteps] = useState<Array<{ id?: string; taskName: string; notes: string; isQcStep: boolean }>>([{ taskName: '', notes: '', isQcStep: false }])
   const [savingWO, setSavingWO] = useState(false)
 
   // Phase 58 §2 — QC pass/fail prompt, shown instead of a plain toggle when
@@ -288,7 +293,7 @@ export function ProductionOrdersScreen() {
   function openWOEditor() {
     setWoSteps(
       workOrders.length > 0
-        ? workOrders.map(w => ({ taskName: w.taskName, notes: w.notes ?? '', isQcStep: w.isQcStep }))
+        ? workOrders.map(w => ({ id: w.id, taskName: w.taskName, notes: w.notes ?? '', isQcStep: w.isQcStep }))
         : [{ taskName: '', notes: '', isQcStep: false }]
     )
     setShowWOEditor(true)
@@ -301,7 +306,7 @@ export function ProductionOrdersScreen() {
     setSavingWO(true)
     const res = await api.workOrders.upsert({
       productionOrderId: detailOrder.id,
-      steps: valid.map((s, i) => ({ stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined, isQcStep: s.isQcStep }))
+      steps: valid.map((s, i) => ({ id: s.id, stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined, isQcStep: s.isQcStep }))
     })
     setSavingWO(false)
     if (res.success && res.data) {

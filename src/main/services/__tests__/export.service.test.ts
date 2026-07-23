@@ -148,6 +148,53 @@ describe('generateReportHtml', () => {
 
     expect(html).toContain('Aszurex')
   })
+
+  // Regression for a real defect found 2026-07-22: table cells, headers,
+  // title, and business name/address were interpolated into the HTML with
+  // no escaping at all, unlike print.service.ts's identically-purposed
+  // escHtml() applied everywhere there. A customer/product/business name
+  // containing `<`, `>`, or `"` (real, user-enterable data) could corrupt
+  // the exported report's HTML/table structure.
+  it('HTML-escapes a table cell containing markup-like characters instead of injecting it raw', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+
+    const html = await generateReportHtml({
+      title: 'Sales Report',
+      tables: [{ headers: ['Customer'], rows: [['<script>alert(1)</script> & "Acme" \'Co\'']] }],
+    })
+
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;Acme&quot; &#39;Co&#39;')
+  })
+
+  it('HTML-escapes the business name, title, subtitle, and table headers', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ businessName: 'A & B "Traders"', address: null, taxNumber: null, currencySymbol: '₹' }) }
+    } as never)
+
+    const html = await generateReportHtml({
+      title: '<b>Report</b>',
+      subtitle: 'Q1 <2026>',
+      tables: [{ headers: ['Name & Co'], rows: [] }],
+    })
+
+    expect(html).toContain('A &amp; B &quot;Traders&quot;')
+    expect(html).toContain('&lt;b&gt;Report&lt;/b&gt;')
+    expect(html).toContain('Q1 &lt;2026&gt;')
+    expect(html).toContain('Name &amp; Co')
+    expect(html).not.toContain('<b>Report</b>')
+  })
+
+  it('still renders a real number cell correctly, unaffected by the new escaping', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+
+    const html = await generateReportHtml({
+      title: 'X',
+      tables: [{ headers: ['Amount'], rows: [[1234.56]] }],
+    })
+
+    expect(html).toContain('<td>1234.56</td>')
+  })
 })
 
 // ─── PDF Export ────────────────────────────────────────────────────────────────

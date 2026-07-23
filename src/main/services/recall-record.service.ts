@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export async function getPatientRecall(patientId: string) {
   try {
@@ -125,9 +126,18 @@ export async function listRecalls(filters?: {
     if (filters?.overdueOnly) {
       where.nextRecallDate = { lte: new Date() }
     } else if (filters?.dateFrom || filters?.dateTo) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight; dateTo also
+      // lacked an end-of-day adjustment.
+      // Real bug found 2026-07-23: the dateTo fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. parseLocalDateEnd constructs local end-of-day
+      // directly from the string's Y/M/D instead.
       where.nextRecallDate = {
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
-        ...(filters.dateTo  ? { lte: new Date(filters.dateTo)   } : {}),
+        ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
+        ...(filters.dateTo ? { lte: parseLocalDateEnd(filters.dateTo) } : {}),
       }
     }
 

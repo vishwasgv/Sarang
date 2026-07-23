@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 import { customerLedgerService } from './customer-ledger.service'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
@@ -233,8 +234,10 @@ export const paymentService = {
     // but diverge for a backdated payment, and paymentDate is the field that
     // means "when did this payment happen" for reporting purposes.
     if (filters?.dateFrom || filters?.dateTo) {
+      // BUG FOUND 2026-07-22: gte used to be new Date(filters.dateFrom),
+      // parsed as UTC midnight instead of local midnight.
       where.paymentDate = {
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
         ...(filters.dateTo ? { lte: new Date(filters.dateTo + 'T23:59:59.999') } : {})
       }
     }

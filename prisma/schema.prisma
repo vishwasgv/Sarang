@@ -706,6 +706,7 @@ model Customer {
   shipmentStops             ShipmentStop[] // Phase 58 §2 — Distributor route/beat planning
   fieldOrderRequests        FieldOrderRequest[] // Phase 58 §2 — Distributor field-rep order capture
   repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
+  convertedFromLeads        Lead[]                        @relation("LeadConvertedClient") // Fresh-audit fix (2026-07-23) — was an unconstrained bare String, see Lead.convertedClientId
 
   @@index([customerName])
   @@index([phone])
@@ -2677,7 +2678,7 @@ model NormalRangeReference {
 
 model TokenQueue {
   id            String    @id @default(cuid())
-  queueDate     DateTime // midnight UTC of the queue day
+  queueDate     DateTime // midnight LOCAL time of the queue day (see token-queue.service.ts's resolveQueueDate) -- this comment previously said "UTC," which didn't match what the code actually stores; corrected 2026-07-22
   tokenNumber   Int
   patientName   String
   age           String?
@@ -3446,10 +3447,22 @@ model Lead {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  assignedTo Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo     Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  // Fresh-audit fix (2026-07-23): convertedClientId was a bare String with no
+  // @relation — no FK constraint, no index — despite the field comment above
+  // ("set when WON and linked to a Customer") documenting it as a real link.
+  // Nothing currently writes a real Customer id into it (verified: no
+  // "convert lead to customer" flow exists yet, only pass-through via the
+  // generic Lead.update IPC payload), so this was silent/inert rather than
+  // actively wrong — but a stray value would previously reference a
+  // nonexistent Customer with zero DB-level protection. onDelete: SetNull
+  // matches this schema's established convention for other nullable
+  // Customer-link fields (Quotation.customer, Appointment.customer, etc.).
+  convertedClient Customer? @relation("LeadConvertedClient", fields: [convertedClientId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([assignedToId])
+  @@index([convertedClientId])
 }
 
 model ServiceProject {

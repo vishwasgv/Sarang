@@ -170,6 +170,18 @@ export async function adjustRawMaterialStock(payload: {
     if (payload.type === 'ADJUSTMENT' && payload.quantity < 0) {
       return { success: false, error: { code: 'RM-007', message: 'Adjusted quantity cannot be negative.' } }
     }
+    // BUG FOUND 2026-07-22: PURCHASE and RETURN both flow into the same
+    // atomic `{ increment: payload.quantity }` branch below, on the
+    // documented assumption that "both are positive quantities" — but
+    // nothing actually enforced that. A negative PURCHASE (or RETURN)
+    // quantity flowed straight through, silently driving stock negative
+    // while recording a movement mislabeled as a stock INCREASE. A real
+    // return can also never legitimately be negative — that would mean
+    // material leaving stock, not coming back — so both types require a
+    // strictly positive quantity, same as PURCHASE.
+    if ((payload.type === 'PURCHASE' || payload.type === 'RETURN') && payload.quantity <= 0) {
+      return { success: false, error: { code: 'RM-011', message: `${payload.type === 'PURCHASE' ? 'Purchase' : 'Return'} quantity must be greater than zero.` } }
+    }
     if (payload.type === 'RETURN' && mat.currentStock + payload.quantity < 0) {
       return { success: false, error: { code: 'RM-007', message: 'Insufficient stock for return.' } }
     }

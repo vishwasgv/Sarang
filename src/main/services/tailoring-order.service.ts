@@ -180,40 +180,77 @@ export async function deleteTailoringOrder(id: string) {
   return { success: true }
 }
 
+// BUG FOUND 2026-07-22: this function checked `order.invoiceId` then wrote
+// it later with no atomic claim in between — a rapid double-click on
+// "Generate Invoice" could create two invoices for one order, with the
+// second write silently overwriting invoiceId and orphaning the first
+// invoice. Fixed to match the atomic claim-sentinel pattern already
+// established elsewhere in this codebase (e.g. rental.service.ts's
+// generateRentalInvoice, hotel.service.ts's generateHotelInvoice).
+const TAILORING_INVOICE_CLAIM_SENTINEL = 'CLAIMING'
+
 export async function generateTailoringInvoice(id: string) {
   const db = getPrisma()
-  const order = await db.tailoringOrder.findUnique({
-    where: { id },
-    include: { client: { select: { id: true, customerName: true } } },
-  })
-  if (!order) return { success: false, error: { code: 'TO-001', message: 'Tailoring order not found.' } }
-  if (order.invoiceId) return { success: false, error: { code: 'TO-003', message: 'Invoice already generated for this order.' } }
-  if (Number(order.totalAmount) === 0) {
-    return { success: false, error: { code: 'TO-004', message: 'Order total is zero. Set a unit price before generating an invoice.' } }
+  try {
+  const claim = await db.tailoringOrder.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: TAILORING_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.tailoringOrder.findUnique({ where: { id }, select: { id: true, invoiceId: true } })
+    if (!existing) return { success: false, error: { code: 'TO-001', message: 'Tailoring order not found.' } }
+    if (existing.invoiceId === TAILORING_INVOICE_CLAIM_SENTINEL) return { success: false, error: { code: 'TO-005', message: 'Invoice generation already in progress for this order.' } }
+    return { success: false, error: { code: 'TO-003', message: 'Invoice already generated for this order.' } }
   }
 
-  // SAC 998821 — Tailoring services, 5% GST
-  let tailoringProduct = await db.product.findFirst({ where: { hsnCode: '998821', isActive: true } })
-  if (!tailoringProduct) {
-    tailoringProduct = await db.product.create({
-      data: { productName: 'Tailoring Services', productType: 'SERVICE', hsnCode: '998821', sellingPrice: 0, taxRate: 5, unit: 'NOS', isActive: true },
+  try {
+    const order = await db.tailoringOrder.findUnique({
+      where: { id },
+      include: { client: { select: { id: true, customerName: true } } },
     })
+    if (!order) {
+      await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'TO-001', message: 'Tailoring order not found.' } }
+    }
+    if (Number(order.totalAmount) === 0) {
+      await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'TO-004', message: 'Order total is zero. Set a unit price before generating an invoice.' } }
+    }
+
+    // SAC 998821 — Tailoring services, 5% GST
+    let tailoringProduct = await db.product.findFirst({ where: { hsnCode: '998821', isActive: true } })
+    if (!tailoringProduct) {
+      tailoringProduct = await db.product.create({
+        data: { productName: 'Tailoring Services', productType: 'SERVICE', hsnCode: '998821', sellingPrice: 0, taxRate: 5, unit: 'NOS', isActive: true },
+      })
+    }
+
+    // BUG FOUND 2026-07-22: `taxRate: 5` was also hardcoded on the invoice
+    // ITEM here, permanently overriding the product's own configurable
+    // rate — the same bug class fixed earlier this session across 13 other
+    // vertical services. Removed so it falls through to
+    // tailoringProduct.taxRate, owner-editable via Settings > Products.
+    const result = await billingService.createInvoice({
+      customerId: order.clientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: tailoringProduct.id, quantity: order.quantity, unitPrice: Number(order.unitPrice) }],
+      notes: `Order ${order.orderNumber} — ${order.garmentType} × ${order.quantity}`,
+      referenceNumber: order.orderNumber,
+    })
+    if (!result.success) {
+      await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
+      return result
+    }
+
+    const invoice = result.data as { id: string }
+    await db.tailoringOrder.update({ where: { id }, data: { invoiceId: invoice.id } })
+    await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'TailoringOrder', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
+    throw err
   }
-
-  const result = await billingService.createInvoice({
-    customerId: order.clientId,
-    paymentMethod: 'CREDIT',
-    gstType: 'CGST_SGST',
-    items: [{ productId: tailoringProduct.id, quantity: order.quantity, unitPrice: Number(order.unitPrice), taxRate: 5 }],
-    notes: `Order ${order.orderNumber} — ${order.garmentType} × ${order.quantity}`,
-    referenceNumber: order.orderNumber,
-  })
-  if (!result.success) return result
-
-  const invoice = result.data as { id: string }
-  await db.tailoringOrder.update({ where: { id }, data: { invoiceId: invoice.id } })
-  await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'TailoringOrder', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
-  return { success: true, data: { invoiceId: invoice.id } }
+  } catch (e) {
+    return { success: false, error: { code: 'TO-008', message: e instanceof Error ? e.message : 'Could not generate invoice.' } }
+  }
 }
 
 export async function getTailoringKPIs() {

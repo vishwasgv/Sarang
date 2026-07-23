@@ -110,11 +110,30 @@ export async function updateDispatchStatus(payload: {
 }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    // Fast pre-check outside the transaction (not-found / already-idempotent)
+    // — NOT the real guard for the stock-deduction race, see below.
     const record = await db.dispatchRecord.findUnique({ where: { id: payload.id } })
     if (!record) return { success: false, error: { code: 'DSP-004', message: 'Dispatch record not found.' } }
     if (record.status === payload.status) return { success: true } // idempotent
 
+    // BUG FOUND 2026-07-22: `record.status === 'READY'` used to check the
+    // pre-transaction snapshot. Two concurrent calls to mark the same
+    // dispatch DISPATCHED would both read status: 'READY' before either
+    // committed, both pass this guard, and both decrement inventory by
+    // record.quantity — silently over-deducting finished-goods stock for
+    // one physical dispatch event (the insufficient-stock check only
+    // guards against going negative, not against double-counting when
+    // there's enough stock to cover both decrements). Fixed to re-read the
+    // record's status fresh INSIDE the transaction, immediately before the
+    // guard, matching the pattern already established elsewhere in this
+    // codebase (e.g. logistics-grn.service.ts's postGRN) for the identical
+    // race shape.
+    let previousStatus = record.status
     await db.$transaction(async (tx) => {
+      const fresh = await tx.dispatchRecord.findUniqueOrThrow({ where: { id: payload.id }, select: { status: true, productId: true, quantity: true, dispatchNumber: true, destination: true } })
+      previousStatus = fresh.status
+      if (fresh.status === payload.status) return // became a no-op by the time we got the lock
+
       await tx.dispatchRecord.update({
         where: { id: payload.id },
         data: {
@@ -125,31 +144,31 @@ export async function updateDispatchStatus(payload: {
       })
 
       // Deduct finished goods from inventory when dispatched (only on first DISPATCHED transition)
-      if (payload.status === 'DISPATCHED' && record.status === 'READY') {
-        const currentInv = await tx.inventory.findUnique({ where: { productId: record.productId }, select: { quantity: true } })
+      if (payload.status === 'DISPATCHED' && fresh.status === 'READY') {
+        const currentInv = await tx.inventory.findUnique({ where: { productId: fresh.productId }, select: { quantity: true } })
         const available = currentInv?.quantity ?? 0
-        if (available < record.quantity) {
-          throw new Error(`Insufficient stock to dispatch. Available: ${available}, required: ${record.quantity}.`)
+        if (available < fresh.quantity) {
+          throw new Error(`Insufficient stock to dispatch. Available: ${available}, required: ${fresh.quantity}.`)
         }
         await tx.inventory.update({
-          where: { productId: record.productId },
-          data: { quantity: { decrement: record.quantity } }
+          where: { productId: fresh.productId },
+          data: { quantity: { decrement: fresh.quantity } }
         })
         await tx.inventoryMovement.create({
           data: {
-            productId: record.productId,
+            productId: fresh.productId,
             movementType: 'DISPATCH_OUT',
-            quantity: record.quantity,
+            quantity: fresh.quantity,
             referenceType: 'DISPATCH',
-            referenceId: record.dispatchNumber,
-            remarks: `Dispatched: ${record.dispatchNumber}${record.destination ? ` → ${record.destination}` : ''}`,
+            referenceId: fresh.dispatchNumber,
+            remarks: `Dispatched: ${fresh.dispatchNumber}${fresh.destination ? ` → ${fresh.destination}` : ''}`,
             createdById: userId ?? null
           }
         })
       }
     })
 
-    await logAction(userId, 'DISPATCH_STATUS_UPDATED', 'DispatchRecord', payload.id, record.status, payload.status)
+    await logAction(userId, 'DISPATCH_STATUS_UPDATED', 'DispatchRecord', payload.id, previousStatus, payload.status)
     return { success: true }
   } catch (err) {
     return { success: false, error: { code: 'DSP-005', message: err instanceof Error ? err.message : 'Failed to update dispatch status.' } }

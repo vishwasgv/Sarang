@@ -5,6 +5,7 @@ import { logAction } from './audit.service'
 import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.service'
 import { seedDefaultServicesForTemplate } from './service-catalog.service'
 import { logger } from '../utils/logger'
+import { isValidLogoPath } from '../utils/logo-path'
 import type { ApiResponse, SetupPayload } from '../ipc/channels'
 
 export async function isSetupComplete(): Promise<ApiResponse<boolean>> {
@@ -20,6 +21,13 @@ export async function isSetupComplete(): Promise<ApiResponse<boolean>> {
 
 export async function completeSetup(payload: SetupPayload): Promise<ApiResponse> {
   try {
+    // logoPath must stay inside userData/logos — see utils/logo-path.ts. An
+    // unrestricted value here would be interpolated unescaped into every
+    // printed/exported document once setup completes.
+    if (!isValidLogoPath(payload.logoPath)) {
+      return { success: false, error: { code: 'VAL-002', message: 'Invalid logo file path.' } }
+    }
+
     const db = getPrisma()
 
     // Ensure default roles and permissions exist
@@ -98,12 +106,19 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
         create: { settingKey: 'recovery_code_hash', settingValue: recoveryCodeHash, settingType: 'STRING' },
         update: { settingValue: recoveryCodeHash }
       })
-    })
 
-    // Seed default service catalog entries for this template (outside transaction — not critical)
-    if (SERVICE_TEMPLATE_TYPES.has(payload.businessType)) {
-      await seedDefaultServicesForTemplate(payload.businessType)
-    }
+      // BUG FOUND 2026-07-22: this used to run AFTER the transaction above
+      // had already committed, deliberately excluded as "not critical." If
+      // it failed (or the app crashed) between that commit and this call,
+      // isSetupComplete() would already report true (profile + admin user
+      // exist), permanently locking the business out of ever getting its
+      // default service catalog with no in-app recovery path. Now inside
+      // the same transaction — a failure here rolls back the whole setup,
+      // and the wizard can simply be re-run from scratch.
+      if (SERVICE_TEMPLATE_TYPES.has(payload.businessType)) {
+        await seedDefaultServicesForTemplate(payload.businessType, tx)
+      }
+    }, { timeout: 30000 })
 
     return { success: true, data: { recoveryCode } }
   } catch (err) {

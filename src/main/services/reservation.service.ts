@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 import type { CreateReservationPayload, ListReservationsPayload } from '../validation/reservation.validation'
 
 // Phase 58 §2 (2026-07-21) — replaces the old bare "RESERVED" status string
@@ -42,8 +43,10 @@ export async function listReservations(filters?: ListReservationsPayload) {
       where: {
         ...(filters?.status ? { status: filters.status } : {}),
         ...(filters?.dateFrom || filters?.dateTo ? {
+          // BUG FOUND 2026-07-22: gte used to be new Date(filters.dateFrom),
+          // parsed as UTC midnight instead of local midnight.
           reservedFor: {
-            ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+            ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
             ...(filters.dateTo ? { lte: new Date(filters.dateTo + 'T23:59:59.999') } : {}),
           }
         } : {}),

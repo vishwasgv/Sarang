@@ -198,73 +198,104 @@ export async function deleteCarJobCard(id: string) {
   return { success: true }
 }
 
+// Real bug found 2026-07-23: unlike every sibling generate*Invoice function
+// in this codebase (membership/session-pack/driving/retainer/coaching-fee),
+// this one had no atomic claim on invoiceId — just a plain read-then-check
+// (`if (card.invoiceId) return error`) with the actual claim only happening
+// via a plain update() AFTER billingService.createInvoice() had already run.
+// Two concurrent "Generate Invoice" clicks on the same job card (a genuine
+// double-click, or two staff terminals) could both pass the stale check and
+// each create a real, separate Invoice — a real double-bill of the
+// customer, the exact "invoice-claim-sentinel race" bug class already
+// closed elsewhere (tailoring-order/service-ticket/field-order.service.ts).
+// Fixed with the same atomic conditional-claim + release-on-failure shape.
+const CAR_JOB_CARD_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generateCarJobInvoice(id: string) {
   const db = getPrisma()
-  const card = await db.carJobCard.findUnique({
-    where: { id },
-    include: { client: { select: { id: true, customerName: true } } },
-  })
-  if (!card) return { success: false, error: { code: 'CJC-001', message: 'Job card not found.' } }
-  if (card.invoiceId) return { success: false, error: { code: 'CJC-003', message: 'Invoice already generated for this job card.' } }
-
-  const laborTotal = Number(card.laborTotal)
-  const partsTotal = Number(card.partsTotal)
-  if (laborTotal === 0 && partsTotal === 0) {
-    return { success: false, error: { code: 'CJC-004', message: 'Job card has no service items or parts. Add items before generating an invoice.' } }
+  const claim = await db.carJobCard.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: CAR_JOB_CARD_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.carJobCard.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'CJC-001', message: 'Job card not found.' } }
+    return { success: false, error: { code: 'CJC-003', message: 'Invoice already generated for this job card.' } }
   }
 
-  const items: { productId: string; quantity: number; unitPrice: number; taxRate?: number }[] = []
-
-  if (laborTotal > 0) {
-    let laborProduct = await db.product.findFirst({ where: { hsnCode: '998731', isActive: true } })
-    if (!laborProduct) {
-      laborProduct = await db.product.create({
-        data: { productName: 'Automotive Service / Labor', productType: 'SERVICE', hsnCode: '998731', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
-      })
+  try {
+    const card = await db.carJobCard.findUnique({
+      where: { id },
+      include: { client: { select: { id: true, customerName: true } } },
+    })
+    if (!card) {
+      await db.carJobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'CJC-001', message: 'Job card not found.' } }
     }
-    items.push({ productId: laborProduct.id, quantity: 1, unitPrice: laborTotal })
-  }
 
-  // Parts linked to a real catalog product become their own STANDARD invoice
-  // line (using the actual quantity/rate and the product's own tax rate) —
-  // this is what makes billing.service.ts's existing inventory deduction
-  // (and, on cancellation, restoration) apply to them. Parts with no
-  // productId (not in the catalog) fall back to the old lumped generic line,
-  // same as every job card created before this change.
-  const partItems = parsePartItems(card.partsItems)
-  let unlinkedPartsTotal = 0
-  for (const part of partItems) {
-    if (part.productId) {
-      items.push({ productId: part.productId, quantity: part.quantity, unitPrice: part.unitPrice })
-    } else {
-      unlinkedPartsTotal += part.quantity * part.unitPrice
+    const laborTotal = Number(card.laborTotal)
+    const partsTotal = Number(card.partsTotal)
+    if (laborTotal === 0 && partsTotal === 0) {
+      await db.carJobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'CJC-004', message: 'Job card has no service items or parts. Add items before generating an invoice.' } }
     }
-  }
 
-  if (unlinkedPartsTotal > 0) {
-    let partsProduct = await db.product.findFirst({ where: { hsnCode: '87089990', isActive: true } })
-    if (!partsProduct) {
-      partsProduct = await db.product.create({
-        data: { productName: 'Automobile Parts & Accessories', productType: 'PRODUCT', hsnCode: '87089990', sellingPrice: 0, taxRate: 28, unit: 'NOS', isActive: true },
-      })
+    const items: { productId: string; quantity: number; unitPrice: number; taxRate?: number }[] = []
+
+    if (laborTotal > 0) {
+      let laborProduct = await db.product.findFirst({ where: { hsnCode: '998731', isActive: true } })
+      if (!laborProduct) {
+        laborProduct = await db.product.create({
+          data: { productName: 'Automotive Service / Labor', productType: 'SERVICE', hsnCode: '998731', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+        })
+      }
+      items.push({ productId: laborProduct.id, quantity: 1, unitPrice: laborTotal })
     }
-    items.push({ productId: partsProduct.id, quantity: 1, unitPrice: unlinkedPartsTotal })
+
+    // Parts linked to a real catalog product become their own STANDARD invoice
+    // line (using the actual quantity/rate and the product's own tax rate) —
+    // this is what makes billing.service.ts's existing inventory deduction
+    // (and, on cancellation, restoration) apply to them. Parts with no
+    // productId (not in the catalog) fall back to the old lumped generic line,
+    // same as every job card created before this change.
+    const partItems = parsePartItems(card.partsItems)
+    let unlinkedPartsTotal = 0
+    for (const part of partItems) {
+      if (part.productId) {
+        items.push({ productId: part.productId, quantity: part.quantity, unitPrice: part.unitPrice })
+      } else {
+        unlinkedPartsTotal += part.quantity * part.unitPrice
+      }
+    }
+
+    if (unlinkedPartsTotal > 0) {
+      let partsProduct = await db.product.findFirst({ where: { hsnCode: '87089990', isActive: true } })
+      if (!partsProduct) {
+        partsProduct = await db.product.create({
+          data: { productName: 'Automobile Parts & Accessories', productType: 'PRODUCT', hsnCode: '87089990', sellingPrice: 0, taxRate: 28, unit: 'NOS', isActive: true },
+        })
+      }
+      items.push({ productId: partsProduct.id, quantity: 1, unitPrice: unlinkedPartsTotal })
+    }
+
+    const result = await billingService.createInvoice({
+      customerId: card.clientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items,
+      notes: `Job Card ${card.jobNumber} — ${card.vehicleMake} ${card.vehicleModel} (${card.vehicleNumber})`,
+      referenceNumber: card.jobNumber,
+    })
+    if (!result.success) {
+      await db.carJobCard.update({ where: { id }, data: { invoiceId: null } })
+      return result
+    }
+
+    const invoice = result.data as { id: string }
+    await db.carJobCard.update({ where: { id }, data: { invoiceId: invoice.id, status: 'READY' } })
+    await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'CarJobCard', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    await db.carJobCard.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
+    return { success: false, error: { code: 'CJC-011', message: err instanceof Error ? err.message : 'Could not generate job card invoice.' } }
   }
-
-  const result = await billingService.createInvoice({
-    customerId: card.clientId,
-    paymentMethod: 'CREDIT',
-    gstType: 'CGST_SGST',
-    items,
-    notes: `Job Card ${card.jobNumber} — ${card.vehicleMake} ${card.vehicleModel} (${card.vehicleNumber})`,
-    referenceNumber: card.jobNumber,
-  })
-  if (!result.success) return result
-
-  const invoice = result.data as { id: string }
-  await db.carJobCard.update({ where: { id }, data: { invoiceId: invoice.id, status: 'READY' } })
-  await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'CarJobCard', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
-  return { success: true, data: { invoiceId: invoice.id } }
 }
 
 export async function getCarJobCardKPIs() {

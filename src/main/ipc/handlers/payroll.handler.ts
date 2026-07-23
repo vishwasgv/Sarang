@@ -79,7 +79,7 @@ export function register(handle: HandleFn): void {
         win.webContents.print({ silent: false, printBackground: true, color: true }, (success: boolean) => {
           win.close()
           unlink(tmpPath).catch(() => {})
-          resolve({ success: true, data: { printed: success } })
+          resolve({ success, data: { printed: success } })
         })
       })
     })

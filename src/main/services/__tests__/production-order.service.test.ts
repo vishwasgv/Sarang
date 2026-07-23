@@ -163,11 +163,27 @@ describe('startProductionOrder — Phase 58 §2 multi-level BOM component consum
       startDate: null, completedDate: null, notes: null, createdAt: new Date(), materialUsage
     }
     const txClient: Record<string, any> = {
-      rawMaterial: { update: vi.fn().mockResolvedValue({ currentStock: 0 }) },
+      // Regression for a real TOCTOU stock race found 2026-07-22:
+      // startProductionOrder now re-reads currentStock/inventory.quantity
+      // fresh INSIDE the transaction (findUniqueOrThrow/findUnique below)
+      // immediately before each decrement, not just relying on the
+      // pre-transaction snapshot already on materialUsage — mirror that
+      // same fixture data here so these fresh reads see consistent values.
+      rawMaterial: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue(
+          opts.rawUsage ? { currentStock: opts.rawUsage.currentStock, name: 'Steel', unit: 'kg' } : { currentStock: 0, name: 'Steel', unit: 'kg' }
+        ),
+        update: vi.fn().mockResolvedValue({ currentStock: 0 })
+      },
       rawMaterialMovement: { create: vi.fn().mockResolvedValue({}) },
       rawMaterialBatch: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
       productionMaterialBatchConsumption: { create: vi.fn().mockResolvedValue({}) },
-      inventory: { update: vi.fn().mockResolvedValue({}) },
+      inventory: {
+        findUnique: vi.fn().mockResolvedValue(
+          opts.componentUsage ? { quantity: opts.componentUsage.availableQty } : { quantity: 0 }
+        ),
+        update: vi.fn().mockResolvedValue({})
+      },
       inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
       productionMaterialUsage: { update: vi.fn().mockResolvedValue({}) },
       productionOrder: {
@@ -180,6 +196,26 @@ describe('startProductionOrder — Phase 58 §2 multi-level BOM component consum
       __txClient: txClient
     }
   }
+
+  // Regression for a real TOCTOU stock race found 2026-07-22: the
+  // pre-transaction shortfall check used to be the ONLY check — a
+  // concurrent decrement between that check and the actual mutation could
+  // drive stock negative with no error. Simulates exactly that: the
+  // pre-check snapshot shows enough stock, but a fresh in-transaction read
+  // (as if another concurrent order had just consumed it) shows there isn't.
+  it('re-checks stock fresh INSIDE the transaction and rejects if a concurrent consumer already used it up, even though the pre-check passed', async () => {
+    const db = makeStartDb({ rawUsage: { currentStock: 20, quantityPlanned: 20 } })
+    // Pre-check (outside tx) sees 20 available — passes. Fresh in-tx read
+    // sees only 5 left, as if a concurrent order consumed 15 in between.
+    db.__txClient.rawMaterial.findUniqueOrThrow.mockResolvedValue({ currentStock: 5, name: 'Steel', unit: 'kg' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await startProductionOrder('po-2', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('PO-008')
+    expect(db.__txClient.rawMaterial.update).not.toHaveBeenCalled()
+  })
 
   it('deducts the component product\'s OWN inventory (not RawMaterial) for a sub-assembly usage row', async () => {
     const db = makeStartDb({ componentUsage: { productId: 'prod-sub', availableQty: 10, quantityPlanned: 3 } })

@@ -4,6 +4,7 @@ import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { buildWhatsAppLink } from './notification-queue.service'
 import { roundCurrency } from './currency.service'
+import { ServiceError } from '../errors/service-error'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -690,33 +691,47 @@ export async function extendBooking(payload: { id: string; newEndDateTime: strin
       return { success: false, error: { code: 'RENT-002', message: 'New end date/time must be after the start date/time.' } }
     }
 
-    for (const item of booking.items) {
-      const avail = await computeAvailability(db, item.product, booking.startDateTime, newEnd, booking.id)
-      if (item.product.rentalTrackingType === 'BULK') {
-        if ((avail.availableQuantity ?? 0) < item.quantity) {
-          return { success: false, error: { code: 'RENT-019', message: `Extending would exceed available stock of "${item.product.productName}" for the new date range.` } }
-        }
-      } else if (item.rentalUnitId) {
-        const stillAvailable = avail.availableUnits?.some((u) => u.id === item.rentalUnitId)
-        if (!stillAvailable) {
-          return { success: false, error: { code: 'RENT-020', message: `"${item.product.productName}" (${item.rentalUnitId}) is booked by someone else during the extended period.` } }
+    // BUG FOUND 2026-07-22: computeAvailability used to be called against
+    // `db` (a pre-transaction read) and the actual extension committed in a
+    // SEPARATE, later transaction — exactly the TOCTOU pattern createBooking
+    // itself explicitly closed (see its own comment: "fresh inside this
+    // transaction... not against a pre-read snapshot"). Two concurrent
+    // extends, or an extend racing a new booking for the same unit/date
+    // range, could both pass the check and produce an overlapping double-
+    // booking. Fixed by moving the availability check and the update into
+    // the SAME transaction — computeAvailability already accepts a `tx`
+    // client for exactly this reason (see its signature above).
+    await db.$transaction(async (tx) => {
+      for (const item of booking.items) {
+        const avail = await computeAvailability(tx, item.product, booking.startDateTime, newEnd, booking.id)
+        if (item.product.rentalTrackingType === 'BULK') {
+          if ((avail.availableQuantity ?? 0) < item.quantity) {
+            throw new ServiceError('RENT-019', `Extending would exceed available stock of "${item.product.productName}" for the new date range.`)
+          }
+        } else if (item.rentalUnitId) {
+          const stillAvailable = avail.availableUnits?.some((u) => u.id === item.rentalUnitId)
+          if (!stillAvailable) {
+            throw new ServiceError('RENT-020', `"${item.product.productName}" (${item.rentalUnitId}) is booked by someone else during the extended period.`)
+          }
         }
       }
-    }
 
-    // Re-derive each item's lineTotal for the new duration — rateAmount stays
-    // the snapshot from booking time, only the duration changes.
-    await db.$transaction(async (tx) => {
+      // Re-derive each item's lineTotal for the new duration — rateAmount stays
+      // the snapshot from booking time, only the duration changes.
       await tx.rentalBooking.update({ where: { id: payload.id }, data: { endDateTime: newEnd } })
       for (const item of booking.items) {
         const durationUnits = computeDurationUnits(booking.startDateTime, newEnd, item.rateBasis as RateBasis)
-        await tx.rentalBookingItem.update({ where: { id: item.id }, data: { lineTotal: item.rateAmount * durationUnits * item.quantity } })
+        // BUG FOUND 2026-07-22: this recomputed lineTotal skipped
+        // roundCurrency, unlike createBooking's identical calculation —
+        // a minor float-precision inconsistency between the two paths.
+        await tx.rentalBookingItem.update({ where: { id: item.id }, data: { lineTotal: roundCurrency(item.rateAmount * durationUnits * item.quantity) } })
       }
     })
 
     await logAction({ userId: payload.userId, action: 'RENTAL_EXTENDED', entityType: 'RentalBooking', entityId: payload.id, newValue: { newEndDateTime: payload.newEndDateTime } })
     return getBooking(payload.id)
   } catch (e) {
+    if (e instanceof ServiceError) return { success: false, error: { code: e.code, message: e.message } }
     return { success: false, error: { code: 'RENT-021', message: e instanceof Error ? e.message : 'Could not extend booking.' } }
   }
 }

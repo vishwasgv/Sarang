@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { createComplianceTask } from '../compliance-task.service'
+import { createComplianceTask, listComplianceTasks } from '../compliance-task.service'
 
 // Regression coverage for the Phase 29 re-audit finding: the reminder dedup
 // in scheduleComplianceNotifications matched on `taskId.slice(-6)` — a bare
@@ -51,5 +51,52 @@ describe('compliance-task.service — reminder dedup precision', () => {
     const createdBodies = db.notificationQueue.create.mock.calls.map((c: any) => c[0].data.templateBody)
     expect(createdBodies.every((b: string) => b.includes('[task-abc123]'))).toBe(true)
     expect(createdBodies.every((b: string) => !b.includes('[bc123]'))).toBe(true)
+  })
+})
+
+// Regression for a real date-boundary bug found 2026-07-22: a compliance
+// deadline is a pure calendar date, always constructed at LOCAL midnight
+// (compliance-event.service.ts's computeNextDueDate). Round-tripping it
+// through a raw `.toISOString()` on serialization (or `new Date(dateStr)` on
+// input) shifted it to the UTC instant, which for IST (the app's primary
+// market, UTC+5:30) lands on the PREVIOUS UTC calendar day — every
+// auto-generated statutory deadline displayed one day earlier than the real
+// one.
+describe('compliance-task.service — local calendar-date correctness', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createComplianceTask parses a "YYYY-MM-DD" dueDate as local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createComplianceTask({ clientId: 'cust-1', title: 'GSTR-3B Filing', category: 'GST', dueDate: '2026-07-31' })
+
+    const createCall = db.complianceTask.create.mock.calls[0][0]
+    const storedDate = createCall.data.dueDate as Date
+    // Local calendar components must read July 31st, not July 30th (which
+    // is what new Date('2026-07-31') — UTC midnight — would show once
+    // re-inspected in an IST-ahead-of-UTC environment).
+    expect(storedDate.getFullYear()).toBe(2026)
+    expect(storedDate.getMonth()).toBe(6) // 0-indexed: July
+    expect(storedDate.getDate()).toBe(31)
+  })
+
+  it('listComplianceTasks serializes dueDate to a date string that reflects the correct LOCAL calendar day, not the UTC-shifted one', async () => {
+    const db = makeMockDb()
+    // A dueDate exactly as computeNextDueDate would construct it: local
+    // midnight of July 31, 2026.
+    const localMidnightJuly31 = new Date(2026, 6, 31)
+    db.complianceTask.findMany = vi.fn().mockResolvedValue([
+      { id: 'task-1', dueDate: localMidnightJuly31, filedOn: null, createdAt: new Date(), updatedAt: new Date() },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listComplianceTasks()
+
+    expect(res.success).toBe(true)
+    const task = (res as unknown as { data: Array<{ dueDate: string }> }).data[0]
+    // The renderer does `task.dueDate.slice(0, 10)` directly — this must
+    // read "2026-07-31", not "2026-07-30".
+    expect(task.dueDate.slice(0, 10)).toBe('2026-07-31')
   })
 })

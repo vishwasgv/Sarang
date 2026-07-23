@@ -138,7 +138,14 @@ describe('createBackup', () => {
   })
 
   it('applies retention policy, keeping only the N most recent backups', async () => {
-    db.setting.findUnique.mockResolvedValue({ settingValue: '2' })
+    // Scoped to backup_retention_count only — a blanket mockResolvedValue also answers
+    // getBackupDir()'s backup_destination_dir lookup, making '2' look like a real (relative)
+    // custom destination and creating a genuine "2/" folder under the repo root via the
+    // real (unmocked) fs calls in getBackupDir(). This bug leaked hundreds of stray
+    // .sarang-backup files into "1/" and "2/" at the project root over several weeks.
+    db.setting.findUnique.mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'backup_retention_count' ? { settingValue: '2' } : null)
+    )
     const existing = [
       { id: 'old-1', backupPath: join(backupDir, 'old-1.sarang-backup'), backupDate: new Date('2020-01-03') },
       { id: 'old-2', backupPath: join(backupDir, 'old-2.sarang-backup'), backupDate: new Date('2020-01-02') },
@@ -199,7 +206,10 @@ describe('restoreBackup', () => {
     // if retention ran before the target's db was extracted, delete `target` (the
     // oldest of the two) before it's ever read — this pins the fix that extracts
     // the target backup BEFORE the safety-backup/retention step runs.
-    db.setting.findUnique.mockResolvedValue({ settingValue: '1' })
+    // See the retention-policy test above for why this must be scoped by settingKey.
+    db.setting.findUnique.mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'backup_retention_count' ? { settingValue: '1' } : null)
+    )
 
     const target = await createRealBackup('old')
     db.backup.findMany.mockResolvedValue([

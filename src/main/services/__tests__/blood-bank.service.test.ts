@@ -318,8 +318,16 @@ describe('blood-bank.service', () => {
     it('flags a platelet unit as expiring soon well before a whole-blood unit at the same days-remaining', async () => {
       const db = makeMockDb()
       vi.mocked(getPrisma).mockReturnValue(db as never)
+      // Two different donors — this test is purely about component-specific
+      // shelf-life/expiry-window flagging, not donor eligibility. Using the
+      // same donor for both would now correctly trip the real cooldown-
+      // enforcement rule added 2026-07-22 (a donation right after another
+      // from the same donor, with no time elapsed, is exactly what that rule
+      // exists to block), which isn't what this test is checking.
       const donorRes = await createDonor({ fullName: 'Ravi Kumar' })
       const donorId = (donorRes.data as any).id
+      const donor2Res = await createDonor({ fullName: 'Priya Singh' })
+      const donor2Id = (donor2Res.data as any).id
 
       const plateletDonation = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'PLATELETS' })
       await updateScreeningStatus({ id: (plateletDonation.data as any).id, screeningStatus: 'PASSED' })
@@ -327,7 +335,7 @@ describe('blood-bank.service', () => {
       const plateletBatchId = db.__stores.donationRecords[(plateletDonation.data as any).id].productBatchId
       db.__stores.productBatches[plateletBatchId].expiryDate = new Date(Date.now() + 1 * 86400000)
 
-      const rbcDonation = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'PACKED_RBC' })
+      const rbcDonation = await createDonationRecord({ donorId: donor2Id, bloodGroup: 'O+', componentType: 'PACKED_RBC' })
       await updateScreeningStatus({ id: (rbcDonation.data as any).id, screeningStatus: 'PASSED' })
       const rbcBatchId = db.__stores.donationRecords[(rbcDonation.data as any).id].productBatchId
       db.__stores.productBatches[rbcBatchId].expiryDate = new Date(Date.now() + 1 * 86400000)
@@ -632,6 +640,66 @@ describe('blood-bank.service', () => {
       await updateScreeningStatus({ id: (donationRes.data as any).id, screeningStatus: 'PASSED' })
 
       expect(db.__stores.donors[donorId].lastDonationComponentType).toBe('PLATELETS')
+    })
+
+    // Regression for a real safety gap found 2026-07-22: cooldownDaysFor/
+    // computeNextEligibleDate were correctly computed but only ever used for
+    // DISPLAY — nothing actually stopped a donation from being recorded
+    // before the donor's real eligibility date.
+    it('createDonationRecord rejects a donation from a donor still inside their cooldown window', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar', gender: 'MALE' })
+      const donorId = (donorRes.data as any).id
+      // Whole-blood donation 10 days ago — well inside the 90-day cooldown.
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 10 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'WHOLE_BLOOD' })
+
+      expect(res.success).toBe(false)
+      expect((res as any).error.code).toBe('BB-035')
+    })
+
+    it('createDonationRecord allows a donation once the donor is past their cooldown window', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar', gender: 'MALE' })
+      const donorId = (donorRes.data as any).id
+      // Whole-blood donation 100 days ago — past the 90-day cooldown.
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 100 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'WHOLE_BLOOD' })
+
+      expect(res.success).toBe(true)
+    })
+
+    it('createDonationRecord allows a first-ever donation (no lastDonationDate to be blocked by)', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar' })
+      const donorId = (donorRes.data as any).id
+
+      const res = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'WHOLE_BLOOD' })
+
+      expect(res.success).toBe(true)
+    })
+
+    it('createDonationRecord allows a shorter-cooldown component (platelets) sooner than a whole-blood cooldown would allow', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar', gender: 'MALE' })
+      const donorId = (donorRes.data as any).id
+      // Last donation was PLATELETS (14-day cooldown) 20 days ago — past its
+      // own cooldown, even though it would still be inside a 90-day
+      // whole-blood window if the component type were ignored.
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 20 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'PLATELETS'
+
+      const res = await createDonationRecord({ donorId, bloodGroup: 'O+', componentType: 'PLATELETS' })
+
+      expect(res.success).toBe(true)
     })
   })
 

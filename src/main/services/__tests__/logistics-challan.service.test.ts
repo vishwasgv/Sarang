@@ -97,6 +97,29 @@ describe('updateChallanStatus — transitions', () => {
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('VAL-003')
   })
+
+  // Regression for a real TOCTOU stock-double-decrement race found
+  // 2026-07-22: "the state machine only ever allows [DRAFT→ISSUED] once per
+  // challan" was only true for sequential calls. Simulates the race: the
+  // outer pre-check sees DRAFT (as it would for the second of two
+  // near-simultaneous ISSUED calls, since neither has committed yet), but
+  // by the time this call's transaction reads fresh, the first concurrent
+  // call has already flipped it to ISSUED — the fresh in-transaction
+  // re-check must reject the transition and never touch inventory a second
+  // time.
+  it('re-validates the transition fresh inside the transaction and rejects if a concurrent call already issued the challan', async () => {
+    const findUnique = vi.fn()
+      .mockResolvedValueOnce(makeChallan({ status: 'DRAFT' })) // outer pre-check
+      .mockResolvedValueOnce(makeChallan({ status: 'ISSUED' })) // fresh in-tx read
+    const db = makeDb({ deliveryChallan: { findUnique, update: vi.fn() } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await updateChallanStatus({ id: 'dc-1', status: 'ISSUED' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('VAL-003')
+    expect(inventoryService.reduceStockTx).not.toHaveBeenCalled()
+  })
 })
 
 describe('recordChallanReturn — quantity guards', () => {
@@ -233,6 +256,26 @@ describe('recordChallanReturn — inventory restoration', () => {
     const result = await recordChallanReturn({ id: 'dc-1', items: [{ itemId: 'ci-1', returnedQty: 0 }] })
 
     expect(result.success).toBe(true)
+    expect(inventoryService.addStockTx).not.toHaveBeenCalled()
+  })
+
+  // Regression for a real TOCTOU double-credit race found 2026-07-22: the
+  // `existing.status !== 'ISSUED'` check ran against a pre-transaction
+  // snapshot — two concurrent return submissions could both pass it and
+  // both credit stock for one physical return. Simulates the race the same
+  // way as updateChallanStatus's equivalent test above.
+  it('re-validates ISSUED status fresh inside the transaction and rejects if a concurrent call already returned the challan', async () => {
+    const returnableItems = [{ id: 'ci-1', productId: 'prod-1', productName: 'Widget', quantity: 10, returnedQty: 0, unit: 'PCS', unitValue: 50, totalValue: 500, notes: null }]
+    const findUnique = vi.fn()
+      .mockResolvedValueOnce(makeChallan({ status: 'ISSUED', challanType: 'RETURNABLE', items: returnableItems })) // outer pre-check
+      .mockResolvedValueOnce(makeChallan({ status: 'RETURNED', challanType: 'RETURNABLE', items: returnableItems })) // fresh in-tx read
+    const db = makeDb({ deliveryChallan: { findUnique, update: vi.fn() } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await recordChallanReturn({ id: 'dc-1', items: [{ itemId: 'ci-1', returnedQty: 4 }] })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('VAL-003')
     expect(inventoryService.addStockTx).not.toHaveBeenCalled()
   })
 })

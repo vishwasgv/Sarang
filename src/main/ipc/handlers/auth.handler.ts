@@ -8,6 +8,7 @@ import { LoginSchema, ChangePasswordSchema, ResetPasswordWithRecoveryCodeSchema,
 import { SetupPayloadSchema } from '../../validation/setup.validation'
 import { BusinessProfileUpdateSchema } from '../../validation/business-profile.validation'
 import { unlink } from 'fs/promises'
+import { isValidLogoPath } from '../../utils/logo-path'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -95,6 +96,13 @@ export function register(handle: HandleFn): void {
     const parsed = BusinessProfileUpdateSchema.safeParse(payload)
     if (!parsed.success) {
       return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid business profile data.' } }
+    }
+    // logoPath must stay inside userData/logos — its OLD value gets unlink()ed
+    // below on change (arbitrary-file-delete risk) and it's read straight off
+    // disk elsewhere (logoToBase64DataUri, print.service.ts's HTML templates).
+    // See utils/logo-path.ts for the full writeup.
+    if ('logoPath' in parsed.data && !isValidLogoPath(parsed.data.logoPath)) {
+      return { success: false, error: { code: 'VAL-002', message: 'Invalid logo file path.' } }
     }
     const db = getPrisma()
     const existing = await db.businessProfile.findFirst()

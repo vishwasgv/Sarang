@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 // MembershipPlan.price is a Prisma Decimal — Electron's IPC (structured
 // clone) cannot serialize a Decimal instance and throws "An object could
@@ -370,23 +371,41 @@ export async function checkInMember(clientId: string, membershipId: string) {
   try {
     const db = getPrisma()
 
-    const membership = await db.membership.findUnique({
-      where: { id: membershipId },
-      include: { plan: { select: { sessionsIncluded: true } } },
-    })
-    if (!membership) return { success: false, error: { code: 'M27-NO-MEMBERSHIP', message: 'Membership not found.' } }
-    if (membership.status !== 'ACTIVE') return { success: false, error: { code: 'M27-NOT-ACTIVE', message: 'Membership is not active.' } }
-    if (membership.endDate < new Date()) return { success: false, error: { code: 'M27-EXPIRED', message: 'Membership has expired. Please renew to continue.' } }
-    const cap = membership.plan.sessionsIncluded
-    if (cap != null && membership.sessionsUsed >= cap) return { success: false, error: { code: 'M27-SESSION-CAP', message: `All ${cap} sessions in your plan have been used. Please renew or upgrade your membership.` } }
+    // Real bug found 2026-07-23: the status/expiry/session-cap checks used
+    // to run against a pre-transaction read, with only the actual
+    // attendance-create + sessionsUsed-increment committed atomically
+    // together (via a plain array passed to $transaction) — atomic with
+    // each other, but not with the checks that gated them. Two
+    // near-simultaneous check-ins for the same membership sitting one
+    // session below its cap could each pass the "sessionsUsed >= cap"
+    // check against the same stale snapshot and both then increment,
+    // letting a member check in one session over their paid plan. Same
+    // TOCTOU class already closed in session-pack.service.ts's
+    // deductSession — the whole read-check-write sequence now runs inside
+    // one transaction, re-read fresh.
+    const result = await db.$transaction(async (tx) => {
+      const membership = await tx.membership.findUnique({
+        where: { id: membershipId },
+        include: { plan: { select: { sessionsIncluded: true } } },
+      })
+      if (!membership) return { status: 'not-found' as const }
+      if (membership.status !== 'ACTIVE') return { status: 'not-active' as const }
+      if (membership.endDate < new Date()) return { status: 'expired' as const }
+      const cap = membership.plan.sessionsIncluded
+      if (cap != null && membership.sessionsUsed >= cap) return { status: 'cap' as const, cap }
 
-    const [attendance] = await db.$transaction([
-      db.memberAttendance.create({ data: { clientId, membershipId, checkInTime: new Date() } }),
-      db.membership.update({ where: { id: membershipId }, data: { sessionsUsed: { increment: 1 } } }),
-    ])
+      const attendance = await tx.memberAttendance.create({ data: { clientId, membershipId, checkInTime: new Date() } })
+      await tx.membership.update({ where: { id: membershipId }, data: { sessionsUsed: { increment: 1 } } })
+      return { status: 'ok' as const, attendance }
+    })
+
+    if (result.status === 'not-found') return { success: false, error: { code: 'M27-NO-MEMBERSHIP', message: 'Membership not found.' } }
+    if (result.status === 'not-active') return { success: false, error: { code: 'M27-NOT-ACTIVE', message: 'Membership is not active.' } }
+    if (result.status === 'expired') return { success: false, error: { code: 'M27-EXPIRED', message: 'Membership has expired. Please renew to continue.' } }
+    if (result.status === 'cap') return { success: false, error: { code: 'M27-SESSION-CAP', message: `All ${result.cap} sessions in your plan have been used. Please renew or upgrade your membership.` } }
 
     await db.auditLog.create({ data: { action: 'CHECK_IN', entityType: 'Membership', entityId: membershipId } }).catch(() => {})
-    return { success: true, data: attendance }
+    return { success: true, data: result.attendance }
   } catch (err) {
     return { success: false, error: { code: 'M27-005', message: err instanceof Error ? err.message : 'Could not check in member.' } }
   }
@@ -397,9 +416,18 @@ export async function getMembershipAttendance(membershipId: string, dateFrom?: s
     const db = getPrisma()
     const where: Record<string, unknown> = { membershipId }
     if (dateFrom || dateTo) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight; dateTo also
+      // lacked an end-of-day adjustment, excluding same-day check-ins.
+      // Real bug found 2026-07-23: the dateTo fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date that a UTC parse already got wrong in any
+      // negative-UTC-offset timezone. parseLocalDateEnd fixes this by
+      // constructing local end-of-day directly from the string's Y/M/D.
       where.checkInTime = {
-        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-        ...(dateTo ? { lte: new Date(dateTo) } : {}),
+        ...(dateFrom ? { gte: parseLocalDateStart(dateFrom) } : {}),
+        ...(dateTo ? { lte: parseLocalDateEnd(dateTo) } : {}),
       }
     }
     const records = await db.memberAttendance.findMany({

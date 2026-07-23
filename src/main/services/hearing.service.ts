@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export async function listHearings(filters?: {
   caseId?: string
@@ -13,9 +14,18 @@ export async function listHearings(filters?: {
     if (filters?.caseId) where.caseId = filters.caseId
     if (filters?.status) where.status = filters.status
     if (filters?.fromDate || filters?.toDate) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight; toDate also
+      // lacked an end-of-day adjustment.
+      // Real bug found 2026-07-23: the toDate fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. parseLocalDateEnd constructs local end-of-day
+      // directly from the string's Y/M/D instead.
       where.hearingDate = {
-        ...(filters?.fromDate ? { gte: new Date(filters.fromDate) } : {}),
-        ...(filters?.toDate ? { lte: new Date(filters.toDate) } : {}),
+        ...(filters?.fromDate ? { gte: parseLocalDateStart(filters.fromDate) } : {}),
+        ...(filters?.toDate ? { lte: parseLocalDateEnd(filters.toDate) } : {}),
       }
     }
 

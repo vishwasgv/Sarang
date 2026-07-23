@@ -231,10 +231,15 @@ describe('shoot-booking.service — generateShootInvoice', () => {
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
       items: [
         expect.objectContaining({ productId: 'product-1', unitPrice: 50000, quantity: 1 }),
-        expect.objectContaining({ unitPrice: 15, quantity: 20, taxRate: 18 }),
-        expect.objectContaining({ unitPrice: 3000, quantity: 1, taxRate: 18 }),
+        expect.objectContaining({ unitPrice: 15, quantity: 20 }),
+        expect.objectContaining({ unitPrice: 3000, quantity: 1 }),
       ],
     }))
+    // Regression for a real bug found 2026-07-22: taxRate used to be
+    // hardcoded on every item here, permanently overriding the product's
+    // own configurable rate.
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    for (const item of call.items) expect(item).not.toHaveProperty('taxRate')
     // Each add-on gets looked up/created by its OWN description text, not
     // folded into the base product or a single generic "add-on" line.
     expect(db.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ productName: 'Extra prints (6x4)' }) }))

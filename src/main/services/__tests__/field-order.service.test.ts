@@ -20,7 +20,29 @@ import {
 // check happens exactly once inside billingService.createInvoice, never
 // duplicated here — structural mirror of restaurant-order.service.test.ts.
 
+// Regression for a real double-invoice/double-resolve race found
+// 2026-07-22: accept/rejectFieldOrderRequest now atomically claim the
+// request (updateMany where status: 'PENDING') before doing any real work
+// — this stateful mock mirrors that claim/release lifecycle so tests
+// exercise the actual guard, not a bypass. `initialStatus` seeds the
+// starting state; `updateMany`/`update` both mutate it, `findUnique`
+// always reflects the current state.
 function makeMockDb(overrides: Record<string, any> = {}) {
+  let status = 'PENDING'
+  const fieldOrderRequestDefaults = {
+    create: vi.fn().mockResolvedValue({ id: 'req-1' }),
+    findMany: vi.fn().mockResolvedValue([]),
+    findUnique: vi.fn().mockImplementation(() => Promise.resolve({ id: 'req-1', repName: 'Rep A', customerId: null, status, items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-2', quantity: 1 }] })),
+    updateMany: vi.fn().mockImplementation(({ where, data }: any) => {
+      if (where.status !== undefined && status !== where.status) return Promise.resolve({ count: 0 })
+      status = data.status
+      return Promise.resolve({ count: 1 })
+    }),
+    update: vi.fn().mockImplementation(({ data }: any) => {
+      if ('status' in data) status = data.status
+      return Promise.resolve({ id: 'req-1', status, ...data })
+    }),
+  }
   const db: Record<string, any> = {
     customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) },
     product: {
@@ -29,14 +51,10 @@ function makeMockDb(overrides: Record<string, any> = {}) {
         { id: 'prod-2', isActive: true, sellingPrice: 50, taxRate: 5 },
       ]),
     },
-    fieldOrderRequest: {
-      create: vi.fn().mockResolvedValue({ id: 'req-1' }),
-      findMany: vi.fn().mockResolvedValue([]),
-      findUnique: vi.fn(),
-      update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'req-1', ...data })),
-    },
+    fieldOrderRequest: fieldOrderRequestDefaults,
     ...overrides,
   }
+  db.__setStatus = (s: string) => { status = s }
   return db
 }
 
@@ -125,30 +143,31 @@ describe('createFieldOrderRequest (rep-facing, unauthenticated LAN endpoint)', (
 })
 
 describe('acceptFieldOrderRequest (staff-facing, permissioned)', () => {
-  function makePendingRequest(customerId: string | null = null) {
-    return { id: 'req-1', repName: 'Rep A', customerId, status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-2', quantity: 1 }] }
-  }
-
   it('rejects accepting a request that is not PENDING', async () => {
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue({ ...makePendingRequest(), status: 'ACCEPTED' }) } })
-    vi.mocked(getPrisma).mockReturnValue(db as never)
-    const res = await acceptFieldOrderRequest('req-1', { paymentMethod: 'CASH' })
-    expect(res.success).toBe(false)
-  })
-
-  it('rejects if a product in the order is no longer active', async () => {
-    const db = makeMockDb({
-      fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()) },
-      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', taxRate: 5, isActive: false }]) },
-    })
+    const db = makeMockDb()
+    db.__setStatus('ACCEPTED')
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await acceptFieldOrderRequest('req-1', { paymentMethod: 'CASH' })
     expect(res.success).toBe(false)
     expect(billingService.createInvoice).not.toHaveBeenCalled()
   })
 
+  it('rejects if a product in the order is no longer active, and releases the claim back to PENDING', async () => {
+    const db = makeMockDb({
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', taxRate: 5, isActive: false }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await acceptFieldOrderRequest('req-1', { paymentMethod: 'CASH' })
+    expect(res.success).toBe(false)
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(db.fieldOrderRequest.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'PENDING' } }))
+  })
+
   it('builds invoice line items from resolveCustomerPrice, never anything from the original request', async () => {
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest('cust-1')), update: vi.fn().mockResolvedValue({}) } })
+    const db = makeMockDb({
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) },
+    })
+    db.fieldOrderRequest.findUnique = vi.fn().mockResolvedValue({ id: 'req-1', repName: 'Rep A', customerId: 'cust-1', status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-2', quantity: 1 }] })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
 
@@ -167,7 +186,8 @@ describe('acceptFieldOrderRequest (staff-facing, permissioned)', () => {
 
   it('uses the negotiated class price at accept time, even if the original estimate used list price', async () => {
     vi.mocked(resolveCustomerPrice).mockResolvedValue(75)
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest('cust-1')), update: vi.fn().mockResolvedValue({}) } })
+    const db = makeMockDb()
+    db.fieldOrderRequest.findUnique = vi.fn().mockResolvedValue({ id: 'req-1', repName: 'Rep A', customerId: 'cust-1', status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-2', quantity: 1 }] })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
 
@@ -177,42 +197,78 @@ describe('acceptFieldOrderRequest (staff-facing, permissioned)', () => {
   })
 
   it('marks the request ACCEPTED with the resulting invoiceId on success', async () => {
-    const updateSpy = vi.fn().mockResolvedValue({})
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
+    const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
 
     await acceptFieldOrderRequest('req-1', { paymentMethod: 'CASH' })
-    expect(updateSpy).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: expect.objectContaining({ status: 'ACCEPTED', invoiceId: 'inv-1' }) })
+    expect(db.fieldOrderRequest.update).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: expect.objectContaining({ status: 'ACCEPTED', invoiceId: 'inv-1' }) })
   })
 
-  it('does not mark the request resolved if invoice creation fails — this is where the ONE credit-limit check happens', async () => {
-    const updateSpy = vi.fn()
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
+  it('releases the claim back to PENDING if invoice creation fails — this is where the ONE credit-limit check happens', async () => {
+    const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'INV-003', message: 'Credit limit exceeded' } } as never)
 
     const res = await acceptFieldOrderRequest('req-1', { paymentMethod: 'CREDIT' })
     expect(res.success).toBe(false)
-    expect(updateSpy).not.toHaveBeenCalled()
+    expect(db.fieldOrderRequest.update).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: { status: 'PENDING' } })
+  })
+
+  // Regression for a real double-invoice race found 2026-07-22: the status
+  // check used to run against a pre-transaction snapshot with no atomic
+  // claim before creating a real invoice. Simulates the actual race: the
+  // initial read sees PENDING (as it would for the second of two
+  // near-simultaneous calls, since neither has committed yet), but a
+  // concurrent call has already won the atomic claim by the time
+  // updateMany actually runs.
+  it('rejects a concurrent second accept call that loses the atomic claim race, even though its own initial read saw PENDING', async () => {
+    const db = makeMockDb()
+    db.fieldOrderRequest.findUnique = vi.fn()
+      .mockResolvedValueOnce({ id: 'req-1', repName: 'Rep A', customerId: null, status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-2', quantity: 1 }] }) // initial pre-check read
+      .mockResolvedValueOnce({ id: 'req-1', status: 'PROCESSING' }) // re-read after losing the claim
+    db.fieldOrderRequest.updateMany = vi.fn().mockResolvedValue({ count: 0 }) // lost the race to a concurrent winner
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await acceptFieldOrderRequest('req-1', { paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('FOR-025')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
   })
 })
 
 describe('rejectFieldOrderRequest', () => {
   it('rejects a PENDING request', async () => {
-    const updateSpy = vi.fn().mockResolvedValue({})
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'PENDING' }), update: updateSpy } })
+    const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await rejectFieldOrderRequest('req-1')
     expect(res.success).toBe(true)
-    expect(updateSpy).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: expect.objectContaining({ status: 'REJECTED' }) })
+    expect(db.fieldOrderRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'req-1', status: 'PENDING' },
+      data: expect.objectContaining({ status: 'REJECTED' }),
+    }))
   })
 
   it('refuses to reject an already-resolved request', async () => {
-    const db = makeMockDb({ fieldOrderRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'ACCEPTED' }) } })
+    const db = makeMockDb()
+    db.__setStatus('ACCEPTED')
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await rejectFieldOrderRequest('req-1')
     expect(res.success).toBe(false)
+  })
+
+  // Regression for the same double-resolve race class fixed in
+  // acceptFieldOrderRequest, applied here too for consistency.
+  it('rejects a concurrent second call once the request has already been claimed/resolved', async () => {
+    const db = makeMockDb()
+    db.__setStatus('ACCEPTED') // already resolved by a concurrent accept
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await rejectFieldOrderRequest('req-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('FOR-031')
   })
 })
 

@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -884,16 +885,36 @@ export async function getCustomerStayHistory(customerId: string): Promise<{ succ
 const HOTEL_ROOM_CHARGE_PRODUCT_NAME = 'Hotel Room Charge'
 const HOTEL_INVOICE_CLAIM_SENTINEL = 'CLAIMING'
 
-async function findOrCreatePlaceholderProduct(name: string): Promise<{ id: string }> {
+// BUG FOUND 2026-07-22: this used to hardcode `taxRate: 0` with no way to
+// override it — since every call site below passed no tax rate at all,
+// EVERY hotel invoice (room charge and every extra charge) was generated at
+// 0% tax, unconditionally. Hotel accommodation and most hotel extra charges
+// (food, laundry, etc.) are taxable in essentially every jurisdiction this
+// app targets. Fixed to match the established pattern used everywhere else
+// in this codebase (e.g. rental.service.ts's identically-named helper):
+// take a caller-supplied default, which then flows through to the created
+// Product's own taxRate — owner-editable afterward via Settings > Products,
+// exactly like every other auto-created placeholder-billing product in the
+// app. This does not invent a new configuration surface; it uses the one
+// that already exists and that every other vertical already relies on.
+async function findOrCreatePlaceholderProduct(name: string, taxRate = 0): Promise<{ id: string }> {
   const db = getPrisma()
   let product = await db.product.findFirst({ where: { productName: name, isActive: true } })
   if (!product) {
     product = await db.product.create({
-      data: { productName: name, productType: 'SERVICE', sellingPrice: 0, taxRate: 0, unit: 'NOS', isActive: true },
+      data: { productName: name, productType: 'SERVICE', sellingPrice: 0, taxRate, unit: 'NOS', isActive: true },
     })
   }
   return product
 }
+
+// India's most common hotel-accommodation GST slab. Not universally correct
+// (rates vary by tariff and by country) — the point is a real, non-zero,
+// owner-editable starting point instead of a silent, permanent 0%.
+const HOTEL_ROOM_CHARGE_DEFAULT_TAX_RATE = 12
+// General taxable-service default, matching the convention used for every
+// other auto-created placeholder-billing product across this codebase.
+const HOTEL_EXTRA_CHARGE_DEFAULT_TAX_RATE = 18
 
 // Same atomic claim-sentinel + find-or-create-placeholder-Product +
 // billingService.createInvoice() pattern rental.service.ts's
@@ -927,12 +948,12 @@ export async function generateHotelInvoice(bookingId: string, userId?: string): 
       const nights = computeNights(booking.checkInDate, booking.checkOutDate)
       const roomCharge = booking.roomChargeTotal != null ? roundCurrency(booking.roomChargeTotal) : roundCurrency(booking.ratePerNight * nights)
 
-      const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber}`)
+      const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber}`, HOTEL_ROOM_CHARGE_DEFAULT_TAX_RATE)
       const invoiceItems: Array<{ productId: string; quantity: number; unitPrice: number }> = [
         { productId: roomChargeProduct.id, quantity: 1, unitPrice: roomCharge },
       ]
       for (const charge of booking.charges) {
-        const chargeProduct = await findOrCreatePlaceholderProduct(charge.description)
+        const chargeProduct = await findOrCreatePlaceholderProduct(charge.description, HOTEL_EXTRA_CHARGE_DEFAULT_TAX_RATE)
         invoiceItems.push({ productId: chargeProduct.id, quantity: charge.quantity, unitPrice: charge.unitPrice })
       }
 
@@ -1030,10 +1051,10 @@ export async function generateGroupHotelInvoice(bookingIds: string[], userId?: s
       for (const booking of bookings) {
         const nights = computeNights(booking.checkInDate, booking.checkOutDate)
         const roomCharge = booking.roomChargeTotal != null ? roundCurrency(booking.roomChargeTotal) : roundCurrency(booking.ratePerNight * nights)
-        const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber} (${booking.bookingNumber})`)
+        const roomChargeProduct = await findOrCreatePlaceholderProduct(`${HOTEL_ROOM_CHARGE_PRODUCT_NAME} — Room ${booking.room.roomNumber} (${booking.bookingNumber})`, HOTEL_ROOM_CHARGE_DEFAULT_TAX_RATE)
         invoiceItems.push({ productId: roomChargeProduct.id, quantity: 1, unitPrice: roomCharge })
         for (const charge of booking.charges) {
-          const chargeProduct = await findOrCreatePlaceholderProduct(`${charge.description} (${booking.bookingNumber})`)
+          const chargeProduct = await findOrCreatePlaceholderProduct(`${charge.description} (${booking.bookingNumber})`, HOTEL_EXTRA_CHARGE_DEFAULT_TAX_RATE)
           invoiceItems.push({ productId: chargeProduct.id, quantity: charge.quantity, unitPrice: charge.unitPrice })
         }
       }
@@ -1119,9 +1140,18 @@ export interface GuestRegisterRow {
 export async function getGuestRegister(params: { dateFrom: string; dateTo: string }): Promise<{ success: boolean; data?: { rows: GuestRegisterRow[] }; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const from = new Date(params.dateFrom)
-    const to = new Date(params.dateTo)
-    to.setHours(23, 59, 59, 999)
+    // Real bug found 2026-07-23: both bounds were built with a bare
+    // `new Date(dateOnlyString)`, which parses as UTC midnight, not local
+    // midnight — the same systemic bug already fixed across ~20 other files
+    // this audit arc, missed here. `to` compounded it further: setHours()
+    // only rewrites H/M/S/ms, never the Year/Month/Date a UTC parse already
+    // got wrong in any negative-UTC-offset timezone. A compliance register
+    // (police/immigration guest verification) silently excluding the first
+    // ~5.5 hours of the start date and the entirety of the end date for any
+    // non-IST-timezone deployment is a real compliance-reporting gap, not
+    // just a display nit.
+    const from = parseLocalDateStart(params.dateFrom)
+    const to = parseLocalDateEnd(params.dateTo)
     if (to <= from) return { success: false, error: { code: 'HTL-053', message: 'End date must be after start date.' } }
 
     const bookings = await db.hotelBooking.findMany({

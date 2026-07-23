@@ -60,7 +60,13 @@ export function canShowUpiQr(profile: { upiId?: string | null; country?: string 
 }
 
 function logoToFileUrl(p: string): string {
-  return 'file:///' + p.replace(/\\/g, '/')
+  // escHtml here (not just at the call site) covers every caller in one place,
+  // including watermarkHtml()'s default `logoUrl ?? logoToFileUrl(...)` path.
+  // BusinessProfile.logoPath is validated at the IPC boundary (utils/logo-path.ts)
+  // to stay inside userData/logos/, but this file has no way to see that from
+  // here — every other dynamic value in these templates is escaped before
+  // going into HTML, and an `<img src="...">` attribute is no exception.
+  return escHtml('file:///' + p.replace(/\\/g, '/'))
 }
 
 const LOGO_MIME_BY_EXT: Record<string, string> = {
@@ -151,6 +157,16 @@ interface Invoice {
   invoiceNumber: string
   invoiceDate: string | Date
   status: string
+  // BUG FOUND 2026-07-22: a RETURN-type invoice (status: 'ACTIVE',
+  // totalAmount negative per returns.service.ts) printed through this
+  // exact template with no visual distinction from a normal sale — a green
+  // "ACTIVE" badge, a positive-looking total (Math.abs'd by formatAmount),
+  // and no "RETURN"/"REFUND" wording anywhere. The only signal it was a
+  // return was the "RET-" prefix in the invoice number. Genuine return
+  // styling existed only for the separate CreditNote model's own template,
+  // which a RETURN-type Invoice never goes through. Now used to render a
+  // clear banner + a distinct badge color below.
+  invoiceType?: string
   customer?: { customerName: string; phone?: string | null; customerCode?: string | null } | null
   items: InvoiceItem[]
   subtotal: number
@@ -224,6 +240,7 @@ export const printService = {
     // this up automatically without individually being rewritten.
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
+    const isReturn = invoice.invoiceType === 'RETURN'
 
     let qrHtml = ''
     if (canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
@@ -277,6 +294,8 @@ export const printService = {
   .status-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-top: 6px; }
   .status-ACTIVE { background: #dcfce7; color: #166534; }
   .status-CANCELLED { background: #fee2e2; color: #991b1b; }
+  .status-RETURN { background: #fee2e2; color: #991b1b; }
+  .return-banner { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: 700; text-align: center; margin-bottom: 16px; letter-spacing: 0.5px; }
   .section { margin-bottom: 20px; }
   .section-title { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .customer-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; }
@@ -301,6 +320,7 @@ export const printService = {
 </head>
 <body style="position:relative;z-index:0;">
   ${watermarkHtml(profile)}
+  ${isReturn ? '<div class="return-banner">⤺ RETURN / REFUND — this document reduces a prior sale, it is not a new purchase</div>' : ''}
   <div class="header">
     <div>
       ${profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
@@ -313,9 +333,9 @@ export const printService = {
       </div>
     </div>
     <div class="invoice-meta">
-      <div class="inv-number">Invoice ${escHtml(invoice.invoiceNumber)}</div>
+      <div class="inv-number">${isReturn ? 'Return' : 'Invoice'} ${escHtml(invoice.invoiceNumber)}</div>
       <div class="inv-date">${formatDate(invoice.invoiceDate)}</div>
-      <div><span class="status-badge status-${invoice.status}">${invoice.status}</span></div>
+      <div><span class="status-badge status-${isReturn ? 'RETURN' : invoice.status}">${isReturn ? 'RETURN' : invoice.status}</span></div>
     </div>
   </div>
 
@@ -505,6 +525,7 @@ export const printService = {
     // this up automatically without individually being rewritten.
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
+    const isReturn = invoice.invoiceType === 'RETURN'
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     // 58mm paper is narrower — tighten font
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
@@ -567,7 +588,8 @@ export const printService = {
   ${profile?.phone ? `<div class="center" style="font-size:8px">${escHtml(profile.phone)}</div>` : ''}
   ${profile?.taxNumber ? `<div class="center" style="font-size:8px">GST: ${escHtml(profile.taxNumber)}</div>` : ''}
   <div class="divider"></div>
-  <div class="bold">Invoice: ${escHtml(invoice.invoiceNumber)}</div>
+  ${isReturn ? `<div class="center bold" style="border:1px solid #000;padding:3px;margin-bottom:4px">*** RETURN / REFUND ***</div>` : ''}
+  <div class="bold">${isReturn ? 'Return' : 'Invoice'}: ${escHtml(invoice.invoiceNumber)}</div>
   <div style="font-size:8px">Date: ${formatDate(invoice.invoiceDate)}</div>
   ${invoice.customer ? `<div style="font-size:8px">Customer: ${escHtml(invoice.customer.customerName)}</div>` : ''}
   <div class="divider"></div>

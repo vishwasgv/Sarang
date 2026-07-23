@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
+import { supplierLedgerService } from './supplier-ledger.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateSupplierPayload, UpdateSupplierPayload } from '../validation/supplier.validation'
 
@@ -80,7 +81,12 @@ export async function getSupplierLedger(supplierId: string): Promise<ApiResponse
       take: 100
     })
 
-    const outstanding = ledger.reduce((acc, e) => acc + e.debitAmount - e.creditAmount, 0)
+    // BUG FOUND 2026-07-22: same issue as customer.service.ts's
+    // getCustomerLedger — this summed only the 100 most-recent rows
+    // instead of the whole ledger. supplier-ledger.service.ts's own
+    // calculateBalance (a true aggregate SUM) already exists and is
+    // correct, it just wasn't wired to this screen.
+    const outstanding = await supplierLedgerService.calculateBalance(supplierId)
     return { success: true, data: { supplier, ledger, outstanding } }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }

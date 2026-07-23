@@ -232,14 +232,39 @@ export async function deleteProject(id: string, userId?: string): Promise<{ succ
 // Placement/etc. Bills the project's estimatedAmount as a single SERVICE
 // line — this is the legacy Project model's only stored monetary figure
 // (no per-task or per-hour billing exists on this model).
+// Real bug found 2026-07-23: this had no atomic claim on invoiceId — just a
+// plain read-then-check (`if (project.invoiceId) return error`) with the
+// actual write only happening via a plain update() AFTER
+// billingService.createInvoice() had already run. Two concurrent "Generate
+// Invoice" calls for the same project could both pass the stale check and
+// each create a real, separate Invoice — a genuine double-bill. Fixed with
+// the same atomic conditional-claim + release-on-failure shape used by
+// car-job-card.service.ts / job-card.service.ts / property-deal.service.ts.
+const PROJECT_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generateProjectInvoice(id: string, userId?: string) {
+  const db = getPrisma()
+  const claim = await db.project.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: PROJECT_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.project.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'PRJ-003', message: 'Project not found.' } }
+    return { success: false, error: { code: 'PRJ-005', message: 'Invoice already generated for this project.' } }
+  }
+
   try {
-    const db = getPrisma()
     const project = await db.project.findUnique({ where: { id } })
-    if (!project) return { success: false, error: { code: 'PRJ-003', message: 'Project not found.' } }
-    if (!project.customerId) return { success: false, error: { code: 'PRJ-004', message: 'This project has no linked customer. Set a customer before generating an invoice.' } }
-    if (project.invoiceId) return { success: false, error: { code: 'PRJ-005', message: 'Invoice already generated for this project.' } }
-    if (project.estimatedAmount <= 0) return { success: false, error: { code: 'PRJ-006', message: 'This project has no billable amount. Set an amount before generating an invoice.' } }
+    if (!project) {
+      await db.project.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PRJ-003', message: 'Project not found.' } }
+    }
+    if (!project.customerId) {
+      await db.project.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PRJ-004', message: 'This project has no linked customer. Set a customer before generating an invoice.' } }
+    }
+    if (project.estimatedAmount <= 0) {
+      await db.project.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PRJ-006', message: 'This project has no billable amount. Set an amount before generating an invoice.' } }
+    }
 
     // SAC 998313 — IT consulting and support services, 18% GST
     let product = await db.product.findFirst({ where: { hsnCode: '998313', isActive: true } })
@@ -257,13 +282,17 @@ export async function generateProjectInvoice(id: string, userId?: string) {
       notes: `Project ${project.projectNumber} — ${project.title}`,
       referenceNumber: project.projectNumber,
     })
-    if (!result.success) return { success: false as const, error: result.error }
+    if (!result.success) {
+      await db.project.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false as const, error: result.error }
+    }
 
     const invoice = result.data as { id: string }
     await db.project.update({ where: { id }, data: { invoiceId: invoice.id } })
     if (userId) await logAction(userId, 'INVOICED', 'PROJECT', id, null, { invoiceId: invoice.id })
     return { success: true, data: { invoiceId: invoice.id } }
   } catch (e: any) {
+    await db.project.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
     console.error('[PRJ_INVOICE_FAIL]', e)
     return { success: false, error: { code: 'PRJ_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
   }

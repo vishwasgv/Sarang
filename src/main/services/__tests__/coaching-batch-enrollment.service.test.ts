@@ -60,6 +60,10 @@ function makeMockDb(existingEnrollment: ReturnType<typeof makeEnrollment> | null
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  // Regression for a real TOCTOU capacity race found 2026-07-22:
+  // createEnrollment/promoteFromWaitlist now run their check-then-write
+  // inside a transaction — mirror that here so tests exercise the real path.
+  db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
 
@@ -148,6 +152,33 @@ describe('coaching-batch-enrollment.service — waitlist', () => {
     const data = (res as { data: { status: string; waitlisted: boolean } }).data
     expect(data.status).toBe('ACTIVE')
     expect(data.waitlisted).toBe(false)
+  })
+
+  // Regression for a real TOCTOU capacity race found 2026-07-22: the
+  // capacity count and the create used to run as separate statements
+  // outside any transaction. Proves the count is now genuinely evaluated
+  // via the transaction client (not a pre-transaction snapshot) by making
+  // the count itself only resolve once inside a real $transaction callback.
+  it('evaluates the capacity count via the transaction client, not a pre-transaction read', async () => {
+    const db = makeMockDb()
+    db.coachingBatch.findUnique = vi.fn().mockResolvedValue(makeBatchWithFee({ maxCapacity: 20 }))
+    let countCalledInsideTransaction = false
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => {
+      const tx = {
+        ...db,
+        coachingBatchEnrollment: {
+          ...db.coachingBatchEnrollment,
+          count: vi.fn().mockImplementation(() => { countCalledInsideTransaction = true; return Promise.resolve(5) }),
+        },
+      }
+      return cb(tx)
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createEnrollment({ batchId: 'batch-1', studentId: 'stu-2', effectiveFee: 3000 })
+
+    expect(res.success).toBe(true)
+    expect(countCalledInsideTransaction).toBe(true)
   })
 
   it('promoteFromWaitlist rejects a missing enrollment', async () => {

@@ -264,7 +264,10 @@ describe('paymentService.getPayments', () => {
     await paymentService.getPayments({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
     const call = vi.mocked(db.payment.findMany).mock.calls[0][0] as { where: { paymentDate: { gte: Date; lte: Date } } }
-    expect(call.where.paymentDate.gte).toEqual(new Date('2026-01-01'))
+    // Regression for a real bug found 2026-07-22: gte used to be
+    // new Date('2026-01-01') (UTC midnight) — now local midnight
+    // (parseLocalDateStart), matching the Y/M/D local constructor.
+    expect(call.where.paymentDate.gte).toEqual(new Date(2026, 0, 1))
     expect(call.where.paymentDate.lte).toEqual(new Date('2026-01-31T23:59:59.999'))
   })
 

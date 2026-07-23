@@ -161,6 +161,22 @@ export async function acceptFieldOrderRequest(
     if (!request) return { success: false, error: { code: 'FOR-020', message: 'Order request not found.' } }
     if (request.status !== 'PENDING') return { success: false, error: { code: 'FOR-021', message: `This order was already ${request.status.toLowerCase()}.` } }
 
+    // BUG FOUND 2026-07-22: the status check above ran against a
+    // pre-transaction snapshot with no atomic claim before creating a real
+    // invoice — two concurrent accept calls on the same request (a
+    // double-click, or two office staff on a shared pending-orders queue)
+    // could both pass the PENDING check, both create a real invoice, and
+    // then race to write the request row, orphaning one invoice with
+    // nothing pointing at it. Fixed with the same atomic claim-sentinel
+    // pattern already established elsewhere in this codebase (e.g.
+    // rental.service.ts's generateRentalInvoice).
+    const claim = await db.fieldOrderRequest.updateMany({ where: { id: requestId, status: 'PENDING' }, data: { status: 'PROCESSING' } })
+    if (claim.count === 0) {
+      const fresh = await db.fieldOrderRequest.findUnique({ where: { id: requestId }, select: { status: true } })
+      if (fresh?.status === 'PROCESSING') return { success: false, error: { code: 'FOR-025', message: 'This order is already being accepted.' } }
+      return { success: false, error: { code: 'FOR-021', message: `This order was already ${fresh?.status.toLowerCase() ?? 'processed'}.` } }
+    }
+
     // Price is always looked up fresh here, server-side — never taken from
     // the rep's original submission — honoring the customer's negotiated
     // class price via resolveCustomerPrice, same as every other add-to-cart
@@ -172,6 +188,7 @@ export async function acceptFieldOrderRequest(
     const byId = new Map(products.map(p => [p.id, p]))
     const missing = request.items.filter(i => !byId.get(i.productId)?.isActive)
     if (missing.length > 0) {
+      await db.fieldOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
       return { success: false, error: { code: 'FOR-022', message: 'One or more items in this order are no longer available — reject it and ask the rep to resubmit.' } }
     }
 
@@ -190,6 +207,7 @@ export async function acceptFieldOrderRequest(
     }, userId)
 
     if (!invoiceResult.success || !invoiceResult.data) {
+      await db.fieldOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
       return { success: false, error: (invoiceResult as { error?: { code: string; message: string } }).error ?? { code: 'FOR-023', message: 'Could not create invoice from this order.' } }
     }
     const invoice = invoiceResult.data as { id: string }
@@ -201,6 +219,7 @@ export async function acceptFieldOrderRequest(
     await logAction(userId, 'FIELD_ORDER_ACCEPTED', 'FieldOrderRequest', requestId, undefined, invoice.id)
     return { success: true, data: { invoiceId: invoice.id } }
   } catch (err) {
+    await getPrisma().fieldOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } }).catch(() => {})
     return { success: false, error: { code: 'FOR-024', message: err instanceof Error ? err.message : 'Could not accept order.' } }
   }
 }
@@ -208,11 +227,17 @@ export async function acceptFieldOrderRequest(
 export async function rejectFieldOrderRequest(requestId: string, userId?: string) {
   try {
     const db = getPrisma()
-    const request = await db.fieldOrderRequest.findUnique({ where: { id: requestId } })
-    if (!request) return { success: false, error: { code: 'FOR-030', message: 'Order request not found.' } }
-    if (request.status !== 'PENDING') return { success: false, error: { code: 'FOR-031', message: `This order was already ${request.status.toLowerCase()}.` } }
+    // BUG FOUND 2026-07-22: same check-then-write race as
+    // acceptFieldOrderRequest, though lower consequence here (no invoice
+    // involved) — fixed the same way for consistency: an atomic claim
+    // instead of a plain status !== 'PENDING' check against a stale read.
+    const claim = await db.fieldOrderRequest.updateMany({ where: { id: requestId, status: 'PENDING' }, data: { status: 'REJECTED', resolvedAt: new Date() } })
+    if (claim.count === 0) {
+      const fresh = await db.fieldOrderRequest.findUnique({ where: { id: requestId }, select: { status: true } })
+      if (!fresh) return { success: false, error: { code: 'FOR-030', message: 'Order request not found.' } }
+      return { success: false, error: { code: 'FOR-031', message: `This order was already ${fresh.status.toLowerCase()}.` } }
+    }
 
-    await db.fieldOrderRequest.update({ where: { id: requestId }, data: { status: 'REJECTED', resolvedAt: new Date() } })
     await logAction(userId, 'FIELD_ORDER_REJECTED', 'FieldOrderRequest', requestId)
     return { success: true }
   } catch (err) {

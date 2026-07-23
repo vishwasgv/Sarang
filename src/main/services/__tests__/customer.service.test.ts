@@ -31,7 +31,10 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     },
     invoice: { count: vi.fn().mockResolvedValue(0) },
     customerLedger: {
-      findMany: vi.fn().mockResolvedValue([])
+      findMany: vi.fn().mockResolvedValue([]),
+      // customer-ledger.service.ts's calculateBalance (real, unmocked
+      // module) uses this for a true aggregate SUM over the whole ledger.
+      aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 0, creditAmount: 0 } })
     },
     setting: {
       findUnique: vi.fn(async () => settingRow),
@@ -185,5 +188,36 @@ describe('customerService.searchCustomers', () => {
     const result = await customerService.searchCustomers('Ravi')
 
     expect(result.success).toBe(true)
+  })
+})
+
+// Regression for a real, live, high-impact bug found 2026-07-22:
+// getCustomerLedger used to compute "outstanding" by summing only the 100
+// most-recent ledger rows returned for display — wrong for any customer
+// with more than 100 ledger entries (routine for a long-running account).
+// The correct aggregate-based calculation (customer-ledger.service.ts's
+// calculateBalance) already existed but wasn't wired to this screen.
+describe('customerService.getCustomerLedger', () => {
+  it('computes outstanding from a true aggregate over the WHOLE ledger, not just the 100 displayed rows', async () => {
+    // Simulate an account with real history beyond the 100-row display cap:
+    // the aggregate (whole ledger) sum differs from what summing only the
+    // capped findMany result would produce.
+    const db = makeDb({
+      customerLedger: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'led-101', debitAmount: 500, creditAmount: 0 },
+        ]), // only the most-recent row shown, out of 101+ real entries
+        aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 50000, creditAmount: 20000 } }), // true whole-ledger sums
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await customerService.getCustomerLedger('cust-1')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { outstanding: number } }).data
+    // 50000 - 20000 = 30000 (the real whole-ledger balance) — NOT 500 (what
+    // summing only the single displayed row would have produced).
+    expect(data.outstanding).toBe(30000)
   })
 })

@@ -121,8 +121,19 @@ export async function listCategories(): Promise<{ success: boolean; data?: strin
   }
 }
 
-export async function seedDefaultServicesForTemplate(templateType: string): Promise<void> {
-  const db = getPrisma()
+// BUG FOUND 2026-07-22: setup.service.ts used to call this AFTER its own
+// setup transaction had already committed, deliberately excluded with a
+// "not critical" comment. But if this call failed (or the app crashed)
+// between that commit and this line, isSetupComplete() already returns
+// true (profile + admin user exist), so the Setup Wizard could never be
+// re-entered — the business would be left with NO default service catalog
+// permanently, with no in-app recovery path short of adding every service
+// by hand. Fixed by accepting an optional transaction client so
+// setup.service.ts can run this INSIDE its own transaction — a failure
+// here now correctly rolls back the whole setup, and the wizard can simply
+// be re-run from scratch.
+export async function seedDefaultServicesForTemplate(templateType: string, tx?: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]): Promise<void> {
+  const db = tx ?? getPrisma()
   const existing = await db.serviceCatalog.count()
   if (existing > 0) return // only seed on fresh setup
 

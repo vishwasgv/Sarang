@@ -103,15 +103,70 @@ describe('driving.service — session numbering', () => {
     expect(db.drivingSession.create).not.toHaveBeenCalled()
   })
 
-  it('increments the package enrollment sessionsUsed when a session redeems a package', async () => {
+  // Real bug found 2026-07-23: the enrollment's sessionsUsed used to be
+  // incremented unconditionally AFTER session creation, with no check that
+  // the package still had sessions remaining — unlike the identical
+  // capped-balance pattern session-pack.service.ts's deductSession already
+  // enforces. Fixed by pre-checking + atomically claiming the increment
+  // (conditional on the exact sessionsUsed just read) BEFORE the session is
+  // even created.
+  it('claims the package enrollment sessionsUsed atomically when a session redeems a package', async () => {
     const db = makeMockDb(null) as any
-    db.drivingPackageEnrollment = { update: vi.fn().mockResolvedValue({}) }
+    db.drivingPackageEnrollment = {
+      findUnique: vi.fn().mockResolvedValue({ id: 'enr-1', sessionsUsed: 2, package: { totalSessions: 10 } }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00', packageEnrollmentId: 'enr-1' })
 
     expect(res.success).toBe(true)
-    expect(db.drivingPackageEnrollment.update).toHaveBeenCalledWith({ where: { id: 'enr-1' }, data: { sessionsUsed: { increment: 1 } } })
+    expect(db.drivingPackageEnrollment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'enr-1', sessionsUsed: 2 },
+      data: { sessionsUsed: { increment: 1 } },
+    })
+    expect(db.drivingSession.create).toHaveBeenCalled()
+  })
+
+  it('rejects booking a session against a package enrollment that does not exist', async () => {
+    const db = makeMockDb(null) as any
+    db.drivingPackageEnrollment = { findUnique: vi.fn().mockResolvedValue(null) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00', packageEnrollmentId: 'enr-missing' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-012')
+    expect(db.drivingSession.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects booking a session against a fully-used package enrollment', async () => {
+    const db = makeMockDb(null) as any
+    db.drivingPackageEnrollment = {
+      findUnique: vi.fn().mockResolvedValue({ id: 'enr-1', sessionsUsed: 10, package: { totalSessions: 10 } }),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00', packageEnrollmentId: 'enr-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-013')
+    expect(db.drivingSession.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects booking when a concurrent session already claimed the last remaining slot', async () => {
+    const db = makeMockDb(null) as any
+    db.drivingPackageEnrollment = {
+      findUnique: vi.fn().mockResolvedValue({ id: 'enr-1', sessionsUsed: 9, package: { totalSessions: 10 } }),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00', packageEnrollmentId: 'enr-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-014')
+    expect(db.drivingSession.create).not.toHaveBeenCalled()
   })
 })
 

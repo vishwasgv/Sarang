@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
@@ -349,6 +350,18 @@ export const billingService = {
     // across a multi-line invoice.
     const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
     const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
+    // Design note (previously undocumented — flagged in a 2026-07-22 audit as "not
+    // documented as an intentional choice anywhere"): globalDiscount/metalExchangeDiscount
+    // are applied only to the final total, AFTER taxAmount below is already summed from
+    // each line's own tax-on-discounted-base (lineTax uses only that line's own
+    // discountAmount, computed earlier per item). A global/invoice-level discount does NOT
+    // reduce the taxable value tax was computed on. This is a deliberate scope choice, not
+    // a drift bug: client and server agree on the number, and correctly reducing the taxable
+    // base for a lump-sum, not-tied-to-any-line discount is a jurisdiction-specific tax-law
+    // question (GST/VAT treatment of trade discounts varies by country and by whether the
+    // discount was disclosed at the time of supply) that this app does not currently attempt
+    // to model. Businesses that need discounts to affect the taxable value should apply them
+    // as per-line discounts instead, which already flow correctly into lineTax.
     const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount
     const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
     const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax), currencyDecimals)
@@ -669,7 +682,10 @@ export const billingService = {
     if (filters?.customerId) where.customerId = filters.customerId
     if (filters?.dateFrom || filters?.dateTo) {
       where.invoiceDate = {
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        // BUG FOUND 2026-07-22: gte used to be new Date(filters.dateFrom),
+        // parsed as UTC midnight instead of local midnight — this is the
+        // main Invoice List screen's own date-range filter.
+        ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
         // Full millisecond precision on the end boundary — without it, an
         // invoice created in the last second of the selected "to" date would
         // be silently excluded even though it falls within that calendar day.

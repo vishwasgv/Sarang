@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from './industry-template.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -405,7 +405,13 @@ export async function getTopProducts(limit: number = 10, dateFrom?: string, date
     where: {
       invoice: {
         status: 'ACTIVE',
-        ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
+        // BUG FOUND 2026-07-22: `gte` used to be `new Date(dateFrom)`, which
+        // parses a bare "YYYY-MM-DD" as UTC midnight, not local midnight --
+        // silently excluding the first ~5.5 hours of the "from" date for IST
+        // users, asymmetric with the "to" bound right next to it (which was
+        // already correct, since appending 'T23:59:59' with no offset parses
+        // as local time). Same underlying bug as report.service.ts's toDate().
+        ...(dateFrom || dateTo ? { invoiceDate: { ...(dateFrom ? { gte: parseLocalDateStart(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}) } } : {})
       }
     },
     select: {

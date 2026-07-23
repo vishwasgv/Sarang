@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { serializeBatch } from './coaching-batch.service'
+import { ServiceError } from '../errors/service-error'
 
 // CoachingBatchEnrollment.discountAmount/effectiveFee are Prisma Decimal
 // fields — Electron's IPC (structured clone) cannot serialize a Decimal
@@ -68,30 +69,42 @@ export async function createEnrollment(payload: {
   const batch = await db.coachingBatch.findUnique({ where: { id: payload.batchId } })
   if (!batch) return { success: false, error: { code: 'ENR-002', message: 'Batch not found.' } }
 
+  // BUG FOUND 2026-07-22: the capacity count and the create used to run as
+  // separate statements outside any transaction — two near-simultaneous
+  // enroll calls for the same batch could both read the same
+  // under-capacity activeCount, both pass the check, and both write
+  // ACTIVE, overselling the batch past maxCapacity. This is the exact
+  // TOCTOU race batch-class.service.ts's enrollMember already fixed for
+  // the identical shape (see its own comment) — applying the same fix
+  // here: the whole check-then-write now runs inside one transaction, with
+  // the count re-read fresh via `tx`.
   // Phase 58 §2 — a batch at capacity used to hard-reject any new enrollment
   // outright. Now it enrolls onto a real WAITLISTED queue instead — staff
   // can promote a waitlisted student the moment a seat frees up, rather than
   // the parent having to be told to come back and re-apply later.
-  const activeCount = await db.coachingBatchEnrollment.count({
-    where: { batchId: payload.batchId, status: 'ACTIVE' },
-  })
-  const waitlisted = activeCount >= batch.maxCapacity
+  const enrollment = await db.$transaction(async (tx) => {
+    const activeCount = await tx.coachingBatchEnrollment.count({
+      where: { batchId: payload.batchId, status: 'ACTIVE' },
+    })
+    const waitlisted = activeCount >= batch.maxCapacity
 
-  const enrollment = await db.coachingBatchEnrollment.create({
-    data: {
-      batchId: payload.batchId,
-      studentId: payload.studentId,
-      status: waitlisted ? 'WAITLISTED' : 'ACTIVE',
-      discountType: payload.discountType ?? 'NONE',
-      discountAmount: payload.discountAmount ?? 0,
-      effectiveFee: payload.effectiveFee,
-      enrolledDate: payload.enrolledDate ? new Date(payload.enrolledDate) : new Date(),
-      notes: payload.notes || null,
-    },
-    include: {
-      student: { select: { id: true, customerName: true, phone: true } },
-    },
+    return tx.coachingBatchEnrollment.create({
+      data: {
+        batchId: payload.batchId,
+        studentId: payload.studentId,
+        status: waitlisted ? 'WAITLISTED' : 'ACTIVE',
+        discountType: payload.discountType ?? 'NONE',
+        discountAmount: payload.discountAmount ?? 0,
+        effectiveFee: payload.effectiveFee,
+        enrolledDate: payload.enrolledDate ? new Date(payload.enrolledDate) : new Date(),
+        notes: payload.notes || null,
+      },
+      include: {
+        student: { select: { id: true, customerName: true, phone: true } },
+      },
+    })
   })
+  const waitlisted = enrollment.status === 'WAITLISTED'
   await db.auditLog.create({ data: { action: waitlisted ? 'WAITLISTED' : 'ENROLLED', entityType: 'CoachingBatchEnrollment', entityId: enrollment.id, newValue: JSON.stringify({ batchId: enrollment.batchId, studentId: enrollment.studentId }) } }).catch(() => {})
   return { success: true, data: { ...serializeEnrollment(enrollment), waitlisted } }
 }
@@ -111,20 +124,30 @@ export async function promoteFromWaitlist(id: string) {
   const batch = await db.coachingBatch.findUnique({ where: { id: enrollment.batchId } })
   if (!batch) return { success: false, error: { code: 'ENR-002', message: 'Batch not found.' } }
 
-  const activeCount = await db.coachingBatchEnrollment.count({
-    where: { batchId: enrollment.batchId, status: 'ACTIVE' },
-  })
-  if (activeCount >= batch.maxCapacity) {
-    return { success: false, error: { code: 'ENR-006', message: `Batch is still at full capacity (${batch.maxCapacity} students).` } }
+  // BUG FOUND 2026-07-22: same TOCTOU race as createEnrollment above — the
+  // capacity count and the promotion update used to run as separate
+  // statements outside any transaction, so two concurrent promotions could
+  // both pass the stale capacity check.
+  try {
+    const promoted = await db.$transaction(async (tx) => {
+      const activeCount = await tx.coachingBatchEnrollment.count({
+        where: { batchId: enrollment.batchId, status: 'ACTIVE' },
+      })
+      if (activeCount >= batch.maxCapacity) {
+        throw new ServiceError('ENR-006', `Batch is still at full capacity (${batch.maxCapacity} students).`)
+      }
+      return tx.coachingBatchEnrollment.update({
+        where: { id },
+        data: { status: 'ACTIVE' },
+        include: { student: { select: { id: true, customerName: true, phone: true } } },
+      })
+    })
+    await db.auditLog.create({ data: { action: 'PROMOTED', entityType: 'CoachingBatchEnrollment', entityId: id } }).catch(() => {})
+    return { success: true, data: serializeEnrollment(promoted) }
+  } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+    throw err
   }
-
-  const promoted = await db.coachingBatchEnrollment.update({
-    where: { id },
-    data: { status: 'ACTIVE' },
-    include: { student: { select: { id: true, customerName: true, phone: true } } },
-  })
-  await db.auditLog.create({ data: { action: 'PROMOTED', entityType: 'CoachingBatchEnrollment', entityId: id } }).catch(() => {})
-  return { success: true, data: serializeEnrollment(promoted) }
 }
 
 export async function updateEnrollment(payload: {

@@ -215,6 +215,21 @@ describe('time-entry.service — generateTimeEntryInvoice', () => {
     })
   })
 
+  // Regression for a real bug found 2026-07-22: taxRate used to be
+  // hardcoded on the invoice item, permanently overriding the product's
+  // own configurable rate.
+  it('does not hardcode a taxRate override on the item — falls through to the product\'s own configurable rate', async () => {
+    const entries = [makeCaseEntry()]
+    const db = makeInvoiceMockDb(entries)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    await generateTimeEntryInvoice(['entry-1'])
+
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(call.items[0]).not.toHaveProperty('taxRate')
+  })
+
   it('deduplicates repeated ids in the selection before claiming', async () => {
     const entries = [makeCaseEntry()]
     const db = makeInvoiceMockDb(entries)

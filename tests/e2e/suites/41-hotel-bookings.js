@@ -171,9 +171,11 @@ async function run() {
       r.log('booking-has-invoice-id', !!invoiceId, JSON.stringify(invoiceId))
       if (invoiceId) {
         const invRes = await page.evaluate((iid) => window.api.billing.getInvoice(iid), invoiceId)
-        // 1 night x Rs.3000 room charge + Rs.500 extra charge, both on
-        // taxRate=0 placeholder products (hotel.service.ts) — no GST added.
-        const expectedTotal = 3000 + 500
+        // 1 night x Rs.3000 room charge (taxed at HOTEL_ROOM_CHARGE_DEFAULT_TAX_RATE=12%)
+        // + Rs.500 extra charge (taxed at HOTEL_EXTRA_CHARGE_DEFAULT_TAX_RATE=18%) —
+        // hotel.service.ts used to default both placeholder products to taxRate=0
+        // (a real bug, fixed earlier in this audit); this pins the corrected totals.
+        const expectedTotal = 3000 * 1.12 + 500 * 1.18
         r.log('invoice-total-correct', Math.abs((invRes?.data?.totalAmount ?? 0) - expectedTotal) < 1, `expected=${expectedTotal} actual=${invRes?.data?.totalAmount}`)
       }
     })

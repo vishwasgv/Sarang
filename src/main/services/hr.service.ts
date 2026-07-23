@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -333,8 +334,16 @@ export async function getMonthAttendance(payload: {
 }): Result<{ records: AttendanceRecord[] }> {
   try {
     const prisma = getPrisma()
-    const from = new Date(payload.year, payload.month - 1, 1)
-    const to = new Date(payload.year, payload.month, 0, 23, 59, 59)
+    // BUG FOUND 2026-07-22: markAttendance/bulkMarkAttendance store `date`
+    // at UTC midnight (setUTCHours(0,0,0,0)), but this boundary used to be
+    // built with the LOCAL Date constructor — a basis mismatch that only
+    // manifests for a negative UTC offset (this app's IST-based primary
+    // market never triggers it, which is why it went unnoticed), where an
+    // attendance record could be pulled into the wrong month's query.
+    // Date.UTC matches the actual storage basis, same fix direction as
+    // roc-filing.service.ts's fyRange().
+    const from = new Date(Date.UTC(payload.year, payload.month - 1, 1))
+    const to = new Date(Date.UTC(payload.year, payload.month, 0, 23, 59, 59))
 
     const where: any = { date: { gte: from, lte: to } }
     if (payload.employeeId) where.employeeId = payload.employeeId
@@ -357,8 +366,9 @@ export async function getMonthlySummaries(payload: {
 }): Result<{ summaries: MonthlySummary[] }> {
   try {
     const prisma = getPrisma()
-    const from = new Date(payload.year, payload.month - 1, 1)
-    const to = new Date(payload.year, payload.month, 0, 23, 59, 59)
+    // Same basis-mismatch fix as getMonthAttendance above.
+    const from = new Date(Date.UTC(payload.year, payload.month - 1, 1))
+    const to = new Date(Date.UTC(payload.year, payload.month, 0, 23, 59, 59))
 
     const employees = await prisma.employee.findMany({
       where: { isActive: true },
@@ -510,9 +520,12 @@ export async function listLeaveRequests(payload?: {
     if (payload?.employeeId) where.employeeId = payload.employeeId
     if (payload?.status) where.status = payload.status
     if (payload?.year) {
+      // fromDate is stored via parseLocalDateStart (local midnight) above —
+      // match that basis here too, rather than the local-vs-stored mismatch
+      // this file had elsewhere for attendance dates.
       where.fromDate = {
         gte: new Date(payload.year, 0, 1),
-        lte: new Date(payload.year, 11, 31)
+        lte: new Date(payload.year, 11, 31, 23, 59, 59)
       }
     }
 
@@ -566,8 +579,11 @@ export async function createLeaveRequest(payload: {
       data: {
         employeeId: payload.employeeId,
         leaveTypeId: payload.leaveTypeId,
-        fromDate: new Date(payload.fromDate),
-        toDate: new Date(payload.toDate),
+        // BUG FOUND 2026-07-22: new Date(dateOnlyString) parses as UTC
+        // midnight, not local midnight — same bug class fixed across many
+        // other files this session.
+        fromDate: parseLocalDateStart(payload.fromDate),
+        toDate: parseLocalDateStart(payload.toDate),
         days: payload.days,
         reason: payload.reason?.trim() || null
       },

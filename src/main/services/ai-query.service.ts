@@ -13,7 +13,7 @@
 // ai-vertical-templates.service.ts since which ones apply depends on the
 // one business type actually installed).
 import { getPrisma } from '../database/db'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { getReadOnlyPrisma } from '../database/ai-readonly-db'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
@@ -28,7 +28,7 @@ import { listCustomers, searchCustomers } from './customer.service'
 import { searchSuppliers } from './supplier.service'
 import { billingService } from './billing.service'
 import { inventoryService } from './inventory.service'
-import { formatAmountForSpeech } from './ai-format.util'
+import { formatAmountForSpeech, refreshAiNumberFormat } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
 
@@ -954,8 +954,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
       const dateFrom = (params.dateFrom as string) ?? toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
       const dateTo = (params.dateTo as string) ?? toLocalISODate(now)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const [creditNotes, debitNotes] = await Promise.all([
         db.creditNote.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { amount: true } }),
         db.debitNote.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { amount: true } })
@@ -1124,8 +1131,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, _sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const invoices = await db.invoice.findMany({
         where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, invoiceDate: { gte: from, lte: to } },
         select: { customerId: true }
@@ -1156,8 +1170,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const returns = await db.invoice.findMany({
         where: { invoiceType: 'RETURN', invoiceDate: { gte: from, lte: to } },
         select: { totalAmount: true }
@@ -1300,8 +1321,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const movements = await db.inventoryMovement.findMany({
         // 'DAMAGE' is a real subset of "stock adjustment" from the user's
         // question perspective (Phase 58 §2 split it out of the generic
@@ -1342,8 +1370,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const invoices = await db.invoice.findMany({
         where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null }, invoiceDate: { gte: from, lte: to } },
         select: { customerId: true, totalAmount: true }
@@ -1391,8 +1426,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, _sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const invoices = await db.invoice.findMany({
         where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null }, invoiceDate: { gte: from, lte: to } },
         select: { customerId: true }
@@ -1466,8 +1508,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const orders = await db.purchaseOrder.findMany({
         where: { status: { not: 'CANCELLED' }, orderDate: { gte: from, lte: to } },
         select: { totalAmount: true }
@@ -1485,8 +1534,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const [taxReport, purchaseOrders] = await Promise.all([
         reportService.generateTaxReport({ dateFrom, dateTo }),
         db.purchaseOrder.findMany({ where: { status: { not: 'CANCELLED' }, orderDate: { gte: from, lte: to } }, select: { taxAmount: true } })
@@ -1510,8 +1566,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const payments = await db.payment.findMany({
         where: { isReversed: false, paymentDate: { gte: from, lte: to } },
         select: { amount: true, paymentMethod: true }
@@ -1655,8 +1718,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     async execute(params, _sym) {
       const { dateFrom, dateTo } = defaultThisMonthRange(params)
       const db = getPrisma()
-      const from = new Date(dateFrom)
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999)
+      // BUG FOUND 2026-07-22: new Date(dateFrom) parses UTC midnight, not
+      // local midnight — same bug as report.service.ts's toDate().
+      // Real bug found 2026-07-23: `to` had the matching "to"-bound bug —
+      // new Date(dateTo) also parses as UTC midnight FIRST, and the
+      // following setHours(23,59,59,999) only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. See date.util.ts's parseLocalDateEnd.
+      const from = parseLocalDateStart(dateFrom)
+      const to = parseLocalDateEnd(dateTo)
       const [total, converted] = await Promise.all([
         db.quotation.count({ where: { createdAt: { gte: from, lte: to } } }),
         db.quotation.count({ where: { createdAt: { gte: from, lte: to }, invoice: { isNot: null } } })
@@ -1718,6 +1788,14 @@ export async function askQuestion(question: string, userId?: string): Promise<Ai
   if (!(await isModuleEnabled('ai_assistant'))) {
     return { success: false, error: { code: 'AI-001', message: 'The AI Assistant is not enabled for this business.' } }
   }
+
+  // BUG FOUND 2026-07-22: formatAmountForSpeech (called from ~75 sites
+  // across this file and ai-vertical-templates.service.ts) used to
+  // hardcode US-style digit grouping regardless of the business's
+  // configured number_format. Primed once per question here, at the single
+  // entry point every question flows through, rather than making all 75
+  // call sites async.
+  await refreshAiNumberFormat()
 
   // Deterministic keyword safety net — runs BEFORE the model is even
   // loaded/called. Real bug fix, not speculative: see

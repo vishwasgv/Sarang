@@ -316,6 +316,30 @@ describe('hotel.service — generateHotelInvoice', () => {
     )
   })
 
+  // Regression for a real bug found 2026-07-22: the room-charge and
+  // extra-charge placeholder Products used to be created with a hardcoded
+  // taxRate: 0, so every hotel invoice was generated at 0% tax unconditionally.
+  it('creates the room-charge and extra-charge placeholder products with non-zero, owner-editable tax rates, not hardcoded to 0', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({
+      checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-04'),
+      ratePerNight: 2000,
+      charges: [{ id: 'c1', description: 'Room Service', quantity: 1, unitPrice: 300, amount: 300 }],
+    }))
+    db.product.findFirst.mockResolvedValue(null)
+    db.product.create.mockImplementation(({ data }: { data: { productName: string; taxRate: number } }) => Promise.resolve({ id: `prod-${data.productName}`, ...data }))
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1', totalAmount: 6300 } } as never)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateHotelInvoice('booking-1', 'user-1')
+    expect(res.success).toBe(true)
+
+    const roomChargeCall = db.product.create.mock.calls.find((c: [{ data: { productName: string } }]) => c[0].data.productName.includes('Room Charge'))
+    const extraChargeCall = db.product.create.mock.calls.find((c: [{ data: { productName: string } }]) => c[0].data.productName === 'Room Service')
+    expect(roomChargeCall?.[0].data.taxRate).toBeGreaterThan(0)
+    expect(extraChargeCall?.[0].data.taxRate).toBeGreaterThan(0)
+  })
+
   it('caps the recorded advance payment at the invoice total, never recording more than what is owed', async () => {
     const db = makeBaseMockDb()
     db.hotelBooking.findUnique.mockResolvedValue(makeBooking({

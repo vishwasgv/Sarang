@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { join } from 'path'
+import { join, isAbsolute } from 'path'
 import {
   existsSync, mkdirSync, createReadStream, createWriteStream,
   renameSync, unlinkSync
@@ -95,6 +95,13 @@ export async function setBackupDestination(path: string | null, userId?: string)
   const db = getPrisma()
   const value = path?.trim() || ''
   if (value) {
+    // Must be absolute: a relative value would resolve against whatever the
+    // process's cwd happens to be at backup time (unpredictable for a packaged
+    // app, and a real bug once wrote backups straight into the repo root during
+    // testing) instead of the drive/folder the owner actually picked.
+    if (!isAbsolute(value)) {
+      return { success: false, error: { code: 'BK-006', message: 'That folder could not be created or written to. Choose a different location.' } }
+    }
     try {
       if (!existsSync(value)) mkdirSync(value, { recursive: true })
     } catch {

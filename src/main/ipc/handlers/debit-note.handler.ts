@@ -1,12 +1,12 @@
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
-import { debitNoteService, type CreateDebitNotePayload } from '../../services/debit-note.service'
+import { debitNoteService } from '../../services/debit-note.service'
 import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
-import { UpdateDebitNoteSchema } from '../../validation/debit-note.validation'
+import { CreateDebitNoteSchema, UpdateDebitNoteSchema } from '../../validation/debit-note.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -31,9 +31,13 @@ export function register(handle: HandleFn): void {
 
   handle('debitNotes:create', async (payload) => {
     const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
+    const parsed = CreateDebitNoteSchema.safeParse(payload)
+    if (!parsed.success) {
+      return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid debit note data.' } }
+    }
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-001', message: 'Not authenticated.' } }
-    return debitNoteService.create(payload as CreateDebitNotePayload, session.userId)
+    return debitNoteService.create(parsed.data, session.userId)
   })
 
   handle('debitNotes:update', async (payload) => {

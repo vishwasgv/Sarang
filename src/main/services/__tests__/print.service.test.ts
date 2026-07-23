@@ -384,3 +384,38 @@ describe('printService.generateLabelHtml', () => {
     expect(html).toContain('1234567890123')
   })
 })
+
+// Regression for a real defect found 2026-07-22: a RETURN-type invoice
+// (status: 'ACTIVE', totalAmount negative per returns.service.ts) printed
+// through this exact template with no visual distinction from a normal
+// sale — a green "ACTIVE" badge, a positive-looking total (Math.abs'd), and
+// no "RETURN"/"REFUND" wording anywhere. The only signal was the "RET-"
+// prefix in the invoice number.
+describe('printService — RETURN invoice visual distinction', () => {
+  it('generateInvoiceHtml shows a RETURN banner and badge, not a misleading green ACTIVE badge', async () => {
+    const html = await printService.generateInvoiceHtml({ ...makeInvoice(), invoiceType: 'RETURN', invoiceNumber: 'RET-2026-000001' } as never, profile as never)
+
+    expect(html).toContain('RETURN / REFUND')
+    expect(html).toContain('status-RETURN')
+    expect(html).not.toMatch(/status-badge status-ACTIVE/)
+  })
+
+  it('generateInvoiceHtml still shows the normal green ACTIVE badge for a real (non-return) sale', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
+
+    expect(html).toContain('status-badge status-ACTIVE')
+    expect(html).not.toContain('RETURN / REFUND')
+  })
+
+  it('generateReceiptHtml shows a RETURN marker for a return invoice', async () => {
+    const html = await printService.generateReceiptHtml({ ...makeInvoice(), invoiceType: 'RETURN', invoiceNumber: 'RET-2026-000001' } as never, profile as never, '80mm')
+
+    expect(html).toContain('RETURN / REFUND')
+  })
+
+  it('generateReceiptHtml shows no RETURN marker for a real (non-return) sale', async () => {
+    const html = await printService.generateReceiptHtml(makeInvoice() as never, profile as never, '80mm')
+
+    expect(html).not.toContain('RETURN / REFUND')
+  })
+})

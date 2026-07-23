@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { computeVitalsFlags } from './normal-range.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { createAppointment } from './appointment.service'
 
 // Phase 58 §2 — Vet Clinic: looked up server-side (never trust a client-sent
@@ -237,9 +238,18 @@ export async function listVisitNotes(filters?: {
     const where: Record<string, unknown> = {}
     if (filters?.isFinalized !== undefined) where.isFinalized = filters.isFinalized
     if (filters?.dateFrom || filters?.dateTo) {
+      // BUG FOUND 2026-07-22: both bounds used to be new Date(dateString),
+      // parsed as UTC midnight instead of local midnight; dateTo also
+      // lacked an end-of-day adjustment.
+      // Real bug found 2026-07-23: the dateTo fix above still parsed the
+      // string as UTC midnight FIRST before setHours() locked in
+      // end-of-day — setHours() only rewrites H/M/S/ms, never the
+      // Year/Month/Date a UTC parse already got wrong in any negative-UTC-
+      // offset timezone. parseLocalDateEnd constructs local end-of-day
+      // directly from the string's Y/M/D instead.
       where.createdAt = {
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
-        ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
+        ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
+        ...(filters.dateTo ? { lte: parseLocalDateEnd(filters.dateTo) } : {}),
       }
     }
     if (filters?.search) {

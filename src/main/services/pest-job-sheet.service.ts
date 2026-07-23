@@ -199,49 +199,77 @@ export async function deletePestJobSheet(id: string) {
   return { success: true }
 }
 
+// Real bug found 2026-07-23: this had no atomic claim on invoiceId — just a
+// plain read-then-check (`if (sheet.invoiceId) return error`) with the
+// actual write only happening via a plain update() AFTER
+// billingService.createInvoice() had already run. Two concurrent "Generate
+// Invoice" calls for the same job sheet could both pass the stale check and
+// each create a real, separate Invoice — a genuine double-bill. Fixed with
+// the same atomic conditional-claim + release-on-failure shape used by
+// car-job-card.service.ts / job-card.service.ts / placement.service.ts.
+const PEST_JOB_SHEET_INVOICE_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 export async function generatePestJobInvoice(id: string) {
   const db = getPrisma()
-  const sheet = await db.pestJobSheet.findUnique({
-    where: { id },
-    include: { client: { select: { id: true } }, contract: { select: { propertyAddress: true } } },
-  })
-  if (!sheet) return { success: false, error: { code: 'PJS-001', message: 'Job sheet not found.' } }
-  if (sheet.invoiceId) return { success: false, error: { code: 'PJS-003', message: 'Invoice already generated for this job sheet.' } }
-  if (Number(sheet.jobAmount) === 0) {
-    return { success: false, error: { code: 'PJS-004', message: 'Job amount is zero. Set a job amount before generating an invoice.' } }
+  const claim = await db.pestJobSheet.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: PEST_JOB_SHEET_INVOICE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.pestJobSheet.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'PJS-001', message: 'Job sheet not found.' } }
+    return { success: false, error: { code: 'PJS-003', message: 'Invoice already generated for this job sheet.' } }
   }
 
-  // SAC 998534 — Pest control and extermination services, 18% GST
-  let pestProduct = await db.product.findFirst({ where: { hsnCode: '998534', isActive: true } })
-  if (!pestProduct) {
-    pestProduct = await db.product.create({
-      data: { productName: 'Pest Control Service', productType: 'SERVICE', hsnCode: '998534', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+  try {
+    const sheet = await db.pestJobSheet.findUnique({
+      where: { id },
+      include: { client: { select: { id: true } }, contract: { select: { propertyAddress: true } } },
     })
+    if (!sheet) {
+      await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PJS-001', message: 'Job sheet not found.' } }
+    }
+    if (Number(sheet.jobAmount) === 0) {
+      await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PJS-004', message: 'Job amount is zero. Set a job amount before generating an invoice.' } }
+    }
+
+    // SAC 998534 — Pest control and extermination services, 18% GST
+    let pestProduct = await db.product.findFirst({ where: { hsnCode: '998534', isActive: true } })
+    if (!pestProduct) {
+      pestProduct = await db.product.create({
+        data: { productName: 'Pest Control Service', productType: 'SERVICE', hsnCode: '998534', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+      })
+    }
+
+    const address = sheet.contract?.propertyAddress ?? ''
+    const result = await billingService.createInvoice({
+      customerId: sheet.clientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: pestProduct.id, quantity: 1, unitPrice: Number(sheet.jobAmount) }],
+      notes: `Job Sheet ${sheet.jobNumber}${address ? ` — ${address}` : ''}`,
+      referenceNumber: sheet.jobNumber,
+    })
+    if (!result.success) {
+      await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
+      return result
+    }
+
+    const invoice = result.data as { id: string }
+    await db.pestJobSheet.update({
+      where: { id },
+      data: { invoiceId: invoice.id, status: 'COMPLETED', completedDate: new Date() },
+    })
+    await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'PestJobSheet', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
+
+    if (sheet.status !== 'COMPLETED') {
+      await maybeScheduleNextVisit(db, sheet)
+    }
+
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
+    return { success: false, error: { code: 'PJS-010', message: err instanceof Error ? err.message : 'Could not generate job sheet invoice.' } }
   }
-
-  const address = sheet.contract?.propertyAddress ?? ''
-  const result = await billingService.createInvoice({
-    customerId: sheet.clientId,
-    paymentMethod: 'CREDIT',
-    gstType: 'CGST_SGST',
-    items: [{ productId: pestProduct.id, quantity: 1, unitPrice: Number(sheet.jobAmount) }],
-    notes: `Job Sheet ${sheet.jobNumber}${address ? ` — ${address}` : ''}`,
-    referenceNumber: sheet.jobNumber,
-  })
-  if (!result.success) return result
-
-  const invoice = result.data as { id: string }
-  await db.pestJobSheet.update({
-    where: { id },
-    data: { invoiceId: invoice.id, status: 'COMPLETED', completedDate: new Date() },
-  })
-  await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'PestJobSheet', entityId: id, newValue: JSON.stringify({ invoiceId: invoice.id }) } }).catch(() => {})
-
-  if (sheet.status !== 'COMPLETED') {
-    await maybeScheduleNextVisit(db, sheet)
-  }
-
-  return { success: true, data: { invoiceId: invoice.id } }
 }
 
 // Phase 58 §2 — Pest Control: structured pesticide dosage/quantity per

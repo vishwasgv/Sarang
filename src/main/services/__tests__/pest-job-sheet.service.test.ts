@@ -7,9 +7,11 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { inventoryService } from '../inventory.service'
+import { billingService } from '../billing.service'
 import {
   listPestJobSheets, createPestJobSheet, updatePestJobSheet,
   listJobSheetPesticides, addJobSheetPesticide, removeJobSheetPesticide,
+  generatePestJobInvoice,
 } from '../pest-job-sheet.service'
 import { ServiceError } from '../../errors/service-error'
 
@@ -62,9 +64,17 @@ function makeMockDb(existing: ReturnType<typeof makeSheet> | null = null, contra
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeSheet({ ...existing, ...data }))
       ),
+      // Atomic invoiceId claim (see generatePestJobInvoice) — succeeds only
+      // while the row's invoiceId is genuinely still null, mirroring the
+      // real `where: { id, invoiceId: null }` conditional update.
+      updateMany: vi.fn().mockImplementation(() => Promise.resolve({ count: existing && !existing.invoiceId ? 1 : 0 })),
     },
     pestServiceContract: {
       findUnique: vi.fn().mockResolvedValue(contract),
+    },
+    product: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'prod-pest', ...data })),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     setting: {
@@ -347,5 +357,73 @@ describe('pest-job-sheet.service.removeJobSheetPesticide', () => {
     expect(db.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ productId: 'prod-1', movementType: 'PEST_RETURN', quantity: 50, referenceType: 'PEST_JOB_SHEET', referenceId: 'PJS-00001' }),
     }))
+  })
+})
+
+// Real bug found 2026-07-23: generatePestJobInvoice had no atomic claim on
+// invoiceId — just a plain read-then-check with the actual write only
+// happening via a plain update() AFTER billingService.createInvoice() had
+// already run. Two concurrent "Generate Invoice" calls for the same job
+// sheet could both pass the stale check and each create a real, separate
+// Invoice. Fixed with the same atomic conditional-claim + release-on-
+// failure shape used by car-job-card.service.ts.
+
+describe('pest-job-sheet.service.generatePestJobInvoice — invoice-claim atomicity', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('generates an invoice for jobAmount and marks the sheet COMPLETED', async () => {
+    const sheet = makeSheet({ status: 'COMPLETED' })
+    const db = makeMockDb(sheet)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    const res = await generatePestJobInvoice('pjs-1')
+
+    expect(res.success).toBe(true)
+    const call = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ unitPrice: number }> }
+    expect(call.items[0].unitPrice).toBe(1500)
+    expect(db.pestJobSheet.update).toHaveBeenCalledWith({
+      where: { id: 'pjs-1' },
+      data: { invoiceId: 'inv-1', status: 'COMPLETED', completedDate: expect.any(Date) },
+    })
+  })
+
+  it('rejects without calling billingService.createInvoice when the claim fails (already invoiced)', async () => {
+    const sheet = makeSheet({ status: 'COMPLETED', invoiceId: 'inv-existing' })
+    const db = makeMockDb(sheet)
+    db.pestJobSheet.updateMany = vi.fn().mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generatePestJobInvoice('pjs-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PJS-003')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('claims invoiceId atomically before calling billingService.createInvoice', async () => {
+    const sheet = makeSheet({ status: 'COMPLETED' })
+    const db = makeMockDb(sheet)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await generatePestJobInvoice('pjs-1')
+
+    expect(db.pestJobSheet.updateMany).toHaveBeenCalledWith({ where: { id: 'pjs-1', invoiceId: null }, data: { invoiceId: 'PENDING_INVOICE_GENERATION' } })
+    const claimCallOrder = db.pestJobSheet.updateMany.mock.invocationCallOrder[0]
+    const createInvoiceCallOrder = vi.mocked(billingService.createInvoice).mock.invocationCallOrder[0]
+    expect(claimCallOrder).toBeLessThan(createInvoiceCallOrder)
+  })
+
+  it('releases the claim when billingService.createInvoice fails', async () => {
+    const sheet = makeSheet({ status: 'COMPLETED' })
+    const db = makeMockDb(sheet)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'BILL-001', message: 'failed' } } as never)
+
+    const res = await generatePestJobInvoice('pjs-1')
+
+    expect(res.success).toBe(false)
+    expect(db.pestJobSheet.update).toHaveBeenCalledWith({ where: { id: 'pjs-1' }, data: { invoiceId: null } })
   })
 })

@@ -277,6 +277,39 @@ export async function createDrivingSession(payload: {
       return { success: false, error: { code: 'DS27-006', message: 'Session fee cannot be negative.' } }
     }
 
+    // Real bug found 2026-07-23: a session redeemed against a package
+    // (packageEnrollmentId set) had its enrollment.sessionsUsed incremented
+    // unconditionally after creation, with NO check that the package still
+    // had sessions remaining — unlike the identical "redeem against a
+    // capped balance" pattern in session-pack.service.ts's deductSession,
+    // which blocks once usedSessions reaches totalSessions. The UI's own
+    // dropdown filters out a depleted enrollment
+    // (`e.sessionsUsed < e.package.totalSessions` in
+    // DrivingSchoolScreen.tsx), but nothing enforced it server-side — a
+    // stale UI list, or any caller that bypasses the dropdown, could book
+    // unlimited sessions against an already-fully-used package for free,
+    // forever. Claimed atomically (conditional update keyed on the exact
+    // sessionsUsed value just read, same claim shape as
+    // generateInvoiceNumber's sequence claim) so two concurrent bookings
+    // against the last remaining session can't both succeed either.
+    if (payload.packageEnrollmentId) {
+      const enrollment = await db.drivingPackageEnrollment.findUnique({
+        where: { id: payload.packageEnrollmentId },
+        include: { package: { select: { totalSessions: true } } },
+      })
+      if (!enrollment) return { success: false, error: { code: 'DS27-012', message: 'Package enrollment not found.' } }
+      if (enrollment.sessionsUsed >= enrollment.package.totalSessions) {
+        return { success: false, error: { code: 'DS27-013', message: `All ${enrollment.package.totalSessions} sessions in this package have already been used.` } }
+      }
+      const claim = await db.drivingPackageEnrollment.updateMany({
+        where: { id: payload.packageEnrollmentId, sessionsUsed: enrollment.sessionsUsed },
+        data: { sessionsUsed: { increment: 1 } },
+      })
+      if (claim.count === 0) {
+        return { success: false, error: { code: 'DS27-014', message: 'This package was just updated by another booking. Please try again.' } }
+      }
+    }
+
     // Auto-compute session number for this learner. A count()-based scheme
     // reissues an existing number the moment any session for this learner
     // is deleted out of sequence; findFirst + increment on the highest
@@ -307,9 +340,8 @@ export async function createDrivingSession(payload: {
         vehicle: { select: { id: true, registrationNumber: true } },
       },
     })
-    if (session.packageEnrollmentId) {
-      await db.drivingPackageEnrollment.update({ where: { id: session.packageEnrollmentId }, data: { sessionsUsed: { increment: 1 } } }).catch(() => {})
-    }
+    // The enrollment's sessionsUsed was already claimed atomically above,
+    // before this session existed — no further update needed here.
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'DrivingSession', entityId: session.id, newValue: JSON.stringify({ learnerId: session.learnerId, sessionDate: session.sessionDate }) } }).catch(() => {})
     return { success: true, data: serializeSession(session) }
   } catch (err) {

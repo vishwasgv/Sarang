@@ -1,12 +1,12 @@
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
-import { creditNoteService, type CreateCreditNotePayload } from '../../services/credit-note.service'
+import { creditNoteService } from '../../services/credit-note.service'
 import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
-import { UpdateCreditNoteSchema } from '../../validation/credit-note.validation'
+import { CreateCreditNoteSchema, UpdateCreditNoteSchema } from '../../validation/credit-note.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -31,9 +31,13 @@ export function register(handle: HandleFn): void {
 
   handle('creditNotes:create', async (payload) => {
     const deny = await requirePermission('billing.create'); if (deny) return deny
+    const parsed = CreateCreditNoteSchema.safeParse(payload)
+    if (!parsed.success) {
+      return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid credit note data.' } }
+    }
     const session = getCurrentSession()
     if (!session) return { success: false, error: { code: 'AUTH-001', message: 'Not authenticated.' } }
-    return creditNoteService.create(payload as CreateCreditNotePayload, session.userId)
+    return creditNoteService.create(parsed.data, session.userId)
   })
 
   handle('creditNotes:update', async (payload) => {

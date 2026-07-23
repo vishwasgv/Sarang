@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 function todayMidnight(): Date {
   const d = new Date()
@@ -6,10 +7,21 @@ function todayMidnight(): Date {
   return d
 }
 
+// BUG FOUND 2026-07-22: every call site below used to parse the explicit
+// "YYYY-MM-DD" input as `new Date(date)` (UTC midnight), then re-anchor it
+// to LOCAL wall-clock time via setHours(0,0,0,0) — for any timezone behind
+// UTC, this silently shifts the queried queue day back by one.
+// parseLocalDateStart avoids the UTC round-trip entirely (the subsequent
+// setHours(0,0,0,0) calls become harmless no-ops on an already-local-
+// midnight Date, kept for clarity/defense-in-depth).
+function resolveQueueDate(date?: string): Date {
+  return date ? parseLocalDateStart(date) : todayMidnight()
+}
+
 export async function getTodayQueue(date?: string) {
   try {
     const db = getPrisma()
-    const queueDate = date ? new Date(date) : todayMidnight()
+    const queueDate = resolveQueueDate(date)
     queueDate.setHours(0, 0, 0, 0)
     const nextDay = new Date(queueDate.getTime() + 24 * 60 * 60 * 1000)
 
@@ -38,7 +50,7 @@ export async function createToken(payload: {
 }) {
   try {
     const db = getPrisma()
-    const queueDate = payload.date ? new Date(payload.date) : todayMidnight()
+    const queueDate = resolveQueueDate(payload.date)
     queueDate.setHours(0, 0, 0, 0)
     const nextDay = new Date(queueDate.getTime() + 24 * 60 * 60 * 1000)
 
@@ -132,7 +144,7 @@ export async function resetToken(id: string) {
 export async function getQueueStats(date?: string) {
   try {
     const db = getPrisma()
-    const queueDate = date ? new Date(date) : todayMidnight()
+    const queueDate = resolveQueueDate(date)
     queueDate.setHours(0, 0, 0, 0)
     const nextDay = new Date(queueDate.getTime() + 24 * 60 * 60 * 1000)
 

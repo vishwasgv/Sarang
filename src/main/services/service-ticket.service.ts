@@ -187,6 +187,16 @@ export async function deleteTicket(id: string, userId?: string): Promise<{ succe
 // ServiceTicket has no stored monetary field at all (nor does its linked
 // WorkLog — hours only, no ratePerHour) — so the billable amount has to be
 // entered by the caller at generation time rather than derived.
+// BUG FOUND 2026-07-22: this used to check `ticket.invoiceId` then write it
+// later with no atomic claim in between — a rapid double-click on "Generate
+// Invoice" could create two invoices for one ticket, with the second write
+// silently overwriting invoiceId and orphaning the first invoice. Fixed to
+// match the atomic claim-sentinel pattern already established elsewhere in
+// this codebase (e.g. rental.service.ts's generateRentalInvoice,
+// hotel.service.ts's generateHotelInvoice, tailoring-order.service.ts's
+// generateTailoringInvoice).
+const TICKET_INVOICE_CLAIM_SENTINEL = 'CLAIMING'
+
 export async function generateTicketInvoice(id: string, amount: number, userId?: string) {
   try {
     if (amount <= 0) return { success: false, error: { code: 'TKT-004', message: 'Enter a billable amount greater than zero.' } }
@@ -194,30 +204,49 @@ export async function generateTicketInvoice(id: string, amount: number, userId?:
     const ticket = await db.serviceTicket.findUnique({ where: { id } })
     if (!ticket) return { success: false, error: { code: 'TKT-005', message: 'Ticket not found.' } }
     if (!ticket.customerId) return { success: false, error: { code: 'TKT-006', message: 'This ticket has no linked customer. Set a customer before generating an invoice.' } }
-    if (ticket.invoiceId) return { success: false, error: { code: 'TKT-007', message: 'Invoice already generated for this ticket.' } }
 
-    // SAC 998313 — IT consulting and support services, 18% GST
-    let product = await db.product.findFirst({ where: { hsnCode: '998313', isActive: true } })
-    if (!product) {
-      product = await db.product.create({
-        data: { productName: 'Professional / Consulting Services', productType: 'SERVICE', hsnCode: '998313', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
-      })
+    const claim = await db.serviceTicket.updateMany({ where: { id, invoiceId: null }, data: { invoiceId: TICKET_INVOICE_CLAIM_SENTINEL } })
+    if (claim.count === 0) {
+      const existing = await db.serviceTicket.findUnique({ where: { id }, select: { invoiceId: true } })
+      if (existing?.invoiceId === TICKET_INVOICE_CLAIM_SENTINEL) return { success: false, error: { code: 'TKT-008', message: 'Invoice generation already in progress for this ticket.' } }
+      return { success: false, error: { code: 'TKT-007', message: 'Invoice already generated for this ticket.' } }
     }
 
-    const result = await billingService.createInvoice({
-      customerId: ticket.customerId,
-      paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
-      items: [{ productId: product.id, quantity: 1, unitPrice: amount, taxRate: 18 }],
-      notes: `Ticket ${ticket.ticketNumber} — ${ticket.title}`,
-      referenceNumber: ticket.ticketNumber,
-    })
-    if (!result.success) return { success: false as const, error: result.error }
+    try {
+      // SAC 998313 — IT consulting and support services, 18% GST
+      let product = await db.product.findFirst({ where: { hsnCode: '998313', isActive: true } })
+      if (!product) {
+        product = await db.product.create({
+          data: { productName: 'Professional / Consulting Services', productType: 'SERVICE', hsnCode: '998313', sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+        })
+      }
 
-    const invoice = result.data as { id: string }
-    await db.serviceTicket.update({ where: { id }, data: { invoiceId: invoice.id } })
-    if (userId) await logAction(userId, 'INVOICED', 'SERVICE_TICKET', id, null, { invoiceId: invoice.id })
-    return { success: true, data: { invoiceId: invoice.id } }
+      // BUG FOUND 2026-07-22: `taxRate: 18` was also hardcoded on the
+      // invoice ITEM here, permanently overriding the product's own
+      // configurable rate — the same bug class fixed earlier this session
+      // across 13 other vertical services. Removed so it falls through to
+      // product.taxRate, owner-editable via Settings > Products.
+      const result = await billingService.createInvoice({
+        customerId: ticket.customerId,
+        paymentMethod: 'CREDIT',
+        gstType: 'CGST_SGST',
+        items: [{ productId: product.id, quantity: 1, unitPrice: amount }],
+        notes: `Ticket ${ticket.ticketNumber} — ${ticket.title}`,
+        referenceNumber: ticket.ticketNumber,
+      })
+      if (!result.success) {
+        await db.serviceTicket.update({ where: { id }, data: { invoiceId: null } })
+        return { success: false as const, error: result.error }
+      }
+
+      const invoice = result.data as { id: string }
+      await db.serviceTicket.update({ where: { id }, data: { invoiceId: invoice.id } })
+      if (userId) await logAction(userId, 'INVOICED', 'SERVICE_TICKET', id, null, { invoiceId: invoice.id })
+      return { success: true, data: { invoiceId: invoice.id } }
+    } catch (err) {
+      await db.serviceTicket.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
+      throw err
+    }
   } catch (e: any) {
     console.error('[TKT_INVOICE_FAIL]', e)
     return { success: false, error: { code: 'TKT_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
