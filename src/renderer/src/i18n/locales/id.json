@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "Tinjau",
-    "reviewRentals": "Tinjau"
+    "reviewRentals": "Tinjau",
+    "renewLicense": "Perbarui",
+    "viewUpdate": "Lihat"
   },
   "billing": {
     "title": "Penagihan",
@@ -1448,6 +1450,31 @@
     "privacyNote": "Data Anda tidak pernah meninggalkan perangkat. Tidak perlu internet.",
     "buildInfo": "Informasi Build",
     "legalDisclaimerTitle": "Sangkalan Hukum"
+  },
+  "license": {
+    "title": "Lisensi",
+    "subtitle": "Sarang gratis untuk 12 bulan pertama Anda. Setelah itu, lisensi tahunan kecil menjaganya tetap berjalan.",
+    "statusActive": "Aktif",
+    "statusActivePaid": "Aktif — Berbayar",
+    "statusWarning": "Tahun gratis akan segera berakhir",
+    "statusExpired": "Tahun gratis telah berakhir",
+    "statusNotActivated": "Belum diaktifkan",
+    "daysRemaining": "{{days}} hari tersisa dalam tahun gratis Anda",
+    "freeYearEndedNotice": "Tahun gratis Anda telah berakhir. Anda masih dapat melihat, mencetak, mengekspor, dan mencadangkan semua data Anda yang sudah ada — hanya pembuatan faktur baru yang terpengaruh sampai Anda memperbarui.",
+    "deviceBoundNotice": "Kunci lisensi Anda terikat ke satu perangkat ini.",
+    "machineMismatchNotice": "Kunci ini sebelumnya aktif di perangkat lain. Kunci ini telah diaktifkan kembali di sini.",
+    "keyLabel": "Kunci lisensi",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "Aktifkan",
+    "activating": "Mengaktifkan…",
+    "activated": "Lisensi diaktifkan untuk perangkat ini.",
+    "invalidKey": "Kunci lisensi tersebut tidak valid. Periksa kembali dan coba lagi.",
+    "activateError": "Tidak dapat mengaktifkan kunci ini sekarang. Silakan coba lagi.",
+    "renewTitle": "Perbarui lisensi Anda",
+    "renewIndia": "₹599/tahun (kurang dari ₹50/bulan)",
+    "renewIntl": "$29/tahun",
+    "renewButton": "Perbarui di aszurex.com",
+    "renewedThankYou": "Terima kasih telah memperbarui — Sarang akan terus berfungsi persis seperti sebelumnya."
   },
   "manufacturing": {
     "rawMaterials": "Bahan Baku",

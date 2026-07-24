@@ -248,12 +248,18 @@ const api: IpcChannels = {
     getPaths: () => invoke('app:getPaths'),
     getPlatform: () => invoke('app:getPlatform'),
     checkForUpdates: () => invoke('app:checkForUpdates'),
+    isAutoUpdateCheckEnabled: () => invoke('app:isAutoUpdateCheckEnabled'),
+    setAutoUpdateCheckEnabled: (p) => invoke('app:setAutoUpdateCheckEnabled', p),
     acknowledgeDisclaimer: () => invoke('app:acknowledgeDisclaimer'),
     isDisclaimerAccepted: () => invoke('app:isDisclaimerAccepted'),
     isBackupPromptDismissed: () => invoke('app:isBackupPromptDismissed'),
     dismissBackupPrompt: () => invoke('app:dismissBackupPrompt'),
     getBusinessLogoDataUri: () => invoke('app:getBusinessLogoDataUri'),
     generateUpiPaymentQr: (p) => invoke('app:generateUpiPaymentQr', p)
+  },
+  license: {
+    activate: (p) => invoke('license:activate', p),
+    getStatus: () => invoke('license:getStatus')
   },
   print: {
     invoice: (p) => invoke('print:invoice', p),

@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "સમીક્ષા કરો",
-    "reviewRentals": "સમીક્ષા કરો"
+    "reviewRentals": "સમીક્ષા કરો",
+    "renewLicense": "રિન્યુ કરો",
+    "viewUpdate": "જુઓ"
   },
   "billing": {
     "title": "બિલિંગ",
@@ -1448,6 +1450,31 @@
     "privacyNote": "ડ.ઉ.ન.જ. ઇ.ન.",
     "buildInfo": "બ.ઇ.",
     "legalDisclaimerTitle": "કાનૂની અસ્વીકરણ"
+  },
+  "license": {
+    "title": "લાયસન્સ",
+    "subtitle": "સારંગ તમારા પ્રથમ 12 મહિના માટે મફત છે. ત્યાર બાદ, એક નાનું વાર્ષિક લાયસન્સ તેને ચાલુ રાખે છે.",
+    "statusActive": "સક્રિય",
+    "statusActivePaid": "સક્રિય — ચૂકવેલ",
+    "statusWarning": "મફત વર્ષ ટૂંક સમયમાં સમાપ્ત થઈ રહ્યું છે",
+    "statusExpired": "મફત વર્ષ સમાપ્ત",
+    "statusNotActivated": "સક્રિય નથી",
+    "daysRemaining": "તમારા મફત વર્ષમાં {{days}} દિવસ બાકી",
+    "freeYearEndedNotice": "તમારું મફત વર્ષ સમાપ્ત થઈ ગયું છે. તમે હજુ પણ તમારો બધો હાલનો ડેટા જોઈ, પ્રિન્ટ, નિકાસ અને બેકઅપ કરી શકો છો — રિન્યુ ન કરો ત્યાં સુધી ફક્ત નવા ઇન્વોઇસ બનાવવા પર અસર થાય છે.",
+    "deviceBoundNotice": "તમારી લાયસન્સ કી આ એક ડિવાઇસ સાથે જોડાયેલી છે.",
+    "machineMismatchNotice": "આ કી અગાઉ અલગ ડિવાઇસ પર સક્રિય હતી. તેને અહીં ફરીથી સક્રિય કરવામાં આવી છે.",
+    "keyLabel": "લાયસન્સ કી",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "સક્રિય કરો",
+    "activating": "સક્રિય કરી રહ્યાં છીએ…",
+    "activated": "આ ડિવાઇસ માટે લાયસન્સ સક્રિય થયું.",
+    "invalidKey": "આ લાયસન્સ કી માન્ય નથી. તપાસો અને ફરી પ્રયાસ કરો.",
+    "activateError": "આ કી અત્યારે સક્રિય કરી શકાઈ નથી. કૃપા કરી ફરી પ્રયાસ કરો.",
+    "renewTitle": "તમારું લાયસન્સ રિન્યુ કરો",
+    "renewIndia": "₹599/વર્ષ (₹50/મહિનાથી ઓછું)",
+    "renewIntl": "$29/વર્ષ",
+    "renewButton": "aszurex.com પર રિન્યુ કરો",
+    "renewedThankYou": "રિન્યુ કરવા બદલ આભાર — સારંગ પહેલાની જેમ જ કામ કરવાનું ચાલુ રાખશે."
   },
   "manufacturing": {
     "rawMaterials": "કાચો માલ",

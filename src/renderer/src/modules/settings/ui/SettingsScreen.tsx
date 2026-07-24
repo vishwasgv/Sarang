@@ -126,6 +126,15 @@ const SECTIONS: SettingsSection[] = [
     status: 'available'
   },
   {
+    id: 'license',
+    label: 'License',
+    description: 'Free for your first 12 months — status, activation, and renewal',
+    icon: <BadgeDollarSign size={18} />,
+    permission: 'settings.view',
+    status: 'available',
+    linkTo: '/license' // dedicated screen, same pattern as About (Phase 39) — needs more real estate than an inline section
+  },
+  {
     id: 'about',
     label: 'About',
     description: 'Version info, transparency statement',

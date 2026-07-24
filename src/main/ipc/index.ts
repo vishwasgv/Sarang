@@ -139,6 +139,8 @@ import { registerLogisticsFreightHandlers } from './handlers/logistics-freight.h
 import { registerLogisticsAnalyticsHandlers } from './handlers/logistics-analytics.handler'
 import { register as registerKitchenDisplay } from './handlers/kitchen-display.handler'
 import { register as registerRepairTickets } from './handlers/repair-ticket.handler'
+// Phase 59 — Licensing
+import { register as registerLicense } from './handlers/license.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -296,6 +298,8 @@ export function registerAllIpcHandlers(): void {
   registerKitchenDisplay(h)
   // Phase 58 §2 — Electronics repair/RMA
   registerRepairTickets(h)
+  // Phase 59 — Licensing
+  registerLicense(h)
 
   console.log('[IPC] All handlers registered')
 }

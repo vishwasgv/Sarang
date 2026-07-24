@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "مراجعة",
-    "reviewRentals": "مراجعة"
+    "reviewRentals": "مراجعة",
+    "renewLicense": "تجديد",
+    "viewUpdate": "عرض"
   },
   "billing": {
     "title": "الفواتير",
@@ -1448,6 +1450,31 @@
     "privacyNote": "بياناتك لا تغادر جهازك أبداً. لا يلزم إنترنت.",
     "buildInfo": "معلومات الإصدار",
     "legalDisclaimerTitle": "إخلاء المسؤولية القانونية"
+  },
+  "license": {
+    "title": "الترخيص",
+    "subtitle": "سارانج مجاني خلال أول 12 شهرًا. بعد ذلك، يبقيه ترخيص سنوي بسيط قيد التشغيل.",
+    "statusActive": "نشط",
+    "statusActivePaid": "نشط — مدفوع",
+    "statusWarning": "السنة المجانية توشك على الانتهاء",
+    "statusExpired": "انتهت السنة المجانية",
+    "statusNotActivated": "غير مُفعّل",
+    "daysRemaining": "تبقّى {{days}} يومًا من سنتك المجانية",
+    "freeYearEndedNotice": "انتهت سنتك المجانية. لا يزال بإمكانك عرض جميع بياناتك الحالية وطباعتها وتصديرها ونسخها احتياطيًا — يتأثر فقط إنشاء فواتير جديدة حتى تجدد.",
+    "deviceBoundNotice": "مفتاح ترخيصك مرتبط بهذا الجهاز فقط.",
+    "machineMismatchNotice": "كان هذا المفتاح نشطًا سابقًا على جهاز آخر. تمت إعادة تفعيله هنا.",
+    "keyLabel": "مفتاح الترخيص",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "تفعيل",
+    "activating": "جارٍ التفعيل…",
+    "activated": "تم تفعيل الترخيص لهذا الجهاز.",
+    "invalidKey": "مفتاح الترخيص هذا غير صالح. تحقّق منه وحاول مرة أخرى.",
+    "activateError": "تعذّر تفعيل هذا المفتاح الآن. يُرجى المحاولة مرة أخرى.",
+    "renewTitle": "جدّد ترخيصك",
+    "renewIndia": "599 ₹/سنة (أقل من 50 ₹/شهر)",
+    "renewIntl": "29 $/سنة",
+    "renewButton": "التجديد على aszurex.com",
+    "renewedThankYou": "شكرًا لتجديدك — سيستمر سارانج في العمل تمامًا كما كان من قبل."
   },
   "manufacturing": {
     "rawMaterials": "المواد الخام",

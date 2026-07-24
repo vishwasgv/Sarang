@@ -6,12 +6,9 @@ import { logger } from '../../utils/logger'
 import { requireSession } from '../permission-guard'
 import { logoToBase64DataUri, generateUpiQr, canShowUpiQr } from '../../services/print.service'
 import { OpenFileDialogSchema, GenerateUpiPaymentQrSchema } from '../../validation/app.validation'
+import { fetchLatestReleaseInfo, isAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled } from '../../services/update-check.service'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
-
-const CURRENT_VERSION = app.getVersion()
-const RELEASES_URL = 'https://api.github.com/repos/aszurex/sarang-business-os/releases/latest'
-const DOWNLOAD_URL = 'https://aszurex.com/sarang'
 
 export function register(handle: HandleFn): void {
   handle('app:getPaths', async () => {
@@ -91,20 +88,34 @@ export function register(handle: HandleFn): void {
 
   handle('app:checkForUpdates', async () => {
     try {
-      const response = await fetch(RELEASES_URL, {
-        headers: { 'User-Agent': `Sarang-Business-OS/${CURRENT_VERSION}` },
-        signal: AbortSignal.timeout(8000)
-      })
-      if (!response.ok) {
-        return { success: false, error: { code: 'NET-001', message: 'Could not reach the update server. Check your internet connection.' } }
-      }
-      const release = await response.json() as { tag_name?: string }
-      const latestVersion = (release.tag_name ?? '').replace(/^v/, '')
-      const hasUpdate = latestVersion !== '' && latestVersion !== CURRENT_VERSION
-      return { success: true, data: { hasUpdate, latestVersion: latestVersion || CURRENT_VERSION, currentVersion: CURRENT_VERSION, downloadUrl: hasUpdate ? DOWNLOAD_URL : undefined } }
+      const result = await fetchLatestReleaseInfo()
+      return { success: true, data: result }
     } catch (err) {
       logger.warn('[App] checkForUpdates failed:', err)
       return { success: false, error: { code: 'NET-001', message: 'Could not check for updates. Check your internet connection.' } }
+    }
+  })
+
+  // Phase 59.13 — Settings toggle for the automatic (check-and-notify only,
+  // never silent auto-install) update check. Default ON, always
+  // user-controllable — see update-check.service.ts's own doc comment.
+  handle('app:isAutoUpdateCheckEnabled', async () => {
+    try {
+      return { success: true, data: await isAutoUpdateCheckEnabled() }
+    } catch (err) {
+      logger.error('[App] isAutoUpdateCheckEnabled error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+    }
+  })
+
+  handle('app:setAutoUpdateCheckEnabled', async (payload) => {
+    const enabled = !!(payload as { enabled?: boolean } | undefined)?.enabled
+    try {
+      await setAutoUpdateCheckEnabled(enabled)
+      return { success: true }
+    } catch (err) {
+      logger.error('[App] setAutoUpdateCheckEnabled error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Could not save your preference. Please try again.' } }
     }
   })
 

@@ -16,6 +16,7 @@ export function AboutScreen() {
   const [checking, setChecking] = useState(false)
   const [updateResult, setUpdateResult] = useState<{ hasUpdate: boolean; latestVersion: string; downloadUrl?: string } | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
+  const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
 
   useEffect(() => {
     api.app.getPaths().then((r: any) => {
@@ -24,7 +25,20 @@ export function AboutScreen() {
     }).catch(() => {
       toastError(t('common.error'), 'Could not load storage paths.')
     })
+    // Phase 59.13 — default ON, always shown so it's never a silent
+    // background call the user can't see or control.
+    api.app.isAutoUpdateCheckEnabled().then((r) => { if (r.success) setAutoCheckEnabled(r.data !== false) }).catch(() => {})
   }, [toastError, t])
+
+  async function handleToggleAutoCheck(next: boolean) {
+    setAutoCheckEnabled(next) // optimistic — this is a low-stakes preference, not worth a loading spinner
+    try {
+      await api.app.setAutoUpdateCheckEnabled({ enabled: next })
+    } catch {
+      setAutoCheckEnabled(!next)
+      toastError(t('common.error'), 'Could not save your preference. Please try again.')
+    }
+  }
 
   async function handleCheckForUpdates() {
     setChecking(true)
@@ -52,9 +66,10 @@ export function AboutScreen() {
         <h1 className="text-2xl font-bold text-dark dark:text-slate-100">{appInfo.name}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Version {appInfo.version}</p>
         <p className="text-base text-slate-600 dark:text-slate-300 mt-4 max-w-md mx-auto leading-relaxed">
-          Sarang exists because small businesses shouldn&apos;t have to pay a subscription just to run their
-          day-to-day operations. It&apos;s built by Aszurex, given away in full, and kept entirely on your device
-          — no catch, no upsell buried in the fine print.
+          Sarang exists so small businesses can run their day-to-day operations without an expensive,
+          feature-gated subscription. It&apos;s built by Aszurex, free for your first 12 months, kept entirely
+          on your device — and after that, one small annual license, stated plainly here and at setup, not
+          buried in the fine print.
         </p>
         <p className="text-sm text-brand font-medium mt-3 inline-flex items-center gap-1.5">
           Powered by <strong>Aszurex</strong> <AszurexMark width={16} /> — Trust Beyond Limits
@@ -93,8 +108,8 @@ export function AboutScreen() {
           <p>Sarang Business OS Lite is <strong>100% offline-first</strong>. All your data stays on this device.</p>
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>No cloud storage. No telemetry. No tracking.</li>
-            <li>Free forever. No subscriptions. No hidden charges.</li>
-            <li>No internet connection required for any core business feature — billing, inventory, customers, and reports all work fully offline. (Checking for software updates below is the one optional exception, and only runs when you choose to check.)</li>
+            <li>Free for your first 12 months. After that, ₹599/year (India) or $29/year (international) — no hidden charges beyond that one number. See License in Settings.</li>
+            <li>No internet connection required for any core business feature — billing, inventory, customers, and reports all work fully offline. Two narrow, disclosed exceptions: checking for software updates (Software Updates below — always toggleable, sends only the app's own version number), and an optional once-a-day license-status check that never blocks the app if you're offline (see License in Settings).</li>
             <li>Your business data never leaves your device.</li>
             <li>Payments are recorded for your records only — Sarang does not process or verify payments.</li>
           </ul>
@@ -126,7 +141,15 @@ export function AboutScreen() {
       <Card padding="lg" className="shadow-sm">
         <h2 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">Software Updates</h2>
         <p className="text-sm text-slate-500 mb-1">Check if a newer version of Sarang is available.</p>
-        <p className="text-xs text-slate-400 mb-4">Only runs when you click the button below — sends nothing but the app's own version number, no business or customer data.</p>
+        <p className="text-xs text-slate-400 mb-3">
+          {autoCheckEnabled
+            ? "Checks automatically, at most once a day — sends nothing but the app's own version number, no business or customer data. You'll see a Dashboard notice if an update is available; nothing ever downloads or installs automatically."
+            : "Automatic checking is off. Only runs when you click the button below — sends nothing but the app's own version number, no business or customer data."}
+        </p>
+        <label className="flex items-center gap-2 mb-4 cursor-pointer w-fit">
+          <input type="checkbox" checked={autoCheckEnabled} onChange={(e) => handleToggleAutoCheck(e.target.checked)} />
+          <span className="text-xs text-slate-600 dark:text-slate-300">Automatically check for updates</span>
+        </label>
 
         <Button variant="secondary" onClick={handleCheckForUpdates} loading={checking} icon={<RefreshCw size={16} />}>
           Check for Updates

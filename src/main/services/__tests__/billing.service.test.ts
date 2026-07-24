@@ -10,6 +10,7 @@ vi.mock('../notification.service', () => ({ createNotification: vi.fn() }))
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled } from '../industry-template.service'
 import { billingService } from '../billing.service'
+import { generateLicenseKey } from '../license.service'
 
 function makeProduct(overrides: Record<string, unknown> = {}) {
   return {
@@ -82,6 +83,48 @@ const basePayload = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+describe('billingService.createInvoice — Phase 59 license enforcement', () => {
+  it('blocks a new invoice when the free year has genuinely expired on a still-TRIAL key', async () => {
+    const db = makeMockDb()
+    const expiredKey = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: expiredKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await billingService.createInvoice(basePayload as never)
+    expect(res.success).toBe(false)
+    expect((res as { error?: { code?: string } }).error?.code).toBe('LIC-002')
+  })
+
+  it('does NOT block invoice creation for a PAID license, however old', async () => {
+    const db = makeMockDb()
+    const paidKey = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 900 * 86_400_000))
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: paidKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await billingService.createInvoice(basePayload as never)
+    expect(res.success).toBe(true)
+  })
+
+  it('does NOT block invoice creation when no license key has ever been entered (pre-Phase-59 install / not yet activated)', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeMockDb() as never) // default mock: setting.findUnique always null
+    const res = await billingService.createInvoice(basePayload as never)
+    expect(res.success).toBe(true)
+  })
+
+  it('does NOT block invoice creation while still within the free year (TRIAL, not yet expired)', async () => {
+    const db = makeMockDb()
+    const freshKey = generateLicenseKey('TRIAL', 'IN', new Date())
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: freshKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await billingService.createInvoice(basePayload as never)
+    expect(res.success).toBe(true)
+  })
 })
 
 describe('billingService.createInvoice', () => {

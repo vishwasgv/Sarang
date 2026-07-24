@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "Revisar",
-    "reviewRentals": "Revisar"
+    "reviewRentals": "Revisar",
+    "renewLicense": "Renovar",
+    "viewUpdate": "Ver"
   },
   "billing": {
     "title": "Faturamento",
@@ -1448,6 +1450,31 @@
     "privacyNote": "Seus dados nunca saem do seu dispositivo. Sem necessidade de internet.",
     "buildInfo": "Informações da Versão",
     "legalDisclaimerTitle": "Aviso Legal"
+  },
+  "license": {
+    "title": "Licença",
+    "subtitle": "O Sarang é gratuito durante os seus primeiros 12 meses. Depois disso, uma pequena licença anual o mantém funcionando.",
+    "statusActive": "Ativa",
+    "statusActivePaid": "Ativa — Paga",
+    "statusWarning": "O ano gratuito está terminando em breve",
+    "statusExpired": "O ano gratuito terminou",
+    "statusNotActivated": "Não ativada",
+    "daysRemaining": "Restam {{days}} dia(s) no seu ano gratuito",
+    "freeYearEndedNotice": "Seu ano gratuito terminou. Você ainda pode visualizar, imprimir, exportar e fazer backup de todos os seus dados existentes — apenas a criação de novas faturas é afetada até que você renove.",
+    "deviceBoundNotice": "Sua chave de licença está vinculada a este único dispositivo.",
+    "machineMismatchNotice": "Esta chave estava ativa anteriormente em outro dispositivo. Ela foi reativada aqui.",
+    "keyLabel": "Chave de licença",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "Ativar",
+    "activating": "Ativando…",
+    "activated": "Licença ativada para este dispositivo.",
+    "invalidKey": "Essa chave de licença não é válida. Verifique e tente novamente.",
+    "activateError": "Não foi possível ativar esta chave agora. Por favor, tente novamente.",
+    "renewTitle": "Renove sua licença",
+    "renewIndia": "₹599/ano (menos de ₹50/mês)",
+    "renewIntl": "US$ 29/ano",
+    "renewButton": "Renovar em aszurex.com",
+    "renewedThankYou": "Obrigado por renovar — o Sarang continuará funcionando exatamente como antes."
   },
   "manufacturing": {
     "rawMaterials": "Matérias-Primas",

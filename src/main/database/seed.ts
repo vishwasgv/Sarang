@@ -115,6 +115,10 @@ const PERMISSIONS = [
   { permissionKey: 'settings.modify', permissionName: 'Modify Settings' },
   { permissionKey: 'settings.modifyTax', permissionName: 'Modify Tax Settings' },
   { permissionKey: 'settings.modifyCurrency', permissionName: 'Modify Currency Settings' },
+  // Phase 59 — Licensing. Admin-only (not granted to Manager below) — same
+  // sensitivity bar as Security, license changes are financially/legally
+  // significant enough to warrant it, per PHASE_59's own spec (Section 59.6).
+  { permissionKey: 'settings.manageLicense', permissionName: 'Manage License' },
   // Audit
   { permissionKey: 'audit.view', permissionName: 'View Audit Logs' },
   { permissionKey: 'audit.export', permissionName: 'Export Audit Logs' },

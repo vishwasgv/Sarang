@@ -198,7 +198,9 @@
     "kotInProgress": "In Progress",
     "reviewReminders": "Review",
     "reviewAuditLog": "Review",
-    "reviewRentals": "Review"
+    "reviewRentals": "Review",
+    "renewLicense": "Renew",
+    "viewUpdate": "View"
   },
   "billing": {
     "title": "Billing",
@@ -1537,6 +1539,31 @@
     "privacyNote": "Your data never leaves your device. No internet required.",
     "buildInfo": "Build Information",
     "legalDisclaimerTitle": "Legal Disclaimer"
+  },
+  "license": {
+    "title": "License",
+    "subtitle": "Sarang is free for your first 12 months. After that, a small annual license keeps it running.",
+    "statusActive": "Active",
+    "statusActivePaid": "Active — Paid",
+    "statusWarning": "Free year ending soon",
+    "statusExpired": "Free year ended",
+    "statusNotActivated": "Not activated",
+    "daysRemaining": "{{days}} day(s) remaining in your free year",
+    "freeYearEndedNotice": "Your free year has ended. You can still view, print, export, and back up all your existing data — only creating new invoices is affected until you renew.",
+    "deviceBoundNotice": "Your license key is tied to this one device.",
+    "machineMismatchNotice": "This key was previously active on a different device. It has been re-activated here.",
+    "keyLabel": "License key",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "Activate",
+    "activating": "Activating…",
+    "activated": "License activated for this device.",
+    "invalidKey": "That license key is not valid. Double-check it and try again.",
+    "activateError": "Could not activate this key right now. Please try again.",
+    "renewTitle": "Renew your license",
+    "renewIndia": "₹599/year (less than ₹50/month)",
+    "renewIntl": "$29/year",
+    "renewButton": "Renew on aszurex.com",
+    "renewedThankYou": "Thank you for renewing — Sarang will keep working exactly as before."
   },
   "manufacturing": {
     "rawMaterials": "Raw Materials",

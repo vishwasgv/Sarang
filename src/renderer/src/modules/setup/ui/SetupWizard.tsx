@@ -317,13 +317,13 @@ function WelcomeStep() {
     <div className="text-center py-2">
       <h2 className="text-xl font-bold text-dark dark:text-slate-100 mb-2">Welcome to your business command centre</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
-        Manage billing, inventory, customers, expenses and more — completely offline, with no subscriptions and no data sharing.
+        Manage billing, inventory, customers, expenses and more — completely offline, with no data sharing.
       </p>
       <div className="grid grid-cols-3 gap-3 text-center mb-6">
         {[
           { icon: '🔒', title: 'Privacy First', desc: 'Your data never leaves your device' },
           { icon: '📴', title: 'Works Offline', desc: 'No internet needed for daily use' },
-          { icon: '🆓', title: 'Always Free', desc: 'No subscriptions, no hidden fees' }
+          { icon: '🆓', title: 'Free for 12 Months', desc: 'A small annual license after that' }
         ].map((item) => (
           <div key={item.title} className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
             <div className="text-xl mb-1">{item.icon}</div>
@@ -650,9 +650,27 @@ function AdminStep({ submitError }: { submitError: string | null }) {
   )
 }
 
+// Phase 59 — Licensing. Region determined the same loose way print.service.ts's
+// canShowUpiQr() already does for this exact free-text `country` field — not an
+// ISO-code lookup, this codebase never asks for one.
+function isIndiaCountry(country: string | undefined): boolean {
+  const c = (country ?? '').trim().toLowerCase()
+  return c === 'in' || c.includes('india')
+}
+
 function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; recoveryCode: string | null }) {
+  const { getValues } = useFormContext<FormValues>()
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const [licenseKeyInput, setLicenseKeyInput] = useState('')
+  const [licenseChecked, setLicenseChecked] = useState(false)
+  const [licenseActivated, setLicenseActivated] = useState(false)
+  const [licenseError, setLicenseError] = useState<string | null>(null)
+  const [activating, setActivating] = useState(false)
+
+  const isIndia = isIndiaCountry(getValues('country'))
+  const priceLine = isIndia ? '₹599/year (less than ₹50/month)' : '$29/year'
 
   async function copyCode() {
     if (!recoveryCode) return
@@ -662,6 +680,28 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
       setTimeout(() => setCopied(false), 2000)
     } catch { /* clipboard permission denied — the code is still shown on screen to copy by hand */ }
   }
+
+  async function handleActivateLicense() {
+    if (!licenseKeyInput.trim()) return
+    setActivating(true)
+    setLicenseError(null)
+    try {
+      const res = await api.license.activate({ key: licenseKeyInput })
+      if (res.success) {
+        setLicenseActivated(true)
+      } else {
+        setLicenseActivated(false)
+        setLicenseError(res.error?.message ?? 'That license key is not valid. Double-check it and try again.')
+      }
+    } catch {
+      setLicenseActivated(false)
+      setLicenseError('Could not activate this key right now. Please try again.')
+    } finally {
+      setActivating(false)
+    }
+  }
+
+  const canLaunch = (!recoveryCode || saved) && licenseActivated && licenseChecked
 
   return (
     <div className="text-center py-4">
@@ -697,12 +737,37 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
         </div>
       )}
 
-      <Button onClick={onComplete} size="lg" className="w-full" disabled={!!recoveryCode && !saved}>
+      <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-left">
+        <p className="text-sm font-bold text-dark dark:text-slate-100 mb-2">Activate your license</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Sarang is free to use for your first 12 months. After that, {priceLine} keeps it running — you'll get a reminder well before it applies, and your existing data is never at risk. This key ties to this one device.
+        </p>
+        <div className="flex items-center gap-2 mb-2">
+          <Input
+            aria-label="License key"
+            placeholder="SARANG-XXXX-XXXX-XXXX-XXXX"
+            value={licenseKeyInput}
+            onChange={(e) => { setLicenseKeyInput(e.target.value); setLicenseActivated(false); setLicenseError(null) }}
+            disabled={licenseActivated}
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={handleActivateLicense} loading={activating} disabled={licenseActivated || !licenseKeyInput.trim()}>
+            {licenseActivated ? 'Activated' : 'Activate'}
+          </Button>
+        </div>
+        {licenseError && <p className="text-xs text-danger mb-2">{licenseError}</p>}
+        {licenseActivated && <p className="text-xs text-success mb-2">License activated for this device.</p>}
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" checked={licenseChecked} onChange={(e) => setLicenseChecked(e.target.checked)} className="mt-0.5" />
+          <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 12 months, then {priceLine} keeps it running.</span>
+        </label>
+      </div>
+
+      <Button onClick={onComplete} size="lg" className="w-full" disabled={!canLaunch}>
         Launch Dashboard
       </Button>
       <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-left">
         <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Sarang Business OS Lite</p>
-        <p className="text-xs text-slate-400 mt-0.5">No subscriptions. No cloud. No tracking. Your data stays on your device.</p>
+        <p className="text-xs text-slate-400 mt-0.5">No cloud. No tracking. Your data stays on your device.</p>
         <p className="text-xs text-brand mt-1 font-medium inline-flex items-center gap-1.5">
           Powered by Aszurex <AszurexMark width={12} /> · Trust Beyond Limits
         </p>

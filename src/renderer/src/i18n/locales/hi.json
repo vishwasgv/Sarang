@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "समीक्षा करें",
-    "reviewRentals": "समीक्षा करें"
+    "reviewRentals": "समीक्षा करें",
+    "renewLicense": "नवीनीकृत करें",
+    "viewUpdate": "देखें"
   },
   "billing": {
     "title": "बिलिंग",
@@ -1448,6 +1450,31 @@
     "privacyNote": "आपका डेटा कभी भी आपके डिवाइस से नहीं निकलता। इंटरनेट की जरूरत नहीं।",
     "buildInfo": "बिल्ड जानकारी",
     "legalDisclaimerTitle": "कानूनी अस्वीकरण"
+  },
+  "license": {
+    "title": "लाइसेंस",
+    "subtitle": "सारंग आपके पहले 12 महीनों के लिए मुफ़्त है। उसके बाद, एक छोटा वार्षिक लाइसेंस इसे चालू रखता है।",
+    "statusActive": "सक्रिय",
+    "statusActivePaid": "सक्रिय — भुगतान किया गया",
+    "statusWarning": "मुफ़्त वर्ष जल्द समाप्त हो रहा है",
+    "statusExpired": "मुफ़्त वर्ष समाप्त",
+    "statusNotActivated": "सक्रिय नहीं",
+    "daysRemaining": "आपके मुफ़्त वर्ष में {{days}} दिन शेष",
+    "freeYearEndedNotice": "आपका मुफ़्त वर्ष समाप्त हो गया है। आप अभी भी अपना सारा मौजूदा डेटा देख, प्रिंट, निर्यात और बैकअप कर सकते हैं — जब तक आप नवीनीकरण नहीं करते, केवल नए इनवॉइस बनाना प्रभावित होता है।",
+    "deviceBoundNotice": "आपकी लाइसेंस कुंजी इसी एक डिवाइस से जुड़ी है।",
+    "machineMismatchNotice": "यह कुंजी पहले किसी अन्य डिवाइस पर सक्रिय थी। इसे यहां फिर से सक्रिय कर दिया गया है।",
+    "keyLabel": "लाइसेंस कुंजी",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "सक्रिय करें",
+    "activating": "सक्रिय हो रहा है…",
+    "activated": "इस डिवाइस के लिए लाइसेंस सक्रिय हो गया।",
+    "invalidKey": "यह लाइसेंस कुंजी मान्य नहीं है। जांचें और फिर से प्रयास करें।",
+    "activateError": "अभी इस कुंजी को सक्रिय नहीं किया जा सका। कृपया फिर से प्रयास करें।",
+    "renewTitle": "अपना लाइसेंस नवीनीकृत करें",
+    "renewIndia": "₹599/वर्ष (₹50/माह से कम)",
+    "renewIntl": "$29/वर्ष",
+    "renewButton": "aszurex.com पर नवीनीकृत करें",
+    "renewedThankYou": "नवीनीकरण के लिए धन्यवाद — सारंग पहले की तरह ही काम करता रहेगा।"
   },
   "manufacturing": {
     "rawMaterials": "कच्चा माल",

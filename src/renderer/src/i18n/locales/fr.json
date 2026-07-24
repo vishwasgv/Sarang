@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "Examiner",
-    "reviewRentals": "Examiner"
+    "reviewRentals": "Examiner",
+    "renewLicense": "Renouveler",
+    "viewUpdate": "Voir"
   },
   "billing": {
     "title": "Facturation",
@@ -1448,6 +1450,31 @@
     "privacyNote": "Vos données ne quittent jamais votre appareil. Pas besoin d'internet.",
     "buildInfo": "Informations de version",
     "legalDisclaimerTitle": "Mentions Légales"
+  },
+  "license": {
+    "title": "Licence",
+    "subtitle": "Sarang est gratuit pendant vos 12 premiers mois. Ensuite, une petite licence annuelle le maintient en fonctionnement.",
+    "statusActive": "Active",
+    "statusActivePaid": "Active — Payée",
+    "statusWarning": "L'année gratuite se termine bientôt",
+    "statusExpired": "L'année gratuite est terminée",
+    "statusNotActivated": "Non activée",
+    "daysRemaining": "Il vous reste {{days}} jour(s) dans votre année gratuite",
+    "freeYearEndedNotice": "Votre année gratuite est terminée. Vous pouvez toujours consulter, imprimer, exporter et sauvegarder toutes vos données existantes — seule la création de nouvelles factures est affectée jusqu'au renouvellement.",
+    "deviceBoundNotice": "Votre clé de licence est liée à cet unique appareil.",
+    "machineMismatchNotice": "Cette clé était auparavant active sur un autre appareil. Elle a été réactivée ici.",
+    "keyLabel": "Clé de licence",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "Activer",
+    "activating": "Activation…",
+    "activated": "Licence activée pour cet appareil.",
+    "invalidKey": "Cette clé de licence n'est pas valide. Vérifiez-la et réessayez.",
+    "activateError": "Impossible d'activer cette clé pour le moment. Veuillez réessayer.",
+    "renewTitle": "Renouvelez votre licence",
+    "renewIndia": "₹599/an (moins de ₹50/mois)",
+    "renewIntl": "29 $/an",
+    "renewButton": "Renouveler sur aszurex.com",
+    "renewedThankYou": "Merci d'avoir renouvelé — Sarang continuera de fonctionner exactement comme avant."
   },
   "manufacturing": {
     "rawMaterials": "Matières premières",

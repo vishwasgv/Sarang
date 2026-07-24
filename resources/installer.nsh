@@ -14,7 +14,7 @@
 ; Called at the very top of the generated installer script (global defines)
 !macro customHeader
   !define MUI_WELCOMEPAGE_TITLE "Welcome to Sarang Business OS Lite"
-  !define MUI_WELCOMEPAGE_TEXT "Sarang is an offline-first business management system powered by Aszurex.$\n$\nYour data is stored securely on this computer — no cloud, no subscription, no internet required.$\n$\nClick Next to continue."
+  !define MUI_WELCOMEPAGE_TEXT "Sarang is an offline-first business management system powered by Aszurex.$\n$\nYour data is stored securely on this computer — no cloud, no internet required. Free for your first 12 months; details in the next step.$\n$\nClick Next to continue."
 !macroend
 
 ; Called during installer .onInit (runs before any page is shown)

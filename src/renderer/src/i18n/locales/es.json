@@ -188,7 +188,9 @@
     "weekSales": "This Week's Sales",
     "monthSales": "This Month's Sales",
     "reviewAuditLog": "Revisar",
-    "reviewRentals": "Revisar"
+    "reviewRentals": "Revisar",
+    "renewLicense": "Renovar",
+    "viewUpdate": "Ver"
   },
   "billing": {
     "title": "Facturación",
@@ -1448,6 +1450,31 @@
     "privacyNote": "Sus datos nunca salen de su dispositivo. No requiere internet.",
     "buildInfo": "Información de Compilación",
     "legalDisclaimerTitle": "Aviso Legal"
+  },
+  "license": {
+    "title": "Licencia",
+    "subtitle": "Sarang es gratis durante tus primeros 12 meses. Después, una pequeña licencia anual lo mantiene funcionando.",
+    "statusActive": "Activa",
+    "statusActivePaid": "Activa — Pagada",
+    "statusWarning": "El año gratuito está por terminar",
+    "statusExpired": "El año gratuito ha terminado",
+    "statusNotActivated": "No activada",
+    "daysRemaining": "Quedan {{days}} día(s) de tu año gratuito",
+    "freeYearEndedNotice": "Tu año gratuito ha terminado. Aún puedes ver, imprimir, exportar y respaldar todos tus datos existentes — solo se ve afectada la creación de nuevas facturas hasta que renueves.",
+    "deviceBoundNotice": "Tu clave de licencia está vinculada a este único dispositivo.",
+    "machineMismatchNotice": "Esta clave estuvo activa anteriormente en otro dispositivo. Ha sido reactivada aquí.",
+    "keyLabel": "Clave de licencia",
+    "keyPlaceholder": "SARANG-XXXX-XXXX-XXXX-XXXX",
+    "activate": "Activar",
+    "activating": "Activando…",
+    "activated": "Licencia activada para este dispositivo.",
+    "invalidKey": "Esa clave de licencia no es válida. Verifícala e inténtalo de nuevo.",
+    "activateError": "No se pudo activar esta clave en este momento. Por favor, inténtalo de nuevo.",
+    "renewTitle": "Renueva tu licencia",
+    "renewIndia": "₹599/año (menos de ₹50/mes)",
+    "renewIntl": "$29/año",
+    "renewButton": "Renovar en aszurex.com",
+    "renewedThankYou": "Gracias por renovar — Sarang seguirá funcionando exactamente igual que antes."
   },
   "manufacturing": {
     "rawMaterials": "Materias Primas",

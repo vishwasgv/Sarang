@@ -157,7 +157,7 @@ The following claims are explicitly approved and accurate:
 
 ### APPROVED CLAIMS
 
-"Free forever" — Sarang Business OS Lite is free to use with no mandatory subscription or licensing fee.
+"Free for your first 12 months, then ₹599/year (India) or $29/year (international)" — superseded 2026-07 by Phase 59 (see PHASE_59_MONETIZATION_LICENSING_MASTER_PROMPT.md at the repo root). "Free forever" is no longer an approved claim for any install downloaded after that phase ships; it remains true and unrevoked for every copy already downloaded before then (see that document's Section 0).
 
 "Offline first" — Core business operations function without internet connectivity.
 
@@ -246,6 +246,8 @@ Not permitted:
 - Verifying UPI transactions automatically
 
 Any future developer, AI agent, or contributor who attempts to add payment verification, payment gateway integration, or automatic transaction confirmation is in violation of this policy and must stop immediately.
+
+**Scope clarification, added 2026-07 (Phase 59) — read before treating this section as blocking licensing work**: PM005 governs Sarang's handling of a *business's own customer* payments recorded through the billing/invoicing screens — the rule that the app must never claim to verify or process a transaction between a shopkeeper and their own customer. It does NOT govern Aszurex's own separate commercial relationship with a Sarang user — the ₹599/year (India, via Razorpay) or $29/year (international, via Lemon Squeezy) license fee introduced in Phase 59 is Aszurex selling its own software to its own customer, ordinary software commerce, not Sarang acting as a payment intermediary for someone else's sale. That distinct, disclosed mechanism is specified in full in `PHASE_59_MONETIZATION_LICENSING_MASTER_PROMPT.md` at the repo root and is not a violation of this policy. PM005 itself is otherwise unchanged and still fully governs the in-app billing/UPI-QR payment-recording behavior exactly as written above.
 
 ---
 

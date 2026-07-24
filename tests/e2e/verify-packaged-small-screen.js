@@ -4,11 +4,22 @@
  * matching the real user-reported bug photo. Real bug found+fixed 2026-07-16.
  */
 const { _electron } = require('playwright-core')
+const { createHmac } = require('crypto')
 
 const EXE_PATH = 'C:\\Users\\vishw\\AppData\\Local\\Programs\\Sarang Business OS Lite\\Sarang Business OS Lite.exe'
 const ADMIN_PASSWORD = 'SmallScreenVerify!2026'
 
 function log(msg) { console.log(`[${new Date().toISOString()}] ${msg}`) }
+
+// Phase 59 — see packaged-fresh-install-flow.js's identical helper for the
+// full explanation; mirrors license.service.ts's generateLicenseKey().
+const TEST_LICENSE_SECRET = process.env.SARANG_LICENSE_HMAC_SECRET || 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP'
+function generateTestLicenseKey(tier = 'TRIAL', region = 'IN') {
+  const days = Math.floor(Date.now() / 86_400_000)
+  const payload = `${tier}-${region}-${days.toString(36)}`
+  const sig = createHmac('sha256', TEST_LICENSE_SECRET).update(payload).digest('hex').slice(0, 12)
+  return `SARANG-${payload}-${sig}`
+}
 
 async function main() {
   const app = await _electron.launch({ executablePath: EXE_PATH })
@@ -75,6 +86,20 @@ async function main() {
     check('wizard-admin-complete-setup-reachable', await completeBtn.isVisible())
     await completeBtn.click()
     await page.waitForTimeout(1500)
+
+    // Phase 59 — Launch Dashboard is now gated on license activation + its
+    // disclosure checkbox (and the recovery-code checkbox, if shown).
+    const recoveryCheckbox = page.locator('text=I\'ve saved this recovery code somewhere safe').locator('xpath=preceding-sibling::input[@type="checkbox"]')
+    if (await recoveryCheckbox.count()) await recoveryCheckbox.check()
+
+    const licenseKeyField = page.getByRole('textbox', { name: 'License key' })
+    if (await licenseKeyField.count()) {
+      await licenseKeyField.scrollIntoViewIfNeeded()
+      await licenseKeyField.fill(generateTestLicenseKey('TRIAL', 'IN'))
+      await page.getByRole('button', { name: 'Activate' }).click()
+      await page.waitForTimeout(500)
+      await page.locator('text=I understand Sarang is free for my first 12 months').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
+    }
 
     const launchBtn = page.getByRole('button', { name: 'Launch Dashboard' })
     if (await launchBtn.count()) {

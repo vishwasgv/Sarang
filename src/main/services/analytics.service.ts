@@ -1,6 +1,8 @@
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from './industry-template.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
+import { getLicenseState, LICENSE_WARNING_AFTER_DAYS, LICENSE_EXPIRES_AFTER_DAYS } from './license.service'
+import { checkForUpdatesIfDue } from './update-check.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -48,7 +50,7 @@ export interface ActivityItem {
 }
 
 export interface DashboardAlert {
-  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE'
+  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE' | 'LICENSE_EXPIRING' | 'LICENSE_EXPIRED' | 'UPDATE_AVAILABLE'
   message: string
   severity: 'warning' | 'danger'
 }
@@ -603,6 +605,42 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
       type: 'RENTAL_OVERDUE',
       message: `${overdueRentalCount} rental${overdueRentalCount > 1 ? 's are' : ' is'} overdue for return.`,
       severity: overdueRentalCount >= 5 ? 'danger' : 'warning'
+    })
+  }
+
+  // Phase 59 — Licensing. Reuses the existing alerts mechanism instead of a
+  // new banner component: this list already composes multiple simultaneous
+  // alerts cleanly (backup/low-stock/outstanding/etc. above), so a license
+  // alert plugs into a design that already solved the "several banners at
+  // once" problem rather than needing a new one. WARNING (335-364 days) and
+  // EXPIRED (365+, still TRIAL) map onto this list's existing warning/danger
+  // severity split. PAID and NOT_ACTIVATED (pre-activation, shouldn't reach
+  // a logged-in dashboard at all) produce no alert.
+  const licenseState = await getLicenseState()
+  if (licenseState.tier === 'TRIAL' && licenseState.status === 'WARNING' && licenseState.daysRemaining !== null) {
+    alerts.push({
+      type: 'LICENSE_EXPIRING',
+      message: `Your free year ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`,
+      severity: licenseState.daysRemaining <= (LICENSE_EXPIRES_AFTER_DAYS - LICENSE_WARNING_AFTER_DAYS) / 3 ? 'danger' : 'warning'
+    })
+  } else if (licenseState.tier === 'TRIAL' && licenseState.status === 'EXPIRED') {
+    alerts.push({
+      type: 'LICENSE_EXPIRED',
+      message: 'Your free year has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.',
+      severity: 'danger'
+    })
+  }
+
+  // Phase 59.13 — auto-update-check. Fully throttled/toggle-respecting
+  // inside checkForUpdatesIfDue() itself, so this call is cheap and safe on
+  // every dashboard load — same reuse-the-existing-alerts-list approach as
+  // the license alert above, not a new banner mechanism.
+  const updateResult = await checkForUpdatesIfDue()
+  if (updateResult?.hasUpdate) {
+    alerts.push({
+      type: 'UPDATE_AVAILABLE',
+      message: `Version ${updateResult.latestVersion} of Sarang is available (you're on ${updateResult.currentVersion}).`,
+      severity: 'warning'
     })
   }
 

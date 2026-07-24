@@ -308,10 +308,27 @@ export interface IpcChannels {
   dialog: {
     openFile: (options: { title?: string; accept?: string[]; maxSizeBytes?: number }) => Promise<ApiResponse<string | null>>
   }
+  // Phase 59 — Licensing. See PHASE_59_MONETIZATION_LICENSING_MASTER_PROMPT.md
+  // (repo root) Sections 59.4/59.5/59.6. No requireSession() on either
+  // handler — `activate` must work from SetupWizard before any session
+  // exists, same precedent as `dialog:openFile`/`app:checkForUpdates`.
+  license: {
+    activate: (payload: { key: string }) => Promise<ApiResponse<{ tier: 'TRIAL' | 'PAID'; region: 'IN' | 'INTL' }>>
+    getStatus: () => Promise<ApiResponse<{
+      status: 'ACTIVE' | 'WARNING' | 'EXPIRED' | 'NOT_ACTIVATED'
+      tier: 'TRIAL' | 'PAID' | null
+      region: 'IN' | 'INTL' | null
+      daysSinceIssue: number | null
+      daysRemaining: number | null
+      machineMismatch: boolean
+    }>>
+  }
   app: {
     getPaths: () => Promise<ApiResponse<{ userData: string; logs: string; backups: string }>>
     getPlatform: () => Promise<ApiResponse<NodeJS.Platform>>
     checkForUpdates: () => Promise<ApiResponse<{ hasUpdate: boolean; latestVersion: string; currentVersion: string }>>
+    isAutoUpdateCheckEnabled: () => Promise<ApiResponse<boolean>>
+    setAutoUpdateCheckEnabled: (payload: { enabled: boolean }) => Promise<ApiResponse>
     acknowledgeDisclaimer: () => Promise<ApiResponse>
     isDisclaimerAccepted: () => Promise<ApiResponse<boolean>>
     isBackupPromptDismissed: () => Promise<ApiResponse<boolean>>

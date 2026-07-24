@@ -393,6 +393,16 @@ export function DashboardScreen() {
                 {t('dashboard.reviewRentals')}
               </button>
             )}
+            {(alert.type === 'LICENSE_EXPIRING' || alert.type === 'LICENSE_EXPIRED') && (
+              <button onClick={() => navigate('/license')} className="text-xs font-semibold underline shrink-0">
+                {t('dashboard.renewLicense')}
+              </button>
+            )}
+            {alert.type === 'UPDATE_AVAILABLE' && (
+              <button onClick={() => navigate('/about')} className="text-xs font-semibold underline shrink-0">
+                {t('dashboard.viewUpdate')}
+              </button>
+            )}
           </motion.div>
         ))}
       </AnimatePresence>

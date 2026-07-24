@@ -11,6 +11,7 @@ import { deductBatchStockFIFO, restoreBatchStockFIFO, hasEnoughNonExpiredBatchSt
 import { markSerialSoldTx, markSerialAvailableTx } from './serial.service'
 import { SequenceContendedError } from './sequence.service'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
+import { getLicenseState } from './license.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
@@ -165,6 +166,18 @@ export const billingService = {
   // RULE B001–B010: fully atomic invoice creation
   async createInvoice(payload: CreateInvoicePayload, userId?: string) {
     const db = getPrisma()
+
+    // Phase 59 — Licensing degrade-mode check (Section 59.6). Only blocks a
+    // NEW invoice when the free year has genuinely ended on a still-TRIAL
+    // key — never a PAID key, never viewing/printing/exporting/reporting on
+    // anything that already exists, and never when offline (getLicenseState
+    // is fully local, this check adds no network dependency). Checked here
+    // rather than only in the UI so the block is real, not cosmetic — a
+    // disabled button alone wouldn't stop a direct IPC call.
+    const licenseState = await getLicenseState()
+    if (licenseState.tier === 'TRIAL' && licenseState.status === 'EXPIRED') {
+      return { success: false, error: { code: 'LIC-002', message: 'Your free year has ended. Renew your license (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.' } }
+    }
 
     // Pre-transaction validation: verify products + compute line totals
     const allowNegative = await getAllowNegativeInventory()

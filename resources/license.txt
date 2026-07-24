@@ -4,10 +4,17 @@ Copyright (c) 2026 Aszurex. All rights reserved.
 
 Please read these terms before installing.
 
-1. FREE SOFTWARE, NO SUBSCRIPTION
-   Sarang Business OS Lite is provided free of charge. There is no
-   subscription, no license fee, and no in-app purchase. Aszurex does not
-   collect payment for the use of this software.
+1. FREE FOR YOUR FIRST 12 MONTHS, THEN A LICENSE FEE
+   Sarang Business OS Lite is free to use for the first 12 months from the
+   date you activate it. After that, continued use requires a license
+   (currently 599 INR/year in India, 29 USD/year internationally) — you will
+   be reminded inside the app well before this applies, and existing data,
+   viewing, printing, exporting, and backup/restore remain available even if
+   a license lapses; only creating new invoices/bills is affected. A license
+   key is tied to one device (your PC or laptop) at a time. Full terms are
+   in the in-app Settings > License section and at aszurex.com/sarang.
+   (If you installed a version of Sarang before this term applied, it
+   remains free for you exactly as originally provided.)
 
 2. OFFLINE-FIRST, YOUR DATA STAYS ON YOUR COMPUTER
    Sarang stores all business data (invoices, customers, inventory, and
@@ -42,7 +49,9 @@ Please read these terms before installing.
    To the maximum extent permitted by applicable law, Aszurex shall not
    be liable for any indirect, incidental, special, or consequential
    damages, or for any loss of data, profits, or business, arising from
-   the use of or inability to use this software.
+   the use of or inability to use this software, including any loss
+   arising from the license verification, expiration, degraded-mode, or
+   renewal process described in Section 1 above.
 
 7. ACCEPTABLE USE
    You may install and use Sarang Business OS Lite for your own business

@@ -34,6 +34,7 @@ import { KitchenDisplayBoardScreen } from '@modules/restaurant/ui/KitchenDisplay
 import { ReturnScreen } from '@modules/retail/ui/ReturnScreen'
 import { IndustrySettingsScreen } from '@modules/industry/ui/IndustrySettingsScreen'
 import { AboutScreen } from '@modules/settings/ui/AboutScreen'
+import { LicenseScreen } from '@modules/settings/ui/LicenseScreen'
 import { ManualScreen } from '@modules/manual/ui/ManualScreen'
 import { DisclaimerScreen } from '@modules/disclaimer/ui/DisclaimerScreen'
 import { BackupPromptScreen } from '@modules/backup/ui/BackupPromptScreen'
@@ -366,6 +367,7 @@ export function AppRouter() {
         <Route path="/audit" element={<ProtectedRoute permission="audit.view"><AuditLogsScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute permission="settings.view"><SettingsScreen /></ProtectedRoute>} />
         <Route path="/about" element={<AboutScreen />} />
+        <Route path="/license" element={<ProtectedRoute permission="settings.view"><LicenseScreen /></ProtectedRoute>} />
         <Route path="/manual/*" element={<ManualScreen />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
