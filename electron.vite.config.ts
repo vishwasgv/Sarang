@@ -11,6 +11,11 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
+    define: {
+      'process.env.SARANG_LICENSE_HMAC_SECRET': JSON.stringify(
+        process.env.SARANG_LICENSE_HMAC_SECRET || 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP'
+      )
+    },
     build: {
       rollupOptions: {
         external: ['@prisma/client', 'bcryptjs', 'qrcode', 'xlsx']
