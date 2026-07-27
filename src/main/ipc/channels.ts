@@ -333,6 +333,8 @@ export interface IpcChannels {
     isDisclaimerAccepted: () => Promise<ApiResponse<boolean>>
     isBackupPromptDismissed: () => Promise<ApiResponse<boolean>>
     dismissBackupPrompt: () => Promise<ApiResponse>
+    isTutorialPromptDismissed: () => Promise<ApiResponse<boolean>>
+    dismissTutorialPrompt: () => Promise<ApiResponse>
     // Phase 44: base64 data-URI form of the business logo, for renderer-side print
     // paths (e.g. ChallanScreen's window.open()/document.write() popup) that have no
     // resolvable file:// base and can't just interpolate a file path like the
@@ -343,6 +345,16 @@ export interface IpcChannels {
     // (which embed it server-side). Returns { qrDataUrl: null } — not an
     // error — whenever the business has no UPI configured or isn't Indian.
     generateUpiPaymentQr: (payload: { amount: number; note: string }) => Promise<ApiResponse<{ qrDataUrl: string } | null>>
+  }
+  // Phase 60 — Interactive Onboarding Tutorial. See PHASE_60_TUTORIAL_MASTER_PROMPT.md
+  // (repo root, one level up). start/exit both relaunch the whole app — see
+  // tutorial.service.ts's header comment for why — so these promises never
+  // actually resolve on success from the renderer's point of view; the app
+  // process exits first.
+  tutorial: {
+    start: (payload: { businessType: string }) => Promise<ApiResponse>
+    exit: () => Promise<ApiResponse>
+    isActive: () => Promise<ApiResponse<boolean>>
   }
   print: {
     invoice: (payload: { invoiceId: string }) => Promise<ApiResponse>

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { hashLicenseKeyForPing, parseAndVerifyLicenseKey } from './license.service'
+import { toLocalISODate } from '../utils/date.util'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Aggregate, anonymous daily active-usage tracking. Disclosed once at
@@ -34,8 +35,15 @@ interface UsageQueueEntry {
   minutesUsed: number
 }
 
+// Real bug class this project has hit before (see date.util.ts's own header
+// comments, 2026-07-22/23): `.toISOString().slice(0,10)` yields the UTC
+// calendar date, not the user's local one. For a shop outside UTC, that
+// silently mislabels usage minutes into the wrong day for part of every
+// single day (e.g. UTC-8 rolls the "day" over at 4pm local time). Use the
+// local-date helper instead — same one already used for the license
+// day-threshold math below.
 function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10)
+  return toLocalISODate(new Date())
 }
 
 async function upsertSetting(key: string, value: string): Promise<void> {

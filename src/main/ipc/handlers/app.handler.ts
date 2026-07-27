@@ -86,6 +86,33 @@ export function register(handle: HandleFn): void {
     }
   })
 
+  // Phase 60 — same "have we asked this owner already" pattern as the
+  // backup-location prompt above, offered once right after first login.
+  handle('app:isTutorialPromptDismissed', async () => {
+    try {
+      const db = getPrisma()
+      const setting = await db.setting.findUnique({ where: { settingKey: 'tutorial_prompt_dismissed' } })
+      return { success: true, data: setting?.settingValue === 'true' }
+    } catch {
+      return { success: true, data: false }
+    }
+  })
+
+  handle('app:dismissTutorialPrompt', async () => {
+    try {
+      const db = getPrisma()
+      await db.setting.upsert({
+        where: { settingKey: 'tutorial_prompt_dismissed' },
+        update: { settingValue: 'true' },
+        create: { settingKey: 'tutorial_prompt_dismissed', settingValue: 'true' }
+      })
+      return { success: true }
+    } catch (err) {
+      logger.error('[App] dismissTutorialPrompt error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Could not save your response. Please try again.' } }
+    }
+  })
+
   handle('app:checkForUpdates', async () => {
     try {
       const result = await fetchLatestReleaseInfo()

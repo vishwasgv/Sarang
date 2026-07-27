@@ -1,7 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { hostname, networkInterfaces, platform } from 'os'
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart } from '../utils/date.util'
 import type { ApiResponse } from '../ipc/channels'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -150,9 +149,15 @@ export async function getLicenseState(): Promise<LicenseState> {
     return { status: 'ACTIVE', tier: parsed.tier, region: parsed.region, daysSinceIssue: null, daysRemaining: null, machineMismatch }
   }
 
-  const todayStart = parseLocalDateStart(new Date().toISOString().slice(0, 10))
-  const issuedStart = parseLocalDateStart(parsed.issuedAt.toISOString().slice(0, 10))
-  const daysSinceIssue = Math.floor((todayStart.getTime() - issuedStart.getTime()) / 86_400_000)
+  // Real bug found+fixed 2026-07-28: this used to round-trip through
+  // `.toISOString().slice(0,10)` (UTC calendar date) then re-parse that as a
+  // LOCAL date via parseLocalDateStart — for any non-UTC timezone this
+  // shifts the 335/365-day threshold by up to the timezone's offset (worst
+  // case ~14h), cutting the promised free period short for users west of
+  // UTC. Raw elapsed-time math sidesteps the UTC/local round-trip entirely:
+  // every install gets exactly LICENSE_EXPIRES_AFTER_DAYS × 24h of free use
+  // from the exact moment the key was issued, regardless of timezone or DST.
+  const daysSinceIssue = Math.floor((Date.now() - parsed.issuedAt.getTime()) / 86_400_000)
   const daysRemaining = LICENSE_EXPIRES_AFTER_DAYS - daysSinceIssue
 
   // Remote kill switch (59.6) — only ever relaxes enforcement, never tightens

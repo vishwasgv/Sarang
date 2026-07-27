@@ -38,6 +38,8 @@ import { LicenseScreen } from '@modules/settings/ui/LicenseScreen'
 import { ManualScreen } from '@modules/manual/ui/ManualScreen'
 import { DisclaimerScreen } from '@modules/disclaimer/ui/DisclaimerScreen'
 import { BackupPromptScreen } from '@modules/backup/ui/BackupPromptScreen'
+import { TutorialPromptScreen } from '@modules/tour/ui/TutorialPromptScreen'
+import { useBusinessStore } from '@app/store/business.store'
 import { BulkOrderScreen } from '@modules/distributor/ui/BulkOrderScreen'
 import { OutstandingAnalyticsScreen } from '@modules/distributor/ui/OutstandingAnalyticsScreen'
 import { FieldOrdersScreen } from '@modules/distributor/ui/FieldOrdersScreen'
@@ -157,6 +159,14 @@ export function AppRouter() {
   // check. Reset to null (unresolved) whenever `user` changes so a logout
   // followed by a different user logging in re-evaluates it fresh.
   const [backupPromptDismissed, setBackupPromptDismissed] = useState<boolean | null>(null)
+  // Phase 60 — same lazy, session-gated pattern as the backup prompt above.
+  // Treated as already-dismissed whenever a tutorial session is currently
+  // active, so the prompt (which reads/writes whichever database Prisma is
+  // CURRENTLY connected to) never re-nags from inside tutorial.db itself —
+  // the tutorial's own guided walkthrough auto-starts separately, see
+  // AppLayout.tsx.
+  const [tutorialPromptDismissed, setTutorialPromptDismissed] = useState<boolean | null>(null)
+  const myBusinessType = useBusinessStore((s) => s.profile?.businessType)
 
   useEffect(() => {
     checkSetup()
@@ -165,6 +175,14 @@ export function AppRouter() {
   useEffect(() => {
     if (!user) { setBackupPromptDismissed(null); return }
     api.app.isBackupPromptDismissed().then((res) => setBackupPromptDismissed(res.data ?? true))
+  }, [user])
+
+  useEffect(() => {
+    if (!user) { setTutorialPromptDismissed(null); return }
+    Promise.all([api.app.isTutorialPromptDismissed(), api.tutorial.isActive()]).then(([promptRes, activeRes]) => {
+      const alreadyInTutorial = activeRes.success && !!activeRes.data
+      setTutorialPromptDismissed(alreadyInTutorial ? true : (promptRes.data ?? true))
+    })
   }, [user])
 
   async function checkSetup() {
@@ -206,6 +224,18 @@ export function AppRouter() {
 
   if (backupPromptDismissed === false) {
     return <BackupPromptScreen onDone={() => setBackupPromptDismissed(true)} />
+  }
+
+  if (tutorialPromptDismissed === null) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (tutorialPromptDismissed === false) {
+    return <TutorialPromptScreen businessType={myBusinessType} onDone={() => setTutorialPromptDismissed(true)} />
   }
 
   return (

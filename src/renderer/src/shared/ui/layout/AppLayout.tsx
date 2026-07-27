@@ -5,6 +5,10 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { ToastContainer } from '@shared/ui/feedback/Toast'
 import { CommandPalette } from '@shared/ui/CommandPalette'
+import { TourOverlay } from '@shared/ui/organisms/TourOverlay'
+import { TutorialBanner } from '@shared/ui/organisms/TutorialBanner'
+import { api } from '@renderer/services/ipc-client'
+import { useStartTour } from '@shared/tour/useStartTour'
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
@@ -35,6 +39,26 @@ const PAGE_TITLES: Record<string, string> = {
 export function AppLayout() {
   const location = useLocation()
   const [cmdOpen, setCmdOpen] = useState(false)
+  const [tutorialActive, setTutorialActive] = useState(false)
+  const [tourAutoStarted, setTourAutoStarted] = useState(false)
+  const { startTour, isLoaded } = useStartTour()
+
+  // Phase 60 — checked once per app session; whether tutorial mode is
+  // active never changes mid-session (entering/exiting both go through a
+  // full relaunch, see tutorial.service.ts), so a one-time check is enough.
+  useEffect(() => {
+    api.tutorial.isActive().then((res) => { if (res.success && res.data) setTutorialActive(true) }).catch(() => {})
+  }, [])
+
+  // Auto-start the guided walkthrough once we're actually inside a
+  // tutorial session AND the industry template has finished loading (the
+  // vertical-step generator needs isModuleEnabled to be populated first —
+  // starting too early would silently generate zero vertical steps).
+  useEffect(() => {
+    if (tutorialActive && isLoaded && !tourAutoStarted) {
+      if (startTour()) setTourAutoStarted(true)
+    }
+  }, [tutorialActive, isLoaded, tourAutoStarted, startTour])
 
   // Derive title from pathname (handles dynamic segments like /billing/:id)
   const title = Object.entries(PAGE_TITLES)
@@ -55,27 +79,31 @@ export function AppLayout() {
   }, [])
 
   return (
-    <div className="flex h-screen bg-surface dark:bg-slate-950 overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopBar title={title} onSearchClick={() => setCmdOpen(true)} />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-surface dark:bg-slate-950">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="h-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </main>
+    <div className="flex flex-col h-screen bg-surface dark:bg-slate-950 overflow-hidden">
+      {tutorialActive && <TutorialBanner />}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <TopBar title={title} onSearchClick={() => setCmdOpen(true)} />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-surface dark:bg-slate-950">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="h-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+        <ToastContainer />
+        <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+        <TourOverlay />
       </div>
-      <ToastContainer />
-      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
   )
 }

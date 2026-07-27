@@ -19,8 +19,8 @@ export function getPrisma(): PrismaClient {
   return prisma
 }
 
-export async function initializeDatabase(): Promise<void> {
-  const dbPath = getDatabasePath()
+export async function initializeDatabase(dbPathOverride?: string): Promise<void> {
+  const dbPath = dbPathOverride ?? getDatabasePath()
 
   // In the packaged app, Prisma cannot dlopen() native addons from inside the
   // ASAR archive. electron-builder puts *.node files into app.asar.unpacked/
@@ -51,7 +51,7 @@ export async function initializeDatabase(): Promise<void> {
 
   try {
     await prisma.$connect()
-    await applyMigrations(dbPath)
+    await applyMigrations(dbPath, !!dbPathOverride)
     console.log(`[DB] Ready: ${dbPath}`)
   } catch (err) {
     console.error('[DB] Initialization failed:', err)
@@ -59,7 +59,11 @@ export async function initializeDatabase(): Promise<void> {
   }
 }
 
-async function applyMigrations(dbPath: string): Promise<void> {
+// forceApply: bypasses the dev-mode early-return below. Used only for
+// tutorial.db (Phase 60) — a fresh scratch database needs its full schema
+// applied regardless of dev/packaged mode, unlike the real dev database
+// (which relies on the developer having already run `npm run db:migrate`).
+async function applyMigrations(dbPath: string, forceApply = false): Promise<void> {
   const db = getPrisma()
 
   // WAL mode improves concurrent read performance and crash recovery
@@ -89,11 +93,15 @@ async function applyMigrations(dbPath: string): Promise<void> {
     console.warn('[DB] PRAGMA setup warning:', e)
   }
 
-  // In development, migrations are applied manually via `npm run db:migrate`.
-  // The production migration runner below only runs in the packaged app.
-  if (!app.isPackaged) return
+  // In development, migrations are normally applied manually via `npm run
+  // db:migrate`, and the production migration runner below only runs in the
+  // packaged app — except when forceApply is set (tutorial.db), which always
+  // needs its schema created fresh regardless of dev/packaged mode.
+  if (!app.isPackaged && !forceApply) return
 
-  const migrationsDir = join(process.resourcesPath, 'prisma', 'migrations')
+  const migrationsDir = app.isPackaged
+    ? join(process.resourcesPath, 'prisma', 'migrations')
+    : join(process.cwd(), 'prisma', 'migrations')
   if (!existsSync(migrationsDir)) {
     console.warn('[DB] Migrations directory not found:', migrationsDir)
     return

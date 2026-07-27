@@ -756,6 +756,11 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
         </div>
         {licenseError && <p className="text-xs text-danger mb-2">{licenseError}</p>}
         {licenseActivated && <p className="text-xs text-success mb-2">License activated for this device.</p>}
+        {!licenseActivated && (
+          <p className="text-xs text-slate-400 mb-2">
+            Don't have a key? <a href="https://aszurex.com/sarang.html" target="_blank" rel="noopener noreferrer" className="text-brand underline">Get one free</a> — it only takes a minute.
+          </p>
+        )}
         <label className="flex items-start gap-2 cursor-pointer">
           <input type="checkbox" checked={licenseChecked} onChange={(e) => setLicenseChecked(e.target.checked)} className="mt-0.5" />
           <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 12 months, then {priceLine} keeps it running.</span>

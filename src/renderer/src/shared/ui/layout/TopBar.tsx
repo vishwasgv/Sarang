@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, ChevronDown, LogOut, Lock, Settings, Check, Search, Sun, Moon } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Lock, Settings, Check, Search, Sun, Moon, HelpCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useThemeStore } from '@app/store/theme.store'
 import { cn } from '@shared/utils/cn'
 import { api, onPushEvent } from '@renderer/services/ipc-client'
+import { TutorialStartModal } from '@shared/ui/organisms/TutorialStartModal'
 
 interface NotificationItem {
   id: string; title: string; message: string
@@ -19,6 +21,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, onSearchClick }: TopBarProps) {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const { clear: clearAuth } = useAuthStore()
   const toast = useNotificationStore()
@@ -28,6 +31,7 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [tourModalOpen, setTourModalOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -112,6 +116,17 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
         >
           {isDark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
+
+        {/* Phase 60 — revisit the guided tutorial any time */}
+        <button
+          onClick={() => setTourModalOpen(true)}
+          aria-label={t('tour.revisitTitle')}
+          title={t('tour.revisitTitle')}
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <HelpCircle size={18} />
+        </button>
+        <TutorialStartModal open={tourModalOpen} onClose={() => setTourModalOpen(false)} />
 
         {/* Notifications */}
         <div className="relative" ref={notifRef}>

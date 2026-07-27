@@ -26,7 +26,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { BrandIcon, AszurexMark } from '@shared/ui/atoms/Brand'
 
-interface NavItem {
+export interface NavItem {
   label: string
   i18nKey?: string
   path: string
@@ -35,7 +35,11 @@ interface NavItem {
   requiredModule?: string
 }
 
-const NAV_ITEMS: NavItem[] = [
+// Exported so Phase 60's tour-step generator can derive "which screens does
+// business type X actually have" from this exact same list — the real
+// source of truth for what's enabled per vertical — rather than maintaining
+// a second, separately-curated list that can silently drift out of sync.
+export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', i18nKey: 'nav.dashboard', path: '/', icon: LayoutDashboard },
   // Phase 57 — AI Assistant. Cross-cutting, opt-in (off by default for every
   // business type), English-only (no i18nKey — same convention as other

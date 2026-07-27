@@ -40,7 +40,7 @@ async function importFresh() {
 describe('recordUsageTick', () => {
   it('first-ever call starts today at ~0 minutes with no prior state', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-27T10:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 0, 0))
     const { recordUsageTick } = await importFresh()
     await recordUsageTick()
     expect(db.__store.get('usage_today_date')).toBe('2026-07-27')
@@ -49,10 +49,10 @@ describe('recordUsageTick', () => {
 
   it('accumulates elapsed minutes across same-day calls', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-27T10:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 0, 0))
     const { recordUsageTick } = await importFresh()
     await recordUsageTick()
-    vi.setSystemTime(new Date('2026-07-27T10:05:00Z')) // +5 minutes
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 5, 0)) // +5 minutes
     await recordUsageTick()
     expect(db.__store.get('usage_today_date')).toBe('2026-07-27')
     expect(Number(db.__store.get('usage_today_minutes_accumulated'))).toBe(5)
@@ -60,26 +60,32 @@ describe('recordUsageTick', () => {
 
   it('caps elapsed time at one tick interval + grace, so a long sleep/hibernate gap is not counted as usage', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-27T10:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 0, 0))
     const { recordUsageTick } = await importFresh()
     await recordUsageTick()
     // Simulate the laptop sleeping for 3 hours between ticks — should be
     // capped, not counted as 180 minutes of active usage.
-    vi.setSystemTime(new Date('2026-07-27T13:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 27, 13, 0, 0))
     await recordUsageTick()
     const minutes = Number(db.__store.get('usage_today_minutes_accumulated'))
     expect(minutes).toBeLessThan(10) // tick interval (5min) + 1min grace, not 180
   })
 
+  // Constructed via the local Date constructor (year, monthIndex, day, ...)
+  // rather than a UTC 'Z' ISO string deliberately — recordUsageTick's day
+  // boundary is local-calendar-day-based (see the real bug this fixed,
+  // 2026-07-28: a UTC-string round-trip shifted the boundary by the local
+  // timezone's offset). Using local-constructed Dates keeps these tests
+  // correct regardless of which timezone they run in.
   it('rolls a stale prior day into the pending queue and starts today fresh', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-26T20:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 26, 20, 0, 0)) // local July 26, 8:00 PM
     const { recordUsageTick } = await importFresh()
     await recordUsageTick()
-    vi.setSystemTime(new Date('2026-07-26T20:30:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 26, 20, 30, 0)) // local July 26, 8:30 PM
     await recordUsageTick() // accumulates ~30 min for the 26th
 
-    vi.setSystemTime(new Date('2026-07-27T09:00:00Z')) // next day
+    vi.setSystemTime(new Date(2026, 6, 27, 9, 0, 0)) // local July 27, next day
     await recordUsageTick()
 
     const queue = JSON.parse(db.__store.get('usage_pending_queue') || '[]')
@@ -91,11 +97,11 @@ describe('recordUsageTick', () => {
 
   it('does not enqueue a zero-minute stale day', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-26T23:59:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 26, 23, 59, 0)) // local July 26, 11:59 PM
     const { recordUsageTick } = await importFresh()
     await recordUsageTick() // today = 26th, 0 minutes so far
 
-    vi.setSystemTime(new Date('2026-07-27T00:00:01Z')) // rolls over almost immediately
+    vi.setSystemTime(new Date(2026, 6, 27, 0, 0, 1)) // local July 27, just after midnight
     await recordUsageTick()
 
     const queue = JSON.parse(db.__store.get('usage_pending_queue') || '[]')
@@ -170,7 +176,7 @@ describe('flushUsageQueue', () => {
 
   it('throttles repeated flush attempts to at most once per ~15 minutes', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-27T10:00:00Z'))
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 0, 0))
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetchSpy)
     const { generateLicenseKey } = await import('../license.service')
@@ -183,7 +189,7 @@ describe('flushUsageQueue', () => {
 
     // Immediately try again — should be throttled since a flush just ran.
     db.__store.set('usage_pending_queue', JSON.stringify([{ date: '2026-07-27', minutesUsed: 10 }]))
-    vi.setSystemTime(new Date('2026-07-27T10:05:00Z')) // only 5 min later
+    vi.setSystemTime(new Date(2026, 6, 27, 10, 5, 0)) // only 5 min later
     await flushUsageQueue()
     expect(fetchSpy).toHaveBeenCalledTimes(1) // still 1, not 2
   })

@@ -3,8 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
+vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
+import { getLicenseState } from '../license.service'
 import { quotationService } from '../quotation.service'
 
 const EXISTING_NUMBER = 'QT-00003'
@@ -73,5 +75,77 @@ describe('quotationService.create', () => {
     expect(data.discountAmount).toBe(20)
     expect(data.taxAmount).toBeCloseTo(32.4)
     expect(data.totalAmount).toBeCloseTo(262.4)
+  })
+})
+
+// Regression test for a real bug found+fixed 2026-07-28: convertToInvoice
+// creates a full real invoice (RETAIL type, via tx.invoice.create, exactly
+// like billing.service.ts's createInvoice) but had no license-enforcement
+// check at all — every other invoice-creating path in the app routes
+// through createInvoice's gate, this was the one that didn't, making it a
+// complete bypass of the Phase 59 licensing enforcement once a TRIAL
+// license expired.
+describe('quotationService.convertToInvoice — license gate', () => {
+  function makeFindUniqueDb() {
+    const findUnique = vi.fn()
+    return { quotation: { findUnique }, __findUnique: findUnique }
+  }
+
+  it('blocks conversion when the license is an expired TRIAL, before touching the database at all', async () => {
+    const db = makeFindUniqueDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'EXPIRED', tier: 'TRIAL', region: 'IN', daysSinceIssue: 400, daysRemaining: -35, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LIC-002')
+    // The gate must short-circuit before any DB read — proves this is a real
+    // block, not a check that happens after work is already done.
+    expect(db.__findUnique).not.toHaveBeenCalled()
+  })
+
+  it('does not block conversion for an ACTIVE PAID license', async () => {
+    const db = makeFindUniqueDb()
+    db.__findUnique.mockResolvedValue(null) // "quotation not found" — fine, we're only proving the gate doesn't fire
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'PAID', region: 'IN', daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect((res as { error?: { code: string } }).error?.code).not.toBe('LIC-002')
+    expect(db.__findUnique).toHaveBeenCalled()
+  })
+
+  it('does not block conversion for a still-within-free-year TRIAL', async () => {
+    const db = makeFindUniqueDb()
+    db.__findUnique.mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'TRIAL', region: 'IN', daysSinceIssue: 10, daysRemaining: 355, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect((res as { error?: { code: string } }).error?.code).not.toBe('LIC-002')
+    expect(db.__findUnique).toHaveBeenCalled()
+  })
+
+  it('does not block conversion for a pre-Phase-59 upgraded install (NOT_ACTIVATED, tier null)', async () => {
+    const db = makeFindUniqueDb()
+    db.__findUnique.mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'NOT_ACTIVATED', tier: null, region: null, daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect((res as { error?: { code: string } }).error?.code).not.toBe('LIC-002')
+    expect(db.__findUnique).toHaveBeenCalled()
   })
 })

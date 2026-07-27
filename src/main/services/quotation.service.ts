@@ -6,6 +6,7 @@ import { isModuleEnabled } from './industry-template.service'
 import { generateInvoiceNumber } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { ServiceError } from '../errors/service-error'
+import { getLicenseState } from './license.service'
 
 export interface CreateQuotationPayload {
   customerId?: string
@@ -124,6 +125,17 @@ export const quotationService = {
   },
 
   async convertToInvoice(id: string, userId: string) {
+    // Phase 59 licensing gate — this creates a real invoice exactly like
+    // billing.service.ts's createInvoice, and must be blocked the same way
+    // once a TRIAL license has genuinely expired. Without this, converting
+    // a quotation was a complete bypass of the licensing enforcement (every
+    // other invoice-creating path in the app routes through createInvoice,
+    // which already has this check — this was the one path that didn't).
+    const licenseState = await getLicenseState()
+    if (licenseState.tier === 'TRIAL' && licenseState.status === 'EXPIRED') {
+      return { success: false, error: { code: 'LIC-002', message: 'Your free year has ended. Renew your license (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.' } }
+    }
+
     const db = getPrisma()
     const q = await db.quotation.findUnique({ where: { id }, include: { items: true, invoice: true } })
     if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }

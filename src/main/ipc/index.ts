@@ -141,6 +141,7 @@ import { register as registerKitchenDisplay } from './handlers/kitchen-display.h
 import { register as registerRepairTickets } from './handlers/repair-ticket.handler'
 // Phase 59 — Licensing
 import { register as registerLicense } from './handlers/license.handler'
+import { register as registerTutorial } from './handlers/tutorial.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -300,6 +301,8 @@ export function registerAllIpcHandlers(): void {
   registerRepairTickets(h)
   // Phase 59 — Licensing
   registerLicense(h)
+  // Phase 60 — Interactive Onboarding Tutorial
+  registerTutorial(h)
 
   console.log('[IPC] All handlers registered')
 }

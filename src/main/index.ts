@@ -16,6 +16,9 @@ import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-windo
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
+import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData } from './services/tutorial.service'
+import { isSetupComplete, completeSetup } from './services/setup.service'
+import { login } from './services/auth.service'
 
 process.env.APP_ROOT = app.getAppPath()
 
@@ -211,10 +214,44 @@ app.whenReady().then(async () => {
   // Show splash immediately — before the async DB init so startup feels instant
   createSplashWindow()
 
+  // Phase 60 — resolve BEFORE any database connection exists (deliberately
+  // filesystem-only, see tutorial.service.ts's resolveTutorialBoot header
+  // comment for why). If a fresh tutorial session is pending, connect to
+  // tutorial.db instead of the real database for the rest of this process's
+  // lifetime — every screen/service below runs completely unmodified either
+  // way, it's just talking to different data.
+  const tutorialFlag = resolveTutorialBoot()
+
   try {
-    await initializeDatabase()
+    await initializeDatabase(tutorialFlag ? getTutorialDbPath() : undefined)
     // Idempotent — ensures expense categories and GST tax configs exist for existing installs
     await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
+
+    if (tutorialFlag) {
+      const setupCheck = await isSetupComplete()
+      if (!setupCheck.data) {
+        const setupResult = await completeSetup({
+          businessName: 'Sarang Demo Business',
+          businessType: tutorialFlag.businessType,
+          ownerName: 'Demo Owner',
+          country: 'India',
+          currencyCode: 'INR',
+          currencySymbol: '₹',
+          taxModel: 'GST',
+          adminUsername: tutorialFlag.adminUsername,
+          adminPassword: tutorialFlag.adminPassword,
+          adminFullName: 'Demo Admin'
+        })
+        if (!setupResult.success) {
+          throw new Error(`Tutorial setup failed: ${setupResult.error?.message ?? 'unknown error'}`)
+        }
+        await seedTutorialDemoData()
+      }
+      const loginResult = await login(tutorialFlag.adminUsername, tutorialFlag.adminPassword)
+      if (!loginResult.success) {
+        throw new Error(`Tutorial auto-login failed: ${loginResult.error?.message ?? 'unknown error'}`)
+      }
+    }
   } catch (err) {
     closeSplash()
     dialog.showErrorBox(

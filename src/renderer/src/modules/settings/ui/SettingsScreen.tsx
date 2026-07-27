@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
   Info, Shield, Plus, Edit2, Trash2, Check, X, Star, Layers, RefreshCw, Globe, Moon, Printer,
-  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode
+  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode, GraduationCap
 } from 'lucide-react'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +22,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
+import { TutorialStartModal } from '@shared/ui/organisms/TutorialStartModal'
 
 interface SettingsSection {
   id: string
@@ -141,8 +142,66 @@ const SECTIONS: SettingsSection[] = [
     icon: <Info size={18} />,
     status: 'available',
     linkTo: '/about' // consolidated onto the single About screen (Phase 39) — no separate inline section anymore
+  },
+  {
+    id: 'tutorial',
+    label: 'Tutorial',
+    description: 'Revisit the guided walkthrough anytime — nothing you do there is saved',
+    icon: <GraduationCap size={18} />,
+    status: 'available'
   }
 ]
+
+function TutorialSection() {
+  const myBusinessType = useBusinessStore((s) => s.profile?.businessType)
+  const { error: toastError } = useNotificationStore()
+  const [restarting, setRestarting] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  async function handleRestartMine() {
+    setRestarting(true)
+    try {
+      const res = await api.tutorial.start({ businessType: myBusinessType ?? 'GENERAL' })
+      if (res.success === false) {
+        toastError('Error', res.error?.message ?? 'Could not start the tutorial.')
+        setRestarting(false)
+      }
+      // On success the app relaunches into the tutorial — nothing more to do here.
+    } catch {
+      toastError('Error', 'Could not start the tutorial.')
+      setRestarting(false)
+    }
+  }
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <div>
+        <h3 className="text-base font-semibold text-dark">Tutorial</h3>
+        <p className="text-sm text-slate-500 mt-1">
+          A guided walkthrough of every screen and feature — using a real, throwaway copy of Sarang. Nothing you do there is saved.
+        </p>
+      </div>
+      <button
+        onClick={handleRestartMine}
+        disabled={restarting}
+        className="w-full flex items-center gap-3 px-6 py-4 rounded-xl bg-brand text-white font-semibold text-base hover:bg-brand/90 transition-colors disabled:opacity-60"
+      >
+        <GraduationCap size={20} />
+        {restarting ? 'Starting tutorial…' : `Restart Tutorial for ${myBusinessType ?? 'My Business'}`}
+        <ChevronRight size={18} className="ml-auto" />
+      </button>
+      <button
+        onClick={() => setPickerOpen(true)}
+        className="w-full flex items-center gap-3 px-6 py-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-base hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+      >
+        <Layers size={20} />
+        Explore a Different Business Type
+        <ChevronRight size={18} className="ml-auto" />
+      </button>
+      <TutorialStartModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
+    </div>
+  )
+}
 
 function BackupLinkSection() {
   const navigate = useNavigate()
@@ -222,6 +281,7 @@ export function SettingsScreen() {
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}
         {activeSection === 'security' && <SecuritySection />}
+        {activeSection === 'tutorial' && <TutorialSection />}
       </div>
     </div>
   )

@@ -254,12 +254,19 @@ const api: IpcChannels = {
     isDisclaimerAccepted: () => invoke('app:isDisclaimerAccepted'),
     isBackupPromptDismissed: () => invoke('app:isBackupPromptDismissed'),
     dismissBackupPrompt: () => invoke('app:dismissBackupPrompt'),
+    isTutorialPromptDismissed: () => invoke('app:isTutorialPromptDismissed'),
+    dismissTutorialPrompt: () => invoke('app:dismissTutorialPrompt'),
     getBusinessLogoDataUri: () => invoke('app:getBusinessLogoDataUri'),
     generateUpiPaymentQr: (p) => invoke('app:generateUpiPaymentQr', p)
   },
   license: {
     activate: (p) => invoke('license:activate', p),
     getStatus: () => invoke('license:getStatus')
+  },
+  tutorial: {
+    start: (p) => invoke('tutorial:start', p),
+    exit: () => invoke('tutorial:exit'),
+    isActive: () => invoke('tutorial:isActive')
   },
   print: {
     invoice: (p) => invoke('print:invoice', p),
