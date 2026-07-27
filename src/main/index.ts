@@ -15,6 +15,7 @@ import { ensureFieldOrderServerState, stopFieldOrderServer } from './server/fiel
 import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-window'
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { isModuleEnabled } from './services/industry-template.service'
+import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
 
 process.env.APP_ROOT = app.getAppPath()
 
@@ -104,6 +105,7 @@ const isDev = !app.isPackaged
 
 let mainWindow: BrowserWindow | null = null
 let splashWindow: BrowserWindow | null = null
+let hasFinalizedUsageTickForQuit = false
 
 // ── Splash screen ─────────────────────────────────────────────────────────────
 // Shown during DB init and Electron renderer warm-up so the user never sees
@@ -245,6 +247,13 @@ app.whenReady().then(async () => {
   // would otherwise never get auto-backed-up again after the initial check.
   checkAutoBackupReminder().catch(() => {})
 
+  // Aggregate, anonymous daily active-usage tracking (disclosed once at
+  // install in SetupWizard, never surfaced again during normal use) —
+  // start/recover today's tick immediately, then opportunistically try to
+  // deliver any queued backlog. See usage-metrics.service.ts's header
+  // comment for the full design; never load-bearing, never blocks startup.
+  recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
+
   // Notification evaluation engine: fire on startup + every 60 min (spec §13.7)
   evaluateNotificationQueue().catch(() => {})
   scanPaymentOverdueNotifications().catch(() => {})
@@ -255,6 +264,13 @@ app.whenReady().then(async () => {
     scanPaymentOverdueNotifications().catch(() => {})
     generateComplianceTasks().catch(() => {})
   }, 60 * 60 * 1000)
+
+  // Usage-metrics tick — shorter cadence than the hour-ly evaluators above
+  // by design (see usage-metrics.service.ts): keeps the elapsed-time math
+  // tight and bounds how much a crash can lose to at most one interval.
+  setInterval(() => {
+    recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
+  }, 5 * 60 * 1000)
 
   // R26: Enforce CSP at the webRequest layer (stronger than meta tag alone).
   // Skipped in dev: the production policy's `script-src 'self'` (no
@@ -295,6 +311,21 @@ app.on('window-all-closed', () => {
   stopKitchenDisplayServer().catch(() => {})
   stopFieldOrderServer().catch(() => {})
   if (process.platform !== 'darwin') app.quit()
+})
+
+// Final usage-tick true-up before quitting — DB-only, no network call, so
+// this never adds a perceptible delay to quitting (unlike a flush attempt,
+// which is deliberately never made here — see usage-metrics.service.ts).
+// The guard flag prevents an infinite loop: the first before-quit defers
+// quitting until the tick resolves, then calls app.quit() again, which
+// fires before-quit a second time — the flag lets that second call through.
+app.on('before-quit', (event) => {
+  if (hasFinalizedUsageTickForQuit) return
+  event.preventDefault()
+  recordUsageTick().catch(() => {}).finally(() => {
+    hasFinalizedUsageTickForQuit = true
+    app.quit()
+  })
 })
 
 // Block all new window creation from renderer content

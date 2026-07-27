@@ -171,7 +171,7 @@ The following claims are explicitly approved and accurate:
 
 "No mandatory accounts" — No registration, login, or Aszurex account is required to use Sarang.
 
-"No telemetry by default" — No usage data, analytics, or behavioral information is collected or transmitted by default.
+"No business-data telemetry" — Business data (invoices, customers, products, reports) is never collected or transmitted, regardless of settings, by architecture not just policy. **Superseded claim, do not use as-is**: "No telemetry by default" is no longer accurate and must not be stated unqualified. As of Phase 59, new installs collect an anonymous aggregate daily usage-duration signal by default (a one-way hash of the license key plus minutes used per day — no business data, not individually identifying), disclosed once during setup and never mentioned again during normal use. See usage-metrics.service.ts and sarang-privacy.html Section 1 for the authoritative description.
 
 ---
 

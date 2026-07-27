@@ -767,8 +767,11 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
       </Button>
       <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-left">
         <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Sarang Business OS Lite</p>
-        <p className="text-xs text-slate-400 mt-0.5">No cloud. No tracking. Your data stays on your device.</p>
-        <p className="text-xs text-brand mt-1 font-medium inline-flex items-center gap-1.5">
+        <p className="text-xs text-slate-400 mt-0.5">No cloud. No data sharing. Your business data stays on your device.</p>
+        <p className="text-xs text-slate-400 mt-1.5">
+          Once a day, Sarang sends a small anonymous signal — just the number of minutes the app was open, tied to a one-way hash of your license key. It never includes any business data and can't identify you or your business; we use it only to see overall usage across everyone. This is the only time this is mentioned — it won't come up again during normal use.
+        </p>
+        <p className="text-xs text-brand mt-1.5 font-medium inline-flex items-center gap-1.5">
           Powered by Aszurex <AszurexMark width={12} /> · Trust Beyond Limits
         </p>
       </div>
