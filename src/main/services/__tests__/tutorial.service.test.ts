@@ -187,8 +187,8 @@ describe('seedTutorialDemoData', () => {
   it('creates one demo customer and one demo product with stock, via whichever Prisma client getPrisma currently returns', async () => {
     const dbModule = await import('../../database/db')
     const fakeDb = {
-      customer: { create: vi.fn(async () => ({ id: 'c1' })) },
-      product: { create: vi.fn(async () => ({ id: 'p1' })) }
+      customer: { create: vi.fn(async (_args: { data: unknown }) => ({ id: 'c1' })) },
+      product: { create: vi.fn(async (_args: { data: { inventory: { create: { quantity: number } } } }) => ({ id: 'p1' })) }
     }
     ;(dbModule.getPrisma as unknown as ReturnType<typeof vi.fn>).mockReturnValue(fakeDb)
 
@@ -197,8 +197,8 @@ describe('seedTutorialDemoData', () => {
 
     expect(fakeDb.customer.create).toHaveBeenCalledTimes(1)
     expect(fakeDb.product.create).toHaveBeenCalledTimes(1)
-    const productArgs = fakeDb.product.create.mock.calls[0][0]
-    expect(productArgs.data.inventory.create.quantity).toBeGreaterThan(0)
+    const productArgs = fakeDb.product.create.mock.calls[0]?.[0]
+    expect(productArgs?.data.inventory.create.quantity).toBeGreaterThan(0)
   })
 })
 
