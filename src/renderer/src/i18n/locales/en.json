@@ -1693,7 +1693,21 @@
       "carServiceJobs": { "title": "Job Cards", "body": "Open a job card for a vehicle being serviced, and track the work done against it." },
       "tailoring": { "title": "Tailoring Orders", "body": "Take a tailoring order with a customer's measurements, and track it through to delivery." },
       "pestControl": { "title": "Pest Control Contracts", "body": "Track a recurring pest-control contract and its scheduled visits." },
-      "placement": { "title": "Placement", "body": "Track a candidate through a job placement, from application to a confirmed hire." }
+      "placement": { "title": "Placement", "body": "Track a candidate through a job placement, from application to a confirmed hire." },
+      "quotations": { "title": "Quotations", "body": "Send a customer a quote before they commit — try creating one, then convert it to a real invoice with one click once they say yes." },
+      "creditNotes": { "title": "Credit Notes", "body": "Issue a credit note against a past invoice — for a discount, a billing correction, or goods returned. It adjusts what the customer owes without touching the original invoice." },
+      "debitNotes": { "title": "Debit Notes", "body": "Record a debit note against a supplier — for a purchase price correction or something you're charging back to them." },
+      "purchaseOrders": { "title": "Purchase Orders", "body": "Create a purchase order to a supplier, then receive the goods against it when they arrive — keeps what you ordered and what actually showed up cleanly separate." },
+      "suppliers": { "title": "Suppliers", "body": "Every supplier you buy from, with their own purchase and payment history — the other side of the business from Customers." },
+      "cashClose": { "title": "Cash Close", "body": "Reconcile the cash in your drawer against what Sarang recorded for the day — try it and see how it flags a shortage or overage instantly instead of at month-end." },
+      "expenses": { "title": "Expenses", "body": "Log a business expense — rent, utilities, anything that isn't stock — to keep your real profit picture accurate." },
+      "documents": { "title": "Documents", "body": "Attach and store documents against records across Sarang — receipts, contracts, ID proofs — so nothing lives only on paper." },
+      "importData": { "title": "Import Data", "body": "Bring in existing data in bulk — like a spreadsheet of products or customers — instead of typing everything in one at a time." },
+      "auditLog": { "title": "Audit Log", "body": "Every significant action anyone takes in Sarang is recorded here, tamper-evident — who did what, and when." },
+      "hrEmployees": { "title": "Employees", "body": "Add your staff here — this is also where their login accounts and roles get set up." },
+      "hrAttendance": { "title": "Attendance", "body": "Mark daily attendance for your staff — present, absent, or on leave." },
+      "hrLeave": { "title": "Leave", "body": "Track and approve leave requests from your staff." },
+      "hrPayroll": { "title": "Payroll", "body": "Run payroll for your staff based on their attendance and salary structure." }
     }
   },
   "manufacturing": {

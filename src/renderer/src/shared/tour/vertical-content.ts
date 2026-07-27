@@ -108,7 +108,27 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/carservice/jobs', key: 'carServiceJobs' },
   { path: '/tailor/orders', key: 'tailoring' },
   { path: '/pest/contracts', key: 'pestControl' },
-  { path: '/placement/candidates', key: 'placement' }
+  { path: '/placement/candidates', key: 'placement' },
+  // Cross-cutting screens shared by nearly every business type (not
+  // vertical-specific, but not covered by the universal segment either) —
+  // added so every screen gets real, specific content, not just the
+  // flagship distinctive ones. Confirmed via a full 43-type sweep: these
+  // 14 are the ONLY paths that were still falling back to the generic
+  // template across the entire app.
+  { path: '/billing/quotations', key: 'quotations' },
+  { path: '/billing/credit-notes', key: 'creditNotes' },
+  { path: '/billing/debit-notes', key: 'debitNotes' },
+  { path: '/purchase-orders', key: 'purchaseOrders' },
+  { path: '/suppliers', key: 'suppliers' },
+  { path: '/cash-close', key: 'cashClose' },
+  { path: '/expenses', key: 'expenses' },
+  { path: '/documents', key: 'documents' },
+  { path: '/import', key: 'importData' },
+  { path: '/audit', key: 'auditLog' },
+  { path: '/hr/employees', key: 'hrEmployees' },
+  { path: '/hr/attendance', key: 'hrAttendance' },
+  { path: '/hr/leave', key: 'hrLeave' },
+  { path: '/hr/payroll', key: 'hrPayroll' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(
