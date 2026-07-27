@@ -1604,7 +1604,21 @@
       "carServiceJobs": { "title": "Órdenes de trabajo", "body": "Abre una orden de trabajo para un vehículo en servicio, y rastrea el trabajo realizado en ella." },
       "tailoring": { "title": "Pedidos de sastrería", "body": "Toma un pedido de sastrería con las medidas de un cliente, y rastréalo hasta la entrega." },
       "pestControl": { "title": "Contratos de control de plagas", "body": "Rastrea un contrato recurrente de control de plagas y sus visitas programadas." },
-      "placement": { "title": "Colocación", "body": "Rastrea a un candidato a través de una colocación laboral, desde la solicitud hasta una contratación confirmada." }
+      "placement": { "title": "Colocación", "body": "Rastrea a un candidato a través de una colocación laboral, desde la solicitud hasta una contratación confirmada." },
+      "quotations": { "title": "Cotizaciones", "body": "Envía una cotización a un cliente antes de que se comprometa — crea una, luego conviértela en una factura real con un clic cuando digan que sí." },
+      "creditNotes": { "title": "Notas de crédito", "body": "Emite una nota de crédito contra una factura anterior — por un descuento, una corrección de facturación, o mercancía devuelta. Ajusta lo que debe el cliente sin tocar la factura original." },
+      "debitNotes": { "title": "Notas de débito", "body": "Registra una nota de débito contra un proveedor — por una corrección del precio de compra o algo que le estás cobrando de vuelta." },
+      "purchaseOrders": { "title": "Órdenes de compra", "body": "Crea una orden de compra a un proveedor, luego recibe la mercancía contra ella cuando llegue — mantiene claramente separado lo que pediste de lo que realmente llegó." },
+      "suppliers": { "title": "Proveedores", "body": "Cada proveedor al que le compras, con su propio historial de compras y pagos — el otro lado del negocio respecto a Clientes." },
+      "cashClose": { "title": "Cierre de caja", "body": "Concilia el efectivo en tu caja con lo que Sarang registró para el día — pruébalo y observa cómo señala un faltante o sobrante al instante en vez de a fin de mes." },
+      "expenses": { "title": "Gastos", "body": "Registra un gasto del negocio — alquiler, servicios, cualquier cosa que no sea stock — para mantener tu panorama de ganancias real y preciso." },
+      "documents": { "title": "Documentos", "body": "Adjunta y guarda documentos contra registros en todo Sarang — recibos, contratos, comprobantes de identidad — para que nada exista solo en papel." },
+      "importData": { "title": "Importar datos", "body": "Trae datos existentes en bloque — como una hoja de cálculo de productos o clientes — en lugar de escribir todo uno por uno." },
+      "auditLog": { "title": "Registro de auditoría", "body": "Cada acción significativa que alguien realiza en Sarang se registra aquí, a prueba de manipulaciones — quién hizo qué, y cuándo." },
+      "hrEmployees": { "title": "Empleados", "body": "Agrega a tu personal aquí — aquí también es donde se configuran sus cuentas de acceso y roles." },
+      "hrAttendance": { "title": "Asistencia", "body": "Marca la asistencia diaria de tu personal — presente, ausente, o de permiso." },
+      "hrLeave": { "title": "Permisos", "body": "Rastrea y aprueba las solicitudes de permiso de tu personal." },
+      "hrPayroll": { "title": "Nómina", "body": "Ejecuta la nómina de tu personal según su asistencia y estructura salarial." }
     }
   },
   "manufacturing": {
