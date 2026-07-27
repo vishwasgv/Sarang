@@ -1,5 +1,6 @@
 import { NAV_ITEMS, type NavItem } from '@shared/ui/layout/Sidebar'
 import type { TourStep } from './tour.store'
+import { VERTICAL_CONTENT_BY_PATH } from './vertical-content'
 
 // Phase 60 — Interactive Onboarding Tutorial. See
 // PHASE_60_TUTORIAL_MASTER_PROMPT.md (repo root) Section 4.
@@ -58,15 +59,27 @@ export function generateVerticalSteps(
       if (item.permissionKey && !hasPermission(item.permissionKey)) return false
       return true
     })
-    .map((item) => ({
-      id: `nav:${item.path}`,
-      titleKey: '',
-      titleLiteral: translateLabel(item),
-      bodyKey: 'tour.genericExploreScreen',
-      bodyParams: { label: translateLabel(item) },
-      targetSelector: `a[href="${item.path}"]`,
-      route: item.path
-    }))
+    .map((item) => {
+      const contentKey = VERTICAL_CONTENT_BY_PATH[item.path]
+      if (contentKey) {
+        return {
+          id: `nav:${item.path}`,
+          titleKey: `tour.items.${contentKey}.title`,
+          bodyKey: `tour.items.${contentKey}.body`,
+          targetSelector: `a[href="${item.path}"]`,
+          route: item.path
+        }
+      }
+      return {
+        id: `nav:${item.path}`,
+        titleKey: '',
+        titleLiteral: translateLabel(item),
+        bodyKey: 'tour.genericExploreScreen',
+        bodyParams: { label: translateLabel(item) },
+        targetSelector: `a[href="${item.path}"]`,
+        route: item.path
+      }
+    })
 }
 
 export function getUniversalSteps(): TourStep[] {
