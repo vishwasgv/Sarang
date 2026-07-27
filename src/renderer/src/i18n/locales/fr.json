@@ -1604,7 +1604,21 @@
       "carServiceJobs": { "title": "Fiches de travail", "body": "Ouvrez une fiche de travail pour un véhicule en cours d'entretien, et suivez le travail effectué dessus." },
       "tailoring": { "title": "Commandes de couture", "body": "Prenez une commande de couture avec les mesures d'un client, et suivez-la jusqu'à la livraison." },
       "pestControl": { "title": "Contrats de lutte antiparasitaire", "body": "Suivez un contrat récurrent de lutte antiparasitaire et ses visites programmées." },
-      "placement": { "title": "Placement", "body": "Suivez un candidat à travers un placement, de la candidature jusqu'à une embauche confirmée." }
+      "placement": { "title": "Placement", "body": "Suivez un candidat à travers un placement, de la candidature jusqu'à une embauche confirmée." },
+      "quotations": { "title": "Devis", "body": "Envoyez un devis à un client avant qu'il ne s'engage — créez-en un, puis convertissez-le en vraie facture en un clic une fois qu'il a dit oui." },
+      "creditNotes": { "title": "Avoirs", "body": "Émettez un avoir par rapport à une facture passée — pour une remise, une correction de facturation, ou des marchandises retournées. Cela ajuste ce que le client doit sans toucher la facture originale." },
+      "debitNotes": { "title": "Notes de débit", "body": "Enregistrez une note de débit contre un fournisseur — pour une correction de prix d'achat ou quelque chose que vous lui refacturez." },
+      "purchaseOrders": { "title": "Bons de commande", "body": "Créez un bon de commande à un fournisseur, puis réceptionnez la marchandise par rapport à celui-ci à son arrivée — garde clairement séparé ce qui a été commandé de ce qui est réellement arrivé." },
+      "suppliers": { "title": "Fournisseurs", "body": "Chaque fournisseur auprès duquel vous achetez, avec son propre historique d'achats et de paiements — l'autre côté de l'entreprise par rapport aux Clients." },
+      "cashClose": { "title": "Clôture de caisse", "body": "Rapprochez l'argent liquide dans votre tiroir avec ce que Sarang a enregistré pour la journée — essayez et voyez comment un manque ou un surplus est signalé instantanément, pas en fin de mois." },
+      "expenses": { "title": "Dépenses", "body": "Enregistrez une dépense professionnelle — loyer, services publics, tout ce qui n'est pas du stock — pour garder votre véritable image de profit exacte." },
+      "documents": { "title": "Documents", "body": "Joignez et stockez des documents liés aux enregistrements dans tout Sarang — reçus, contrats, pièces d'identité — pour que rien n'existe uniquement sur papier." },
+      "importData": { "title": "Importer des données", "body": "Importez des données existantes en masse — comme une feuille de calcul de produits ou de clients — plutôt que de tout saisir un par un." },
+      "auditLog": { "title": "Journal d'audit", "body": "Chaque action significative effectuée par quelqu'un dans Sarang est enregistrée ici, à l'épreuve de la falsification — qui a fait quoi, et quand." },
+      "hrEmployees": { "title": "Employés", "body": "Ajoutez votre personnel ici — c'est également ici que leurs comptes de connexion et rôles sont configurés." },
+      "hrAttendance": { "title": "Présence", "body": "Marquez la présence quotidienne de votre personnel — présent, absent, ou en congé." },
+      "hrLeave": { "title": "Congés", "body": "Suivez et approuvez les demandes de congé de votre personnel." },
+      "hrPayroll": { "title": "Paie", "body": "Exécutez la paie de votre personnel selon leur présence et leur structure salariale." }
     }
   },
   "manufacturing": {
