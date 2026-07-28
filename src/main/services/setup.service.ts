@@ -6,16 +6,44 @@ import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.
 import { seedDefaultServicesForTemplate } from './service-catalog.service'
 import { logger } from '../utils/logger'
 import { isValidLogoPath } from '../utils/logo-path'
+import { getLicenseState } from './license.service'
 import type { ApiResponse, SetupPayload } from '../ipc/channels'
 
-export async function isSetupComplete(): Promise<ApiResponse<boolean>> {
+/**
+ * Real gap found+closed 2026-07-28: this used to report setup as "complete"
+ * the moment a BusinessProfile + admin User existed, with zero regard for
+ * whether a license had ever been activated. SetupWizard.tsx's onSubmit()
+ * calls completeSetup() (creating both of those) a full screen BEFORE its
+ * final step ever asks for a license key — the key-entry checkbox only gates
+ * the "Launch Dashboard" *button*, a client-side convenience, not a real
+ * block (this codebase's own established principle elsewhere — see
+ * billing.service.ts's licensing check comment — is that a disabled button
+ * alone doesn't stop anything real). Concretely: closing the app (a crash,
+ * a forced reboot, an accidental Alt-F4) at any point after that submit but
+ * before "Launch Dashboard" is clicked left a fully working, permanently
+ * license-free install — isSetupComplete() would report true on the next
+ * launch (profile + admin already exist) and SetupWizard would never be
+ * shown again, with getLicenseState()'s NOT_ACTIVATED status never gated by
+ * any invoicing check. Not a contrived exploit — an ordinary interrupted
+ * first run, silently and permanently bypassing the entire licensing model.
+ * Fixed by making "complete" require a real license too, and reporting
+ * `needsLicenseOnly` separately so the caller can resume with a lightweight
+ * license prompt (reusing the already-created business/admin) instead of
+ * restarting the whole wizard and hitting a duplicate-username conflict.
+ */
+export async function isSetupComplete(): Promise<ApiResponse<{ complete: boolean; needsLicenseOnly: boolean }>> {
   try {
     const db = getPrisma()
-    const profile = await db.businessProfile.findFirst()
-    const adminUser = await db.user.findFirst()
-    return { success: true, data: !!(profile && adminUser) }
+    const [profile, adminUser, licenseState] = await Promise.all([
+      db.businessProfile.findFirst(),
+      db.user.findFirst(),
+      getLicenseState()
+    ])
+    const businessReady = !!(profile && adminUser)
+    const licenseReady = licenseState.status !== 'NOT_ACTIVATED'
+    return { success: true, data: { complete: businessReady && licenseReady, needsLicenseOnly: businessReady && !licenseReady } }
   } catch {
-    return { success: true, data: false }
+    return { success: true, data: { complete: false, needsLicenseOnly: false } }
   }
 }
 

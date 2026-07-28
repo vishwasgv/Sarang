@@ -67,7 +67,15 @@ export interface IpcChannels {
     regenerateRecoveryCode: (payload: { currentPassword: string }) => Promise<ApiResponse<{ recoveryCode: string }>>
   }
   setup: {
-    isSetupComplete: () => Promise<ApiResponse<boolean>>
+    // `complete` is true only once a business profile + admin user AND an
+    // activated license all exist — see setup.service.ts's isSetupComplete()
+    // doc comment for why (a real bypass found+closed 2026-07-28: the two
+    // used to be tracked independently, letting the app reach a permanent,
+    // license-free state if closed between completeSetup() and license
+    // activation). `needsLicenseOnly` distinguishes that recoverable partial
+    // state (business already created, resume with a lightweight license
+    // prompt) from a genuinely fresh install (show the full wizard).
+    isSetupComplete: () => Promise<ApiResponse<{ complete: boolean; needsLicenseOnly: boolean }>>
     completeSetup: (payload: SetupPayload) => Promise<ApiResponse<{ recoveryCode: string }>>
   }
   users: {

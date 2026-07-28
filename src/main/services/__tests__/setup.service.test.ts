@@ -13,10 +13,12 @@ vi.mock('../industry-template.service', () => ({
 }))
 vi.mock('../service-catalog.service', () => ({ seedDefaultServicesForTemplate: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }))
+vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { completeSetup } from '../setup.service'
+import { completeSetup, isSetupComplete } from '../setup.service'
 import { seedDefaultServicesForTemplate } from '../service-catalog.service'
+import { getLicenseState } from '../license.service'
 
 function makeSetupPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -123,5 +125,59 @@ describe('setup.service.completeSetup', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('USER-001')
     expect(db.$transaction).not.toHaveBeenCalled()
+  })
+})
+
+// Real bug found+fixed 2026-07-28: isSetupComplete() used to report "setup
+// complete" based purely on a BusinessProfile + admin User existing, with
+// zero regard for whether a license had ever been activated — a real
+// bypass of the entire licensing model if the app closed between
+// completeSetup() (which runs a full screen before the wizard's license
+// step) and "Launch Dashboard" actually being clicked. See setup.service.ts's
+// isSetupComplete() doc comment for the full writeup.
+describe('isSetupComplete — must require a real activated license, not just a business profile', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeDb(overrides: { profile?: unknown; adminUser?: unknown } = {}) {
+    return {
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(overrides.profile ?? null) },
+      user: { findFirst: vi.fn().mockResolvedValue(overrides.adminUser ?? null) },
+    }
+  }
+
+  it('reports a genuinely fresh install (no profile, no admin) as not complete and not resumable', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
+    vi.mocked(getLicenseState).mockResolvedValue({ status: 'NOT_ACTIVATED', tier: null, region: null, daysSinceIssue: null, daysRemaining: null, machineMismatch: false })
+
+    const res = await isSetupComplete()
+
+    expect(res.data).toEqual({ complete: false, needsLicenseOnly: false })
+  })
+
+  it('reports needsLicenseOnly=true when a business/admin already exist but no license was ever activated (the real bug: closing the app between completeSetup() and Launch Dashboard)', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb({ profile: { id: 'biz-1' }, adminUser: { id: 'user-1' } }) as never)
+    vi.mocked(getLicenseState).mockResolvedValue({ status: 'NOT_ACTIVATED', tier: null, region: null, daysSinceIssue: null, daysRemaining: null, machineMismatch: false })
+
+    const res = await isSetupComplete()
+
+    expect(res.data).toEqual({ complete: false, needsLicenseOnly: true })
+  })
+
+  it('reports complete=true once a business/admin exist and a license is ACTIVE', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb({ profile: { id: 'biz-1' }, adminUser: { id: 'user-1' } }) as never)
+    vi.mocked(getLicenseState).mockResolvedValue({ status: 'ACTIVE', tier: 'TRIAL', region: 'IN', daysSinceIssue: 5, daysRemaining: 360, machineMismatch: false })
+
+    const res = await isSetupComplete()
+
+    expect(res.data).toEqual({ complete: true, needsLicenseOnly: false })
+  })
+
+  it('still reports complete=true for an EXPIRED (but previously activated) license — degrade mode is a Dashboard concern, not a reason to loop back into setup', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb({ profile: { id: 'biz-1' }, adminUser: { id: 'user-1' } }) as never)
+    vi.mocked(getLicenseState).mockResolvedValue({ status: 'EXPIRED', tier: 'TRIAL', region: 'IN', daysSinceIssue: 400, daysRemaining: -35, machineMismatch: false })
+
+    const res = await isSetupComplete()
+
+    expect(res.data).toEqual({ complete: true, needsLicenseOnly: false })
   })
 })

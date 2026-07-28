@@ -4,6 +4,7 @@ import { useAuthStore } from './store/auth.store'
 import { AppLayout } from '@shared/ui/layout/AppLayout'
 import { LoginScreen } from '@modules/auth/ui/LoginScreen'
 import { SetupWizard } from '@modules/setup/ui/SetupWizard'
+import { LicenseActivationGate } from '@modules/setup/ui/LicenseActivationGate'
 import { DashboardScreen } from '@modules/dashboard/ui/DashboardScreen'
 import { SettingsScreen } from '@modules/settings/ui/SettingsScreen'
 import { ProductsScreen } from '@modules/products/ui/ProductsScreen'
@@ -152,6 +153,7 @@ import { api } from '@renderer/services/ipc-client'
 export function AppRouter() {
   const { user, isLoading } = useAuthStore()
   const [setupComplete, setSetupComplete] = useState<boolean | null>(null)
+  const [needsLicenseOnly, setNeedsLicenseOnly] = useState(false)
   const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean | null>(null)
   // Deliberately NOT loaded in checkSetup() below — backup:* channels are
   // session-gated (unlike the disclaimer flag), so this can only be checked
@@ -190,7 +192,8 @@ export function AppRouter() {
       api.setup.isSetupComplete(),
       api.app.isDisclaimerAccepted()
     ])
-    setSetupComplete(setupRes.data ?? false)
+    setSetupComplete(setupRes.data?.complete ?? false)
+    setNeedsLicenseOnly(setupRes.data?.needsLicenseOnly ?? false)
     setDisclaimerAccepted(disclaimerRes.data ?? false)
   }
 
@@ -203,6 +206,9 @@ export function AppRouter() {
   }
 
   if (!setupComplete) {
+    if (needsLicenseOnly) {
+      return <LicenseActivationGate onComplete={() => setSetupComplete(true)} />
+    }
     return <SetupWizard onComplete={() => setSetupComplete(true)} />
   }
 
