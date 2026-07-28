@@ -181,6 +181,20 @@ describe('quotationService.convertToInvoice — license gate', () => {
     expect(db.__findUnique).not.toHaveBeenCalled()
   })
 
+  it('blocks conversion when a PAID license has itself expired (real annual renewal, fixed 2026-07-28 — a PAID key used to never expire at all)', async () => {
+    const db = makeFindUniqueDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'EXPIRED', tier: 'PAID', region: 'IN', daysSinceIssue: 900, daysRemaining: -535, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LIC-002')
+    expect(db.__findUnique).not.toHaveBeenCalled()
+  })
+
   it('does not block conversion for an ACTIVE PAID license', async () => {
     const db = makeFindUniqueDb()
     db.__findUnique.mockResolvedValue(null) // "quotation not found" — fine, we're only proving the gate doesn't fire

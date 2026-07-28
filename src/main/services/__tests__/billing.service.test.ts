@@ -103,15 +103,27 @@ describe('billingService.createInvoice — Phase 59 license enforcement', () => 
     expect((res as { error?: { code?: string } }).error?.code).toBe('LIC-002')
   })
 
-  it('does NOT block invoice creation for a PAID license, however old', async () => {
+  it('does NOT block invoice creation for a PAID license still within its paid year', async () => {
     const db = makeMockDb()
-    const paidKey = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 900 * 86_400_000))
+    const paidKey = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 10 * 86_400_000))
     db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
       Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: paidKey } : null)
     )
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await billingService.createInvoice(basePayload as never)
     expect(res.success).toBe(true)
+  })
+
+  it('blocks invoice creation for a PAID license whose paid year has genuinely expired (real annual renewal, fixed 2026-07-28 — a PAID key used to be exempt from expiry entirely)', async () => {
+    const db = makeMockDb()
+    const staleKey = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 900 * 86_400_000))
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: staleKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await billingService.createInvoice(basePayload as never)
+    expect(res.success).toBe(false)
+    expect((res as { error?: { code?: string } }).error?.code).toBe('LIC-002')
   })
 
   it('does NOT block invoice creation when no license key has ever been entered (pre-Phase-59 install / not yet activated)', async () => {

@@ -613,20 +613,30 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   // alerts cleanly (backup/low-stock/outstanding/etc. above), so a license
   // alert plugs into a design that already solved the "several banners at
   // once" problem rather than needing a new one. WARNING (335-364 days) and
-  // EXPIRED (365+, still TRIAL) map onto this list's existing warning/danger
-  // severity split. PAID and NOT_ACTIVATED (pre-activation, shouldn't reach
-  // a logged-in dashboard at all) produce no alert.
+  // EXPIRED (365+) map onto this list's existing warning/danger severity
+  // split — applies to a PAID key's paid year exactly the same as a TRIAL
+  // key's free year since 2026-07-28 (see license.service.ts's
+  // getLicenseState() doc comment: a PAID key used to be exempt from this
+  // entirely, silently granting a lifetime license after the first payment).
+  // NOT_ACTIVATED (pre-activation, shouldn't reach a logged-in dashboard at
+  // all) produces no alert.
   const licenseState = await getLicenseState()
-  if (licenseState.tier === 'TRIAL' && licenseState.status === 'WARNING' && licenseState.daysRemaining !== null) {
+  if (licenseState.status === 'WARNING' && licenseState.daysRemaining !== null) {
+    const message = licenseState.tier === 'PAID'
+      ? `Your license renews in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
+      : `Your free year ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
     alerts.push({
       type: 'LICENSE_EXPIRING',
-      message: `Your free year ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`,
+      message,
       severity: licenseState.daysRemaining <= (LICENSE_EXPIRES_AFTER_DAYS - LICENSE_WARNING_AFTER_DAYS) / 3 ? 'danger' : 'warning'
     })
-  } else if (licenseState.tier === 'TRIAL' && licenseState.status === 'EXPIRED') {
+  } else if (licenseState.status === 'EXPIRED') {
+    const message = licenseState.tier === 'PAID'
+      ? 'Your license has expired. Renew to keep creating new invoices — all your existing data stays fully accessible.'
+      : 'Your free year has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.'
     alerts.push({
       type: 'LICENSE_EXPIRED',
-      message: 'Your free year has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.',
+      message,
       severity: 'danger'
     })
   }

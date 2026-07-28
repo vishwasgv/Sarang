@@ -76,12 +76,21 @@ describe('Phase 59 — stress: concurrent access at the exact expiry boundary', 
     vi.unstubAllGlobals()
   })
 
-  it('100 concurrent createInvoice-style getLicenseState reads against a PAID key never wrongly report EXPIRED under load', async () => {
+  it('100 concurrent createInvoice-style getLicenseState reads against a PAID key within its paid year never wrongly report EXPIRED under load', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 10 * 86_400_000))
+    await activateLicenseKey(key)
+
+    const results = await Promise.all(Array.from({ length: 100 }, () => getLicenseState()))
+    expect(results.every(r => r.status === 'ACTIVE')).toBe(true)
+  })
+
+  it('100 concurrent getLicenseState reads against a PAID key past its paid year consistently report EXPIRED, never flakily ACTIVE (real annual renewal, fixed 2026-07-28)', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
     const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 900 * 86_400_000))
     await activateLicenseKey(key)
 
     const results = await Promise.all(Array.from({ length: 100 }, () => getLicenseState()))
-    expect(results.every(r => r.status === 'ACTIVE')).toBe(true)
+    expect(results.every(r => r.status === 'EXPIRED')).toBe(true)
   })
 })

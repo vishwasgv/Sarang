@@ -83,9 +83,13 @@ export function LicenseScreen() {
           ? <Badge variant="success">{t('license.statusActivePaid')}</Badge>
           : <Badge variant="success">{t('license.statusActive')}</Badge>
       case 'WARNING':
-        return <Badge variant="warning">{t('license.statusWarning')}</Badge>
+        return state.tier === 'PAID'
+          ? <Badge variant="warning">{t('license.statusWarningPaid')}</Badge>
+          : <Badge variant="warning">{t('license.statusWarning')}</Badge>
       case 'EXPIRED':
-        return <Badge variant="danger">{t('license.statusExpired')}</Badge>
+        return state.tier === 'PAID'
+          ? <Badge variant="danger">{t('license.statusExpiredPaid')}</Badge>
+          : <Badge variant="danger">{t('license.statusExpired')}</Badge>
       default:
         return <Badge variant="neutral">{t('license.statusNotActivated')}</Badge>
     }
@@ -103,12 +107,14 @@ export function LicenseScreen() {
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('license.subtitle')}</p>
 
-        {!loading && state?.tier === 'TRIAL' && state.daysRemaining !== null && state.status !== 'EXPIRED' && (
-          <p className="text-sm text-dark dark:text-slate-100 mb-3">{t('license.daysRemaining', { days: state.daysRemaining })}</p>
+        {!loading && state?.daysRemaining !== null && state?.daysRemaining !== undefined && state.status !== 'EXPIRED' && (
+          <p className="text-sm text-dark dark:text-slate-100 mb-3">
+            {t(state.tier === 'PAID' ? 'license.daysRemainingPaid' : 'license.daysRemaining', { days: state.daysRemaining })}
+          </p>
         )}
         {!loading && state?.status === 'EXPIRED' && (
           <div className="mb-3 p-3 bg-warning/10 border border-warning/30 rounded-lg text-xs text-warning">
-            {t('license.freeYearEndedNotice')}
+            {t(state.tier === 'PAID' ? 'license.licenseExpiredNoticePaid' : 'license.freeYearEndedNotice')}
           </div>
         )}
         {!loading && state?.machineMismatch && (
@@ -134,7 +140,7 @@ export function LicenseScreen() {
         )}
       </Card>
 
-      {(!state || state.tier !== 'PAID') && (
+      {(!state || state.status !== 'ACTIVE') && (
         <Card padding="lg" className="shadow-sm">
           <h2 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('license.renewTitle')}</h2>
           <p className="text-sm text-brand font-semibold mb-3">{priceLine}</p>

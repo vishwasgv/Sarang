@@ -129,12 +129,30 @@ describe('getLicenseState — offline, tamper-resistant, threshold-correct', () 
     expect(state.status).toBe('EXPIRED')
   })
 
-  it('a PAID key is always ACTIVE regardless of age', async () => {
+  it('a PAID key is ACTIVE while still within its paid year', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 10 * 86_400_000))
+    await activateLicenseKey(key)
+    const state = await getLicenseState()
+    expect(state.status).toBe('ACTIVE')
+    expect(state.tier).toBe('PAID')
+  })
+
+  it('a PAID key EXPIRES once its own paid year is over — real annual renewal, fixed 2026-07-28 (a PAID key used to be exempt from expiry entirely, silently granting a lifetime license after the first payment despite every pricing surface saying "/year")', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
     const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 900 * 86_400_000))
     await activateLicenseKey(key)
     const state = await getLicenseState()
-    expect(state.status).toBe('ACTIVE')
+    expect(state.status).toBe('EXPIRED')
+    expect(state.tier).toBe('PAID')
+  })
+
+  it('a PAID key shows WARNING in the 335-364 day window of its own paid year, same as TRIAL', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 340 * 86_400_000))
+    await activateLicenseKey(key)
+    const state = await getLicenseState()
+    expect(state.status).toBe('WARNING')
     expect(state.tier).toBe('PAID')
   })
 

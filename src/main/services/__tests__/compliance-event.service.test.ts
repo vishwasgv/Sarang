@@ -5,6 +5,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 
 import { getPrisma } from '../../database/db'
 import { generateComplianceTasksForAllClients, seedComplianceEvents, setClientAgmDate } from '../compliance-event.service'
+import { parseLocalDateStart } from '../../utils/date.util'
 
 function makeEvent(overrides: Record<string, unknown> = {}) {
   return {
@@ -265,7 +266,7 @@ describe('setClientAgmDate', () => {
     expect((res as { error: { code: string } }).error.code).toBe('CE29-002')
   })
 
-  it('sets a real lastAgmDate on the client', async () => {
+  it('sets a real lastAgmDate on the client, parsed as local midnight not UTC midnight', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -273,7 +274,7 @@ describe('setClientAgmDate', () => {
 
     expect(res.success).toBe(true)
     expect(db.customer.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'cust-1' }, data: { lastAgmDate: new Date('2026-08-15') },
+      where: { id: 'cust-1' }, data: { lastAgmDate: parseLocalDateStart('2026-08-15') },
     }))
   })
 
@@ -285,5 +286,21 @@ describe('setClientAgmDate', () => {
 
     expect(res.success).toBe(true)
     expect(db.customer.update).toHaveBeenCalledWith(expect.objectContaining({ data: { lastAgmDate: null } }))
+  })
+
+  // Real bug found 2026-07-28 (Pass 6 audit, fixed here): lastAgmDate was
+  // returned across IPC as a raw Prisma Date instead of a string.
+  // ComplianceScreen.tsx's edit-open handler calls `c.lastAgmDate.slice(0,10)`
+  // directly — crashing for any client with an AGM date on file.
+  it('returns lastAgmDate as a plain YYYY-MM-DD string, not a raw Date object (renderer calls .slice(0,10) on it)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await setClientAgmDate('cust-1', '2026-08-15')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { lastAgmDate: unknown } }).data
+    expect(typeof data.lastAgmDate).toBe('string')
+    expect((data.lastAgmDate as string).slice(0, 10)).toBe('2026-08-15')
   })
 })

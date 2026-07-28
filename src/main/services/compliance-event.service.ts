@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // dueMonth/dueDay are only set for events with a genuine fixed calendar due
 // date. The 4 ROC/MCA events at the bottom (MGT-7/AOC-4/ADT-1/AGM itself) are
@@ -174,11 +175,14 @@ export async function setClientAgmDate(clientId: string, agmDate: string | null)
     if (!customer) return { success: false, error: { code: 'CE29-002', message: 'Client not found.' } }
     const updated = await db.customer.update({
       where: { id: clientId },
-      data: { lastAgmDate: agmDate ? new Date(agmDate) : null },
+      data: { lastAgmDate: agmDate ? parseLocalDateStart(agmDate) : null },
       select: { id: true, lastAgmDate: true },
     })
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'Customer', entityId: clientId, newValue: JSON.stringify({ lastAgmDate: agmDate }) } }).catch(() => {})
-    return { success: true, data: updated }
+    return {
+      success: true,
+      data: { ...updated, lastAgmDate: updated.lastAgmDate ? toLocalDateOnlyIso(updated.lastAgmDate) : null }
+    }
   } catch (err) {
     return { success: false, error: { code: 'CE29-003', message: err instanceof Error ? err.message : 'Could not set AGM date.' } }
   }

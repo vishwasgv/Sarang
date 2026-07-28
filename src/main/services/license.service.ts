@@ -28,8 +28,10 @@ export type LicenseTier = 'TRIAL' | 'PAID'
 export type LicenseRegion = 'IN' | 'INTL'
 export type LicenseStatus = 'ACTIVE' | 'WARNING' | 'EXPIRED' | 'NOT_ACTIVATED'
 
-// Free-period thresholds from Section 1B/59.6 — 12 months free, banner from
-// day 335, degrade (block new billable documents, never existing data) from
+// Annual-cycle thresholds from Section 1B/59.6 — applied identically to a
+// TRIAL key's free year and to a PAID key's paid year (see the 2026-07-28
+// note on getLicenseState() below): banner from day 335 of the current key's
+// issuedAt, degrade (block new billable documents, never existing data) from
 // day 365. Named constants, not magic numbers scattered across call sites.
 export const LICENSE_WARNING_AFTER_DAYS = 335
 export const LICENSE_EXPIRES_AFTER_DAYS = 365
@@ -119,6 +121,17 @@ interface LicenseState {
  * the locally-stored license_issued_at Setting row as authoritative on its
  * own — see 59.4's tamper-resistance requirement) and never touches the
  * network. A shop with zero internet access, ever, gets identical behavior.
+ *
+ * Real gap found+closed 2026-07-28: a PAID key used to short-circuit straight
+ * to ACTIVE regardless of age — meaning the very first renewal payment
+ * bought a permanent, never-expiring unlock, even though every piece of
+ * user-facing pricing copy (SetupWizard, the website pricing page, the
+ * renewal email itself) says "₹599/year"/"$29/year". A PAID key now runs
+ * through the exact same day-335/365 WARNING/EXPIRED threshold math as a
+ * TRIAL key, computed from that key's own issuedAt (i.e. the date it was
+ * paid for) — so year 2 genuinely has to be paid for too, degrading the
+ * same non-destructive way (blocks only new billable documents, never
+ * existing data) rather than silently granting a lifetime license.
  */
 export async function getLicenseState(): Promise<LicenseState> {
   const db = getPrisma()
@@ -144,10 +157,6 @@ export async function getLicenseState(): Promise<LicenseState> {
 
   const currentFingerprint = computeMachineFingerprint()
   const machineMismatch = !!fingerprintRow?.settingValue && fingerprintRow.settingValue !== currentFingerprint
-
-  if (parsed.tier === 'PAID') {
-    return { status: 'ACTIVE', tier: parsed.tier, region: parsed.region, daysSinceIssue: null, daysRemaining: null, machineMismatch }
-  }
 
   // Real bug found+fixed 2026-07-28: this used to round-trip through
   // `.toISOString().slice(0,10)` (UTC calendar date) then re-parse that as a

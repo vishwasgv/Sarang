@@ -145,13 +145,18 @@ export const quotationService = {
   async convertToInvoice(id: string, userId: string) {
     // Phase 59 licensing gate — this creates a real invoice exactly like
     // billing.service.ts's createInvoice, and must be blocked the same way
-    // once a TRIAL license has genuinely expired. Without this, converting
-    // a quotation was a complete bypass of the licensing enforcement (every
+    // once the current license key's year has genuinely expired (TRIAL's
+    // free year or, since 2026-07-28, a PAID key's paid year too — see
+    // license.service.ts's getLicenseState()). Without this, converting a
+    // quotation was a complete bypass of the licensing enforcement (every
     // other invoice-creating path in the app routes through createInvoice,
     // which already has this check — this was the one path that didn't).
     const licenseState = await getLicenseState()
-    if (licenseState.tier === 'TRIAL' && licenseState.status === 'EXPIRED') {
-      return { success: false, error: { code: 'LIC-002', message: 'Your free year has ended. Renew your license (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.' } }
+    if (licenseState.status === 'EXPIRED') {
+      const message = licenseState.tier === 'PAID'
+        ? 'Your license has expired. Renew (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.'
+        : 'Your free year has ended. Renew your license (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.'
+      return { success: false, error: { code: 'LIC-002', message } }
     }
 
     const db = getPrisma()
