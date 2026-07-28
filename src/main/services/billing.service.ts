@@ -450,7 +450,16 @@ export const billingService = {
             paymentStatus,
             gstType: payload.gstType ?? 'CGST_SGST',
             buyerState: payload.buyerState ?? null,
-            dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+            // Real bug found live (2026-07-28 core-commerce audit): a bare
+            // `new Date('YYYY-MM-DD')` parses as UTC midnight, which for IST
+            // (UTC+5:30) is 5:30 AM local — payment-overdue.service.ts and
+            // report.service.ts's aging buckets both compare this against a
+            // local `now`, so every credit-terms invoice was flagged overdue
+            // (and its WhatsApp reminder queued) up to ~5.5 hours before the
+            // day the customer was actually given to pay had even ended.
+            // Same fix already applied to compliance-task.service.ts's
+            // dueDate for the identical "date picker -> due date" shape.
+            dueDate: payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
             tableId: payload.tableIds?.[0] ?? null,
             notes: customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')

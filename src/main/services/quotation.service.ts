@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
@@ -67,7 +68,11 @@ export const quotationService = {
           quotationNumber,
           customerId: payload.customerId ?? null,
           customerName: payload.customerName ?? null,
-          validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+          // Real bug found live (2026-07-28 core-commerce audit): a bare
+          // `new Date('YYYY-MM-DD')` parses as UTC midnight — wrong by a day
+          // when displayed in any timezone behind UTC. Same fix as
+          // billing.service.ts's dueDate (see its comment there).
+          validUntil: payload.validUntil ? parseLocalDateStart(payload.validUntil) : null,
           notes: payload.notes ?? null,
           subtotal,
           taxAmount,

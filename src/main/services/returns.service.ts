@@ -5,6 +5,7 @@ import { ServiceError } from '../errors/service-error'
 import { restoreBatchStockFIFO } from './batch.service'
 import { restoreVariantStockTx } from './variant.service'
 import { customerLedgerService } from './customer-ledger.service'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 export interface ReturnItem {
   productId: string
@@ -122,11 +123,19 @@ export async function createReturn(
       // inside lineTotal — internally inconsistent with the standard
       // subtotal - discountAmount + taxAmount = totalAmount invariant used
       // everywhere else in the app).
+      // Real bug found live (2026-07-28 core-commerce audit): this raw-float
+      // proration bypassed the app's own Decimal-safe currency helpers
+      // (currency.service.ts) that every other total computation in this
+      // scope routes through specifically to avoid compounding float error
+      // (e.g. qty 1 of 3 returned -> 1/3 = 0.3333333333333333, carried
+      // through unrounded into taxAmount/lineTotal). Rounded to 2dp at each
+      // step via roundCurrency now, matching calculateLineTotal's own
+      // discipline.
       const returnItems = items.map(ri => {
         const orig = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
-        const discountReversed = orig.discountAmount * (ri.quantity / orig.quantity)
-        const lineTotal = -(ri.quantity * orig.unitPrice - discountReversed)
-        const lineTax = lineTotal * (orig.taxRate / 100)
+        const discountReversed = roundCurrency(orig.discountAmount * (ri.quantity / orig.quantity))
+        const lineTotal = roundCurrency(-(ri.quantity * orig.unitPrice - discountReversed))
+        const lineTax = roundCurrency(lineTotal * (orig.taxRate / 100))
         return {
           productId: ri.productId,
           quantity: ri.quantity,
@@ -143,10 +152,10 @@ export async function createReturn(
         }
       })
 
-      const returnSubtotal = returnItems.reduce((s, i) => s + Math.abs(i.unitPrice * i.quantity), 0)
-      const returnDiscountReversed = returnItems.reduce((s, i) => s + i.discountAmount, 0)
-      const returnNetBeforeTax = returnItems.reduce((s, i) => s + i.lineTotal, 0) // negative
-      const returnTaxAmount = returnItems.reduce((s, i) => s + i.taxAmount, 0) // positive magnitude
+      const returnSubtotal = sumCurrency(returnItems.map(i => Math.abs(i.unitPrice * i.quantity)))
+      const returnDiscountReversed = sumCurrency(returnItems.map(i => i.discountAmount))
+      const returnNetBeforeTax = sumCurrency(returnItems.map(i => i.lineTotal)) // negative
+      const returnTaxAmount = sumCurrency(returnItems.map(i => i.taxAmount)) // positive magnitude
       // The invoice's real money total MUST include tax — the customer is
       // owed back the tax they paid too, not just the pre-tax goods value.
       // The previous version used returnNetBeforeTax directly as totalAmount,

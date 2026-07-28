@@ -3,7 +3,10 @@ import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import type { AddStockPayload, AdjustStockPayload } from '../validation/inventory.validation'
 
-async function getAllowNegative(): Promise<boolean> {
+// Exported so variant.service.ts's decrementVariantStockTx can respect the
+// exact same setting for per-variant stock — see that function's own
+// comment for the real bug this closes.
+export async function getAllowNegative(): Promise<boolean> {
   const db = getPrisma()
   try {
     const setting = await db.setting.findUnique({ where: { settingKey: 'allow_negative_inventory' } })

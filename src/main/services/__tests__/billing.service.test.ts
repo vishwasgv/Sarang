@@ -52,7 +52,12 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), update: vi.fn(),
       aggregate: vi.fn().mockResolvedValue({ _sum: { quantityRemaining: null } }),
     },
-    productSerial: { findUnique: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    productSerial: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     metalExchange: {
       findUnique: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -518,7 +523,7 @@ describe('billingService.createInvoice — Pharmacy Schedule H/H1 prescription c
 })
 
 describe('billingService.createInvoice — Phase 58 §2 credit-terms due date', () => {
-  it('stores the provided dueDate on the Invoice', async () => {
+  it('stores the provided dueDate as local midnight, not UTC midnight', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -526,7 +531,12 @@ describe('billingService.createInvoice — Phase 58 §2 credit-terms due date', 
 
     expect(res.success).toBe(true)
     const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
-    expect(createCall.data.dueDate).toEqual(new Date('2026-12-01'))
+    // Regression for a real bug found 2026-07-28: `new Date('2026-12-01')`
+    // parses as UTC midnight, which is the PREVIOUS local day in any
+    // timezone behind UTC — payment-overdue.service.ts and the aging
+    // report both compare this against local `now`. Must be local midnight
+    // (parseLocalDateStart), matching the Y/M/D local constructor.
+    expect(createCall.data.dueDate).toEqual(new Date(2026, 11, 1))
   })
 
   it('leaves dueDate null when not provided', async () => {
@@ -702,6 +712,45 @@ describe('billingService.createInvoice — Jewellery hallmark snapshot + atomic 
     const res = await billingService.createInvoice({ ...basePayload, metalExchangeId: 'mex-1' })
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('INVOC-013')
+  })
+})
+
+// Real bug found live (2026-07-28 core-commerce audit): markSerialSoldTx used
+// to be an unconditional update with no re-check inside the transaction — a
+// serial's "is this still available" check only ever happened on a stale
+// pre-transaction read. Two concurrent sales of the same physical
+// unit/IMEI would both pass that stale check; whichever transaction
+// committed second would silently overwrite the first sale's invoiceId,
+// leaving no record the unit was ever sold to the first customer. Fixed to
+// use the same conditional-claim shape as the metal-exchange/table claims
+// above. These tests guard the fix.
+describe('billingService.createInvoice — atomic serial/IMEI claim', () => {
+  const serialItem = [{ productId: 'prod-1', quantity: 1, unitPrice: 100, discountAmount: 0, taxRate: 0, serialId: 'ser-1' }]
+
+  it('atomically claims an available serial when selling it', async () => {
+    const db = makeMockDb()
+    db.productSerial.findUnique.mockResolvedValue({ id: 'ser-1', productId: 'prod-1', status: 'AVAILABLE' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, items: serialItem })
+
+    expect(res.success).toBe(true)
+    expect(db.productSerial.updateMany).toHaveBeenCalledWith({
+      where: { id: 'ser-1', status: 'AVAILABLE' },
+      data: { status: 'SOLD', invoiceId: 'inv-1', soldDate: expect.any(Date) }
+    })
+  })
+
+  it('rejects the sale if the serial was just claimed by another invoice inside the transaction', async () => {
+    const db = makeMockDb()
+    db.productSerial.findUnique.mockResolvedValue({ id: 'ser-1', productId: 'prod-1', status: 'AVAILABLE' })
+    db.productSerial.updateMany.mockResolvedValue({ count: 0 }) // another concurrent sale claimed it first, inside the transaction
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, items: serialItem })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-017')
   })
 })
 

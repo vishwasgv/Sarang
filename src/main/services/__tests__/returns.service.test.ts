@@ -101,6 +101,38 @@ describe('returns.service.createReturn', () => {
     expect(createCall.data.discountAmount).toBeCloseTo(50, 2)
   })
 
+  // Real bug found live (2026-07-28 core-commerce audit): partial-quantity
+  // proration used raw JS float arithmetic (`orig.discountAmount * (ri.quantity
+  // / orig.quantity)`) instead of this app's own Decimal-safe currency
+  // helpers, so a non-exactly-divisible partial return produced un-rounded
+  // values like -9.766666666666666 stored directly into taxAmount/lineTotal.
+  it('produces clean 2-decimal amounts for a non-exactly-divisible partial return', async () => {
+    const db = makeMockDb({
+      original: {
+        items: [
+          {
+            id: 'item-1', productId: 'prod-1', quantity: 3, unitPrice: 10.10,
+            discountAmount: 1.00, taxRate: 18,
+            product: { id: 'prod-1', productName: 'Widget', productType: 'STANDARD' }
+          }
+        ]
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Returning 1 of 3: discountReversed = 1 * (1/3) = 0.333... (unrounded),
+    // lineTotal = -(10.10 - 0.333...) = -9.766... (unrounded) before the fix.
+    await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 1 }], 'Partial defect')
+
+    const createCall = db.invoice.create.mock.calls[0][0]
+    const itemCreate = createCall.data.items.create[0]
+    // Every stored amount must round-trip to itself at 2 decimals — proof
+    // nothing carries more than cent-level precision.
+    for (const value of [itemCreate.discountAmount, itemCreate.taxAmount, itemCreate.lineTotal, createCall.data.totalAmount, createCall.data.taxAmount, createCall.data.discountAmount]) {
+      expect(value).toBeCloseTo(Math.round(value * 100) / 100, 10)
+    }
+  })
+
   // Regression: generateOutstandingReport (report.service.ts) sums
   // invoice.balanceAmount directly rather than reading CustomerLedger — before
   // this fix, a return against a still-unpaid original invoice left that

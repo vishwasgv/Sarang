@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
 
 export type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
 
@@ -234,15 +235,29 @@ export async function updateSerialStatus(payload: {
 // bought; the only path was a fully manual, disconnected status edit.
 // inventory.quantity is deducted by the same reduceStockTx call that handles
 // every other STANDARD product in the same loop, so it is NOT duplicated here.
+//
+// Real bug fixed (found live, 2026-07-28 audit): this used to be an
+// unconditional update with no re-check inside the transaction — the only
+// "is this serial available" check happened on a stale pre-transaction read
+// in billing.service.ts. Two concurrent sales of the same physical unit
+// would both pass that stale check, and the second one to commit would
+// silently overwrite the first sale's invoiceId, leaving no record that the
+// unit was ever sold on the first invoice. Fixed to match the same
+// conditional-claim shape already used for tables and metal exchanges in
+// billing.service.ts — a `updateMany` scoped to the still-available state,
+// with the caller rejected via ServiceError if it lost the race.
 export async function markSerialSoldTx(
   tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
   serialId: string,
   invoiceId: string
 ): Promise<void> {
-  await tx.productSerial.update({
-    where: { id: serialId },
+  const claim = await tx.productSerial.updateMany({
+    where: { id: serialId, status: 'AVAILABLE' },
     data: { status: 'SOLD', invoiceId, soldDate: new Date() }
   })
+  if (claim.count === 0) {
+    throw new ServiceError('INVOC-017', 'This unit was just sold on another invoice. Please pick a different unit.')
+  }
 }
 
 // Invoice cancellation counterpart to markSerialSoldTx — restores the exact

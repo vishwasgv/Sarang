@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { logAction } from './audit.service'
@@ -65,7 +66,13 @@ export const purchaseOrderService = {
         data: {
           poNumber,
           supplierId: payload.supplierId,
-          expectedDate: payload.expectedDate ? new Date(payload.expectedDate) : null,
+          // Real bug found live (2026-07-28 core-commerce audit): a bare
+          // `new Date('YYYY-MM-DD')` parses as UTC midnight — ai-query.service.ts's
+          // `expectedDate: { lt: now }` overdue-PO check compared this
+          // against local `now`, flagging a PO as overdue starting 5:30 AM
+          // local time (IST) on its actual expected delivery date. Same fix
+          // as billing.service.ts's dueDate (see its comment there).
+          expectedDate: payload.expectedDate ? parseLocalDateStart(payload.expectedDate) : null,
           notes: payload.notes || null,
           status: 'DRAFT',
           subtotal,

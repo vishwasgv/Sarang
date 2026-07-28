@@ -1,5 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
+import { getAllowNegative } from './inventory.service'
 
 export interface VariantRecord {
   id: string
@@ -173,6 +175,15 @@ export async function getVariantSummary(productId: string): Promise<{ success: b
   }
 }
 
+// Real bug found live (2026-07-28 core-commerce audit): this used to
+// silently clamp at `Math.max(0, ...)` — never rejecting insufficient
+// stock, never distinguishing "just enough" from "not enough," and ignoring
+// the `allow_negative_inventory` setting entirely for the variant
+// dimension, unlike reduceStockTx's identical check for the parent
+// Inventory.quantity total. Two near-simultaneous sales of the same
+// size/colour could each pass a stale pre-transaction read, then both
+// decrement here with no error — overselling a specific variant while its
+// stockQty sat at a deceptive 0 instead of the true negative deficit.
 export async function decrementVariantStockTx(
   tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
   variantId: string,
@@ -180,9 +191,13 @@ export async function decrementVariantStockTx(
 ): Promise<void> {
   const variant = await tx.productVariant.findUnique({ where: { id: variantId } })
   if (!variant) return
+  const allowNegative = await getAllowNegative()
+  if (!allowNegative && variant.stockQty < quantity) {
+    throw new ServiceError('VAR-009', `Insufficient stock for this variant. Available: ${variant.stockQty}, required: ${quantity}.`)
+  }
   await tx.productVariant.update({
     where: { id: variantId },
-    data: { stockQty: Math.max(0, variant.stockQty - quantity) }
+    data: { stockQty: variant.stockQty - quantity }
   })
 }
 

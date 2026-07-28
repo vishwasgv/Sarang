@@ -1604,7 +1604,21 @@
       "carServiceJobs": { "title": "Kartu Pekerjaan", "body": "Buka kartu pekerjaan untuk kendaraan yang sedang diservis, dan lacak pekerjaan yang dilakukan terhadapnya." },
       "tailoring": { "title": "Pesanan Jahit", "body": "Terima pesanan jahit dengan ukuran pelanggan, dan lacak hingga pengiriman." },
       "pestControl": { "title": "Kontrak Pengendalian Hama", "body": "Lacak kontrak pengendalian hama berulang dan kunjungan terjadwalnya." },
-      "placement": { "title": "Penempatan", "body": "Lacak kandidat melalui penempatan kerja, dari lamaran hingga perekrutan yang dikonfirmasi." }
+      "placement": { "title": "Penempatan", "body": "Lacak kandidat melalui penempatan kerja, dari lamaran hingga perekrutan yang dikonfirmasi." },
+      "quotations": { "title": "Penawaran Harga", "body": "Kirim penawaran harga ke pelanggan sebelum mereka berkomitmen — buat satu, lalu ubah menjadi faktur asli dengan satu klik setelah mereka setuju." },
+      "creditNotes": { "title": "Nota Kredit", "body": "Terbitkan nota kredit terhadap faktur lama — untuk diskon, koreksi penagihan, atau barang yang dikembalikan. Ini menyesuaikan jumlah yang terutang pelanggan tanpa mengubah faktur asli." },
+      "debitNotes": { "title": "Nota Debit", "body": "Catat nota debit terhadap pemasok — untuk koreksi harga pembelian atau sesuatu yang Anda tagih balik kepada mereka." },
+      "purchaseOrders": { "title": "Pesanan Pembelian", "body": "Buat pesanan pembelian ke pemasok, lalu terima barang terhadapnya saat tiba — menjaga agar apa yang dipesan dan apa yang benar-benar tiba tetap terpisah dengan jelas." },
+      "suppliers": { "title": "Pemasok", "body": "Setiap pemasok tempat Anda membeli, dengan riwayat pembelian dan pembayarannya sendiri — sisi lain bisnis dibandingkan Pelanggan." },
+      "cashClose": { "title": "Penutupan Kas", "body": "Cocokkan uang tunai di laci Anda dengan yang dicatat Sarang untuk hari itu — coba dan lihat bagaimana kekurangan atau kelebihan ditandai seketika, bukan di akhir bulan." },
+      "expenses": { "title": "Pengeluaran", "body": "Catat pengeluaran bisnis — sewa, listrik-air, apa pun selain stok — untuk menjaga gambaran laba sebenarnya tetap akurat." },
+      "documents": { "title": "Dokumen", "body": "Lampirkan dan simpan dokumen terhadap catatan di seluruh Sarang — kwitansi, kontrak, bukti identitas — agar tidak ada yang hanya ada di atas kertas." },
+      "importData": { "title": "Impor Data", "body": "Bawa data yang sudah ada secara massal — seperti spreadsheet produk atau pelanggan — alih-alih mengetik semuanya satu per satu." },
+      "auditLog": { "title": "Log Audit", "body": "Setiap tindakan penting yang dilakukan siapa pun di Sarang dicatat di sini, tidak dapat dimanipulasi — siapa melakukan apa, dan kapan." },
+      "hrEmployees": { "title": "Karyawan", "body": "Tambahkan staf Anda di sini — di sinilah juga akun login dan peran mereka disiapkan." },
+      "hrAttendance": { "title": "Kehadiran", "body": "Tandai kehadiran harian staf Anda — hadir, tidak hadir, atau cuti." },
+      "hrLeave": { "title": "Cuti", "body": "Lacak dan setujui permintaan cuti dari staf Anda." },
+      "hrPayroll": { "title": "Penggajian", "body": "Jalankan penggajian staf Anda berdasarkan kehadiran dan struktur gaji mereka." }
     }
   },
   "manufacturing": {

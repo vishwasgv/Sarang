@@ -6,7 +6,20 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 import { getPrisma } from '../../database/db'
 import { creditNoteService } from '../credit-note.service'
 
-const EXISTING = {
+interface CreditNoteRow {
+  id: string
+  creditNoteNumber: string
+  customerId: string | null
+  invoiceId: string | null
+  reason: string
+  amount: number
+  notes: string | null
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+const EXISTING: CreditNoteRow = {
   id: 'cn-1',
   creditNoteNumber: 'CN-00001',
   customerId: 'cust-1',
@@ -19,9 +32,14 @@ const EXISTING = {
   updatedAt: new Date()
 }
 
-function makeDb(existing: typeof EXISTING | null = EXISTING) {
+function makeDb(existing: CreditNoteRow | null = EXISTING, invoiceRow: Record<string, unknown> | null = null) {
   const ledgerCreateCalls: unknown[] = []
+  const invoiceUpdateCalls: unknown[] = []
   let settingRow: { settingKey: string; settingValue: string } | null = null
+  // Mutable so sequential findUniqueOrThrow/update calls inside one
+  // transaction (e.g. update()'s reverse-then-reapply) see prior writes,
+  // matching real transaction-local read-your-own-writes semantics.
+  let liveInvoice = invoiceRow ? { ...invoiceRow } : null
   const txClient = {
     creditNote: {
       // The real code fetches the row to mutate INSIDE the transaction now (fixes a
@@ -30,7 +48,19 @@ function makeDb(existing: typeof EXISTING | null = EXISTING) {
       findUnique: vi.fn().mockResolvedValue(existing),
       findFirst: vi.fn().mockResolvedValue(existing ? { creditNoteNumber: existing.creditNoteNumber } : null),
       update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...existing, ...data, customer: null, invoice: null })),
-      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'cn-new', customer: null, invoice: null }))
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'cn-new', customer: null, invoice: null })),
+      delete: vi.fn().mockResolvedValue(existing)
+    },
+    invoice: {
+      findUniqueOrThrow: vi.fn(async () => {
+        if (!liveInvoice) throw new Error('invoice not found')
+        return liveInvoice
+      }),
+      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        invoiceUpdateCalls.push(data)
+        liveInvoice = liveInvoice ? { ...liveInvoice, ...data } : null
+        return liveInvoice
+      })
     },
     setting: {
       findUnique: vi.fn(async () => settingRow),
@@ -48,6 +78,7 @@ function makeDb(existing: typeof EXISTING | null = EXISTING) {
     invoice: { findUnique: vi.fn().mockResolvedValue({ id: 'inv-1' }) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient)),
     __ledgerCreateCalls: ledgerCreateCalls,
+    __invoiceUpdateCalls: invoiceUpdateCalls,
     __txClient: txClient
   }
 }
@@ -76,6 +107,84 @@ describe('creditNoteService.create', () => {
     const res = await creditNoteService.create({ reason: 'Price correction', amount: 100 }, 'user-1')
 
     expect((res as { data: { creditNoteNumber: string } }).data.creditNoteNumber).toBe('CN-00001')
+  })
+})
+
+// Real bug found live (2026-07-28 core-commerce audit): a credit note linked
+// to an invoice used to only ever touch the Customer Ledger, never the
+// invoice's own balanceAmount/paymentStatus — generateOutstandingReport
+// (which sums invoice.balanceAmount directly) kept showing the full original
+// balance owed even after a credit note reduced what the customer actually
+// owes. These tests guard the fix.
+describe('creditNoteService.create — invoice balance reconciliation', () => {
+  it('reduces the linked invoice balance by the credit note amount', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 500, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Discount', amount: 200 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 300, paymentStatus: 'UNPAID' })
+  })
+
+  it('caps the reduction at the invoice balance and marks it PAID when fully covered', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 150, totalAmount: 500, paymentStatus: 'PARTIAL', paidAmount: 350 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Goodwill', amount: 200 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 0, paymentStatus: 'PAID' })
+  })
+
+  it('does not touch the invoice when it is already fully paid (balance already 0)', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 0, totalAmount: 500, paymentStatus: 'PAID', paidAmount: 500 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Goodwill', amount: 100 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toHaveLength(0)
+  })
+})
+
+describe('creditNoteService.delete — invoice balance restoration', () => {
+  it('restores the invoice balance by the voided credit note amount', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.delete('cn-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 500, paymentStatus: 'UNPAID' })
+  })
+
+  it('caps the restored balance at the invoice total', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 400 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.delete('cn-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 500, paymentStatus: 'UNPAID' })
+  })
+})
+
+describe('creditNoteService.update — invoice balance reconciliation', () => {
+  it('nets the balance change correctly when only the amount changes on the same invoice', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Reverse old 200 (300 -> 500), then apply new 350 (500 -> 150): net -150 vs before.
+    const res = await creditNoteService.update('cn-1', { amount: 350 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.invoice.findUniqueOrThrow).toHaveBeenCalled()
+    const finalCall = db.__invoiceUpdateCalls[db.__invoiceUpdateCalls.length - 1]
+    expect(finalCall).toEqual({ balanceAmount: 150, paymentStatus: 'UNPAID' })
   })
 })
 

@@ -68,6 +68,36 @@ export const creditNoteService = {
         }, tx)
       }
 
+      // Real bug found live (2026-07-28 core-commerce audit): a credit note
+      // linked to an invoice used to only ever touch the Customer Ledger,
+      // never the invoice's own balanceAmount/paymentStatus — so
+      // generateOutstandingReport (report.service.ts, which sums
+      // invoice.balanceAmount directly, not CustomerLedger) kept showing the
+      // full original balance owed even after a credit note reduced what the
+      // customer actually owes, and a cashier could still collect the full
+      // original amount via recordPayment (which validates against
+      // invoice.balanceAmount). Mirrors returns.service.ts's own identical
+      // fix for the same class of desync — capped at the invoice's current
+      // balance; any excess becomes a general customer credit via the ledger
+      // entry above, not a negative invoice balance.
+      if (payload.invoiceId) {
+        const currentInvoice = await tx.invoice.findUniqueOrThrow({
+          where: { id: payload.invoiceId },
+          select: { balanceAmount: true, paymentStatus: true }
+        })
+        if (currentInvoice.balanceAmount > 0) {
+          const appliedToInvoice = Math.min(currentInvoice.balanceAmount, payload.amount)
+          const newBalance = currentInvoice.balanceAmount - appliedToInvoice
+          await tx.invoice.update({
+            where: { id: payload.invoiceId },
+            data: {
+              balanceAmount: newBalance,
+              paymentStatus: newBalance <= 0.01 ? 'PAID' : currentInvoice.paymentStatus
+            }
+          })
+        }
+      }
+
       return created
     })
 
@@ -128,9 +158,16 @@ export const creditNoteService = {
 
       const newCustomerId = payload.customerId !== undefined ? payload.customerId : existing.customerId
       const newAmount = payload.amount !== undefined ? payload.amount : existing.amount
+      const newInvoiceId = payload.invoiceId !== undefined ? payload.invoiceId : existing.invoiceId
       // Ledger only needs touching if the party or the amount actually changes —
       // a reason/notes-only edit has no financial effect.
       const ledgerAffected = newCustomerId !== existing.customerId || newAmount !== existing.amount
+      // Invoice-side balance (see create()'s comment) needs the same
+      // reverse-old / apply-new treatment whenever the linked invoice or the
+      // amount changes — independent of whether the ledger's customer party
+      // changed, since the invoice being credited can differ from who the
+      // ledger credit lands on.
+      const invoiceEffectAffected = newInvoiceId !== existing.invoiceId || newAmount !== existing.amount
 
       const result = await tx.creditNote.update({
         where: { id },
@@ -167,6 +204,42 @@ export const creditNoteService = {
             creditAmount: newAmount,
             remarks: `Edited Credit Note ${existing.creditNoteNumber}: ${payload.reason ?? existing.reason}`
           }, tx)
+        }
+      }
+
+      // Same reverse-old / apply-new treatment for the invoice-side balance
+      // (see create()'s comment for why this field needs touching at all).
+      if (invoiceEffectAffected) {
+        if (existing.invoiceId) {
+          const oldInv = await tx.invoice.findUniqueOrThrow({
+            where: { id: existing.invoiceId },
+            select: { balanceAmount: true, totalAmount: true, paidAmount: true }
+          })
+          const restoredBalance = Math.min(oldInv.totalAmount, oldInv.balanceAmount + existing.amount)
+          await tx.invoice.update({
+            where: { id: existing.invoiceId },
+            data: {
+              balanceAmount: restoredBalance,
+              paymentStatus: restoredBalance <= 0.01 ? 'PAID' : (oldInv.paidAmount > 0.01 ? 'PARTIAL' : 'UNPAID')
+            }
+          })
+        }
+        if (newInvoiceId) {
+          const newInv = await tx.invoice.findUniqueOrThrow({
+            where: { id: newInvoiceId },
+            select: { balanceAmount: true, paymentStatus: true }
+          })
+          if (newInv.balanceAmount > 0) {
+            const appliedToInvoice = Math.min(newInv.balanceAmount, newAmount)
+            const newBalance = newInv.balanceAmount - appliedToInvoice
+            await tx.invoice.update({
+              where: { id: newInvoiceId },
+              data: {
+                balanceAmount: newBalance,
+                paymentStatus: newBalance <= 0.01 ? 'PAID' : newInv.paymentStatus
+              }
+            })
+          }
         }
       }
 
@@ -207,6 +280,24 @@ export const creditNoteService = {
           creditAmount: 0,
           remarks: `Voided Credit Note ${cn.creditNoteNumber}: ${cn.reason}`
         }, tx)
+      }
+      // Restore the invoice-side balance this credit note had reduced (see
+      // create()'s matching comment) — capped at the invoice's totalAmount
+      // so voiding a credit note can never inflate its balance past what was
+      // originally billed.
+      if (cn.invoiceId) {
+        const inv = await tx.invoice.findUniqueOrThrow({
+          where: { id: cn.invoiceId },
+          select: { balanceAmount: true, totalAmount: true, paidAmount: true }
+        })
+        const restoredBalance = Math.min(inv.totalAmount, inv.balanceAmount + cn.amount)
+        await tx.invoice.update({
+          where: { id: cn.invoiceId },
+          data: {
+            balanceAmount: restoredBalance,
+            paymentStatus: restoredBalance <= 0.01 ? 'PAID' : (inv.paidAmount > 0.01 ? 'PARTIAL' : 'UNPAID')
+          }
+        })
       }
       await tx.creditNote.delete({ where: { id } })
       return true
