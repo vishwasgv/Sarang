@@ -133,12 +133,22 @@ function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId
 // currently AVAILABLE).
 function ReplacementSerialPicker({ productId, value, onChange }: { productId: string; value: string; onChange: (id: string, label: string) => void }) {
   const [options, setOptions] = useState<SerialLite[]>([])
+  // Distinguishes "the lookup failed" from "there's genuinely no stock" —
+  // previously both rendered the identical "no unit available" message,
+  // which could send staff off to needlessly re-order/add stock instead of
+  // just retrying a failed fetch.
+  const [loadFailed, setLoadFailed] = useState(false)
   useEffect(() => {
+    setLoadFailed(false)
     window.api.serials.list({ productId, status: 'AVAILABLE', limit: 50 }).then(res => {
       if (res.success && res.data) setOptions((res.data as { serials: SerialLite[] }).serials ?? [])
-    })
+      else setLoadFailed(true)
+    }).catch(() => setLoadFailed(true))
   }, [productId])
 
+  if (loadFailed) {
+    return <p className="text-sm text-danger">Could not load available units. Check your connection and try again.</p>
+  }
   if (options.length === 0) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">No in-stock unit of this product is available to use as a replacement — add stock/serials first.</p>
   }
@@ -199,6 +209,8 @@ export function RepairTicketsScreen() {
       } else {
         toastError('Error', res.error?.message ?? 'Could not load repair tickets.')
       }
+    } catch {
+      toastError('Error', 'Could not load repair tickets.')
     } finally {
       setLoading(false)
     }
@@ -261,6 +273,8 @@ export function RepairTicketsScreen() {
       } else {
         toastError('Failed', res.error?.message ?? 'Could not create repair ticket.')
       }
+    } catch {
+      toastError('Failed', 'Could not create repair ticket.')
     } finally {
       setCreating(false)
     }
@@ -305,6 +319,8 @@ export function RepairTicketsScreen() {
       } else {
         toastError('Failed', res.error?.message ?? 'Could not update ticket.')
       }
+    } catch {
+      toastError('Failed', 'Could not update ticket.')
     } finally {
       setUpdating(false)
     }

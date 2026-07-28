@@ -349,12 +349,16 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
   }
 
   async function pickLogo() {
-    const res = await window.api.dialog.openFile({ title: 'Select Business Logo', accept: ['.jpg', '.jpeg', '.png', '.webp'], maxSizeBytes: 2 * 1024 * 1024 })
-    if (res.success && res.data) {
-      setForm(f => ({ ...f, logoPath: res.data as string }))
-      setError(null)
-    } else if (!res.success) {
-      setError(res.error?.message ?? 'Could not select logo.')
+    try {
+      const res = await window.api.dialog.openFile({ title: 'Select Business Logo', accept: ['.jpg', '.jpeg', '.png', '.webp'], maxSizeBytes: 2 * 1024 * 1024 })
+      if (res.success && res.data) {
+        setForm(f => ({ ...f, logoPath: res.data as string }))
+        setError(null)
+      } else if (!res.success) {
+        setError(res.error?.message ?? 'Could not select logo.')
+      }
+    } catch {
+      setError('Could not select logo.')
     }
   }
 
@@ -1516,12 +1520,19 @@ function AppearanceSection() {
   const [kdBusy, setKdBusy] = useState(false)
 
   const refreshKitchenDisplayWindowState = useCallback(async () => {
-    const [displaysRes, statusRes] = await Promise.all([
-      window.api.kitchenDisplay.listDisplays(),
-      window.api.kitchenDisplay.getStatus()
-    ])
-    if (displaysRes.success && displaysRes.data) setDisplays(displaysRes.data)
-    if (statusRes.success && statusRes.data) setKdWindowStatus(statusRes.data)
+    try {
+      const [displaysRes, statusRes] = await Promise.all([
+        window.api.kitchenDisplay.listDisplays(),
+        window.api.kitchenDisplay.getStatus()
+      ])
+      if (displaysRes.success && displaysRes.data) setDisplays(displaysRes.data)
+      if (statusRes.success && statusRes.data) setKdWindowStatus(statusRes.data)
+    } catch {
+      // Called fire-and-forget from openKitchenDisplay/closeKitchenDisplay's
+      // finally blocks too — a thrown error here must not become an
+      // unhandled rejection; the display/status list just stays stale
+      // until the next successful refresh.
+    }
   }, [])
 
   useEffect(() => {
@@ -1546,7 +1557,10 @@ function AppearanceSection() {
   async function closeKitchenDisplay() {
     setKdBusy(true)
     try {
-      await window.api.kitchenDisplay.close()
+      const res = await window.api.kitchenDisplay.close()
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not close Kitchen Display.')
+    } catch {
+      toastError('Error', 'Could not close Kitchen Display.')
     } finally {
       setKdBusy(false)
       refreshKitchenDisplayWindowState()
@@ -1712,8 +1726,13 @@ function KitchenDisplayWebSection() {
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
 
   const loadStatus = useCallback(async () => {
-    const res = await window.api.restaurant.getKitchenDisplayStatus()
-    if (res.success && res.data) setStatus(res.data)
+    try {
+      const res = await window.api.restaurant.getKitchenDisplayStatus()
+      if (res.success && res.data) setStatus(res.data)
+    } catch {
+      // status stays null — falls through to the "not yet running" hint below,
+      // which is close enough for a background status poll (retried on toggle/action)
+    }
   }, [])
 
   useEffect(() => { loadStatus() }, [loadStatus])
@@ -1842,8 +1861,12 @@ function FieldOrderCaptureSection() {
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
 
   const loadStatus = useCallback(async () => {
-    const res = await window.api.distributor.getFieldOrderStatus()
-    if (res.success && res.data) setStatus(res.data)
+    try {
+      const res = await window.api.distributor.getFieldOrderStatus()
+      if (res.success && res.data) setStatus(res.data)
+    } catch {
+      // status stays null — falls through to the "not yet running" hint below
+    }
   }, [])
 
   useEffect(() => { loadStatus() }, [loadStatus])

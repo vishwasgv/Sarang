@@ -186,6 +186,8 @@ export function BatchManagementScreen() {
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not add batch.')
       }
+    } catch {
+      toastError('Failed', 'Could not add batch.')
     } finally {
       setSaving(false)
     }
@@ -217,6 +219,8 @@ export function BatchManagementScreen() {
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update batch.')
       }
+    } catch {
+      toastError('Failed', 'Could not update batch.')
     } finally {
       setSaving(false)
     }
@@ -234,6 +238,8 @@ export function BatchManagementScreen() {
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not remove batch.')
       }
+    } catch {
+      toastError('Failed', 'Could not remove batch.')
     } finally {
       setDeleting(false)
     }

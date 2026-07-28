@@ -45,10 +45,15 @@ export function CustomerDetailScreen() {
       } else {
         setError(res.error?.message ?? t('customers.notFound'))
       }
+    } catch {
+      // Same class of bug as loadLedger below (see its comment) — a thrown
+      // IPC/connection error must not be indistinguishable from "customer
+      // genuinely doesn't exist".
+      setError(t('common.error'))
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, t])
 
   const loadLedger = useCallback(async () => {
     if (!id || !canViewLedger) return

@@ -55,30 +55,56 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
   }, [notifOpen, menuOpen])
 
   async function loadNotifications() {
-    const [listRes, countRes] = await Promise.all([
-      api.notifications.list(),
-      api.notifications.getUnreadCount()
-    ])
-    if (listRes.success) setNotifications((listRes.data as NotificationItem[]) ?? [])
-    if (countRes.success) setUnreadCount((countRes.data as number) ?? 0)
+    try {
+      const [listRes, countRes] = await Promise.all([
+        api.notifications.list(),
+        api.notifications.getUnreadCount()
+      ])
+      if (listRes.success) setNotifications((listRes.data as NotificationItem[]) ?? [])
+      if (countRes.success) setUnreadCount((countRes.data as number) ?? 0)
+    } catch {
+      // Background refresh (mount + push-event triggered) — the bell just
+      // keeps its last-known state on failure, no toast needed here.
+    }
   }
 
   async function handleMarkAllRead() {
-    await api.notifications.markAllRead()
-    setUnreadCount(0)
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    try {
+      await api.notifications.markAllRead()
+      setUnreadCount(0)
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    } catch {
+      // Previously unguarded — a thrown error meant clicking "Mark all
+      // read" silently did nothing at all, with no feedback either way.
+      toast.error(t('common.error'), t('common.error'))
+    }
   }
 
   async function handleMarkRead(id: string) {
-    await api.notifications.markRead(id)
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-    setUnreadCount(c => Math.max(0, c - 1))
+    try {
+      await api.notifications.markRead(id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+      setUnreadCount(c => Math.max(0, c - 1))
+    } catch {
+      toast.error(t('common.error'), t('common.error'))
+    }
   }
 
   async function handleLogout() {
-    await api.auth.logout()
-    clearAuth()
-    setMenuOpen(false)
+    // Previously unguarded: a thrown IPC/connection error meant clearAuth()
+    // never ran, so clicking "Sign Out" did nothing at all, with no visible
+    // feedback and no way to actually log out short of force-quitting the
+    // app. Always clear local auth state regardless of whether the
+    // server-side session call succeeded — fail closed (returning to the
+    // Login screen) rather than leaving the user stuck signed in.
+    try {
+      await api.auth.logout()
+    } catch {
+      toast.error(t('common.error'), t('common.error'))
+    } finally {
+      clearAuth()
+      setMenuOpen(false)
+    }
   }
 
   function typeColor(type: string) {

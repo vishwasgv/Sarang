@@ -61,9 +61,20 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults(null); setLoading(false); return }
     setLoading(true)
-    const res = await api.search.global({ query: q })
-    setLoading(false)
-    if (res.success && res.data) setResults(res.data as SearchResults)
+    try {
+      const res = await api.search.global({ query: q })
+      if (res.success && res.data) setResults(res.data as SearchResults)
+      else setResults(null)
+    } catch {
+      // A thrown IPC/connection error here previously left `loading` stuck
+      // true forever (the line resetting it never ran) — the palette would
+      // show "Searching…" indefinitely with no way to recover short of
+      // closing and reopening it. Falls back to the empty-results state,
+      // which is close enough for a global search-as-you-type box.
+      setResults(null)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {

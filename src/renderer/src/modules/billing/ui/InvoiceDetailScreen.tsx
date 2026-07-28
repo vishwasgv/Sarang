@@ -91,6 +91,7 @@ export function InvoiceDetailScreen() {
   // Reverse payment modal
   const [reversingPaymentId, setReversingPaymentId] = useState<string | null>(null)
   const [reverseReason, setReverseReason] = useState('')
+  const [reversingPayment, setReversingPayment] = useState(false)
 
   // Phase 58 §2 (2026-07-21) — split-bill modal. checkQty[itemId] is an
   // array of per-check quantities, one entry per check, always summing to
@@ -238,6 +239,7 @@ export function InvoiceDetailScreen() {
 
   async function handleReversePayment() {
     if (!reversingPaymentId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reversal reason.'); return }
+    setReversingPayment(true)
     try {
       const res = await window.api.payments.reverse({ paymentId: reversingPaymentId, reason: reverseReason.trim() })
       if (res.success) {
@@ -249,6 +251,8 @@ export function InvoiceDetailScreen() {
       }
     } catch {
       toastError('Failed', 'Could not reverse payment.')
+    } finally {
+      setReversingPayment(false)
     }
   }
 
@@ -657,8 +661,8 @@ export function InvoiceDetailScreen() {
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => { setReversingPaymentId(null); setReverseReason('') }}>{t('common.cancel')}</Button>
-              <Button variant="danger" className="flex-1" onClick={handleReversePayment}>{t('billing.reverse')}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setReversingPaymentId(null); setReverseReason('') }} disabled={reversingPayment}>{t('common.cancel')}</Button>
+              <Button variant="danger" className="flex-1" onClick={handleReversePayment} loading={reversingPayment}>{t('billing.reverse')}</Button>
             </div>
           </div>
         </div>

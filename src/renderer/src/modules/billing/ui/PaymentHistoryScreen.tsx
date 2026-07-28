@@ -52,6 +52,7 @@ export function PaymentHistoryScreen() {
   // Reverse payment modal
   const [reversingId, setReversingId] = useState<string | null>(null)
   const [reverseReason, setReverseReason] = useState('')
+  const [reversing, setReversing] = useState(false)
 
   const fetchPayments = useCallback(async () => {
     setLoading(true)
@@ -90,13 +91,20 @@ export function PaymentHistoryScreen() {
 
   async function handleReverse() {
     if (!reversingId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reason for reversal.'); return }
-    const res = await window.api.payments.reverse({ paymentId: reversingId, reason: reverseReason.trim() })
-    if (res.success) {
-      toastSuccess('Reversed', 'Payment has been reversed.')
-      setReversingId(null); setReverseReason('')
-      fetchPayments()
-    } else {
-      toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+    setReversing(true)
+    try {
+      const res = await window.api.payments.reverse({ paymentId: reversingId, reason: reverseReason.trim() })
+      if (res.success) {
+        toastSuccess('Reversed', 'Payment has been reversed.')
+        setReversingId(null); setReverseReason('')
+        fetchPayments()
+      } else {
+        toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+      }
+    } catch {
+      toastError('Failed', 'Could not reverse payment.')
+    } finally {
+      setReversing(false)
     }
   }
 
@@ -265,8 +273,8 @@ export function PaymentHistoryScreen() {
               />
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => { setReversingId(null); setReverseReason('') }}>Cancel</Button>
-              <Button variant="danger" className="flex-1" onClick={handleReverse}>Reverse</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setReversingId(null); setReverseReason('') }} disabled={reversing}>Cancel</Button>
+              <Button variant="danger" className="flex-1" onClick={handleReverse} loading={reversing}>Reverse</Button>
             </div>
           </div>
         </div>

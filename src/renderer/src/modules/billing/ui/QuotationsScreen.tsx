@@ -103,26 +103,36 @@ export function QuotationsScreen() {
 
   async function convertToInvoice(q: Quotation) {
     setConverting(q.id)
-    const res = await window.api.quotations.convertToInvoice(q.id)
-    if (res.success) {
-      toastSuccess(t('quotations.converted'))
-      loadData()
-    } else {
-      toastError((res.error as { message: string })?.message ?? t('quotations.failedConvert'))
+    try {
+      const res = await window.api.quotations.convertToInvoice(q.id)
+      if (res.success) {
+        toastSuccess(t('quotations.converted'))
+        loadData()
+      } else {
+        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvert'))
+      }
+    } catch {
+      toastError(t('quotations.failedConvert'))
+    } finally {
+      setConverting(null)
     }
-    setConverting(null)
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
-    const res = await window.api.quotations.delete(deleteTarget.id)
-    if (res.success) {
-      toastSuccess(t('quotations.deleted'))
-      loadData()
-    } else {
-      toastError((res.error as { message: string })?.message ?? t('quotations.failedDelete'))
+    try {
+      const res = await window.api.quotations.delete(deleteTarget.id)
+      if (res.success) {
+        toastSuccess(t('quotations.deleted'))
+        loadData()
+      } else {
+        toastError((res.error as { message: string })?.message ?? t('quotations.failedDelete'))
+      }
+    } catch {
+      toastError(t('quotations.failedDelete'))
+    } finally {
+      setDeleteTarget(null)
     }
-    setDeleteTarget(null)
   }
 
   const canCreate = hasPermission('billing.create')

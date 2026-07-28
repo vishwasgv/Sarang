@@ -183,31 +183,39 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setSubmitError(null)
     const currency = CURRENCIES.find((c) => c.code === values.currencyCode)
 
-    const res = await api.setup.completeSetup({
-      businessName: values.businessName,
-      businessType: values.businessType,
-      ownerName: values.ownerName || undefined,
-      country: values.country,
-      currencyCode: values.currencyCode,
-      currencySymbol: currency?.symbol ?? values.currencySymbol,
-      taxModel: values.taxModel,
-      phone: values.phone || undefined,
-      email: values.email || undefined,
-      taxNumber: values.taxNumber || undefined,
-      upiId: values.upiId || undefined,
-      logoPath: values.logoPath || undefined,
-      adminFullName: values.adminFullName,
-      adminUsername: values.adminUsername,
-      adminPassword: values.adminPassword
-    })
+    try {
+      const res = await api.setup.completeSetup({
+        businessName: values.businessName,
+        businessType: values.businessType,
+        ownerName: values.ownerName || undefined,
+        country: values.country,
+        currencyCode: values.currencyCode,
+        currencySymbol: currency?.symbol ?? values.currencySymbol,
+        taxModel: values.taxModel,
+        phone: values.phone || undefined,
+        email: values.email || undefined,
+        taxNumber: values.taxNumber || undefined,
+        upiId: values.upiId || undefined,
+        logoPath: values.logoPath || undefined,
+        adminFullName: values.adminFullName,
+        adminUsername: values.adminUsername,
+        adminPassword: values.adminPassword
+      })
 
-    if (!res.success) {
-      setSubmitError(res.error?.message ?? 'Setup failed. Please try again.')
-      return
+      if (!res.success) {
+        setSubmitError(res.error?.message ?? 'Setup failed. Please try again.')
+        return
+      }
+
+      setRecoveryCode((res.data as { recoveryCode?: string } | undefined)?.recoveryCode ?? null)
+      setStep(TOTAL_ACTIVE_STEPS)
+    } catch {
+      // This is the very first screen every user ever sees — a thrown
+      // IPC/connection error here (e.g. a startup timing hiccup) previously
+      // left the Complete Setup button silently reset with no explanation
+      // at all, on a brand-new install with nothing else to fall back on.
+      setSubmitError('Setup failed. Please try again.')
     }
-
-    setRecoveryCode((res.data as { recoveryCode?: string } | undefined)?.recoveryCode ?? null)
-    setStep(TOTAL_ACTIVE_STEPS)
   }
 
   const isCompletionStep = step === TOTAL_ACTIVE_STEPS

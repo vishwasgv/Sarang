@@ -256,6 +256,8 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
       } else {
         toastError('Error', res.error?.message ?? 'Could not generate a barcode.')
       }
+    } catch {
+      toastError('Error', 'Could not generate a barcode.')
     } finally {
       setGeneratingBarcode(false)
     }

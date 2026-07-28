@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed, LayoutGrid } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
@@ -237,6 +238,13 @@ export function BillingScreen() {
   const [heldSales, setHeldSales] = useState<HeldSaleSummary[]>([])
   const [loadingHeldSales, setLoadingHeldSales] = useState(false)
   const [resumingId, setResumingId] = useState<string | null>(null)
+  // Bug fix (renderer audit 2026-07-28): abandoning a held sale is
+  // irreversible (the whole parked cart is gone), unlike every other
+  // destructive delete in the app (ConfirmDialog is used everywhere else —
+  // CreditNotes/DebitNotes/Quotations, etc.) — this previously deleted on a
+  // single click with no confirmation and no try/catch guard.
+  const [deleteHeldSaleTarget, setDeleteHeldSaleTarget] = useState<HeldSaleSummary | null>(null)
+  const [deletingHeldSale, setDeletingHeldSale] = useState(false)
   const [frequentProducts, setFrequentProducts] = useState<Product[]>([])
 
   useEffect(() => {
@@ -338,10 +346,20 @@ export function BillingScreen() {
     }
   }
 
-  async function handleDeleteHeldSale(id: string) {
-    const res = await window.api.heldSale.delete({ id })
-    if (res.success) setHeldSales((prev) => prev.filter((h) => h.id !== id))
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+  async function handleDeleteHeldSale() {
+    if (!deleteHeldSaleTarget) return
+    const id = deleteHeldSaleTarget.id
+    setDeletingHeldSale(true)
+    try {
+      const res = await window.api.heldSale.delete({ id })
+      if (res.success) setHeldSales((prev) => prev.filter((h) => h.id !== id))
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeletingHeldSale(false)
+      setDeleteHeldSaleTarget(null)
+    }
   }
 
   // Product search with debounce
@@ -1871,7 +1889,7 @@ export function BillingScreen() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" onClick={() => handleResumeSale(h.id)} loading={resumingId === h.id}>{t('billing.resumeSaleAction')}</Button>
-                      <button onClick={() => handleDeleteHeldSale(h.id)} className="text-slate-300 hover:text-danger" title={t('billing.abandonHeldSale') as string}><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteHeldSaleTarget(h)} className="text-slate-300 hover:text-danger" title={t('billing.abandonHeldSale') as string}><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))
@@ -1880,6 +1898,17 @@ export function BillingScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteHeldSaleTarget}
+        title={t('billing.abandonHeldSale') as string}
+        message={t('common.confirmDeleteGeneric') as string}
+        confirmLabel={t('billing.abandonHeldSale') as string}
+        confirmVariant="danger"
+        loading={deletingHeldSale}
+        onConfirm={handleDeleteHeldSale}
+        onClose={() => setDeleteHeldSaleTarget(null)}
+      />
     </div>
   )
 }

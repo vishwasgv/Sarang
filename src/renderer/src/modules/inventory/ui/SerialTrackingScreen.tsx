@@ -157,12 +157,17 @@ export function SerialTrackingScreen() {
 
   async function handleImeiSearch() {
     if (!imeiSearch.trim()) return
-    const res = await window.api.serials.searchByImei({ imei: imeiSearch.trim() })
-    if (res.success) {
-      setImeiResult(res.data as SerialRow)
-    } else {
+    try {
+      const res = await window.api.serials.searchByImei({ imei: imeiSearch.trim() })
+      if (res.success) {
+        setImeiResult(res.data as SerialRow)
+      } else {
+        setImeiResult(null)
+        toastError('Not Found', 'No device found with this IMEI number.')
+      }
+    } catch {
       setImeiResult(null)
-      toastError('Not Found', 'No device found with this IMEI number.')
+      toastError('Error', 'Could not search by IMEI. Check your connection and try again.')
     }
   }
 
@@ -190,6 +195,8 @@ export function SerialTrackingScreen() {
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not add serial.')
       }
+    } catch {
+      toastError('Failed', 'Could not add serial.')
     } finally {
       setSaving(false)
     }
@@ -230,6 +237,8 @@ export function SerialTrackingScreen() {
       } else {
         toastError('Import Failed', (res.error as { message: string })?.message ?? 'Could not import.')
       }
+    } catch {
+      toastError('Import Failed', 'Could not import.')
     } finally {
       setSaving(false)
     }
@@ -247,6 +256,8 @@ export function SerialTrackingScreen() {
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update status.')
       }
+    } catch {
+      toastError('Failed', 'Could not update status.')
     } finally {
       setSaving(false)
     }

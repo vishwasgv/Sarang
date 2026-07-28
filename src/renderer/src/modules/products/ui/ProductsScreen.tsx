@@ -106,15 +106,19 @@ export function ProductsScreen() {
     const isCurrently86d = product.unavailableUntil && new Date(product.unavailableUntil) > new Date()
     const endOfToday = new Date()
     endOfToday.setHours(23, 59, 59, 999)
-    const res = await window.api.products.setAvailability({
-      id: product.id,
-      unavailableUntil: isCurrently86d ? null : endOfToday.toISOString(),
-    })
-    if (res.success) {
-      toastSuccess(isCurrently86d ? 'Available Again' : '86\'d for Today', product.productName)
-      loadData()
-    } else {
-      toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.products.setAvailability({
+        id: product.id,
+        unavailableUntil: isCurrently86d ? null : endOfToday.toISOString(),
+      })
+      if (res.success) {
+        toastSuccess(isCurrently86d ? 'Available Again' : '86\'d for Today', product.productName)
+        loadData()
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
     }
   }
 

@@ -5,6 +5,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { formatDate } from '@shared/utils/locale.util'
+import { useNotificationStore } from '@app/store/notification.store'
 
 interface BatchAlertRow {
   id: string; productName: string; batchNumber: string; expiryDate: string; quantityRemaining: number; daysToExpiry: number
@@ -21,6 +22,7 @@ interface SerialRow {
 // attention today" view across both product families.
 export function AgriInputsDashboardScreen() {
   const navigate = useNavigate()
+  const { error: toastError } = useNotificationStore()
   const [loading, setLoading] = useState(true)
   const [expiring, setExpiring] = useState<BatchAlertRow[]>([])
   const [expired, setExpired] = useState<BatchAlertRow[]>([])
@@ -38,15 +40,26 @@ export function AgriInputsDashboardScreen() {
         const d = alertsRes.data as { expiring: BatchAlertRow[]; expired: BatchAlertRow[] }
         setExpiring(d.expiring ?? [])
         setExpired(d.expired ?? [])
+      } else if (!alertsRes.success) {
+        toastError('Error', alertsRes.error?.message ?? 'Could not load expiry alerts.')
       }
       if (lowStockRes.success && lowStockRes.data) {
         setLowStockCount((lowStockRes.data as { total: number }).total ?? 0)
+      } else if (!lowStockRes.success) {
+        toastError('Error', lowStockRes.error?.message ?? 'Could not load low-stock count.')
       }
       if (serialsRes.success && serialsRes.data) {
         setSerials((serialsRes.data as { serials: SerialRow[] }).serials ?? [])
+      } else if (!serialsRes.success) {
+        toastError('Error', serialsRes.error?.message ?? 'Could not load equipment records.')
       }
+    }).catch(() => {
+      // This is an alerting dashboard (expiring stock/warranties) — a thrown
+      // IPC/connection error must not silently render as "nothing needs your
+      // attention" (all-zero KPIs), which is what happened before this catch existed.
+      toastError('Error', 'Could not load the dashboard. Check your connection and try again.')
     }).finally(() => setLoading(false))
-  }, [])
+  }, [toastError])
 
   const now = Date.now()
   const warrantyExpiringSoon = serials.filter(s => {

@@ -40,7 +40,17 @@ export function LoginScreen() {
 
   async function onSubmit(values: FormValues) {
     setServerError(null)
-    const res = await api.auth.login(values)
+    let res: Awaited<ReturnType<typeof api.auth.login>>
+    try {
+      res = await api.auth.login(values)
+    } catch {
+      // A thrown IPC/connection error here previously left the login button
+      // simply reset (react-hook-form's isSubmitting always resolves) with
+      // zero visible feedback — a silent failure on the single most
+      // critical screen in the app.
+      setServerError(t('auth.loginError'))
+      return
+    }
 
     if (!res.success || !res.data) {
       setServerError(res.error?.message ?? t('auth.loginError'))

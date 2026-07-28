@@ -56,8 +56,13 @@ export function SupplierDetailScreen() {
       const res = await api.suppliers.get(id)
       if (res.success) setSupplier(res.data as Supplier)
       else setError(res.error?.message ?? t('suppliers.notFound'))
+    } catch {
+      // Same class of bug as loadLedger below — a thrown IPC/connection
+      // error must not be indistinguishable from "supplier genuinely
+      // doesn't exist".
+      setError(t('common.error'))
     } finally { setLoading(false) }
-  }, [id])
+  }, [id, t])
 
   const loadLedger = useCallback(async () => {
     if (!id || !canViewLedger) return
@@ -107,6 +112,11 @@ export function SupplierDetailScreen() {
       } else {
         setPayError(res.error?.message ?? t('common.error'))
       }
+    } catch {
+      // Previously unguarded — a thrown IPC/connection error left the modal
+      // sitting with no error message and no indication the payment was
+      // (or wasn't) recorded, for what is a real-money action.
+      setPayError(t('common.error'))
     } finally { setPaying(false) }
   }
 

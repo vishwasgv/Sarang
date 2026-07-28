@@ -160,29 +160,34 @@ export function QuotationFormScreen() {
       return
     }
     setSaving(true)
-    const validItems = items.filter(i => i.productName.trim())
-    const res = await window.api.quotations.create({
-      customerId: selectedCustomerId || undefined,
-      customerName: selectedCustomerId ? undefined : customerName || undefined,
-      validUntil: validUntil || undefined,
-      notes: notes || undefined,
-      items: validItems.map(i => ({
-        productId: i.productId,
-        productName: i.productName,
-        sku: i.sku,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        discount: i.discount,
-        taxRate: i.taxRate
-      }))
-    })
-    if (res.success) {
-      toastSuccess(t('quotations.created'))
-      navigate('/billing/quotations')
-    } else {
-      toastError((res.error as { message: string })?.message ?? t('quotations.failedCreate'))
+    try {
+      const validItems = items.filter(i => i.productName.trim())
+      const res = await window.api.quotations.create({
+        customerId: selectedCustomerId || undefined,
+        customerName: selectedCustomerId ? undefined : customerName || undefined,
+        validUntil: validUntil || undefined,
+        notes: notes || undefined,
+        items: validItems.map(i => ({
+          productId: i.productId,
+          productName: i.productName,
+          sku: i.sku,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          discount: i.discount,
+          taxRate: i.taxRate
+        }))
+      })
+      if (res.success) {
+        toastSuccess(t('quotations.created'))
+        navigate('/billing/quotations')
+      } else {
+        toastError((res.error as { message: string })?.message ?? t('quotations.failedCreate'))
+      }
+    } catch {
+      toastError(t('quotations.failedCreate'))
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   return (

@@ -424,6 +424,13 @@ export function ReportsScreen() {
   const [reportData, setReportData] = useState<unknown>(null)
   const [loading, setLoading] = useState(false)
   const [hasRun, setHasRun] = useState(false)
+  // Bug fix (renderer audit 2026-07-28): the CSV/Excel/PDF export buttons had
+  // no loading/disabled guard at all — PDF export in particular is two
+  // sequential IPC calls (generateReportHtml, then toPdf), so a rapid
+  // double-click could fire the export twice concurrently (e.g. two stacked
+  // save-file dialogs). One shared flag since only one export makes sense
+  // in flight at a time.
+  const [exporting, setExporting] = useState(false)
   const [currencySymbol, setCurrencySymbol] = useState('₹')
   const AUDIT_PAGE_SIZE = 200
 
@@ -1107,16 +1114,22 @@ export function ReportsScreen() {
   }
 
   async function handleExportCsv() {
+    if (exporting) return
+    setExporting(true)
     try {
       const { headers, rows } = buildExportData()
       const res = await window.api.export.toCsv({ filename: `${activeReport}-report.csv`, headers, rows })
       if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setExporting(false)
     }
   }
 
   async function handleExportExcel() {
+    if (exporting) return
+    setExporting(true)
     try {
       const { headers, rows } = buildExportData()
       const res = await window.api.export.toExcel({
@@ -1126,10 +1139,14 @@ export function ReportsScreen() {
       if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setExporting(false)
     }
   }
 
   async function handleExportPdf() {
+    if (exporting) return
+    setExporting(true)
     try {
       const { headers, rows } = buildExportData()
       const summaryCards = getSummaryCards()
@@ -1151,6 +1168,8 @@ export function ReportsScreen() {
       }
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -1876,16 +1895,16 @@ export function ReportsScreen() {
 
             {!!reportData && (
               <div className="flex items-center gap-2">
-                <button onClick={handleExportCsv}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors">
+                <button onClick={handleExportCsv} disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <Table size={12} /> CSV
                 </button>
-                <button onClick={handleExportExcel}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-success hover:text-success transition-colors">
+                <button onClick={handleExportExcel} disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-success hover:text-success transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <Download size={12} /> Excel
                 </button>
-                <button onClick={handleExportPdf}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-danger hover:text-danger transition-colors">
+                <button onClick={handleExportPdf} disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-danger hover:text-danger transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <FileText size={12} /> PDF
                 </button>
               </div>
