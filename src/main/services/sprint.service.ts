@@ -1,10 +1,27 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 function startOfDay(d: Date): Date {
   const s = new Date(d); s.setHours(0, 0, 0, 0); return s
 }
 function addDays(d: Date, n: number): Date {
   const r = new Date(d); r.setDate(r.getDate() + n); return r
+}
+
+// Real bug found live (2026-07-28 service-vertical audit): Sprint.startDate/
+// endDate are DateTime fields returned across Electron's IPC boundary as raw
+// Date instances — structured clone preserves them without throwing, but
+// ProjectsScreen.tsx's sprint edit-form populator (openEditSprint) calls
+// `s.startDate.slice(0, 10)` / `s.endDate.slice(0, 10)` directly, assuming
+// an ISO string. Since both fields are non-nullable, this crashed on EVERY
+// sprint edit. Same bug class as compliance-task.service.ts's serializeTask
+// — see date.util.ts's toLocalDateOnlyIso for the shared fix.
+function serializeSprint<T extends { startDate: Date; endDate: Date }>(s: T): T {
+  return {
+    ...s,
+    startDate: toLocalDateOnlyIso(s.startDate) as unknown as Date,
+    endDate: toLocalDateOnlyIso(s.endDate) as unknown as Date,
+  }
 }
 
 export async function listSprints(projectId: string) {
@@ -20,7 +37,7 @@ export async function listSprints(projectId: string) {
       },
       orderBy: { sprintNumber: 'asc' },
     })
-    return { success: true, data: sprints }
+    return { success: true, data: sprints.map(serializeSprint) }
   } catch (err) {
     return { success: false, error: { code: 'SR30-001', message: err instanceof Error ? err.message : 'Could not list sprints.' } }
   }
@@ -47,15 +64,21 @@ export async function createSprint(payload: {
         sprintNumber,
         name:      payload.name ?? `Sprint ${sprintNumber}`,
         goal:      payload.goal ?? null,
-        startDate: new Date(payload.startDate),
-        endDate:   new Date(payload.endDate),
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this same file's own local-midnight read/comparison logic
+        // in getSprintBurndown (startOfDay), and with the parseLocalDateStart
+        // fix already applied to every other date-only write in this
+        // service family (hearing/board-meeting/roc-filing/compliance-task).
+        startDate: parseLocalDateStart(payload.startDate),
+        endDate:   parseLocalDateStart(payload.endDate),
       },
       include: {
         issues: { include: { assignedTo: { select: { id: true, fullName: true } } } },
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'Sprint', entityId: sprint.id, newValue: JSON.stringify({ sprintNumber: sprint.sprintNumber, name: sprint.name }) } }).catch(() => {})
-    return { success: true, data: sprint }
+    return { success: true, data: serializeSprint(sprint) }
   } catch (err) {
     return { success: false, error: { code: 'SR30-002', message: err instanceof Error ? err.message : 'Could not create sprint.' } }
   }
@@ -76,15 +99,15 @@ export async function updateSprint(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(startDate !== undefined ? { startDate: new Date(startDate) } : {}),
-        ...(endDate   !== undefined ? { endDate:   new Date(endDate)   } : {}),
+        ...(startDate !== undefined ? { startDate: parseLocalDateStart(startDate) } : {}),
+        ...(endDate   !== undefined ? { endDate:   parseLocalDateStart(endDate)   } : {}),
       },
       include: {
         issues: { include: { assignedTo: { select: { id: true, fullName: true } } } },
       },
     })
     await db.auditLog.create({ data: { action: payload.status === 'ACTIVE' ? 'STARTED' : payload.status === 'COMPLETED' ? 'COMPLETED' : 'UPDATE', entityType: 'Sprint', entityId: sprint.id } }).catch(() => {})
-    return { success: true, data: sprint }
+    return { success: true, data: serializeSprint(sprint) }
   } catch (err) {
     return { success: false, error: { code: 'SR30-003', message: err instanceof Error ? err.message : 'Could not update sprint.' } }
   }

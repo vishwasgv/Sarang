@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // ServiceProjectMilestone.milestoneAmount is a Prisma Decimal field —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -7,8 +8,24 @@ import { billingService } from './billing.service'
 // one. Exported so service-project.service.ts can apply it to milestone
 // rows nested under a project (listServiceProjects/getServiceProject's
 // `include: { milestones }`).
-export function serializeMilestone<T extends { milestoneAmount: unknown }>(m: T): T {
-  return { ...m, milestoneAmount: m.milestoneAmount == null ? null : Number(m.milestoneAmount) }
+//
+// Real bug found live (2026-07-28 service-vertical audit): dueDate is a
+// DateTime field, which structured clone DOES preserve across IPC without
+// throwing (unlike Decimal) — so this half was never caught by a clone
+// error; it shipped as a live renderer crash instead. ProjectsScreen.tsx's
+// milestone edit-form populator (openEditMilestone) calls
+// `m.dueDate.slice(0, 10)` directly, assuming an ISO string. Same bug class
+// as compliance-task.service.ts's serializeTask — see date.util.ts's
+// toLocalDateOnlyIso for the shared fix. completedDate is stamped with a
+// real time-of-day (`new Date()` at status transition), so it's serialized
+// via plain toISOString() instead, mirroring createdAt/updatedAt elsewhere.
+export function serializeMilestone<T extends { milestoneAmount: unknown; dueDate: Date | null; completedDate: Date | null }>(m: T): T {
+  return {
+    ...m,
+    milestoneAmount: m.milestoneAmount == null ? null : Number(m.milestoneAmount),
+    dueDate: (m.dueDate ? toLocalDateOnlyIso(m.dueDate) : null) as unknown as Date,
+    completedDate: (m.completedDate ? m.completedDate.toISOString() : null) as unknown as Date,
+  }
 }
 
 export async function listMilestones(projectId: string) {
@@ -40,7 +57,11 @@ export async function createMilestone(payload: {
         milestoneName:   payload.milestoneName.trim(),
         milestoneAmount: payload.milestoneAmount ?? null,
         status:          payload.status ?? 'UPCOMING',
-        dueDate:         payload.dueDate ? new Date(payload.dueDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with the parseLocalDateStart fix already applied to every other
+        // date-only write in this service family.
+        dueDate:         payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
         notes:           payload.notes ?? null,
       },
     })
@@ -79,7 +100,7 @@ export async function updateMilestone(payload: {
         ...rest,
         ...(milestoneAmount !== undefined ? { milestoneAmount } : {}),
         ...(milestoneName !== undefined  ? { milestoneName: milestoneName.trim() } : {}),
-        ...(dueDate !== undefined        ? { dueDate:       dueDate       ? new Date(dueDate)       : null } : {}),
+        ...(dueDate !== undefined        ? { dueDate:       dueDate       ? parseLocalDateStart(dueDate)       : null } : {}),
         ...(completedDate !== undefined  ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
         ...(autoCompletedDate !== undefined ? { completedDate: autoCompletedDate } : {}),
       },

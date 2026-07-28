@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializeMilestone } from './service-project-milestone.service'
 import { serializeTimeEntry } from './time-entry.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // ServiceProject.totalContractValue is a Prisma Decimal field — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws "An
@@ -9,12 +10,28 @@ import { serializeTimeEntry } from './time-entry.service'
 // milestoneAmount) and getServiceProject additionally nests `timeEntries[]`
 // (its own Decimal fields) — both serialized via the shared helpers from
 // their respective services so the fix stays in one place.
-function serializeProject<T extends { totalContractValue: unknown; adSpendBudget?: unknown; milestones?: unknown[] }>(p: T): T {
+//
+// Real bug found live (2026-07-28 service-vertical audit): startDate/
+// expectedEndDate/completedDate are DateTime fields, which structured clone
+// DOES preserve across IPC without throwing (unlike Decimal) — so this half
+// was never caught by a clone error; it shipped as a live renderer crash
+// instead. ProjectsScreen.tsx's edit-form populator (openEditProject) calls
+// `p.startDate.slice(0, 10)` / `p.expectedEndDate.slice(0, 10)` directly,
+// assuming an ISO string. Same bug class as compliance-task.service.ts's
+// serializeTask — see date.util.ts's toLocalDateOnlyIso for the shared fix.
+// completedDate is stamped with a real time-of-day (`new Date()` at status
+// transition, not a date-only user input), so it's serialized via plain
+// toISOString() instead — mirroring how createdAt/updatedAt are handled
+// elsewhere, not truncated to a date-only value.
+function serializeProject<T extends { totalContractValue: unknown; adSpendBudget?: unknown; milestones?: unknown[]; startDate: Date | null; expectedEndDate: Date | null; completedDate: Date | null }>(p: T): T {
   return {
     ...p,
     totalContractValue: (p as { totalContractValue: unknown }).totalContractValue == null ? null : Number((p as { totalContractValue: unknown }).totalContractValue),
     ...('adSpendBudget' in p ? { adSpendBudget: p.adSpendBudget == null ? null : Number(p.adSpendBudget) } : {}),
     ...(p.milestones ? { milestones: p.milestones.map((m) => serializeMilestone(m as Parameters<typeof serializeMilestone>[0])) } : {}),
+    startDate: (p.startDate ? toLocalDateOnlyIso(p.startDate) : null) as unknown as Date,
+    expectedEndDate: (p.expectedEndDate ? toLocalDateOnlyIso(p.expectedEndDate) : null) as unknown as Date,
+    completedDate: (p.completedDate ? p.completedDate.toISOString() : null) as unknown as Date,
   }
 }
 
@@ -95,8 +112,12 @@ export async function createServiceProject(payload: {
         stage:              payload.stage ?? null,
         status:             payload.status ?? 'ACTIVE',
         totalContractValue: payload.totalContractValue ?? null,
-        startDate:          payload.startDate ? new Date(payload.startDate) : null,
-        expectedEndDate:    payload.expectedEndDate ? new Date(payload.expectedEndDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with the parseLocalDateStart fix already applied to every other
+        // date-only write in this service family.
+        startDate:          payload.startDate ? parseLocalDateStart(payload.startDate) : null,
+        expectedEndDate:    payload.expectedEndDate ? parseLocalDateStart(payload.expectedEndDate) : null,
         assignedToId:       payload.assignedToId ?? null,
         notes:              payload.notes ?? null,
         targetChannel:      payload.targetChannel ?? null,
@@ -148,8 +169,8 @@ export async function updateServiceProject(payload: {
       data: {
         ...rest,
         ...(projectName !== undefined ? { projectName: projectName.trim() } : {}),
-        ...(startDate !== undefined       ? { startDate:       startDate       ? new Date(startDate)       : null } : {}),
-        ...(expectedEndDate !== undefined ? { expectedEndDate: expectedEndDate ? new Date(expectedEndDate) : null } : {}),
+        ...(startDate !== undefined       ? { startDate:       startDate       ? parseLocalDateStart(startDate)       : null } : {}),
+        ...(expectedEndDate !== undefined ? { expectedEndDate: expectedEndDate ? parseLocalDateStart(expectedEndDate) : null } : {}),
         ...(completedDate !== undefined        ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
         ...(autoCompletedDate !== undefined    ? { completedDate: autoCompletedDate } : {}),
       },

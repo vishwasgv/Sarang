@@ -4,7 +4,103 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { getSprintBurndown, getProjectVelocity } from '../sprint.service'
+import { getSprintBurndown, getProjectVelocity, createSprint, listSprints, updateSprint } from '../sprint.service'
+
+// Real bug found live (2026-07-28 service-vertical audit), two-part:
+// (1) createSprint/updateSprint wrote startDate/endDate via a bare
+//     `new Date('YYYY-MM-DD')`, which parses as UTC midnight — inconsistent
+//     with the parseLocalDateStart fix already applied to every other
+//     date-only write in this service family.
+// (2) Sprint.startDate/endDate are DateTime fields, which structured clone
+//     (Electron's IPC boundary) preserves as real Date instances without
+//     throwing (unlike a Prisma Decimal, caught immediately in dev) — so
+//     this half was never caught by a clone error; it shipped as a live
+//     renderer crash instead. ProjectsScreen.tsx's sprint edit-form
+//     populator (openEditSprint) calls `s.startDate.slice(0, 10)` /
+//     `s.endDate.slice(0, 10)` directly, assuming an ISO string — since both
+//     fields are non-nullable, this crashed on EVERY sprint edit.
+describe('sprint.service — date-field writes and IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeMockDb() {
+    const db: Record<string, any> = {
+      sprint: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'sprint-new', status: 'PLANNING', ...data, issues: [] })
+        ),
+        update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'sprint-1', projectId: 'proj-1', sprintNumber: 1, status: 'PLANNING', startDate: new Date(2026, 0, 1), endDate: new Date(2026, 0, 15), ...data, issues: [] })
+        ),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    return db
+  }
+
+  it('createSprint stores startDate/endDate via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createSprint({ projectId: 'proj-1', startDate: '2026-03-10', endDate: '2026-03-24' })
+
+    const call = db.sprint.create.mock.calls[0][0]
+    const storedStart: Date = call.data.startDate
+    const storedEnd: Date = call.data.endDate
+    expect(storedStart.getFullYear()).toBe(2026)
+    expect(storedStart.getMonth()).toBe(2)
+    expect(storedStart.getDate()).toBe(10)
+    expect(storedStart.getHours()).toBe(0) // local midnight, not shifted by a UTC parse
+    expect(storedEnd.getDate()).toBe(24)
+    expect(storedEnd.getHours()).toBe(0)
+  })
+
+  it('createSprint returns startDate/endDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createSprint({ projectId: 'proj-1', startDate: '2026-03-10', endDate: '2026-03-24' })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { startDate: unknown; endDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+    expect((data.startDate as string).slice(0, 10)).toBe('2026-03-10')
+    expect(typeof data.endDate).toBe('string')
+    expect((data.endDate as string).slice(0, 10)).toBe('2026-03-24')
+  })
+
+  it('listSprints returns startDate/endDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb()
+    db.sprint.findMany = vi.fn().mockResolvedValue([
+      { id: 'sprint-1', projectId: 'proj-1', sprintNumber: 1, name: null, goal: null, status: 'ACTIVE', startDate: new Date(2026, 2, 10), endDate: new Date(2026, 2, 24), issues: [] },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listSprints('proj-1')
+
+    expect(res.success).toBe(true)
+    const sprint = (res as { data: Array<{ startDate: unknown; endDate: unknown }> }).data[0]
+    expect(typeof sprint.startDate).toBe('string')
+    expect(sprint.startDate).not.toBeInstanceOf(Date)
+    expect(typeof sprint.endDate).toBe('string')
+  })
+
+  it('updateSprint stores a changed startDate via parseLocalDateStart and returns it serialized', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSprint({ id: 'sprint-1', startDate: '2026-03-15' })
+
+    expect(res.success).toBe(true)
+    const call = db.sprint.update.mock.calls[0][0]
+    const stored: Date = call.data.startDate
+    expect(stored.getDate()).toBe(15)
+    expect(stored.getHours()).toBe(0)
+    const data = (res as { data: { startDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+  })
+})
 
 describe('sprint.service.getSprintBurndown', () => {
   beforeEach(() => vi.clearAllMocks())

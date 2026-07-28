@@ -1,15 +1,28 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // RetainerAgreement.monthlyAmount/hoursPerMonth are Prisma Decimal fields —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
 // throws "An object could not be cloned" on every response that includes
 // one. Applied to every function below that returns a retainer.
-function serializeRetainer<T extends { monthlyAmount: unknown; hoursPerMonth: unknown }>(r: T): T {
+//
+// Real bug found live (2026-07-28 service-vertical audit): startDate/endDate
+// are DateTime fields, which structured clone DOES preserve across IPC
+// without throwing (unlike Decimal) — so this half was never caught by a
+// clone error; it shipped as a live renderer crash instead.
+// RetainersScreen.tsx's edit-form populator (openEdit) calls
+// `r.startDate.slice(0, 10)` directly, assuming an ISO string — since
+// startDate is non-nullable, this crashed on EVERY retainer edit. Same bug
+// class as compliance-task.service.ts's serializeTask — see
+// date.util.ts's toLocalDateOnlyIso for the shared fix.
+function serializeRetainer<T extends { monthlyAmount: unknown; hoursPerMonth: unknown; startDate: Date; endDate: Date | null }>(r: T): T {
   return {
     ...r,
     monthlyAmount: Number(r.monthlyAmount),
     hoursPerMonth: r.hoursPerMonth == null ? null : Number(r.hoursPerMonth),
+    startDate: toLocalDateOnlyIso(r.startDate) as unknown as Date,
+    endDate: (r.endDate ? toLocalDateOnlyIso(r.endDate) : null) as unknown as Date,
   }
 }
 
@@ -98,8 +111,12 @@ export async function createRetainer(payload: {
         billingDay,
         hoursPerMonth: payload.hoursPerMonth ?? null,
         deliverables:  payload.deliverables ?? null,
-        startDate:     new Date(payload.startDate),
-        endDate:       payload.endDate ? new Date(payload.endDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with the parseLocalDateStart fix already applied to every other
+        // date-only write in this service family.
+        startDate:     parseLocalDateStart(payload.startDate),
+        endDate:       payload.endDate ? parseLocalDateStart(payload.endDate) : null,
         notes:         payload.notes ?? null,
       },
       include: {
@@ -138,8 +155,8 @@ export async function updateRetainer(payload: {
         ...rest,
         ...(title !== undefined     ? { title: title.trim() } : {}),
         ...(billingDay !== undefined ? { billingDay: billingDay != null ? Math.min(28, Math.max(1, Math.round(billingDay))) : 1 } : {}),
-        ...(startDate !== undefined  ? { startDate: new Date(startDate) } : {}),
-        ...(endDate !== undefined    ? { endDate: endDate ? new Date(endDate) : null } : {}),
+        ...(startDate !== undefined  ? { startDate: parseLocalDateStart(startDate) } : {}),
+        ...(endDate !== undefined    ? { endDate: endDate ? parseLocalDateStart(endDate) : null } : {}),
       },
       include: {
         client:     { select: { id: true, customerName: true, phone: true } },

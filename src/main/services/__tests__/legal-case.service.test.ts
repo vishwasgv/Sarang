@@ -5,6 +5,7 @@ vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().moc
 
 import { getPrisma } from '../../database/db'
 import { listLegalCases, getLegalCase, createLegalCase, updateLegalCase, checkConflictOfInterest } from '../legal-case.service'
+import { parseLocalDateStart } from '../../utils/date.util'
 
 // Regression coverage for the Phase 28 re-audit finding: LegalCase.feeAgreed/
 // feeCollected are Prisma Decimal fields — Electron's IPC can't serialize a
@@ -131,6 +132,65 @@ describe('legal-case.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): filingDate/
+// nextHearingDate/limitationDate are DateTime fields, which structured
+// clone (Electron's IPC boundary) preserves as real Date instances without
+// throwing (unlike Decimal, caught immediately in dev) — so this shipped as
+// a live renderer crash instead. LegalCasesScreen.tsx's limitation-date
+// editor populator (loadCaseDetail) calls `detail.limitationDate.slice(0, 10)`
+// directly, assuming an ISO string — this threw on every case-detail load
+// for a case with a limitationDate set.
+describe('legal-case.service — date-field IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('getLegalCase returns filingDate/limitationDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb([makeCase({ filingDate: new Date(2026, 0, 10), limitationDate: new Date(2026, 5, 20) })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getLegalCase('case-1')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { filingDate: unknown; limitationDate: unknown } }).data
+    expect(typeof data.filingDate).toBe('string')
+    expect(data.filingDate).not.toBeInstanceOf(Date)
+    expect(typeof data.limitationDate).toBe('string')
+    expect((data.limitationDate as string).slice(0, 10)).toBe('2026-06-20')
+  })
+
+  it('listLegalCases returns limitationDate as null (not a Date) when unset', async () => {
+    const db = makeMockDb([makeCase({ limitationDate: null })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listLegalCases({})
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: Array<{ limitationDate: unknown }> }).data
+    expect(data[0].limitationDate).toBeNull()
+  })
+
+  it('createLegalCase returns limitationDate as an ISO string and stores it via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createLegalCase({
+      caseNumber: 'CASE-2026-005', caseTitle: 'New Case', courtName: 'District Court',
+      clientId: 'cust-1', limitationDate: '2026-03-10',
+    })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { limitationDate: unknown } }).data
+    expect(typeof data.limitationDate).toBe('string')
+    expect((data.limitationDate as string).slice(0, 10)).toBe('2026-03-10')
+
+    const call = db.legalCase.create.mock.calls[0][0]
+    const stored: Date = call.data.limitationDate
+    expect(stored.getFullYear()).toBe(2026)
+    expect(stored.getMonth()).toBe(2)
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0) // local midnight, not shifted by a UTC parse
+  })
+})
+
 // Phase 58 §2 — Lawyer: statute-of-limitations/deadline reminder, reusing
 // the exact same notificationQueue/buildWhatsAppLink mechanism
 // hearing.service.ts's scheduleHearingReminder already established.
@@ -175,11 +235,14 @@ describe('legal-case.service — limitation-date reminder scheduling', () => {
   })
 
   it('updateLegalCase re-saving the SAME limitationDate does not re-trigger cancel/reschedule', async () => {
-    // Stored as midnight UTC, same as how both createLegalCase and
-    // updateLegalCase always parse a date-only string (new Date(dateStr)) —
-    // matches what a real re-save via the UI's date-only <input> produces.
+    // Real bug found live (2026-07-28 service-vertical audit): limitationDate
+    // is now constructed via parseLocalDateStart (local midnight), not a
+    // bare `new Date(dateString)` (UTC midnight) — this fixture must match
+    // real behavior so the "same date -> no-op" comparison test is
+    // meaningful (same fix already applied to hearing.service.test.ts's
+    // makeHearing fixture for the identical bug class).
     const sameDateStr = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    const db = makeMockDb([makeCase({ limitationDate: new Date(sameDateStr) })])
+    const db = makeMockDb([makeCase({ limitationDate: parseLocalDateStart(sameDateStr) })])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updateLegalCase({ id: 'case-1', limitationDate: sameDateStr, notes: 'edited' })

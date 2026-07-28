@@ -1,13 +1,35 @@
 import { getPrisma } from '../database/db'
 import { serializeTimeEntry } from './time-entry.service'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // LegalCase.feeAgreed/feeCollected are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws
 // "An object could not be cloned" on every response that includes one.
 // Applied to every function below that returns a case.
-function serializeCase<T extends { feeAgreed: unknown; feeCollected: unknown }>(c: T): T {
-  return { ...c, feeAgreed: c.feeAgreed == null ? null : Number(c.feeAgreed), feeCollected: Number(c.feeCollected) }
+//
+// Real bug found live (2026-07-28 service-vertical audit): filingDate/
+// nextHearingDate/limitationDate are DateTime fields, which structured
+// clone DOES preserve across IPC without throwing (unlike Decimal) — so
+// this half was never caught by a clone error; it shipped as a live
+// renderer crash instead. LegalCasesScreen.tsx's limitation-date-editor
+// populator (loadCaseDetail) calls `detail.limitationDate.slice(0, 10)`
+// directly, assuming an ISO string — this threw on every case-detail load
+// for a case with a limitationDate set, aborting the entire case-detail
+// fetch (hearings/time entries included) via the surrounding try/catch.
+// Same bug class as compliance-task.service.ts's serializeTask — see
+// date.util.ts's toLocalDateOnlyIso for the shared fix.
+function serializeCase<T extends { feeAgreed: unknown; feeCollected: unknown; filingDate: Date | null; nextHearingDate: Date | null; limitationDate: Date | null; createdAt: Date; updatedAt: Date }>(c: T): T {
+  return {
+    ...c,
+    feeAgreed: c.feeAgreed == null ? null : Number(c.feeAgreed),
+    feeCollected: Number(c.feeCollected),
+    filingDate: (c.filingDate ? toLocalDateOnlyIso(c.filingDate) : null) as unknown as Date,
+    nextHearingDate: (c.nextHearingDate ? toLocalDateOnlyIso(c.nextHearingDate) : null) as unknown as Date,
+    limitationDate: (c.limitationDate ? toLocalDateOnlyIso(c.limitationDate) : null) as unknown as Date,
+    createdAt: c.createdAt.toISOString() as unknown as Date,
+    updatedAt: c.updatedAt.toISOString() as unknown as Date,
+  }
 }
 
 export async function listLegalCases(filters?: {
@@ -99,9 +121,14 @@ export async function createLegalCase(payload: {
         eCourtId: payload.eCourtId ?? null,
         clientId: payload.clientId,
         advocateId: payload.advocateId ?? null,
-        filingDate: payload.filingDate ? new Date(payload.filingDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with the parseLocalDateStart fix already applied to every other
+        // date-only write in this service family (hearing/board-meeting/
+        // roc-filing/compliance-task).
+        filingDate: payload.filingDate ? parseLocalDateStart(payload.filingDate) : null,
         opposingPartyName: payload.opposingPartyName?.trim() || null,
-        limitationDate: payload.limitationDate ? new Date(payload.limitationDate) : null,
+        limitationDate: payload.limitationDate ? parseLocalDateStart(payload.limitationDate) : null,
         feeAgreed: payload.feeAgreed ?? null,
         feeCollected: 0,
         status: 'ACTIVE',
@@ -113,8 +140,12 @@ export async function createLegalCase(payload: {
       },
     })
 
-    if (payload.limitationDate) {
-      await scheduleLimitationReminder(legalCase.id, new Date(payload.limitationDate))
+    if (payload.limitationDate && legalCase.limitationDate) {
+      // Reuse the just-written value (parseLocalDateStart'd above) rather
+      // than re-parsing payload.limitationDate with a bare `new Date()` —
+      // that would silently diverge from what's actually stored, in any
+      // negative-UTC-offset timezone.
+      await scheduleLimitationReminder(legalCase.id, legalCase.limitationDate)
     }
 
     await db.auditLog.create({
@@ -161,9 +192,9 @@ export async function updateLegalCase(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(filingDate !== undefined ? { filingDate: filingDate ? new Date(filingDate) : null } : {}),
-        ...(nextHearingDate !== undefined ? { nextHearingDate: nextHearingDate ? new Date(nextHearingDate) : null } : {}),
-        ...(limitationDate !== undefined ? { limitationDate: limitationDate ? new Date(limitationDate) : null } : {}),
+        ...(filingDate !== undefined ? { filingDate: filingDate ? parseLocalDateStart(filingDate) : null } : {}),
+        ...(nextHearingDate !== undefined ? { nextHearingDate: nextHearingDate ? parseLocalDateStart(nextHearingDate) : null } : {}),
+        ...(limitationDate !== undefined ? { limitationDate: limitationDate ? parseLocalDateStart(limitationDate) : null } : {}),
       },
     })
 

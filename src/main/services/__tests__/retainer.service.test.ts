@@ -121,6 +121,72 @@ describe('retainer.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): startDate/endDate
+// are DateTime fields, which structured clone (Electron's IPC boundary)
+// preserves as real Date instances without throwing (unlike Decimal, which
+// throws immediately and gets caught in dev) — so this shipped as a live
+// renderer crash instead. RetainersScreen.tsx's edit-form populator (openEdit)
+// calls `r.startDate.slice(0, 10)` directly, assuming an ISO string — since
+// startDate is non-nullable, this crashed on EVERY retainer edit.
+describe('retainer.service — date-field IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createRetainer returns startDate/endDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createRetainer({
+      clientId: 'cust-1', title: 'Monthly Compliance Retainer',
+      monthlyAmount: 20000, startDate: '2026-07-01', endDate: '2026-12-31',
+    })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { startDate: unknown; endDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+    expect((data.startDate as string).slice(0, 10)).toBe('2026-07-01')
+    expect(typeof data.endDate).toBe('string')
+    expect((data.endDate as string).slice(0, 10)).toBe('2026-12-31')
+  })
+
+  it('createRetainer returns endDate as null (not a Date) when unset', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createRetainer({
+      clientId: 'cust-1', title: 'Open-ended Retainer', monthlyAmount: 20000, startDate: '2026-07-01',
+    })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { endDate: unknown } }).data.endDate).toBeNull()
+  })
+
+  it('listRetainers returns startDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb(makeRetainer({ startDate: new Date(2026, 0, 15) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listRetainers({})
+
+    expect(res.success).toBe(true)
+    const startDate = (res as { data: Array<{ startDate: unknown }> }).data[0].startDate
+    expect(typeof startDate).toBe('string')
+    expect(startDate).not.toBeInstanceOf(Date)
+  })
+
+  it('updateRetainer stores startDate via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb(makeRetainer())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateRetainer({ id: 'ret-abc123', startDate: '2026-03-10' })
+
+    const call = db.retainerAgreement.update.mock.calls[0][0]
+    const stored: Date = call.data.startDate
+    expect(stored.getFullYear()).toBe(2026)
+    expect(stored.getMonth()).toBe(2)
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0) // local midnight, not shifted by a UTC parse
+  })
+})
+
 describe('retainer.service — reminder dedup precision', () => {
   beforeEach(() => vi.clearAllMocks())
 

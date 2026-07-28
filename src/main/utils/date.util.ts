@@ -56,3 +56,24 @@ export function parseLocalDateEnd(dateOnly: string): Date {
   const [y, m, d] = dateOnly.split('-').map(Number)
   return new Date(y, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999)
 }
+
+// Real bug found live 2026-07-28 (professional-services/PM service-vertical
+// audit): several calendar-date-only fields written via parseLocalDateStart
+// (constructing LOCAL midnight, correctly) were then returned across
+// Electron's IPC boundary as raw Prisma Date instances instead of ISO
+// strings. Structured clone (the IPC transport) preserves a Date instance
+// without throwing — unlike a Prisma Decimal, which throws "An object could
+// not be cloned" and gets caught immediately during development — so this
+// never surfaced as a serialization error. It shipped instead as a silent,
+// always-reproducible renderer crash: every edit-form populator for these
+// records (RetainerAgreement.startDate/endDate, Engagement.startDate/
+// endDate, ServiceProject.startDate/expectedEndDate, ServiceProjectMilestone
+// .dueDate, Sprint.startDate/endDate, LegalCase.filingDate/limitationDate/
+// nextHearingDate) calls `.slice(0, 10)` on the field, assuming an ISO
+// string — the exact same bug class already independently found and fixed
+// for ComplianceTask/ROCFiling/BoardMeeting (see compliance-task.service.ts's
+// serializeTask for the original writeup; this is the same fix, extracted
+// once instead of re-duplicated in every affected service file).
+export function toLocalDateOnlyIso(date: Date): string {
+  return `${toLocalISODate(date)}T00:00:00.000Z`
+}

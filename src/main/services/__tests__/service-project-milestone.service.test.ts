@@ -105,6 +105,65 @@ describe('service-project-milestone.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): dueDate is a
+// DateTime field, which structured clone (Electron's IPC boundary)
+// preserves as a real Date instance without throwing (unlike Decimal,
+// caught immediately in dev) — so this shipped as a live renderer crash
+// instead. ProjectsScreen.tsx's milestone edit-form populator
+// (openEditMilestone) calls `m.dueDate.slice(0, 10)` directly, assuming an
+// ISO string.
+describe('service-project-milestone.service — date-field IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createMilestone returns dueDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createMilestone({ projectId: 'proj-1', milestoneName: 'Design Phase', dueDate: '2026-08-15' })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { dueDate: unknown } }).data
+    expect(typeof data.dueDate).toBe('string')
+    expect((data.dueDate as string).slice(0, 10)).toBe('2026-08-15')
+  })
+
+  it('createMilestone returns dueDate as null when unset, not a raw Date', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createMilestone({ projectId: 'proj-1', milestoneName: 'Discovery Phase' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { dueDate: unknown } }).data.dueDate).toBeNull()
+  })
+
+  it('listMilestones returns dueDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb(makeMilestone({ dueDate: new Date(2026, 7, 15) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listMilestones('proj-1')
+
+    expect(res.success).toBe(true)
+    const dueDate = (res as { data: Array<{ dueDate: unknown }> }).data[0].dueDate
+    expect(typeof dueDate).toBe('string')
+    expect(dueDate).not.toBeInstanceOf(Date)
+  })
+
+  it('createMilestone stores dueDate via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createMilestone({ projectId: 'proj-1', milestoneName: 'Design Phase', dueDate: '2026-03-10' })
+
+    const call = db.serviceProjectMilestone.create.mock.calls[0][0]
+    const stored: Date = call.data.dueDate
+    expect(stored.getFullYear()).toBe(2026)
+    expect(stored.getMonth()).toBe(2)
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0)
+  })
+})
+
 // Phase 40 — generateMilestoneInvoice
 
 function makeMilestoneWithProject(overrides: Record<string, unknown> = {}) {

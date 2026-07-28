@@ -148,6 +148,69 @@ describe('service-project.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): startDate/
+// expectedEndDate are DateTime fields, which structured clone (Electron's
+// IPC boundary) preserves as real Date instances without throwing (unlike
+// Decimal, caught immediately in dev) — so this shipped as a live renderer
+// crash instead. ProjectsScreen.tsx's edit-form populator (openEditProject)
+// calls `p.startDate.slice(0, 10)` / `p.expectedEndDate.slice(0, 10)`
+// directly, assuming an ISO string.
+describe('service-project.service — date-field IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createServiceProject returns startDate/expectedEndDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createServiceProject({
+      clientId: 'cust-1', projectName: 'New Office Fitout', startDate: '2026-07-01', expectedEndDate: '2026-12-31',
+    })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { startDate: unknown; expectedEndDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+    expect((data.startDate as string).slice(0, 10)).toBe('2026-07-01')
+    expect(typeof data.expectedEndDate).toBe('string')
+    expect((data.expectedEndDate as string).slice(0, 10)).toBe('2026-12-31')
+  })
+
+  it('createServiceProject returns startDate as null when unset, not a raw Date', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createServiceProject({ clientId: 'cust-1', projectName: 'Retainer Only' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { startDate: unknown } }).data.startDate).toBeNull()
+  })
+
+  it('listServiceProjects returns startDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb(makeProject({ startDate: new Date(2026, 0, 15) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listServiceProjects()
+
+    expect(res.success).toBe(true)
+    const startDate = (res as { data: Array<{ startDate: unknown }> }).data[0].startDate
+    expect(typeof startDate).toBe('string')
+    expect(startDate).not.toBeInstanceOf(Date)
+  })
+
+  it('createServiceProject stores startDate via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createServiceProject({ clientId: 'cust-1', projectName: 'New Office Fitout', startDate: '2026-03-10' })
+
+    const call = db.serviceProject.create.mock.calls[0][0]
+    const stored: Date = call.data.startDate
+    expect(stored.getFullYear()).toBe(2026)
+    expect(stored.getMonth()).toBe(2)
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0)
+  })
+})
+
 describe('service-project.service — Marketing Agency campaign fields (F.13)', () => {
   beforeEach(() => vi.clearAllMocks())
 

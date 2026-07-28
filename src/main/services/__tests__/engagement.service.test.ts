@@ -112,6 +112,68 @@ describe('engagement.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): startDate/endDate
+// are DateTime fields, which structured clone (Electron's IPC boundary)
+// preserves as real Date instances without throwing (unlike Decimal, caught
+// immediately in dev) — so this shipped as a live renderer crash instead.
+// EngagementsScreen.tsx's edit-form populator (openEditForm) calls
+// `e.startDate.slice(0, 10)` directly, assuming an ISO string.
+describe('engagement.service — date-field IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createEngagement returns startDate/endDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createEngagement({
+      clientId: 'cust-1', title: 'GST Retainer', startDate: '2026-07-01', endDate: '2026-12-31',
+    })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { startDate: unknown; endDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+    expect((data.startDate as string).slice(0, 10)).toBe('2026-07-01')
+    expect(typeof data.endDate).toBe('string')
+    expect((data.endDate as string).slice(0, 10)).toBe('2026-12-31')
+  })
+
+  it('createEngagement returns startDate as null when unset, not a raw Date', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createEngagement({ clientId: 'cust-1', title: 'One-time advisory' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { startDate: unknown } }).data.startDate).toBeNull()
+  })
+
+  it('listEngagements returns startDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb(makeEngagement({ startDate: new Date(2026, 0, 15) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listEngagements({})
+
+    expect(res.success).toBe(true)
+    const startDate = (res as { data: Array<{ startDate: unknown }> }).data[0].startDate
+    expect(typeof startDate).toBe('string')
+    expect(startDate).not.toBeInstanceOf(Date)
+  })
+
+  it('createEngagement stores startDate via parseLocalDateStart, not a bare UTC-midnight parse', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEngagement({ clientId: 'cust-1', title: 'GST Retainer', startDate: '2026-03-10' })
+
+    const call = db.engagement.create.mock.calls[0][0]
+    const stored: Date = call.data.startDate
+    expect(stored.getFullYear()).toBe(2026)
+    expect(stored.getMonth()).toBe(2)
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0)
+  })
+})
+
 // Fresh-audit fix (2026-07-12): the original one-shot nullable invoiceId
 // claim-sentinel design permanently blocked re-invoicing after the FIRST
 // month — invoiceId never returns to null, so a CA/CS retainer engagement

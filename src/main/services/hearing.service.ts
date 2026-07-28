@@ -181,10 +181,22 @@ export async function deleteHearing(id: string) {
 
 async function syncNextHearingDate(caseId: string) {
   const db = getPrisma()
-  // Use start-of-day UTC because hearing dates are stored as midnight UTC
-  // (new Date("YYYY-MM-DD") resolves to midnight UTC, not local midnight)
+  // Real bug found live (2026-07-28 service-vertical audit): this used to
+  // anchor todayStart to UTC midnight, with a comment claiming "hearing
+  // dates are stored as midnight UTC" — true when this function was
+  // written, but createHearing/updateHearing above were since fixed
+  // (2026-07-28) to store hearingDate via parseLocalDateStart (LOCAL
+  // midnight) instead, and this sibling function was missed. For IST
+  // (UTC+5:30), a hearing dated "today" is stored at local midnight, which
+  // is 5:30 hours BEFORE UTC midnight of the same calendar day — so
+  // `hearingDate >= todayStart` (UTC midnight) evaluated false for every
+  // hearing scheduled for today, silently excluding it from being counted
+  // as the case's next hearing (nextHearingDate would fall through to the
+  // next SCHEDULED hearing, or null, even though one exists today). Fixed
+  // to anchor todayStart to LOCAL midnight instead, matching the storage
+  // format.
   const todayStart = new Date()
-  todayStart.setUTCHours(0, 0, 0, 0)
+  todayStart.setHours(0, 0, 0, 0)
   const next = await db.hearing.findFirst({
     where: { caseId, status: 'SCHEDULED', hearingDate: { gte: todayStart } },
     orderBy: { hearingDate: 'asc' },

@@ -1,12 +1,27 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Engagement.feeAmount is a Prisma Decimal field — Electron's IPC (structured
 // clone) cannot serialize a Decimal instance and throws "An object could not
 // be cloned" on every response that includes one. Applied to every function
 // below that returns an engagement.
-function serializeEngagement<T extends { feeAmount: unknown }>(e: T): T {
-  return { ...e, feeAmount: e.feeAmount == null ? null : Number(e.feeAmount) }
+//
+// Real bug found live (2026-07-28 service-vertical audit): startDate/endDate
+// are DateTime fields, which structured clone DOES preserve across IPC
+// without throwing (unlike Decimal) — so this half was never caught by a
+// clone error; it shipped as a live renderer crash instead.
+// EngagementsScreen.tsx's edit-form populator (openEditForm) calls
+// `e.startDate.slice(0, 10)` directly, assuming an ISO string. Same bug
+// class as compliance-task.service.ts's serializeTask — see
+// date.util.ts's toLocalDateOnlyIso for the shared fix.
+function serializeEngagement<T extends { feeAmount: unknown; startDate: Date | null; endDate: Date | null }>(e: T): T {
+  return {
+    ...e,
+    feeAmount: e.feeAmount == null ? null : Number(e.feeAmount),
+    startDate: (e.startDate ? toLocalDateOnlyIso(e.startDate) : null) as unknown as Date,
+    endDate: (e.endDate ? toLocalDateOnlyIso(e.endDate) : null) as unknown as Date,
+  }
 }
 
 export async function listEngagements(filters?: {
@@ -61,8 +76,12 @@ export async function createEngagement(payload: {
         feeType:        payload.feeType ?? 'FIXED',
         feeAmount:      payload.feeAmount ?? null,
         billingDay,
-        startDate:      payload.startDate ? new Date(payload.startDate) : null,
-        endDate:        payload.endDate ? new Date(payload.endDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with the parseLocalDateStart fix already applied to every other
+        // date-only write in this service family.
+        startDate:      payload.startDate ? parseLocalDateStart(payload.startDate) : null,
+        endDate:        payload.endDate ? parseLocalDateStart(payload.endDate) : null,
         notes:          payload.notes ?? null,
       },
       include: {
@@ -101,8 +120,8 @@ export async function updateEngagement(payload: {
       data: {
         ...rest,
         ...(billingDay !== undefined ? { billingDay: billingDay != null ? Math.min(28, Math.max(1, Math.round(billingDay))) : null } : {}),
-        ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
-        ...(endDate !== undefined   ? { endDate: endDate ? new Date(endDate) : null }       : {}),
+        ...(startDate !== undefined ? { startDate: startDate ? parseLocalDateStart(startDate) : null } : {}),
+        ...(endDate !== undefined   ? { endDate: endDate ? parseLocalDateStart(endDate) : null }       : {}),
       },
       include: {
         client: { select: { id: true, customerName: true, phone: true } },
