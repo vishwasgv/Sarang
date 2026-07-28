@@ -34,22 +34,33 @@ export function register(handle: HandleFn): void {
     return listMembershipPlans()
   })
 
+  // Real bug found live (2026-07-28 service-vertical audit, continued): all
+  // three of these mutations were gated on 'settings.view' — a READ-tier
+  // permission — instead of 'settings.modify', the write-tier permission
+  // this codebase's own permission matrix defines specifically for settings
+  // mutations. service-catalog.handler.ts (the direct sibling: another
+  // priced-catalog config screen under Settings) correctly gates its
+  // create/update/delete on 'settings.modify' while list/get use
+  // 'settings.view'. Since Manager holds 'settings.view' but NOT
+  // 'settings.modify' (only Admin does — see seed.ts's ROLE_PERMISSIONS),
+  // this let any Manager create/edit/delete membership pricing plans, a
+  // privilege the equivalent ServiceCatalog screen reserves for Admin only.
   handle('membershipPlan:create', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = CreateMembershipPlanSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createMembershipPlan(parsed.data)
   })
 
   handle('membershipPlan:update', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = UpdateMembershipPlanSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateMembershipPlan(parsed.data)
   })
 
   handle('membershipPlan:delete', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const payload = raw as { id: string }
     return deleteMembershipPlan(payload.id)
   })

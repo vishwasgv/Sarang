@@ -419,18 +419,41 @@ export async function listDonationRecords(payload?: { screeningStatus?: Screenin
 // stock ledger once safe), and updates the donor's lastDonationDate so their
 // next-eligible-date calculation reflects it. A FAILED result never touches
 // inventory at all.
+//
+// Real bug found live (2026-07-28 service-vertical audit, continued): the
+// "still PENDING" guard used to be a single pre-transaction read
+// (db.donationRecord.findUnique), with the actual PASSED-path write (create
+// ProductBatch + update donor + update donationRecord) happening afterward in
+// a SEPARATE, later transaction that never re-checked screeningStatus. Two
+// near-simultaneous calls for the SAME donation record (double-click, two
+// front-desk terminals) could both read screeningStatus==='PENDING' before
+// either committed, and BOTH would then create their own ProductBatch for
+// what is physically one donated unit — double-counting real blood-unit
+// inventory, plus the second call's donationRecord.update silently
+// overwriting the first call's productBatchId, orphaning the first batch
+// from its own donation record. Same TOCTOU class already closed elsewhere
+// in this codebase (session-pack.service.ts's deductSession, driving.
+// service.ts's package-enrollment claim) — fixed the same way: the
+// screeningStatus transition is now claimed atomically via a conditional
+// updateMany (WHERE id AND screeningStatus='PENDING') INSIDE the same
+// transaction that does the inventory work, so a losing concurrent call's
+// claim.count is 0 and it cleanly reports "already recorded" instead of
+// creating a duplicate batch.
 export async function updateScreeningStatus(payload: { id: string; screeningStatus: ScreeningStatus; screeningNotes?: string }, userId?: string) {
   const db = getPrisma()
   try {
-    const record = await db.donationRecord.findUnique({ where: { id: payload.id }, include: { donor: true } })
-    if (!record) return { success: false, error: { code: 'BB-016', message: 'Donation record not found.' } }
-    if (record.screeningStatus !== 'PENDING') {
-      return { success: false, error: { code: 'BB-017', message: `Screening has already been recorded as ${record.screeningStatus.toLowerCase()}.` } }
-    }
-
     if (payload.screeningStatus === 'PASSED') {
-      const expiryDate = new Date(record.collectionDate.getTime() + SHELF_LIFE_DAYS[record.componentType as ComponentType] * 86400000)
-      const updated = await db.$transaction(async (tx) => {
+      const result = await db.$transaction(async (tx) => {
+        const claim = await tx.donationRecord.updateMany({
+          where: { id: payload.id, screeningStatus: 'PENDING' },
+          data: { screeningStatus: 'PASSED', screeningNotes: payload.screeningNotes },
+        })
+        if (claim.count === 0) return { ok: false as const }
+
+        const record = await tx.donationRecord.findUnique({ where: { id: payload.id } })
+        if (!record) return { ok: false as const }
+
+        const expiryDate = new Date(record.collectionDate.getTime() + SHELF_LIFE_DAYS[record.componentType as ComponentType] * 86400000)
         const product = await findOrCreateBloodUnitProduct(tx as unknown as Db)
         const batch = await tx.productBatch.create({
           data: {
@@ -444,20 +467,33 @@ export async function updateScreeningStatus(payload: { id: string; screeningStat
           },
         })
         await tx.donor.update({ where: { id: record.donorId }, data: { lastDonationDate: record.collectionDate, lastDonationComponentType: record.componentType } })
-        return tx.donationRecord.update({
+        const updated = await tx.donationRecord.update({
           where: { id: payload.id },
-          data: { screeningStatus: 'PASSED', screeningNotes: payload.screeningNotes, productBatchId: batch.id },
+          data: { productBatchId: batch.id },
           include: { productBatch: true },
         })
+        return { ok: true as const, data: updated }
       })
+
+      if (!result.ok) {
+        const existing = await db.donationRecord.findUnique({ where: { id: payload.id }, select: { screeningStatus: true } })
+        if (!existing) return { success: false, error: { code: 'BB-016', message: 'Donation record not found.' } }
+        return { success: false, error: { code: 'BB-017', message: `Screening has already been recorded as ${existing.screeningStatus.toLowerCase()}.` } }
+      }
       await logAction(userId, 'DONATION_SCREENING_PASSED', 'DonationRecord', payload.id)
-      return { success: true, data: updated }
+      return { success: true, data: result.data }
     }
 
-    const updated = await db.donationRecord.update({
-      where: { id: payload.id },
+    const claim = await db.donationRecord.updateMany({
+      where: { id: payload.id, screeningStatus: 'PENDING' },
       data: { screeningStatus: 'FAILED', screeningNotes: payload.screeningNotes },
     })
+    if (claim.count === 0) {
+      const existing = await db.donationRecord.findUnique({ where: { id: payload.id }, select: { screeningStatus: true } })
+      if (!existing) return { success: false, error: { code: 'BB-016', message: 'Donation record not found.' } }
+      return { success: false, error: { code: 'BB-017', message: `Screening has already been recorded as ${existing.screeningStatus.toLowerCase()}.` } }
+    }
+    const updated = await db.donationRecord.findUnique({ where: { id: payload.id } })
     await logAction(userId, 'DONATION_SCREENING_FAILED', 'DonationRecord', payload.id)
     return { success: true, data: updated }
   } catch (err) {

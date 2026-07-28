@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // DrivingSession.sessionFee and DrivingPackage.price/DrivingPackageEnrollment
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -279,9 +280,16 @@ export async function listDrivingSessions(filters?: {
     if (filters?.instructorId) where.instructorId = filters.instructorId
     if (filters?.status) where.status = filters.status
     if (filters?.date) {
-      const d = new Date(filters.date)
-      const next = new Date(d)
-      next.setDate(next.getDate() + 1)
+      // Real bug found live (2026-07-28 service-vertical audit, continued):
+      // a bare `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+      // with every sibling scheduling service in this codebase (appointment.
+      // service.ts's scheduledDate, provider-schedule.service.ts's
+      // availability window) which anchor date-only fields at LOCAL midnight
+      // via parseLocalDateStart. This file's own createDrivingSession/
+      // updateDrivingSession write sessionDate the same broken way below —
+      // fixed together so write and read agree, in any timezone.
+      const d = parseLocalDateStart(filters.date)
+      const next = new Date(d.getTime() + 86400000)
       where.sessionDate = { gte: d, lt: next }
     }
 
@@ -329,9 +337,17 @@ export async function createDrivingSession(payload: {
     // findProviderConflict + create pattern, so the second transaction's
     // reads see the first's already-committed writes.
     const result = await db.$transaction(async (tx) => {
+      // Real bug found live (2026-07-28 service-vertical audit, continued):
+      // bare `new Date(payload.sessionDate)` parses as UTC midnight, unlike
+      // every sibling scheduling write in this codebase (appointment.
+      // service.ts's scheduledDate). Anchored at local midnight so this
+      // conflict scan's day-window and the actual persisted sessionDate
+      // below agree with listDrivingSessions' read-side filter in any
+      // timezone, not just IST where the two used to accidentally line up.
+      const sessionDateLocal = parseLocalDateStart(payload.sessionDate)
       const conflict = await findDrivingSessionConflict(
         tx, payload.instructorId, payload.vehicleId,
-        new Date(payload.sessionDate), payload.sessionTime, payload.durationMinutes ?? 60
+        sessionDateLocal, payload.sessionTime, payload.durationMinutes ?? 60
       )
       if (conflict) return { ok: false as const, error: { code: 'DS27-015', message: conflict } }
 
@@ -383,7 +399,7 @@ export async function createDrivingSession(payload: {
           learnerId: payload.learnerId,
           instructorId: payload.instructorId,
           vehicleId: payload.vehicleId,
-          sessionDate: new Date(payload.sessionDate),
+          sessionDate: sessionDateLocal,
           sessionTime: payload.sessionTime,
           durationMinutes: payload.durationMinutes ?? 60,
           pickupPoint: payload.pickupPoint ?? null,
@@ -441,7 +457,10 @@ export async function updateDrivingSession(payload: {
           where: { id }, select: { instructorId: true, vehicleId: true, sessionDate: true, sessionTime: true, durationMinutes: true }
         })
         if (existingForReschedule) {
-          const newDate = sessionDate !== undefined ? new Date(sessionDate) : existingForReschedule.sessionDate
+          // Same local-midnight fix as createDrivingSession above — this
+          // reschedule path must agree with both the conflict scan and the
+          // actual write below, and with listDrivingSessions' read filter.
+          const newDate = sessionDate !== undefined ? parseLocalDateStart(sessionDate) : existingForReschedule.sessionDate
           const newTime = payload.sessionTime ?? existingForReschedule.sessionTime
           const newDuration = payload.durationMinutes ?? existingForReschedule.durationMinutes
           const conflict = await findDrivingSessionConflict(
@@ -462,7 +481,7 @@ export async function updateDrivingSession(payload: {
         where: { id },
         data: {
           ...rest,
-          ...(sessionDate !== undefined ? { sessionDate: new Date(sessionDate) } : {}),
+          ...(sessionDate !== undefined ? { sessionDate: parseLocalDateStart(sessionDate) } : {}),
         },
       })
 

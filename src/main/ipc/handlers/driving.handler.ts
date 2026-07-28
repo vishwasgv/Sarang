@@ -69,22 +69,35 @@ export function register(handle: HandleFn): void {
     return listDrivingVehicles(payload.status)
   })
 
+  // Real bug found live (2026-07-28 service-vertical audit, continued): the
+  // 7 fleet/package mutations below (drivingVehicle create/update/delete/
+  // logMaintenance, drivingPackage create/update/delete) were all gated on
+  // 'settings.view' — a READ-tier permission — instead of 'settings.modify',
+  // the write-tier permission this codebase's own permission matrix defines
+  // for exactly this purpose. provider-schedule.handler.ts and service-
+  // catalog.handler.ts (the direct siblings: other admin-config CRUD screens
+  // under Settings) both correctly gate their own create/update/delete on
+  // 'settings.modify'. Since Manager holds 'settings.view' but NOT
+  // 'settings.modify' (only Admin does — see seed.ts's ROLE_PERMISSIONS),
+  // this let any Manager add/edit/delete fleet vehicles and pricing packages,
+  // a privilege the equivalent ProviderSchedule/ServiceCatalog screens
+  // reserve for Admin only.
   handle('drivingVehicle:create', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = CreateDrivingVehicleSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createDrivingVehicle(parsed.data)
   })
 
   handle('drivingVehicle:update', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = UpdateDrivingVehicleSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateDrivingVehicle(parsed.data)
   })
 
   handle('drivingVehicle:delete', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = DeleteDrivingVehicleSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteDrivingVehicle(parsed.data.id)
@@ -146,7 +159,7 @@ export function register(handle: HandleFn): void {
 
   // ── Vehicle Maintenance (Phase 58 §2) ───────────────────────────────────────
   handle('drivingVehicle:logMaintenance', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = LogVehicleMaintenanceSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return logVehicleMaintenance(parsed.data)
@@ -167,21 +180,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('drivingPackage:create', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = CreateDrivingPackageSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createDrivingPackage(parsed.data)
   })
 
   handle('drivingPackage:update', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = UpdateDrivingPackageSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateDrivingPackage(parsed.data)
   })
 
   handle('drivingPackage:delete', async (raw) => {
-    const deny = await requirePermission('settings.view'); if (deny) return deny
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
     const parsed = DeleteDrivingPackageSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteDrivingPackage(parsed.data.id)

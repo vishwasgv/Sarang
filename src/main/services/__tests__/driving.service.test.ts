@@ -5,9 +5,11 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
+import { parseLocalDateStart } from '../../utils/date.util'
 import {
   createDrivingSession,
   updateDrivingSession,
+  listDrivingSessions,
   generateDrivingSessionInvoice,
   createDrivingPackage,
   updateDrivingPackage,
@@ -276,6 +278,63 @@ describe('driving.service — instructor/vehicle double-booking prevention', () 
 
     expect(res.success).toBe(true)
     expect(db.drivingSession.findMany).not.toHaveBeenCalled()
+  })
+})
+
+// Real bug found live (2026-07-28 service-vertical audit, continued): a bare
+// `new Date('YYYY-MM-DD')` parses a date-only string as UTC midnight, not
+// local midnight — inconsistent with every sibling scheduling write in this
+// codebase (appointment.service.ts's scheduledDate, already fixed via
+// parseLocalDateStart). createDrivingSession/updateDrivingSession wrote
+// sessionDate this broken way while listDrivingSessions' own date filter in
+// this SAME file read it back the same broken way too — self-consistent only
+// by accident, and diverging from every other scheduling service the moment
+// either side is compared against local-midnight semantics (e.g. any report
+// or cross-service query that anchors "today" at local midnight). Fixed by
+// routing all three through parseLocalDateStart, matching appointment.
+// service.ts exactly.
+describe('driving.service — sessionDate local-midnight parsing', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createDrivingSession persists sessionDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00' })
+
+    const createCall = db.drivingSession.create.mock.calls[0][0] as { data: { sessionDate: Date } }
+    expect(createCall.data.sessionDate.getTime()).toBe(parseLocalDateStart('2026-07-01').getTime())
+  })
+
+  it('createDrivingSession scans conflicts using a local-midnight day window', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00' })
+
+    const findManyCall = db.drivingSession.findMany.mock.calls[0][0] as { where: { sessionDate: { gte: Date } } }
+    expect(findManyCall.where.sessionDate.gte.getTime()).toBe(parseLocalDateStart('2026-07-01').getTime())
+  })
+
+  it('listDrivingSessions filters by a local-midnight day window', async () => {
+    const db = { drivingSession: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await listDrivingSessions({ date: '2026-07-01' })
+
+    const findManyCall = db.drivingSession.findMany.mock.calls[0][0] as { where: { sessionDate: { gte: Date; lt: Date } } }
+    expect(findManyCall.where.sessionDate.gte.getTime()).toBe(parseLocalDateStart('2026-07-01').getTime())
+    expect(findManyCall.where.sessionDate.lt.getTime()).toBe(parseLocalDateStart('2026-07-01').getTime() + 86400000)
+  })
+
+  it('updateDrivingSession reschedule persists the new sessionDate at local midnight', async () => {
+    const db = makeSessionUpdateMockDb({ id: 'session-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: new Date(2026, 6, 1), sessionTime: '09:00', durationMinutes: 60, status: 'SCHEDULED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateDrivingSession({ id: 'session-1', sessionDate: '2026-07-05' })
+
+    const updateCall = db.drivingSession.update.mock.calls[0][0] as { data: { sessionDate: Date } }
+    expect(updateCall.data.sessionDate.getTime()).toBe(parseLocalDateStart('2026-07-05').getTime())
   })
 })
 

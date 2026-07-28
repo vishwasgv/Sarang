@@ -127,6 +127,29 @@ describe('lab-test-order.service', () => {
       expect(res.success).toBe(false)
     })
 
+    // Real bug found live (2026-07-28 service-vertical audit, continued):
+    // totalAmount used to be summed with raw `+=` on plain-float item
+    // prices, the classic 0.1 + 0.2 + 0.3 !== 0.6 IEEE-754 drift this
+    // codebase's sumCurrency helper exists specifically to avoid.
+    it('sums item prices into totalAmount without float drift', async () => {
+      const { db } = makeMockDb(null)
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createLabTestOrder({
+        patientName: 'Ravi',
+        items: [
+          { testName: 'Test A', price: 0.1 },
+          { testName: 'Test B', price: 0.2 },
+          { testName: 'Test C', price: 0.3 },
+        ],
+      })
+
+      expect(res.success).toBe(true)
+      // A raw `0.1 + 0.2 + 0.3` in plain JS float math yields
+      // 0.6000000000000001, not 0.6 -- this must be the exact rounded value.
+      expect((res as { data: { totalAmount: number } }).data.totalAmount).toBe(0.6)
+    })
+
     it('creates an order with a numeric-max sequence, not string-sorted (past-9999 safe)', async () => {
       // String-sort would place "...-10000" before "...-9999" — same bug class
       // this project already hit once in logistics-counter.service.ts.

@@ -136,6 +136,18 @@ function makeMockDb() {
         donationRecords[id] = { ...donationRecords[id], ...data }
         return Promise.resolve(donationRecords[id])
       }),
+      // Atomic claim used by updateScreeningStatus — only "wins" (count: 1)
+      // if the row still matches every condition in `where` (id AND the
+      // expected screeningStatus) at the moment this runs, mirroring a real
+      // SQL `UPDATE ... WHERE id = ? AND screeningStatus = ?`.
+      updateMany: vi.fn().mockImplementation(({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const id = where.id as string
+        const row = donationRecords[id]
+        if (!row) return Promise.resolve({ count: 0 })
+        if (where.screeningStatus !== undefined && row.screeningStatus !== where.screeningStatus) return Promise.resolve({ count: 0 })
+        donationRecords[id] = { ...row, ...data }
+        return Promise.resolve({ count: 1 })
+      }),
     },
     productBatch: {
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
@@ -311,6 +323,42 @@ describe('blood-bank.service', () => {
       await updateScreeningStatus({ id: donationId, screeningStatus: 'PASSED' })
       const second = await updateScreeningStatus({ id: donationId, screeningStatus: 'FAILED' })
       expect(second.success).toBe(false)
+    })
+
+    // Real bug found live (2026-07-28 service-vertical audit, continued):
+    // the "still PENDING" guard used to be a single pre-transaction read,
+    // with the PASSED-path write (create ProductBatch + update donor/record)
+    // happening afterward in a separate transaction that never re-checked
+    // screeningStatus. Two near-simultaneous PASSED calls for the SAME
+    // donation record could both read screeningStatus==='PENDING' before
+    // either committed, and both would then create their own ProductBatch
+    // for one physical donated unit — double-counting real blood-unit
+    // inventory. Fixed by claiming the transition atomically (conditional
+    // updateMany keyed on the exact PENDING status just read) INSIDE the
+    // same transaction that creates the batch, so a losing concurrent call's
+    // claim.count is 0 and it reports "already recorded" instead of racing
+    // in a second batch.
+    it('only lets ONE of two concurrent PASSED calls for the same unit create a ProductBatch', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar' })
+      const donationRes = await createDonationRecord({ donorId: (donorRes.data as any).id, bloodGroup: 'O+' })
+      const donationId = (donationRes.data as any).id
+
+      const [first, second] = await Promise.all([
+        updateScreeningStatus({ id: donationId, screeningStatus: 'PASSED' }),
+        updateScreeningStatus({ id: donationId, screeningStatus: 'PASSED' }),
+      ])
+
+      const results = [first, second]
+      const succeeded = results.filter((r) => r.success)
+      const failed = results.filter((r) => !r.success)
+      expect(succeeded.length).toBe(1)
+      expect(failed.length).toBe(1)
+      expect((failed[0] as { error: { code: string } }).error.code).toBe('BB-017')
+      // The real assertion: exactly one physical ProductBatch exists for
+      // this one physical donated unit, not two.
+      expect(Object.keys(db.__stores.productBatches).length).toBe(1)
     })
   })
 

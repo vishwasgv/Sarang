@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { roundCurrency } from './currency.service'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 // StaffCommission.serviceRevenue/commissionRate/commissionAmount/tipAmount
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -148,36 +148,41 @@ export async function getMonthlyCommissionReport(period?: string) {
       include: { staff: { select: { id: true, fullName: true, designation: true } } },
     })
 
-    const byStaff: Record<string, { staffId: string; staffName: string; designation: string | null; totalRevenue: number; totalCommission: number; totalTips: number; paidAmount: number; pendingAmount: number; recordCount: number }> = {}
-
+    // Real bug found live (2026-07-28 service-vertical audit, continued):
+    // this aggregation used raw `+=` accumulation on plain-float Number()
+    // conversions of Decimal fields — the exact drift-accumulation pattern
+    // report.service.ts's own revenue/expense totals were already fixed to
+    // avoid via sumCurrency (Decimal addition throughout, only converted to
+    // `number` once at the end). A commission report summing many records
+    // for a busy month could land a fraction of a rupee off from the sum of
+    // its own displayed line items. Grouped by staff first so each field can
+    // be summed via sumCurrency in one pass.
+    const byStaffRecords: Record<string, { staffId: string; staffName: string; designation: string | null; records: typeof records }> = {}
     for (const r of records) {
       const key = r.staffId
-      if (!byStaff[key]) {
-        byStaff[key] = {
-          staffId: r.staffId,
-          staffName: r.staff.fullName,
-          designation: r.staff.designation,
-          totalRevenue: 0,
-          totalCommission: 0,
-          totalTips: 0,
-          paidAmount: 0,
-          pendingAmount: 0,
-          recordCount: 0,
-        }
+      if (!byStaffRecords[key]) {
+        byStaffRecords[key] = { staffId: r.staffId, staffName: r.staff.fullName, designation: r.staff.designation, records: [] }
       }
-      const entry = byStaff[key]
-      entry.totalRevenue += Number(r.serviceRevenue)
-      entry.totalCommission += Number(r.commissionAmount)
-      entry.totalTips += Number(r.tipAmount)
-      entry.recordCount += 1
-      if (r.isPaid) {
-        entry.paidAmount += Number(r.commissionAmount)
-      } else {
-        entry.pendingAmount += Number(r.commissionAmount)
-      }
+      byStaffRecords[key].records.push(r)
     }
 
-    return { success: true, data: { period: p, staffSummaries: Object.values(byStaff) } }
+    const staffSummaries = Object.values(byStaffRecords).map((entry) => {
+      const paid = entry.records.filter((r) => r.isPaid)
+      const pending = entry.records.filter((r) => !r.isPaid)
+      return {
+        staffId: entry.staffId,
+        staffName: entry.staffName,
+        designation: entry.designation,
+        totalRevenue: sumCurrency(entry.records.map((r) => r.serviceRevenue)),
+        totalCommission: sumCurrency(entry.records.map((r) => r.commissionAmount)),
+        totalTips: sumCurrency(entry.records.map((r) => r.tipAmount)),
+        paidAmount: sumCurrency(paid.map((r) => r.commissionAmount)),
+        pendingAmount: sumCurrency(pending.map((r) => r.commissionAmount)),
+        recordCount: entry.records.length,
+      }
+    })
+
+    return { success: true, data: { period: p, staffSummaries } }
   } catch (err) {
     return { success: false, error: { code: 'SC27-005', message: err instanceof Error ? err.message : 'Could not generate commission report.' } }
   }

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { logAction } from './audit.service'
+import { sumCurrency } from './currency.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -77,7 +78,15 @@ export async function createLabTestOrder(payload: CreateLabTestOrderInput, userI
 
     const order = await db.$transaction(async (tx) => {
       const orderNumber = await nextLabOrderNumber(tx)
-      const totalAmount = payload.items.reduce((sum, i) => sum + (i.price ?? 0), 0)
+      // Real bug found live (2026-07-28 service-vertical audit, continued):
+      // raw `+=` on plain-float item prices instead of this codebase's
+      // sumCurrency helper (Decimal addition throughout, only converted to
+      // `number` once at the end) — the same drift-accumulation class
+      // already fixed for report.service.ts's revenue/expense totals. A
+      // multi-test panel order can land totalAmount a fraction of a rupee
+      // off from the sum of its own item prices, which then feeds straight
+      // into generateLabTestOrderInvoice's per-item unitPrice.
+      const totalAmount = sumCurrency(payload.items.map((i) => i.price ?? 0))
       return tx.labTestOrder.create({
         data: {
           orderNumber,

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { calculateCommission, listCommissionsByStaff, listAllCommissions } from '../staff-commission.service'
+import { calculateCommission, listCommissionsByStaff, listAllCommissions, getMonthlyCommissionReport } from '../staff-commission.service'
 
 // Regression coverage for the Phase 27 re-audit finding: StaffCommission's
 // serviceRevenue/commissionRate/commissionAmount/tipAmount are Prisma
@@ -116,5 +116,34 @@ describe('staff-commission.service — Decimal serialization', () => {
     const data = (res as { data: Array<Record<string, unknown>> }).data
     expect(typeof data[0].tipAmount).toBe('number')
     expect(typeof data[0].commissionRate).toBe('number')
+  })
+})
+
+// Real bug found live (2026-07-28 service-vertical audit, continued):
+// getMonthlyCommissionReport summed serviceRevenue/commissionAmount/tipAmount
+// across a staff member's records with raw `+=` on Number()-converted
+// Decimal fields — the classic 0.1 + 0.2 + 0.3 !== 0.6 IEEE-754 drift this
+// codebase's own sumCurrency helper exists specifically to avoid (already
+// used for the equivalent revenue/expense totals in report.service.ts).
+describe('staff-commission.service — getMonthlyCommissionReport precision', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sums commissionAmount across records without float drift', async () => {
+    const records = [
+      makeCommission({ id: 'c1', commissionAmount: 0.1, serviceRevenue: 1, tipAmount: 0, isPaid: true }),
+      makeCommission({ id: 'c2', commissionAmount: 0.2, serviceRevenue: 1, tipAmount: 0, isPaid: false }),
+      makeCommission({ id: 'c3', commissionAmount: 0.3, serviceRevenue: 1, tipAmount: 0, isPaid: false }),
+    ]
+    const db: Record<string, any> = { staffCommission: { findMany: vi.fn().mockResolvedValue(records) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getMonthlyCommissionReport('2026-07')
+
+    expect(res.success).toBe(true)
+    const summary = (res as { data: { staffSummaries: Array<{ totalCommission: number; pendingAmount: number }> } }).data.staffSummaries[0]
+    // A raw `0.1 + 0.2 + 0.3` in plain JS float math yields
+    // 0.6000000000000001, not 0.6 -- this must be the exact rounded value.
+    expect(summary.totalCommission).toBe(0.6)
+    expect(summary.pendingAmount).toBe(0.5)
   })
 })
