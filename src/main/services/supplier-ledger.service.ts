@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import type { ApiResponse } from '../ipc/channels'
+import { roundCurrency } from './currency.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -9,7 +10,7 @@ async function calculateBalance(supplierId: string, tx?: TxClient): Promise<numb
     where: { supplierId },
     _sum: { debitAmount: true, creditAmount: true }
   })
-  return (agg._sum.debitAmount ?? 0) - (agg._sum.creditAmount ?? 0)
+  return roundCurrency((agg._sum.debitAmount ?? 0) - (agg._sum.creditAmount ?? 0))
 }
 
 async function addEntry(
@@ -25,7 +26,7 @@ async function addEntry(
 ): Promise<void> {
   const db = tx ?? getPrisma()
   const currentBalance = await calculateBalance(params.supplierId, tx)
-  const newBalance = currentBalance + params.debitAmount - params.creditAmount
+  const newBalance = roundCurrency(currentBalance + params.debitAmount - params.creditAmount)
   await db.supplierLedger.create({
     data: {
       supplierId: params.supplierId,

@@ -43,6 +43,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     vehicle: {
       findUnique: vi.fn().mockResolvedValue({ id: 'veh-2', status: 'AVAILABLE', vehicleNumber: 'MH12CD5678' }),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     customer: { findUnique: vi.fn().mockResolvedValue({ phone: null }) },
     freightLedger: { count: vi.fn().mockResolvedValue(0) },
@@ -103,7 +104,21 @@ describe('updateShipmentStatus — vehicle double-booking guard', () => {
     const result = await updateShipmentStatus({ id: 'ship-1', status: 'IN_TRANSIT' })
 
     expect(result.success).toBe(true)
-    expect(db.vehicle.update).toHaveBeenCalledWith({ where: { id: 'veh-1' }, data: { status: 'IN_TRANSIT' } })
+    // Real bug found live (2026-07-28 product-vertical audit): this claim is
+    // now a conditional updateMany (matching serial.service.ts's
+    // markSerialSoldTx), not a plain unconditional update.
+    expect(db.vehicle.updateMany).toHaveBeenCalledWith({ where: { id: 'veh-1', status: 'AVAILABLE' }, data: { status: 'IN_TRANSIT' } })
+  })
+
+  it('rejects transition to IN_TRANSIT if the vehicle was just claimed by another shipment inside the transaction', async () => {
+    const db = makeDb()
+    db.vehicle.updateMany = vi.fn().mockResolvedValue({ count: 0 }) // another shipment claimed it first, inside the transaction
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await updateShipmentStatus({ id: 'ship-1', status: 'IN_TRANSIT' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('LOG-026')
   })
 
   it('releases the vehicle back to AVAILABLE when the shipment is DELIVERED', async () => {

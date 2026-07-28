@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
+import { roundCurrency } from './currency.service'
 
 // Jewellery vertical (fresh-audit build, 2026-07-12). Old-gold/silver
 // exchange (buyback/trade-in) — standalone record-keeping.
@@ -62,7 +63,12 @@ export async function createMetalExchange(payload: {
     }
 
     const netWeight = payload.grossWeight - deductionWeight
-    const valueGiven = netWeight * rateRow.ratePerGram
+    // Real bug found live (2026-07-28 product-vertical audit): raw JS
+    // multiplication with no rounding, unlike every other money computation
+    // in this codebase — e.g. netWeight=8.1, ratePerGram=6410.20 gives
+    // 51922.619999999995 (verified), stored and printed on exchange slips
+    // exactly like that.
+    const valueGiven = roundCurrency(netWeight * rateRow.ratePerGram)
 
     const exchange = await db.$transaction(async (tx) => {
       const exchangeNumber = await generateSequenceNumber(
@@ -108,7 +114,20 @@ export async function linkMetalExchangeToInvoice(exchangeId: string, invoiceId: 
     const existing = await db.metalExchange.findUnique({ where: { id: exchangeId } })
     if (!existing) return { success: false, error: { code: 'MX-007', message: 'Exchange not found.' } }
     if (existing.invoiceId) return { success: false, error: { code: 'MX-008', message: 'This exchange is already linked to an invoice.' } }
-    const updated = await db.metalExchange.update({ where: { id: exchangeId }, data: { invoiceId } })
+    // Real bug found live (2026-07-28 product-vertical audit): this used to
+    // be an unconditional update, with the only "not already linked" check
+    // done on a stale pre-write read — the same TOCTOU shape already fixed
+    // for the atomic exchange-application path in billing.service.ts (right
+    // above this function's own header comment references it). Two
+    // near-simultaneous links of the same exchange to two different
+    // invoices would have the later write silently overwrite the former,
+    // breaking the audit trail between an invoice's applied discount and
+    // the exchange record that justified it.
+    const claim = await db.metalExchange.updateMany({ where: { id: exchangeId, invoiceId: null }, data: { invoiceId } })
+    if (claim.count === 0) {
+      return { success: false, error: { code: 'MX-008', message: 'This exchange is already linked to an invoice.' } }
+    }
+    const updated = await db.metalExchange.findUnique({ where: { id: exchangeId } })
     await logAction({ action: 'METAL_EXCHANGE_LINKED', entityType: 'MetalExchange', entityId: exchangeId, newValue: { invoiceId } })
     return { success: true, data: updated }
   } catch (err) {

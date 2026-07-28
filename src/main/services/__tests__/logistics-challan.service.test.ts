@@ -54,6 +54,33 @@ describe('createChallan — validation', () => {
     const result = await createChallan({ customerName: 'Acme', items: [{ productName: 'Widget', quantity: 1, unitValue: -5 }] })
     expect(result.success).toBe(false)
   })
+
+  // Real bug found live (2026-07-28 product-vertical audit): totalValue (both
+  // the challan-level total and each item's totalValue) was raw JS float
+  // multiplication with no rounding, unlike every other money computation in
+  // this codebase.
+  it('rounds totalValue at a float-precision boundary', async () => {
+    const db: Record<string, any> = {
+      deliveryChallan: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...data, id: 'dc-new', createdAt: new Date(), updatedAt: new Date(), items: [] })
+        ),
+      },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 8.1 * 6410.20 = 51922.619999999995 in raw JS
+    const result = await createChallan({
+      customerName: 'Acme', items: [{ productName: 'Widget', quantity: 8.1, unitValue: 6410.20 }]
+    })
+
+    expect(result.success).toBe(true)
+    const createCall = db.deliveryChallan.create.mock.calls[0][0]
+    expect(createCall.data.totalValue).toBe(51922.62)
+    expect(createCall.data.items.create[0].totalValue).toBe(51922.62)
+  })
 })
 
 describe('updateChallan — items wipe guard', () => {

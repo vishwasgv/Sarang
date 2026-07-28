@@ -193,6 +193,27 @@ describe('hotel.service — checkInBooking (guest ID compliance)', () => {
     }))
     expect(db.hotelRoom.update).toHaveBeenCalledWith({ where: { id: 'room-1' }, data: { status: 'OCCUPIED' } })
   })
+
+  // Real bug found live (2026-07-28 product-vertical audit): the CONFIRMED
+  // check ran against a pre-transaction snapshot while the write was an
+  // unconditional update — a double-click or two terminals processing the
+  // same check-in both passed the check and both created a full duplicate
+  // set of HotelGuestId rows, corrupting the guest register this vertical
+  // exists to produce for police/immigration verification. Now claimed
+  // atomically via a conditional updateMany inside the transaction.
+  it('rejects check-in if the booking was just checked in by another action inside the race window', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({ status: 'CONFIRMED' }))
+    db.hotelBooking.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkInBooking({ id: 'booking-1', guests: [{ guestName: 'Jane', idType: 'AADHAAR', idNumber: '1234' }] })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('HTL-032')
+    expect(db.hotelGuestId.createMany).not.toHaveBeenCalled()
+    expect(db.hotelRoom.update).not.toHaveBeenCalled()
+  })
 })
 
 describe('hotel.service — checkOutBooking', () => {
@@ -215,6 +236,20 @@ describe('hotel.service — checkOutBooking', () => {
     const res = await checkOutBooking({ id: 'booking-1' })
     expect(res.success).toBe(true)
     expect(db.hotelRoom.update).toHaveBeenCalledWith({ where: { id: 'room-1' }, data: { status: 'CLEANING' } })
+  })
+
+  // Same double-processing race as checkInBooking, fixed the same way.
+  it('rejects check-out if the booking was just checked out by another action inside the race window', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({ status: 'CHECKED_IN' }))
+    db.hotelBooking.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkOutBooking({ id: 'booking-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('HTL-034')
+    expect(db.hotelHousekeepingTask.create).not.toHaveBeenCalled()
   })
 })
 

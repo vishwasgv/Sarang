@@ -20,6 +20,7 @@ function makeMockDb(rate: { ratePerGram: number } | null = { ratePerGram: 6500 }
         Promise.resolve({ id: 'mx-1', ...data, customer: null })
       ),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'mx-1', ...data })),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       delete: vi.fn().mockResolvedValue({}),
     },
     setting: {
@@ -68,6 +69,22 @@ describe('metal-exchange.service — createMetalExchange', () => {
     const data = (res as { data: { netWeight: number; valueGiven: number } }).data
     expect(data.netWeight).toBe(100)
     expect(data.valueGiven).toBe(8500)
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): raw JS
+  // multiplication with no rounding — netWeight=8.1, ratePerGram=6410.20
+  // gives 51922.619999999995 in plain JS, stored and printed on exchange
+  // slips exactly like that. roundCurrency uses Prisma.Decimal with
+  // ROUND_HALF_UP, same as every other money computation in this codebase.
+  it('rounds valueGiven cleanly at a float-precision boundary', async () => {
+    const db = makeMockDb({ ratePerGram: 6410.20 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createMetalExchange({ customerName: 'Walk-in', metalType: 'GOLD', purity: '22K', grossWeight: 8.1 })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { valueGiven: number } }).data
+    expect(data.valueGiven).toBe(51922.62)
   })
 
   it('rejects a non-positive gross weight', async () => {
@@ -120,7 +137,23 @@ describe('metal-exchange.service — linkMetalExchangeToInvoice', () => {
     const res = await linkMetalExchangeToInvoice('mx-1', 'inv-1')
 
     expect(res.success).toBe(true)
-    expect(db.metalExchange.update).toHaveBeenCalledWith({ where: { id: 'mx-1' }, data: { invoiceId: 'inv-1' } })
+    // Real bug found live (2026-07-28 product-vertical audit): this claim is
+    // now a conditional updateMany (matching the atomic exchange-application
+    // path already used in billing.service.ts), not a plain unconditional
+    // update.
+    expect(db.metalExchange.updateMany).toHaveBeenCalledWith({ where: { id: 'mx-1', invoiceId: null }, data: { invoiceId: 'inv-1' } })
+  })
+
+  it('rejects linking if the exchange was just linked by another call inside the race window', async () => {
+    const db = makeMockDb()
+    db.metalExchange.findUnique = vi.fn().mockResolvedValue({ id: 'mx-1', invoiceId: null })
+    db.metalExchange.updateMany = vi.fn().mockResolvedValue({ count: 0 }) // another link claimed it first
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await linkMetalExchangeToInvoice('mx-1', 'inv-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('MX-008')
   })
 
   it('rejects linking an exchange that is already linked', async () => {

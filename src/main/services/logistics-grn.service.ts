@@ -5,6 +5,7 @@ import { inventoryService } from './inventory.service'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 const GRN_EDITABLE_STATUSES = ['DRAFT', 'VERIFIED']
 
@@ -85,7 +86,7 @@ export async function createGRN(payload: {
     if (overRejected) return { success: false, error: { code: 'VAL-004', message: `Rejected qty for ${overRejected.itemName} cannot exceed received qty.` } }
     const itemErr = validateGrnItems(payload.items)
     if (itemErr) return { success: false, error: { code: 'VAL-005', message: itemErr } }
-    const totalValue = payload.items.reduce((s, i) => s + (i.receivedQty * (i.unitCost ?? 0)), 0)
+    const totalValue = sumCurrency(payload.items.map(i => roundCurrency(i.receivedQty * (i.unitCost ?? 0))))
     const row = await db.$transaction(async (tx) => {
       const grnNumber = await nextLogisticsNumber('GRN', tx)
       return tx.goodsReceiptNote.create({
@@ -104,7 +105,7 @@ export async function createGRN(payload: {
               itemName: i.itemName, orderedQty: i.orderedQty ?? null,
               receivedQty: i.receivedQty, rejectedQty: i.rejectedQty ?? 0,
               unit: i.unit ?? 'PCS', unitCost: i.unitCost ?? 0,
-              totalCost: i.receivedQty * (i.unitCost ?? 0),
+              totalCost: roundCurrency(i.receivedQty * (i.unitCost ?? 0)),
               batchNumber: i.batchNumber ?? null,
               expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
               notes: i.notes ?? null,
@@ -142,7 +143,7 @@ export async function updateGRN(payload: {
     }
     // Editing a VERIFIED GRN auto-reverts it to DRAFT so it must be re-verified before posting
     const revertToDraft = existing.status === 'VERIFIED' && payload.status === undefined
-    const totalValue = payload.items ? payload.items.reduce((s, i) => s + i.receivedQty * (i.unitCost ?? 0), 0) : undefined
+    const totalValue = payload.items ? sumCurrency(payload.items.map(i => roundCurrency(i.receivedQty * (i.unitCost ?? 0)))) : undefined
     const row = await db.$transaction(async (tx) => {
       if (payload.items !== undefined) {
         await tx.gRNItem.deleteMany({ where: { grnId: payload.id } })
@@ -170,7 +171,7 @@ export async function updateGRN(payload: {
                 itemName: i.itemName, orderedQty: i.orderedQty ?? null,
                 receivedQty: i.receivedQty, rejectedQty: i.rejectedQty ?? 0,
                 unit: i.unit ?? 'PCS', unitCost: i.unitCost ?? 0,
-                totalCost: i.receivedQty * (i.unitCost ?? 0),
+                totalCost: roundCurrency(i.receivedQty * (i.unitCost ?? 0)),
                 batchNumber: i.batchNumber ?? null,
                 expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
                 notes: i.notes ?? null,

@@ -3,6 +3,7 @@ import { nextLogisticsNumber } from './logistics-counter.service'
 import { logAction } from './audit.service'
 import { inventoryService } from './inventory.service'
 import { ServiceError } from '../errors/service-error'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 // DeliveryChallan schema: challanNumber, challanType (DELIVERY/RETURNABLE/BRANCH_TRANSFER),
 // customerId?, customerName (required), customerAddress?, shipmentId?, invoiceId?, vehicleId?,
@@ -101,7 +102,7 @@ export async function createChallan(payload: {
     if (!payload.items?.length) return { success: false, error: { code: 'VAL-001', message: 'At least one item is required.' } }
     const itemErr = validateChallanItems(payload.items)
     if (itemErr) return { success: false, error: { code: 'VAL-005', message: itemErr } }
-    const totalValue = payload.items.reduce((s, i) => s + ((i.unitValue ?? 0) * i.quantity), 0)
+    const totalValue = sumCurrency(payload.items.map(i => roundCurrency((i.unitValue ?? 0) * i.quantity)))
     const row = await db.$transaction(async (tx) => {
       const challanNumber = await nextLogisticsNumber('DC', tx)
       return tx.deliveryChallan.create({
@@ -121,7 +122,7 @@ export async function createChallan(payload: {
             create: payload.items.map(i => ({
               productId: i.productId ?? null, productName: i.productName,
               quantity: i.quantity, unit: i.unit ?? 'PCS',
-              unitValue: i.unitValue ?? 0, totalValue: (i.unitValue ?? 0) * i.quantity,
+              unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
               notes: i.notes ?? null,
             }))
           }
@@ -208,7 +209,7 @@ export async function updateChallan(payload: {
       const itemErr = validateChallanItems(payload.items)
       if (itemErr) return { success: false, error: { code: 'VAL-005', message: itemErr } }
     }
-    const totalValue = payload.items ? payload.items.reduce((s, i) => s + ((i.unitValue ?? 0) * i.quantity), 0) : undefined
+    const totalValue = payload.items ? sumCurrency(payload.items.map(i => roundCurrency((i.unitValue ?? 0) * i.quantity))) : undefined
     const row = await db.$transaction(async (tx) => {
       if (payload.items !== undefined) {
         await tx.challanItem.deleteMany({ where: { challanId: payload.id } })
@@ -231,7 +232,7 @@ export async function updateChallan(payload: {
               create: payload.items.map(i => ({
                 productId: i.productId ?? null, productName: i.productName,
                 quantity: i.quantity, unit: i.unit ?? 'PCS',
-                unitValue: i.unitValue ?? 0, totalValue: (i.unitValue ?? 0) * i.quantity,
+                unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
                 notes: i.notes ?? null,
               }))
             }

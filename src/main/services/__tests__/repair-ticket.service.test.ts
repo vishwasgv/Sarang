@@ -44,6 +44,7 @@ function makeMockDb(opts: { serial?: ReturnType<typeof makeSerial> | null; ticke
         return Promise.resolve(null)
       }),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     repairTicket: {
       findUnique: vi.fn().mockImplementation(({ where }: { where: { id?: string; replacementSerialId?: string } }) => {
@@ -225,14 +226,40 @@ describe('repairTicketService.updateRepairTicketStatus', () => {
     const res = await updateRepairTicketStatus({ id: 'rt-1', status: 'REPLACED', replacementSerialId: 'ser-2' })
     expect(res.success).toBe(true)
     expect(db.productSerial.update).toHaveBeenCalledWith({ where: { id: 'ser-1' }, data: { status: 'DEFECTIVE' } })
-    expect(db.productSerial.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'ser-2' },
+    // Real bug found live (2026-07-28 product-vertical audit): this claim is
+    // now a conditional updateMany (matching serial.service.ts's
+    // markSerialSoldTx), not a plain unconditional update — see the new
+    // "atomic replacement-serial claim" describe block below for the race
+    // this guards against.
+    expect(db.productSerial.updateMany).toHaveBeenCalledWith({
+      where: { id: 'ser-2', status: 'AVAILABLE' },
       data: expect.objectContaining({ status: 'SOLD', invoiceId: 'inv-1' })
-    }))
+    })
     expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { productId: 'prod-1' },
       update: { quantity: { decrement: 1 } }
     }))
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): the replacement
+  // claim used to be an unconditional update, with the only "is this serial
+  // still available" check done on a stale pre-transaction read. Two
+  // repair tickets picking the same in-stock replacement serial moments
+  // apart could both pass that stale check, and the second to commit would
+  // silently overwrite the first's invoiceId link.
+  it('rejects marking REPLACED if the replacement unit was just claimed by another ticket inside the transaction', async () => {
+    const ticket = makeTicket({ status: 'DIAGNOSED' })
+    const original = makeSerial({ id: 'ser-1', productId: 'prod-1', status: 'SOLD', invoiceId: 'inv-1' })
+    const replacement = makeSerial({ id: 'ser-2', productId: 'prod-1', status: 'AVAILABLE' })
+    const db = makeMockDb({ ticket, serial: original, replacementSerial: replacement })
+    db.productSerial.updateMany = vi.fn().mockResolvedValue({ count: 0 }) // another ticket claimed it first, inside the transaction
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateRepairTicketStatus({ id: 'rt-1', status: 'REPLACED', replacementSerialId: 'ser-2' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-016')
+    expect(db.inventory.upsert).not.toHaveBeenCalled()
   })
 
   it('CANCELLED is not reachable from REPAIRED (already terminal-bound)', async () => {

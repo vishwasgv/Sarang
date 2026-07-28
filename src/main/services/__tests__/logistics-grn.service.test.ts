@@ -90,6 +90,37 @@ describe('createGRN / updateGRN — rejectedQty validation', () => {
   })
 })
 
+// Real bug found live (2026-07-28 product-vertical audit): totalValue and
+// each item's totalCost were raw JS float multiplication with no rounding —
+// the unrounded totalValue then feeds straight into
+// supplierLedgerService.addEntry's debitAmount, permanently compounding
+// float noise into that supplier's running ledger balance across every GRN.
+describe('createGRN — float-precision rounding', () => {
+  it('rounds totalValue and each item totalCost at a float-precision boundary', async () => {
+    const db = {
+      goodsReceiptNote: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ ...data, id: 'grn-new', receivedDate: new Date(), createdAt: new Date(), updatedAt: new Date(), items: [] })
+        ),
+      },
+    } as Record<string, any>
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 8.1 * 6410.20 = 51922.619999999995 in raw JS
+    const result = await createGRN({
+      supplierName: 'ACME',
+      items: [{ itemName: 'Widget', receivedQty: 8.1, unitCost: 6410.20 }]
+    })
+
+    expect(result.success).toBe(true)
+    const createCall = db.goodsReceiptNote.create.mock.calls[0][0]
+    expect(createCall.data.totalValue).toBe(51922.62)
+    expect(createCall.data.items.create[0].totalCost).toBe(51922.62)
+  })
+})
+
 describe('postGRN', () => {
   it('creates a movement record (via addStockTx) and a supplier ledger debit', async () => {
     const db = makeDb()

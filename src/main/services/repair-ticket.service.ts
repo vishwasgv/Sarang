@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
+import { ServiceError } from '../errors/service-error'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -265,12 +266,24 @@ export async function updateRepairTicketStatus(payload: {
         // (which implies "back in inspection, may become AVAILABLE again")
         // would be misleading.
         await tx.productSerial.update({ where: { id: originalSerial.id }, data: { status: 'DEFECTIVE' } })
-        // Replacement inherits the same invoice/customer link the original
-        // sale had, and leaves the shelf exactly like any other sale.
-        await tx.productSerial.update({
-          where: { id: replacementSerial.id },
+        // Real bug found live (2026-07-28 product-vertical audit): the
+        // replacement claim used to be an unconditional update, with the
+        // only "is this serial still available" check done on a stale
+        // pre-transaction read (line ~239 above) — the exact same TOCTOU gap
+        // already fixed for markSerialSoldTx in serial.service.ts. Two
+        // repair tickets picking the same in-stock replacement serial
+        // moments apart could both pass that stale check; the second to
+        // commit would silently overwrite the first's invoiceId link,
+        // orphaning one ticket while double-decrementing inventory for a
+        // unit that only physically left the shelf once. Fixed to a
+        // conditional `updateMany` claim, matching markSerialSoldTx exactly.
+        const claim = await tx.productSerial.updateMany({
+          where: { id: replacementSerial.id, status: 'AVAILABLE' },
           data: { status: 'SOLD', invoiceId: originalSerial.invoiceId, soldDate: now }
         })
+        if (claim.count === 0) {
+          throw new ServiceError('RPR-016', 'This replacement unit was just claimed by another ticket. Please pick a different unit.')
+        }
         await tx.inventory.upsert({
           where: { productId: existing.productId },
           create: { productId: existing.productId, quantity: 0 },
@@ -282,6 +295,7 @@ export async function updateRepairTicketStatus(payload: {
     await logAction(userId, 'REPAIR_TICKET_STATUS_UPDATED', 'RepairTicket', payload.id, from, payload.status)
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'RPR-015', message: err instanceof Error ? err.message : 'Failed to update repair ticket.' } }
   }
 }

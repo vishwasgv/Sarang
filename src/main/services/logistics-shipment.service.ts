@@ -2,6 +2,8 @@ import { getPrisma } from '../database/db'
 import { nextLogisticsNumber } from './logistics-counter.service'
 import { scheduleShipmentDispatchNotification, scheduleShipmentDelayedNotification } from './logistics-notification.service'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
+import { roundCurrency } from './currency.service'
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   PENDING:          ['READY', 'CANCELLED'],
@@ -159,7 +161,7 @@ export async function createShipment(payload: {
             create: payload.items.map(i => ({
               productId: i.productId ?? null, productName: i.productName,
               quantity: i.quantity, unit: i.unit ?? 'PCS',
-              unitValue: i.unitValue ?? 0, totalValue: (i.unitValue ?? 0) * i.quantity,
+              unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
               batchNumber: i.batchNumber ?? null, serialNumber: i.serialNumber ?? null, notes: i.notes ?? null,
             }))
           } : undefined,
@@ -243,7 +245,7 @@ export async function updateShipment(payload: {
               create: payload.items.map(i => ({
                 productId: i.productId ?? null, productName: i.productName,
                 quantity: i.quantity, unit: i.unit ?? 'PCS',
-                unitValue: i.unitValue ?? 0, totalValue: (i.unitValue ?? 0) * i.quantity,
+                unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
                 batchNumber: i.batchNumber ?? null, serialNumber: i.serialNumber ?? null, notes: i.notes ?? null,
               }))
             }
@@ -309,7 +311,25 @@ export async function updateShipmentStatus(payload: { id: string; status: string
       const updated = await tx.shipment.update({ where: { id: payload.id }, data: updateData, include: INCLUDE })
       if (existing.vehicleId) {
         if (payload.status === 'IN_TRANSIT') {
-          await tx.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'IN_TRANSIT' } })
+          // Real bug found live (2026-07-28 product-vertical audit): this
+          // used to be an unconditional update, with the only "is this
+          // vehicle still AVAILABLE" check done on a stale pre-transaction
+          // read (the `existing.vehicle?.status` check above) — the exact
+          // TOCTOU gap already fixed for markSerialSoldTx in
+          // serial.service.ts and the replacement-serial claim in
+          // repair-ticket.service.ts. Two shipments sharing a vehicleId
+          // transitioning to IN_TRANSIT moments apart could both pass that
+          // stale check; the second to commit would silently believe one
+          // physical vehicle is carrying two shipments at once, directly
+          // contradicting this function's own comment above. Fixed to a
+          // conditional `updateMany` claim.
+          const claim = await tx.vehicle.updateMany({
+            where: { id: existing.vehicleId, status: 'AVAILABLE' },
+            data: { status: 'IN_TRANSIT' }
+          })
+          if (claim.count === 0) {
+            throw new ServiceError('LOG-026', 'This vehicle was just assigned to another shipment. Please pick a different vehicle.')
+          }
         } else if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(payload.status)) {
           await tx.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'AVAILABLE' } })
         }
@@ -348,6 +368,7 @@ export async function updateShipmentStatus(payload: { id: string; status: string
 
     return { success: true, data: toDetail(row) }
   } catch (err: any) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     if (err?.code === 'P2025') return { success: false, error: { code: 'NF-001', message: 'Shipment not found.' } }
     return { success: false, error: { code: 'LOG-024', message: err instanceof Error ? err.message : 'Failed to update shipment status.' } }
   }

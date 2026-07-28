@@ -4,6 +4,7 @@ import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { ServiceError } from '../errors/service-error'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -552,8 +553,22 @@ export async function checkInBooking(payload: {
     // one — defense-in-depth rather than trusting every future caller
     // (renderer, future API consumer) to remember to flag the first guest.
     const hasPrimary = payload.guests.some((g) => g.isPrimary)
+    // Real bug found live (2026-07-28 product-vertical audit): the CONFIRMED
+    // check above ran against a pre-transaction snapshot, and the write below
+    // was an unconditional update — a double-click or two terminals
+    // processing the same check-in both passed the check and both created a
+    // full duplicate set of HotelGuestId rows, corrupting the police/
+    // immigration guest register this vertical exists to produce. Claim the
+    // status transition atomically inside the transaction; the loser now
+    // fails cleanly instead of double-writing.
     await db.$transaction(async (tx) => {
-      await tx.hotelBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_IN', actualCheckInAt: new Date() } })
+      const claim = await tx.hotelBooking.updateMany({
+        where: { id: payload.id, status: 'CONFIRMED' },
+        data: { status: 'CHECKED_IN', actualCheckInAt: new Date() },
+      })
+      if (claim.count === 0) {
+        throw new ServiceError('HTL-032', 'This booking was already checked in by another action.')
+      }
       await tx.hotelGuestId.createMany({
         data: payload.guests.map((g, i) => ({
           bookingId: payload.id, guestName: g.guestName.trim(), idType: g.idType.trim(),
@@ -567,6 +582,7 @@ export async function checkInBooking(payload: {
     await logAction({ userId: payload.userId, action: 'HOTEL_CHECKED_IN', entityType: 'HotelBooking', entityId: payload.id, newValue: { guestCount: payload.guests.length } })
     return getBooking(payload.id)
   } catch (e) {
+    if (e instanceof ServiceError) return { success: false, error: { code: e.code, message: e.message } }
     return { success: false, error: { code: 'HTL-033', message: e instanceof Error ? e.message : 'Could not check in.' } }
   }
 }
@@ -580,8 +596,17 @@ export async function checkOutBooking(payload: { id: string; userId?: string }):
       return { success: false, error: { code: 'HTL-034', message: `Cannot check out a booking with status ${booking.status}. Only a CHECKED_IN booking can be checked out.` } }
     }
 
+    // Same double-processing race as checkInBooking above, fixed the same
+    // way: claim the CHECKED_IN -> CHECKED_OUT transition atomically so a
+    // double-click can't create two housekeeping tasks for one checkout.
     await db.$transaction(async (tx) => {
-      await tx.hotelBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_OUT', actualCheckOutAt: new Date() } })
+      const claim = await tx.hotelBooking.updateMany({
+        where: { id: payload.id, status: 'CHECKED_IN' },
+        data: { status: 'CHECKED_OUT', actualCheckOutAt: new Date() },
+      })
+      if (claim.count === 0) {
+        throw new ServiceError('HTL-034', 'This booking was already checked out by another action.')
+      }
       await tx.hotelRoom.update({ where: { id: booking.roomId }, data: { status: 'CLEANING' } })
       // Gives housekeeping a real queued task the moment a room needs
       // turning over, instead of the room just silently sitting in
@@ -596,6 +621,7 @@ export async function checkOutBooking(payload: { id: string; userId?: string }):
     await logAction({ userId: payload.userId, action: 'HOTEL_CHECKED_OUT', entityType: 'HotelBooking', entityId: payload.id })
     return getBooking(payload.id)
   } catch (e) {
+    if (e instanceof ServiceError) return { success: false, error: { code: e.code, message: e.message } }
     return { success: false, error: { code: 'HTL-035', message: e instanceof Error ? e.message : 'Could not check out.' } }
   }
 }

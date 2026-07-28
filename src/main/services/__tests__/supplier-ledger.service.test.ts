@@ -40,6 +40,24 @@ describe('supplierLedgerService.calculateBalance', () => {
 
     expect(balance).toBe(300)
   })
+
+  // Real bug found live (2026-07-28 product-vertical audit): this running
+  // balance previously had no rounding anywhere in the chain, so unrounded
+  // float noise from GRN/challan totals compounded permanently into a
+  // supplier's outstanding balance across every posted entry, never resettled.
+  it('rounds a float-noisy aggregate sum cleanly', async () => {
+    const db = makeDb({
+      supplierLedger: {
+        aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 0.1 + 0.2, creditAmount: 0 } }),
+        create: vi.fn(), findMany: vi.fn().mockResolvedValue([])
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const balance = await supplierLedgerService.calculateBalance('sup-1')
+
+    expect(balance).toBe(0.3) // 0.1 + 0.2 === 0.30000000000000004 in raw JS
+  })
 })
 
 describe('supplierLedgerService.addEntry', () => {
