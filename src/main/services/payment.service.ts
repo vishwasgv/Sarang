@@ -4,7 +4,22 @@ import { customerLedgerService } from './customer-ledger.service'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
+import { roundCurrency } from './currency.service'
 import type { RecordPaymentPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
+
+// Real bug found live (core-commerce audit): `new Date(payload.paymentDate)`
+// below parsed a bare date-only "YYYY-MM-DD" string (exactly what a
+// backdated-payment date picker sends) as UTC midnight, not local midnight —
+// the same class of bug already fixed across ~15 other files in this app
+// (see date.util.ts's own header comments). Currently unreached by the
+// shipped UI (no screen sets paymentDate today), but the IPC payload schema
+// accepts any string and this is exactly the shape a future caller (or a
+// direct IPC call) would send, so it's fixed the same way as every sibling
+// date-only field: date-only strings route through parseLocalDateStart,
+// anything else (a full ISO timestamp) parses as-is.
+function parsePaymentDate(value: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseLocalDateStart(value) : new Date(value)
+}
 
 export const paymentService = {
   // RULE PM001: amount > 0 enforced by Zod
@@ -41,13 +56,21 @@ export const paymentService = {
             amount: payload.amount,
             referenceNumber: payload.referenceNumber ?? null,
             remarks: payload.remarks ?? null,
-            paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : undefined,
+            paymentDate: payload.paymentDate ? parsePaymentDate(payload.paymentDate) : undefined,
             recordedById: userId ?? null
           }
         })
 
-        const newPaidAmount = invoice.paidAmount + payload.amount
-        const newBalance = invoice.balanceAmount - payload.amount
+        // Real bug found live (core-commerce audit): plain `+`/`-` on
+        // paidAmount/balanceAmount — this is running-balance ledger
+        // arithmetic on an invoice that can receive several partial payments
+        // over time (each one re-adding its own float error on top of
+        // whatever the previous payment already left), the exact pattern
+        // this scope's own audit brief calls out for special scrutiny.
+        // Routed through roundCurrency, matching every other money
+        // computation in this file's sibling services.
+        const newPaidAmount = roundCurrency(invoice.paidAmount + payload.amount)
+        const newBalance = roundCurrency(invoice.balanceAmount - payload.amount)
         const newPaymentStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIAL'
 
         await tx.invoice.update({
@@ -108,7 +131,7 @@ export const paymentService = {
           throw new ServiceError('PM-002', 'This invoice is already fully paid.')
         }
 
-        const splitTotal = payload.legs.reduce((s, l) => s + l.amount, 0)
+        const splitTotal = roundCurrency(payload.legs.reduce((s, l) => s + l.amount, 0))
         if (Math.abs(splitTotal - invoice.balanceAmount) > 0.05) {
           throw new ServiceError('PM-007', `Split total ${splitTotal.toFixed(2)} must equal outstanding balance ${invoice.balanceAmount.toFixed(2)}.`)
         }
@@ -142,7 +165,7 @@ export const paymentService = {
         await tx.invoice.update({
           where: { id: payload.invoiceId },
           data: {
-            paidAmount: invoice.paidAmount + splitTotal,
+            paidAmount: roundCurrency(invoice.paidAmount + splitTotal),
             balanceAmount: 0,
             paymentStatus: 'PAID'
           }
@@ -183,8 +206,8 @@ export const paymentService = {
 
         await tx.payment.update({ where: { id: payload.paymentId }, data: { isReversed: true, reversalReason: payload.reason } })
 
-        const newPaidAmount = Math.max(0, payment.invoice.paidAmount - payment.amount)
-        const newBalance = payment.invoice.balanceAmount + payment.amount
+        const newPaidAmount = Math.max(0, roundCurrency(payment.invoice.paidAmount - payment.amount))
+        const newBalance = roundCurrency(payment.invoice.balanceAmount + payment.amount)
         const newPaymentStatus = newPaidAmount <= 0.01 ? 'UNPAID' : 'PARTIAL'
 
         await tx.invoice.update({

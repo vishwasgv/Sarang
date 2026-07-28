@@ -6,6 +6,7 @@ import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
 import { generateInvoiceNumber } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
+import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
 import { ServiceError } from '../errors/service-error'
 import { getLicenseState } from './license.service'
 
@@ -34,22 +35,34 @@ export const quotationService = {
   async create(payload: CreateQuotationPayload, userId: string) {
     const db = getPrisma()
 
-    let subtotal = 0
-    let taxAmount = 0
-    let discountAmount = 0
+    // Real bug found live (core-commerce audit): subtotal/discountAmount/
+    // taxAmount/totalAmount used to be accumulated with plain `+=` on raw
+    // floats instead of routing through currency.service.ts's Decimal-backed
+    // helpers the way billing.service.ts does — not just cosmetic here,
+    // since convertToInvoice() below copies these totals verbatim onto a
+    // real Invoice and posts `debitAmount: q.totalAmount` straight into the
+    // customer's real ledger balance. QuotationItem.discount is stored as a
+    // PERCENT (not a currency amount), so it's converted to an amount first
+    // (rounded) before being fed into the same calculateLineTotal used
+    // everywhere else in this scope.
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
 
-    const computedItems = payload.items.map(item => {
-      const base = item.quantity * item.unitPrice
-      const disc = base * ((item.discount ?? 0) / 100)
-      const taxable = base - disc
-      const tax = taxable * ((item.taxRate ?? 0) / 100)
-      subtotal += base
-      discountAmount += disc
-      taxAmount += tax
-      return { ...item, discount: item.discount ?? 0, taxRate: item.taxRate ?? 0, lineTotal: taxable + tax }
+    const lineRows = payload.items.map(item => {
+      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
+      const discAmt = roundCurrency(lineGross * ((item.discount ?? 0) / 100), currencyDecimals)
+      const { taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, discAmt, item.taxRate ?? 0, currencyDecimals)
+      return { item, lineGross, discAmt, lineTax, lineTotal }
     })
 
-    const totalAmount = subtotal - discountAmount + taxAmount
+    const subtotal = sumCurrency(lineRows.map(r => r.lineGross), currencyDecimals)
+    const discountAmount = sumCurrency(lineRows.map(r => r.discAmt), currencyDecimals)
+    const taxAmount = sumCurrency(lineRows.map(r => r.lineTax), currencyDecimals)
+    const totalAmount = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
+
+    const computedItems = lineRows.map(({ item, lineTotal }) => ({
+      ...item, discount: item.discount ?? 0, taxRate: item.taxRate ?? 0, lineTotal
+    }))
 
     // Number generation must happen inside the same transaction as the
     // insert — see sequence.service.ts's header comment for why a plain
@@ -146,6 +159,9 @@ export const quotationService = {
     if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
     if (q.invoice) return { success: false, error: { code: 'QT-002', message: 'Quotation already converted to an invoice.' } }
 
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+
     // Resolve productId for each item: use linked product or find by name; fallback to a Misc product.
     // productType is carried through so only real STANDARD products get stock deducted below.
     const resolvedItems = await Promise.all(q.items.map(async (item) => {
@@ -200,7 +216,16 @@ export const quotationService = {
         })
 
         for (const item of resolvedItems) {
-          const lineDiscountAmount = item.quantity * item.unitPrice * (item.discount / 100)
+          // Real bug found live (core-commerce audit): discountAmount/taxAmount
+          // used to be recomputed here with raw float arithmetic (and taxAmount
+          // via a subtraction against `item.lineTotal`, which was itself a raw-
+          // float value from create() above) instead of routing through the
+          // same calculateLineTotal every other invoice line in this app goes
+          // through. QuotationItem.discount is a PERCENT, so it's converted to
+          // a currency amount (rounded) first, exactly mirroring create()'s own
+          // fix above.
+          const lineDiscountAmount = roundCurrency(item.quantity * item.unitPrice * (item.discount / 100), currencyDecimals)
+          const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscountAmount, item.taxRate, currencyDecimals)
           await tx.invoiceItem.create({
             data: {
               invoiceId: inv.id,
@@ -211,8 +236,8 @@ export const quotationService = {
               unitPrice: item.unitPrice,
               discountAmount: lineDiscountAmount,
               taxRate: item.taxRate,
-              taxAmount: item.lineTotal - (item.quantity * item.unitPrice - lineDiscountAmount),
-              lineTotal: item.lineTotal
+              taxAmount: lineTaxAmount,
+              lineTotal
             }
           })
 

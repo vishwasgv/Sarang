@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
 
 export interface BatchRecord {
   id: string
@@ -174,16 +175,33 @@ export async function updateBatch(payload: {
   try {
     const db = getPrisma()
 
-    const existing = await db.productBatch.findUnique({ where: { id: payload.id } })
-    if (!existing) return { success: false, error: { code: 'BAT-005', message: 'Batch not found.' } }
-
-    const resolvedExpiry = payload.expiryDate ? new Date(payload.expiryDate) : existing.expiryDate
-    const resolvedMfg = payload.mfgDate ? new Date(payload.mfgDate) : existing.mfgDate
+    // Pre-transaction date-order validation only — cheap, and mfgDate/expiryDate
+    // ordering isn't subject to a meaningful concurrent-edit race the way the
+    // quantity math below is.
+    const preCheck = await db.productBatch.findUnique({ where: { id: payload.id } })
+    if (!preCheck) return { success: false, error: { code: 'BAT-005', message: 'Batch not found.' } }
+    const resolvedExpiry = payload.expiryDate ? new Date(payload.expiryDate) : preCheck.expiryDate
+    const resolvedMfg = payload.mfgDate ? new Date(payload.mfgDate) : preCheck.mfgDate
     if (resolvedMfg && resolvedMfg >= resolvedExpiry) {
       return { success: false, error: { code: 'BAT-008', message: 'Manufacturing date must be before expiry date.' } }
     }
 
-    await db.$transaction(async (tx) => {
+    // Real bug found live (core-commerce audit): `existing` used to be read
+    // BEFORE this transaction opened, then that stale `existing.quantityRemaining`
+    // was used to compute `delta` for the Inventory.quantity adjustment inside
+    // it. Two concurrent updateBatch calls on the same batch (e.g. two staff
+    // correcting the same count) would each compute their own delta from the
+    // SAME stale base — ProductBatch.quantityRemaining ends up last-write-wins
+    // (correct), but Inventory.quantity gets BOTH deltas applied on top of
+    // each other, permanently drifting the aggregate stock figure away from
+    // the sum of its own batches. Reading fresh INSIDE the transaction closes
+    // this the same way purchaseOrderService.approvePO's atomic
+    // read-check-write does — SQLite serializes writers, so nothing can land
+    // between this read and the writes right below it.
+    const existing = await db.$transaction(async (tx) => {
+      const fresh = await tx.productBatch.findUnique({ where: { id: payload.id } })
+      if (!fresh) throw new ServiceError('BAT-005', 'Batch not found.')
+
       await tx.productBatch.update({
         where: { id: payload.id },
         data: {
@@ -195,20 +213,22 @@ export async function updateBatch(payload: {
       })
 
       if (payload.quantityRemaining !== undefined) {
-        const delta = payload.quantityRemaining - existing.quantityRemaining
+        const delta = payload.quantityRemaining - fresh.quantityRemaining
         if (delta !== 0) {
           await tx.inventory.upsert({
-            where: { productId: existing.productId },
-            create: { productId: existing.productId, quantity: Math.max(0, delta) },
+            where: { productId: fresh.productId },
+            create: { productId: fresh.productId, quantity: Math.max(0, delta) },
             update: { quantity: { increment: delta } }
           })
         }
       }
+      return fresh
     })
 
     await logAction(userId, 'BATCH_UPDATED', 'ProductBatch', payload.id, { quantityRemaining: existing.quantityRemaining }, { quantityRemaining: payload.quantityRemaining })
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'BAT-006', message: err instanceof Error ? err.message : 'Failed to update batch.' } }
   }
 }
@@ -216,11 +236,32 @@ export async function updateBatch(payload: {
 export async function deleteBatch(id: string, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const batch = await db.productBatch.findUnique({ where: { id } })
-    if (!batch) return { success: false, error: { code: 'BAT-005', message: 'Batch not found.' } }
 
-    await db.$transaction(async (tx) => {
-      await tx.productBatch.update({ where: { id }, data: { isActive: false } })
+    // Real bug found live (core-commerce audit): this used to read `batch`
+    // BEFORE the transaction, then unconditionally set isActive:false and
+    // decrement Inventory.quantity by that stale `batch.quantityRemaining`
+    // inside it. A duplicate delete call for the same batch (double-click,
+    // or two concurrent calls) would both pass the "still active" read and
+    // each decrement Inventory.quantity by the full amount again — a real
+    // double-deduction, not just a harmless no-op retry. Claimed atomically
+    // via a conditional updateMany (isActive: true -> false) — the same
+    // "claim inside the transaction, count===0 means lost the race" shape
+    // used throughout billing.service.ts — so only the call that actually
+    // flips the row gets to touch inventory.
+    const result = await db.$transaction(async (tx) => {
+      const batch = await tx.productBatch.findUnique({ where: { id } })
+      if (!batch) throw new ServiceError('BAT-005', 'Batch not found.')
+
+      const claim = await tx.productBatch.updateMany({
+        where: { id, isActive: true },
+        data: { isActive: false }
+      })
+      if (claim.count === 0) {
+        // Already deleted (by this same duplicate call or a concurrent one) —
+        // nothing further to do, and inventory was already adjusted once.
+        return { alreadyDeleted: true }
+      }
+
       if (batch.quantityRemaining > 0) {
         await tx.inventory.upsert({
           where: { productId: batch.productId },
@@ -228,10 +269,15 @@ export async function deleteBatch(id: string, userId?: string): Promise<{ succes
           update: { quantity: { decrement: batch.quantityRemaining } }
         })
       }
+      return { alreadyDeleted: false }
     })
-    await logAction(userId, 'BATCH_DELETED', 'ProductBatch', id)
+
+    if (!result.alreadyDeleted) {
+      await logAction(userId, 'BATCH_DELETED', 'ProductBatch', id)
+    }
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'BAT-007', message: err instanceof Error ? err.message : 'Failed to delete batch.' } }
   }
 }

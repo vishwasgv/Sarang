@@ -217,6 +217,25 @@ describe('returns.service.createReturn', () => {
     )
   })
 
+  // Real bug found live (core-commerce audit): nothing checked whether the
+  // original invoice was CANCELLED. cancelInvoice() already restores
+  // inventory, reverses payments, and reverses the customer-ledger entries
+  // for that invoice — filing a return against it afterward would restore
+  // inventory a SECOND time and post a brand-new ledger/balance credit for a
+  // sale that was already fully unwound.
+  it('rejects a return against a CANCELLED invoice', async () => {
+    const db = makeMockDb({ original: { status: 'CANCELLED' } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 5 }], 'Defective')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RET-012')
+    expect(db.invoice.create).not.toHaveBeenCalled()
+    expect(db.inventory.upsert).not.toHaveBeenCalled()
+    expect(customerLedgerService.addEntry).not.toHaveBeenCalled()
+  })
+
   it('rejects a return that exceeds the ORIGINAL quantity outright', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

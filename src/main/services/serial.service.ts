@@ -185,10 +185,24 @@ export async function updateSerialStatus(payload: {
 }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const existing = await db.productSerial.findUnique({ where: { id: payload.id } })
-    if (!existing) return { success: false, error: { code: 'SER-006', message: 'Serial not found.' } }
 
-    await db.$transaction(async (tx) => {
+    // Real bug found live (core-commerce audit): `existing` used to be read
+    // BEFORE this transaction opened, then that same stale snapshot decided
+    // whether to increment/decrement inventory below. Two near-simultaneous
+    // status changes on the same serial (e.g. two staff both marking a
+    // returned unit back AVAILABLE) would each capture the identical
+    // pre-transaction status, so the inventory adjustment could apply twice
+    // for what is really only one real state transition — the same
+    // read-outside-tx race class already fixed for markSerialSoldTx above,
+    // and for the analogous update() flows elsewhere in this scope. Reading
+    // fresh INSIDE the transaction closes it: SQLite serializes writers, so
+    // nothing can commit between this read and the write right below it in
+    // the same transaction (mirrors purchaseOrderService.approvePO's
+    // "read-check-write atomically inside one transaction" precedent).
+    const previousStatus = await db.$transaction(async (tx) => {
+      const existing = await tx.productSerial.findUnique({ where: { id: payload.id } })
+      if (!existing) throw new ServiceError('SER-006', 'Serial not found.')
+
       await tx.productSerial.update({
         where: { id: payload.id },
         data: {
@@ -219,11 +233,14 @@ export async function updateSerialStatus(payload: {
           update: { quantity: { increment: 1 } }
         })
       }
+
+      return existing.status
     })
 
-    await logAction(userId, 'SERIAL_STATUS_UPDATED', 'ProductSerial', payload.id, existing.status, payload.status)
+    await logAction(userId, 'SERIAL_STATUS_UPDATED', 'ProductSerial', payload.id, previousStatus, payload.status)
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'SER-007', message: err instanceof Error ? err.message : 'Failed to update serial.' } }
   }
 }

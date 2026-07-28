@@ -136,23 +136,44 @@ export async function adjustVariantStock(payload: {
 }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const variant = await db.productVariant.findUnique({ where: { id: payload.variantId } })
-    if (!variant) return { success: false, error: { code: 'VAR-005', message: 'Variant not found.' } }
 
-    const newQty = variant.stockQty + payload.quantityDelta
-    if (newQty < 0) return { success: false, error: { code: 'VAR-007', message: 'Insufficient variant stock.' } }
+    // Real bug found live (core-commerce audit): `variant` used to be read,
+    // and the resulting `newQty` / insufficient-stock check computed, BEFORE
+    // this transaction opened. Two concurrent adjustVariantStock calls on the
+    // same variant (e.g. two staff each correcting the same size/colour at
+    // once) would each read the same stale stockQty, each independently pass
+    // the "newQty >= 0" check even when the combination of both adjustments
+    // would have gone negative, and then race on the final absolute
+    // `stockQty: newQty` write (last one wins, silently discarding the
+    // other's adjustment) while Inventory.quantity — updated with a relative
+    // `increment` — ends up applying BOTH deltas. Reading and validating
+    // fresh INSIDE the transaction closes both problems: SQLite serializes
+    // writers, so nothing can land between this read and the writes below.
+    const { previousQty, newQty } = await db.$transaction(async (tx) => {
+      const variant = await tx.productVariant.findUnique({ where: { id: payload.variantId } })
+      if (!variant) throw new ServiceError('VAR-005', 'Variant not found.')
 
-    await db.$transaction(async (tx) => {
+      const newQty = variant.stockQty + payload.quantityDelta
+      if (newQty < 0) {
+        throw new ServiceError('VAR-007', 'Insufficient variant stock.')
+      }
+
       await tx.productVariant.update({ where: { id: payload.variantId }, data: { stockQty: newQty } })
       await tx.inventory.upsert({
         where: { productId: variant.productId },
         create: { productId: variant.productId, quantity: Math.max(0, newQty) },
         update: { quantity: { increment: payload.quantityDelta } }
       })
+      return { previousQty: variant.stockQty, newQty }
     })
-    await logAction(userId, 'VARIANT_STOCK_ADJUSTED', 'ProductVariant', payload.variantId, String(variant.stockQty), String(newQty))
+    // logAction always uses its own getPrisma() connection, not `tx` — every
+    // other caller in this scope logs AFTER the transaction commits, never
+    // from inside it (calling it inside would contend with the
+    // transaction's own held write lock). Kept consistent with that.
+    await logAction(userId, 'VARIANT_STOCK_ADJUSTED', 'ProductVariant', payload.variantId, String(previousQty), String(newQty))
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'VAR-008', message: err instanceof Error ? err.message : 'Failed to adjust variant stock.' } }
   }
 }

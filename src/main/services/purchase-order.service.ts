@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { supplierLedgerService } from './supplier-ledger.service'
+import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -50,15 +51,25 @@ export const purchaseOrderService = {
       if (product.productType !== 'STANDARD') return { success: false, error: { code: 'PRD-006', message: `Cannot order service product "${product.productName}". Only physical products can be ordered.` } }
     }
 
-    let subtotal = 0
-    let taxAmount = 0
-    for (const item of payload.items) {
-      const lineBase = item.quantity * item.unitCost
-      const lineTax = lineBase * ((item.taxRate ?? 0) / 100)
-      subtotal += lineBase
-      taxAmount += lineTax
-    }
-    const totalAmount = subtotal + taxAmount
+    // Real bug found live (core-commerce audit): subtotal/taxAmount/totalAmount
+    // used to be accumulated with plain `+=` on raw `quantity * unitCost`
+    // floats — the one financial-document-creation path in this scope that
+    // didn't route through currency.service.ts's Decimal-backed helpers the
+    // way billing.service.ts/returns.service.ts already do. Not just cosmetic:
+    // receivePO() below posts `debitAmount: po.totalAmount` straight into the
+    // supplier's real ledger balance (an aggregate SUM that a float artifact
+    // like 4999.999999999999 would carry forward permanently), and this
+    // total also lands verbatim on the printed PO. Computed per-line via
+    // calculateLineTotal (no discount on a PO line) and summed via
+    // sumCurrency, exactly mirroring every other invoice-shaped total in
+    // this codebase.
+    const lineRows = payload.items.map(item => ({
+      item,
+      ...calculateLineTotal(item.quantity, item.unitCost, 0, item.taxRate ?? 0)
+    }))
+    const subtotal = sumCurrency(lineRows.map(r => r.subtotal))
+    const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount))
+    const totalAmount = roundCurrency(subtotal + taxAmount)
 
     const po = await db.$transaction(async (tx) => {
       const poNumber = await generatePONumber(tx)
@@ -80,19 +91,15 @@ export const purchaseOrderService = {
           totalAmount,
           createdById: userId || null,
           items: {
-            create: payload.items.map(item => {
-              const base = item.quantity * item.unitCost
-              const tax = base * ((item.taxRate ?? 0) / 100)
-              return {
-                productId: item.productId,
-                quantity: item.quantity,
-                unitCost: item.unitCost,
-                taxRate: item.taxRate ?? 0,
-                taxAmount: tax,
-                itcAmount: tax,  // ITC = GST paid on purchase, claimable against output tax liability
-                total: base + tax
-              }
-            })
+            create: lineRows.map(({ item, taxAmount: lineTax, lineTotal }) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              taxRate: item.taxRate ?? 0,
+              taxAmount: lineTax,
+              itcAmount: lineTax,  // ITC = GST paid on purchase, claimable against output tax liability
+              total: lineTotal
+            }))
           }
         },
         include: {

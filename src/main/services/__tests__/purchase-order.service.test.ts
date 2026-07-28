@@ -137,6 +137,32 @@ describe('purchaseOrderService.createPO', () => {
     expect(createCall.data.poNumber).toBe('PO-00100')
   })
 
+  // Real bug found live (core-commerce audit): subtotal/taxAmount/totalAmount
+  // used to be accumulated with plain `+=` on raw `quantity * unitCost`
+  // floats instead of routing through currency.service.ts's Decimal-backed
+  // helpers — receivePO() later posts this totalAmount straight into the
+  // supplier's real ledger balance, so any float artifact here would be
+  // carried forward permanently.
+  it('produces a clean 2-decimal totalAmount for quantities/costs that do not divide evenly in raw float math', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 1.1 * 1.1 = 1.2100000000000002 in raw IEEE754 float math, not 1.21.
+    expect(1.1 * 1.1).not.toBe(1.21)
+
+    const result = await purchaseOrderService.createPO({
+      supplierId: 'sup-1',
+      items: [{ productId: 'prod-1', quantity: 1.1, unitCost: 1.1, taxRate: 0 }]
+    })
+
+    expect(result.success).toBe(true)
+    const createCall = vi.mocked(db.purchaseOrder.create).mock.calls[0][0] as {
+      data: { subtotal: number; totalAmount: number }
+    }
+    expect(createCall.data.subtotal).toBe(1.21)
+    expect(createCall.data.totalAmount).toBe(1.21)
+  })
+
   it('generates the PO number inside the same transaction as the insert (no race window)', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

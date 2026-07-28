@@ -25,6 +25,11 @@ function makeDb(lastQuotationNumber: string | null = EXISTING_NUMBER) {
     }
   }
   return {
+    // create() reads currencyDecimals via businessProfile.findFirst() on the
+    // outer `db` (not `tx`) BEFORE the transaction opens — no currencyCode
+    // set means getCurrencyDecimals() falls back to its 2dp default, which is
+    // what every test in this file was already written assuming.
+    businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient)),
     __txClient: txClient
   }
@@ -75,6 +80,75 @@ describe('quotationService.create', () => {
     expect(data.discountAmount).toBe(20)
     expect(data.taxAmount).toBeCloseTo(32.4)
     expect(data.totalAmount).toBeCloseTo(262.4)
+  })
+
+  // Real bug found live (core-commerce audit): subtotal/discountAmount/
+  // taxAmount/totalAmount used to be accumulated with plain `+=` on raw
+  // floats — this quotation total flows straight onto a real Invoice and a
+  // real customer-ledger debit once converted, so any float artifact here
+  // would be carried forward permanently, not just displayed wrong.
+  it('produces a clean 2-decimal subtotal for a quantity/price pair that does not divide evenly in raw float math', async () => {
+    const db = makeDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 3 * 0.1 = 0.30000000000000004 in raw IEEE754 float math, not 0.3.
+    expect(3 * 0.1).not.toBe(0.3)
+
+    const res = await quotationService.create({
+      items: [{ productName: 'Widget', quantity: 3, unitPrice: 0.1, discount: 0, taxRate: 0 }]
+    }, 'user-1')
+
+    const data = (res as { data: { subtotal: number; totalAmount: number } }).data
+    expect(data.subtotal).toBe(0.3)
+    expect(data.totalAmount).toBe(0.3)
+  })
+})
+
+// Real bug found live (core-commerce audit): the per-line discountAmount/
+// taxAmount recomputation inside convertToInvoice used raw float arithmetic
+// (and computed taxAmount via a subtraction against the quotation item's own
+// raw-float lineTotal) instead of calculateLineTotal — the same helper every
+// other invoice line in this app is built from.
+describe('quotationService.convertToInvoice — float precision fix', () => {
+  function makeConvertDb(quotation: Record<string, unknown>) {
+    const txClient: Record<string, any> = {
+      invoice: { create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv-1', ...data })) },
+      invoiceItem: { create: vi.fn().mockResolvedValue({}) },
+      quotation: { update: vi.fn().mockResolvedValue({}) },
+      setting: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
+    }
+    const db: Record<string, any> = {
+      quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
+      // resolvedProductType 'SERVICE' — skips inventory reduction entirely,
+      // so this test doesn't need to mock inventory.service at all.
+      product: { findUnique: vi.fn().mockResolvedValue({ productType: 'SERVICE' }) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
+    return { db, txClient }
+  }
+
+  it('recomputes discountAmount/taxAmount for the converted InvoiceItem with clean 2-decimal values, not raw-float drift', async () => {
+    const quotation = {
+      id: 'qt-1', quotationNumber: 'QT-00001', customerId: null, invoice: null,
+      subtotal: 0.3, discountAmount: 0, taxAmount: 0, totalAmount: 0.3,
+      items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 3, unitPrice: 0.1, discount: 0, taxRate: 0, lineTotal: 0.3 }]
+    }
+    const { db, txClient } = makeConvertDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'PAID', region: 'IN', daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    const itemCreateCall = txClient.invoiceItem.create.mock.calls[0][0] as { data: { discountAmount: number; taxAmount: number; lineTotal: number } }
+    // Old code: taxAmount = item.lineTotal - (item.quantity * item.unitPrice - lineDiscountAmount)
+    //         = 0.3 - (3*0.1 - 0) = 0.3 - 0.30000000000000004 = a tiny nonzero float artifact, not exactly 0.
+    expect(itemCreateCall.data.taxAmount).toBe(0)
+    expect(itemCreateCall.data.discountAmount).toBe(0)
+    expect(itemCreateCall.data.lineTotal).toBe(0.3)
   })
 })
 

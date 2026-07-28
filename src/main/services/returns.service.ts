@@ -65,6 +65,18 @@ export async function createReturn(
     })
     if (!original) return { success: false, error: { code: 'RET-003', message: 'Original invoice not found.' } }
     if (original.invoiceType === 'RETURN') return { success: false, error: { code: 'RET-004', message: 'Cannot return a return invoice.' } }
+    // Real bug found live (core-commerce audit): nothing here ever checked
+    // whether the original invoice was CANCELLED — cancelInvoice() already
+    // restores inventory, reverses payments, and reverses every customer-
+    // ledger entry for that invoice, so filing a return against it afterward
+    // (reachable directly: ReturnScreen.tsx's search box never filters out
+    // cancelled invoices either) would restore inventory a SECOND time and
+    // post a brand-new ledger/invoice-balance credit for a sale that was
+    // already fully unwound. Matches the same "reject the action, don't
+    // silently corrupt state" guard this file already has for RET-004.
+    if (original.status === 'CANCELLED') {
+      return { success: false, error: { code: 'RET-012', message: 'Cannot process a return against a cancelled invoice — the sale was already reversed when it was cancelled.' } }
+    }
 
     // Fast-fail pre-checks outside the transaction (cheap, and the underlying
     // data — quantity <= 0, whether a product is on the original invoice —

@@ -6,6 +6,7 @@ vi.mock('../customer-ledger.service', () => ({ customerLedgerService: { addEntry
 
 import { getPrisma } from '../../database/db'
 import { paymentService } from '../payment.service'
+import { parseLocalDateStart } from '../../utils/date.util'
 
 function baseInvoice(overrides: Record<string, unknown> = {}) {
   return {
@@ -121,6 +122,49 @@ describe('paymentService.recordPayment', () => {
 
     expect(res.success).toBe(true)
     expect(db.restaurantTable.updateMany).not.toHaveBeenCalled()
+  })
+
+  // Real bug found live (core-commerce audit): paidAmount/balanceAmount were
+  // updated with plain `+`/`-` on floats — running-balance ledger arithmetic
+  // on an invoice that can receive several partial payments over time, each
+  // one compounding whatever float error the previous payment already left.
+  it('rounds paidAmount to 2 decimals, closing a float-precision drift across partial payments', async () => {
+    // 0.1 + 0.2 = 0.30000000000000004 in raw IEEE754 float math, not 0.3.
+    expect(0.1 + 0.2).not.toBe(0.3)
+
+    const db = makeMockDb({ paidAmount: 0.1, balanceAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 0.2, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    const updateCall = db.invoice.update.mock.calls[0][0]
+    expect(updateCall.data.paidAmount).toBe(0.3)
+  })
+
+  // Real bug found live (core-commerce audit): `new Date(payload.paymentDate)`
+  // parsed a bare "YYYY-MM-DD" string as UTC midnight, not local midnight —
+  // the same class of bug already fixed across ~15 other files in this app.
+  // Not reachable from the shipped UI today (no screen sets paymentDate),
+  // but the IPC payload schema accepts any string.
+  it('parses a date-only paymentDate as LOCAL midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 100, paymentMethod: 'CASH', paymentDate: '2026-07-15' })
+
+    const createCall = db.payment.create.mock.calls[0][0]
+    expect(createCall.data.paymentDate).toEqual(parseLocalDateStart('2026-07-15'))
+  })
+
+  it('parses a full ISO timestamp paymentDate as-is (not reinterpreted as date-only)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 100, paymentMethod: 'CASH', paymentDate: '2026-07-15T10:30:00.000Z' })
+
+    const createCall = db.payment.create.mock.calls[0][0]
+    expect(createCall.data.paymentDate).toEqual(new Date('2026-07-15T10:30:00.000Z'))
   })
 })
 
@@ -242,6 +286,23 @@ describe('paymentService.reversePayment', () => {
     const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
     const findCallOrder = vi.mocked(db.payment.findUnique).mock.invocationCallOrder[0]
     expect(txCallOrder).toBeLessThan(findCallOrder)
+  })
+
+  it('rounds the restored paidAmount/balanceAmount to 2 decimals on reversal', async () => {
+    const db = makeMockDb()
+    db.payment.findUnique = vi.fn().mockResolvedValue(makePayment({
+      amount: 0.2,
+      invoice: baseInvoice({ paidAmount: 0.3, balanceAmount: 999.7 })
+    }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.reversePayment({ paymentId: 'pmt-1', reason: 'Mistake' })
+
+    expect(res.success).toBe(true)
+    const updateCall = db.invoice.update.mock.calls[0][0]
+    // 0.3 - 0.2 = 0.09999999999999998 in raw IEEE754 float math, not 0.1.
+    expect(updateCall.data.paidAmount).toBe(0.1)
+    expect(updateCall.data.balanceAmount).toBe(999.9)
   })
 })
 

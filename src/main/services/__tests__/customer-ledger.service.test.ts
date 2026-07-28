@@ -73,9 +73,54 @@ describe('customerLedgerService.calculateBalance', () => {
 
     expect(balance).toBe(1000)
   })
+
+  // Real bug found live (core-commerce audit): unlike supplier-ledger.service.ts's
+  // own calculateBalance (already routed through roundCurrency), this one
+  // returned the raw SUM(debit)-SUM(credit) float unrounded — a real boundary
+  // bug because addEntry() persists this value verbatim as the denormalised
+  // Customer.outstandingBalance field that billing.service.ts's credit-limit
+  // enforcement compares directly against Customer.creditLimit.
+  it('rounds the computed balance to 2 decimals, closing a float-precision drift', async () => {
+    // Classic IEEE754 artifact: 0.3 - 0.2 === 0.09999999999999998 in raw JS
+    // float math, not 0.1 — proof this actually exercises the rounding fix,
+    // not just an already-clean value.
+    expect(0.3 - 0.2).not.toBe(0.1)
+
+    const db = makeDb()
+    db.customerLedger.aggregate = vi.fn().mockResolvedValue({ _sum: { debitAmount: 0.3, creditAmount: 0.2 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const balance = await customerLedgerService.calculateBalance('cust-3')
+
+    expect(balance).toBe(0.1)
+  })
 })
 
 describe('customerLedgerService.addEntry', () => {
+  it('rounds the new balance it persists (both CustomerLedger.balance and Customer.outstandingBalance)', async () => {
+    const db = makeDb()
+    // Base 0.1 (already the rounded result of a prior 0.3 - 0.2 aggregate)
+    // plus a further 0.2 debit — 0.1 + 0.2 is the other canonical IEEE754
+    // artifact (0.30000000000000004 in raw float math).
+    db.customerLedger.aggregate = vi.fn().mockResolvedValue({ _sum: { debitAmount: 0.3, creditAmount: 0.2 } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await customerLedgerService.addEntry({
+      customerId: 'cust-1',
+      referenceType: 'INVOICE',
+      referenceId: 'inv-2',
+      debitAmount: 0.2,
+      creditAmount: 0,
+    })
+
+    expect(db.customerLedger.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ balance: 0.3 }) })
+    )
+    expect(db.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ outstandingBalance: 0.3 }) })
+    )
+  })
+
   it('creates a ledger entry with correct running balance', async () => {
     vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
 

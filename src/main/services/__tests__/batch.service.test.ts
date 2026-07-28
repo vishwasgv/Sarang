@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
+vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock, getExpiryAlerts } from '../batch.service'
+import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock, getExpiryAlerts, updateBatch, deleteBatch } from '../batch.service'
 
 const DAY = 24 * 60 * 60 * 1000
 const now = new Date()
@@ -102,6 +103,120 @@ describe('hasEnoughNonExpiredBatchStock', () => {
       { id: 'b-fresh', quantityRemaining: 3, expiryDate: notExpiredSoon }
     ])
     expect(await hasEnoughNonExpiredBatchStock(tx as never, 'prod-1', 5)).toBe(false)
+  })
+})
+
+describe('updateBatch — read-inside-transaction race fix', () => {
+  // Simulates a concurrent modification landing between updateBatch's cheap
+  // pre-transaction date-order check and the transaction itself: the first
+  // findUnique call (the pre-check) sees quantityRemaining: 100, but by the
+  // time the transaction opens and reads again, a concurrent write has
+  // already moved it to 70.
+  function makeMockDb(opts: { preCheckQty: number; freshQty: number; productId?: string }) {
+    let call = 0
+    const db: Record<string, any> = {
+      productBatch: {
+        findUnique: vi.fn(async () => {
+          call++
+          const quantityRemaining = call === 1 ? opts.preCheckQty : opts.freshQty
+          return { id: 'batch-1', productId: opts.productId ?? 'prod-1', quantityRemaining, expiryDate: notExpiredSoon, mfgDate: null }
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      inventory: { upsert: vi.fn().mockResolvedValue({}) },
+    }
+    db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
+    return db
+  }
+
+  // Real bug found live (core-commerce audit): the delta used to be computed
+  // from `existing.quantityRemaining` captured BEFORE the transaction opened
+  // — a value that could already be stale by the time the transaction's own
+  // writes land. This test's mock returns a DIFFERENT quantityRemaining on
+  // the fresh in-transaction read (70) than on the pre-check read (100); the
+  // fix must compute the Inventory.quantity delta against the fresh value
+  // (80 - 70 = 10), not the stale pre-check one (80 - 100 = -20).
+  it('computes the Inventory.quantity delta from a value read fresh INSIDE the transaction, not the earlier pre-check read', async () => {
+    const db = makeMockDb({ preCheckQty: 100, freshQty: 70 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateBatch({ id: 'batch-1', quantityRemaining: 80 })
+
+    expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId: 'prod-1' },
+      update: { quantity: { increment: 10 } }, // 80 - 70 (fresh), NOT 80 - 100 (stale)
+    }))
+  })
+
+  it('computes the correct delta on the normal (non-racy) path', async () => {
+    const db = makeMockDb({ preCheckQty: 100, freshQty: 100 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateBatch({ id: 'batch-1', quantityRemaining: 80 })
+
+    expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId: 'prod-1' },
+      update: { quantity: { increment: -20 } }, // 80 - 100
+    }))
+  })
+
+  it('rejects when manufacturing date is not before expiry date', async () => {
+    const db = makeMockDb({ preCheckQty: 100, freshQty: 100 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateBatch({ id: 'batch-1', mfgDate: notExpiredLater.toISOString(), expiryDate: notExpiredSoon.toISOString() })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('BAT-008')
+  })
+})
+
+describe('deleteBatch — atomic claim prevents double inventory decrement', () => {
+  function makeMockDb(batch: { id: string; productId: string; quantityRemaining: number; isActive: boolean }) {
+    const state = { ...batch }
+    const db: Record<string, any> = {
+      productBatch: {
+        findUnique: vi.fn(async () => ({ ...state })),
+        updateMany: vi.fn(async ({ where, data }: { where: { isActive: boolean }; data: { isActive: boolean } }) => {
+          if (state.isActive !== where.isActive) return { count: 0 }
+          state.isActive = data.isActive
+          return { count: 1 }
+        }),
+      },
+      inventory: { upsert: vi.fn().mockResolvedValue({}) },
+    }
+    db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
+    return db
+  }
+
+  it('decrements inventory by the batch quantity on a normal delete', async () => {
+    const db = makeMockDb({ id: 'batch-1', productId: 'prod-1', quantityRemaining: 15, isActive: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await deleteBatch('batch-1')
+
+    expect(res.success).toBe(true)
+    expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId: 'prod-1' },
+      update: { quantity: { decrement: 15 } },
+    }))
+  })
+
+  // Real bug found live (core-commerce audit): `batch` used to be read
+  // BEFORE the transaction, then isActive was set to false unconditionally
+  // inside it — a duplicate delete call (double-click, or two concurrent
+  // requests) for the same batch would both pass the "still active" read and
+  // each decrement inventory by the full quantity again. The conditional
+  // updateMany claim means only the call that actually flips isActive gets
+  // to touch inventory.
+  it('does NOT decrement inventory a second time when the batch was already deleted', async () => {
+    const db = makeMockDb({ id: 'batch-1', productId: 'prod-1', quantityRemaining: 15, isActive: false })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await deleteBatch('batch-1')
+
+    expect(res.success).toBe(true)
+    expect(db.inventory.upsert).not.toHaveBeenCalled()
   })
 })
 
