@@ -174,9 +174,15 @@ export async function listAppointments(filters?: {
 export async function getAppointmentsByDate(date: string) {
   try {
     const db = getPrisma()
-    const day = new Date(date)
-    const nextDay = new Date(day)
-    nextDay.setDate(nextDay.getDate() + 1)
+    // Real bug found live (2026-07-28, E2E regression hunt): this used bare
+    // `new Date(date)` (UTC midnight) while createAppointment/updateAppointment
+    // in this same file write scheduledDate via parseLocalDateStart (local
+    // midnight) — a read/write mismatch that made an appointment created for
+    // "today" (local time) invisible to this function's "today" query for
+    // part of the day, depending on the timezone offset. Matches the fix
+    // already applied to listAppointments' date filter in this same file.
+    const day = parseLocalDateStart(date)
+    const nextDay = new Date(day.getTime() + 86400000)
 
     const items = await db.appointment.findMany({
       where: {

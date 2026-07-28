@@ -120,6 +120,7 @@ async function login(page, username = 'admin', password = UAT_PASSWORD) {
     const who = await page.evaluate(async () => window.api.auth.getCurrentUser()).catch(() => null)
     if (who?.success) {
       await dismissBackupPrompt(page)
+      await dismissTutorialPrompt(page)
       return
     }
     const userInput = page.locator('input[name="username"]')
@@ -143,6 +144,24 @@ async function dismissBackupPrompt(page) {
   const skipBtn = page.locator('button', { hasText: 'Skip for now' })
   if (await skipBtn.count().catch(() => 0)) {
     await skipBtn.click().catch(() => {})
+    await page.waitForTimeout(400)
+  }
+}
+
+// Same gotcha as dismissBackupPrompt above, for Phase 60's one-time
+// full-screen "Want a quick guided tour of Sarang?" prompt (gated on the
+// `tutorial_prompt_dismissed` Setting row, shown right after first login,
+// BEFORE the Dashboard route ever renders — see router.tsx). Found live
+// 2026-07-28: a full E2E run hung indefinitely staring at this screen
+// because login() had no idea it existed. "Maybe later" is the real,
+// supported dismiss action a human would click — same non-bypass rationale
+// as the backup-prompt helper above. Deliberately never "Yes, show me
+// around": that path relaunches the whole app into a separate tutorial.db,
+// which every other suite's assumptions about the live dev DB do not expect.
+async function dismissTutorialPrompt(page) {
+  const laterBtn = page.locator('button', { hasText: 'Maybe later' })
+  if (await laterBtn.count().catch(() => 0)) {
+    await laterBtn.click().catch(() => {})
     await page.waitForTimeout(400)
   }
 }

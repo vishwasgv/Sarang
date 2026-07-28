@@ -5,7 +5,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { createAppointment, updateAppointment, generateAppointmentInvoice, generateAppointmentBatchInvoice } from '../appointment.service'
+import { createAppointment, updateAppointment, generateAppointmentInvoice, generateAppointmentBatchInvoice, getAppointmentsByDate } from '../appointment.service'
 
 // Regression coverage for the Phase 22 re-audit finding: createAppointment's
 // duration-aware conflict check existed but wasn't atomic with the write
@@ -677,5 +677,37 @@ describe('appointment.service — generateAppointmentBatchInvoice', () => {
     expect(db.appointment.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ invoiceId: 'invoice-1' }) }))
     expect(byIdInvoiceId(db, 'apt-1')).toBeNull()
     expect(byIdInvoiceId(db, 'apt-2')).toBeNull()
+  })
+})
+
+// Real bug found live (2026-07-28, E2E regression hunt): this function used
+// bare `new Date(date)` (UTC midnight) for its day-range query, while
+// createAppointment/updateAppointment in this same file write scheduledDate
+// via parseLocalDateStart (local midnight) — a read/write mismatch that made
+// an appointment created for "today" (local time) invisible to this
+// function's "today" query for part of the day, depending on the timezone
+// offset. Caught by two live E2E suites (02-service-business,
+// 34-beautysalon-multiservice) whose "advance status via the Today view"
+// steps started failing once the write side was fixed to local time in an
+// earlier pass, without this sibling read function being fixed alongside it.
+describe('appointment.service.getAppointmentsByDate — local calendar-day correctness', () => {
+  it('queries using local midnight boundaries, not UTC midnight', async () => {
+    const db = { appointment: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getAppointmentsByDate('2026-07-28')
+
+    const call = db.appointment.findMany.mock.calls[0][0]
+    const { gte, lt } = call.where.scheduledDate
+    // Local calendar components must read July 28th at local midnight — what
+    // new Date('2026-07-28') (UTC midnight) would NOT reliably show once
+    // local components are inspected in a timezone behind UTC.
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(6) // 0-indexed: July
+    expect(gte.getDate()).toBe(28)
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
+    // The upper bound must be exactly 24 hours later (local next-day midnight).
+    expect(lt.getTime() - gte.getTime()).toBe(86400000)
   })
 })
