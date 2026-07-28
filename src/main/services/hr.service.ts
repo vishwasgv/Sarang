@@ -625,17 +625,74 @@ export async function updateLeaveStatus(payload: {
 }): Result<void> {
   try {
     const prisma = getPrisma()
-    await prisma.leaveRequest.update({
-      where: { id: payload.id },
-      data: {
-        status: payload.status,
-        approvedBy: payload.approvedBy || null,
-        approvedAt: new Date(),
-        notes: payload.notes?.trim() || null
+
+    if (payload.status !== 'APPROVED') {
+      await prisma.leaveRequest.update({
+        where: { id: payload.id },
+        data: {
+          status: payload.status,
+          approvedBy: payload.approvedBy || null,
+          approvedAt: new Date(),
+          notes: payload.notes?.trim() || null
+        }
+      })
+      return { success: true }
+    }
+
+    // Real bug found live (2026-07-28 reports/HR audit): the leave-day cap
+    // (LeaveType.maxDays) was computed for display in getLeaveBalance but
+    // never actually enforced anywhere — an employee already at their cap
+    // could still have further leave requests approved with no error, and
+    // getLeaveBalance's own `Math.max(0, ...)` silently floored the overage
+    // instead of surfacing it. Enforced here, atomically with the status
+    // flip (read + balance check + conditional claim all inside one
+    // transaction), since approval is the only point a leave request
+    // actually consumes balance — see getLeaveBalance's APPROVED-only filter.
+    await prisma.$transaction(async (tx) => {
+      const request = await tx.leaveRequest.findUnique({ where: { id: payload.id } })
+      if (!request) throw Object.assign(new Error('Leave request not found.'), { _code: 'HR-034' })
+      if (request.status !== 'PENDING') {
+        throw Object.assign(new Error('Only a pending leave request can be approved.'), { _code: 'HR-035' })
+      }
+
+      const leaveType = await tx.leaveType.findUnique({ where: { id: request.leaveTypeId } })
+      if (leaveType && leaveType.maxDays > 0) {
+        const year = new Date(request.fromDate).getFullYear()
+        const agg = await tx.leaveRequest.aggregate({
+          where: {
+            employeeId: request.employeeId,
+            leaveTypeId: request.leaveTypeId,
+            status: 'APPROVED',
+            fromDate: { gte: new Date(year, 0, 1), lte: new Date(year, 11, 31) }
+          },
+          _sum: { days: true }
+        })
+        const used = agg._sum.days ?? 0
+        if (used + request.days > leaveType.maxDays) {
+          throw Object.assign(
+            new Error(`Cannot approve: this would use ${used + request.days} of ${leaveType.maxDays} ${leaveType.name} day(s) allowed for ${year} (${used} already approved).`),
+            { _code: 'HR-036' }
+          )
+        }
+      }
+
+      const claim = await tx.leaveRequest.updateMany({
+        where: { id: payload.id, status: 'PENDING' },
+        data: {
+          status: 'APPROVED',
+          approvedBy: payload.approvedBy || null,
+          approvedAt: new Date(),
+          notes: payload.notes?.trim() || null
+        }
+      })
+      if (claim.count === 0) {
+        throw Object.assign(new Error('This leave request was already actioned by another action.'), { _code: 'HR-035' })
       }
     })
+
     return { success: true }
   } catch (e: any) {
+    if (e?._code) return { success: false, error: { code: e._code, message: e.message } }
     console.error('[HR-032]', e)
     return { success: false, error: { code: 'HR-032', message: 'Something went wrong. Please try again.' } }
   }

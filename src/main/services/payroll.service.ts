@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getMonthlySummaries } from './hr.service'
 import type { Allowance } from './hr.service'
+import { roundCurrency } from './currency.service'
 
 // Deliberately owner-configurable deductions (name+amount pairs), not computed
 // statutory formulas — see PHASE_54F_16_TECHNICAL_SPEC.md Section 1 for why.
@@ -160,19 +161,35 @@ export async function updateSalaryPayment(payload: { id: string; deductions: Ded
     const cleanDeductions = (payload.deductions ?? [])
       .map((d) => ({ name: (d.name ?? '').trim(), amount: Number(d.amount) || 0 }))
       .filter((d) => d.name.length > 0)
-    const totalDeductions = cleanDeductions.reduce((s, d) => s + d.amount, 0)
-    const netPayable = existing.grossSalary - totalDeductions
+    const totalDeductions = roundCurrency(cleanDeductions.reduce((s, d) => s + d.amount, 0))
+    const netPayable = roundCurrency(existing.grossSalary - totalDeductions)
 
-    const updated = await db.salaryPayment.update({
-      where: { id: payload.id },
+    // Real bug found live (2026-07-28 reports/HR audit): the PAID check
+    // above ran against a pre-transaction snapshot and the write below was
+    // an unconditional update — markSalaryPaid (correctly atomic, right
+    // below) could run fully in between this check and this write, creating
+    // its linked Expense off the pre-edit netPayable and marking PAID, only
+    // for this call to then silently overwrite deductions/netPayable on a
+    // payslip that's now PAID — violating the "a paid payslip can no longer
+    // be edited" invariant this function's own header comment documents,
+    // and leaving the linked Expense.amount permanently out of sync with
+    // SalaryPayment.netPayable. Claimed atomically like every other
+    // status-guarded write in this codebase.
+    const claim = await db.salaryPayment.updateMany({
+      where: { id: payload.id, status: 'DRAFT' },
       data: {
         deductions: JSON.stringify(cleanDeductions),
         totalDeductions,
         netPayable,
         notes: payload.notes?.trim() || null,
       },
-      include: includeEmployee,
     })
+    if (claim.count === 0) {
+      return { success: false, error: { code: 'PAY-005', message: 'This payslip has already been paid and can no longer be edited.' } }
+    }
+
+    const updated = await db.salaryPayment.findUnique({ where: { id: payload.id }, include: includeEmployee })
+    if (!updated) return { success: false, error: { code: 'PAY-004', message: 'Payroll record not found.' } }
     return { success: true, data: serializeRecord(updated) }
   } catch (e) {
     return { success: false, error: { code: 'PAY-006', message: e instanceof Error ? e.message : 'Could not update deductions.' } }

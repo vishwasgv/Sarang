@@ -213,7 +213,12 @@ export function register(handle: HandleFn): void {
   })
 
   handle('reports:projects', async (payload) => {
-    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    // Real bug found live (2026-07-28 reports/HR/security audit): projects
+    // are gated on 'sales.view' everywhere else (project.handler.ts) — this
+    // report channel used the blanket 'reports.sales' key instead, which a
+    // Cashier holds but 'sales.view' they do not, letting a Cashier-role
+    // user read a report over data their role has no direct access to.
+    const deny = await requirePermission('sales.view'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateProjectReport(parsed.data)
@@ -229,7 +234,9 @@ export function register(handle: HandleFn): void {
   })
 
   handle('reports:jobCards', async (payload) => {
-    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    // Same fix as reports:projects above — job cards are gated on
+    // 'sales.view' in job-card.handler.ts, not the blanket 'reports.sales'.
+    const deny = await requirePermission('sales.view'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateJobCardReport(parsed.data)
@@ -325,7 +332,10 @@ export function register(handle: HandleFn): void {
   })
 
   handle('reports:logistics', async (payload) => {
-    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    // Same fix as reports:projects/jobCards above — logistics is gated on
+    // 'logistics.view' everywhere else (logistics-shipment.handler.ts,
+    // logistics-analytics.handler.ts), not the blanket 'reports.sales'.
+    const deny = await requirePermission('logistics.view'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateLogisticsReport(parsed.data)
@@ -333,7 +343,12 @@ export function register(handle: HandleFn): void {
   })
 
   handle('reports:attendance', async (payload) => {
-    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    // Same fix as above — attendance is gated on 'hr.view' everywhere else
+    // (hr.handler.ts), not the blanket 'reports.sales'. Without this, a
+    // Cashier (who holds 'reports.sales' but not 'hr.view') could open
+    // Reports -> Attendance and see every employee's name/status/check-in-out
+    // for the whole business despite having no HR module access.
+    const deny = await requirePermission('hr.view'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateAttendanceReport(parsed.data)

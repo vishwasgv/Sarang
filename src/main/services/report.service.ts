@@ -1052,20 +1052,20 @@ async function generateFoodCostReport(params?: { dateFrom?: string; dateTo?: str
     if (byProduct.has(key)) {
       const existing = byProduct.get(key)!
       existing.totalQuantityUsed += used
-      existing.totalCost += used * cost
+      existing.totalCost = roundCurrency(existing.totalCost + used * cost)
     } else {
       byProduct.set(key, {
         ingredientName: m.product.productName,
         unit: m.product.unit,
         totalQuantityUsed: used,
         costPrice: cost,
-        totalCost: used * cost
+        totalCost: roundCurrency(used * cost)
       })
     }
   }
 
   const rows = Array.from(byProduct.values()).sort((a, b) => b.totalCost - a.totalCost)
-  const totalCost = rows.reduce((s, r) => s + r.totalCost, 0)
+  const totalCost = sumCurrency(rows.map(r => r.totalCost))
 
   return { dateFrom: params?.dateFrom, dateTo: params?.dateTo, totalCost, rows }
 }

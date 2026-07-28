@@ -90,14 +90,28 @@ function makeExistingRecord(overrides: Partial<{ status: string; grossSalary: nu
   }
 }
 
+// updateSalaryPayment now claims its status-guarded write via a conditional
+// updateMany({ where: { id, status: 'DRAFT' } }) instead of a plain findUnique
+// + unconditional update — see the race-fix comment in payroll.service.ts.
+// makeUpdateDb wires findUnique to return the pre-write snapshot on the first
+// call (existence/status check) and the post-write snapshot on the second
+// (re-fetch after a successful claim).
+function makeUpdateDb(before: ReturnType<typeof makeExistingRecord>, after: Partial<ReturnType<typeof makeExistingRecord>>, updateManyCount = 1) {
+  const db = {
+    salaryPayment: {
+      findUnique: vi.fn()
+        .mockResolvedValueOnce(before)
+        .mockResolvedValueOnce({ ...before, ...after, employee: { fullName: 'Test Employee' } }),
+      updateMany: vi.fn().mockResolvedValue({ count: updateManyCount }),
+      update: vi.fn(),
+    },
+  }
+  return db
+}
+
 describe('updateSalaryPayment', () => {
   it('recomputes totalDeductions and netPayable server-side from submitted lines', async () => {
-    const db = {
-      salaryPayment: {
-        findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ grossSalary: 20000 })),
-        update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...makeExistingRecord({ grossSalary: 20000 }), ...data, employee: { fullName: 'Test Employee' } })),
-      },
-    }
+    const db = makeUpdateDb(makeExistingRecord({ grossSalary: 20000 }), { totalDeductions: 2550, netPayable: 17450 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'PF', amount: 2400 }, { name: 'ESI', amount: 150 }] })
@@ -105,15 +119,14 @@ describe('updateSalaryPayment', () => {
     expect(res.success).toBe(true)
     expect(res.data?.totalDeductions).toBe(2550)
     expect(res.data?.netPayable).toBe(20000 - 2550)
+    expect(db.salaryPayment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'sp-1', status: 'DRAFT' },
+      data: expect.objectContaining({ totalDeductions: 2550, netPayable: 17450 }),
+    })
   })
 
   it('ignores a client-submitted netPayable and always derives it from gross minus deductions', async () => {
-    const db = {
-      salaryPayment: {
-        findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ grossSalary: 15000 })),
-        update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...makeExistingRecord({ grossSalary: 15000 }), ...data, employee: { fullName: 'Test Employee' } })),
-      },
-    }
+    const db = makeUpdateDb(makeExistingRecord({ grossSalary: 15000 }), { totalDeductions: 1000, netPayable: 14000 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'TDS', amount: 1000 }] })
@@ -121,24 +134,35 @@ describe('updateSalaryPayment', () => {
     expect(res.data?.netPayable).toBe(14000)
   })
 
-  it('rejects mutation once the record is already PAID', async () => {
-    const db = { salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ status: 'PAID' })), update: vi.fn() } }
+  it('rejects mutation once the record is already PAID (pre-transaction snapshot)', async () => {
+    const db = { salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ status: 'PAID' })), updateMany: vi.fn(), update: vi.fn() } }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'PF', amount: 100 }] })
 
     expect(res.success).toBe(false)
     expect(res.error?.code).toBe('PAY-005')
-    expect(db.salaryPayment.update).not.toHaveBeenCalled()
+    expect(db.salaryPayment.updateMany).not.toHaveBeenCalled()
+  })
+
+  // Real bug found live (2026-07-28 reports/HR audit): the PAID check used to
+  // run against a stale pre-transaction read while the write was an
+  // unconditional update — markSalaryPaid could mark the record PAID in
+  // between this check and this write, and the edit would silently go
+  // through anyway. Now the claim itself is conditional on status: 'DRAFT',
+  // so the race loser fails cleanly instead of corrupting a paid payslip.
+  it('rejects the write if the record was marked PAID by another action inside the race window', async () => {
+    const db = { salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ status: 'DRAFT' })), updateMany: vi.fn().mockResolvedValue({ count: 0 }), update: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'PF', amount: 100 }] })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('PAY-005')
   })
 
   it('filters out blank-named deduction lines', async () => {
-    const db = {
-      salaryPayment: {
-        findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ grossSalary: 10000 })),
-        update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...makeExistingRecord({ grossSalary: 10000 }), ...data, employee: { fullName: 'Test Employee' } })),
-      },
-    }
+    const db = makeUpdateDb(makeExistingRecord({ grossSalary: 10000 }), { totalDeductions: 100, netPayable: 9900 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: '  ', amount: 500 }, { name: 'PF', amount: 100 }] })
