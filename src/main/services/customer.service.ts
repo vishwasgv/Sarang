@@ -3,8 +3,27 @@ import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { customerLedgerService } from './customer-ledger.service'
+import { toLocalDateOnlyIso } from '../utils/date.util'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateCustomerPayload, UpdateCustomerPayload } from '../validation/customer.validation'
+
+// BUG FOUND 2026-07-28 (reports/settings/HR/security/licensing/master-data
+// audit pass): Customer.lastAgmDate is a nullable Prisma DateTime (Phase 58
+// §2 — CA Firm/Company Secretary vertical). Every function below used to
+// return the raw Prisma row, so `lastAgmDate` crossed the IPC boundary as a
+// real Date instance (structured clone preserves Date, it doesn't coerce it
+// to a string). ComplianceScreen.tsx's edit-AGM-date form populator does
+// `c.lastAgmDate.slice(0, 10)`, assuming a string (matching this codebase's
+// own convention — see date.util.ts's toLocalDateOnlyIso doc comment for the
+// same bug class already found/fixed across the professional-services
+// verticals) — so opening that dialog for any client with an AGM date
+// already on file threw `TypeError: c.lastAgmDate.slice is not a function`.
+// createdAt/updatedAt are left as-is: nothing in the renderer treats them as
+// date-only strings, only as display values via `new Date(x)`, which works
+// identically whether `x` is already a Date or an ISO string.
+function serializeCustomer<T extends { lastAgmDate?: Date | null }>(row: T): Omit<T, 'lastAgmDate'> & { lastAgmDate: string | null } {
+  return { ...row, lastAgmDate: row.lastAgmDate ? toLocalDateOnlyIso(row.lastAgmDate) : null }
+}
 
 export async function listCustomers(filters?: { page?: number; limit?: number; search?: string }): Promise<ApiResponse> {
   try {
@@ -31,7 +50,7 @@ export async function listCustomers(filters?: { page?: number; limit?: number; s
       db.customer.count({ where })
     ])
 
-    return { success: true, data: { customers, total, page, limit, pages: Math.ceil(total / limit) } }
+    return { success: true, data: { customers: customers.map(serializeCustomer), total, page, limit, pages: Math.ceil(total / limit) } }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }
@@ -77,7 +96,7 @@ export async function searchCustomers(query: string): Promise<ApiResponse> {
       take: 20,
       orderBy: { customerName: 'asc' }
     })
-    return { success: true, data: customers }
+    return { success: true, data: customers.map(serializeCustomer) }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }
@@ -88,7 +107,7 @@ export async function getCustomer(id: string): Promise<ApiResponse> {
     const db = getPrisma()
     const customer = await db.customer.findUnique({ where: { id } })
     if (!customer) return { success: false, error: { code: 'CUS-001', message: 'Customer not found.' } }
-    return { success: true, data: customer }
+    return { success: true, data: serializeCustomer(customer) }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }
@@ -117,7 +136,7 @@ export async function getCustomerLedger(customerId: string): Promise<ApiResponse
     // wrong, and that's what's fixed here.
     const outstanding = await customerLedgerService.calculateBalance(customerId)
 
-    return { success: true, data: { customer, ledger, outstanding } }
+    return { success: true, data: { customer: serializeCustomer(customer), ledger, outstanding } }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }
@@ -177,7 +196,7 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
     })
 
     await logAction({ userId: getCurrentSession()?.userId, action: 'CUSTOMER_CREATED', entityType: 'Customer', entityId: customer.id, newValue: { customerName: payload.customerName } })
-    return { success: true, data: customer }
+    return { success: true, data: serializeCustomer(customer) }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }
@@ -215,7 +234,7 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
     })
 
     await logAction({ userId: getCurrentSession()?.userId, action: 'CUSTOMER_UPDATED', entityType: 'Customer', entityId: payload.id })
-    return { success: true, data: updated }
+    return { success: true, data: serializeCustomer(updated) }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
   }

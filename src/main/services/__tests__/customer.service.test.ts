@@ -60,6 +60,38 @@ describe('customerService.getCustomer', () => {
     expect((result.data as { customerName: string }).customerName).toBe('Ravi Enterprises')
   })
 
+  // Real bug found 2026-07-28 (reports/settings/HR/security/licensing/
+  // master-data audit pass): Customer.lastAgmDate is a nullable Prisma
+  // DateTime (Phase 58 §2 — CA Firm vertical). Electron's ipcRenderer.invoke
+  // preserves a Date instance across the IPC boundary (structured clone,
+  // not JSON) rather than coercing it to a string — but
+  // ComplianceScreen.tsx's edit-AGM-date form populator does
+  // `c.lastAgmDate.slice(0, 10)`, assuming a string. Before the fix, every
+  // read path here returned the raw Prisma row, so opening that dialog for
+  // any client with an AGM date on file threw at runtime.
+  it('serializes lastAgmDate as a string the renderer can .slice(0, 10) on', async () => {
+    const db = makeDb()
+    db.customer.findUnique = vi.fn().mockResolvedValue(makeCustomer({ lastAgmDate: new Date(2026, 7, 15) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await customerService.getCustomer('cust-1')
+
+    expect(result.success).toBe(true)
+    const lastAgmDate = (result.data as { lastAgmDate: unknown }).lastAgmDate
+    expect(typeof lastAgmDate).toBe('string')
+    expect(() => (lastAgmDate as string).slice(0, 10)).not.toThrow()
+    expect((lastAgmDate as string).slice(0, 10)).toBe('2026-08-15')
+  })
+
+  it('returns lastAgmDate as null (not undefined or a Date) when not set', async () => {
+    const db = makeDb()
+    db.customer.findUnique = vi.fn().mockResolvedValue(makeCustomer({ lastAgmDate: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await customerService.getCustomer('cust-1')
+    expect((result.data as { lastAgmDate: unknown }).lastAgmDate).toBeNull()
+  })
+
   it('returns error for non-existent customer', async () => {
     const db = makeDb()
     db.customer.findUnique = vi.fn().mockResolvedValue(null)
@@ -166,6 +198,16 @@ describe('customerService.listCustomers', () => {
     expect(result.success).toBe(true)
     const data = result.data as { customers: unknown[]; total: number }
     expect(data.customers).toHaveLength(1)
+  })
+
+  it('serializes lastAgmDate as a string on every row, matching getCustomer', async () => {
+    const db = makeDb()
+    db.customer.findMany = vi.fn().mockResolvedValue([makeCustomer({ lastAgmDate: new Date(2026, 7, 15) })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await customerService.listCustomers({})
+    const data = result.data as { customers: Array<{ lastAgmDate: unknown }> }
+    expect(typeof data.customers[0].lastAgmDate).toBe('string')
   })
 
   it('applies search filter when provided', async () => {
