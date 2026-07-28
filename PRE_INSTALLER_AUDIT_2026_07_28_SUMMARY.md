@@ -84,14 +84,19 @@ Every fix followed the same discipline: read the exact code first, confirm the d
 - **Pricing consistency verified** (founder asked to confirm ₹599/$29-per-year renewal pricing): the 365-day trial constant in `license.service.ts`, the in-app renewal copy (`en.json`'s `license.renewIndia`/`renewIntl`), and the aszurex.com pricing section all say exactly the same thing — ₹599/year India, $29/year international, free for the first 12 months. Real, live Razorpay Payment Link and Lemon Squeezy checkout URLs are already wired into the website (not placeholders).
 - **New feature built mid-audit, at the founder's direct request**: Billing previously only offered a search box plus a 10-item "Frequently Sold" quick-pick strip — no way to browse the full catalog by clicking. Added a **Browse Products** toggle next to the search box: a category-organized, click-to-add tile grid (`BillingScreen.tsx`), defaulting to Browse for a catalog under 100 active products (a typical restaurant menu or small shop) and to Search for a larger one (so a Distributor/Electronics catalog with hundreds of SKUs doesn't become a slow, endless scroll) — the toggle always lets staff override either way regardless of catalog size, and the existing Frequently Sold strip is unchanged as the default fallback. 6 new i18n strings added and translated into all 13 locales; the Guided Tutorial's own Billing step (both the manual chapter and the in-app tour content) updated to mention it, in all 13 locales for the manual and all 13 for the tour. 0 TypeScript errors, lint clean, 1966/1966 unit tests passing, and confirmed against the real live E2E suite (see below) with zero regressions from this specific change.
 
-## 5. The one open item — needs a founder decision, not an engineering call
+## 5. The one open item — decided by the founder, 2026-07-28
 
-**`returns.service.ts`'s `createReturn` bypasses the license-expiry gate entirely** — every other invoice-creating path (`billing.service.ts`, hotel/rental/blood-bank invoicing, field-order) correctly blocks when `tier === 'TRIAL' && status === 'EXPIRED'`, but processing a return currently works regardless of license state. This was **not changed** — it's a genuine product-policy question, not a bug:
+**`returns.service.ts`'s `createReturn` bypasses the license-expiry gate entirely** — every other invoice-creating path (`billing.service.ts`, hotel/rental/blood-bank invoicing, field-order) correctly blocks when `tier === 'TRIAL' && status === 'EXPIRED'`, but processing a return works regardless of license state. Presented as a genuine product-policy question, not a bug, with both sides:
 
 - **Argument for leaving it as-is**: a return is arguably closer to "servicing a sale you already made" than "creating new billable business" — similar in spirit to how an expired license still lets you view/print/export existing data. Refunding a customer shouldn't be held hostage by a lapsed license.
 - **Argument for gating it like everything else**: a return can still generate real financial documents (a credit note, a ledger entry) — the same category of "new billable activity" the gate exists to pause.
 
-This is the only item deferred out of the entire audit. Everything else found was a pure engineering defect and has been fixed.
+**Decision: keep it ungated** ("do whatever is best"). A return doesn't create new revenue-generating business the way a fresh sale does — it corrects/services a sale that already happened — and gating it would leave a customer wanting a legitimate refund stuck for as long as the shop owner's license stays lapsed, a real customer-facing harm rather than just an inconvenience to the business owner. This matches the app's own already-stated licensing philosophy elsewhere ("existing data and services tied to prior sales stay accessible"). Closed out with:
+- A dated comment on `createReturn` in `returns.service.ts` explaining the decision, so a future audit doesn't re-flag this as an oversight.
+- A new regression test (`returns.service.test.ts`) asserting `createReturn` succeeds even with a fully expired trial license, locking the decision in against an accidental future regression.
+- 1967/1967 unit tests passing, 0 TypeScript errors, lint clean.
+
+This was the only item deferred out of the entire audit, and it is now closed. Everything else found was a pure engineering defect and has been fixed.
 
 ## 6. Repository state
 

@@ -35,6 +35,18 @@ function sameLine(item: { productId: string; variantId?: string | null }, produc
   return item.productId === productId && (item.variantId ?? null) === (variantId ?? null)
 }
 
+// Founder decision, 2026-07-28 (pre-installer audit finding #7, previously
+// an open policy question, not an engineering bug): unlike billing.service.ts's
+// createInvoice, this deliberately does NOT check getLicenseState()/block on
+// an expired trial. A return isn't new billable business the same way a
+// fresh sale is — it corrects/services a sale that already happened, and
+// this app's own stated licensing philosophy (see RELEASE_CHECKLIST.md and
+// the LIC-002 message in billing.service.ts) is "existing data and services
+// tied to prior sales stay accessible; only creating new revenue-generating
+// documents pauses." Gating returns would leave a customer wanting a
+// legitimate refund stuck for as long as the shop owner's license stays
+// lapsed — a real customer-facing harm, not just an inconvenience to the
+// business. Decided to keep this ungated; do not "fix" this as a bug.
 export async function createReturn(
   originalInvoiceId: string,
   items: ReturnItem[],

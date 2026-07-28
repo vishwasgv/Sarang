@@ -5,10 +5,12 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../customer-ledger.service', () => ({
   customerLedgerService: { addEntry: vi.fn().mockResolvedValue(undefined) }
 }))
+vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { createReturn, getTodayReturnsSummary, listReturns } from '../returns.service'
 import { customerLedgerService } from '../customer-ledger.service'
+import { getLicenseState } from '../license.service'
 
 const ORIGINAL_INVOICE_ID = 'inv-orig-1'
 
@@ -85,6 +87,26 @@ beforeEach(() => {
 })
 
 describe('returns.service.createReturn', () => {
+  // Founder decision, 2026-07-28 (pre-installer audit finding #7): a return
+  // deliberately does NOT check license state, unlike billing.service.ts's
+  // createInvoice — it corrects/services a sale that already happened
+  // rather than creating new billable business, and this app's own stated
+  // licensing philosophy is "existing data and services tied to prior sales
+  // stay accessible" regardless of license state. This test locks that
+  // decision in: createReturn must keep succeeding even with a fully
+  // expired trial, so a future change doesn't silently re-introduce a gate
+  // here without it being a deliberate, reviewed decision.
+  it('succeeds even when the license is a fully expired trial', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({ tier: 'TRIAL', status: 'EXPIRED' } as never)
+
+    const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 5 }], 'Defective')
+
+    expect(res.success).toBe(true)
+    expect(getLicenseState).not.toHaveBeenCalled()
+  })
+
   it('includes tax in totalAmount/balanceAmount, not just the pre-tax net', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
