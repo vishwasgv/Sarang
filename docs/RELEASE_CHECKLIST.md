@@ -188,11 +188,13 @@ through the real UI (or `window.api` IPC calls in a live-driven test, per
 
 ### Licensing & Monetization (Phase 59 — new since this checklist's last full pass, never been through Section 3's live-verification standard)
 - [x] License key generation/verification round-trips and rejects tampering — unit-tested (`license.service.test.ts`), not re-verified here via live UI this pass — the checklist standard for this section is normally live-UI verification; this item is an honest exception, carried forward from the feature's own build-time testing rather than freshly re-proven in this session.
-- [x] `createInvoice` only blocks on `tier === 'TRIAL' && status === 'EXPIRED'` — direct code verification 2026-07-28 (see `billing.service.ts:178`), confirms `PAID`, `NOT_ACTIVATED`, and still-within-free-year `TRIAL` all pass through unblocked.
-- [ ] Live UI walk-through of the actual License screen (activate a real key, see status change, see the Renew card appear/disappear at the right tier) — **not done this pass**, worth a real e2e suite (`tests/e2e/suites/`) given this directly touches revenue and has never had one.
+- [x] **Real gap found+closed 2026-07-28, revenue-critical**: a `PAID` license used to be exempt from expiry entirely (`getLicenseState()` special-cased `tier === 'PAID'` straight to `ACTIVE` regardless of age) — the first renewal payment silently bought a permanent, never-expiring license, despite every pricing surface saying "/year". `createInvoice`/`convertToInvoice` now block on `status === 'EXPIRED'` regardless of tier — a `PAID` key genuinely re-expires on its own annual cycle (335/365 days from *that key's* issuedAt) exactly like TRIAL, and requires a real second (and third, and every subsequent) payment+key to keep working. `NOT_ACTIVATED` and still-within-year `TRIAL`/`PAID` still pass through unblocked, unchanged. See `docs/LICENSING_AND_RENEWAL_MECHANICS.md` Section 5 for the full writeup.
+- [x] **Live UI walk-through of the actual License screen — done 2026-07-28**, not just code-verified: `tests/e2e/setup-license-resume-gate.js` drives the real packaged-equivalent dev app, discovered the project's own persistent dev DB was genuinely sitting in a real license-bypass-vulnerable state (business/admin created, no license ever activated — predates Phase 59), confirmed the fix correctly shows a resume prompt instead of a silent bypass, activated a real key through the UI, and confirmed via a live `window.api.license.getStatus()` IPC call that access was genuinely restored (not just a UI state change). Kept as a permanent regression asset.
 - [ ] Razorpay/Lemon Squeezy webhook signature verification — unit/manual-script-tested at build time (see `project_phase59_monetization_plan` memory), not re-verified this pass. Re-confirm before this release ships given it's the exact hole ("forge a fake payment, mint a free key") this project already found and fixed once.
 - [x] Website lead-capture + usage-metrics Google Sheets pipelines — live-verified end-to-end this session (2026-07-27) via real POSTs through the actual production routes, not just against the Apps Script URLs in isolation.
-- [ ] Upgrade-path license behavior — see Upgrade section above; code-verified, not live-upgrade-tested.
+- [x] **Real gap found+closed 2026-07-28, distinct from the PAID-expiry gap above**: `isSetupComplete()` used to report setup as done purely from a BusinessProfile + admin User existing, with zero regard for a license ever being activated — SetupWizard's `completeSetup()` call runs a full screen before the wizard ever asks for a key, so closing the app in that window (crash, forced reboot, accidental Alt-F4) left a permanent, license-free install. Fixed with a new `needsLicenseOnly` resume state + `LicenseActivationGate` screen. See `setup.service.ts`'s `isSetupComplete()` doc comment and `docs/LICENSING_AND_RENEWAL_MECHANICS.md`.
+- [x] Upgrade-path license behavior — see Upgrade section above; re-verified 2026-07-28 against the corrected (tier-agnostic) `status === 'EXPIRED'` check, still confirmed sound for a pre-Phase-59 upgrade (`NOT_ACTIVATED` never equals `EXPIRED`).
+- [x] **GitHub Releases publish process — undocumented gap found+closed 2026-07-28**: the website's download link and the in-app update-check both depend on a release asset named exactly `Sarang-Setup-latest.exe`, but electron-builder produces `Sarang-Business-OS-Lite-Setup-{version}.exe` — a manual rename step with zero prior documentation or automated verification. Confirmed the live `v1.1.2` release was in fact done correctly (via the GitHub API), but the process itself was pure tribal knowledge until now. See the new "Publishing to GitHub Releases" subsection in Section 10 below for the exact steps and a verification command to run before considering any future release done.
 
 ### 2026-07-28 Adversarial Bug-Hunt: 5 Sequential Deep-Dive Passes
 Distinct from the live-UI-verification standard used elsewhere in this
@@ -326,7 +328,7 @@ Output: `release/Sarang-Business-OS-Lite-Setup-{version}.exe`
 - [ ] Still needs a genuinely clean VM (no Node.js/dev tools/existing `.dev-data`) — this session's install was onto the dev machine that built it, which proves the installer mechanics work but not that it's clean of dev-environment assumptions. **Partial substitute check done 2026-07-15** (this environment has no VM-provisioning access): scanned the actual packaged `app.asar` for the two most likely real leaks — zero hardcoded dev-machine paths anywhere in the bundled main-process code (`grep`'d for this machine's actual paths/username, zero matches, both in `out/main/index.js` and the extracted-from-asar copy), and no dev-only tooling (TypeScript compiler, Vite, the `electron` dev package itself) accidentally bundled as a real runtime dependency. **Could not check**: whether the native `.node` addons (Prisma's query engine, node-llama-cpp) depend on the Visual C++ Redistributable being separately installed on the target machine — this needs either a real clean VM or PE-dependency-inspection tooling (`dumpbin`/`objdump`), neither available in this environment. This is the single most plausible way a clean machine could fail differently from this dev box and remains a genuine, unclosed gap — flagged clearly rather than assumed fine.
 
 ### Upgrade (from the previous shipped version)
-**No longer N/A — this section's old "V1, no prior version" framing is stale and must not be copied forward.** Real shipped versions now exist: `v1.0.0` → `v1.0.1` → `v1.1.0` → `v1.1.1` → `v1.1.2`, and this release adds Phase 59 (licensing/monetization) + usage-metrics on top. This is exactly the scenario this section was written for and it has never actually been run against a real upgrade. **Code-verified 2026-07-28** (not yet live-upgrade-tested): an existing `v1.0.x`/`v1.1.x` install has no `license_key` Setting row at all — `getLicenseState()` (`license.service.ts`) correctly returns `{status: 'NOT_ACTIVATED', tier: null}` for this case (not a crash), and `billing.service.ts`'s `createInvoice` only blocks when `tier === 'TRIAL' && status === 'EXPIRED'` — a `null` tier never matches, so an upgraded pre-Phase-59 install keeps working, un-gated, exactly matching "old installs keep the free-forever promise they were already given" (see `project_phase59_monetization_plan` memory). The logic is sound by direct code inspection; what's still missing is running an actual installer-over-installer upgrade to confirm this in practice, not just in the source.
+**No longer N/A — this section's old "V1, no prior version" framing is stale and must not be copied forward.** Real shipped versions now exist: `v1.0.0` → `v1.0.1` → `v1.1.0` → `v1.1.1` → `v1.1.2`, and this release adds Phase 59 (licensing/monetization) + usage-metrics on top. This is exactly the scenario this section was written for and it has never actually been run against a real upgrade. **Code-verified 2026-07-28, re-verified after the same-day PAID-expiry fix**: an existing `v1.0.x`/`v1.1.x` install has no `license_key` Setting row at all — `getLicenseState()` (`license.service.ts`) correctly returns `{status: 'NOT_ACTIVATED', tier: null}` for this case (not a crash), and `billing.service.ts`'s `createInvoice` blocks only on `status === 'EXPIRED'` — `NOT_ACTIVATED` never equals `EXPIRED` regardless of tier, so an upgraded pre-Phase-59 install keeps working, un-gated, exactly matching "old installs keep the free-forever promise they were already given" (see `project_phase59_monetization_plan` memory). This guarantee held even after removing the old `tier === 'TRIAL'` qualifier from the check (the fix that closed the separate PAID-never-expires gap) — confirmed by re-reading the condition, not assumed. The logic is sound by direct code inspection; what's still missing is running an actual installer-over-installer upgrade to confirm this in practice, not just in the source.
 - [ ] Install a prior real version (e.g. `v1.1.2`), create real test data (customer, invoice, payment)
 - [x] Note the DB path — confirmed still accurate: `%APPDATA%\sarang-business-os\sarang.db` (Electron's default `app.getPath('userData')` uses `package.json`'s `name` field, not the display `productName`)
 - [ ] Run the new installer over the old install
@@ -389,6 +391,87 @@ passed, reproducibly clean.
 - `release/Sarang-Business-OS-Lite-Setup-{version}.exe`
 - Release notes: new features, improvements, bug fixes, migration notes, known limitations
 - After release: fresh install, upgrade, backup, reports, and analytics re-verified against the actual shipped build (not the last dev build)
+
+### Publishing to GitHub Releases — the real, exact steps (written+verified 2026-07-28)
+
+This step was previously undocumented entirely — the only record of it was tribal
+knowledge in whoever actually ran it. Written here after confirming the *live*
+`v1.1.2` release on `github.com/vishwasgv/Sarang` was in fact done correctly, by
+inspecting its real assets via the GitHub API (`curl
+https://api.github.com/repos/vishwasgv/Sarang/releases/latest`).
+
+**Critical, easy-to-forget step — the whole download/acquisition funnel silently
+breaks without it**: the website's lead-capture flow (`aszurex website`
+repo, `server.js`'s `/api/sarang-download` route, `SARANG_DOWNLOAD_URL`) and
+`update-check.service.ts`'s `DOWNLOAD_URL` both ultimately point at
+`github.com/vishwasgv/Sarang/releases/latest/download/Sarang-Setup-latest.exe` —
+a **fixed, version-independent filename**. But `electron-builder.config.ts`'s
+`artifactName` produces `Sarang-Business-OS-Lite-Setup-{version}.exe` (e.g.
+`Sarang-Business-OS-Lite-Setup-1.1.2.exe`) — a **different, version-specific**
+filename. GitHub's `/releases/latest/download/<name>` URL scheme requires an
+EXACT asset-name match; it does not fuzzy-match or resolve "the newest file."
+**Every release, the built `.exe` must be renamed to exactly
+`Sarang-Setup-latest.exe` before/during upload to the GitHub Release** — if this
+step is skipped or mistyped, every new trial signup's download link 404s (a
+much worse failure than the in-app update-check merely not firing, since it
+breaks brand-new customer acquisition, not just existing users noticing an
+update).
+
+Exact steps:
+1. Build per Section 6 above: `release/Sarang-Business-OS-Lite-Setup-{version}.exe`.
+2. Compute its SHA256 (already part of this project's own release-notes convention — see any prior release's notes on GitHub for the format) and include it in the release notes.
+3. Create the GitHub Release with tag `v{version}` (the `v` prefix is required — `update-check.service.ts`'s `fetchLatestReleaseInfo()` strips exactly one leading `v` from `tag_name` before comparing to `app.getVersion()`; a tag without the `v` or with a different prefix breaks the update-detection comparison for every existing install).
+4. Upload the built `.exe` as a release asset, **renamed to exactly `Sarang-Setup-latest.exe`** (case-sensitive) — not the original `Sarang-Business-OS-Lite-Setup-{version}.exe` filename.
+5. **Verify before considering the release done**, not after a support ticket reports a broken download:
+   ```bash
+   curl -s https://api.github.com/repos/vishwasgv/Sarang/releases/latest | grep -E '"tag_name"|"name": "Sarang'
+   # tag_name must read "v{version}" and there must be exactly one asset named "Sarang-Setup-latest.exe"
+   curl -sI https://github.com/vishwasgv/Sarang/releases/latest/download/Sarang-Setup-latest.exe
+   # must return a redirect chain ending 200, not 404
+   ```
+
+### Adding a new business vertical — what's safe, what needs care
+
+Relevant whenever a future release adds a new vertical (this project has done
+this ~40+ times already; recorded here so the *update-safety* half of that
+process — not the feature-building half, which is already well-trodden — isn't
+left to be rediscovered each time):
+
+- **Schema changes (new Prisma models/columns for the new vertical) are safe
+  by construction, already exercised for real**: `db.ts`'s custom migration
+  runner (no Prisma CLI dependency at runtime — not available in a packaged
+  app) applies any new `prisma/migrations/*` directory not yet in the local
+  `_sarang_migrations` tracker table, inside one transaction per migration,
+  after taking and integrity-checking a full pre-upgrade backup (aborts the
+  upgrade rather than proceeding without one). `electron-builder.config.ts`'s
+  `extraResources` correctly bundles `prisma/migrations` and
+  `prisma/schema.prisma` into every build (`process.resourcesPath/prisma/...`)
+  — confirmed by reading the config, not assumed. **The one real discipline
+  this requires**: always add a new migration for schema changes via `npm run
+  db:migrate` (or equivalent) rather than only editing `schema.prisma` and
+  relying on dev-mode's `db push`-style behavior — dev mode creates tables
+  straight from the schema file, which masks a missing migration until a real
+  packaged upgrade is tested (this exact failure mode shipped once already,
+  see the "Upgrade" section's `NormalRangeReference`/schema-drift writeup
+  above). Cross-check with `prisma migrate diff --from-migrations
+  ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --script`
+  before shipping, not a hand-rolled table-name check (also already learned
+  the hard way, same writeup).
+- **A new `BusinessType` value itself needs no migration** — SQLite has no
+  real enum type, so this is just a new allowed string recognized by
+  application code (Zod schemas, `SERVICE_TEMPLATE_TYPES`,
+  `getLanguageLockFor`, the seeded default-services list, i18n content, the
+  SetupWizard's business-type picker) — an existing install that updates
+  simply gains the ability to newly *select* that type going forward; nothing
+  about its own existing data is touched.
+- **Existing installs on an older version, with an older `BusinessType` set,
+  are never retroactively affected** — a business already set up as e.g.
+  `RETAIL` stays `RETAIL` after updating; the new vertical only appears as a
+  new *option*, never a migration of existing businesses into it.
+- **License/setup gating is independent of business type** — `getLicenseState()`
+  and `isSetupComplete()` (see this checklist's Section 3 licensing notes and
+  `docs/LICENSING_AND_RENEWAL_MECHANICS.md`) never branch on business type, so
+  adding a vertical carries zero risk of touching licensing enforcement.
 
 ---
 
