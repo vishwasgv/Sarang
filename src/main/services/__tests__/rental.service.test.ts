@@ -64,7 +64,12 @@ function makeBaseMockDb() {
     },
     rentalBooking: {
       create: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue(null),
-      update: vi.fn().mockResolvedValue({}), updateMany: vi.fn(),
+      update: vi.fn().mockResolvedValue({}),
+      // Default: the atomic status-transition claim succeeds (count: 1) —
+      // matches "no concurrent action already changed this booking", which
+      // is what every pre-existing test here assumes. Race-condition tests
+      // below override this to { count: 0 } to simulate the claim losing.
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     setting: { findUnique: vi.fn().mockResolvedValue(null) },
   }
@@ -308,8 +313,28 @@ describe('rental.service — checkoutBooking', () => {
 
     const res = await checkoutBooking({ id: 'booking-1', checkoutNotes: 'all good' })
     expect(res.success).toBe(true)
-    expect(db.rentalBooking.update).toHaveBeenCalledWith({ where: { id: 'booking-1' }, data: expect.objectContaining({ status: 'CHECKED_OUT', checkoutNotes: 'all good' }) })
+    expect(db.rentalBooking.updateMany).toHaveBeenCalledWith({ where: { id: 'booking-1', status: 'RESERVED' }, data: expect.objectContaining({ status: 'CHECKED_OUT', checkoutNotes: 'all good' }) })
     expect(db.rentalUnit.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['unit-1'] } }, data: { status: 'RENTED' } })
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): checkoutBooking
+  // used to check `booking.status !== 'RESERVED'` against a pre-transaction
+  // read, then write with an unconditional `update` — a second concurrent
+  // checkout of the same booking (already claimed by another action, here
+  // simulated by the atomic updateMany claim reporting count: 0) would still
+  // sail through and re-run every side effect. Fixed to claim the RESERVED
+  // -> CHECKED_OUT transition atomically and abort if another action already
+  // claimed it.
+  it('fails cleanly instead of double-processing when another action already claimed the checkout (concurrent checkout race)', async () => {
+    const db = makeBaseMockDb()
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({ status: 'RESERVED', items: [{ rentalUnitId: 'unit-1' }] }))
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkoutBooking({ id: 'booking-1' })
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('RENT-012')
+    expect(db.rentalUnit.updateMany).not.toHaveBeenCalled()
   })
 })
 
@@ -356,7 +381,7 @@ describe('rental.service — returnBooking', () => {
 
     const res = await returnBooking({ id: 'booking-1' })
     expect(res.success).toBe(true)
-    expect(db.rentalBooking.update).toHaveBeenCalledWith({ where: { id: 'booking-1' }, data: expect.objectContaining({ lateFeeAmount: 0 }) })
+    expect(db.rentalBooking.updateMany).toHaveBeenCalledWith({ where: { id: 'booking-1', status: 'CHECKED_OUT' }, data: expect.objectContaining({ lateFeeAmount: 0 }) })
   })
 
   it('computes a late fee using the configured multiplier, normalized to a per-day rate, for a late return', async () => {
@@ -378,7 +403,7 @@ describe('rental.service — returnBooking', () => {
 
     expect(res.success).toBe(true)
     // dailyEquivalent = 2000 (already DAY-basis) * multiplier(2) * lateDurationUnits(1) * quantity(1) = 4000
-    expect(db.rentalBooking.update).toHaveBeenCalledWith({ where: { id: 'booking-1' }, data: expect.objectContaining({ lateFeeAmount: 4000 }) })
+    expect(db.rentalBooking.updateMany).toHaveBeenCalledWith({ where: { id: 'booking-1', status: 'CHECKED_OUT' }, data: expect.objectContaining({ lateFeeAmount: 4000 }) })
     void oneDayLate
   })
 
@@ -392,6 +417,30 @@ describe('rental.service — returnBooking', () => {
 
     await returnBooking({ id: 'booking-1' })
     expect(db.rentalUnit.update).toHaveBeenCalledWith({ where: { id: 'unit-1' }, data: { status: 'AVAILABLE' } })
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): returnBooking
+  // checked `booking.status !== 'CHECKED_OUT'` against a pre-transaction
+  // read, then wrote with an unconditional `update` — two near-simultaneous
+  // returns of the same booking (already claimed by another action, here
+  // simulated by the atomic updateMany claim reporting count: 0) would both
+  // proceed, and rentalUnit.update's `rentalCountSinceService: { increment: 1 }`
+  // is a true atomic DB increment, so both calls succeeding would
+  // double-count it — silently routing a unit to MAINTENANCE a full rental
+  // cycle early. Fixed to claim the CHECKED_OUT -> RETURNED transition
+  // atomically and abort (never touching rentalUnit) if another action
+  // already claimed it.
+  it('fails cleanly instead of double-counting the unit service counter when another action already claimed the return (concurrent return race)', async () => {
+    const db = makeBaseMockDb()
+    const future = new Date(Date.now() + 10 * MS_PER_DAY)
+    db.rentalBooking.findUnique.mockResolvedValue(makeBookingRow({ status: 'CHECKED_OUT', endDateTime: future, items: [{ rateAmount: 2000, rateBasis: 'DAY', quantity: 1, rentalUnitId: 'unit-1' }] }))
+    db.rentalBooking.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await returnBooking({ id: 'booking-1' })
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('RENT-014')
+    expect(db.rentalUnit.update).not.toHaveBeenCalled()
   })
 })
 
@@ -735,8 +784,8 @@ describe('rental.service — itemized damage charge', () => {
       ],
     })
 
-    expect(db.rentalBooking.update).toHaveBeenCalledWith({
-      where: { id: 'booking-1' },
+    expect(db.rentalBooking.updateMany).toHaveBeenCalledWith({
+      where: { id: 'booking-1', status: 'CHECKED_OUT' },
       data: expect.objectContaining({ damageChargeAmount: 800 }),
     })
     expect(db.rentalBookingItem.update).toHaveBeenCalledWith({ where: { id: 'item-1' }, data: { conditionIn: 'Scratched bumper', damageChargeAmount: 800 } })
@@ -753,8 +802,8 @@ describe('rental.service — itemized damage charge', () => {
 
     await returnBooking({ id: 'booking-1', damageChargeAmount: 300 })
 
-    expect(db.rentalBooking.update).toHaveBeenCalledWith({
-      where: { id: 'booking-1' },
+    expect(db.rentalBooking.updateMany).toHaveBeenCalledWith({
+      where: { id: 'booking-1', status: 'CHECKED_OUT' },
       data: expect.objectContaining({ damageChargeAmount: 300 }),
     })
   })

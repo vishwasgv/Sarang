@@ -38,7 +38,13 @@ function makeDb(existingInventory: { quantity: number; averageCost: number } | n
     },
     inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
     productionOrder: {
-      update: vi.fn().mockResolvedValue({
+      // Real bug found live (2026-07-28 product-vertical audit): completing
+      // an order used to check status against a pre-transaction snapshot,
+      // then write with an unconditional `update` — fixed to an atomic
+      // `updateMany` claim (checked by these tests below), followed by a
+      // `findUniqueOrThrow` re-fetch for the response shape.
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({
         ...IN_PROGRESS_ORDER,
         status: 'COMPLETED',
         producedQty: 10,
@@ -118,7 +124,8 @@ describe('completeProductionOrder — Phase 58 §2 scrap qty + labor costing', (
     expect(db.__txClient.inventory.create).toHaveBeenCalledWith({
       data: { productId: 'prod-finished-1', quantity: 10, averageCost: 15 }
     })
-    expect(db.__txClient.productionOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'po-1', status: 'IN_PROGRESS' },
       data: expect.objectContaining({ scrapQty: 5 })
     }))
   })
@@ -129,9 +136,31 @@ describe('completeProductionOrder — Phase 58 §2 scrap qty + labor costing', (
 
     await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
 
-    expect(db.__txClient.productionOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'po-1', status: 'IN_PROGRESS' },
       data: expect.objectContaining({ scrapQty: 0, laborCost: 0 })
     }))
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): the
+  // `order.status !== 'IN_PROGRESS'` check ran against a pre-transaction
+  // snapshot, and the status write ran unconditionally afterward — two
+  // near-simultaneous completions of the same order (already claimed by
+  // another action, here simulated by the atomic updateMany claim reporting
+  // count: 0) would both proceed and both credit finished-goods inventory,
+  // double-counting stock for one physical production run. Fixed to claim
+  // the IN_PROGRESS -> COMPLETED transition atomically first.
+  it('fails cleanly instead of double-crediting inventory when another action already claimed completion (concurrent complete race)', async () => {
+    const db = makeDb(null)
+    db.__txClient.productionOrder.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('PO-010')
+    expect(db.__txClient.inventory.create).not.toHaveBeenCalled()
+    expect(db.__txClient.inventory.update).not.toHaveBeenCalled()
   })
 })
 
@@ -285,7 +314,11 @@ describe('cancelProductionOrder — Phase 58 §2 restores component-product stoc
       productionMaterialBatchConsumption: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
       inventory: { update: vi.fn().mockResolvedValue({}) },
       inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
-      productionOrder: { update: vi.fn().mockResolvedValue({}) }
+      // Real bug found live (2026-07-28 product-vertical audit): cancel used
+      // to write status via an unconditional `update` after a
+      // pre-transaction status check — fixed to an atomic `updateMany`
+      // claim (see the race test below).
+      productionOrder: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) }
     }
     const db = {
       productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },
@@ -296,10 +329,49 @@ describe('cancelProductionOrder — Phase 58 §2 restores component-product stoc
     const res = await cancelProductionOrder({ id: 'po-3' }, 'user-1')
 
     expect(res.success).toBe(true)
+    expect(txClient.productionOrder.updateMany).toHaveBeenCalledWith({ where: { id: 'po-3', status: 'IN_PROGRESS' }, data: { status: 'CANCELLED' } })
     expect(txClient.inventory.update).toHaveBeenCalledWith({ where: { productId: 'prod-sub' }, data: { quantity: { increment: 3 } } })
     expect(txClient.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ productId: 'prod-sub', movementType: 'PRODUCTION_RETURN', quantity: 3 })
     }))
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): the
+  // `order.status === 'COMPLETED' || 'CANCELLED'` guard ran against a
+  // pre-transaction snapshot, and the eventual status write was
+  // unconditional — two near-simultaneous cancels of the same IN_PROGRESS
+  // order (already claimed by another action, here simulated by the atomic
+  // updateMany claim reporting count: 0) would both proceed and both
+  // double-credit raw-material stock back for materials only ever consumed
+  // once. Fixed to claim the transition atomically, matched against the
+  // exact status this call observed, before restoring any materials.
+  it('fails cleanly instead of double-crediting stock when another action already claimed the cancellation (concurrent cancel race)', async () => {
+    const order = {
+      id: 'po-5', orderNumber: 'PROD-00005', status: 'IN_PROGRESS',
+      materialUsage: [
+        { id: 'mu-1', rawMaterialId: 'rm-1', componentProductId: null, quantityActual: 8, rawMaterial: { name: 'Steel', unit: 'kg', unitCost: 5, currentStock: 0 }, componentProduct: null }
+      ]
+    }
+    const txClient: Record<string, any> = {
+      rawMaterial: { update: vi.fn() },
+      rawMaterialMovement: { create: vi.fn() },
+      rawMaterialBatch: { update: vi.fn() },
+      productionMaterialBatchConsumption: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
+      inventory: { update: vi.fn() },
+      inventoryMovement: { create: vi.fn() },
+      productionOrder: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) }
+    }
+    const db = {
+      productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient)),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await cancelProductionOrder({ id: 'po-5' }, 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('PO-013')
+    expect(txClient.rawMaterial.update).not.toHaveBeenCalled()
   })
 
   it('restores consumed raw-material batch quantities on cancel', async () => {
@@ -322,7 +394,7 @@ describe('cancelProductionOrder — Phase 58 §2 restores component-product stoc
       },
       inventory: { update: vi.fn() },
       inventoryMovement: { create: vi.fn() },
-      productionOrder: { update: vi.fn().mockResolvedValue({}) }
+      productionOrder: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) }
     }
     const db = {
       productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },

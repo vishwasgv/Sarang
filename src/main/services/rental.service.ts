@@ -569,8 +569,23 @@ export async function checkoutBooking(payload: { id: string; checkoutNotes?: str
       return { success: false, error: { code: 'RENT-012', message: `Cannot check out a booking with status ${booking.status}. Only RESERVED bookings can be checked out.` } }
     }
 
+    // Real bug found live (2026-07-28 product-vertical audit): the RESERVED
+    // check above ran against a pre-transaction snapshot, and the write
+    // below was an unconditional update — the same TOCTOU shape
+    // hotel.service.ts's checkInBooking/checkOutBooking already document and
+    // fix for the identical race. Two near-simultaneous checkouts of the
+    // same booking (a double-click, or two terminals) would both pass the
+    // stale check and both run this transaction. Claim the status
+    // transition atomically inside the transaction; the loser now fails
+    // cleanly instead of double-processing the checkout.
     await db.$transaction(async (tx) => {
-      await tx.rentalBooking.update({ where: { id: payload.id }, data: { status: 'CHECKED_OUT', checkedOutAt: new Date(), checkoutNotes: payload.checkoutNotes?.trim() || null } })
+      const claim = await tx.rentalBooking.updateMany({
+        where: { id: payload.id, status: 'RESERVED' },
+        data: { status: 'CHECKED_OUT', checkedOutAt: new Date(), checkoutNotes: payload.checkoutNotes?.trim() || null },
+      })
+      if (claim.count === 0) {
+        throw new ServiceError('RENT-012', 'This booking was already checked out by another action.')
+      }
       for (const c of payload.itemConditions ?? []) {
         await tx.rentalBookingItem.update({ where: { id: c.itemId }, data: { conditionOut: c.conditionOut } })
       }
@@ -583,6 +598,7 @@ export async function checkoutBooking(payload: { id: string; checkoutNotes?: str
     await logAction({ userId: payload.userId, action: 'RENTAL_CHECKED_OUT', entityType: 'RentalBooking', entityId: payload.id })
     return getBooking(payload.id)
   } catch (e) {
+    if (e instanceof ServiceError) return { success: false, error: { code: e.code, message: e.message } }
     return { success: false, error: { code: 'RENT-013', message: e instanceof Error ? e.message : 'Could not check out booking.' } }
   }
 }
@@ -638,9 +654,21 @@ export async function returnBooking(payload: {
       }
     }
 
+    // Real bug found live (2026-07-28 product-vertical audit): the
+    // CHECKED_OUT check above ran against a pre-transaction snapshot, and
+    // the write below was an unconditional update — same TOCTOU shape as
+    // checkoutBooking above. Unlike checkoutBooking, this one has a real
+    // financial/data-integrity consequence beyond a redundant write: the
+    // per-unit `rentalCountSinceService: { increment: 1 }` a few lines down
+    // is a true atomic increment, so two racing returns of the same booking
+    // would double-increment it, potentially routing a unit to MAINTENANCE
+    // a full rental cycle early (or repeatedly, on every double-click) —
+    // silently wrong maintenance scheduling with no error ever surfaced.
+    // Claim the status transition atomically first; the loser now fails
+    // cleanly instead of double-counting.
     await db.$transaction(async (tx) => {
-      await tx.rentalBooking.update({
-        where: { id: payload.id },
+      const claim = await tx.rentalBooking.updateMany({
+        where: { id: payload.id, status: 'CHECKED_OUT' },
         data: {
           status: 'RETURNED', returnedAt: now,
           returnNotes: payload.returnNotes?.trim() || null,
@@ -649,6 +677,9 @@ export async function returnBooking(payload: {
           lateFeeAmount: lateFee,
         },
       })
+      if (claim.count === 0) {
+        throw new ServiceError('RENT-014', 'This booking was already returned by another action.')
+      }
       for (const c of payload.itemConditions ?? []) {
         await tx.rentalBookingItem.update({
           where: { id: c.itemId },
@@ -674,6 +705,7 @@ export async function returnBooking(payload: {
     await logAction({ userId: payload.userId, action: 'RENTAL_RETURNED', entityType: 'RentalBooking', entityId: payload.id, newValue: { lateFee, damageCharge } })
     return getBooking(payload.id)
   } catch (e) {
+    if (e instanceof ServiceError) return { success: false, error: { code: e.code, message: e.message } }
     return { success: false, error: { code: 'RENT-017', message: e instanceof Error ? e.message : 'Could not process return.' } }
   }
 }

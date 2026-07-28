@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
@@ -150,6 +150,53 @@ describe('hotel.service — createBooking', () => {
     expect(db.hotelBooking.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ ratePerNight: 3500 }),
     }))
+  })
+})
+
+// Real bug found live (2026-07-28 product-vertical audit): createBooking/
+// checkAvailability/listAvailableRooms/createRateCalendarEntry all parsed a
+// bare "YYYY-MM-DD" (exactly what an `<input type="date">` sends) via
+// `new Date(dateOnlyString)`, which the ECMAScript spec parses as UTC
+// midnight, not local midnight — silently rolling the stored check-in/
+// check-out day back by one for any negative-UTC-offset deployment. This is
+// the write-side twin of the exact bug getGuestRegister's own header
+// comment already documents and fixes on the read side, in the same file.
+// process.env.TZ is stubbed to a negative-UTC-offset zone for this describe
+// block specifically because the dev/CI host here runs IST (UTC+5:30,
+// positive offset), which never triggers this bug — same blind spot the
+// original bug report describes.
+describe('hotel.service — timezone-safe date parsing (negative-UTC-offset regression)', () => {
+  const originalTZ = process.env.TZ
+  beforeEach(() => { process.env.TZ = 'America/New_York' })
+  afterEach(() => { process.env.TZ = originalTZ })
+
+  it('createBooking stores checkInDate/checkOutDate as LOCAL midnight of the requested calendar day, not UTC midnight', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.findUnique.mockResolvedValue(makeRoom())
+    db.hotelBooking.create.mockImplementation(({ data }: { data: { checkInDate: Date; checkOutDate: Date } }) =>
+      Promise.resolve({ id: 'booking-1', checkInDate: data.checkInDate, checkOutDate: data.checkOutDate })
+    )
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createBooking({ roomId: 'room-1', guestName: 'Jane', checkInDate: '2026-08-01', checkOutDate: '2026-08-03' })
+
+    const created = db.hotelBooking.create.mock.calls[0][0].data as { checkInDate: Date; checkOutDate: Date }
+    expect(created.checkInDate.getFullYear()).toBe(2026)
+    expect(created.checkInDate.getMonth()).toBe(7) // 0-indexed: August
+    expect(created.checkInDate.getDate()).toBe(1) // NOT 31 (July) — the bug this regression guards against
+    expect(created.checkOutDate.getDate()).toBe(3)
+  })
+
+  it('checkAvailability queries findConflict with LOCAL-midnight checkIn/checkOut, not UTC midnight', async () => {
+    const db = makeBaseMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await checkAvailability({ roomId: 'room-1', checkInDate: '2026-08-01', checkOutDate: '2026-08-05' })
+
+    const where = db.hotelBooking.findFirst.mock.calls[0][0].where as { checkInDate: { lt: Date }; checkOutDate: { gt: Date } }
+    expect(where.checkInDate.lt.getDate()).toBe(5)
+    expect(where.checkOutDate.gt.getDate()).toBe(1)
   })
 })
 

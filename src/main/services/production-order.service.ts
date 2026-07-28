@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
+import { ServiceError } from '../errors/service-error'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -356,6 +357,32 @@ export async function completeProductionOrder(payload: {
     const producedUnitCost = totalCost / payload.producedQty
 
     const result = await db.$transaction(async (tx) => {
+      // Real bug found live (2026-07-28 product-vertical audit): the
+      // `order.status !== 'IN_PROGRESS'` check above ran against a
+      // pre-transaction snapshot, and the status write below was
+      // unconditional — exactly the TOCTOU shape this same file's own
+      // startProductionOrder already documents and fixes for the identical
+      // race one function up. Two near-simultaneous completions of the same
+      // order (a double-click, or two terminals) would both pass the stale
+      // check and both run this transaction, double-crediting produced
+      // quantity into finished-goods inventory for one physical production
+      // run. Claim the status transition atomically first; the loser now
+      // fails cleanly instead of double-counting stock.
+      const claim = await tx.productionOrder.updateMany({
+        where: { id: payload.id, status: 'IN_PROGRESS' },
+        data: {
+          status: 'COMPLETED',
+          producedQty: payload.producedQty,
+          scrapQty,
+          laborCost,
+          completedDate: new Date(),
+          ...(payload.notes ? { notes: payload.notes } : {})
+        }
+      })
+      if (claim.count === 0) {
+        throw new ServiceError('PO-010', 'This order was already completed or cancelled by another action.')
+      }
+
       // Add produced quantity to product inventory, updating averageCost via
       // the same weighted-average formula every other stock-in path uses.
       const existingInventory = await tx.inventory.findUnique({ where: { productId: order.productId } })
@@ -388,23 +415,15 @@ export async function completeProductionOrder(payload: {
         }
       })
 
-      return tx.productionOrder.update({
-        where: { id: payload.id },
-        data: {
-          status: 'COMPLETED',
-          producedQty: payload.producedQty,
-          scrapQty,
-          laborCost,
-          completedDate: new Date(),
-          ...(payload.notes ? { notes: payload.notes } : {})
-        },
-        include: ORDER_INCLUDE
-      })
+      // The claim above already applied every field change atomically —
+      // just re-fetch the full record (with its includes) for the response.
+      return tx.productionOrder.findUniqueOrThrow({ where: { id: payload.id }, include: ORDER_INCLUDE })
     })
 
     await logAction(userId, 'PRODUCTION_ORDER_COMPLETED', 'ProductionOrder', payload.id, undefined, { producedQty: payload.producedQty, scrapQty, laborCost })
     return { success: true, data: toRecord(result) }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'PO-012', message: err instanceof Error ? err.message : 'Failed to complete production order.' } }
   }
 }
@@ -429,6 +448,27 @@ export async function cancelProductionOrder(payload: {
     }
 
     await db.$transaction(async (tx) => {
+      // Real bug found live (2026-07-28 product-vertical audit): the
+      // status check above ran against a pre-transaction snapshot, and the
+      // status write below was unconditional — same TOCTOU shape as
+      // completeProductionOrder above. Two near-simultaneous cancels of the
+      // same IN_PROGRESS order would both pass the stale check and both run
+      // the material-return loop below, double-crediting raw-material stock
+      // and component-product inventory back for materials that were only
+      // ever consumed once. Claim the transition atomically first, matched
+      // against the EXACT status this call observed (not just "not
+      // terminal") — if the order moved to any other state in between (e.g.
+      // another action completed it), the claim fails and this call aborts
+      // cleanly instead of using a now-stale `order.status` to decide
+      // whether to restore materials.
+      const claim = await tx.productionOrder.updateMany({
+        where: { id: payload.id, status: order.status },
+        data: { status: 'CANCELLED', ...(payload.notes ? { notes: payload.notes } : {}) }
+      })
+      if (claim.count === 0) {
+        throw new ServiceError('PO-013', 'This order was already updated by another action. Please refresh and try again.')
+      }
+
       // If IN_PROGRESS, return raw materials / component products to stock atomically
       if (order.status === 'IN_PROGRESS') {
         for (const usage of order.materialUsage) {
@@ -471,16 +511,13 @@ export async function cancelProductionOrder(payload: {
           }
         }
       }
-
-      await tx.productionOrder.update({
-        where: { id: payload.id },
-        data: { status: 'CANCELLED', ...(payload.notes ? { notes: payload.notes } : {}) }
-      })
+      // The claim above already applied the status/notes change atomically.
     })
 
     await logAction(userId, 'PRODUCTION_ORDER_CANCELLED', 'ProductionOrder', payload.id)
     return { success: true }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'PO-014', message: err instanceof Error ? err.message : 'Failed to cancel production order.' } }
   }
 }

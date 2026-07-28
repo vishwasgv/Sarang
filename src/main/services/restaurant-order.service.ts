@@ -156,53 +156,88 @@ export async function listOrderRequests(status?: string) {
   }
 }
 
+// Claim sentinel for acceptOrderRequest's atomic status transition — see
+// its own comment below for why this is needed.
+const QR_ORDER_CLAIM_SENTINEL = 'PROCESSING'
+
 export async function acceptOrderRequest(
   requestId: string,
   payload: { paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'; customerId?: string },
   userId?: string
 ) {
+  const db = getPrisma()
   try {
-    const db = getPrisma()
-    const request = await db.tableOrderRequest.findUnique({ where: { id: requestId }, include: { items: true } })
-    if (!request) return { success: false, error: { code: 'QRO-020', message: 'Order request not found.' } }
-    if (request.status !== 'PENDING') return { success: false, error: { code: 'QRO-021', message: `This order was already ${request.status.toLowerCase()}.` } }
-
-    // Price is always looked up fresh here, server-side — never taken from
-    // the customer's original submission, matching the design in the spec.
-    const products = await db.product.findMany({
-      where: { id: { in: request.items.map(i => i.productId) } },
-      select: { id: true, sellingPrice: true, taxRate: true, isActive: true }
+    // Real bug found live (2026-07-28 product-vertical audit): the
+    // `status !== 'PENDING'` check used to run against a plain read, with
+    // the eventual `status: 'ACCEPTED'` write happening unconditionally
+    // afterward — a customer's table-side double-tap on "Accept" in the
+    // staff UI, or two staff members accepting the same QR order moments
+    // apart, could both pass the stale check and both call
+    // billingService.createInvoice + createKOT, silently billing the
+    // customer twice for one order. Claim the request atomically first
+    // (updateMany with a status guard, matching the pattern
+    // hotel/rental/metal-exchange's invoice-claim sentinels already
+    // establish) — the loser fails cleanly instead of double-invoicing.
+    const claim = await db.tableOrderRequest.updateMany({
+      where: { id: requestId, status: 'PENDING' },
+      data: { status: QR_ORDER_CLAIM_SENTINEL },
     })
-    const byId = new Map(products.map(p => [p.id, p]))
-    const missing = request.items.filter(i => !byId.get(i.productId)?.isActive)
-    if (missing.length > 0) {
-      return { success: false, error: { code: 'QRO-022', message: 'One or more items in this order are no longer available — reject it and ask the customer to reorder.' } }
+    if (claim.count === 0) {
+      const existing = await db.tableOrderRequest.findUnique({ where: { id: requestId }, select: { status: true } })
+      if (!existing) return { success: false, error: { code: 'QRO-020', message: 'Order request not found.' } }
+      if (existing.status === QR_ORDER_CLAIM_SENTINEL) return { success: false, error: { code: 'QRO-021', message: 'This order is already being accepted by another action.' } }
+      return { success: false, error: { code: 'QRO-021', message: `This order was already ${existing.status.toLowerCase()}.` } }
     }
 
-    const invoiceResult = await billingService.createInvoice({
-      customerId: payload.customerId,
-      paymentMethod: payload.paymentMethod,
-      items: request.items.map(i => {
-        const p = byId.get(i.productId)!
-        return { productId: i.productId, quantity: i.quantity, unitPrice: p.sellingPrice, discountAmount: 0, taxRate: p.taxRate }
-      }),
-      globalDiscount: 0,
-      referenceNumber: `QR-${request.tableId.slice(-6)}`
-    }, userId)
+    try {
+      const request = await db.tableOrderRequest.findUnique({ where: { id: requestId }, include: { items: true } })
+      if (!request) {
+        await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
+        return { success: false, error: { code: 'QRO-020', message: 'Order request not found.' } }
+      }
 
-    if (!invoiceResult.success || !invoiceResult.data) {
-      return { success: false, error: (invoiceResult as { error?: { code: string; message: string } }).error ?? { code: 'QRO-023', message: 'Could not create invoice from this order.' } }
+      // Price is always looked up fresh here, server-side — never taken from
+      // the customer's original submission, matching the design in the spec.
+      const products = await db.product.findMany({
+        where: { id: { in: request.items.map(i => i.productId) } },
+        select: { id: true, sellingPrice: true, taxRate: true, isActive: true }
+      })
+      const byId = new Map(products.map(p => [p.id, p]))
+      const missing = request.items.filter(i => !byId.get(i.productId)?.isActive)
+      if (missing.length > 0) {
+        await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
+        return { success: false, error: { code: 'QRO-022', message: 'One or more items in this order are no longer available — reject it and ask the customer to reorder.' } }
+      }
+
+      const invoiceResult = await billingService.createInvoice({
+        customerId: payload.customerId,
+        paymentMethod: payload.paymentMethod,
+        items: request.items.map(i => {
+          const p = byId.get(i.productId)!
+          return { productId: i.productId, quantity: i.quantity, unitPrice: p.sellingPrice, discountAmount: 0, taxRate: p.taxRate }
+        }),
+        globalDiscount: 0,
+        referenceNumber: `QR-${request.tableId.slice(-6)}`
+      }, userId)
+
+      if (!invoiceResult.success || !invoiceResult.data) {
+        await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
+        return { success: false, error: (invoiceResult as { error?: { code: string; message: string } }).error ?? { code: 'QRO-023', message: 'Could not create invoice from this order.' } }
+      }
+      const invoice = invoiceResult.data as { id: string }
+
+      await createKOT(invoice.id, request.tableId, userId)
+
+      await db.tableOrderRequest.update({
+        where: { id: requestId },
+        data: { status: 'ACCEPTED', invoiceId: invoice.id, resolvedAt: new Date() }
+      })
+      await logAction(userId, 'QR_ORDER_ACCEPTED', 'TableOrderRequest', requestId, undefined, invoice.id)
+      return { success: true, data: { invoiceId: invoice.id } }
+    } catch (err) {
+      await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } }).catch(() => {})
+      throw err
     }
-    const invoice = invoiceResult.data as { id: string }
-
-    await createKOT(invoice.id, request.tableId, userId)
-
-    await db.tableOrderRequest.update({
-      where: { id: requestId },
-      data: { status: 'ACCEPTED', invoiceId: invoice.id, resolvedAt: new Date() }
-    })
-    await logAction(userId, 'QR_ORDER_ACCEPTED', 'TableOrderRequest', requestId, undefined, invoice.id)
-    return { success: true, data: { invoiceId: invoice.id } }
   } catch (err) {
     return { success: false, error: { code: 'QRO-024', message: err instanceof Error ? err.message : 'Could not accept order.' } }
   }
@@ -211,11 +246,19 @@ export async function acceptOrderRequest(
 export async function rejectOrderRequest(requestId: string, userId?: string) {
   try {
     const db = getPrisma()
-    const request = await db.tableOrderRequest.findUnique({ where: { id: requestId } })
-    if (!request) return { success: false, error: { code: 'QRO-030', message: 'Order request not found.' } }
-    if (request.status !== 'PENDING') return { success: false, error: { code: 'QRO-031', message: `This order was already ${request.status.toLowerCase()}.` } }
-
-    await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'REJECTED', resolvedAt: new Date() } })
+    // Same atomic-claim shape as acceptOrderRequest — a reject racing an
+    // accept for the same request must not silently overwrite whichever
+    // action actually won.
+    const claim = await db.tableOrderRequest.updateMany({
+      where: { id: requestId, status: 'PENDING' },
+      data: { status: 'REJECTED', resolvedAt: new Date() },
+    })
+    if (claim.count === 0) {
+      const existing = await db.tableOrderRequest.findUnique({ where: { id: requestId }, select: { status: true } })
+      if (!existing) return { success: false, error: { code: 'QRO-030', message: 'Order request not found.' } }
+      const label = existing.status === QR_ORDER_CLAIM_SENTINEL ? 'being accepted' : existing.status.toLowerCase()
+      return { success: false, error: { code: 'QRO-031', message: `This order was already ${label}.` } }
+    }
     await logAction(userId, 'QR_ORDER_REJECTED', 'TableOrderRequest', requestId)
     return { success: true }
   } catch (err) {

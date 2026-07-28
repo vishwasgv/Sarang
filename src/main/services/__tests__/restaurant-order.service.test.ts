@@ -39,6 +39,11 @@ function makeMockDb(overrides: Record<string, any> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn(),
       update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'req-1', ...data })),
+      // Default: the atomic PENDING-status claim succeeds (count: 1) — every
+      // pre-existing test here assumes "no concurrent action already
+      // touched this request". Race-condition tests below override this to
+      // { count: 0 } to simulate the claim losing.
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     businessProfile: { findFirst: vi.fn().mockResolvedValue({ businessName: 'Test Cafe', currencySymbol: '₹' }) },
     ...overrides,
@@ -203,15 +208,48 @@ describe('acceptOrderRequest (staff-facing, permissioned)', () => {
   }
 
   it('rejects accepting a request that is not PENDING', async () => {
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue({ ...makePendingRequest(), status: 'ACCEPTED' }) } })
+    const db = makeMockDb({
+      tableOrderRequest: {
+        // The atomic claim's WHERE also filters on status: 'PENDING', so a
+        // real DB naturally returns count: 0 for an ACCEPTED row — mocked
+        // explicitly here since this is not a real DB.
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ ...makePendingRequest(), status: 'ACCEPTED' }),
+      },
+    })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await acceptOrderRequest('req-1', { paymentMethod: 'CASH' })
     expect(res.success).toBe(false)
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): the
+  // `status !== 'PENDING'` check ran against a plain read, with the eventual
+  // `status: 'ACCEPTED'` write happening unconditionally afterward — a
+  // double-tap on "Accept", or two staff accepting the same QR order
+  // moments apart, could both pass the stale check and both create a real
+  // invoice + KOT, silently billing the customer twice for one order. Fixed
+  // to claim the request atomically first (updateMany with a status guard);
+  // the loser fails cleanly instead of double-invoicing.
+  it('fails cleanly instead of double-invoicing when another action already claimed the request (concurrent accept race)', async () => {
+    const db = makeMockDb({
+      tableOrderRequest: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ status: 'ACCEPTED' }),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await acceptOrderRequest('req-1', { paymentMethod: 'CASH' })
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('QRO-021')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(createKOT).not.toHaveBeenCalled()
   })
 
   it('rejects if a product in the order is no longer active', async () => {
     const db = makeMockDb({
-      tableOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()) },
+      tableOrderRequest: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: vi.fn().mockResolvedValue({}) },
       product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', sellingPrice: 100, taxRate: 5, isActive: false }]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -221,7 +259,7 @@ describe('acceptOrderRequest (staff-facing, permissioned)', () => {
   })
 
   it('builds invoice line items from the CURRENT Product price, never anything from the original request', async () => {
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: vi.fn().mockResolvedValue({}) } })
+    const db = makeMockDb({ tableOrderRequest: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: vi.fn().mockResolvedValue({}) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
     vi.mocked(createKOT).mockResolvedValue({ success: true } as never)
@@ -239,7 +277,7 @@ describe('acceptOrderRequest (staff-facing, permissioned)', () => {
 
   it('marks the request ACCEPTED with the resulting invoiceId on success', async () => {
     const updateSpy = vi.fn().mockResolvedValue({})
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
+    const db = makeMockDb({ tableOrderRequest: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
     vi.mocked(createKOT).mockResolvedValue({ success: true } as never)
@@ -248,34 +286,62 @@ describe('acceptOrderRequest (staff-facing, permissioned)', () => {
     expect(updateSpy).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: expect.objectContaining({ status: 'ACCEPTED', invoiceId: 'inv-1' }) })
   })
 
-  it('does not mark the request resolved if invoice creation fails', async () => {
-    const updateSpy = vi.fn()
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
+  // Note: unlike the pre-fix version, a failed invoice creation now DOES
+  // call `update` once — to revert the atomic PROCESSING claim back to
+  // PENDING so the request isn't left permanently stuck and can be retried
+  // or rejected. It must never be called with status: 'ACCEPTED'.
+  it('does not mark the request ACCEPTED if invoice creation fails, and reverts the claim back to PENDING', async () => {
+    const updateSpy = vi.fn().mockResolvedValue({})
+    const db = makeMockDb({ tableOrderRequest: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn().mockResolvedValue(makePendingRequest()), update: updateSpy } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'INV-002', message: 'Insufficient stock' } } as never)
 
     const res = await acceptOrderRequest('req-1', { paymentMethod: 'CASH' })
     expect(res.success).toBe(false)
     expect(createKOT).not.toHaveBeenCalled()
-    expect(updateSpy).not.toHaveBeenCalled()
+    expect(updateSpy).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'ACCEPTED' }) }))
+    expect(updateSpy).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: { status: 'PENDING' } })
   })
 })
 
 describe('rejectOrderRequest', () => {
   it('rejects a PENDING request', async () => {
-    const updateSpy = vi.fn().mockResolvedValue({})
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'PENDING' }), update: updateSpy } })
+    const updateManySpy = vi.fn().mockResolvedValue({ count: 1 })
+    const db = makeMockDb({ tableOrderRequest: { updateMany: updateManySpy, findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'PENDING' }) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await rejectOrderRequest('req-1')
     expect(res.success).toBe(true)
-    expect(updateSpy).toHaveBeenCalledWith({ where: { id: 'req-1' }, data: expect.objectContaining({ status: 'REJECTED' }) })
+    expect(updateManySpy).toHaveBeenCalledWith({ where: { id: 'req-1', status: 'PENDING' }, data: expect.objectContaining({ status: 'REJECTED' }) })
   })
 
   it('refuses to reject an already-resolved request', async () => {
-    const db = makeMockDb({ tableOrderRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'ACCEPTED' }) } })
+    const db = makeMockDb({
+      tableOrderRequest: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'ACCEPTED' }),
+      },
+    })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await rejectOrderRequest('req-1')
     expect(res.success).toBe(false)
+  })
+
+  // Real bug found live (2026-07-28 product-vertical audit): same TOCTOU
+  // shape as acceptOrderRequest — reject used to check status via a plain
+  // read, then write unconditionally. A reject racing an accept for the
+  // same request could silently overwrite whichever action actually won.
+  // Fixed to an atomic updateMany claim.
+  it('fails cleanly instead of overwriting an already-accepted request (concurrent reject-vs-accept race)', async () => {
+    const db = makeMockDb({
+      tableOrderRequest: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ id: 'req-1', status: 'ACCEPTED' }),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await rejectOrderRequest('req-1')
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('QRO-031')
   })
 })
 

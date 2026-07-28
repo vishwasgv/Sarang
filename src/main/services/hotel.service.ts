@@ -255,8 +255,18 @@ async function findConflict(
 export async function checkAvailability(payload: { roomId: string; checkInDate: string; checkOutDate: string; excludeBookingId?: string }): Promise<{ success: boolean; data?: { available: boolean }; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const checkIn = new Date(payload.checkInDate)
-    const checkOut = new Date(payload.checkOutDate)
+    // Real bug found live (2026-07-28 product-vertical audit): checkInDate/
+    // checkOutDate arrive from an `<input type="date">` (bare "YYYY-MM-DD",
+    // no time component) — the same shape getGuestRegister's own header
+    // comment documents as parsing to UTC midnight, not local midnight, via
+    // a bare `new Date(dateOnlyString)`. For any negative-UTC-offset
+    // deployment this silently rolls the calendar day back by one both here
+    // and in every sibling function below, corrupting the very date range
+    // getGuestRegister was fixed to query correctly. parseLocalDateStart
+    // (already imported for getGuestRegister) constructs local midnight
+    // directly from the Y/M/D components instead.
+    const checkIn = parseLocalDateStart(payload.checkInDate)
+    const checkOut = parseLocalDateStart(payload.checkOutDate)
     if (checkOut <= checkIn) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
     const conflict = await findConflict(db, payload.roomId, checkIn, checkOut, payload.excludeBookingId)
     return { success: true, data: { available: !conflict } }
@@ -270,8 +280,9 @@ export async function checkAvailability(payload: { roomId: string; checkInDate: 
 export async function listAvailableRooms(payload: { checkInDate: string; checkOutDate: string; roomType?: string }): Promise<{ success: boolean; data?: { rooms: HotelRoomRecord[] }; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const checkIn = new Date(payload.checkInDate)
-    const checkOut = new Date(payload.checkOutDate)
+    // Same UTC-midnight-vs-local-midnight fix as checkAvailability above.
+    const checkIn = parseLocalDateStart(payload.checkInDate)
+    const checkOut = parseLocalDateStart(payload.checkOutDate)
     if (checkOut <= checkIn) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
 
     const rooms = await db.hotelRoom.findMany({
@@ -436,7 +447,17 @@ export async function createBooking(payload: {
   try {
     const db = getPrisma()
     const bookingType = payload.bookingType ?? 'OVERNIGHT'
-    const checkIn = new Date(payload.checkInDate)
+    // Real bug found live (2026-07-28 product-vertical audit): same
+    // UTC-midnight-vs-local-midnight bug as checkAvailability/
+    // listAvailableRooms above — checkInDate/checkOutDate come from an
+    // `<input type="date">` and were parsed with a bare `new Date(...)`,
+    // silently rolling the stored check-in/check-out day back by one for
+    // any negative-UTC-offset deployment (the same root cause
+    // getGuestRegister's own header comment already documents and fixes for
+    // its read-side date filter — this was the write side of the same bug,
+    // missed here). parseLocalDateStart constructs local midnight directly
+    // from the Y/M/D components instead.
+    const checkIn = parseLocalDateStart(payload.checkInDate)
     // A DAY_USE stay always holds the room for the full calendar day (see
     // the schema comment on HotelBooking.bookingType) — the checkout date
     // the caller sends, if any, is ignored in favor of a computed
@@ -444,7 +465,7 @@ export async function createBooking(payload: {
     // completely unmodified (no zero-width-interval double-booking risk).
     const checkOut = bookingType === 'DAY_USE'
       ? new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate() + 1)
-      : new Date(payload.checkOutDate ?? payload.checkInDate)
+      : parseLocalDateStart(payload.checkOutDate ?? payload.checkInDate)
     if (bookingType !== 'DAY_USE' && !payload.checkOutDate) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
     if (checkOut <= checkIn) return { success: false, error: { code: 'HTL-013', message: 'Check-out date must be after check-in date.' } }
     if (!payload.guestName?.trim()) return { success: false, error: { code: 'HTL-019', message: 'Guest name is required.' } }
@@ -736,8 +757,15 @@ export async function createRateCalendarEntry(payload: {
   roomType?: string; startDate: string; endDate: string; rate: number; label?: string; createdById?: string
 }): Promise<{ success: boolean; data?: HotelRateCalendarRecord; error?: { code: string; message: string } }> {
   try {
-    const start = new Date(payload.startDate)
-    const end = new Date(payload.endDate)
+    // Real bug found live (2026-07-28 product-vertical audit): same
+    // UTC-midnight-vs-local-midnight bug as createBooking/checkAvailability
+    // above — resolveNightlyRate compares each stay-night's local-midnight
+    // `dayOnly` against these startDate/endDate bounds, so storing them as
+    // UTC midnight (via a bare `new Date(dateOnlyString)`) silently shifts
+    // which nights a seasonal rate applies to by one day in any
+    // negative-UTC-offset deployment.
+    const start = parseLocalDateStart(payload.startDate)
+    const end = parseLocalDateStart(payload.endDate)
     if (end < start) return { success: false, error: { code: 'HTL-061', message: 'End date must be on or after the start date.' } }
     if (payload.rate < 0) return { success: false, error: { code: 'HTL-062', message: 'Rate cannot be negative.' } }
 
