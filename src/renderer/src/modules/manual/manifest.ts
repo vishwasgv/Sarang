@@ -26,6 +26,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'audit-log', group: 'universal', title: 'Audit Log' },
   { slug: 'barcode-loose-billing', group: 'universal', title: 'Barcode & Loose/Weight Billing' },
   { slug: 'dashboard', group: 'universal', title: 'Dashboard' },
+  { slug: 'tutorial-tour', group: 'universal', title: 'Guided Tutorial' },
   { slug: 'licensing', group: 'universal', title: 'License & Renewal' },
 
   // AI Assistant (Phase 57) — cross-cutting, opt-in

@@ -25,4 +25,4 @@ If you ever move Sarang to a new PC (a replacement laptop, for example), simply 
 
 ## Your privacy
 
-Checking your license status happens at most once a day, and only sends a one-way scrambled version of your license key — never the key itself, and never any of your business data. See **Settings → About → Privacy & Data** for the full picture of what Sarang does and doesn't send, including the same once-a-day check.
+Checking your license status happens at most once a day, and only sends a one-way scrambled version of your license key — never the key itself, and never any of your business data. Alongside that check, Sarang also sends one anonymous signal once a day: how many minutes the app was open, tied to that same scrambled key — never anything that identifies you or your business, and used only to see overall usage patterns across everyone. See **Settings → About → Privacy & Data** for the full picture of what Sarang does and doesn't send.
