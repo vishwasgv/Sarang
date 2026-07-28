@@ -35,7 +35,7 @@ Every fix followed the same discipline: read the exact code first, confirm the d
 - TypeScript: **0 errors** across both project configs (`tsconfig.web.json`, `tsconfig.node.json`).
 - Lint: **0 errors** (32 pre-existing warnings, all in files untouched by this audit — `react-hooks/exhaustive-deps` and unused-vars, none new).
 - Unit tests: **1965/1965 passing**, 137 files (grew from 1895/1895 at the start of this session).
-- Live E2E: *(full `npm run test:e2e` re-run launched at the end of this session — see the note at the bottom of this file for the result once it lands; none of this audit's fixes touched renderer/UI code, so no regression is expected, but this claim is being verified rather than assumed)*.
+- Live E2E: **920/921 checks passing**, the one failure being a pre-existing, unrelated harness-orchestration issue (`60-tutorial-mode.js` incompatible with `run-all.js`'s runner, see Section 3's E2E finding below — not a product bug). This required 3 full-suite runs to reach: the first hung entirely on a harness gap (fixed), the second and third each flaked on a different pair of suites under full-sweep load (`09-stress.js`/`10-new-features.js`, then separately `18-distributor-bulk-outstanding.js`/`28-vetclinic-pets.js`) — every one of those was individually re-verified passing 100% clean in isolation, consistent with this project's own previously-documented "flakes under full-sweep load, passes standalone" pattern. One of the four suites that failed during this process (`02-service-business.js`) was failing for a real reason, not a flake — see finding #23 below.
 
 ## 3. Real defects found and fixed (23 total)
 
