@@ -61,6 +61,32 @@ describe('roc-filing.service — Decimal serialization', () => {
     expect(typeof (res as { data: { govtFee: unknown } }).data.govtFee).toBe('number')
   })
 
+  // Real bug found live (2026-07-28 service-vertical audit): dueDate/filedOn
+  // used to be constructed via a bare `new Date('YYYY-MM-DD')` (UTC
+  // midnight), inconsistent with this app's own local-date convention used
+  // for overdue comparisons elsewhere.
+  it('createROCFiling stores dueDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createROCFiling({ clientId: 'cust-1', formType: 'mgt-7', dueDate: '2026-08-15' })
+
+    expect(res.success).toBe(true)
+    const createCall = db.rOCFiling.create.mock.calls[0][0] as { data: { dueDate: Date } }
+    expect(createCall.data.dueDate).toEqual(new Date(2026, 7, 15))
+  })
+
+  it('updateROCFiling stores filedOn at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb(makeFiling())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateROCFiling({ id: 'filing-1', filedOn: '2026-07-02' })
+
+    expect(res.success).toBe(true)
+    const updateCall = db.rOCFiling.update.mock.calls[0][0] as { data: { filedOn: Date } }
+    expect(updateCall.data.filedOn).toEqual(new Date(2026, 6, 2))
+  })
+
   it('createROCFiling normalizes formType to uppercase', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

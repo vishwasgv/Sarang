@@ -61,7 +61,13 @@ export async function createHearing(payload: {
 }) {
   try {
     const db = getPrisma()
-    const hearingDate = new Date(payload.hearingDate)
+    // Real bug found live (2026-07-28 service-vertical audit): a bare
+    // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+    // listHearings' own read-side filter (parseLocalDateStart/End already
+    // used there), so a write for calendar date D could land outside the
+    // local-day window a later filter for date D expects, in any
+    // negative-UTC-offset timezone.
+    const hearingDate = parseLocalDateStart(payload.hearingDate)
 
     const hearing = await db.hearing.create({
       data: {
@@ -117,8 +123,8 @@ export async function updateHearing(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(hearingDate !== undefined ? { hearingDate: new Date(hearingDate) } : {}),
-        ...(nextDate !== undefined ? { nextDate: nextDate ? new Date(nextDate) : null } : {}),
+        ...(hearingDate !== undefined ? { hearingDate: parseLocalDateStart(hearingDate) } : {}),
+        ...(nextDate !== undefined ? { nextDate: nextDate ? parseLocalDateStart(nextDate) : null } : {}),
       },
     })
 
@@ -140,7 +146,7 @@ export async function updateHearing(payload: {
       if (!refreshed?.nextHearingDate) {
         await db.legalCase.update({
           where: { id: hearing.caseId },
-          data: { nextHearingDate: new Date(payload.nextDate) },
+          data: { nextHearingDate: parseLocalDateStart(payload.nextDate) },
         })
       }
     }

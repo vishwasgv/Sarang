@@ -132,6 +132,26 @@ describe('membership.service — Decimal serialization', () => {
     expect(res.success).toBe(true)
     expect(typeof (res as { data: { plan: { price: unknown } } }).data.plan.price).toBe('number')
   })
+
+  // Real bug found live (2026-07-28 service-vertical audit): a bare
+  // `new Date('2026-07-01')` parses as UTC midnight, which is 5:30 AM local
+  // in IST — this app's own primary market, not a foreign-timezone edge
+  // case. checkInMember's `endDate < now` check then treated a member's
+  // last paid day as already expired from 5:30 AM onward. Fixed to anchor
+  // at local midnight and set endDate to the end of its final day.
+  it('anchors start/end at local midnight, with endDate at the end of its final day (not UTC midnight)', async () => {
+    const db = makeMockDb(makePlan({ durationDays: 30 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createMembership({ clientId: 'cust-1', planId: 'plan-1', startDate: '2026-07-01' })
+
+    expect(res.success).toBe(true)
+    const createCall = db.membership.create.mock.calls[0][0] as { data: { startDate: Date; endDate: Date } }
+    expect(createCall.data.startDate).toEqual(new Date(2026, 6, 1))
+    // 30 days after local midnight July 1 is local midnight July 31 — pushed
+    // to the END of that day so the membership stays valid through it.
+    expect(createCall.data.endDate).toEqual(new Date(2026, 6, 31, 23, 59, 59, 999))
+  })
 })
 
 // Phase 41 — generateMembershipInvoice

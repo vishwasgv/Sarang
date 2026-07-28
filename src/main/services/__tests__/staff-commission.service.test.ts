@@ -68,6 +68,22 @@ describe('staff-commission.service — Decimal serialization', () => {
     expect(typeof data.tipAmount).toBe('number')
   })
 
+  // Real bug found live (2026-07-28 service-vertical audit): plain
+  // `Math.round(revenue * rate / 100 * 100) / 100` crosses IEEE-754's
+  // classic 1.005 boundary wrong — serviceRevenue=1005, commissionRate=0.1
+  // gives a raw commission of 1.005, which the old math rounded DOWN to 1
+  // instead of 1.01.
+  it('computes commissionAmount correctly at the 1.005 float-rounding boundary', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await calculateCommission({ appointmentId: 'apt-1', staffId: 'staff-1', serviceRevenue: 1005, commissionType: 'PERCENT', commissionRate: 0.1 })
+
+    expect(res.success).toBe(true)
+    const createCall = db.staffCommission.create.mock.calls[0][0] as { data: { commissionAmount: number } }
+    expect(createCall.data.commissionAmount).toBe(1.01)
+  })
+
   it('calculateCommission returns plain numbers on the idempotent existing-record path too', async () => {
     const db = makeMockDb(makeCommission())
     vi.mocked(getPrisma).mockReturnValue(db as never)

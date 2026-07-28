@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
+import { roundCurrency } from './currency.service'
 
 // TimeEntry.hours/ratePerHour/amount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws
@@ -67,7 +68,15 @@ export async function createTimeEntry(payload: {
 }) {
   try {
     const db = getPrisma()
-    const amount = Math.round(payload.hours * payload.ratePerHour * 100) / 100
+    // Real bug found live (2026-07-28 service-vertical audit): plain
+    // `Math.round(x * 100) / 100` crosses IEEE-754's classic 1.005 boundary
+    // wrong — e.g. hours=0.5, ratePerHour=2.01 -> raw product 1.005 ->
+    // Math.round(1.005*100)/100 = 1 (should be 1.01). This amount is baked
+    // straight into an invoice's unitPrice by generateTimeEntryInvoice, so
+    // the drift compounds into a real invoice, not just a display artifact.
+    // roundCurrency uses Prisma.Decimal with ROUND_HALF_UP, same as every
+    // other money computation in this codebase.
+    const amount = roundCurrency(payload.hours * payload.ratePerHour)
 
     const entry = await db.timeEntry.create({
       data: {
@@ -116,7 +125,7 @@ export async function updateTimeEntry(payload: {
       if (existing) {
         const h = hours ?? Number(existing.hours)
         const r = ratePerHour ?? Number(existing.ratePerHour)
-        amountUpdate = { amount: Math.round(h * r * 100) / 100 }
+        amountUpdate = { amount: roundCurrency(h * r) }
       }
     }
 

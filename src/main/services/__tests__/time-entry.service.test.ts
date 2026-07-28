@@ -68,6 +68,23 @@ describe('time-entry.service — Decimal serialization', () => {
     expect(typeof data.amount).toBe('number')
   })
 
+  // Real bug found live (2026-07-28 service-vertical audit): plain
+  // `Math.round(hours * ratePerHour * 100) / 100` crosses IEEE-754's classic
+  // 1.005 boundary wrong — hours=0.5, ratePerHour=2.01 gives a raw product of
+  // 1.005, which Math.round(1.005*100)/100 rounds DOWN to 1 instead of 1.01.
+  // This amount is baked straight into an invoice's unitPrice by
+  // generateTimeEntryInvoice, so the drift compounds into a real invoice.
+  it('computes amount correctly at the 1.005 float-rounding boundary', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTimeEntry({ caseId: 'case-1', date: '2026-07-02', description: 'Quick consult', hours: 0.5, ratePerHour: 2.01 })
+
+    expect(res.success).toBe(true)
+    const createCall = db.timeEntry.create.mock.calls[0][0] as { data: { amount: number } }
+    expect(createCall.data.amount).toBe(1.01)
+  })
+
   it('listTimeEntries returns plain numbers, not Decimal instances', async () => {
     const db = makeMockDb(makeEntry())
     vi.mocked(getPrisma).mockReturnValue(db as never)

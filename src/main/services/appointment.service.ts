@@ -251,7 +251,13 @@ export async function createAppointment(payload: {
       | { ok: false; scheduleViolation: string }
     > => {
       if (payload.providerId) {
-        const aptDate = new Date(payload.scheduledDate)
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with listAppointments' own read-side filter (parseLocalDateStart/
+        // End), so a write for calendar date D could land outside the
+        // local-day window a later filter for date D expects, in any
+        // negative-UTC-offset timezone.
+        const aptDate = parseLocalDateStart(payload.scheduledDate)
         const conflict = await findProviderConflict(
           tx, payload.providerId, aptDate, payload.scheduledTime, payload.durationMinutes ?? 30
         )
@@ -276,7 +282,7 @@ export async function createAppointment(payload: {
           providerId: payload.providerId ?? null,
           serviceCatalogId: payload.serviceCatalogId ?? null,
           serviceTitle: payload.serviceTitle,
-          scheduledDate: new Date(payload.scheduledDate),
+          scheduledDate: parseLocalDateStart(payload.scheduledDate),
           scheduledTime: payload.scheduledTime,
           durationMinutes: payload.durationMinutes ?? 30,
           notes: payload.notes ?? null,
@@ -349,7 +355,7 @@ export async function updateAppointment(payload: {
       // (existing value unless this update changes it), and excludes this
       // appointment's own row from the conflict scan.
       const effectiveProviderId = payload.providerId !== undefined ? payload.providerId : existing.providerId
-      const effectiveDate = scheduledDate ? new Date(scheduledDate) : existing.scheduledDate
+      const effectiveDate = scheduledDate ? parseLocalDateStart(scheduledDate) : existing.scheduledDate
       const effectiveTime = payload.scheduledTime ?? existing.scheduledTime
       const effectiveDuration = payload.durationMinutes ?? existing.durationMinutes
 
@@ -364,7 +370,7 @@ export async function updateAppointment(payload: {
         where: { id },
         data: {
           ...rest,
-          ...(scheduledDate ? { scheduledDate: new Date(scheduledDate) } : {}),
+          ...(scheduledDate ? { scheduledDate: parseLocalDateStart(scheduledDate) } : {}),
         },
       })
       await tx.auditLog.create({

@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { roundCurrency } from './currency.service'
 
 // StaffCommission.serviceRevenue/commissionRate/commissionAmount/tipAmount
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -45,9 +46,14 @@ export async function calculateCommission(payload: {
     const commissionRate = employee?.commissionRate != null ? Number(employee.commissionRate) : payload.commissionRate
 
     const revenue = payload.serviceRevenue
+    // Real bug found live (2026-07-28 service-vertical audit): plain
+    // `Math.round(x * 100) / 100` crosses IEEE-754's classic 1.005 boundary
+    // wrong — e.g. serviceRevenue=1005, commissionRate=0.1 -> raw 1.005 ->
+    // rounds to 1 instead of 1.01. roundCurrency uses Prisma.Decimal with
+    // ROUND_HALF_UP, same as every other money computation in this codebase.
     const amount =
       commissionType === 'PERCENT'
-        ? Math.round(((revenue * commissionRate) / 100) * 100) / 100
+        ? roundCurrency((revenue * commissionRate) / 100)
         : commissionRate
 
     const commission = await db.staffCommission.create({

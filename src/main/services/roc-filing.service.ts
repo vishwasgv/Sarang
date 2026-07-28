@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // ROCFiling.govtFee is a Prisma Decimal field — Electron's IPC (structured
 // clone) cannot serialize a Decimal instance and throws "An object could not
@@ -71,7 +72,10 @@ export async function createROCFiling(payload: {
         formType:      payload.formType.toUpperCase().trim(),
         financialYear: payload.financialYear ?? null,
         purpose:       payload.purpose ?? null,
-        dueDate:       payload.dueDate ? new Date(payload.dueDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with any local-`now`-based overdue comparison on this field.
+        dueDate:       payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
         status:        'PENDING',
         govtFee:       payload.govtFee ?? null,
         notes:         payload.notes ?? null,
@@ -108,8 +112,8 @@ export async function updateROCFiling(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(dueDate  !== undefined ? { dueDate:  dueDate  ? new Date(dueDate)  : null } : {}),
-        ...(filedOn  !== undefined ? { filedOn:  filedOn  ? new Date(filedOn)  : null } : {}),
+        ...(dueDate  !== undefined ? { dueDate:  dueDate  ? parseLocalDateStart(dueDate)  : null } : {}),
+        ...(filedOn  !== undefined ? { filedOn:  filedOn  ? parseLocalDateStart(filedOn)  : null } : {}),
       },
       include: {
         client: { select: { id: true, customerName: true, phone: true } },

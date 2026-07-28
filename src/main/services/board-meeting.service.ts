@@ -71,7 +71,11 @@ export async function createBoardMeeting(payload: {
       data: {
         clientId:    payload.clientId,
         meetingType: payload.meetingType ?? 'BOARD',
-        meetingDate: new Date(payload.meetingDate),
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with listBoardMeetings' own read-side filter (parseLocalDateStart/
+        // End already used there).
+        meetingDate: parseLocalDateStart(payload.meetingDate),
         meetingTime: payload.meetingTime ?? null,
         venue:       payload.venue ?? null,
         agenda:      payload.agenda ?? null,
@@ -108,7 +112,7 @@ export async function updateBoardMeeting(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(meetingDate !== undefined ? { meetingDate: new Date(meetingDate) } : {}),
+        ...(meetingDate !== undefined ? { meetingDate: parseLocalDateStart(meetingDate) } : {}),
       },
       include: {
         client: { select: { id: true, customerName: true, phone: true } },

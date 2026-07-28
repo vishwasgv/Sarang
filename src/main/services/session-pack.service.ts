@@ -23,7 +23,16 @@ export async function getActivePack(customerId: string) {
       include: { sessionLogs: { orderBy: { deductedAt: 'desc' }, take: 5 }, assignedTrainer: ASSIGNED_TRAINER_SELECT },
       orderBy: { purchaseDate: 'asc' },
     })
-    const active = packs.find((p) => p.usedSessions < p.totalSessions) ?? null
+    // Real bug found live (2026-07-28 service-vertical audit): expiryDate
+    // was read exactly once anywhere in this file, purely to schedule a
+    // WhatsApp reminder — it was never actually enforced as a hard cutoff.
+    // A pack could be used indefinitely long after its promised expiry
+    // date, unlike every other capped-balance resource in this codebase
+    // (batch stock, variant stock, package enrollments), which do reject
+    // once their own stated limit is reached. A null expiryDate means "no
+    // expiry" and is never blocked.
+    const now = new Date()
+    const active = packs.find((p) => p.usedSessions < p.totalSessions && (!p.expiryDate || p.expiryDate >= now)) ?? null
     return { success: true, data: active ? serializePack(active) : null }
   } catch (err) {
     return { success: false, error: { code: 'SP-001', message: err instanceof Error ? err.message : 'Could not fetch session pack.' } }
@@ -155,7 +164,11 @@ export async function deductSession(payload: { customerId: string; appointmentId
         where: { customerId: payload.customerId, isActive: true },
         orderBy: { purchaseDate: 'asc' },
       })
-      const pack = packs.find((p) => p.usedSessions < p.totalSessions)
+      // Real bug found live (2026-07-28 service-vertical audit): expiryDate
+      // was never enforced here — see getActivePack's matching comment.
+      // A null expiryDate means "no expiry" and is never blocked.
+      const now = new Date()
+      const pack = packs.find((p) => p.usedSessions < p.totalSessions && (!p.expiryDate || p.expiryDate >= now))
       if (!pack) return { status: 'no-pack' }
 
       if (payload.appointmentId) {

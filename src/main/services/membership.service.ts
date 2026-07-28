@@ -135,9 +135,20 @@ export async function createMembership(payload: {
     const plan = await db.membershipPlan.findUnique({ where: { id: payload.planId } })
     if (!plan) return { success: false, error: { code: 'M27-NO-PLAN', message: 'Membership plan not found.' } }
 
-    const start = new Date(payload.startDate)
-    const end = new Date(start)
+    // Real bug found live (2026-07-28 service-vertical audit): a bare
+    // `new Date('YYYY-MM-DD')` parses as UTC midnight, which is 5:30 AM
+    // local in IST (this app's own primary market — not a foreign-timezone
+    // edge case). checkInMember's `endDate < now` check then treated a
+    // member's last paid day as already expired from 5:30 AM onward, not at
+    // its actual end — refusing a legitimately-paid check-in with most of
+    // that day still remaining. Fixed to anchor at local midnight, and to
+    // set the END date to the end of its final day (23:59:59.999 local) so
+    // the membership stays valid through the whole last day, not just until
+    // its start.
+    const start = parseLocalDateStart(payload.startDate)
+    const end = parseLocalDateStart(payload.startDate)
     end.setDate(end.getDate() + plan.durationDays)
+    end.setHours(23, 59, 59, 999)
 
     const membership = await db.membership.create({
       data: {

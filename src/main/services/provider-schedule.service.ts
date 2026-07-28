@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listProviderSchedules(providerId: string) {
   try {
@@ -52,7 +53,16 @@ export async function upsertProviderSchedule(payload: {
 export async function getProviderAvailability(payload: { providerId: string; date: string; durationMinutes?: number }) {
   try {
     const db = getPrisma()
-    const date = new Date(payload.date)
+    // Real bug found live (2026-07-28 service-vertical audit): a bare
+    // `new Date('YYYY-MM-DD')` parses as UTC midnight. After fixing
+    // appointment.service.ts's scheduledDate to write at LOCAL midnight
+    // (this same audit), leaving this read-side comparison anchored at UTC
+    // midnight would have made the two systematically disagree in any
+    // timezone where local midnight != UTC midnight — including this app's
+    // own primary IST market, where the two used to accidentally agree only
+    // because both were equally wrong. parseLocalDateStart matches the
+    // write side exactly.
+    const date = parseLocalDateStart(payload.date)
     const dayOfWeek = date.getDay()
 
     const [schedule, holiday, existingAppts] = await Promise.all([
@@ -160,7 +170,9 @@ export async function addHoliday(payload: { date: string; name: string; isGlobal
     const db = getPrisma()
     const item = await db.clinicHoliday.create({
       data: {
-        date: new Date(payload.date),
+        // Same UTC-vs-local fix as getProviderAvailability above — must
+        // match how that function's own holiday-lookup range is anchored.
+        date: parseLocalDateStart(payload.date),
         name: payload.name,
         isGlobal: payload.isGlobal ?? true,
         providerId: payload.providerId ?? null,

@@ -5,6 +5,7 @@ vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().moc
 
 import { getPrisma } from '../../database/db'
 import { updateHearing } from '../hearing.service'
+import { parseLocalDateStart } from '../../utils/date.util'
 
 // Regression coverage for the Phase 28 re-audit finding: scheduleHearingReminder
 // was only called from createHearing, never from updateHearing — rescheduling a
@@ -18,7 +19,12 @@ const FAR_FUTURE_NEW = '2026-09-01'
 
 function makeHearing(overrides: Record<string, unknown> = {}) {
   return {
-    id: 'hearing-1', caseId: 'case-1', hearingDate: new Date(FAR_FUTURE_OLD), hearingTime: null,
+    // Real bug found live (2026-07-28 service-vertical audit): hearingDate
+    // is now constructed via parseLocalDateStart (local midnight), not a
+    // bare `new Date(dateString)` (UTC midnight) — this fixture must match
+    // real behavior so the "same date -> no-op" comparison test is
+    // meaningful.
+    id: 'hearing-1', caseId: 'case-1', hearingDate: parseLocalDateStart(FAR_FUTURE_OLD), hearingTime: null,
     courtRoom: null, purpose: null, status: 'SCHEDULED', outcome: null, nextDate: null,
     notes: null, createdAt: new Date(), updatedAt: new Date(),
     ...overrides,

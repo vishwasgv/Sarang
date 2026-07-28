@@ -156,6 +156,57 @@ describe('session-pack.service — deductSession atomicity', () => {
   })
 })
 
+// Real bug found live (2026-07-28 service-vertical audit): expiryDate was
+// read exactly once anywhere in this file, purely to schedule a WhatsApp
+// reminder — it was never actually enforced as a hard cutoff. A pack could
+// be used indefinitely long after its promised expiry date. Fixed to match
+// every other capped-balance resource in this codebase (batch stock,
+// variant stock, package enrollments), which do reject once their own
+// stated limit is reached.
+describe('session-pack.service — expiry enforcement', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('getActivePack ignores a pack past its expiry date even with sessions remaining', async () => {
+    const db = makeMockDb(makePack({ expiryDate: new Date(2020, 0, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getActivePack('cust-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown }).data).toBeNull()
+  })
+
+  it('getActivePack still returns a pack with no expiry date set at all', async () => {
+    const db = makeMockDb(makePack({ expiryDate: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getActivePack('cust-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown }).data).not.toBeNull()
+  })
+
+  it('getActivePack still returns a pack whose expiry date is in the future', async () => {
+    const db = makeMockDb(makePack({ expiryDate: new Date(2099, 0, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getActivePack('cust-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown }).data).not.toBeNull()
+  })
+
+  it('deductSession rejects deducting against a pack past its expiry date', async () => {
+    const db = makeMockDb(makePack({ expiryDate: new Date(2020, 0, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await deductSession({ customerId: 'cust-1' })
+
+    expect(res.success).toBe(false)
+    expect(db.clientSessionPack.update).not.toHaveBeenCalled()
+  })
+})
+
 // Phase 41 — generateSessionPackInvoice
 
 function makePackForInvoice(overrides: Record<string, unknown> = {}) {

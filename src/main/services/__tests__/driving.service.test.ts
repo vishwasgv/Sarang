@@ -44,12 +44,21 @@ function makeMockDb(lastSessionNumber: number | null) {
   const db: Record<string, any> = {
     drivingSession: {
       findFirst: vi.fn().mockResolvedValue(lastSessionNumber != null ? { sessionNumber: lastSessionNumber } : null),
+      // Conflict check (real bug fixed 2026-07-28): defaults to no existing
+      // sessions, i.e. no conflict — tests that specifically want to
+      // exercise a conflict override this to return an overlapping row.
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeSession({ ...data }))
       ),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  // createDrivingSession/updateDrivingSession now wrap the conflict check +
+  // write in a transaction (same race-safety fix as serial.service.ts's
+  // markSerialSoldTx) — route the callback through this same mock db so
+  // `tx.*` calls hit the same mocked methods as `db.*`.
+  db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
 
@@ -167,6 +176,106 @@ describe('driving.service — session numbering', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('DS27-014')
     expect(db.drivingSession.create).not.toHaveBeenCalled()
+  })
+})
+
+// Real bug found live (2026-07-28 service-vertical audit): createDrivingSession
+// had zero double-booking protection for either the instructor or the
+// vehicle — two front-desk terminals could book the same instructor or
+// vehicle for overlapping times and both would succeed silently.
+describe('driving.service — instructor/vehicle double-booking prevention', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a new session that overlaps an existing one for the same instructor', async () => {
+    const db = makeMockDb(null)
+    db.drivingSession.findMany = vi.fn().mockResolvedValue([
+      { sessionTime: '09:00', durationMinutes: 60, instructorId: 'instr-1', vehicleId: 'veh-OTHER' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 09:30-10:30 overlaps the existing 09:00-10:00 booking for instr-1.
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:30', durationMinutes: 60 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-015')
+    expect(db.drivingSession.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects a new session that overlaps an existing one for the same vehicle (different instructor)', async () => {
+    const db = makeMockDb(null)
+    db.drivingSession.findMany = vi.fn().mockResolvedValue([
+      { sessionTime: '09:00', durationMinutes: 60, instructorId: 'instr-OTHER', vehicleId: 'veh-1' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:30', durationMinutes: 60 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-015')
+  })
+
+  it('allows a back-to-back session that does not actually overlap', async () => {
+    const db = makeMockDb(null)
+    db.drivingSession.findMany = vi.fn().mockResolvedValue([
+      { sessionTime: '09:00', durationMinutes: 60, instructorId: 'instr-1', vehicleId: 'veh-1' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Existing session ends exactly at 10:00; this one starts at 10:00 — no overlap.
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '10:00', durationMinutes: 60 })
+
+    expect(res.success).toBe(true)
+  })
+
+  it('ignores CANCELLED sessions when checking for conflicts', async () => {
+    const db = makeMockDb(null)
+    // A real query would already filter these out via `status: { notIn: [...] }`
+    // in the where clause — simulate that by returning no rows.
+    db.drivingSession.findMany = vi.fn().mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createDrivingSession({ learnerId: 'learner-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: '2026-07-01', sessionTime: '09:00', durationMinutes: 60 })
+
+    expect(res.success).toBe(true)
+    const findManyCall = db.drivingSession.findMany.mock.calls[0][0] as { where: { status: { notIn: string[] } } }
+    expect(findManyCall.where.status.notIn).toEqual(['CANCELLED', 'NO_SHOW'])
+  })
+
+  it('rejects rescheduling a session onto a time that now conflicts with another', async () => {
+    const db = makeSessionUpdateMockDb({ id: 'session-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: new Date(2026, 6, 1), sessionTime: '09:00', durationMinutes: 60, status: 'SCHEDULED' })
+    db.drivingSession.findMany = vi.fn().mockResolvedValue([
+      { sessionTime: '11:00', durationMinutes: 60, instructorId: 'instr-1', vehicleId: 'veh-OTHER' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateDrivingSession({ id: 'session-1', sessionTime: '11:30' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('DS27-015')
+    expect(db.drivingSession.update).not.toHaveBeenCalled()
+  })
+
+  it('excludes the session being rescheduled from its own conflict check', async () => {
+    const db = makeSessionUpdateMockDb({ id: 'session-1', instructorId: 'instr-1', vehicleId: 'veh-1', sessionDate: new Date(2026, 6, 1), sessionTime: '09:00', durationMinutes: 60, status: 'SCHEDULED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Only change is a small time shift for the SAME session — findMany
+    // returning [] (no OTHER sessions) means this must succeed.
+    const res = await updateDrivingSession({ id: 'session-1', sessionTime: '09:15' })
+
+    expect(res.success).toBe(true)
+    const findManyCall = db.drivingSession.findMany.mock.calls[0][0] as { where: { id?: { not: string } } }
+    expect(findManyCall.where.id).toEqual({ not: 'session-1' })
+  })
+
+  it('does not run the conflict check at all when neither date, time, nor duration changes', async () => {
+    const db = makeSessionUpdateMockDb({ id: 'session-1', instructorId: 'instr-1', vehicleId: 'veh-1', status: 'SCHEDULED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateDrivingSession({ id: 'session-1', instructorNotes: 'Good progress' })
+
+    expect(res.success).toBe(true)
+    expect(db.drivingSession.findMany).not.toHaveBeenCalled()
   })
 })
 
@@ -448,6 +557,7 @@ function makeSessionUpdateMockDb(existingSession: Record<string, unknown> | null
   const db: Record<string, any> = {
     drivingSession: {
       findUnique: vi.fn().mockResolvedValue(existingSession),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeSession({ ...(existingSession ?? {}), ...data }))
       ),
@@ -457,6 +567,7 @@ function makeSessionUpdateMockDb(existingSession: Record<string, unknown> | null
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
 

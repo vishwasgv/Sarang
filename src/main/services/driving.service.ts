@@ -12,6 +12,48 @@ function serializePackage<T extends { price: unknown }>(p: T): T {
   return { ...p, price: Number(p.price) }
 }
 
+function toMins(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+// Real bug found live (2026-07-28 service-vertical audit): createDrivingSession
+// had zero double-booking protection for either the instructor or the
+// vehicle — unlike appointment.service.ts's findProviderConflict (the exact
+// same shape of problem, already solved there). Two front-desk terminals
+// booking the same instructor or vehicle for overlapping times both
+// succeeded, silently double-committing a real person/asset.
+async function findDrivingSessionConflict(
+  db: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0] | ReturnType<typeof getPrisma>,
+  instructorId: string,
+  vehicleId: string,
+  sessionDate: Date,
+  sessionTime: string,
+  durationMinutes: number,
+  excludeSessionId?: string
+): Promise<string | null> {
+  const dayEnd = new Date(sessionDate.getTime() + 86400000)
+  const existing = await db.drivingSession.findMany({
+    where: {
+      sessionDate: { gte: sessionDate, lt: dayEnd },
+      status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      OR: [{ instructorId }, { vehicleId }],
+      ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
+    },
+    select: { sessionTime: true, durationMinutes: true, instructorId: true, vehicleId: true },
+  })
+  const newStart = toMins(sessionTime)
+  const newEnd = newStart + durationMinutes
+  for (const s of existing) {
+    const eStart = toMins(s.sessionTime)
+    const eEnd = eStart + s.durationMinutes
+    if (newStart >= eEnd || eStart >= newEnd) continue // no time overlap
+    if (s.instructorId === instructorId) return 'This instructor is already booked for an overlapping time slot.'
+    if (s.vehicleId === vehicleId) return 'This vehicle is already booked for an overlapping time slot.'
+  }
+  return null
+}
+
 // ── LearnerProfile ────────────────────────────────────────────────────────────
 
 export async function getLearnerProfile(customerId: string) {
@@ -277,71 +319,90 @@ export async function createDrivingSession(payload: {
       return { success: false, error: { code: 'DS27-006', message: 'Session fee cannot be negative.' } }
     }
 
-    // Real bug found 2026-07-23: a session redeemed against a package
-    // (packageEnrollmentId set) had its enrollment.sessionsUsed incremented
-    // unconditionally after creation, with NO check that the package still
-    // had sessions remaining — unlike the identical "redeem against a
-    // capped balance" pattern in session-pack.service.ts's deductSession,
-    // which blocks once usedSessions reaches totalSessions. The UI's own
-    // dropdown filters out a depleted enrollment
-    // (`e.sessionsUsed < e.package.totalSessions` in
-    // DrivingSchoolScreen.tsx), but nothing enforced it server-side — a
-    // stale UI list, or any caller that bypasses the dropdown, could book
-    // unlimited sessions against an already-fully-used package for free,
-    // forever. Claimed atomically (conditional update keyed on the exact
-    // sessionsUsed value just read, same claim shape as
-    // generateInvoiceNumber's sequence claim) so two concurrent bookings
-    // against the last remaining session can't both succeed either.
-    if (payload.packageEnrollmentId) {
-      const enrollment = await db.drivingPackageEnrollment.findUnique({
-        where: { id: payload.packageEnrollmentId },
-        include: { package: { select: { totalSessions: true } } },
-      })
-      if (!enrollment) return { success: false, error: { code: 'DS27-012', message: 'Package enrollment not found.' } }
-      if (enrollment.sessionsUsed >= enrollment.package.totalSessions) {
-        return { success: false, error: { code: 'DS27-013', message: `All ${enrollment.package.totalSessions} sessions in this package have already been used.` } }
-      }
-      const claim = await db.drivingPackageEnrollment.updateMany({
-        where: { id: payload.packageEnrollmentId, sessionsUsed: enrollment.sessionsUsed },
-        data: { sessionsUsed: { increment: 1 } },
-      })
-      if (claim.count === 0) {
-        return { success: false, error: { code: 'DS27-014', message: 'This package was just updated by another booking. Please try again.' } }
-      }
-    }
+    // Real bug found live (2026-07-28 service-vertical audit): the conflict
+    // check, the package-enrollment claim, and the session create used to
+    // run as separate, un-transacted calls — the exact same TOCTOU gap
+    // already fixed elsewhere in this codebase (e.g. serial.service.ts's
+    // markSerialSoldTx). Two concurrent bookings could both pass a stale
+    // conflict-check read before either's create() committed. Wrapped in a
+    // single transaction, matching appointment.service.ts's own
+    // findProviderConflict + create pattern, so the second transaction's
+    // reads see the first's already-committed writes.
+    const result = await db.$transaction(async (tx) => {
+      const conflict = await findDrivingSessionConflict(
+        tx, payload.instructorId, payload.vehicleId,
+        new Date(payload.sessionDate), payload.sessionTime, payload.durationMinutes ?? 60
+      )
+      if (conflict) return { ok: false as const, error: { code: 'DS27-015', message: conflict } }
 
-    // Auto-compute session number for this learner. A count()-based scheme
-    // reissues an existing number the moment any session for this learner
-    // is deleted out of sequence; findFirst + increment on the highest
-    // existing number doesn't have that failure mode.
-    const lastSession = await db.drivingSession.findFirst({
-      where: { learnerId: payload.learnerId },
-      orderBy: { sessionNumber: 'desc' },
-      select: { sessionNumber: true },
+      // Real bug found 2026-07-23: a session redeemed against a package
+      // (packageEnrollmentId set) had its enrollment.sessionsUsed incremented
+      // unconditionally after creation, with NO check that the package still
+      // had sessions remaining — unlike the identical "redeem against a
+      // capped balance" pattern in session-pack.service.ts's deductSession,
+      // which blocks once usedSessions reaches totalSessions. The UI's own
+      // dropdown filters out a depleted enrollment
+      // (`e.sessionsUsed < e.package.totalSessions` in
+      // DrivingSchoolScreen.tsx), but nothing enforced it server-side — a
+      // stale UI list, or any caller that bypasses the dropdown, could book
+      // unlimited sessions against an already-fully-used package for free,
+      // forever. Claimed atomically (conditional update keyed on the exact
+      // sessionsUsed value just read, same claim shape as
+      // generateInvoiceNumber's sequence claim) so two concurrent bookings
+      // against the last remaining session can't both succeed either.
+      if (payload.packageEnrollmentId) {
+        const enrollment = await tx.drivingPackageEnrollment.findUnique({
+          where: { id: payload.packageEnrollmentId },
+          include: { package: { select: { totalSessions: true } } },
+        })
+        if (!enrollment) return { ok: false as const, error: { code: 'DS27-012', message: 'Package enrollment not found.' } }
+        if (enrollment.sessionsUsed >= enrollment.package.totalSessions) {
+          return { ok: false as const, error: { code: 'DS27-013', message: `All ${enrollment.package.totalSessions} sessions in this package have already been used.` } }
+        }
+        const claim = await tx.drivingPackageEnrollment.updateMany({
+          where: { id: payload.packageEnrollmentId, sessionsUsed: enrollment.sessionsUsed },
+          data: { sessionsUsed: { increment: 1 } },
+        })
+        if (claim.count === 0) {
+          return { ok: false as const, error: { code: 'DS27-014', message: 'This package was just updated by another booking. Please try again.' } }
+        }
+      }
+
+      // Auto-compute session number for this learner. A count()-based scheme
+      // reissues an existing number the moment any session for this learner
+      // is deleted out of sequence; findFirst + increment on the highest
+      // existing number doesn't have that failure mode.
+      const lastSession = await tx.drivingSession.findFirst({
+        where: { learnerId: payload.learnerId },
+        orderBy: { sessionNumber: 'desc' },
+        select: { sessionNumber: true },
+      })
+
+      const item = await tx.drivingSession.create({
+        data: {
+          learnerId: payload.learnerId,
+          instructorId: payload.instructorId,
+          vehicleId: payload.vehicleId,
+          sessionDate: new Date(payload.sessionDate),
+          sessionTime: payload.sessionTime,
+          durationMinutes: payload.durationMinutes ?? 60,
+          pickupPoint: payload.pickupPoint ?? null,
+          sessionNumber: payload.sessionNumber ?? (lastSession?.sessionNumber ?? 0) + 1,
+          status: 'SCHEDULED',
+          sessionFee: payload.sessionFee ?? null,
+          packageEnrollmentId: payload.packageEnrollmentId ?? null,
+        },
+        include: {
+          learner: { select: { id: true, customerName: true } },
+          instructor: { select: { id: true, fullName: true } },
+          vehicle: { select: { id: true, registrationNumber: true } },
+        },
+      })
+      return { ok: true as const, item }
     })
 
-    const session = await db.drivingSession.create({
-      data: {
-        learnerId: payload.learnerId,
-        instructorId: payload.instructorId,
-        vehicleId: payload.vehicleId,
-        sessionDate: new Date(payload.sessionDate),
-        sessionTime: payload.sessionTime,
-        durationMinutes: payload.durationMinutes ?? 60,
-        pickupPoint: payload.pickupPoint ?? null,
-        sessionNumber: payload.sessionNumber ?? (lastSession?.sessionNumber ?? 0) + 1,
-        status: 'SCHEDULED',
-        sessionFee: payload.sessionFee ?? null,
-        packageEnrollmentId: payload.packageEnrollmentId ?? null,
-      },
-      include: {
-        learner: { select: { id: true, customerName: true } },
-        instructor: { select: { id: true, fullName: true } },
-        vehicle: { select: { id: true, registrationNumber: true } },
-      },
-    })
-    // The enrollment's sessionsUsed was already claimed atomically above,
-    // before this session existed — no further update needed here.
+    if (!result.ok) return { success: false, error: result.error }
+    const session = result.item
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'DrivingSession', entityId: session.id, newValue: JSON.stringify({ learnerId: session.learnerId, sessionDate: session.sessionDate }) } }).catch(() => {})
     return { success: true, data: serializeSession(session) }
   } catch (err) {
@@ -365,26 +426,54 @@ export async function updateDrivingSession(payload: {
     }
     const db = getPrisma()
     const { id, sessionDate, ...rest } = payload
+    const isReschedule = sessionDate !== undefined || payload.sessionTime !== undefined || payload.durationMinutes !== undefined
 
-    // Phase 58 §2 — Driving School: maintenance scheduling is tied to real
-    // vehicle usage, so a session only counts once it's actually COMPLETED
-    // (not on every edit, and not twice if saved again after completion).
-    const existing = payload.status === 'COMPLETED'
-      ? await db.drivingSession.findUnique({ where: { id }, select: { status: true, vehicleId: true } })
-      : null
+    // Reschedule (date/time/duration change) needs the same conflict check
+    // createDrivingSession runs — same real bug (2026-07-28 service-vertical
+    // audit): rescheduling used to accept any date/time with zero
+    // instructor/vehicle double-booking check, even though instructorId/
+    // vehicleId can't be reassigned here (not in this payload), only moved
+    // in time. Wrapped in a transaction with the update itself for the same
+    // race-safety reason createDrivingSession's fix documents.
+    const result = await db.$transaction(async (tx) => {
+      if (isReschedule) {
+        const existingForReschedule = await tx.drivingSession.findUnique({
+          where: { id }, select: { instructorId: true, vehicleId: true, sessionDate: true, sessionTime: true, durationMinutes: true }
+        })
+        if (existingForReschedule) {
+          const newDate = sessionDate !== undefined ? new Date(sessionDate) : existingForReschedule.sessionDate
+          const newTime = payload.sessionTime ?? existingForReschedule.sessionTime
+          const newDuration = payload.durationMinutes ?? existingForReschedule.durationMinutes
+          const conflict = await findDrivingSessionConflict(
+            tx, existingForReschedule.instructorId, existingForReschedule.vehicleId, newDate, newTime, newDuration, id
+          )
+          if (conflict) return { ok: false as const, error: { code: 'DS27-015', message: conflict } }
+        }
+      }
 
-    const session = await db.drivingSession.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(sessionDate !== undefined ? { sessionDate: new Date(sessionDate) } : {}),
-      },
+      // Phase 58 §2 — Driving School: maintenance scheduling is tied to real
+      // vehicle usage, so a session only counts once it's actually COMPLETED
+      // (not on every edit, and not twice if saved again after completion).
+      const existing = payload.status === 'COMPLETED'
+        ? await tx.drivingSession.findUnique({ where: { id }, select: { status: true, vehicleId: true } })
+        : null
+
+      const item = await tx.drivingSession.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(sessionDate !== undefined ? { sessionDate: new Date(sessionDate) } : {}),
+        },
+      })
+
+      if (existing && existing.status !== 'COMPLETED') {
+        await tx.drivingVehicle.update({ where: { id: existing.vehicleId }, data: { sessionsSinceService: { increment: 1 } } }).catch(() => {})
+      }
+      return { ok: true as const, item }
     })
 
-    if (existing && existing.status !== 'COMPLETED') {
-      await db.drivingVehicle.update({ where: { id: existing.vehicleId }, data: { sessionsSinceService: { increment: 1 } } }).catch(() => {})
-    }
-
+    if (!result.ok) return { success: false, error: result.error }
+    const session = result.item
     await db.auditLog.create({ data: { action: payload.status === 'COMPLETED' ? 'COMPLETED' : payload.status === 'CANCELLED' ? 'CANCELLED' : 'UPDATE', entityType: 'DrivingSession', entityId: session.id } }).catch(() => {})
     return { success: true, data: serializeSession(session) }
   } catch (err) {

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { enrollMember, unenrollMember } from '../batch-class.service'
+import { enrollMember, unenrollMember, createBatchClass, updateBatchClass } from '../batch-class.service'
 
 // Regression coverage for the Phase 27 re-audit finding: enrollMember's
 // existing-enrollment/capacity check ran as a separate statement from the
@@ -27,6 +27,9 @@ function makeMockDb(cls: ReturnType<typeof makeClass> | null) {
   const db: Record<string, any> = {
     batchClass: {
       findUnique: vi.fn().mockResolvedValue(cls),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'class-new', ...data })
+      ),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({ ...cls, ...data })
       ),
@@ -36,6 +39,37 @@ function makeMockDb(cls: ReturnType<typeof makeClass> | null) {
   db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
+
+// Real bug found live (2026-07-28 service-vertical audit): startDate/endDate
+// used to be constructed via a bare `new Date('YYYY-MM-DD')` (UTC
+// midnight), inconsistent with this app's own local-date convention used
+// elsewhere.
+describe('batch-class.service — local-date construction', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createBatchClass stores startDate/endDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBatchClass({ className: 'Yoga', maxCapacity: 10, scheduleDays: '["MON"]', scheduleTime: '07:00', startDate: '2026-08-15', endDate: '2026-12-31' })
+
+    expect(res.success).toBe(true)
+    const createCall = db.batchClass.create.mock.calls[0][0] as { data: { startDate: Date; endDate: Date } }
+    expect(createCall.data.startDate).toEqual(new Date(2026, 7, 15))
+    expect(createCall.data.endDate).toEqual(new Date(2026, 11, 31))
+  })
+
+  it('updateBatchClass stores an updated startDate at local midnight too', async () => {
+    const db = makeMockDb(makeClass())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateBatchClass({ id: 'class-1', startDate: '2026-09-01' })
+
+    expect(res.success).toBe(true)
+    const updateCall = db.batchClass.update.mock.calls[0][0] as { data: { startDate: Date } }
+    expect(updateCall.data.startDate).toEqual(new Date(2026, 8, 1))
+  })
+})
 
 describe('batch-class.service — enrollment atomicity', () => {
   beforeEach(() => vi.clearAllMocks())

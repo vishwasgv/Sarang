@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listBatchClasses(filters?: { status?: string; instructorId?: string }) {
   try {
@@ -51,8 +52,11 @@ export async function createBatchClass(payload: {
         maxCapacity: payload.maxCapacity,
         scheduleDays: payload.scheduleDays,
         scheduleTime: payload.scheduleTime,
-        startDate: new Date(payload.startDate),
-        endDate: payload.endDate ? new Date(payload.endDate) : null,
+        // Real bug found live (2026-07-28 service-vertical audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this app's own local-date convention used elsewhere.
+        startDate: parseLocalDateStart(payload.startDate),
+        endDate: payload.endDate ? parseLocalDateStart(payload.endDate) : null,
         roomOrLocation: payload.roomOrLocation ?? null,
         enrolledMemberIds: '[]',
         status: 'ACTIVE',
@@ -84,8 +88,8 @@ export async function updateBatchClass(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(startDate !== undefined ? { startDate: new Date(startDate) } : {}),
-        ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
+        ...(startDate !== undefined ? { startDate: parseLocalDateStart(startDate) } : {}),
+        ...(endDate !== undefined ? { endDate: endDate ? parseLocalDateStart(endDate) : null } : {}),
       },
     })
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'BatchClass', entityId: cls.id } }).catch(() => {})
