@@ -129,6 +129,39 @@ describe('tailoring-order.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// totalAmount was computed with plain JS float multiplication
+// (`quantity * unitPrice`), which reliably produces values with garbage
+// trailing digits for perfectly ordinary inputs (IEEE754 can't represent
+// most decimal fractions exactly) — stored verbatim into a Decimal column
+// and shown on the printed order/invoice.
+describe('tailoring-order.service — totalAmount float-precision', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createTailoringOrder rounds totalAmount to 2 decimal places even when raw float math would drift', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 19.99 * 7 = 139.92999999999998 in plain float math
+    const res = await createTailoringOrder({ clientId: 'cust-1', garmentType: 'SHIRT', unitPrice: 19.99, quantity: 7 })
+
+    expect(res.success).toBe(true)
+    const call = db.tailoringOrder.create.mock.calls[0][0]
+    expect(call.data.totalAmount).toBe(139.93)
+  })
+
+  it('updateTailoringOrder rounds a recomputed totalAmount to 2 decimal places', async () => {
+    const db = makeMockDb(makeOrder({ quantity: 7 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateTailoringOrder({ id: 'to-1', unitPrice: 19.99 })
+
+    expect(res.success).toBe(true)
+    const call = db.tailoringOrder.update.mock.calls[0][0]
+    expect(call.data.totalAmount).toBe(139.93)
+  })
+})
+
 describe('tailoring-order.service — Phase 48 gender/styleRegion', () => {
   beforeEach(() => vi.clearAllMocks())
 

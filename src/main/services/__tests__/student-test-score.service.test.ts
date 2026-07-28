@@ -133,6 +133,56 @@ describe('student-test-score.service — updateTestScore', () => {
   })
 })
 
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// StudentTestScore.testDate is a non-nullable DateTime field that used to be
+// returned across Electron's IPC boundary as a raw Prisma Date instance —
+// structured clone preserves it without throwing (unlike a Decimal, caught
+// immediately in dev), so this shipped as a live, always-reproducible
+// renderer crash: TestScoresScreen.tsx's edit-form populator calls
+// `s.testDate.split('T')[0]` directly, assuming an ISO string.
+describe('student-test-score.service — testDate IPC serialization', () => {
+  it('createTestScore returns testDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTestScore({ enrollmentId: 'enr-1', testName: 'Unit Test 1', marksObtained: 42, maxMarks: 50, testDate: '2026-03-10' })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { testDate: unknown } }).data
+    expect(typeof data.testDate).toBe('string')
+    expect(data.testDate).not.toBeInstanceOf(Date)
+    expect((data.testDate as string).slice(0, 10)).toBe('2026-03-10')
+  })
+
+  it('listTestScores returns testDate as an ISO string for every row', async () => {
+    const db = makeMockDb()
+    db.studentTestScore.findMany = vi.fn().mockResolvedValue([makeScore({ testDate: new Date(2026, 2, 10) })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listTestScores({})
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: Array<{ testDate: unknown }> }).data[0]
+    expect(typeof row.testDate).toBe('string')
+    expect(row.testDate).not.toBeInstanceOf(Date)
+  })
+
+  it('updateTestScore returns testDate as an ISO string and stores a changed date at local midnight (not UTC)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateTestScore({ id: 'sts-1', testDate: '2026-03-15' })
+
+    expect(res.success).toBe(true)
+    const call = db.studentTestScore.update.mock.calls[0][0]
+    const stored: Date = call.data.testDate
+    expect(stored.getDate()).toBe(15)
+    expect(stored.getHours()).toBe(0) // local midnight, not shifted by a bare UTC parse
+    const data = (res as { data: { testDate: unknown } }).data
+    expect(typeof data.testDate).toBe('string')
+  })
+})
+
 describe('student-test-score.service — list/delete', () => {
   it('lists scores filtered by batch via the enrollment relation', async () => {
     const db = makeMockDb()

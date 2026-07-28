@@ -102,3 +102,77 @@ describe('coaching-batch.service — Decimal serialization', () => {
     expect((res as { data: { totalMonthlyRevenue: number } }).data.totalMonthlyRevenue).toBe(5000)
   })
 })
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// CoachingBatch.startDate (non-nullable) / endDate (nullable) are DateTime
+// fields that used to be returned across Electron's IPC boundary as raw
+// Prisma Date instances — structured clone preserves them without throwing
+// (unlike a Decimal, caught immediately in dev), so this shipped as a live,
+// always-reproducible renderer crash: BatchesScreen.tsx's edit-form
+// populator (openEditBatch) calls `b.startDate.split('T')[0]` /
+// `b.endDate.split('T')[0]` directly, assuming ISO strings — crashing on
+// EVERY batch edit.
+describe('coaching-batch.service — startDate/endDate IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createBatch stores startDate/endDate at local midnight (not a bare UTC-midnight parse) and returns them as ISO strings', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBatch({ batchName: 'JEE 2027 Morning Batch', subjectOrCourse: 'Mathematics', startDate: '2026-03-10', endDate: '2026-12-20', feePerMonth: 3000 })
+
+    expect(res.success).toBe(true)
+    const call = db.coachingBatch.create.mock.calls[0][0]
+    const storedStart: Date = call.data.startDate
+    const storedEnd: Date = call.data.endDate
+    expect(storedStart.getDate()).toBe(10)
+    expect(storedStart.getHours()).toBe(0) // local midnight, not shifted by a bare UTC parse
+    expect(storedEnd.getDate()).toBe(20)
+
+    const data = (res as { data: { startDate: unknown; endDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+    expect(data.startDate).not.toBeInstanceOf(Date)
+    expect((data.startDate as string).slice(0, 10)).toBe('2026-03-10')
+    expect(typeof data.endDate).toBe('string')
+    expect((data.endDate as string).slice(0, 10)).toBe('2026-12-20')
+  })
+
+  it('listBatches returns startDate/endDate as ISO strings, not raw Date instances', async () => {
+    const db = makeMockDb(makeBatch({ startDate: new Date(2026, 2, 10), endDate: new Date(2026, 11, 20) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listBatches({})
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: Array<{ startDate: unknown; endDate: unknown }> }).data[0]
+    expect(typeof row.startDate).toBe('string')
+    expect(row.startDate).not.toBeInstanceOf(Date)
+    expect(typeof row.endDate).toBe('string')
+  })
+
+  it('updateBatch stores a changed startDate at local midnight and returns it serialized', async () => {
+    const db = makeMockDb(makeBatch())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateBatch({ id: 'batch-1', startDate: '2026-05-01' })
+
+    expect(res.success).toBe(true)
+    const call = db.coachingBatch.update.mock.calls[0][0]
+    const stored: Date = call.data.startDate
+    expect(stored.getDate()).toBe(1)
+    expect(stored.getHours()).toBe(0)
+    const data = (res as { data: { startDate: unknown } }).data
+    expect(typeof data.startDate).toBe('string')
+  })
+
+  it('endDate stays null when never set (no crash on a batch with no end date)', async () => {
+    const db = makeMockDb(makeBatch({ endDate: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listBatches({})
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: Array<{ endDate: unknown }> }).data[0]
+    expect(row.endDate).toBeNull()
+  })
+})

@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { sumCurrency } from './currency.service'
 
 // ShootAddOnItem.unitPrice is a Prisma Decimal field — Electron's IPC
 // (structured clone) cannot serialize a Decimal instance.
@@ -52,6 +53,12 @@ export async function deleteShootAddOn(id: string) {
 export async function getShootAddOnsTotal(shootBookingId: string) {
   const db = getPrisma()
   const items = await db.shootAddOnItem.findMany({ where: { shootBookingId } })
-  const total = items.reduce((sum, i) => sum + i.quantity * Number(i.unitPrice), 0)
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // plain-float `reduce` here drifts off the correct cent for ordinary
+  // quantity/unitPrice combinations — same bug class already fixed
+  // systemically for billing/coaching-fee/rental (see commit "Fix systemic
+  // float money-math bug") — routed through currency.service.ts's
+  // sumCurrency (Decimal-backed summation) instead.
+  const total = sumCurrency(items.map((i) => i.quantity * Number(i.unitPrice)))
   return { success: true, data: { total, count: items.length } }
 }

@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { sumCurrency } from './currency.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -101,8 +102,18 @@ export async function createCarJobCard(payload: {
   const db = getPrisma()
   const serviceItems = payload.serviceItems ?? []
   const partsItems = payload.partsItems ?? []
-  const laborTotal = serviceItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
-  const partsTotal = partsItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // plain-float `reduce((s, i) => s + i.quantity * i.unitPrice, 0)` drifts
+  // off the correct cent for perfectly ordinary line items (IEEE754 can't
+  // represent most decimal fractions exactly, and the error compounds across
+  // multiple lines) — the resulting laborTotal/partsTotal get stored
+  // verbatim into a Decimal column and shown on the job card/invoice with
+  // garbage trailing digits. Same bug class already fixed systemically for
+  // billing/coaching-fee/rental (see commit "Fix systemic float money-math
+  // bug") — routed through currency.service.ts's sumCurrency (Decimal-backed
+  // summation) instead.
+  const laborTotal = sumCurrency(serviceItems.map((i) => i.quantity * i.unitPrice))
+  const partsTotal = sumCurrency(partsItems.map((i) => i.quantity * i.unitPrice))
 
   const card = await db.$transaction(async (tx) => {
     const jobNumber = await generateJobNumber(tx)
@@ -165,11 +176,11 @@ export async function updateCarJobCard(payload: {
   if (vehicleNumber !== undefined) data.vehicleNumber = vehicleNumber.toUpperCase().replace(/\s+/g, ' ').trim()
   if (serviceItems !== undefined) {
     data.serviceItems = JSON.stringify(serviceItems)
-    data.laborTotal = serviceItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
+    data.laborTotal = sumCurrency(serviceItems.map((i) => i.quantity * i.unitPrice))
   }
   if (partsItems !== undefined) {
     data.partsItems = JSON.stringify(partsItems)
-    data.partsTotal = partsItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
+    data.partsTotal = sumCurrency(partsItems.map((i) => i.quantity * i.unitPrice))
   }
   if (estimatedDelivery !== undefined) data.estimatedDelivery = estimatedDelivery ? new Date(estimatedDelivery) : null
   if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? new Date(deliveredDate) : null

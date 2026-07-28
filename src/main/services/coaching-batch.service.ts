@@ -1,12 +1,32 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // CoachingBatch.feePerMonth is a Prisma Decimal field — Electron's IPC
 // (structured clone) cannot serialize a Decimal instance and throws "An
 // object could not be cloned" on every response that includes one. Exported
 // so coaching-batch-enrollment.service.ts can apply it to the nested `batch`
 // object returned by listEnrollmentsByStudent's `include: { batch }`.
-export function serializeBatch<T extends { feePerMonth: unknown }>(b: T): T {
-  return { ...b, feePerMonth: Number(b.feePerMonth) }
+//
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// CoachingBatch.startDate (non-nullable) / endDate (nullable) are DateTime
+// fields returned across Electron's IPC boundary as raw Prisma Date
+// instances — structured clone preserves them without throwing (unlike a
+// Decimal, caught immediately in dev), so this shipped as a live, always-
+// reproducible renderer crash: BatchesScreen.tsx's edit-form populator
+// (openEditBatch) calls `b.startDate.split('T')[0]` / `b.endDate.split('T')[0]`
+// directly, assuming ISO strings — crashing on EVERY batch edit. Same bug
+// class as sprint.service.ts's serializeSprint — see date.util.ts's
+// toLocalDateOnlyIso for the shared fix. Guarded on real property presence
+// (not all callers' `include: { batch }` selects start/endDate — e.g.
+// coaching-batch-enrollment.service.ts's listEnrollmentsByStudent doesn't) —
+// same discipline serializeEnrollment already uses for its own nested batch.
+export function serializeBatch<T extends { feePerMonth: unknown; startDate?: unknown; endDate?: unknown }>(b: T): T {
+  return {
+    ...b,
+    feePerMonth: Number(b.feePerMonth),
+    ...(b.startDate instanceof Date ? { startDate: toLocalDateOnlyIso(b.startDate) as unknown as Date } : {}),
+    ...(b.endDate instanceof Date ? { endDate: toLocalDateOnlyIso(b.endDate) as unknown as Date } : {}),
+  }
 }
 
 export async function listBatches(filters?: { status?: string; search?: string }) {
@@ -49,8 +69,8 @@ export async function createBatch(payload: {
       scheduleTime: payload.scheduleTime || null,
       roomOrLocation: payload.roomOrLocation || null,
       maxCapacity: payload.maxCapacity ?? 20,
-      startDate: new Date(payload.startDate),
-      endDate: payload.endDate ? new Date(payload.endDate) : null,
+      startDate: parseLocalDateStart(payload.startDate),
+      endDate: payload.endDate ? parseLocalDateStart(payload.endDate) : null,
       feePerMonth: payload.feePerMonth,
       status: payload.status ?? 'ACTIVE',
     },
@@ -84,8 +104,8 @@ export async function updateBatch(payload: {
     data: {
       ...rest,
       ...(scheduleDays !== undefined ? { scheduleDays: JSON.stringify(scheduleDays) } : {}),
-      ...(startDate !== undefined ? { startDate: new Date(startDate) } : {}),
-      ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
+      ...(startDate !== undefined ? { startDate: parseLocalDateStart(startDate) } : {}),
+      ...(endDate !== undefined ? { endDate: endDate ? parseLocalDateStart(endDate) : null } : {}),
     },
     include: {
       instructor: { select: { id: true, fullName: true } },

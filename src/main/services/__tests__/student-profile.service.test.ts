@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { createStudent } from '../student-profile.service'
+import { createStudent, updateStudent, listStudents } from '../student-profile.service'
 
 // Phase 54E — createStudent used to call tx.customer.create() unconditionally,
 // silently duplicating the Customer row for anyone who'd already been billed
@@ -19,7 +19,14 @@ function makeDb() {
       create: vi.fn().mockResolvedValue({ id: 'new-customer-id', customerName: 'New Student' }),
     },
     studentProfile: {
-      create: vi.fn().mockResolvedValue({ id: 'profile-1', customerId: 'new-customer-id', customer: { customerName: 'New Student' } }),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'profile-1', customerId: 'new-customer-id', enrollmentDate: new Date(), ...data, customer: { customerName: 'New Student' } })
+      ),
+      findUnique: vi.fn().mockResolvedValue({ id: 'profile-1', customerId: 'existing-customer-id', enrollmentDate: new Date(2026, 2, 10), rollNumber: null, classOrGrade: '10th', schoolName: null, parentPhone: null, isActive: true }),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'profile-1', customerId: 'existing-customer-id', enrollmentDate: new Date(2026, 2, 10), rollNumber: null, classOrGrade: '10th', schoolName: null, parentPhone: null, isActive: true, ...data, customer: { customerName: 'Existing Student' } })
+      ),
+      findMany: vi.fn().mockResolvedValue([{ id: 'profile-1', customerId: 'existing-customer-id', enrollmentDate: new Date(2026, 2, 10), rollNumber: null, classOrGrade: '10th', schoolName: null, parentPhone: null, isActive: true, customer: { customerName: 'Existing Student' } }]),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
@@ -79,5 +86,59 @@ describe('student-profile.service — createStudent find-or-create', () => {
 
     expect((db.customer as { findFirst: ReturnType<typeof vi.fn> }).findFirst).not.toHaveBeenCalled()
     expect((db.customer as { create: ReturnType<typeof vi.fn> }).create).toHaveBeenCalled()
+  })
+})
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// StudentProfile.enrollmentDate is a non-nullable DateTime field that used
+// to be returned across Electron's IPC boundary as a raw Prisma Date
+// instance — structured clone preserves it without throwing (unlike a
+// Decimal, caught immediately in dev), so this shipped as a live, always-
+// reproducible renderer crash: StudentsScreen.tsx's edit-form populator
+// (openEdit) calls `s.enrollmentDate.split('T')[0]` directly, assuming an
+// ISO string — crashing on EVERY student edit.
+describe('student-profile.service — enrollmentDate IPC serialization', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createStudent stores an explicit enrollmentDate at local midnight and returns it as an ISO string', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createStudent({ customerName: 'New Student', classOrGrade: '10th', enrollmentDate: '2026-03-10' })
+
+    expect(res.success).toBe(true)
+    const call = (db.studentProfile as { create: ReturnType<typeof vi.fn> }).create.mock.calls[0][0]
+    const stored: Date = call.data.enrollmentDate
+    expect(stored.getDate()).toBe(10)
+    expect(stored.getHours()).toBe(0) // local midnight, not shifted by a bare UTC parse
+
+    const data = (res as { data: { enrollmentDate: unknown } }).data
+    expect(typeof data.enrollmentDate).toBe('string')
+    expect(data.enrollmentDate).not.toBeInstanceOf(Date)
+    expect((data.enrollmentDate as string).slice(0, 10)).toBe('2026-03-10')
+  })
+
+  it('listStudents returns enrollmentDate as an ISO string, not a raw Date instance', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listStudents({})
+
+    expect(res.success).toBe(true)
+    const row = (res as { data: Array<{ enrollmentDate: unknown }> }).data[0]
+    expect(typeof row.enrollmentDate).toBe('string')
+    expect(row.enrollmentDate).not.toBeInstanceOf(Date)
+  })
+
+  it('updateStudent returns enrollmentDate as an ISO string', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateStudent({ id: 'profile-1', classOrGrade: '11th' })
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { enrollmentDate: unknown } }).data
+    expect(typeof data.enrollmentDate).toBe('string')
+    expect(data.enrollmentDate).not.toBeInstanceOf(Date)
   })
 })

@@ -133,6 +133,46 @@ describe('car-job-card.service — Decimal serialization', () => {
   })
 })
 
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// laborTotal/partsTotal were summed with a plain-float
+// `reduce((s, i) => s + i.quantity * i.unitPrice, 0)`, which drifts off the
+// correct cent for perfectly ordinary line items (IEEE754 can't represent
+// most decimal fractions exactly, and the error compounds across multiple
+// lines) — the result gets stored verbatim into a Decimal column and shown
+// on the job card/invoice with garbage trailing digits.
+describe('car-job-card.service — laborTotal/partsTotal float-precision', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createCarJobCard sums laborTotal/partsTotal without float drift across multiple lines', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createCarJobCard({
+      clientId: 'cust-1', vehicleNumber: 'KA01AB1234', vehicleMake: 'Maruti', vehicleModel: 'Swift',
+      // 19.99 * 7 = 139.92999999999998 in plain float math; 0.1 + 0.2-style
+      // line-item drift across 3 lines compounds it further.
+      serviceItems: [{ name: 'Labor A', quantity: 7, unitPrice: 19.99 }, { name: 'Labor B', quantity: 1, unitPrice: 0.1 }, { name: 'Labor C', quantity: 1, unitPrice: 0.2 }],
+      partsItems: [{ name: 'Part A', quantity: 3, unitPrice: 33.33 }],
+    })
+
+    expect(res.success).toBe(true)
+    const call = db.carJobCard.create.mock.calls[0][0]
+    expect(call.data.laborTotal).toBe(140.23)
+    expect(call.data.partsTotal).toBe(99.99)
+  })
+
+  it('updateCarJobCard recomputes laborTotal without float drift', async () => {
+    const db = makeMockDb(makeCard())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateCarJobCard({ id: 'cjc-1', serviceItems: [{ name: 'Labor', quantity: 7, unitPrice: 19.99 }] })
+
+    expect(res.success).toBe(true)
+    const call = db.carJobCard.update.mock.calls[0][0]
+    expect(call.data.laborTotal).toBe(139.93)
+  })
+})
+
 describe('generateCarJobInvoice — catalog-linked parts reach real inventory', () => {
   beforeEach(() => vi.clearAllMocks())
 

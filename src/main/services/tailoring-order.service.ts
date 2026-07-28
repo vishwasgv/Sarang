@@ -4,6 +4,7 @@ import { generateSequenceNumber } from './sequence.service'
 import { inventoryService } from './inventory.service'
 import { createAppointment } from './appointment.service'
 import { createAppointmentReminder } from './notification-queue.service'
+import { roundCurrency } from './currency.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -85,7 +86,14 @@ export async function createTailoringOrder(payload: {
   const db = getPrisma()
   const quantity = payload.quantity ?? 1
   const unitPrice = payload.unitPrice
-  const totalAmount = quantity * unitPrice
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // plain JS float multiplication here (and in updateTailoringOrder below)
+  // can produce values like 139.92999999999998 for perfectly ordinary
+  // quantity/unitPrice inputs, stored verbatim into a Decimal column and
+  // shown on the printed order/invoice with garbage trailing digits — same
+  // bug class already fixed systemically for billing/coaching-fee/rental
+  // (see commit "Fix systemic float money-math bug").
+  const totalAmount = roundCurrency(quantity * unitPrice)
 
   const order = await db.$transaction(async (tx) => {
     const orderNumber = await generateOrderNumber(tx)
@@ -153,7 +161,7 @@ export async function updateTailoringOrder(payload: {
     const newPrice = unitPrice ?? Number(existing.unitPrice)
     data.quantity = newQty
     data.unitPrice = newPrice
-    data.totalAmount = newQty * newPrice
+    data.totalAmount = roundCurrency(newQty * newPrice)
   }
 
   const order = await db.tailoringOrder.update({

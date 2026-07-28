@@ -1,5 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { roundCurrency } from './currency.service'
+import { ServiceError } from '../errors/service-error'
 
 // PropertyDeal.dealValue/brokeragePercent/brokerageAmount/coBrokerSharePercent/
 // coBrokerShareAmount are Prisma Decimal fields — Electron's IPC (structured
@@ -41,9 +43,20 @@ export async function listPropertyDeals(filters?: { status?: string; propertyId?
 // brokerageAmount/coBrokerSharePercent (the same "never trust a client-sent
 // derived fact" discipline this codebase applies elsewhere, e.g. billing
 // line totals).
+//
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// this (and brokerageAmount below) did the percentage math in plain JS
+// floats — `(brokerageAmount * coBrokerSharePercent) / 100` reliably
+// produces values like 4166.66625 for perfectly ordinary inputs (IEEE754
+// can't represent most decimal fractions exactly), which then got stored
+// verbatim into a Decimal column and shown on the printed commission
+// invoice/deal record with garbage trailing digits. Same bug class already
+// fixed systemically for billing/coaching-fee/rental/report (see commit
+// "Fix systemic float money-math bug") — routed through currency.service.ts's
+// roundCurrency (Decimal-backed) instead.
 function computeCoBrokerShare(brokerageAmount: number, coBrokerSharePercent?: number | null): number | null {
   if (coBrokerSharePercent == null) return null
-  return (brokerageAmount * coBrokerSharePercent) / 100
+  return roundCurrency((brokerageAmount * coBrokerSharePercent) / 100)
 }
 
 export async function createPropertyDeal(payload: {
@@ -58,7 +71,7 @@ export async function createPropertyDeal(payload: {
   coBrokerSharePercent?: number
 }) {
   const db = getPrisma()
-  const brokerageAmount = (payload.dealValue * payload.brokeragePercent) / 100
+  const brokerageAmount = roundCurrency((payload.dealValue * payload.brokeragePercent) / 100)
 
   const deal = await db.propertyDeal.create({
     data: {
@@ -106,7 +119,7 @@ export async function updatePropertyDeal(payload: {
     const existing = await db.propertyDeal.findUniqueOrThrow({ where: { id }, select: { dealValue: true, brokeragePercent: true, coBrokerSharePercent: true } })
     const newDealValue = dealValue ?? Number(existing.dealValue)
     const newBrokeragePercent = brokeragePercent ?? Number(existing.brokeragePercent)
-    const newBrokerageAmount = (newDealValue * newBrokeragePercent) / 100
+    const newBrokerageAmount = roundCurrency((newDealValue * newBrokeragePercent) / 100)
     if (dealValue !== undefined || brokeragePercent !== undefined) {
       brokerageUpdate = {
         brokerageAmount: newBrokerageAmount,
@@ -122,31 +135,68 @@ export async function updatePropertyDeal(payload: {
     coBrokerShareAmountUpdate = computeCoBrokerShare(newBrokerageAmount, effectiveCoBrokerPercent)
   }
 
-  const deal = await db.propertyDeal.update({
-    where: { id },
-    data: {
-      ...rest,
-      ...brokerageUpdate,
-      ...(coBrokerSharePercent !== undefined ? { coBrokerSharePercent } : {}),
-      ...(coBrokerShareAmountUpdate !== undefined ? { coBrokerShareAmount: coBrokerShareAmountUpdate } : {}),
-      ...(expectedRegistrationDate !== undefined ? { expectedRegistrationDate: expectedRegistrationDate ? new Date(expectedRegistrationDate) : null } : {}),
-    },
-    include: {
-      property: { select: { id: true, propertyType: true, location: true, listingType: true } },
-      buyer: { select: { id: true, customerName: true, phone: true } },
-      seller: { select: { id: true, customerName: true, phone: true } },
-    },
-  })
+  const updateData = {
+    ...rest,
+    ...brokerageUpdate,
+    ...(coBrokerSharePercent !== undefined ? { coBrokerSharePercent } : {}),
+    ...(coBrokerShareAmountUpdate !== undefined ? { coBrokerShareAmount: coBrokerShareAmountUpdate } : {}),
+    ...(expectedRegistrationDate !== undefined ? { expectedRegistrationDate: expectedRegistrationDate ? new Date(expectedRegistrationDate) : null } : {}),
+  }
+  const dealInclude = {
+    property: { select: { id: true, propertyType: true, location: true, listingType: true } },
+    buyer: { select: { id: true, customerName: true, phone: true } },
+    seller: { select: { id: true, customerName: true, phone: true } },
+  } as const
 
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // marking a deal REGISTERED read nothing about the property's CURRENT
+  // status first — it just updated the deal, then unconditionally wrote
+  // property.status = SOLD/RENTED in a later, separate statement. Nothing
+  // stopped two different deals for the SAME property (e.g. two interested
+  // buyers a broker is negotiating with in parallel) from both being marked
+  // REGISTERED — the property would silently flip from one buyer's
+  // sale/rental to the other's, a real double-sale of a single physical
+  // asset with no error raised to staff. Fixed with the same atomic
+  // conditional-claim pattern this file already uses for invoice-generation
+  // sentinels: the property is only handed to this deal if its status isn't
+  // ALREADY SOLD/RENTED, checked-and-set in one statement inside a
+  // transaction together with the deal's own status flip. A re-save of an
+  // already-REGISTERED deal (editing notes, say) is a no-op here, not a
+  // second claim attempt — it doesn't retry the property claim at all.
   if (payload.status === 'REGISTERED') {
-    const listingType = deal.property.listingType
-    const newPropertyStatus = listingType === 'SALE' ? 'SOLD' : 'RENTED'
-    await db.property.update({ where: { id: deal.propertyId }, data: { status: newPropertyStatus } })
-  } else if (payload.status === 'FELL_THROUGH') {
+    try {
+      const deal = await db.$transaction(async (tx) => {
+        const before = await tx.propertyDeal.findUniqueOrThrow({
+          where: { id },
+          select: { status: true, propertyId: true, property: { select: { listingType: true } } },
+        })
+        if (before.status !== 'REGISTERED') {
+          const newPropertyStatus = before.property.listingType === 'SALE' ? 'SOLD' : 'RENTED'
+          const claim = await tx.property.updateMany({
+            where: { id: before.propertyId, status: { notIn: ['SOLD', 'RENTED'] } },
+            data: { status: newPropertyStatus },
+          })
+          if (claim.count === 0) {
+            throw new ServiceError('PROP-006', 'This property has already been sold/rented under a different deal. Refresh and check the property\'s other deals.')
+          }
+        }
+        return tx.propertyDeal.update({ where: { id }, data: updateData, include: dealInclude })
+      })
+      await db.auditLog.create({ data: { action: 'REGISTERED', entityType: 'PropertyDeal', entityId: deal.id } }).catch(() => {})
+      return { success: true, data: serializeDeal(deal) }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      throw err
+    }
+  }
+
+  const deal = await db.propertyDeal.update({ where: { id }, data: updateData, include: dealInclude })
+
+  if (payload.status === 'FELL_THROUGH') {
     await db.property.update({ where: { id: deal.propertyId }, data: { status: 'AVAILABLE' } })
   }
 
-  const dealAuditAction = payload.status === 'REGISTERED' ? 'REGISTERED' : payload.status === 'FELL_THROUGH' ? 'FELL_THROUGH' : 'UPDATE'
+  const dealAuditAction = payload.status === 'FELL_THROUGH' ? 'FELL_THROUGH' : 'UPDATE'
   await db.auditLog.create({ data: { action: dealAuditAction, entityType: 'PropertyDeal', entityId: deal.id } }).catch(() => {})
   return { success: true, data: serializeDeal(deal) }
 }

@@ -1,4 +1,18 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// StudentProfile.enrollmentDate is a non-nullable DateTime field returned
+// across Electron's IPC boundary as a raw Prisma Date instance — structured
+// clone preserves it without throwing (unlike a Prisma Decimal, caught
+// immediately in dev), so this shipped as a live, always-reproducible
+// renderer crash: StudentsScreen.tsx's edit-form populator (openEdit) calls
+// `s.enrollmentDate.split('T')[0]` directly, assuming an ISO string —
+// crashing on EVERY student edit. Same bug class as sprint.service.ts's
+// serializeSprint — see date.util.ts's toLocalDateOnlyIso for the shared fix.
+function serializeStudent<T extends { enrollmentDate: Date }>(s: T): T {
+  return { ...s, enrollmentDate: toLocalDateOnlyIso(s.enrollmentDate) as unknown as Date }
+}
 
 export async function listStudents(filters?: { isActive?: boolean; search?: string }) {
   const db = getPrisma()
@@ -17,7 +31,7 @@ export async function listStudents(filters?: { isActive?: boolean; search?: stri
     include: { customer: true },
     orderBy: { customer: { customerName: 'asc' } },
   })
-  return { success: true, data: profiles }
+  return { success: true, data: profiles.map(serializeStudent) }
 }
 
 export async function getStudent(id: string) {
@@ -27,7 +41,7 @@ export async function getStudent(id: string) {
     include: { customer: true },
   })
   if (!profile) return { success: false, error: { code: 'STU-001', message: 'Student not found.' } }
-  return { success: true, data: profile }
+  return { success: true, data: serializeStudent(profile) }
 }
 
 export async function createStudent(payload: {
@@ -70,13 +84,13 @@ export async function createStudent(payload: {
         classOrGrade: payload.classOrGrade,
         schoolName: payload.schoolName || null,
         parentPhone: payload.parentPhone || null,
-        enrollmentDate: payload.enrollmentDate ? new Date(payload.enrollmentDate) : new Date(),
+        enrollmentDate: payload.enrollmentDate ? parseLocalDateStart(payload.enrollmentDate) : new Date(),
       },
       include: { customer: true },
     })
   })
   await db.auditLog.create({ data: { action: 'CREATE', entityType: 'StudentProfile', entityId: profile.id, newValue: JSON.stringify({ customerName: payload.customerName }) } }).catch(() => {})
-  return { success: true, data: profile }
+  return { success: true, data: serializeStudent(profile) }
 }
 
 export async function updateStudent(payload: {
@@ -118,7 +132,7 @@ export async function updateStudent(payload: {
     })
   })
   await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'StudentProfile', entityId: profile.id } }).catch(() => {})
-  return { success: true, data: profile }
+  return { success: true, data: serializeStudent(profile) }
 }
 
 export async function deleteStudent(id: string) {

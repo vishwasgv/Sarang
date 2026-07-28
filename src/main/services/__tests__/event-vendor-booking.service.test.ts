@@ -157,6 +157,27 @@ describe('event-vendor-booking.service — per-head pricing', () => {
     expect((res as { error: { code: string } }).error.code).toBe('EVB-003')
   })
 
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // computePerHeadAmount used to be a plain `perHeadRate * expectedGuestCount`
+  // float multiplication, which reliably produces values with garbage
+  // trailing digits for ordinary rate/guest-count combinations (IEEE754
+  // can't represent most decimal fractions exactly) — stored verbatim into
+  // a Decimal column and shown on the event billing summary.
+  it('rounds a computed per-head quotedAmount to 2 decimal places even when raw float math would drift', async () => {
+    const db = makeMockDb(null, 7) // 19.99 * 7 = 139.92999999999998 in plain float math
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createVendorBooking({
+      eventId: 'event-1', vendorId: 'sup-1', vendorCategory: 'CATERING',
+      pricingType: 'PER_HEAD', perHeadRate: 19.99,
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.eventVendorBooking.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ quotedAmount: 139.93 }),
+    }))
+  })
+
   it('rejects flat pricing with no quoted amount', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

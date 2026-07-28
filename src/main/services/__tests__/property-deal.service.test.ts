@@ -57,9 +57,15 @@ function makeMockDb(existing: ReturnType<typeof makeDeal> | null = null) {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'prod-commission', ...data })),
     },
-    property: { update: vi.fn().mockResolvedValue({}) },
+    property: {
+      update: vi.fn().mockResolvedValue({}),
+      // Atomic claim used when marking a deal REGISTERED — succeeds (count: 1)
+      // by default, as if the property wasn't already SOLD/RENTED.
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  db.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db))
   return db
 }
 
@@ -183,6 +189,104 @@ describe('property-deal.service — co-broker commission split', () => {
 // check and each create a real, separate Invoice — a genuine double-bill.
 // Fixed with the same atomic conditional-claim + release-on-failure shape
 // used by car-job-card.service.ts / job-card.service.ts.
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// marking a deal REGISTERED updated the deal, then unconditionally wrote
+// property.status = SOLD/RENTED in a LATER, separate statement — no atomic
+// guard against a second deal for the SAME property (two interested buyers
+// a broker is negotiating with in parallel) also being marked REGISTERED.
+// Both would pass, silently flipping the property from one buyer's sale to
+// the other's — a real double-sale of a single physical asset. Fixed with
+// an atomic conditional claim (`property.updateMany` where status NOT IN
+// [SOLD, RENTED]) inside a transaction with the deal's own status flip.
+describe('property-deal.service — REGISTERED double-sale race', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('marking a deal REGISTERED atomically claims the property (rejects SOLD/RENTED status only)', async () => {
+    const db = makeMockDb(makeDeal({ status: 'IN_PROGRESS' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updatePropertyDeal({ id: 'deal-1', status: 'REGISTERED' })
+
+    expect(res.success).toBe(true)
+    expect(db.property.updateMany).toHaveBeenCalledWith({
+      where: { id: 'prop-1', status: { notIn: ['SOLD', 'RENTED'] } },
+      data: { status: 'SOLD' },
+    })
+  })
+
+  it('rejects marking REGISTERED when the property was already sold/rented under a different deal', async () => {
+    const db = makeMockDb(makeDeal({ status: 'IN_PROGRESS' }))
+    db.property.updateMany = vi.fn().mockResolvedValue({ count: 0 }) // another deal already claimed it
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updatePropertyDeal({ id: 'deal-1', status: 'REGISTERED' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PROP-006')
+    // The deal itself must NOT have been flipped to REGISTERED either —
+    // the whole thing is one atomic transaction, not a partial write.
+    expect(db.propertyDeal.update).not.toHaveBeenCalled()
+  })
+
+  it('re-saving an already-REGISTERED deal (e.g. editing notes) does not re-attempt the property claim', async () => {
+    const db = makeMockDb(makeDeal({ status: 'REGISTERED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updatePropertyDeal({ id: 'deal-1', status: 'REGISTERED', notes: 'Registration completed at sub-registrar office' })
+
+    expect(res.success).toBe(true)
+    expect(db.property.updateMany).not.toHaveBeenCalled()
+    expect(db.propertyDeal.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notes: 'Registration completed at sub-registrar office' }),
+    }))
+  })
+
+  it('marking a RENTAL deal REGISTERED sets the property to RENTED, not SOLD', async () => {
+    const db = makeMockDb(makeDeal({ status: 'IN_PROGRESS', property: { id: 'prop-1', propertyType: 'RESIDENTIAL_FLAT', location: 'Test Location', listingType: 'RENT' } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updatePropertyDeal({ id: 'deal-1', status: 'REGISTERED' })
+
+    expect(res.success).toBe(true)
+    expect(db.property.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'RENTED' } }))
+  })
+})
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// brokerageAmount/coBrokerShareAmount were computed with plain JS float
+// percentage math (`(dealValue * brokeragePercent) / 100`), which reliably
+// produces values like 4166.66625 for perfectly ordinary inputs — stored
+// verbatim into a Decimal column and shown on the printed commission
+// invoice with garbage trailing digits.
+describe('property-deal.service — brokerage float-precision', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createPropertyDeal rounds brokerageAmount to 2 decimal places even when the raw float math would drift', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 33333.33 * 12.5 / 100 = 4166.66625 in plain float math
+    await createPropertyDeal({ propertyId: 'prop-1', buyerClientId: 'cust-buyer', sellerClientId: 'cust-seller', dealValue: 33333.33, brokeragePercent: 12.5 })
+
+    const call = db.propertyDeal.create.mock.calls[0][0]
+    expect(call.data.brokerageAmount).toBe(4166.67)
+  })
+
+  it('createPropertyDeal rounds coBrokerShareAmount to 2 decimal places', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPropertyDeal({
+      propertyId: 'prop-1', buyerClientId: 'cust-buyer', sellerClientId: 'cust-seller',
+      dealValue: 33333.33, brokeragePercent: 12.5, coBrokerSharePercent: 33.33,
+    })
+
+    const call = db.propertyDeal.create.mock.calls[0][0]
+    // brokerageAmount = 4166.67 (rounded); coBroker share = 4166.67 * 33.33% ≈ 1388.75
+    expect(Number.isInteger(call.data.coBrokerShareAmount * 100)).toBe(true) // exactly 2dp, no float noise
+  })
+})
 
 describe('property-deal.service.generateCommissionInvoice', () => {
   beforeEach(() => vi.clearAllMocks())

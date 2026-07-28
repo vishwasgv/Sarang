@@ -1,4 +1,21 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+
+// Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+// StudentTestScore.testDate is a non-nullable DateTime field returned across
+// Electron's IPC boundary as a raw Prisma Date instance — structured clone
+// preserves it without throwing (unlike a Prisma Decimal, caught immediately
+// in dev), so this shipped as a live, always-reproducible renderer crash:
+// TestScoresScreen.tsx's edit-form populator (openEdit) calls
+// `s.testDate.split('T')[0]` directly, assuming an ISO string. Same bug
+// class as sprint.service.ts's serializeSprint / compliance-task.service.ts's
+// serializeTask — see date.util.ts's toLocalDateOnlyIso for the shared fix.
+// Also fixes the write-side half: a bare `new Date('YYYY-MM-DD')` parses as
+// UTC midnight, inconsistent with this codebase's established
+// parseLocalDateStart helper used for every other date-only write.
+function serializeTestScore<T extends { testDate: Date }>(s: T): T {
+  return { ...s, testDate: toLocalDateOnlyIso(s.testDate) as unknown as Date }
+}
 
 export async function listTestScores(filters?: { enrollmentId?: string; batchId?: string }) {
   try {
@@ -20,7 +37,7 @@ export async function listTestScores(filters?: { enrollmentId?: string; batchId?
       },
       orderBy: { testDate: 'desc' },
     })
-    return { success: true, data: scores }
+    return { success: true, data: scores.map(serializeTestScore) }
   } catch (err) {
     return { success: false, error: { code: 'STS-001', message: err instanceof Error ? err.message : 'Could not list test scores.' } }
   }
@@ -53,7 +70,7 @@ export async function createTestScore(payload: {
         subject: payload.subject?.trim() || null,
         marksObtained: payload.marksObtained,
         maxMarks: payload.maxMarks,
-        testDate: new Date(payload.testDate),
+        testDate: parseLocalDateStart(payload.testDate),
         grade: payload.grade?.trim() || null,
         notes: payload.notes?.trim() || null,
       },
@@ -61,7 +78,7 @@ export async function createTestScore(payload: {
     await db.auditLog.create({
       data: { action: 'CREATE', entityType: 'StudentTestScore', entityId: score.id, newValue: JSON.stringify({ enrollmentId: payload.enrollmentId, testName: score.testName }) },
     }).catch(() => {})
-    return { success: true, data: score }
+    return { success: true, data: serializeTestScore(score) }
   } catch (err) {
     return { success: false, error: { code: 'STS-006', message: err instanceof Error ? err.message : 'Could not create test score.' } }
   }
@@ -94,14 +111,14 @@ export async function updateTestScore(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(testDate !== undefined ? { testDate: new Date(testDate) } : {}),
+        ...(testDate !== undefined ? { testDate: parseLocalDateStart(testDate) } : {}),
         ...(subject !== undefined ? { subject: subject?.trim() || null } : {}),
         ...(grade !== undefined ? { grade: grade?.trim() || null } : {}),
         ...(notes !== undefined ? { notes: notes?.trim() || null } : {}),
       },
     })
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'StudentTestScore', entityId: id } }).catch(() => {})
-    return { success: true, data: score }
+    return { success: true, data: serializeTestScore(score) }
   } catch (err) {
     return { success: false, error: { code: 'STS-008', message: err instanceof Error ? err.message : 'Could not update test score.' } }
   }

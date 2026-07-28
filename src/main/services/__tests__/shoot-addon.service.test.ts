@@ -100,4 +100,21 @@ describe('shoot-addon.service', () => {
     expect(res.success).toBe(true)
     expect((res as { data: { total: number; count: number } }).data).toEqual({ total: 3300, count: 2 })
   })
+
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // this total used to be summed with a plain-float
+  // `reduce((sum, i) => sum + i.quantity * Number(i.unitPrice), 0)`, which
+  // drifts off the correct cent for perfectly ordinary line items (IEEE754
+  // can't represent most decimal fractions exactly) — shown directly on the
+  // shoot invoice preview.
+  it('sums add-on totals without float drift across multiple lines', async () => {
+    const db = makeMockDb([
+      makeAddOn({ id: 'a1', quantity: 7, unitPrice: 19.99 }), // 139.92999999999998 in plain float math
+      makeAddOn({ id: 'a2', quantity: 3, unitPrice: 33.33 }), // 99.99
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await getShootAddOnsTotal('shoot-1')
+    expect(res.success).toBe(true)
+    expect((res as { data: { total: number } }).data.total).toBe(239.92)
+  })
 })

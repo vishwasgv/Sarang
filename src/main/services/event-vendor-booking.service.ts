@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { roundCurrency } from './currency.service'
 
 // EventVendorBooking.quotedAmount/advancePaid/perHeadRate are Prisma Decimal
 // fields — Electron's IPC (structured clone) cannot serialize a Decimal
@@ -31,7 +32,14 @@ export async function listVendorBookings(eventId: string) {
 // count set yet, so the caller can reject rather than silently billing ₹0.
 function computePerHeadAmount(perHeadRate: number, expectedGuestCount: number | null): number | null {
   if (expectedGuestCount == null || expectedGuestCount <= 0) return null
-  return perHeadRate * expectedGuestCount
+  // Real bug found live (2026-07-28 sales/agency/education-vertical audit):
+  // plain-float multiplication here can produce values with garbage
+  // trailing digits for ordinary rate/guest-count inputs (IEEE754 can't
+  // represent most decimal fractions exactly) — the result gets stored
+  // verbatim into a Decimal column and shown on the event billing summary.
+  // Same bug class already fixed systemically for billing/coaching-fee/
+  // rental (see commit "Fix systemic float money-math bug").
+  return roundCurrency(perHeadRate * expectedGuestCount)
 }
 
 export async function createVendorBooking(payload: {
