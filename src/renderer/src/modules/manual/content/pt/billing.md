@@ -16,6 +16,8 @@ O carrinho mostra um subtotal, desconto, imposto, ajuste de arredondamento e tot
 
 Uma grade de blocos com seus **produtos mais vendidos** aparece acima da caixa de busca — um toque adiciona o item direto ao carrinho, sem precisar digitar, ordenados pelo que realmente mais vende.
 
+Prefere clicar em vez de digitar? Clique no ícone de grade ao lado da caixa de busca para mudar para **Navegar Produtos** — cada produto ativo aparece como um bloco, organizado em chips de categoria (Todos, mais um por categoria) para que você chegue ao que precisa só de tocar, sem tocar no teclado. O Sarang escolhe um modo inicial sensato para você: Navegar por padrão para um catálogo pequeno (aproximadamente menos de 100 produtos ativos — o cardápio típico de um restaurante ou uma loja pequena), Busca por padrão para um catálogo grande (para que um catálogo de Distribuidor ou Eletrônicos com centenas de itens não vire uma rolagem infinita) — mas o botão de alternância sempre permite mudar de um para o outro, independente do tamanho do catálogo. Se seu catálogo for grande o suficiente para que Navegar mostre apenas o primeiro lote de produtos, uma nota acima da grade avisa isso e te direciona de volta à busca para o restante.
+
 No meio de uma venda, precisa atender outro cliente sem perder o carrinho atual? Clique em **Reter Venda** para colocá-lo em espera e começar do zero; **Retomar Venda** traz de volta seus carrinhos retidos para continuar exatamente de onde parou. O **MRP** de um produto, quando definido acima do seu preço de venda, aparece como um preço de referência riscado ao lado do preço real nos resultados de busca.
 
 ## Histórico e detalhes das notas

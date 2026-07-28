@@ -16,6 +16,8 @@ The cart shows a running subtotal, discount, tax, rounding adjustment, and total
 
 A tile grid of your **frequently sold products** appears above the search box — a tap adds it straight to the cart, no typing needed, ranked by what actually sells most.
 
+Prefer clicking over typing entirely? Click the grid icon next to the search box to switch to **Browse Products** — every active product laid out as tiles, organized into category chips (All, plus one per category) so you can tap through to what you need without ever touching the keyboard. Sarang picks a sensible starting mode for you: Browse by default for a smaller catalog (roughly under 100 active products — a typical restaurant menu or small shop), Search by default for a larger one (so a Distributor or Electronics catalog running into the hundreds doesn't turn into an endless scroll) — but the toggle always lets you switch either way regardless of catalog size. If your catalog is large enough that Browse only shows the first batch of products, a note above the grid says so and points you back to search for anything not shown.
+
 Mid-sale, need to help another customer without losing the current cart? Click **Hold Sale** to park it and start fresh; **Resume Sale** brings up your held carts to pick back up exactly where you left off. A product's **MRP**, when set higher than its selling price, shows as a struck-through reference price next to the real price in the search results.
 
 ## Invoice history and detail

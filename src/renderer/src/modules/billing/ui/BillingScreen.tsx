@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed } from 'lucide-react'
+import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed, LayoutGrid } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -21,6 +21,7 @@ interface Product {
   makingChargeType?: string | null; makingChargeValue?: number | null
   hallmarkNumber?: string | null
   isPrescriptionRequired?: boolean
+  category?: { id: string; name: string } | null
 }
 interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
 interface HeldSaleSummary {
@@ -243,6 +244,45 @@ export function BillingScreen() {
       if (res.success && res.data) setFrequentProducts((res.data as { products: Product[] }).products)
     }).catch(() => { /* the grid is a convenience shortcut — the search box always still works */ })
   }, [])
+
+  // Category-browsable product grid — click-to-add without typing a search
+  // query at all, requested directly by the founder after confirming the
+  // Frequently Sold strip above (top 10 only) wasn't what "just click the
+  // product" meant for a full catalog. Auto-defaults to Browse for a small
+  // catalog (a restaurant's ~40-item menu) where a full grid is faster than
+  // typing, and to Search for a large one (a Distributor/Electronics/
+  // Pharmacy catalog running into the hundreds or thousands, where an
+  // always-rendered grid would be a slow scroll-fest instead of a shortcut)
+  // — but the toggle next to the search box always lets staff override
+  // either way, regardless of catalog size. Capped at 500 products fetched
+  // (browseTotal tracks the real count so the UI can be honest about a cap
+  // being hit, rather than silently showing a partial catalog as if it were
+  // everything).
+  const [catalogMode, setCatalogMode] = useState<'search' | 'browse' | null>(null)
+  const [browseProducts, setBrowseProducts] = useState<Product[]>([])
+  const [browseTotal, setBrowseTotal] = useState(0)
+  const [browseCategory, setBrowseCategory] = useState('__all__')
+
+  useEffect(() => {
+    window.api.products.list({ isActive: true, limit: 500 }).then((res) => {
+      if (!res.success || !res.data) return
+      const data = res.data as { products: Product[]; total: number }
+      setBrowseProducts(data.products)
+      setBrowseTotal(data.total)
+      setCatalogMode((prev) => prev ?? (data.total <= 100 ? 'browse' : 'search'))
+    }).catch(() => { /* Browse is a convenience shortcut — the search box always still works */ })
+  }, [])
+
+  const browseCategories = useMemo(() => {
+    const names = new Set<string>()
+    for (const p of browseProducts) names.add(p.category?.name || t('billing.uncategorized'))
+    return Array.from(names).sort((a, b) => a.localeCompare(b))
+  }, [browseProducts, t])
+
+  const browseGridProducts = useMemo(() => {
+    if (browseCategory === '__all__') return browseProducts
+    return browseProducts.filter((p) => (p.category?.name || t('billing.uncategorized')) === browseCategory)
+  }, [browseProducts, browseCategory, t])
 
   async function handleHoldSale() {
     if (cart.length === 0) { toastError(t('common.error'), t('billing.emptyCartCannotHold')); return }
@@ -915,7 +955,8 @@ export function BillingScreen() {
 
         {/* Product search */}
         <div className="px-6 pt-4 pb-2 relative">
-          <div className="relative">
+          <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               ref={productSearchRef}
@@ -965,6 +1006,23 @@ export function BillingScreen() {
             {productSearching && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />}
           </div>
 
+          {catalogMode !== null && (
+            <button
+              onClick={() => setCatalogMode((m) => (m === 'browse' ? 'search' : 'browse'))}
+              title={catalogMode === 'browse' ? (t('billing.switchToSearch') as string) : (t('billing.switchToBrowse') as string)}
+              aria-label={catalogMode === 'browse' ? (t('billing.switchToSearch') as string) : (t('billing.switchToBrowse') as string)}
+              className={cn(
+                'h-10 w-10 shrink-0 flex items-center justify-center rounded-xl border transition-colors',
+                catalogMode === 'browse'
+                  ? 'border-brand bg-brand/10 text-brand'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-brand hover:border-brand'
+              )}
+            >
+              <LayoutGrid size={16} />
+            </button>
+          )}
+          </div>
+
           <button
             onClick={() => setShowTipModal(true)}
             className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors"
@@ -983,6 +1041,53 @@ export function BillingScreen() {
                     className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-left"
                   >
                     <p className="text-xs font-medium text-dark dark:text-slate-100 truncate max-w-[9rem]">{p.productName}</p>
+                    <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {catalogMode === 'browse' && productResults.length === 0 && browseProducts.length > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('billing.browseByCategory')}</p>
+                {browseTotal > browseProducts.length && (
+                  <p className="text-xs text-slate-400">{t('billing.showingFirstN', { count: browseProducts.length, total: browseTotal })}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                <button
+                  onClick={() => setBrowseCategory('__all__')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                    browseCategory === '__all__' ? 'border-brand bg-brand text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand hover:text-brand'
+                  )}
+                >
+                  {t('billing.allCategories')}
+                </button>
+                {browseCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setBrowseCategory(cat)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                      browseCategory === cat ? 'border-brand bg-brand text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand hover:text-brand'
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+                {browseGridProducts.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    disabled={!!(p.unavailableUntil && new Date(p.unavailableUntil) > new Date())}
+                    className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white"
+                  >
+                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate">{p.productName}</p>
                     <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
                   </button>
                 ))}

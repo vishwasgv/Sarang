@@ -16,6 +16,8 @@ Keranjang menampilkan subtotal berjalan, diskon, pajak, penyesuaian pembulatan, 
 
 Sebuah kisi ubin berisi **produk yang sering terjual** muncul di atas kotak pencarian — sekali ketuk langsung menambahkannya ke keranjang, tanpa perlu mengetik, diurutkan berdasarkan yang benar-benar paling laku.
 
+Lebih suka mengklik daripada mengetik sepenuhnya? Klik ikon kisi di sebelah kotak pencarian untuk beralih ke **Jelajahi Produk** — setiap produk aktif ditampilkan sebagai ubin, diorganisir dalam chip kategori (Semua, ditambah satu per kategori) sehingga Anda bisa mencapai yang dibutuhkan hanya dengan mengetuk, tanpa menyentuh keyboard. Sarang memilih mode awal yang masuk akal untuk Anda: Jelajahi sebagai default untuk katalog kecil (kurang lebih di bawah 100 produk aktif — menu restoran biasa atau toko kecil), Pencarian sebagai default untuk katalog besar (agar katalog Distributor atau Elektronik dengan ratusan item tidak berubah menjadi gulir tanpa akhir) — tetapi tombol beralih selalu memungkinkan Anda beralih ke salah satu, terlepas dari ukuran katalog. Jika katalog Anda cukup besar sehingga Jelajahi hanya menampilkan batch pertama produk, sebuah catatan di atas kisi memberi tahu hal ini dan mengarahkan Anda kembali ke pencarian untuk sisanya.
+
 Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang saat ini? Klik **Hold Sale** untuk menahannya sementara dan mulai dari awal; **Resume Sale** menampilkan keranjang-keranjang yang ditahan untuk dilanjutkan persis dari titik terakhir. **MRP** sebuah produk, ketika diatur lebih tinggi daripada harga jualnya, ditampilkan sebagai harga referensi yang dicoret di samping harga sebenarnya dalam hasil pencarian.
 
 ## Riwayat dan detail faktur

@@ -16,6 +16,8 @@ El carrito muestra un subtotal en curso, descuento, impuesto, ajuste de redondeo
 
 Una cuadrícula de mosaicos con sus **productos más vendidos** aparece encima del cuadro de búsqueda — un toque lo agrega directamente al carrito, sin necesidad de escribir, ordenados según lo que realmente más se vende.
 
+¿Prefieres hacer clic en lugar de escribir? Haz clic en el icono de cuadrícula junto al cuadro de búsqueda para cambiar a **Explorar Productos** — cada producto activo aparece como un mosaico, organizado en chips de categoría (Todos, más uno por categoría) para que puedas llegar a lo que necesitas con solo tocar, sin tocar el teclado. Sarang elige un modo inicial sensato por ti: Explorar por defecto para un catálogo pequeño (aproximadamente menos de 100 productos activos — el menú típico de un restaurante o una tienda pequeña), Búsqueda por defecto para uno grande (para que un catálogo de Distribuidor o Electrónica con cientos de artículos no se convierta en un scroll interminable) — pero el interruptor siempre te permite cambiar de uno a otro sin importar el tamaño del catálogo. Si tu catálogo es tan grande que Explorar solo muestra el primer lote de productos, una nota encima de la cuadrícula lo indica y te dirige de vuelta a la búsqueda para el resto.
+
 ¿En medio de una venta necesita atender a otro cliente sin perder el carrito actual? Haga clic en **Retener venta** para dejarlo en espera y empezar de nuevo; **Reanudar venta** muestra sus carritos retenidos para continuar exactamente donde los dejó. El **MRP** de un producto, cuando está configurado por encima de su precio de venta, se muestra como un precio de referencia tachado junto al precio real en los resultados de búsqueda.
 
 ## Historial y detalle de facturas
