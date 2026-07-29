@@ -268,9 +268,14 @@ export default function IssuesScreen(): React.ReactElement {
     const issue = issues.find((i) => i.id === draggingId)
     if (!issue || issue.status === newStatus) { setDraggingId(null); setDragOverCol(null); return }
     setDraggingId(null); setDragOverCol(null)
-    const res = await api.issue.update({ id: issue.id, status: newStatus })
-    if (!res.success) toastError('Error', res.error?.message ?? 'Could not move issue.')
-    void loadAll()
+    try {
+      const res = await api.issue.update({ id: issue.id, status: newStatus })
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not move issue.')
+    } catch {
+      toastError('Error', 'Could not move issue.')
+    } finally {
+      void loadAll()
+    }
   }
 
   // ── Issue detail modal (comments + subtasks) ────────────────────────────────
@@ -278,12 +283,16 @@ export default function IssuesScreen(): React.ReactElement {
   async function openDetail(issue: Issue): Promise<void> {
     setDetailIssue(issue)
     setNewComment(''); setNewSubtaskTitle('')
-    const [cRes, sRes] = await Promise.all([
-      api.issueComment.list({ issueId: issue.id }),
-      api.issueSubtask.list({ issueId: issue.id }),
-    ])
-    setComments(cRes.success && cRes.data ? (cRes.data as IssueComment[]) : [])
-    setSubtasks(sRes.success && sRes.data ? (sRes.data as IssueSubtask[]) : [])
+    try {
+      const [cRes, sRes] = await Promise.all([
+        api.issueComment.list({ issueId: issue.id }),
+        api.issueSubtask.list({ issueId: issue.id }),
+      ])
+      setComments(cRes.success && cRes.data ? (cRes.data as IssueComment[]) : [])
+      setSubtasks(sRes.success && sRes.data ? (sRes.data as IssueSubtask[]) : [])
+    } catch {
+      toastError('Error', 'Could not load comments and subtasks.')
+    }
   }
 
   async function handleAddComment(): Promise<void> {
@@ -296,6 +305,8 @@ export default function IssuesScreen(): React.ReactElement {
         const cRes = await api.issueComment.list({ issueId: detailIssue.id })
         setComments(cRes.success && cRes.data ? (cRes.data as IssueComment[]) : [])
       } else toastError('Error', res.error?.message ?? 'Could not add comment.')
+    } catch {
+      toastError('Error', 'Could not add comment.')
     } finally {
       setCommentSaving(false)
     }
@@ -303,9 +314,13 @@ export default function IssuesScreen(): React.ReactElement {
 
   async function handleDeleteComment(id: string): Promise<void> {
     if (!detailIssue) return
-    const res = await api.issueComment.delete({ id })
-    if (res.success) setComments((prev) => prev.filter((c) => c.id !== id))
-    else toastError('Error', res.error?.message ?? 'Could not delete comment.')
+    try {
+      const res = await api.issueComment.delete({ id })
+      if (res.success) setComments((prev) => prev.filter((c) => c.id !== id))
+      else toastError('Error', res.error?.message ?? 'Could not delete comment.')
+    } catch {
+      toastError('Error', 'Could not delete comment.')
+    }
   }
 
   async function handleAddSubtask(): Promise<void> {
@@ -318,21 +333,31 @@ export default function IssuesScreen(): React.ReactElement {
         const sRes = await api.issueSubtask.list({ issueId: detailIssue.id })
         setSubtasks(sRes.success && sRes.data ? (sRes.data as IssueSubtask[]) : [])
       } else toastError('Error', res.error?.message ?? 'Could not add subtask.')
+    } catch {
+      toastError('Error', 'Could not add subtask.')
     } finally {
       setSubtaskSaving(false)
     }
   }
 
   async function handleToggleSubtask(subtask: IssueSubtask): Promise<void> {
-    const res = await api.issueSubtask.toggle({ id: subtask.id, isDone: !subtask.isDone })
-    if (res.success) setSubtasks((prev) => prev.map((s) => (s.id === subtask.id ? { ...s, isDone: !s.isDone } : s)))
-    else toastError('Error', res.error?.message ?? 'Could not update subtask.')
+    try {
+      const res = await api.issueSubtask.toggle({ id: subtask.id, isDone: !subtask.isDone })
+      if (res.success) setSubtasks((prev) => prev.map((s) => (s.id === subtask.id ? { ...s, isDone: !s.isDone } : s)))
+      else toastError('Error', res.error?.message ?? 'Could not update subtask.')
+    } catch {
+      toastError('Error', 'Could not update subtask.')
+    }
   }
 
   async function handleDeleteSubtask(id: string): Promise<void> {
-    const res = await api.issueSubtask.delete({ id })
-    if (res.success) setSubtasks((prev) => prev.filter((s) => s.id !== id))
-    else toastError('Error', res.error?.message ?? 'Could not delete subtask.')
+    try {
+      const res = await api.issueSubtask.delete({ id })
+      if (res.success) setSubtasks((prev) => prev.filter((s) => s.id !== id))
+      else toastError('Error', res.error?.message ?? 'Could not delete subtask.')
+    } catch {
+      toastError('Error', 'Could not delete subtask.')
+    }
   }
 
   const displayed = issues.filter((i) => {

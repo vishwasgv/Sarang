@@ -6,6 +6,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface FeeEnrollment {
@@ -149,6 +150,8 @@ export default function FeesScreen() {
   const [editAmount, setEditAmount] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editSaving, setEditSaving] = useState(false)
+  const [waiveTarget, setWaiveTarget] = useState<FeeRecord | null>(null)
+  const [waiving, setWaiving] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -177,15 +180,20 @@ export default function FeesScreen() {
   async function handleGenerate() {
     setGenerating(true)
     setGenMsg('')
-    const res = await api.coachingFee.generate({ month, taxRate: Number(genTaxRate) || 0 })
-    if (res.success && res.data) {
-      const d = res.data as { created: number; skipped: number }
-      setGenMsg(`Generated ${d.created} fee record(s). ${d.skipped} already existed.`)
-      loadAll()
-    } else {
-      setGenMsg(res.error?.message ?? 'Generation failed.')
+    try {
+      const res = await api.coachingFee.generate({ month, taxRate: Number(genTaxRate) || 0 })
+      if (res.success && res.data) {
+        const d = res.data as { created: number; skipped: number }
+        setGenMsg(`Generated ${d.created} fee record(s). ${d.skipped} already existed.`)
+        loadAll()
+      } else {
+        setGenMsg(res.error?.message ?? 'Generation failed.')
+      }
+    } catch {
+      setGenMsg('Generation failed.')
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   async function handleMarkPaid(record: FeeRecord) {
@@ -202,13 +210,17 @@ export default function FeesScreen() {
     }
   }
 
-  async function handleMarkWaived(record: FeeRecord) {
+  async function handleMarkWaived() {
+    if (!waiveTarget) return
+    setWaiving(true)
     try {
-      const res = await api.coachingFee.update({ id: record.id, status: 'WAIVED' })
-      if (res.success) loadAll()
+      const res = await api.coachingFee.update({ id: waiveTarget.id, status: 'WAIVED' })
+      if (res.success) { setWaiveTarget(null); loadAll() }
       else toastError('Error', res.error?.message ?? 'Could not waive fee.')
     } catch {
       toastError('Error', 'Could not waive fee.')
+    } finally {
+      setWaiving(false)
     }
   }
 
@@ -370,7 +382,7 @@ export default function FeesScreen() {
                             className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
                             <Edit2 size={14} />
                           </button>
-                          <button onClick={() => handleMarkWaived(r)} title="Waive"
+                          <button onClick={() => setWaiveTarget(r)} title="Waive"
                             className="p-1.5 text-gray-400 hover:text-amber-600 rounded dark:text-slate-500">
                             <XCircle size={14} />
                           </button>
@@ -419,6 +431,16 @@ export default function FeesScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={waiveTarget !== null}
+        onClose={() => setWaiveTarget(null)}
+        onConfirm={() => void handleMarkWaived()}
+        loading={waiving}
+        title="Waive Fee"
+        message={waiveTarget ? `Waive the ₹${Number(waiveTarget.amountDue).toLocaleString()} fee due from ${waiveTarget.enrollment.student.customerName} for this month? This writes off the amount owed.` : ''}
+        confirmLabel="Waive"
+      />
     </div>
   )
 }
