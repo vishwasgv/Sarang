@@ -74,6 +74,9 @@ export function JobCardsScreen() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   // Parts Used (Phase 58 §2)
   const [parts, setParts] = useState<JobCardPart[]>([])
@@ -121,16 +124,25 @@ export function JobCardsScreen() {
   const deliveredCards = cards.filter(c => c.status === 'DELIVERED')
 
   async function loadParts(jobCardId: string) {
-    const res = await api.jobCards.listParts({ jobCardId })
-    if (res.success && res.data) setParts(res.data as JobCardPart[])
-    else setParts([])
+    try {
+      const res = await api.jobCards.listParts({ jobCardId })
+      if (res.success && res.data) setParts(res.data as JobCardPart[])
+      else setParts([])
+    } catch {
+      setParts([])
+    }
   }
 
   useEffect(() => {
     if (!partSearch.trim()) { setPartSearchResults([]); return }
     const timer = setTimeout(async () => {
-      const res = await api.products.search(partSearch)
-      if (res.success && res.data) setPartSearchResults(res.data as PartProduct[])
+      try {
+        const res = await api.products.search(partSearch)
+        if (res.success && res.data) setPartSearchResults(res.data as PartProduct[])
+      } catch {
+        // best-effort live search suggestions — a failure here just means no
+        // dropdown appears, not worth surfacing as a toast
+      }
     }, 250)
     return () => clearTimeout(timer)
   }, [partSearch])
@@ -141,23 +153,32 @@ export function JobCardsScreen() {
     if (!qty || qty <= 0) { setPartsError(t('service.invalidQuantity')); return }
     setAddingPart(true)
     setPartsError('')
-    const res = await api.jobCards.addPart({ jobCardId: detail.id, productId: pickedPartProduct.id, quantity: qty })
-    setAddingPart(false)
-    if (res.success) {
-      setPickedPartProduct(null)
-      setPartSearch('')
-      setPartQty('1')
-      loadParts(detail.id)
-    } else {
-      setPartsError((res.error as any)?.message ?? t('service.couldNotAddPart'))
+    try {
+      const res = await api.jobCards.addPart({ jobCardId: detail.id, productId: pickedPartProduct.id, quantity: qty })
+      if (res.success) {
+        setPickedPartProduct(null)
+        setPartSearch('')
+        setPartQty('1')
+        await loadParts(detail.id)
+      } else {
+        setPartsError((res.error as any)?.message ?? t('service.couldNotAddPart'))
+      }
+    } catch {
+      setPartsError(t('service.couldNotAddPart'))
+    } finally {
+      setAddingPart(false)
     }
   }
 
   async function handleRemovePart(partId: string) {
     if (!detail) return
-    const res = await api.jobCards.removePart({ id: partId })
-    if (res.success) loadParts(detail.id)
-    else toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotRemovePart'))
+    try {
+      const res = await api.jobCards.removePart({ id: partId })
+      if (res.success) await loadParts(detail.id)
+      else toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotRemovePart'))
+    } catch {
+      toastError(t('common.error'), t('service.couldNotRemovePart'))
+    }
   }
 
   async function handleSaveWarranty() {
@@ -165,15 +186,20 @@ export function JobCardsScreen() {
     const days = warrantyDaysInput.trim() === '' ? null : Number(warrantyDaysInput)
     if (days != null && (Number.isNaN(days) || days < 0)) { toastError(t('common.error'), t('service.invalidWarrantyDays')); return }
     setSavingWarranty(true)
-    const res = await api.jobCards.update({ id: detail.id, warrantyDays: days })
-    setSavingWarranty(false)
-    if (res.success) {
-      const updated = res.data as JobCard
-      setDetail(updated)
-      setCards(prev => prev.map(c => c.id === updated.id ? updated : c))
-      toastSuccess(t('service.warrantySaved'))
-    } else {
-      toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotSaveWarranty'))
+    try {
+      const res = await api.jobCards.update({ id: detail.id, warrantyDays: days })
+      if (res.success) {
+        const updated = res.data as JobCard
+        setDetail(updated)
+        setCards(prev => prev.map(c => c.id === updated.id ? updated : c))
+        toastSuccess(t('service.warrantySaved'))
+      } else {
+        toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotSaveWarranty'))
+      }
+    } catch {
+      toastError(t('common.error'), t('service.couldNotSaveWarranty'))
+    } finally {
+      setSavingWarranty(false)
     }
   }
 
@@ -188,70 +214,105 @@ export function JobCardsScreen() {
   async function handleCreate() {
     if (!form.title.trim()) return
     setSaving(true)
-    const res = await api.jobCards.create({
-      title: form.title.trim(),
-      itemDescription: form.itemDescription || undefined,
-      priority: form.priority,
-      customerId: form.customerId || undefined,
-      assignedToId: form.assignedToId || undefined,
-      estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : undefined,
-      expectedDate: form.expectedDate || undefined,
-      notes: form.notes || undefined,
-      warrantyClaimAgainstId: form.warrantyClaimAgainstId || undefined
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(t('service.jobCreated'))
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      load()
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not create job card')
+    try {
+      const res = await api.jobCards.create({
+        title: form.title.trim(),
+        itemDescription: form.itemDescription || undefined,
+        priority: form.priority,
+        customerId: form.customerId || undefined,
+        assignedToId: form.assignedToId || undefined,
+        estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : undefined,
+        expectedDate: form.expectedDate || undefined,
+        notes: form.notes || undefined,
+        warrantyClaimAgainstId: form.warrantyClaimAgainstId || undefined
+      })
+      if (res.success) {
+        toastSuccess(t('service.jobCreated'))
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        load()
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not create job card')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleAdvanceStatus(card: JobCard) {
     const next = NEXT_STATUS[card.status]
-    if (!next) return
+    if (!next || statusUpdating) return
     const payload: Record<string, unknown> = { id: card.id, status: next }
     if (next === 'DELIVERED' && actualCost) payload.actualCost = Number(actualCost)
 
-    const res = await api.jobCards.update(payload as any)
-    if (res.success) {
-      toastSuccess(t('service.jobStatusUpdated'))
-      // Phase 58 §2 — merge the FULL server record, not a hand-picked
-      // {status, actualCost} patch: a delivery transition can also compute
-      // server-side fields (e.g. warrantyExpiryDate, from a warrantyDays
-      // already set earlier) that a partial local patch would silently
-      // discard, leaving the UI showing stale/missing warranty status
-      // until a manual refresh.
-      const updated = res.data as JobCard
-      setCards(prev => prev.map(c => c.id === card.id ? updated : c))
-      if (detail?.id === card.id) setDetail(updated)
-    } else {
+    setStatusUpdating(true)
+    try {
+      const res = await api.jobCards.update(payload as any)
+      if (res.success) {
+        toastSuccess(t('service.jobStatusUpdated'))
+        // Phase 58 §2 — merge the FULL server record, not a hand-picked
+        // {status, actualCost} patch: a delivery transition can also compute
+        // server-side fields (e.g. warrantyExpiryDate, from a warrantyDays
+        // already set earlier) that a partial local patch would silently
+        // discard, leaving the UI showing stale/missing warranty status
+        // until a manual refresh.
+        const updated = res.data as JobCard
+        setCards(prev => prev.map(c => c.id === card.id ? updated : c))
+        if (detail?.id === card.id) setDetail(updated)
+      } else {
+        toastError(t('service.couldNotUpdateStatus'))
+      }
+    } catch {
       toastError(t('service.couldNotUpdateStatus'))
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
   async function handleSetPendingParts(cardId: string) {
-    const res = await api.jobCards.update({ id: cardId, status: 'PENDING_PARTS' })
-    if (res.success) {
-      toastSuccess(t('service.jobStatusUpdated'))
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'PENDING_PARTS' } : c))
-      if (detail?.id === cardId) setDetail(prev => prev ? { ...prev, status: 'PENDING_PARTS' } : prev)
-    } else {
+    if (statusUpdating) return
+    setStatusUpdating(true)
+    try {
+      const res = await api.jobCards.update({ id: cardId, status: 'PENDING_PARTS' })
+      if (res.success) {
+        toastSuccess(t('service.jobStatusUpdated'))
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'PENDING_PARTS' } : c))
+        if (detail?.id === cardId) setDetail(prev => prev ? { ...prev, status: 'PENDING_PARTS' } : prev)
+      } else {
+        toastError(t('service.couldNotUpdateStatus'))
+      }
+    } catch {
       toastError(t('service.couldNotUpdateStatus'))
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
-  async function handleCancel(cardId: string) {
-    const res = await api.jobCards.update({ id: cardId, status: 'CANCELLED' })
-    if (res.success) {
-      toastSuccess(t('service.jobCancelled'))
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'CANCELLED' } : c))
-      if (detail?.id === cardId) setDetail(prev => prev ? { ...prev, status: 'CANCELLED' } : prev)
-    } else {
+  // Cancelling a job card previously fired straight from the button with no
+  // confirmation at all, unlike Delete in this same file which already goes
+  // through ConfirmDialog — a real destructive-action-without-confirmation
+  // gap (mis-click cancels a real repair job with no way to back out except
+  // creating a fresh job card).
+  async function handleCancel() {
+    if (!cancelConfirmId) return
+    const cardId = cancelConfirmId
+    setCancelling(true)
+    try {
+      const res = await api.jobCards.update({ id: cardId, status: 'CANCELLED' })
+      if (res.success) {
+        toastSuccess(t('service.jobCancelled'))
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'CANCELLED' } : c))
+        if (detail?.id === cardId) setDetail(prev => prev ? { ...prev, status: 'CANCELLED' } : prev)
+        setCancelConfirmId(null)
+      } else {
+        toastError(t('service.couldNotCancel'))
+      }
+    } catch {
       toastError(t('service.couldNotCancel'))
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -259,29 +320,39 @@ export function JobCardsScreen() {
     if (!deleteConfirmId) return
     const cardId = deleteConfirmId
     setDeleting(true)
-    const res = await api.jobCards.delete({ id: cardId })
-    setDeleting(false)
-    setDeleteConfirmId(null)
-    if (res.success) {
-      toastSuccess(t('service.jobDeleted'))
-      setDetail(null)
-      setCards(prev => prev.filter(c => c.id !== cardId))
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not delete')
+    try {
+      const res = await api.jobCards.delete({ id: cardId })
+      if (res.success) {
+        toastSuccess(t('service.jobDeleted'))
+        setDetail(null)
+        setCards(prev => prev.filter(c => c.id !== cardId))
+        setDeleteConfirmId(null)
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not delete')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setDeleting(false)
     }
   }
 
   async function handleGenerateInvoice(cardId: string) {
     setGeneratingInvoice(true)
-    const res = await api.jobCards.generateInvoice({ id: cardId })
-    setGeneratingInvoice(false)
-    if (res.success) {
-      const data = res.data as { invoiceId: string }
-      toastSuccess('Invoice generated')
-      setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, invoiceId: data.invoiceId } : c))
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not generate invoice')
+    try {
+      const res = await api.jobCards.generateInvoice({ id: cardId })
+      if (res.success) {
+        const data = res.data as { invoiceId: string }
+        toastSuccess('Invoice generated')
+        setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, invoiceId: data.invoiceId } : c))
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setGeneratingInvoice(false)
     }
   }
 
@@ -341,7 +412,7 @@ export function JobCardsScreen() {
             {visible.map(c => {
               const stageIdx = getStageIndex(c.status)
               return (
-                <button key={c.id} onClick={() => { setDetail(c); setActualCost(''); setWarrantyDaysInput(c.warrantyDays != null ? String(c.warrantyDays) : ''); setPartsError(''); setPickedPartProduct(null); setPartSearch(''); loadParts(c.id) }}
+                <button key={c.id} onClick={() => { setDetail(c); setActualCost(''); setWarrantyDaysInput(c.warrantyDays != null ? String(c.warrantyDays) : ''); setPartsError(''); setPickedPartProduct(null); setPartSearch(''); setParts([]); loadParts(c.id) }}
                   className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -600,19 +671,19 @@ export function JobCardsScreen() {
                         placeholder="0" className="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-brand" />
                     </div>
                   )}
-                  <button onClick={() => handleAdvanceStatus(detail)}
-                    className="w-full h-11 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors">
+                  <button onClick={() => handleAdvanceStatus(detail)} disabled={statusUpdating}
+                    className="w-full h-11 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
                     {t(STATUS_LABEL_KEY[NEXT_STATUS[detail.status]] ?? NEXT_STATUS[detail.status])}
                   </button>
                   {detail.status === 'IN_REPAIR' && (
-                    <button onClick={() => handleSetPendingParts(detail.id)}
-                      className="w-full h-11 rounded-xl border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50 transition-colors">
+                    <button onClick={() => handleSetPendingParts(detail.id)} disabled={statusUpdating}
+                      className="w-full h-11 rounded-xl border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50 transition-colors disabled:opacity-50">
                       {t('service.waitingForParts')}
                     </button>
                   )}
                   {detail.status !== 'DELIVERED' && detail.status !== 'CANCELLED' && (
-                    <button onClick={() => handleCancel(detail.id)}
-                      className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+                    <button onClick={() => setCancelConfirmId(detail.id)} disabled={statusUpdating}
+                      className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
                       {t('service.cancelJob')}
                     </button>
                   )}
@@ -649,6 +720,16 @@ export function JobCardsScreen() {
         title={t('service.deleteJobCard')}
         message={t('service.confirmDeleteJob')}
         confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={!!cancelConfirmId}
+        onClose={() => setCancelConfirmId(null)}
+        onConfirm={handleCancel}
+        loading={cancelling}
+        title={t('service.cancelJob')}
+        message="Cancel this job card? The customer's item will no longer be tracked through the repair workflow. This cannot be undone."
+        confirmLabel={t('service.cancelJob')}
       />
     </div>
   )

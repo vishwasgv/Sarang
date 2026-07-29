@@ -11,6 +11,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface ProjectTask {
   id: string; projectId: string; title: string; description: string | null
@@ -45,6 +46,11 @@ export function ProjectDetailScreen() {
   const [showLogForm, setShowLogForm] = useState(false)
   const [logForm, setLogForm] = useState({ title: '', hours: '', description: '', logDate: '', billable: true })
   const [savingLog, setSavingLog] = useState(false)
+
+  const [deleteTaskTarget, setDeleteTaskTarget] = useState<{ id: string; isDone: boolean } | null>(null)
+  const [deletingTask, setDeletingTask] = useState(false)
+  const [deleteLogTarget, setDeleteLogTarget] = useState<{ id: string; hours: number } | null>(null)
+  const [deletingLog, setDeletingLog] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -95,74 +101,100 @@ export function ProjectDetailScreen() {
   async function handleAddTask() {
     if (!taskForm.title.trim() || !id) return
     setSavingTask(true)
-    const res = await api.projects.tasks.create({
-      projectId: id,
-      title: taskForm.title.trim(),
-      priority: taskForm.priority,
-      estimatedHours: taskForm.estimatedHours ? Number(taskForm.estimatedHours) : undefined,
-      dueDate: taskForm.dueDate || undefined
-    })
-    setSavingTask(false)
-    if (res.success && res.data) {
-      setTasks(prev => [...prev, res.data as ProjectTask])
-      if (project) setProject(prev => prev ? { ...prev, totalTasks: prev.totalTasks + 1 } : prev)
-      toastSuccess(t('service.taskAdded'))
-      setShowTaskForm(false)
-      setTaskForm({ title: '', priority: 'MEDIUM', estimatedHours: '', dueDate: '' })
-    } else {
+    try {
+      const res = await api.projects.tasks.create({
+        projectId: id,
+        title: taskForm.title.trim(),
+        priority: taskForm.priority,
+        estimatedHours: taskForm.estimatedHours ? Number(taskForm.estimatedHours) : undefined,
+        dueDate: taskForm.dueDate || undefined
+      })
+      if (res.success && res.data) {
+        setTasks(prev => [...prev, res.data as ProjectTask])
+        if (project) setProject(prev => prev ? { ...prev, totalTasks: prev.totalTasks + 1 } : prev)
+        toastSuccess(t('service.taskAdded'))
+        setShowTaskForm(false)
+        setTaskForm({ title: '', priority: 'MEDIUM', estimatedHours: '', dueDate: '' })
+      } else {
+        toastError(t('service.couldNotAddTask'))
+      }
+    } catch {
       toastError(t('service.couldNotAddTask'))
+    } finally {
+      setSavingTask(false)
     }
   }
 
-  async function handleDeleteTask(taskId: string, isDone: boolean) {
-    const res = await api.projects.tasks.delete({ id: taskId })
-    if (res.success) {
-      setTasks(prev => prev.filter(t => t.id !== taskId))
-      if (project) setProject(prev => prev ? {
-        ...prev,
-        totalTasks: prev.totalTasks - 1,
-        doneTasks: isDone ? prev.doneTasks - 1 : prev.doneTasks
-      } : prev)
-    } else {
+  async function handleDeleteTask() {
+    if (!deleteTaskTarget) return
+    const { id: taskId, isDone } = deleteTaskTarget
+    setDeletingTask(true)
+    try {
+      const res = await api.projects.tasks.delete({ id: taskId })
+      if (res.success) {
+        setTasks(prev => prev.filter(t => t.id !== taskId))
+        if (project) setProject(prev => prev ? {
+          ...prev,
+          totalTasks: prev.totalTasks - 1,
+          doneTasks: isDone ? prev.doneTasks - 1 : prev.doneTasks
+        } : prev)
+        setDeleteTaskTarget(null)
+      } else {
+        toastError(t('service.couldNotDeleteTask'))
+      }
+    } catch {
       toastError(t('service.couldNotDeleteTask'))
+    } finally {
+      setDeletingTask(false)
     }
   }
 
   async function handleAddLog() {
     if (!logForm.title.trim() || !logForm.hours || !id) return
     setSavingLog(true)
-    const res = await api.workLogs.create({
-      projectId: id,
-      title: logForm.title.trim(),
-      hours: Number(logForm.hours),
-      description: logForm.description || undefined,
-      logDate: logForm.logDate || undefined,
-      billable: logForm.billable
-    })
-    setSavingLog(false)
-    if (res.success && res.data) {
-      const newLog = res.data as WorkLog
-      setLogs(prev => [newLog, ...prev])
-      if (project) setProject(prev => prev ? { ...prev, totalLoggedHours: prev.totalLoggedHours + Number(logForm.hours) } : prev)
-      toastSuccess(t('service.workLogged'))
-      setShowLogForm(false)
-      setLogForm({ title: '', hours: '', description: '', logDate: '', billable: true })
-    } else {
+    try {
+      const res = await api.workLogs.create({
+        projectId: id,
+        title: logForm.title.trim(),
+        hours: Number(logForm.hours),
+        description: logForm.description || undefined,
+        logDate: logForm.logDate || undefined,
+        billable: logForm.billable
+      })
+      if (res.success && res.data) {
+        const newLog = res.data as WorkLog
+        setLogs(prev => [newLog, ...prev])
+        if (project) setProject(prev => prev ? { ...prev, totalLoggedHours: prev.totalLoggedHours + Number(logForm.hours) } : prev)
+        toastSuccess(t('service.workLogged'))
+        setShowLogForm(false)
+        setLogForm({ title: '', hours: '', description: '', logDate: '', billable: true })
+      } else {
+        toastError(t('service.couldNotLogWork'))
+      }
+    } catch {
       toastError(t('service.couldNotLogWork'))
+    } finally {
+      setSavingLog(false)
     }
   }
 
-  async function handleDeleteLog(logId: string, hours: number) {
+  async function handleDeleteLog() {
+    if (!deleteLogTarget) return
+    const { id: logId, hours } = deleteLogTarget
+    setDeletingLog(true)
     try {
       const res = await api.workLogs.delete({ id: logId })
       if (res.success) {
         setLogs(prev => prev.filter(l => l.id !== logId))
         if (project) setProject(prev => prev ? { ...prev, totalLoggedHours: Math.max(0, prev.totalLoggedHours - hours) } : prev)
+        setDeleteLogTarget(null)
       } else {
         toastError(t('service.couldNotDeleteLog'))
       }
     } catch {
       toastError(t('service.couldNotDeleteLog'))
+    } finally {
+      setDeletingLog(false)
     }
   }
 
@@ -274,7 +306,7 @@ export function ProjectDetailScreen() {
                       {t.dueDate && <span className="text-xs text-text-secondary">{formatDate(t.dueDate)}</span>}
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteTask(t.id, t.status === 'DONE')} className="text-text-secondary hover:text-red-500 transition-colors shrink-0">
+                  <button onClick={() => setDeleteTaskTarget({ id: t.id, isDone: t.status === 'DONE' })} className="text-text-secondary hover:text-red-500 transition-colors shrink-0">
                     <Trash2 size={14} />
                   </button>
                 </Card>
@@ -339,7 +371,7 @@ export function ProjectDetailScreen() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold text-text-primary">{l.hours}h</p>
-                    <button onClick={() => handleDeleteLog(l.id, l.hours)} className="text-text-secondary hover:text-red-500 transition-colors mt-0.5">
+                    <button onClick={() => setDeleteLogTarget({ id: l.id, hours: l.hours })} className="text-text-secondary hover:text-red-500 transition-colors mt-0.5">
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -349,6 +381,26 @@ export function ProjectDetailScreen() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTaskTarget}
+        onClose={() => setDeleteTaskTarget(null)}
+        onConfirm={handleDeleteTask}
+        loading={deletingTask}
+        title="Delete Task"
+        message="Delete this task? This cannot be undone."
+        confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={!!deleteLogTarget}
+        onClose={() => setDeleteLogTarget(null)}
+        onConfirm={handleDeleteLog}
+        loading={deletingLog}
+        title="Delete Work Log Entry"
+        message="Delete this work log entry? Its hours will be removed from this project's totals. This cannot be undone."
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }
