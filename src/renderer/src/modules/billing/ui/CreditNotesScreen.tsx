@@ -10,10 +10,11 @@ import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 
 interface CreditNote {
   id: string; creditNoteNumber: string; reason: string; amount: number; notes?: string | null
-  createdAt: string; customer?: { id: string; customerName: string } | null
+  createdAt: string; customer?: { id: string; customerName: string; phone?: string | null; email?: string | null } | null
   invoice?: { id: string; invoiceNumber: string } | null
 }
 
@@ -27,6 +28,7 @@ export function CreditNotesScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
   const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,6 +176,13 @@ export function CreditNotesScreen() {
     }
   }
 
+  async function handleExportPdfForShare(cn: CreditNote): Promise<ExportPdfResult> {
+    const res = await window.api.creditNotes.exportPdf(cn.id)
+    if (!res.success) return { success: false, error: res.error }
+    const data = res.data as { cancelled: boolean; filePath?: string }
+    return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+  }
+
   const canCreate = hasPermission('billing.create')
   const canVoid = hasPermission('billing.void')
   const canPrint = hasPermission('billing.printInvoice')
@@ -267,6 +276,14 @@ export function CreditNotesScreen() {
                     className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand transition-all disabled:opacity-30">
                     <Receipt size={15} />
                   </button>
+                  <ShareMenu
+                    recipientPhone={cn.customer?.phone}
+                    recipientEmail={cn.customer?.email}
+                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, amount: fmtMoney(cn.amount, sym) })}
+                    buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, businessName })}
+                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, businessName, amount: fmtMoney(cn.amount, sym) })}
+                    onExportPdf={() => handleExportPdfForShare(cn)}
+                  />
                 </>
               )}
               {canCreate && (

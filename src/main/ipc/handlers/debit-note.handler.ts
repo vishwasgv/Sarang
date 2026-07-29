@@ -3,6 +3,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { debitNoteService } from '../../services/debit-note.service'
 import { printService } from '../../services/print.service'
+import { exportToPdf } from '../../services/export.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
@@ -119,5 +120,20 @@ export function register(handle: HandleFn): void {
         })
       })
     })
+  })
+
+  // Share feature — reuses the existing HTML generator unchanged, saved to a
+  // chosen file path via export.toPdf instead of straight to the OS print
+  // dialog, so Share's reveal-in-folder step has a real path to act on.
+  handle('debitNotes:exportPdf', async (id) => {
+    const deny = await requirePermission('purchaseOrders.print'); if (deny) return deny
+    const bad = validateId(id, 'debit note ID'); if (bad) return bad
+    const dnRes = await debitNoteService.getById(id as string)
+    if (!dnRes.success) return dnRes
+    const profile = await getPrisma().businessProfile.findFirst()
+    const html = await printService.generateDebitNoteHtml(dnRes.data as Parameters<typeof printService.generateDebitNoteHtml>[0], profile as Parameters<typeof printService.generateDebitNoteHtml>[1])
+    const debitNoteNumber = (dnRes.data as { debitNoteNumber: string }).debitNoteNumber
+    const result = await exportToPdf({ html, filename: `DebitNote-${debitNoteNumber}.pdf` })
+    return { success: true, data: result }
   })
 }

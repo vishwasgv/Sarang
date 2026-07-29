@@ -20,6 +20,7 @@ import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 
@@ -418,6 +419,7 @@ export function ReportsScreen() {
   const { error: toastError } = useNotificationStore()
   const { isModuleEnabled, businessType } = useIndustryStore()
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const hasPermission = useAuthStore(s => s.hasPermission)
 
   const [activeReport, setActiveReport] = useState<ReportType>('sales')
@@ -1173,6 +1175,55 @@ export function ReportsScreen() {
     }
   }
 
+  // Share Report via WhatsApp/Email — see
+  // docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md. Reports are PDF-only
+  // for sharing (CSV/Excel export above stays available, unaffected) — a
+  // spreadsheet has no meaningful "share as a message" reading experience
+  // the way a PDF does.
+  function reportDateRangeLabel(): string {
+    return def.requiresDateRange ? `${dateFrom} to ${dateTo}` : t('reports.allTimeRange')
+  }
+
+  async function handleExportPdfForShare(): Promise<ExportPdfResult> {
+    try {
+      const { headers, rows } = buildExportData()
+      const summaryCards = getSummaryCards()
+      const charts = getReportCharts()
+      const htmlRes = await window.api.export.generateReportHtml({
+        title: def.label,
+        dateRange: def.requiresDateRange ? `${dateFrom} to ${dateTo}` : undefined,
+        summaryCards,
+        charts,
+        tables: [{ headers, rows }],
+        currencySymbol,
+        reportPermission: def.permission
+      })
+      if (!htmlRes.success || !htmlRes.data) return { success: false, error: htmlRes.error }
+      const pdfRes = await window.api.export.toPdf({ html: htmlRes.data as string, filename: `${activeReport}-report.pdf` })
+      if (!pdfRes.success) return { success: false, error: pdfRes.error }
+      const data = pdfRes.data as { cancelled: boolean; filePath?: string }
+      return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+    } catch {
+      return { success: false, error: { message: t('common.error') } }
+    }
+  }
+
+  // Reports have no single customer/supplier recipient — the ShareMenu here
+  // opens with an empty To:/phone field the owner fills in themselves
+  // (buildShareEmailLink/WhatsApp-with-no-phone already tolerate this by
+  // design; no new special-case logic needed).
+  function buildReportShareWhatsAppMessage(): string {
+    return t('reports.shareWhatsAppMessage', { businessName, reportType: def.label, dateRange: reportDateRangeLabel() })
+  }
+
+  function buildReportShareEmailSubject(): string {
+    return t('reports.shareEmailSubject', { reportType: def.label, businessName })
+  }
+
+  function buildReportShareEmailBody(): string {
+    return t('reports.shareEmailBody', { reportType: def.label, businessName, dateRange: reportDateRangeLabel() })
+  }
+
   function getSummaryCards(): { label: string; value: string }[] {
     if (!reportData) return []
     switch (activeReport) {
@@ -1907,6 +1958,18 @@ export function ReportsScreen() {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-danger hover:text-danger transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <FileText size={12} /> PDF
                 </button>
+                {def.permission && hasPermission(def.permission) && (
+                  <ShareMenu
+                    variant="button"
+                    recipientPhone={null}
+                    recipientEmail={null}
+                    buildWhatsAppMessage={buildReportShareWhatsAppMessage}
+                    buildEmailSubject={buildReportShareEmailSubject}
+                    buildEmailBody={buildReportShareEmailBody}
+                    onExportPdf={handleExportPdfForShare}
+                    disabled={exporting}
+                  />
+                )}
               </div>
             )}
           </div>

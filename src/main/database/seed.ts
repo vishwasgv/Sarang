@@ -130,7 +130,19 @@ const PERMISSIONS = [
   { permissionKey: 'purchaseOrders.cancel', permissionName: 'Cancel Purchase Order' },
   // Phase 45: Debit Note printing is a purchasing-domain document, not billing —
   // billing.printInvoice doesn't fit; needs its own key matching this domain's convention.
+  // NOTE: despite the key name, this is (and has only ever been) consumed by
+  // Debit Note printing (debit-note.handler.ts) — deliberately left untouched
+  // (do not rename/repurpose) since it's load-bearing for already-deployed
+  // installs' role assignments. Purchase Order printing/export/share below
+  // uses the correctly-named purchaseOrders.printDocument instead.
   { permissionKey: 'purchaseOrders.print', permissionName: 'Print Debit Note' },
+  // Share feature (docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section
+  // 4/5.4): Purchase Order print/export/share is a real, new capability that
+  // didn't exist to permission before now — a correctly-named key, seeded at
+  // the same role tier as purchaseOrders.print above (not the mislabeled key
+  // itself), so printing/sharing an actual PO document requires the same
+  // trust level printing a Debit Note already does.
+  { permissionKey: 'purchaseOrders.printDocument', permissionName: 'Print/Export Purchase Order' },
   // Restaurant
   { permissionKey: 'restaurant.viewKOT', permissionName: 'View KOT' },
   { permissionKey: 'restaurant.updateKOT', permissionName: 'Update KOT Status' },
@@ -242,7 +254,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'backup.create', 'backup.view',
     'settings.view',
     'audit.view',
-    'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve', 'purchaseOrders.receive', 'purchaseOrders.cancel', 'purchaseOrders.print',
+    'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve', 'purchaseOrders.receive', 'purchaseOrders.cancel', 'purchaseOrders.print', 'purchaseOrders.printDocument',
     'restaurant.viewKOT', 'restaurant.updateKOT', 'restaurant.manageTables', 'restaurant.manageRecipes', 'restaurant.manageOrderRequests',
     'distributor.manageFieldOrders',
     'repairTickets.view', 'repairTickets.create', 'repairTickets.manage',

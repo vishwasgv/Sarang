@@ -102,7 +102,9 @@ const api: IpcChannels = {
     approve: (id) => invoke('purchaseOrders:approve', id),
     receive: (id) => invoke('purchaseOrders:receive', id),
     cancel: (p) => invoke('purchaseOrders:cancel', p),
-    generateReorderDraftPOs: () => invoke('purchaseOrders:generateReorderDraftPOs')
+    generateReorderDraftPOs: () => invoke('purchaseOrders:generateReorderDraftPOs'),
+    print: (id) => invoke('purchaseOrders:print', id),
+    exportPdf: (id) => invoke('purchaseOrders:exportPdf', id)
   },
   billing: {
     createInvoice: (p) => invoke('billing:createInvoice', p),
@@ -202,6 +204,11 @@ const api: IpcChannels = {
     toPdf: (p) => invoke('export:toPdf', p),
     generateReportHtml: (p) => invoke('export:generateReportHtml', p)
   },
+  share: {
+    buildWhatsAppLink: (p) => invoke('share:buildWhatsAppLink', p),
+    buildEmailLink: (p) => invoke('share:buildEmailLink', p),
+    showItemInFolder: (p) => invoke('share:showItemInFolder', p)
+  },
   analytics: {
     getDashboardKpis: (payload) => invoke('analytics:getDashboardKpis', payload),
     getRevenueTrend: (p) => invoke('analytics:getRevenueTrend', p),
@@ -275,6 +282,7 @@ const api: IpcChannels = {
     listPrinters: () => invoke('print:listPrinters'),
     previewInvoice: (p) => invoke('print:previewInvoice', p),
     previewReceipt: (p) => invoke('print:previewReceipt', p),
+    exportInvoicePdf: (p) => invoke('print:exportInvoicePdf', p),
     labels: (p) => invoke('print:labels', p),
     previewLabels: (p) => invoke('print:previewLabels', p)
   },
@@ -575,6 +583,7 @@ const api: IpcChannels = {
     convertToInvoice: (id: string) => invoke('quotations:convertToInvoice', id),
     print: (id: string) => invoke('quotations:print', id),
     printReceipt: (p: unknown) => invoke('quotations:printReceipt', p),
+    exportPdf: (id: string) => invoke('quotations:exportPdf', id),
     delete: (id: string) => invoke('quotations:delete', id),
   },
   creditNotes: {
@@ -585,6 +594,7 @@ const api: IpcChannels = {
     delete: (id: string) => invoke('creditNotes:delete', id),
     print: (id: string) => invoke('creditNotes:print', id),
     printReceipt: (p: unknown) => invoke('creditNotes:printReceipt', p),
+    exportPdf: (id: string) => invoke('creditNotes:exportPdf', id),
   },
   debitNotes: {
     list: (p?: unknown) => invoke('debitNotes:list', p),
@@ -594,6 +604,7 @@ const api: IpcChannels = {
     delete: (id: string) => invoke('debitNotes:delete', id),
     print: (id: string) => invoke('debitNotes:print', id),
     printReceipt: (p: unknown) => invoke('debitNotes:printReceipt', p),
+    exportPdf: (id: string) => invoke('debitNotes:exportPdf', id),
   },
   // Phase 22 — Service Business Foundation
   appointments: {

@@ -142,6 +142,8 @@ import { register as registerRepairTickets } from './handlers/repair-ticket.hand
 // Phase 59 — Licensing
 import { register as registerLicense } from './handlers/license.handler'
 import { register as registerTutorial } from './handlers/tutorial.handler'
+// Share Bill/Report via WhatsApp & Email
+import { register as registerShare } from './handlers/share.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -303,6 +305,8 @@ export function registerAllIpcHandlers(): void {
   registerLicense(h)
   // Phase 60 — Interactive Onboarding Tutorial
   registerTutorial(h)
+  // Share Bill/Report via WhatsApp & Email
+  registerShare(h)
 
   console.log('[IPC] All handlers registered')
 }

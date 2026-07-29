@@ -3,6 +3,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { billingService } from '../../services/billing.service'
 import { printService } from '../../services/print.service'
+import { exportToPdf } from '../../services/export.service'
 import { heldSaleService } from '../../services/held-sale.service'
 import { formatAmount as formatAmountLocaleAware } from '../../services/currency.service'
 import { requirePermission, requireSession, hasPermission } from '../permission-guard'
@@ -176,6 +177,22 @@ export function register(handle: HandleFn): void {
     const profile = await getPrisma().businessProfile.findFirst()
     const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1])
     return { success: true, data: html }
+  })
+
+  // Share feature — Invoice had print/preview but no "save to a known file
+  // path" capability, which Share's reveal-in-folder step needs. Reuses
+  // generateInvoiceHtml unchanged, routed through export.toPdf.
+  handle('print:exportInvoicePdf', async (payload) => {
+    const deny = await requirePermission('billing.printInvoice'); if (deny) return deny
+    const { invoiceId } = payload as { invoiceId: string }
+    const bad = validateId(invoiceId, 'invoice ID'); if (bad) return bad
+    const invoiceRes = await billingService.getInvoice(invoiceId)
+    if (!invoiceRes.success) return invoiceRes
+    const profile = await getPrisma().businessProfile.findFirst()
+    const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1])
+    const invoiceNumber = (invoiceRes.data as { invoiceNumber: string }).invoiceNumber
+    const result = await exportToPdf({ html, filename: `Invoice-${invoiceNumber}.pdf` })
+    return { success: true, data: result }
   })
 
   handle('print:previewReceipt', async (payload) => {

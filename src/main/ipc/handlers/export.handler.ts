@@ -25,8 +25,8 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('reports.print'); if (deny) return deny
     const parsed = ExportToPdfSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    await exportToPdf(parsed.data)
-    return { success: true }
+    const result = await exportToPdf(parsed.data)
+    return { success: true, data: result }
   })
 
   handle('export:generateReportHtml', async (payload) => {

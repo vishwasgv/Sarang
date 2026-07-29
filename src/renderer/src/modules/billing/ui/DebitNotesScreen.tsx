@@ -10,10 +10,11 @@ import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 
 interface DebitNote {
   id: string; debitNoteNumber: string; reason: string; amount: number; notes?: string | null
-  createdAt: string; supplier?: { id: string; supplierName: string } | null
+  createdAt: string; supplier?: { id: string; supplierName: string; phone?: string | null; email?: string | null } | null
   purchaseOrder?: { id: string; poNumber: string } | null
 }
 
@@ -27,6 +28,7 @@ export function DebitNotesScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
   const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [debitNotes, setDebitNotes] = useState<DebitNote[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,6 +176,13 @@ export function DebitNotesScreen() {
     }
   }
 
+  async function handleExportPdfForShare(dn: DebitNote): Promise<ExportPdfResult> {
+    const res = await window.api.debitNotes.exportPdf(dn.id)
+    if (!res.success) return { success: false, error: res.error }
+    const data = res.data as { cancelled: boolean; filePath?: string }
+    return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+  }
+
   const canCreate = hasPermission('purchaseOrders.create')
   const canVoid = hasPermission('purchaseOrders.create')
   const canPrint = hasPermission('purchaseOrders.print')
@@ -267,6 +276,14 @@ export function DebitNotesScreen() {
                     className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand transition-all disabled:opacity-30">
                     <Receipt size={15} />
                   </button>
+                  <ShareMenu
+                    recipientPhone={dn.supplier?.phone}
+                    recipientEmail={dn.supplier?.email}
+                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, amount: fmtMoney(dn.amount, sym) })}
+                    buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, businessName })}
+                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, businessName, amount: fmtMoney(dn.amount, sym) })}
+                    onExportPdf={() => handleExportPdfForShare(dn)}
+                  />
                 </>
               )}
               {canCreate && (

@@ -1,6 +1,12 @@
+import { app, BrowserWindow } from 'electron'
+import { writeFile, unlink } from 'fs/promises'
+import { join } from 'path'
 import { purchaseOrderService } from '../../services/purchase-order.service'
+import { printService } from '../../services/print.service'
+import { exportToPdf } from '../../services/export.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { getPrisma } from '../../database/db'
 import { CreatePOSchema, CancelPOSchema } from '../../validation/purchase-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -55,5 +61,49 @@ export function register(handle: HandleFn): void {
   handle('purchaseOrders:generateReorderDraftPOs', async () => {
     const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
     return purchaseOrderService.generateReorderDraftPOs(getCurrentSession()?.userId)
+  })
+
+  // Share feature (docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section 4):
+  // Purchase Order PDF generation/printing built from scratch — no print or
+  // PDF capability of any kind existed for POs before this. Gated on the
+  // new `purchaseOrders.printDocument` permission, seeded at the same role
+  // tier as the existing (mislabeled) `purchaseOrders.print` key — NOT that
+  // key itself, which is load-bearing for Debit Note printing and left
+  // untouched.
+  handle('purchaseOrders:print', async (id) => {
+    const deny = await requirePermission('purchaseOrders.printDocument'); if (deny) return deny
+    const bad = validateId(id, 'purchase order ID'); if (bad) return bad
+    const poRes = await purchaseOrderService.getPO(id as string)
+    if (!poRes.success) return poRes
+    const profile = await getPrisma().businessProfile.findFirst()
+    const html = await printService.generatePurchaseOrderHtml(poRes.data as Parameters<typeof printService.generatePurchaseOrderHtml>[0], profile as Parameters<typeof printService.generatePurchaseOrderHtml>[1])
+    const tmpPath = join(app.getPath('temp'), `sarang_po_${Date.now()}.html`)
+    await writeFile(tmpPath, html, 'utf-8')
+    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
+      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
+      win.loadFile(tmpPath)
+      win.webContents.once('did-finish-load', () => {
+        win.webContents.print({ silent: false, printBackground: true, color: true }, (success: boolean) => {
+          win.close()
+          unlink(tmpPath).catch(() => {})
+          resolve({ success, data: { printed: success } })
+        })
+      })
+    })
+  })
+
+  // Share feature — reuses the same HTML generator, saved to a chosen file
+  // path via export.toPdf instead of straight to the OS print dialog, so
+  // Share's reveal-in-folder step has a real path to act on.
+  handle('purchaseOrders:exportPdf', async (id) => {
+    const deny = await requirePermission('purchaseOrders.printDocument'); if (deny) return deny
+    const bad = validateId(id, 'purchase order ID'); if (bad) return bad
+    const poRes = await purchaseOrderService.getPO(id as string)
+    if (!poRes.success) return poRes
+    const profile = await getPrisma().businessProfile.findFirst()
+    const html = await printService.generatePurchaseOrderHtml(poRes.data as Parameters<typeof printService.generatePurchaseOrderHtml>[0], profile as Parameters<typeof printService.generatePurchaseOrderHtml>[1])
+    const poNumber = (poRes.data as { poNumber: string }).poNumber
+    const result = await exportToPdf({ html, filename: `PurchaseOrder-${poNumber}.pdf` })
+    return { success: true, data: result }
   })
 }

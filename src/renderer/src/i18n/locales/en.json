@@ -359,7 +359,10 @@
       "date": "Prescription Date (optional)",
       "addToCart": "Add to Cart",
       "required": "Patient name and doctor name are required."
-    }
+    },
+    "shareWhatsAppMessage": "{{businessName}}: {{documentType}} {{number}} — Total {{amount}}. The detailed document is attached as a file.",
+    "shareEmailSubject": "{{documentType}} {{number}} from {{businessName}}",
+    "shareEmailBody": "Dear Sir/Madam,\n\nPlease find the {{documentType}} {{number}} from {{businessName}} attached, for a total amount of {{amount}}.\n\nThank you.\n\n{{businessName}}"
   },
   "products": {
     "title": "Products",
@@ -1292,7 +1295,11 @@
       "warrantyExpiringSoon": "Expiring Soon",
       "warrantyActive": "Active",
       "noWarranty": "No Warranty"
-    }
+    },
+    "allTimeRange": "All time",
+    "shareWhatsAppMessage": "{{businessName}}: {{reportType}} report ({{dateRange}}). The report file is attached.",
+    "shareEmailSubject": "{{reportType}} Report from {{businessName}}",
+    "shareEmailBody": "Dear Sir/Madam,\n\nPlease find the {{reportType}} report for {{businessName}} attached, covering {{dateRange}}.\n\nThank you.\n\n{{businessName}}"
   },
   "cashClose": {
     "title": "Cash Close",
@@ -2326,6 +2333,21 @@
     "updateDebitNote": "Update Debit Note",
     "noSupplier": "No supplier",
     "refPO": "Ref: {{number}}"
+  },
+  "share": {
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "noPhoneOnFile": "No phone number on file",
+    "noPhoneTitle": "Can't Share via WhatsApp",
+    "noPhoneMessage": "No valid phone number is on file for this contact.",
+    "openingWhatsApp": "Opening WhatsApp…",
+    "openingEmail": "Opening your email app…",
+    "revealFailed": "Could not open the folder for the saved file.",
+    "docTypeInvoice": "Invoice",
+    "docTypeQuotation": "Quotation",
+    "docTypeCreditNote": "Credit Note",
+    "docTypeDebitNote": "Debit Note",
+    "docTypePurchaseOrder": "Purchase Order"
   },
   "disclaimer": {
     "legalNotice": "Sarang Business OS Lite is a free organisational tool for small businesses. It is not a medical record system, accounting software, legal advice tool, or licensed financial product. All information is the user's own data stored locally on their device. Aszurex provides no warranties for the accuracy, completeness, or fitness of this software for any regulated purpose. Users are solely responsible for compliance with applicable laws and professional regulations."

@@ -113,13 +113,19 @@ export async function exportToExcel(params: {
 // PDF Export — Electron printToPDF via hidden BrowserWindow
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function exportToPdf(params: { html: string; filename: string }): Promise<void> {
+// Return value used by the Share feature (see share.service.ts's design doc,
+// Section 5.3): `cancelled: true` means the owner backed out of the save
+// dialog and nothing was written — callers must abort silently at that point,
+// not proceed to reveal-in-folder or open a WhatsApp/email window referencing
+// a file that doesn't exist. A real save reports `filePath` so a caller can
+// act on it (e.g. shell.showItemInFolder).
+export async function exportToPdf(params: { html: string; filename: string }): Promise<{ cancelled: boolean; filePath?: string }> {
   const { filePath } = await dialog.showSaveDialog({
     title: 'Save PDF Report',
     defaultPath: params.filename,
     filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
   })
-  if (!filePath) return
+  if (!filePath) return { cancelled: true }
 
   const tmpPath = join(app.getPath('temp'), `sarang-report-${Date.now()}.html`)
   await writeFile(tmpPath, params.html, 'utf8')
@@ -141,6 +147,7 @@ export async function exportToPdf(params: { html: string; filename: string }): P
     win.destroy()
     unlink(tmpPath).catch(() => {})
   }
+  return { cancelled: false, filePath }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

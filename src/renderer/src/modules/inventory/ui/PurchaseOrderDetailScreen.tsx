@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, CheckCircle, Truck, XCircle } from 'lucide-react'
+import { ArrowLeft, ClipboardList, CheckCircle, Truck, XCircle, Printer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@shared/ui/atoms/Button'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
+import { useBusinessStore } from '@app/store/business.store'
 import { formatDate } from '@shared/utils/locale.util'
 
-interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null }
+interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
 interface POItem { id: string; quantity: number; unitCost: number; taxRate: number; total: number; product: Product }
 interface PurchaseOrder {
@@ -34,11 +36,13 @@ export function PurchaseOrderDetailScreen() {
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const [po, setPO] = useState<PurchaseOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
   const [receiving, setReceiving] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
@@ -46,6 +50,12 @@ export function PurchaseOrderDetailScreen() {
   const canApprove = hasPermission('purchaseOrders.approve')
   const canReceive = hasPermission('purchaseOrders.receive')
   const canCancel = hasPermission('purchaseOrders.cancel')
+  // New key — see docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section
+  // 5.4: PO printing/export/share is a real, new capability that had no
+  // permission to gate before now. Deliberately NOT the existing
+  // `purchaseOrders.print` key, which is mislabeled and load-bearing for
+  // Debit Note printing specifically.
+  const canPrint = hasPermission('purchaseOrders.printDocument')
 
   const loadPO = useCallback(async () => {
     if (!id) return
@@ -101,6 +111,43 @@ export function PurchaseOrderDetailScreen() {
     } finally {
       setReceiving(false)
     }
+  }
+
+  async function handlePrint() {
+    if (!po) return
+    setPrinting(true)
+    try {
+      const res = await window.api.purchaseOrders.print(po.id)
+      if (!res.success) toastError('Error', res.error?.message ?? 'Failed to print.')
+    } catch {
+      toastError('Error', 'Failed to print. Please try again.')
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  // Share PO via WhatsApp/Email — see docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md.
+  async function handleExportPdfForShare(): Promise<ExportPdfResult> {
+    if (!po) return { success: false, error: { message: t('purchaseOrders.poNotFound') } }
+    const res = await window.api.purchaseOrders.exportPdf(po.id)
+    if (!res.success) return { success: false, error: res.error }
+    const data = res.data as { cancelled: boolean; filePath?: string }
+    return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+  }
+
+  function buildShareWhatsAppMessage(): string {
+    if (!po) return ''
+    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, amount: po.totalAmount.toFixed(2) })
+  }
+
+  function buildShareEmailSubject(): string {
+    if (!po) return ''
+    return t('billing.shareEmailSubject', { documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, businessName })
+  }
+
+  function buildShareEmailBody(): string {
+    if (!po) return ''
+    return t('billing.shareEmailBody', { documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, businessName, amount: po.totalAmount.toFixed(2) })
   }
 
   async function handleCancel() {
@@ -185,6 +232,22 @@ export function PurchaseOrderDetailScreen() {
             <Button variant="danger" size="sm" onClick={() => setCancelOpen(true)}>
               <XCircle size={14} className="mr-1.5" /> {t('purchaseOrders.cancelPO')}
             </Button>
+          )}
+          {canPrint && (
+            <>
+              <Button size="sm" variant="outline" onClick={handlePrint} loading={printing}>
+                <Printer size={14} className="mr-1.5" /> {t('billing.print')}
+              </Button>
+              <ShareMenu
+                variant="button"
+                recipientPhone={po.supplier?.phone}
+                recipientEmail={po.supplier?.email}
+                buildWhatsAppMessage={buildShareWhatsAppMessage}
+                buildEmailSubject={buildShareEmailSubject}
+                buildEmailBody={buildShareEmailBody}
+                onExportPdf={handleExportPdfForShare}
+              />
+            </>
           )}
         </div>
       </div>

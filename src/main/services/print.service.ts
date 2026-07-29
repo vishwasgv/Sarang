@@ -1135,6 +1135,138 @@ export const printService = {
 </html>`
   },
 
+  // Share feature (docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section 4):
+  // Purchase Order PDF generation built from scratch — no equivalent existed
+  // before. Mirrors generateQuotationHtml's structure/conventions exactly
+  // (business header, "issued to" party box, line-items table, totals,
+  // footer) but links to Supplier, not Customer, and has no discount column
+  // (PurchaseOrderItem has none — unlike QuotationItem/InvoiceItem).
+  async generatePurchaseOrderHtml(po: {
+    poNumber: string
+    orderDate: string | Date
+    expectedDate?: string | Date | null
+    status: string
+    notes?: string | null
+    supplier: { supplierName: string; supplierCode?: string | null; phone?: string | null } | null
+    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } }>
+    subtotal: number; taxAmount: number; totalAmount: number
+  }, profile: BusinessProfile | null): Promise<string> {
+    const sym = escHtml(profile?.currencySymbol ?? '₹')
+    const bizName = escHtml(profile?.businessName ?? 'Business')
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
+    const supplierDisplay = escHtml(po.supplier?.supplierName ?? 'Supplier')
+
+    const itemsHtml = po.items.map(item => `
+      <tr>
+        <td>${escHtml(item.product.productName)}${item.product.sku ? `<br/><span style="font-size:9px;color:#94a3b8">SKU: ${escHtml(item.product.sku)}</span>` : ''}</td>
+        <td class="right">${item.quantity} ${escHtml(item.product.unit)}</td>
+        <td class="right">${formatAmount(item.unitCost, sym)}</td>
+        <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
+        <td class="right bold">${formatAmount(item.total, sym)}</td>
+      </tr>`).join('')
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Purchase Order ${escHtml(po.poNumber)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #00AEEF; padding-bottom: 16px; }
+  .biz-name { font-size: 22px; font-weight: 700; color: #0F172A; }
+  .biz-meta { font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.5; }
+  .po-meta { text-align: right; }
+  .po-label { font-size: 20px; font-weight: 700; color: #0284c7; letter-spacing: 0.05em; }
+  .po-number { font-size: 16px; font-weight: 700; color: #075985; margin-top: 2px; }
+  .po-date { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .supplier-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; }
+  .supplier-name { font-weight: 600; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #e0f2fe; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; color: #075985; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; }
+  .right { text-align: right; }
+  .bold { font-weight: 600; }
+  .totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-table { min-width: 260px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: #475569; }
+  .totals-total { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #0F172A; border-top: 2px solid #00AEEF; margin-top: 4px; }
+  .status-badge { display: inline-block; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+  .footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center; color: #94a3b8; font-size: 10px; }
+  .notice { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #075985; margin-bottom: 16px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body style="position:relative;z-index:0;">
+  ${watermarkHtml(profile)}
+  <div class="header">
+    <div>
+      ${profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
+      <div class="biz-name">${bizName}</div>
+      <div class="biz-meta">
+        ${[profile?.address, profile?.city, profile?.state].filter(Boolean).map(escHtml).join(', ')}<br/>
+        ${profile?.phone ? 'Ph: ' + escHtml(profile.phone) : ''}
+        ${profile?.email ? ' | ' + escHtml(profile.email) : ''}
+        ${profile?.taxNumber ? '<br/>GSTIN: ' + escHtml(profile.taxNumber) : ''}
+      </div>
+    </div>
+    <div class="po-meta">
+      <div class="po-label">PURCHASE ORDER</div>
+      <div class="po-number">${escHtml(po.poNumber)}</div>
+      <div class="po-date">Date: ${formatDate(po.orderDate)}</div>
+      ${po.expectedDate ? `<div class="po-date">Expected by: ${formatDate(po.expectedDate)}</div>` : ''}
+      <div class="status-badge">${escHtml(po.status.replace(/_/g, ' '))}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Issued To (Supplier)</div>
+    <div class="supplier-box">
+      <div class="supplier-name">${supplierDisplay}</div>
+      ${po.supplier?.supplierCode ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${escHtml(po.supplier.supplierCode)}</div>` : ''}
+      ${po.supplier?.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(po.supplier.phone)}</div>` : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="right">Qty</th>
+        <th class="right">Unit Cost</th>
+        <th class="right">Tax%</th>
+        <th class="right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-table">
+      <div class="totals-row"><span>Subtotal</span><span>${formatAmount(po.subtotal, sym)}</span></div>
+      ${po.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(po.taxAmount, sym)}</span></div>` : ''}
+      <div class="totals-total"><span>Total Amount</span><span>${formatAmount(po.totalAmount, sym)}</span></div>
+    </div>
+  </div>
+
+  ${po.notes ? `<div class="notice"><strong>Notes:</strong> ${escHtml(po.notes)}</div>` : ''}
+
+  <div class="notice">
+    <strong>Terms:</strong> Goods/services must match the quantities, costs, and descriptions listed above.
+    All items are subject to inspection upon receipt${po.expectedDate ? `; delivery is expected by ${formatDate(po.expectedDate)}` : ''}.
+  </div>
+
+  <div class="footer">
+    Computer-generated purchase order.<br/>
+    ${await aszurexFooterHtml(10)}
+  </div>
+</body>
+</html>`
+  },
+
   // G9.1: KOT (Kitchen Order Ticket) print template
   async generateKOTHtml(params: {
     kotId: string

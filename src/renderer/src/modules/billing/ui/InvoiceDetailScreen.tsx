@@ -4,6 +4,7 @@ import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCr
 import { useTranslation } from 'react-i18next'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { Button } from '@shared/ui/atoms/Button'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { api } from '@renderer/services/ipc-client'
@@ -38,7 +39,7 @@ interface Invoice {
   // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
   // only; null for every other sale).
   tableId?: string | null
-  customer: { id: string; customerName: string; phone?: string | null; customerCode?: string | null } | null
+  customer: { id: string; customerName: string; phone?: string | null; email?: string | null; customerCode?: string | null } | null
   createdBy: { id: string; fullName: string } | null
   items: InvoiceItem[]
   payments: Payment[]
@@ -60,6 +61,7 @@ export function InvoiceDetailScreen() {
   const { t } = useTranslation()
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
@@ -304,6 +306,30 @@ export function InvoiceDetailScreen() {
     } finally { setPrinting(false) }
   }
 
+  // Share Bill via WhatsApp/Email — see docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md.
+  async function handleExportInvoicePdfForShare(): Promise<ExportPdfResult> {
+    if (!invoice) return { success: false, error: { message: t('billing.invoiceNotFound') } }
+    const res = await window.api.print.exportInvoicePdf({ invoiceId: invoice.id })
+    if (!res.success) return { success: false, error: res.error }
+    const data = res.data as { cancelled: boolean; filePath?: string }
+    return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+  }
+
+  function buildShareWhatsAppMessage(): string {
+    if (!invoice) return ''
+    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeInvoice'), number: invoice.invoiceNumber, amount: formatCurrency(invoice.totalAmount) })
+  }
+
+  function buildShareEmailSubject(): string {
+    if (!invoice) return ''
+    return t('billing.shareEmailSubject', { documentType: t('share.docTypeInvoice'), number: invoice.invoiceNumber, businessName })
+  }
+
+  function buildShareEmailBody(): string {
+    if (!invoice) return ''
+    return t('billing.shareEmailBody', { documentType: t('share.docTypeInvoice'), number: invoice.invoiceNumber, businessName, amount: formatCurrency(invoice.totalAmount) })
+  }
+
   if (loading) return (
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
       <Skeleton className="h-10 w-64" />
@@ -387,6 +413,15 @@ export function InvoiceDetailScreen() {
               <Button size="sm" variant="outline" onClick={() => handleOpenPreview(true)} loading={previewLoading && previewIsReceipt}>
                 <Receipt size={14} className="mr-1" /> {t('billing.printReceipt')}
               </Button>
+              <ShareMenu
+                variant="button"
+                recipientPhone={invoice.customer?.phone}
+                recipientEmail={invoice.customer?.email}
+                buildWhatsAppMessage={buildShareWhatsAppMessage}
+                buildEmailSubject={buildShareEmailSubject}
+                buildEmailBody={buildShareEmailBody}
+                onExportPdf={handleExportInvoicePdfForShare}
+              />
             </>
           )}
           {!isCancelled && canCancel && (

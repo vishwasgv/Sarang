@@ -3,6 +3,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { creditNoteService } from '../../services/credit-note.service'
 import { printService } from '../../services/print.service'
+import { exportToPdf } from '../../services/export.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
@@ -119,5 +120,20 @@ export function register(handle: HandleFn): void {
         })
       })
     })
+  })
+
+  // Share feature — reuses the existing HTML generator unchanged, saved to a
+  // chosen file path via export.toPdf instead of straight to the OS print
+  // dialog, so Share's reveal-in-folder step has a real path to act on.
+  handle('creditNotes:exportPdf', async (id) => {
+    const deny = await requirePermission('billing.printInvoice'); if (deny) return deny
+    const bad = validateId(id, 'credit note ID'); if (bad) return bad
+    const cnRes = await creditNoteService.getById(id as string)
+    if (!cnRes.success) return cnRes
+    const profile = await getPrisma().businessProfile.findFirst()
+    const html = await printService.generateCreditNoteHtml(cnRes.data as Parameters<typeof printService.generateCreditNoteHtml>[0], profile as Parameters<typeof printService.generateCreditNoteHtml>[1])
+    const creditNoteNumber = (cnRes.data as { creditNoteNumber: string }).creditNoteNumber
+    const result = await exportToPdf({ html, filename: `CreditNote-${creditNoteNumber}.pdf` })
+    return { success: true, data: result }
   })
 }

@@ -162,6 +162,12 @@ export interface IpcChannels {
     cancel: (payload: { id: string; reason: string }) => Promise<ApiResponse>
     // Phase 58 §2 — reorder automation triggered from low-stock alerts
     generateReorderDraftPOs: () => Promise<ApiResponse<{ created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number }>>
+    // Share feature — Purchase Order PDF generation built from scratch (it had
+    // none before). Gated on the new `purchaseOrders.printDocument` permission,
+    // not the existing (mislabeled) `purchaseOrders.print` key, which is
+    // load-bearing for Debit Note printing specifically and left untouched.
+    print: (id: string) => Promise<ApiResponse>
+    exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
   }
   billing: {
     createInvoice: (payload: unknown) => Promise<ApiResponse>
@@ -260,7 +266,11 @@ export interface IpcChannels {
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
     toExcel: (payload: { filename: string; sheets: { name: string; headers: string[]; rows: (string | number | null | undefined)[][] }[] }) => Promise<ApiResponse>
-    toPdf: (payload: { html: string; filename: string }) => Promise<ApiResponse>
+    // `data` reports what the save dialog actually did — `cancelled: true`
+    // means the owner backed out and nothing was written (callers must not
+    // proceed to any follow-up step, e.g. Share's reveal-in-folder); a real
+    // save reports `filePath` so a caller (Share) can act on the saved file.
+    toPdf: (payload: { html: string; filename: string }) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
     generateReportHtml: (payload: {
       title: string; subtitle?: string; dateRange?: string
       summaryCards?: { label: string; value: string }[]
@@ -273,6 +283,16 @@ export interface IpcChannels {
       tables: { heading?: string; headers: string[]; rows: (string | number | null)[][] }[]
       currencySymbol?: string; reportPermission?: string
     }) => Promise<ApiResponse<string>>
+  }
+  // Share Bill/Report via WhatsApp & Email — see
+  // docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section 5.1. Main-process
+  // because buildWhatsAppLink() is DB-aware (country dial code lookup).
+  share: {
+    buildWhatsAppLink: (payload: { phone: string | null; message: string }) => Promise<ApiResponse<string | null>>
+    buildEmailLink: (payload: { email: string | null; subject: string; body: string }) => Promise<ApiResponse<string>>
+    // Read-only reveal of a file the owner already chose to save seconds
+    // earlier via a save dialog — no new attack surface.
+    showItemInFolder: (payload: { filePath: string }) => Promise<ApiResponse>
   }
   analytics: {
     getDashboardKpis: (payload?: { forceRefresh?: boolean }) => Promise<ApiResponse>
@@ -374,6 +394,10 @@ export interface IpcChannels {
     listPrinters: () => Promise<ApiResponse<Array<{ name: string; displayName: string; isDefault: boolean }>>>
     previewInvoice: (payload: { invoiceId: string }) => Promise<ApiResponse<string>>
     previewReceipt: (payload: { invoiceId: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse<string>>
+    // Share feature — Invoice had print/preview but no "save to a known file
+    // path" capability, which Share's reveal-in-folder step needs. Reuses
+    // generateInvoiceHtml unchanged, routed through export.toPdf.
+    exportInvoicePdf: (payload: { invoiceId: string }) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
     // Phase 38: barcode/price label printing — routes through the same HTML + OS print-dialog
     // mechanism as invoice/receipt printing (see print.service.ts), not a raw ZPL/TSPL path.
     labels: (payload: {
@@ -702,6 +726,11 @@ export interface IpcChannels {
     create: (payload: { customerId?: string; customerName?: string; validUntil?: string; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
+    // Share feature (Section 4/5.3): same HTML as `print`, saved to a chosen
+    // file path via export.toPdf instead of straight to the OS print dialog
+    // — `print` has no way to learn the resulting file's path, which Share's
+    // reveal-in-folder step needs.
+    exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
     updateStatus: (payload: { id: string; status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' }) => Promise<ApiResponse>
     convertToInvoice: (id: string) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
@@ -714,6 +743,7 @@ export interface IpcChannels {
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
+    exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
   }
   debitNotes: {
     list: (payload?: { supplierId?: string; purchaseOrderId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
@@ -723,6 +753,7 @@ export interface IpcChannels {
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
+    exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
   }
   // Phase 22 — Service Business Foundation
   appointments: {

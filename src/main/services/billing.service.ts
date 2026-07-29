@@ -681,7 +681,9 @@ export const billingService = {
     const invoice = await db.invoice.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, customerName: true, phone: true, customerCode: true } },
+        // email added for the Share feature (Section 4/5.1 of
+        // FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md).
+        customer: { select: { id: true, customerName: true, phone: true, customerCode: true, email: true } },
         createdBy: { select: { id: true, fullName: true } },
         items: {
           include: { product: { select: { id: true, unit: true } } }

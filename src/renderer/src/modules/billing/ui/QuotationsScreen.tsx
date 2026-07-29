@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Tabs } from '@shared/ui/molecules/Tabs'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 
 interface QuotationItem {
   id: string; productName: string; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number
@@ -20,7 +21,7 @@ interface Quotation {
   id: string; quotationNumber: string; customerName?: string | null; status: string
   totalAmount: number; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
   invoice?: { id: string; invoiceNumber: string } | null
-  customer?: { id: string; customerName: string } | null
+  customer?: { id: string; customerName: string; phone?: string | null; email?: string | null } | null
 }
 
 // Matches quotation.service.ts's status type: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED'.
@@ -44,6 +45,7 @@ export function QuotationsScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
   const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -135,8 +137,16 @@ export function QuotationsScreen() {
     }
   }
 
+  async function handleExportPdfForShare(q: Quotation): Promise<ExportPdfResult> {
+    const res = await window.api.quotations.exportPdf(q.id)
+    if (!res.success) return { success: false, error: res.error }
+    const data = res.data as { cancelled: boolean; filePath?: string }
+    return { success: true, cancelled: data.cancelled, filePath: data.filePath }
+  }
+
   const canCreate = hasPermission('billing.create')
   const canVoid = hasPermission('billing.void')
+  const canPrint = hasPermission('billing.printInvoice')
 
   const statusLabels: Record<StatusFilter, string> = {
     All: t('quotations.statusAll'),
@@ -232,6 +242,16 @@ export function QuotationsScreen() {
                 className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand transition-all disabled:opacity-30">
                 <Receipt size={14} />
               </button>
+              {canPrint && (
+                <ShareMenu
+                  recipientPhone={q.customer?.phone}
+                  recipientEmail={q.customer?.email}
+                  buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeQuotation'), number: q.quotationNumber, amount: fmtMoney(q.totalAmount, sym) })}
+                  buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName })}
+                  buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName, amount: fmtMoney(q.totalAmount, sym) })}
+                  onExportPdf={() => handleExportPdfForShare(q)}
+                />
+              )}
               {canVoid && !q.invoice && (
                 <button onClick={() => setDeleteTarget(q)}
                   className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-danger transition-all">

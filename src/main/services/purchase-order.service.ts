@@ -174,7 +174,10 @@ export const purchaseOrderService = {
     const po = await db.purchaseOrder.findUnique({
       where: { id },
       include: {
-        supplier: { select: { id: true, supplierName: true, supplierCode: true, phone: true } },
+        // email added for the Share feature (Section 4/5.1 of
+        // FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md) — POs share to the
+        // Supplier's contact info, not a Customer's.
+        supplier: { select: { id: true, supplierName: true, supplierCode: true, phone: true, email: true } },
         items: {
           include: {
             product: {
