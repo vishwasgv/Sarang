@@ -80,6 +80,25 @@ async function main() {
   for (const file of files) {
     console.log(`\n${'='.repeat(70)}\nSUITE: ${file}\n${'='.repeat(70)}`)
     const suite = require(path.join(SUITES_DIR, file))
+    // Real gap found+fixed 2026-07-29: a suite with no exported `run` (a
+    // self-executing script calling main()+process.exit() directly, like
+    // 60-tutorial-mode.js) used to surface here as an opaque, alarming
+    // "FATAL: suite.run is not a function" on every single full run,
+    // indistinguishable in the summary from a genuine suite crash. That
+    // specific suite is standalone-only ON PURPOSE, not a bug to "fix" by
+    // forcing it into this shared loop — it deliberately force-kills every
+    // electron.exe process system-wide to simulate a real crash, which
+    // would also take down THIS run's own shared dev-server window; making
+    // it cooperate safely with that would mean duplicating its own
+    // dev-server-restart logic into this orchestrator, a real risk of
+    // leaking an orphaned `npm run dev` process after the full run exits.
+    // Skip cleanly and say so, rather than pretend every suite must fit
+    // one shape.
+    if (typeof suite.run !== 'function') {
+      console.log(`SKIPPED: ${file} does not export a run() function — this is a standalone-only suite by design (run it directly: node tests/e2e/suites/${file}), not a broken suite.`)
+      allResults.push({ file, summary: { total: 0, pass: 0, fail: 0 }, results: [], skipped: true })
+      continue
+    }
     try {
       const r = await suite.run()
       allResults.push({ file, summary: r.summary(), results: r.all })
@@ -91,8 +110,9 @@ async function main() {
 
   console.log(`\n${'='.repeat(70)}\nOVERALL SUMMARY\n${'='.repeat(70)}`)
   let totalPass = 0, totalFail = 0
-  for (const { file, summary } of allResults) {
-    console.log(`${summary.fail === 0 ? '✓' : '✗'} ${file}: ${summary.pass}/${summary.total}`)
+  for (const { file, summary, skipped } of allResults) {
+    const marker = skipped ? '○' : (summary.fail === 0 ? '✓' : '✗')
+    console.log(`${marker} ${file}: ${skipped ? 'SKIPPED (standalone-only)' : `${summary.pass}/${summary.total}`}`)
     totalPass += summary.pass
     totalFail += summary.fail
   }
