@@ -131,7 +131,7 @@ export function PetListScreen() {
       if (res.success && res.data) {
         setUpcomingVacs((res.data as UpcomingVac[]).slice(0, 6))
       }
-    })
+    }).catch(() => { /* supplementary panel — pet list itself loads independently */ })
   }, [])
 
   // Load owners for create modal
@@ -147,34 +147,43 @@ export function PetListScreen() {
         // modal opened.
         const d = res.data as { customers: { id: string; customerName: string }[] }
         setCustomers(d.customers ?? [])
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not load owners list.')
       }
+    }).catch(() => {
+      toastError('Error', 'Could not load owners list.')
     })
-  }, [])
+  }, [toastError])
 
   async function handleCreate() {
     if (!form.petName.trim()) { setFormError('Pet name is required.'); return }
     setSaving(true)
     setFormError(null)
-    const res = await api.pets.create({
-      customerId: form.customerId || undefined,
-      petName: form.petName.trim(),
-      species: form.species,
-      breed: form.breed.trim() || undefined,
-      dateOfBirth: form.dateOfBirth || undefined,
-      gender: form.gender || undefined,
-      color: form.color.trim() || undefined,
-      weight: form.weight ? parseFloat(form.weight) : undefined,
-      microchipId: form.microchipId.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-    })
-    setSaving(false)
-    if (res.success && res.data) {
-      setShowModal(false)
-      setForm(EMPTY_FORM)
-      const newPet = res.data as { id: string }
-      navigate(`/vet/pets/${newPet.id}`)
-    } else {
-      setFormError(res.error?.message ?? 'Could not create patient.')
+    try {
+      const res = await api.pets.create({
+        customerId: form.customerId || undefined,
+        petName: form.petName.trim(),
+        species: form.species,
+        breed: form.breed.trim() || undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
+        gender: form.gender || undefined,
+        color: form.color.trim() || undefined,
+        weight: form.weight ? parseFloat(form.weight) : undefined,
+        microchipId: form.microchipId.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+      })
+      if (res.success && res.data) {
+        setShowModal(false)
+        setForm(EMPTY_FORM)
+        const newPet = res.data as { id: string }
+        navigate(`/vet/pets/${newPet.id}`)
+      } else {
+        setFormError(res.error?.message ?? 'Could not create patient.')
+      }
+    } catch {
+      setFormError('Could not create patient.')
+    } finally {
+      setSaving(false)
     }
   }
 

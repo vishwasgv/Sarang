@@ -239,9 +239,13 @@ export function PetProfileScreen() {
         // { customers, total, ... }, not { items }.
         const d = res.data as { customers: { id: string; customerName: string }[] }
         setCustomers(d.customers ?? [])
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not load owners list.')
       }
+    }).catch(() => {
+      toastError('Error', 'Could not load owners list.')
     })
-  }, [])
+  }, [toastError])
 
   // ── Edit Pet ──────────────────────────────────────────────────────────────
 
@@ -269,43 +273,58 @@ export function PetProfileScreen() {
     if (!editPetForm.petName.trim()) { setEditPetError('Pet name is required.'); return }
     setSavingEditPet(true)
     setEditPetError(null)
-    const res = await api.pets.update({
-      id,
-      petName: editPetForm.petName.trim(),
-      species: editPetForm.species,
-      breed: editPetForm.breed.trim() || null,
-      gender: editPetForm.gender || null,
-      dateOfBirth: editPetForm.dateOfBirth || null,
-      color: editPetForm.color.trim() || null,
-      microchipId: editPetForm.microchipId.trim() || null,
-      customerId: editPetForm.customerId || null,
-      notes: editPetForm.notes.trim() || null,
-      weight: editPetForm.weight ? parseFloat(editPetForm.weight) : null,
-    })
-    setSavingEditPet(false)
-    if (!res.success) { setEditPetError(res.error?.message ?? 'Could not update patient.'); return }
-    setShowEditPet(false)
-    load()
+    try {
+      const res = await api.pets.update({
+        id,
+        petName: editPetForm.petName.trim(),
+        species: editPetForm.species,
+        breed: editPetForm.breed.trim() || null,
+        gender: editPetForm.gender || null,
+        dateOfBirth: editPetForm.dateOfBirth || null,
+        color: editPetForm.color.trim() || null,
+        microchipId: editPetForm.microchipId.trim() || null,
+        customerId: editPetForm.customerId || null,
+        notes: editPetForm.notes.trim() || null,
+        weight: editPetForm.weight ? parseFloat(editPetForm.weight) : null,
+      })
+      if (!res.success) { setEditPetError(res.error?.message ?? 'Could not update patient.'); return }
+      setShowEditPet(false)
+      load()
+    } catch {
+      setEditPetError('Could not update patient.')
+    } finally {
+      setSavingEditPet(false)
+    }
   }
 
   async function handleArchivePet() {
     if (!id) return
     setArchiving(true)
-    const res = await api.pets.update({ id, isActive: false })
-    setArchiving(false)
-    if (!res.success) { setEditPetError(res.error?.message ?? 'Could not archive patient.'); return }
-    setShowEditPet(false)
-    navigate('/vet/pets')
+    try {
+      const res = await api.pets.update({ id, isActive: false })
+      if (!res.success) { setEditPetError(res.error?.message ?? 'Could not archive patient.'); return }
+      setShowEditPet(false)
+      navigate('/vet/pets')
+    } catch {
+      setEditPetError('Could not archive patient.')
+    } finally {
+      setArchiving(false)
+    }
   }
 
   async function handleRestorePet() {
     if (!id) return
     setArchiving(true)
-    const res = await api.pets.update({ id, isActive: true })
-    setArchiving(false)
-    if (!res.success) { setEditPetError(res.error?.message ?? 'Could not restore patient.'); return }
-    setShowEditPet(false)
-    load()
+    try {
+      const res = await api.pets.update({ id, isActive: true })
+      if (!res.success) { setEditPetError(res.error?.message ?? 'Could not restore patient.'); return }
+      setShowEditPet(false)
+      load()
+    } catch {
+      setEditPetError('Could not restore patient.')
+    } finally {
+      setArchiving(false)
+    }
   }
 
   // ── Weight Entry ──────────────────────────────────────────────────────────
@@ -314,16 +333,21 @@ export function PetProfileScreen() {
     if (!id || !weightInput) return
     setSavingWeight(true)
     setWeightError(null)
-    const res = await api.pets.addWeight({ petId: id, weightKg: parseFloat(weightInput), notes: weightNotes || undefined })
-    setSavingWeight(false)
-    if (!res.success) {
-      setWeightError(res.error?.message ?? 'Could not save weight entry.')
-      return
+    try {
+      const res = await api.pets.addWeight({ petId: id, weightKg: parseFloat(weightInput), notes: weightNotes || undefined })
+      if (!res.success) {
+        setWeightError(res.error?.message ?? 'Could not save weight entry.')
+        return
+      }
+      setWeightInput('')
+      setWeightNotes('')
+      setShowWeightForm(false)
+      load()
+    } catch {
+      setWeightError('Could not save weight entry.')
+    } finally {
+      setSavingWeight(false)
     }
-    setWeightInput('')
-    setWeightNotes('')
-    setShowWeightForm(false)
-    load()
   }
 
   // ── Vaccination CRUD ──────────────────────────────────────────────────────
@@ -355,61 +379,76 @@ export function PetProfileScreen() {
     if (!id || !vacForm.vaccineName.trim()) { setVacError('Vaccine name is required.'); return }
     setSavingVac(true)
     setVacError(null)
-    if (editVacId) {
-      const res = await api.vaccinations.update({
-        id: editVacId,
-        vaccineName: vacForm.vaccineName.trim(),
-        vaccineType: vacForm.vaccineType || null,
-        batchNumber: vacForm.batchNumber || null,
-        manufacturer: vacForm.manufacturer || null,
-        administeredAt: vacForm.administeredAt,
-        administeredBy: vacForm.administeredBy || null,
-        nextDueDate: vacForm.nextDueDate || null,
-        notes: vacForm.notes || null,
-      })
-      if (!res.success) { setVacError(res.error?.message ?? 'Could not update record.'); setSavingVac(false); return }
-    } else {
-      const res = await api.vaccinations.create({
-        petId: id,
-        vaccineName: vacForm.vaccineName.trim(),
-        vaccineType: vacForm.vaccineType || undefined,
-        batchNumber: vacForm.batchNumber || undefined,
-        manufacturer: vacForm.manufacturer || undefined,
-        administeredAt: vacForm.administeredAt,
-        administeredBy: vacForm.administeredBy || undefined,
-        nextDueDate: vacForm.nextDueDate || undefined,
-        notes: vacForm.notes || undefined,
-      })
-      if (!res.success) { setVacError(res.error?.message ?? 'Could not save record.'); setSavingVac(false); return }
+    try {
+      if (editVacId) {
+        const res = await api.vaccinations.update({
+          id: editVacId,
+          vaccineName: vacForm.vaccineName.trim(),
+          vaccineType: vacForm.vaccineType || null,
+          batchNumber: vacForm.batchNumber || null,
+          manufacturer: vacForm.manufacturer || null,
+          administeredAt: vacForm.administeredAt,
+          administeredBy: vacForm.administeredBy || null,
+          nextDueDate: vacForm.nextDueDate || null,
+          notes: vacForm.notes || null,
+        })
+        if (!res.success) { setVacError(res.error?.message ?? 'Could not update record.'); return }
+      } else {
+        const res = await api.vaccinations.create({
+          petId: id,
+          vaccineName: vacForm.vaccineName.trim(),
+          vaccineType: vacForm.vaccineType || undefined,
+          batchNumber: vacForm.batchNumber || undefined,
+          manufacturer: vacForm.manufacturer || undefined,
+          administeredAt: vacForm.administeredAt,
+          administeredBy: vacForm.administeredBy || undefined,
+          nextDueDate: vacForm.nextDueDate || undefined,
+          notes: vacForm.notes || undefined,
+        })
+        if (!res.success) { setVacError(res.error?.message ?? 'Could not save record.'); return }
+      }
+      setShowVacForm(false)
+      load()
+    } catch {
+      setVacError('Could not save record.')
+    } finally {
+      setSavingVac(false)
     }
-    setSavingVac(false)
-    setShowVacForm(false)
-    load()
   }
 
   async function handleDeleteVac(vacId: string) {
     setConfirmDeleteVacId(null)
-    const res = await api.vaccinations.delete({ id: vacId })
-    if (!res.success) { setVacError(res.error?.message ?? 'Could not delete record.'); return }
-    load()
+    try {
+      const res = await api.vaccinations.delete({ id: vacId })
+      if (!res.success) { setVacError(res.error?.message ?? 'Could not delete record.'); return }
+      load()
+    } catch {
+      setVacError('Could not delete record.')
+    }
   }
 
   async function handleSendReminder(vacId: string) {
     setSendingReminderId(vacId)
     setReminderFailId(null)
-    const res = await api.vaccinations.createReminder({ vaccinationRecordId: vacId })
-    setSendingReminderId(null)
-    if (res.success && res.data !== null && res.data !== undefined) {
-      setReminderSentId(vacId)
-      setTimeout(() => setReminderSentId(null), 2500)
-    } else if (res.success && (res.data === null || res.data === undefined)) {
-      // Owner has no phone — reminder skipped
-      setReminderNoPhoneId(vacId)
-      setTimeout(() => setReminderNoPhoneId(null), 2500)
-    } else {
-      // IPC / service error — show failure flash
+    try {
+      const res = await api.vaccinations.createReminder({ vaccinationRecordId: vacId })
+      if (res.success && res.data !== null && res.data !== undefined) {
+        setReminderSentId(vacId)
+        setTimeout(() => setReminderSentId(null), 2500)
+      } else if (res.success && (res.data === null || res.data === undefined)) {
+        // Owner has no phone — reminder skipped
+        setReminderNoPhoneId(vacId)
+        setTimeout(() => setReminderNoPhoneId(null), 2500)
+      } else {
+        // IPC / service error — show failure flash
+        setReminderFailId(vacId)
+        setTimeout(() => setReminderFailId(null), 3000)
+      }
+    } catch {
       setReminderFailId(vacId)
       setTimeout(() => setReminderFailId(null), 3000)
+    } finally {
+      setSendingReminderId(null)
     }
   }
 
