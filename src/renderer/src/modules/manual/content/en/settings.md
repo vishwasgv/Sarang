@@ -64,4 +64,4 @@ Three more sections live in this same Settings menu but are covered in their own
 
 ## About
 
-**Settings → About** shows your installed version number and Sarang's transparency statement (what data is and isn't collected — nothing is, since Sarang is fully offline).
+**Settings → About** shows your installed version number and Sarang's transparency statement. Sarang works fully offline for every core business feature — billing, inventory, customers, reports — with three narrow, disclosed exceptions, none of which ever include your business data and none of which block the app if you're offline: a software-update check (your app version only), an optional once-a-day license-status check (a one-way scrambled version of your license key only), and an anonymous daily usage-duration signal (minutes the app was open, tied to that same scrambled key, never anything that identifies you or your business). See **Settings → About → Privacy & Data** for the full picture.
