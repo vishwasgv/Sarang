@@ -8,6 +8,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,15 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   const [rollupRows, setRollupRows] = useState<ComplianceRollupRow[]>([])
   const [rollupLoading, setRollupLoading] = useState(false)
 
+  // Destructive-action confirmations — deleting a filed ROC record or board
+  // meeting is a real loss of a legal-compliance history, not a routine undo.
+  const [deleteFilingTarget, setDeleteFilingTarget] = useState<ROCFiling | null>(null)
+  const [deletingFiling, setDeletingFiling] = useState(false)
+  const [deleteMeetingTarget, setDeleteMeetingTarget] = useState<BoardMeeting | null>(null)
+  const [deletingMeeting, setDeletingMeeting] = useState(false)
+  const [deleteResolutionTarget, setDeleteResolutionTarget] = useState<BoardResolution | null>(null)
+  const [deletingResolution, setDeletingResolution] = useState(false)
+
   const loadFilings = useCallback(async () => {
     setLoadingFilings(true)
     try {
@@ -397,13 +407,17 @@ export default function ROCFilingsScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDeleteFiling(id: string): Promise<void> {
+  async function handleDeleteFiling(): Promise<void> {
+    if (!deleteFilingTarget) return
+    setDeletingFiling(true)
     try {
-      const res = await api.rocFiling.delete({ id })
-      if (res.success) await loadFilings()
+      const res = await api.rocFiling.delete({ id: deleteFilingTarget.id })
+      if (res.success) { setDeleteFilingTarget(null); await loadFilings() }
       else toastError('Error', res.error?.message ?? 'Could not delete ROC filing.')
     } catch {
       toastError('Error', 'Could not delete ROC filing.')
+    } finally {
+      setDeletingFiling(false)
     }
   }
 
@@ -456,13 +470,17 @@ export default function ROCFilingsScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDeleteMeeting(id: string): Promise<void> {
+  async function handleDeleteMeeting(): Promise<void> {
+    if (!deleteMeetingTarget) return
+    setDeletingMeeting(true)
     try {
-      const res = await api.boardMeeting.delete({ id })
-      if (res.success) await loadMeetings()
+      const res = await api.boardMeeting.delete({ id: deleteMeetingTarget.id })
+      if (res.success) { setDeleteMeetingTarget(null); await loadMeetings() }
       else toastError('Error', res.error?.message ?? 'Could not delete board meeting.')
     } catch {
       toastError('Error', 'Could not delete board meeting.')
+    } finally {
+      setDeletingMeeting(false)
     }
   }
 
@@ -516,14 +534,21 @@ export default function ROCFilingsScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDeleteResolution(id: string): Promise<void> {
-    if (!resolutionMeeting) return
+  async function handleDeleteResolution(): Promise<void> {
+    if (!resolutionMeeting || !deleteResolutionTarget) return
+    setDeletingResolution(true)
     try {
-      const res = await api.boardResolution.delete({ id })
-      if (res.success) setResolutions((prev) => prev.filter((r) => r.id !== id))
-      else toastError('Error', res.error?.message ?? 'Could not delete resolution.')
+      const res = await api.boardResolution.delete({ id: deleteResolutionTarget.id })
+      if (res.success) {
+        setResolutions((prev) => prev.filter((r) => r.id !== deleteResolutionTarget.id))
+        setDeleteResolutionTarget(null)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not delete resolution.')
+      }
     } catch {
       toastError('Error', 'Could not delete resolution.')
+    } finally {
+      setDeletingResolution(false)
     }
   }
 
@@ -661,7 +686,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                           <button onClick={() => openEditFiling(f)} className="p-1.5 text-gray-400 hover:text-teal-600 rounded hover:bg-teal-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => void handleDeleteFiling(f.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
+                          <button onClick={() => setDeleteFilingTarget(f)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -755,7 +780,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                             <button onClick={() => openEditMeeting(m)} className="p-1.5 text-gray-400 hover:text-teal-600 rounded hover:bg-teal-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => void handleDeleteMeeting(m.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
+                            <button onClick={() => setDeleteMeetingTarget(m)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" style={{ minHeight: 32, minWidth: 32 }}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -1029,7 +1054,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                       </div>
                       <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{r.resolutionText}</p>
                     </div>
-                    <button onClick={() => void handleDeleteResolution(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500 shrink-0" style={{ minHeight: 32, minWidth: 32 }}>
+                    <button onClick={() => setDeleteResolutionTarget(r)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500 shrink-0" style={{ minHeight: 32, minWidth: 32 }}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -1068,6 +1093,34 @@ export default function ROCFilingsScreen(): React.JSX.Element {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteFilingTarget !== null}
+        onClose={() => setDeleteFilingTarget(null)}
+        onConfirm={() => void handleDeleteFiling()}
+        loading={deletingFiling}
+        title="Delete ROC Filing"
+        message={deleteFilingTarget ? `Delete the ${deleteFilingTarget.formType} filing for ${deleteFilingTarget.client.customerName}? This cannot be undone.` : ''}
+        confirmLabel="Delete"
+      />
+      <ConfirmDialog
+        open={deleteMeetingTarget !== null}
+        onClose={() => setDeleteMeetingTarget(null)}
+        onConfirm={() => void handleDeleteMeeting()}
+        loading={deletingMeeting}
+        title="Delete Board Meeting"
+        message={deleteMeetingTarget ? `Delete this ${MEETING_TYPE_LABELS[deleteMeetingTarget.meetingType] ?? deleteMeetingTarget.meetingType} for ${deleteMeetingTarget.client.customerName}? This cannot be undone.` : ''}
+        confirmLabel="Delete"
+      />
+      <ConfirmDialog
+        open={deleteResolutionTarget !== null}
+        onClose={() => setDeleteResolutionTarget(null)}
+        onConfirm={() => void handleDeleteResolution()}
+        loading={deletingResolution}
+        title="Delete Resolution"
+        message="Delete this board resolution? This cannot be undone."
+        confirmLabel="Delete"
+      />
     </div>
   )
 }
