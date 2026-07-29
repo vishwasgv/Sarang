@@ -208,14 +208,19 @@ export function PhysioPatientScreen() {
   async function saveHEP() {
     if (!patientId) return
     setSaving(true)
-    const res = await api.exerciseProgram.upsert({ patientId, exercises: JSON.stringify(exercises), title: program?.title ?? 'Home Exercise Program' })
-    setSaving(false)
-    if (res.success) {
-      setHepSaveError(null)
-      setSaved(true)
-      load()
-    } else {
-      setHepSaveError(res.error?.message ?? 'Could not save program.')
+    try {
+      const res = await api.exerciseProgram.upsert({ patientId, exercises: JSON.stringify(exercises), title: program?.title ?? 'Home Exercise Program' })
+      if (res.success) {
+        setHepSaveError(null)
+        setSaved(true)
+        load()
+      } else {
+        setHepSaveError(res.error?.message ?? 'Could not save program.')
+      }
+    } catch {
+      setHepSaveError('Could not save program.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -366,41 +371,56 @@ function TreatmentTab({ phases, patientId, canWrite, showNewPhase, showClosePhas
   async function handleCreatePhase() {
     if (!newPhaseForm.title.trim()) return
     setSaving(true)
-    const res = await api.treatmentPhase.create({ patientId, ...newPhaseForm })
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not create phase.'); return }
-    setError(null)
-    setShowNewPhase(false)
-    setNewPhaseForm({ phase: 'ASSESSMENT', title: '', startDate: new Date().toISOString().split('T')[0], goals: '' })
-    onRefresh()
+    try {
+      const res = await api.treatmentPhase.create({ patientId, ...newPhaseForm })
+      if (!res.success) { setError(res.error?.message ?? 'Could not create phase.'); return }
+      setError(null)
+      setShowNewPhase(false)
+      setNewPhaseForm({ phase: 'ASSESSMENT', title: '', startDate: new Date().toISOString().split('T')[0], goals: '' })
+      onRefresh()
+    } catch {
+      setError('Could not create phase.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleClosePhase(id: string) {
     setSaving(true)
-    const res = await api.treatmentPhase.close({ id, outcome: closeOutcome || undefined })
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not close phase.'); return }
-    setError(null)
-    setShowClosePhase(null)
-    setCloseOutcome('')
-    onRefresh()
+    try {
+      const res = await api.treatmentPhase.close({ id, outcome: closeOutcome || undefined })
+      if (!res.success) { setError(res.error?.message ?? 'Could not close phase.'); return }
+      setError(null)
+      setShowClosePhase(null)
+      setCloseOutcome('')
+      onRefresh()
+    } catch {
+      setError('Could not close phase.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleUpdatePhase(id: string) {
     if (!editForm.title.trim()) return
     setSaving(true)
-    const res = await api.treatmentPhase.update({
-      id,
-      phase: editForm.phase,
-      title: editForm.title.trim(),
-      startDate: editForm.startDate,
-      goals: editForm.goals.trim() || null,
-    })
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not update phase.'); return }
-    setError(null)
-    setEditingPhase(null)
-    onRefresh()
+    try {
+      const res = await api.treatmentPhase.update({
+        id,
+        phase: editForm.phase,
+        title: editForm.title.trim(),
+        startDate: editForm.startDate,
+        goals: editForm.goals.trim() || null,
+      })
+      if (!res.success) { setError(res.error?.message ?? 'Could not update phase.'); return }
+      setError(null)
+      setEditingPhase(null)
+      onRefresh()
+    } catch {
+      setError('Could not update phase.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function startEdit(phase: TreatmentPhase) {
@@ -747,49 +767,64 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
     if (form.totalSessions < 1) { setError('Sessions must be at least 1.'); return }
     setSaving(true)
     setError(null)
-    const res = await api.sessionPack.create({
-      customerId: patientId,
-      packName: form.packName,
-      totalSessions: form.totalSessions,
-      purchaseDate: form.purchaseDate,
-      expiryDate: form.expiryDate || undefined,
-      pricePerPack: form.pricePerPack,
-      taxRate: form.taxRate,
-      sacCode: form.sacCode || undefined,
-      notes: form.notes || undefined,
-      assignedTrainerId: form.assignedTrainerId || undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      setShowNewPack(false)
-      setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '', assignedTrainerId: '' })
-      onRefresh()
-    } else {
-      setError(res.error?.message ?? 'Could not create pack.')
+    try {
+      const res = await api.sessionPack.create({
+        customerId: patientId,
+        packName: form.packName,
+        totalSessions: form.totalSessions,
+        purchaseDate: form.purchaseDate,
+        expiryDate: form.expiryDate || undefined,
+        pricePerPack: form.pricePerPack,
+        taxRate: form.taxRate,
+        sacCode: form.sacCode || undefined,
+        notes: form.notes || undefined,
+        assignedTrainerId: form.assignedTrainerId || undefined,
+      })
+      if (res.success) {
+        setShowNewPack(false)
+        setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '', assignedTrainerId: '' })
+        onRefresh()
+      } else {
+        setError(res.error?.message ?? 'Could not create pack.')
+      }
+    } catch {
+      setError('Could not create pack.')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleReassignTrainer(packId: string, trainerId: string) {
     setReassigningId(packId)
-    const res = await api.sessionPack.assignTrainer({ packId, trainerId: trainerId || null })
-    setReassigningId(null)
-    if (res.success) {
-      onRefresh()
-    } else {
-      setInvoiceError(res.error?.message ?? 'Could not assign trainer.')
+    try {
+      const res = await api.sessionPack.assignTrainer({ packId, trainerId: trainerId || null })
+      if (res.success) {
+        onRefresh()
+      } else {
+        setInvoiceError(res.error?.message ?? 'Could not assign trainer.')
+      }
+    } catch {
+      setInvoiceError('Could not assign trainer.')
+    } finally {
+      setReassigningId(null)
     }
   }
 
   async function handleGenerateInvoice(packId: string) {
     setInvoiceError(null)
     setGeneratingId(packId)
-    const res = await api.sessionPack.generateInvoice({ id: packId })
-    if (res.success) {
-      onRefresh()
-    } else {
-      setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+    try {
+      const res = await api.sessionPack.generateInvoice({ id: packId })
+      if (res.success) {
+        onRefresh()
+      } else {
+        setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+      }
+    } catch {
+      setInvoiceError('Could not generate invoice.')
+    } finally {
+      setGeneratingId(null)
     }
-    setGeneratingId(null)
   }
 
   return (

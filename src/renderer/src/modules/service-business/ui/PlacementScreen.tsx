@@ -230,9 +230,15 @@ function InterviewRoundsPanel({ candidateId, jobOrders }: { candidateId: string;
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    const res = await api.interviewRound.list({ candidateId })
-    if (res.success) setRounds((res.data as InterviewRound[]) ?? [])
-    setLoading(false)
+    try {
+      const res = await api.interviewRound.list({ candidateId })
+      if (res.success) setRounds((res.data as InterviewRound[]) ?? [])
+      else setError(res.error?.message ?? 'Could not load interview rounds.')
+    } catch {
+      setError('Could not load interview rounds.')
+    } finally {
+      setLoading(false)
+    }
   }, [candidateId])
 
   useEffect(() => { load() }, [load])
@@ -240,28 +246,48 @@ function InterviewRoundsPanel({ candidateId, jobOrders }: { candidateId: string;
   async function handleAdd() {
     if (!form.jobOrderId) return setError('Select a job order.')
     setSaving(true); setError('')
-    const res = await api.interviewRound.create({
-      candidateId, jobOrderId: form.jobOrderId, roundType: form.roundType,
-      scheduledDate: form.scheduledDate || undefined, interviewerName: form.interviewerName || undefined,
-    })
-    setSaving(false)
-    if (res.success) { setForm({ jobOrderId: form.jobOrderId, roundType: 'PHONE_SCREEN', scheduledDate: '', interviewerName: '' }); load() }
-    else setError(res.error?.message ?? 'Could not add round.')
+    try {
+      const res = await api.interviewRound.create({
+        candidateId, jobOrderId: form.jobOrderId, roundType: form.roundType,
+        scheduledDate: form.scheduledDate || undefined, interviewerName: form.interviewerName || undefined,
+      })
+      if (res.success) { setForm({ jobOrderId: form.jobOrderId, roundType: 'PHONE_SCREEN', scheduledDate: '', interviewerName: '' }); load() }
+      else setError(res.error?.message ?? 'Could not add round.')
+    } catch {
+      setError('Could not add round.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleStatusChange(round: InterviewRound, status: string) {
-    const res = await api.interviewRound.update({ id: round.id, status })
-    if (res.success) setRounds(prev => prev.map(r => r.id === round.id ? { ...r, status } : r))
+    try {
+      const res = await api.interviewRound.update({ id: round.id, status })
+      if (res.success) setRounds(prev => prev.map(r => r.id === round.id ? { ...r, status } : r))
+      else setError(res.error?.message ?? 'Could not update round status.')
+    } catch {
+      setError('Could not update round status.')
+    }
   }
 
   async function handleFeedbackBlur(round: InterviewRound, feedback: string) {
     if (feedback === (round.clientFeedback ?? '')) return
-    await api.interviewRound.update({ id: round.id, clientFeedback: feedback || null })
+    try {
+      const res = await api.interviewRound.update({ id: round.id, clientFeedback: feedback || null })
+      if (!res.success) setError(res.error?.message ?? 'Could not save feedback.')
+    } catch {
+      setError('Could not save feedback.')
+    }
   }
 
   async function handleDelete(id: string) {
-    const res = await api.interviewRound.delete({ id })
-    if (res.success) setRounds(prev => prev.filter(r => r.id !== id))
+    try {
+      const res = await api.interviewRound.delete({ id })
+      if (res.success) setRounds(prev => prev.filter(r => r.id !== id))
+      else setError(res.error?.message ?? 'Could not remove round.')
+    } catch {
+      setError('Could not remove round.')
+    }
   }
 
   if (loading) return <p className="text-xs text-gray-400 dark:text-slate-500">Loading interview rounds...</p>
@@ -352,6 +378,8 @@ export default function PlacementScreen() {
   const [plcFormError, setPlcFormError] = useState('')
   const [plcSaving, setPlcSaving] = useState(false)
   const [invoiceBanners, setInvoiceBanners] = useState<Record<string, { ok: boolean; msg: string }>>({})
+  const [advancingId, setAdvancingId] = useState<string | null>(null)
+  const [generatingInvoiceId, setGeneratingInvoiceId] = useState<string | null>(null)
 
   // Shared
   const [loading, setLoading] = useState(true)
@@ -496,17 +524,24 @@ export default function PlacementScreen() {
       await loadCandidates(candStatusFilter, candSearch)
       loadAllCandidates()
       loadKpis()
+    } catch {
+      setCandFormError('Save failed.')
     } finally { setCandSaving(false) }
   }
   async function deleteCand() {
     if (!deleteCandTarget) return
     setDeletingCand(true)
-    const res = await api.candidate.delete(deleteCandTarget.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingCand(false); return }
-    setDeleteCandTarget(null)
-    setDeletingCand(false)
-    await loadCandidates(candStatusFilter, candSearch)
-    loadKpis()
+    try {
+      const res = await api.candidate.delete(deleteCandTarget.id)
+      if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+      setDeleteCandTarget(null)
+      await loadCandidates(candStatusFilter, candSearch)
+      loadKpis()
+    } catch {
+      setActionError('Delete failed.')
+    } finally {
+      setDeletingCand(false)
+    }
   }
 
   // ── Job Order handlers ────────────────────────────────────────────────────────
@@ -559,17 +594,24 @@ export default function PlacementScreen() {
       await loadJobOrders(joStatusFilter, joSearch)
       loadAllJobOrders()
       loadKpis()
+    } catch {
+      setJoFormError('Save failed.')
     } finally { setJoSaving(false) }
   }
   async function deleteJO() {
     if (!deleteJOTarget) return
     setDeletingJO(true)
-    const res = await api.jobOrder.delete(deleteJOTarget.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingJO(false); return }
-    setDeleteJOTarget(null)
-    setDeletingJO(false)
-    await loadJobOrders(joStatusFilter, joSearch)
-    loadKpis()
+    try {
+      const res = await api.jobOrder.delete(deleteJOTarget.id)
+      if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+      setDeleteJOTarget(null)
+      await loadJobOrders(joStatusFilter, joSearch)
+      loadKpis()
+    } catch {
+      setActionError('Delete failed.')
+    } finally {
+      setDeletingJO(false)
+    }
   }
 
   // ── Placement handlers ────────────────────────────────────────────────────────
@@ -611,37 +653,58 @@ export default function PlacementScreen() {
       setShowPLCForm(false)
       await loadPlacements(plcStatusFilter, plcSearch)
       loadKpis()
+    } catch {
+      setPlcFormError('Save failed.')
     } finally { setPlcSaving(false) }
   }
   async function deletePLC() {
     if (!deletePLCTarget) return
     setDeletingPLC(true)
-    const res = await api.placement.delete(deletePLCTarget.id)
-    if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); setDeletingPLC(false); return }
-    setDeletePLCTarget(null)
-    setDeletingPLC(false)
-    await loadPlacements(plcStatusFilter, plcSearch)
-    loadKpis()
+    try {
+      const res = await api.placement.delete(deletePLCTarget.id)
+      if (!res.success) { setActionError(res.error?.message ?? 'Delete failed.'); return }
+      setDeletePLCTarget(null)
+      await loadPlacements(plcStatusFilter, plcSearch)
+      loadKpis()
+    } catch {
+      setActionError('Delete failed.')
+    } finally {
+      setDeletingPLC(false)
+    }
   }
   async function advancePLC(p: PlacementRow) {
     const next = PLC_STATUS_NEXT[p.status]
     if (!next) return
-    const res = await api.placement.update({ id: p.id, status: next })
-    if (!res.success) { setActionError(res.error?.message ?? 'Status update failed.'); return }
-    await loadPlacements(plcStatusFilter, plcSearch)
-    loadKpis()
-  }
-  async function generatePLCInvoice(p: PlacementRow) {
-    const res = await api.placement.generateInvoice(p.id)
-    setInvoiceBanners(prev => ({
-      ...prev,
-      [p.id]: res.success
-        ? { ok: true, msg: 'Invoice generated (SAC 999132, 18% GST).' }
-        : { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' },
-    }))
-    if (res.success) {
+    setAdvancingId(p.id)
+    try {
+      const res = await api.placement.update({ id: p.id, status: next })
+      if (!res.success) { setActionError(res.error?.message ?? 'Status update failed.'); return }
       await loadPlacements(plcStatusFilter, plcSearch)
       loadKpis()
+    } catch {
+      setActionError('Status update failed.')
+    } finally {
+      setAdvancingId(null)
+    }
+  }
+  async function generatePLCInvoice(p: PlacementRow) {
+    setGeneratingInvoiceId(p.id)
+    try {
+      const res = await api.placement.generateInvoice(p.id)
+      setInvoiceBanners(prev => ({
+        ...prev,
+        [p.id]: res.success
+          ? { ok: true, msg: 'Invoice generated (SAC 999132, 18% GST).' }
+          : { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' },
+      }))
+      if (res.success) {
+        await loadPlacements(plcStatusFilter, plcSearch)
+        loadKpis()
+      }
+    } catch {
+      setInvoiceBanners(prev => ({ ...prev, [p.id]: { ok: false, msg: 'Invoice generation failed.' } }))
+    } finally {
+      setGeneratingInvoiceId(null)
     }
   }
 
@@ -1194,13 +1257,13 @@ export default function PlacementScreen() {
                             <button onClick={() => setDeletePLCTarget(p)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={15} /></button>
                           </div>
                           {PLC_STATUS_NEXT[p.status] && (
-                            <button onClick={() => advancePLC(p)} className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 rounded-full">
-                              Mark {PLC_STATUS_NEXT[p.status]} <ChevronRight size={12} />
+                            <button onClick={() => advancePLC(p)} disabled={advancingId === p.id} className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 rounded-full disabled:opacity-50">
+                              {advancingId === p.id ? 'Updating...' : <>Mark {PLC_STATUS_NEXT[p.status]} <ChevronRight size={12} /></>}
                             </button>
                           )}
                           {p.status === 'JOINED' && !p.invoiceId && (
-                            <button onClick={() => generatePLCInvoice(p)} className="flex items-center gap-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 px-3 py-1 rounded-full">
-                              <Receipt size={12} />Generate Invoice
+                            <button onClick={() => generatePLCInvoice(p)} disabled={generatingInvoiceId === p.id} className="flex items-center gap-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 px-3 py-1 rounded-full disabled:opacity-50">
+                              <Receipt size={12} />{generatingInvoiceId === p.id ? 'Generating...' : 'Generate Invoice'}
                             </button>
                           )}
                         </div>
