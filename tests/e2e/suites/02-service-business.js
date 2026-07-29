@@ -159,6 +159,15 @@ async function run() {
       const cancelBtn = row.locator('button[title="Cancel appointment"]')
       if (await cancelBtn.count()) {
         await cancelBtn.click()
+        await page.waitForTimeout(400)
+        // Real defect found+fixed in today's UI audit pass (AppointmentsScreen.tsx):
+        // cancelling used to fire the status change instantly with zero
+        // confirmation — now gated behind a ConfirmDialog ("Cancel Appointment"
+        // button), matching this app's own destructive-action convention. This
+        // test must click through that dialog, not just the row's icon button.
+        const confirmBtn = page.locator('button', { hasText: 'Cancel Appointment' }).last()
+        r.log('cancel-confirm-dialog-appeared', await confirmBtn.count() > 0)
+        if (await confirmBtn.count()) await confirmBtn.click()
         await page.waitForTimeout(1000)
         // getAppointmentsByDate deliberately excludes CANCELLED status
         // server-side (a day's schedule view shouldn't clutter with
