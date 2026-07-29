@@ -184,9 +184,15 @@ export default function PestControlScreen() {
 
   async function loadPesticideLines(jobSheetId: string) {
     setPesticideLinesLoading(true)
-    const res = await api.pestJobSheet.listPesticides(jobSheetId)
-    if (res.success) setPesticideLines(res.data as PesticideLine[])
-    setPesticideLinesLoading(false)
+    try {
+      const res = await api.pestJobSheet.listPesticides(jobSheetId)
+      if (res.success) setPesticideLines(res.data as PesticideLine[])
+      else setPesticideLineError(res.error?.message ?? 'Could not load pesticide lines.')
+    } catch {
+      setPesticideLineError('Could not load pesticide lines.')
+    } finally {
+      setPesticideLinesLoading(false)
+    }
   }
 
   async function handleAddPesticideLine() {
@@ -196,30 +202,39 @@ export default function PestControlScreen() {
     if (!qty || qty <= 0) { setPesticideLineError('Enter a valid quantity used.'); return }
     setPesticideLineSaving(true)
     setPesticideLineError('')
-    const res = await api.pestJobSheet.addPesticide({
-      jobSheetId: editSheet.id,
-      productId: pesticideLineForm.pickedProduct?.id || undefined,
-      pesticideName: pesticideLineForm.pesticideName.trim(),
-      quantityUsed: qty,
-      unit: pesticideLineForm.unit,
-      dosageNote: pesticideLineForm.dosageNote.trim() || undefined,
-      targetPest: pesticideLineForm.targetPest.trim() || undefined,
-    })
-    setPesticideLineSaving(false)
-    if (res.success) {
-      setPesticideLineForm(emptyPesticideLineForm())
-      await loadPesticideLines(editSheet.id)
-    } else {
-      setPesticideLineError(res.error?.message ?? 'Could not add pesticide line.')
+    try {
+      const res = await api.pestJobSheet.addPesticide({
+        jobSheetId: editSheet.id,
+        productId: pesticideLineForm.pickedProduct?.id || undefined,
+        pesticideName: pesticideLineForm.pesticideName.trim(),
+        quantityUsed: qty,
+        unit: pesticideLineForm.unit,
+        dosageNote: pesticideLineForm.dosageNote.trim() || undefined,
+        targetPest: pesticideLineForm.targetPest.trim() || undefined,
+      })
+      if (res.success) {
+        setPesticideLineForm(emptyPesticideLineForm())
+        await loadPesticideLines(editSheet.id)
+      } else {
+        setPesticideLineError(res.error?.message ?? 'Could not add pesticide line.')
+      }
+    } catch {
+      setPesticideLineError('Could not add pesticide line.')
+    } finally {
+      setPesticideLineSaving(false)
     }
   }
 
   async function handleRemovePesticideLine(id: string) {
     if (!editSheet) return
     setPesticideLineError('')
-    const res = await api.pestJobSheet.removePesticide(id)
-    if (res.success) await loadPesticideLines(editSheet.id)
-    else setPesticideLineError(res.error?.message ?? 'Could not remove pesticide line.')
+    try {
+      const res = await api.pestJobSheet.removePesticide(id)
+      if (res.success) await loadPesticideLines(editSheet.id)
+      else setPesticideLineError(res.error?.message ?? 'Could not remove pesticide line.')
+    } catch {
+      setPesticideLineError('Could not remove pesticide line.')
+    }
   }
 
   const loadKpis = useCallback(() => {
@@ -299,22 +314,32 @@ export default function PestControlScreen() {
       endDate: contractForm.endDate || undefined, contractValue, status: contractForm.status,
       assignedToId: contractForm.assignedToId || undefined, notes: contractForm.notes || undefined,
     }
-    const res = editContract
-      ? await api.pestContract.update({ id: editContract.id, ...payload })
-      : await api.pestContract.create(payload)
-    setContractSaving(false)
-    if (res.success) { setShowContractForm(false); await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
-    else setContractFormError(res.error?.message ?? 'Save failed.')
+    try {
+      const res = editContract
+        ? await api.pestContract.update({ id: editContract.id, ...payload })
+        : await api.pestContract.create(payload)
+      if (res.success) { setShowContractForm(false); await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
+      else setContractFormError(res.error?.message ?? 'Save failed.')
+    } catch {
+      setContractFormError('Save failed.')
+    } finally {
+      setContractSaving(false)
+    }
   }
 
   async function handleDeleteContract() {
     if (!deleteContractTarget) return
     setDeletingContract(true)
     setActionError(null)
-    const res = await api.pestContract.delete(deleteContractTarget.id)
-    if (res.success) { setDeleteContractTarget(null); await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? 'Failed to delete contract.')
-    setDeletingContract(false)
+    try {
+      const res = await api.pestContract.delete(deleteContractTarget.id)
+      if (res.success) { setDeleteContractTarget(null); await loadContracts(contractStatusFilter || undefined, contractSearch || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? 'Failed to delete contract.')
+    } catch {
+      setActionError('Failed to delete contract.')
+    } finally {
+      setDeletingContract(false)
+    }
   }
 
   function openCreateSheet(contractId?: string, client?: Customer) {
@@ -361,34 +386,44 @@ export default function PestControlScreen() {
       clientSignature: sheetForm.clientSignature, status: editSheet ? sheetForm.status : undefined,
       followUpDate: sheetForm.followUpDate || undefined, notes: sheetForm.notes || undefined,
     }
-    const res = editSheet
-      ? await api.pestJobSheet.update({ id: editSheet.id, ...payload })
-      : await api.pestJobSheet.create(payload)
-    setSheetSaving(false)
-    if (res.success) {
-      setShowSheetForm(false)
-      await Promise.all([
-        loadJobs(jobStatusFilter || undefined, jobSearch || undefined),
-        loadContracts(contractStatusFilter || undefined, contractSearch || undefined),
-      ])
-      loadKpis()
-    } else setSheetFormError(res.error?.message ?? 'Save failed.')
+    try {
+      const res = editSheet
+        ? await api.pestJobSheet.update({ id: editSheet.id, ...payload })
+        : await api.pestJobSheet.create(payload)
+      if (res.success) {
+        setShowSheetForm(false)
+        await Promise.all([
+          loadJobs(jobStatusFilter || undefined, jobSearch || undefined),
+          loadContracts(contractStatusFilter || undefined, contractSearch || undefined),
+        ])
+        loadKpis()
+      } else setSheetFormError(res.error?.message ?? 'Save failed.')
+    } catch {
+      setSheetFormError('Save failed.')
+    } finally {
+      setSheetSaving(false)
+    }
   }
 
   async function handleDeleteSheet() {
     if (!deleteSheetTarget) return
     setDeletingSheet(true)
     setActionError(null)
-    const res = await api.pestJobSheet.delete(deleteSheetTarget.id)
-    if (res.success) {
-      setDeleteSheetTarget(null)
-      await Promise.all([
-        loadJobs(jobStatusFilter || undefined, jobSearch || undefined),
-        loadContracts(contractStatusFilter || undefined, contractSearch || undefined),
-      ])
-      loadKpis()
-    } else setActionError(res.error?.message ?? 'Failed to delete job sheet.')
-    setDeletingSheet(false)
+    try {
+      const res = await api.pestJobSheet.delete(deleteSheetTarget.id)
+      if (res.success) {
+        setDeleteSheetTarget(null)
+        await Promise.all([
+          loadJobs(jobStatusFilter || undefined, jobSearch || undefined),
+          loadContracts(contractStatusFilter || undefined, contractSearch || undefined),
+        ])
+        loadKpis()
+      } else setActionError(res.error?.message ?? 'Failed to delete job sheet.')
+    } catch {
+      setActionError('Failed to delete job sheet.')
+    } finally {
+      setDeletingSheet(false)
+    }
   }
 
   async function handleAdvanceJobStatus(sheet: PestJobSheet) {
@@ -396,22 +431,31 @@ export default function PestControlScreen() {
     if (!next) return
     setActionError(null)
     const payload = { id: sheet.id, status: next, ...(next === 'COMPLETED' ? { completedDate: toLocalISODate(new Date()) } : {}) }
-    const res = await api.pestJobSheet.update(payload)
-    if (res.success) { await loadJobs(jobStatusFilter || undefined, jobSearch || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? 'Failed to update status.')
+    try {
+      const res = await api.pestJobSheet.update(payload)
+      if (res.success) { await loadJobs(jobStatusFilter || undefined, jobSearch || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? 'Failed to update status.')
+    } catch {
+      setActionError('Failed to update status.')
+    }
   }
 
   async function handleGenerateJobInvoice(sheet: PestJobSheet) {
     setInvoiceLoading(sheet.id)
     setInvoiceBanners(prev => { const n = { ...prev }; delete n[sheet.id]; return n })
-    const res = await api.pestJobSheet.generateInvoice(sheet.id)
-    setInvoiceLoading(null)
-    if (res.success) {
-      setInvoiceBanners(prev => ({ ...prev, [sheet.id]: { ok: true, msg: 'Invoice generated (SAC 998534, 18% GST).' } }))
-      await loadJobs(jobStatusFilter || undefined, jobSearch || undefined)
-      loadKpis()
-    } else {
-      setInvoiceBanners(prev => ({ ...prev, [sheet.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+    try {
+      const res = await api.pestJobSheet.generateInvoice(sheet.id)
+      if (res.success) {
+        setInvoiceBanners(prev => ({ ...prev, [sheet.id]: { ok: true, msg: 'Invoice generated (SAC 998534, 18% GST).' } }))
+        await loadJobs(jobStatusFilter || undefined, jobSearch || undefined)
+        loadKpis()
+      } else {
+        setInvoiceBanners(prev => ({ ...prev, [sheet.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+      }
+    } catch {
+      setInvoiceBanners(prev => ({ ...prev, [sheet.id]: { ok: false, msg: 'Invoice generation failed.' } }))
+    } finally {
+      setInvoiceLoading(null)
     }
   }
 
@@ -424,14 +468,19 @@ export default function PestControlScreen() {
   async function handleGenerateContractInvoice(c: PestServiceContract) {
     setInvoiceLoading(c.id)
     setInvoiceBanners(prev => { const n = { ...prev }; delete n[c.id]; return n })
-    const res = await api.pestContract.generateInvoice({ id: c.id })
-    setInvoiceLoading(null)
-    if (res.success) {
-      setInvoiceBanners(prev => ({ ...prev, [c.id]: { ok: true, msg: 'Contract invoice generated (SAC 998534, 18% GST).' } }))
-      await loadContracts(contractStatusFilter || undefined, contractSearch || undefined)
-      loadKpis()
-    } else {
-      setInvoiceBanners(prev => ({ ...prev, [c.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+    try {
+      const res = await api.pestContract.generateInvoice({ id: c.id })
+      if (res.success) {
+        setInvoiceBanners(prev => ({ ...prev, [c.id]: { ok: true, msg: 'Contract invoice generated (SAC 998534, 18% GST).' } }))
+        await loadContracts(contractStatusFilter || undefined, contractSearch || undefined)
+        loadKpis()
+      } else {
+        setInvoiceBanners(prev => ({ ...prev, [c.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+      }
+    } catch {
+      setInvoiceBanners(prev => ({ ...prev, [c.id]: { ok: false, msg: 'Invoice generation failed.' } }))
+    } finally {
+      setInvoiceLoading(null)
     }
   }
 
