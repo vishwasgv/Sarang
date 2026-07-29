@@ -186,41 +186,55 @@ export function LabOrdersScreen() {
     if (validItems.length === 0) { toastError('No Tests Selected', 'Add at least one test or panel.'); return }
 
     setSaving(true)
-    const res = await api.labTestOrders.create({
-      customerId: form.customerId || undefined,
-      patientName: form.patientName.trim(),
-      patientAge: form.patientAge || undefined,
-      referringNotes: form.referringNotes || undefined,
-      notes: form.notes || undefined,
-      items: validItems.map((i) => ({
-        serviceCatalogId: i.serviceCatalogId || undefined,
-        testName: i.testName.trim(),
-        category: i.category || undefined,
-        sampleType: i.sampleType,
-        price: i.price ? Number(i.price) : 0,
-      })),
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess('Order Created', 'Lab test order created successfully.')
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      setItems([{ ...BLANK_ITEM }])
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not create order.')
+    try {
+      const res = await api.labTestOrders.create({
+        customerId: form.customerId || undefined,
+        patientName: form.patientName.trim(),
+        patientAge: form.patientAge || undefined,
+        referringNotes: form.referringNotes || undefined,
+        notes: form.notes || undefined,
+        items: validItems.map((i) => ({
+          serviceCatalogId: i.serviceCatalogId || undefined,
+          testName: i.testName.trim(),
+          category: i.category || undefined,
+          sampleType: i.sampleType,
+          price: i.price ? Number(i.price) : 0,
+        })),
+      })
+      if (res.success) {
+        toastSuccess('Order Created', 'Lab test order created successfully.')
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        setItems([{ ...BLANK_ITEM }])
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not create order.')
+      }
+    } catch {
+      toastError('Failed', 'Could not create order.')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function refreshDetail(id: string) {
-    const res = await api.labTestOrders.get({ id })
-    if (res.success && res.data) setDetail(res.data as LabTestOrder)
+    try {
+      const res = await api.labTestOrders.get({ id })
+      if (res.success && res.data) setDetail(res.data as LabTestOrder)
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not load order details.')
+    } catch {
+      toastError('Failed', 'Could not load order details.')
+    }
   }
 
   async function handleCollectSample(id: string) {
-    const res = await api.labTestOrders.markSampleCollected({ id })
-    if (res.success) { toastSuccess('Sample Collected', 'Sample collection recorded.'); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record sample collection.')
+    try {
+      const res = await api.labTestOrders.markSampleCollected({ id })
+      if (res.success) { toastSuccess('Sample Collected', 'Sample collection recorded.'); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record sample collection.')
+    } catch {
+      toastError('Failed', 'Could not record sample collection.')
+    }
   }
 
   function openResultEditor(item: LabTestOrderItem) {
@@ -234,18 +248,22 @@ export function LabOrdersScreen() {
   async function handleSaveResult() {
     if (!editingResultFor || !detail) return
     const cleanParams = resultParams.filter((p) => p.parameter.trim())
-    const res = await api.labTestOrders.updateResult({
-      itemId: editingResultFor,
-      resultParameters: cleanParams.length > 0 ? cleanParams : undefined,
-      resultSummary: resultSummary || null,
-    })
-    if (res.success) {
-      toastSuccess('Result Saved', 'Test result saved.')
-      setEditingResultFor(null)
-      refreshDetail(detail.id)
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not save result.')
+    try {
+      const res = await api.labTestOrders.updateResult({
+        itemId: editingResultFor,
+        resultParameters: cleanParams.length > 0 ? cleanParams : undefined,
+        resultSummary: resultSummary || null,
+      })
+      if (res.success) {
+        toastSuccess('Result Saved', 'Test result saved.')
+        setEditingResultFor(null)
+        refreshDetail(detail.id)
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not save result.')
+      }
+    } catch {
+      toastError('Failed', 'Could not save result.')
     }
   }
 
@@ -256,54 +274,81 @@ export function LabOrdersScreen() {
   async function handleAcknowledgeCritical() {
     if (!acknowledgingFor || !detail) return
     setAcknowledging(true)
-    const res = await api.labTestOrders.acknowledgeCritical({ itemId: acknowledgingFor, notes: acknowledgeNotes.trim() || undefined })
-    setAcknowledging(false)
-    if (res.success) {
-      toastSuccess('Recorded', 'Critical result escalation recorded.')
-      setAcknowledgingFor(null)
-      setAcknowledgeNotes('')
-      refreshDetail(detail.id)
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record escalation.')
+    try {
+      const res = await api.labTestOrders.acknowledgeCritical({ itemId: acknowledgingFor, notes: acknowledgeNotes.trim() || undefined })
+      if (res.success) {
+        toastSuccess('Recorded', 'Critical result escalation recorded.')
+        setAcknowledgingFor(null)
+        setAcknowledgeNotes('')
+        refreshDetail(detail.id)
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record escalation.')
+      }
+    } catch {
+      toastError('Failed', 'Could not record escalation.')
+    } finally {
+      setAcknowledging(false)
     }
   }
 
   async function handleFinalize(id: string) {
-    const res = await api.labTestOrders.finalizeReport({ id })
-    if (res.success) { toastSuccess('Report Finalized', 'Report finalized successfully.'); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not finalize report.')
+    try {
+      const res = await api.labTestOrders.finalizeReport({ id })
+      if (res.success) { toastSuccess('Report Finalized', 'Report finalized successfully.'); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not finalize report.')
+    } catch {
+      toastError('Failed', 'Could not finalize report.')
+    }
   }
 
   async function handleMarkDelivered(id: string) {
-    const res = await api.labTestOrders.markDelivered({ id })
-    if (res.success) { toastSuccess('Marked Delivered', 'Report marked as delivered.'); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update.')
+    try {
+      const res = await api.labTestOrders.markDelivered({ id })
+      if (res.success) { toastSuccess('Marked Delivered', 'Report marked as delivered.'); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update.')
+    } catch {
+      toastError('Failed', 'Could not update.')
+    }
   }
 
   async function handleCancel() {
     if (!cancelTargetId) return
     setCancelling(true)
     const id = cancelTargetId
-    const res = await api.labTestOrders.cancel({ id })
-    if (res.success) { toastSuccess('Order Cancelled', 'Order cancelled.'); setCancelTargetId(null); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel order.')
-    setCancelling(false)
+    try {
+      const res = await api.labTestOrders.cancel({ id })
+      if (res.success) { toastSuccess('Order Cancelled', 'Order cancelled.'); setCancelTargetId(null); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel order.')
+    } catch {
+      toastError('Failed', 'Could not cancel order.')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   async function handleDelete() {
     if (!deleteTargetId) return
     setDeletingOrder(true)
-    const res = await api.labTestOrders.delete({ id: deleteTargetId })
-    if (res.success) { toastSuccess('Order Deleted', 'Order deleted.'); setDeleteTargetId(null); setDetail(null); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not delete order.')
-    setDeletingOrder(false)
+    try {
+      const res = await api.labTestOrders.delete({ id: deleteTargetId })
+      if (res.success) { toastSuccess('Order Deleted', 'Order deleted.'); setDeleteTargetId(null); setDetail(null); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not delete order.')
+    } catch {
+      toastError('Failed', 'Could not delete order.')
+    } finally {
+      setDeletingOrder(false)
+    }
   }
 
   async function handleGenerateInvoice(id: string) {
-    const res = await api.labTestOrders.generateInvoice({ id })
-    if (res.success) { toastSuccess('Invoice Generated', 'Invoice generated for this order.'); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not generate invoice.')
+    try {
+      const res = await api.labTestOrders.generateInvoice({ id })
+      if (res.success) { toastSuccess('Invoice Generated', 'Invoice generated for this order.'); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not generate invoice.')
+    } catch {
+      toastError('Failed', 'Could not generate invoice.')
+    }
   }
 
   const allResultsReady = detail ? detail.items.every((i) => i.status === 'RESULT_READY' || i.status === 'REPORTED') : false

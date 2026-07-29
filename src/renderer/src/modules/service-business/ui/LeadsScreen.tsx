@@ -138,35 +138,41 @@ export default function LeadsScreen(): React.ReactElement {
   async function handleSave(): Promise<void> {
     if (!fFullName.trim()) return
     setSaving(true)
-    let res
-    if (editLead) {
-      res = await api.lead.update({
-        id: editLead.id,
-        fullName:       fFullName.trim(),
-        email:          fEmail || null,
-        phone:          fPhone || null,
-        companyName:    fCompany || null,
-        source:         fSource,
-        status:         fStatus,
-        estimatedValue: fEstValue ? Number(fEstValue) : null,
-        assignedToId:   fAssignedToId || null,
-        notes:          fNotes || null,
-      })
-    } else {
-      res = await api.lead.create({
-        fullName:       fFullName.trim(),
-        email:          fEmail || undefined,
-        phone:          fPhone || undefined,
-        companyName:    fCompany || undefined,
-        source:         fSource,
-        status:         fStatus,
-        estimatedValue: fEstValue ? Number(fEstValue) : undefined,
-        assignedToId:   fAssignedToId || undefined,
-        notes:          fNotes || undefined,
-      })
+    try {
+      let res
+      if (editLead) {
+        res = await api.lead.update({
+          id: editLead.id,
+          fullName:       fFullName.trim(),
+          email:          fEmail || null,
+          phone:          fPhone || null,
+          companyName:    fCompany || null,
+          source:         fSource,
+          status:         fStatus,
+          estimatedValue: fEstValue ? Number(fEstValue) : null,
+          assignedToId:   fAssignedToId || null,
+          notes:          fNotes || null,
+        })
+      } else {
+        res = await api.lead.create({
+          fullName:       fFullName.trim(),
+          email:          fEmail || undefined,
+          phone:          fPhone || undefined,
+          companyName:    fCompany || undefined,
+          source:         fSource,
+          status:         fStatus,
+          estimatedValue: fEstValue ? Number(fEstValue) : undefined,
+          assignedToId:   fAssignedToId || undefined,
+          notes:          fNotes || undefined,
+        })
+      }
+      if (res.success) { setShowForm(false); resetForm(); void loadAll() }
+      else toastError('Error', res.error?.message ?? 'Could not save lead.')
+    } catch {
+      toastError('Error', 'Could not save lead.')
+    } finally {
+      setSaving(false)
     }
-    if (res.success) { setShowForm(false); resetForm(); void loadAll() }
-    setSaving(false)
   }
 
   async function handleDelete(): Promise<void> {
@@ -174,14 +180,19 @@ export default function LeadsScreen(): React.ReactElement {
     const id = deleteTarget.id
     setDeleting(true)
     setDeleteErrors((prev) => { const n = { ...prev }; delete n[id]; return n })
-    const res = await api.lead.delete({ id })
-    if (res.success) {
-      setDeleteTarget(null)
-      void loadAll()
-    } else {
-      setDeleteErrors((prev) => ({ ...prev, [id]: res.error?.message ?? 'Could not delete.' }))
+    try {
+      const res = await api.lead.delete({ id })
+      if (res.success) {
+        setDeleteTarget(null)
+        void loadAll()
+      } else {
+        setDeleteErrors((prev) => ({ ...prev, [id]: res.error?.message ?? 'Could not delete.' }))
+      }
+    } catch {
+      setDeleteErrors((prev) => ({ ...prev, [id]: 'Could not delete.' }))
+    } finally {
+      setDeleting(false)
     }
-    setDeleting(false)
   }
 
   // Move a lead to a new status column via drag-and-drop
@@ -190,8 +201,14 @@ export default function LeadsScreen(): React.ReactElement {
     const lead = leads.find((l) => l.id === draggingId)
     if (!lead || lead.status === newStatus) { setDraggingId(null); setDragOverCol(null); return }
     setDraggingId(null); setDragOverCol(null)
-    await api.lead.update({ id: draggingId, status: newStatus })
-    void loadAll()
+    try {
+      const res = await api.lead.update({ id: draggingId, status: newStatus })
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not move lead.')
+    } catch {
+      toastError('Error', 'Could not move lead.')
+    } finally {
+      void loadAll()
+    }
   }
 
   const q = search.toLowerCase()
