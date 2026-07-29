@@ -8,6 +8,7 @@ import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 
 interface MembershipPlan {
@@ -123,6 +124,12 @@ export function MembershipsScreen() {
   const [attendanceMembership, setAttendanceMembership] = useState<Membership | null>(null)
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [loadingAttendance, setLoadingAttendance] = useState(false)
+
+  // Destructive-action confirmations
+  const [cancelTarget, setCancelTarget] = useState<Membership | null>(null)
+  const [cancellingMembership, setCancellingMembership] = useState(false)
+  const [deletePlanTarget, setDeletePlanTarget] = useState<MembershipPlan | null>(null)
+  const [deletingPlan, setDeletingPlan] = useState(false)
 
   const loadMemberships = useCallback(async () => {
     setLoading(true)
@@ -252,6 +259,25 @@ export function MembershipsScreen() {
     }
   }
 
+  async function handleCancelMembership() {
+    if (!cancelTarget) return
+    setCancellingMembership(true)
+    try {
+      const res = await api.membership.update({ id: cancelTarget.id, status: 'CANCELLED' })
+      if (res.success) {
+        setCancelTarget(null)
+        loadMemberships()
+        loadMembershipCounts()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not cancel membership.')
+      }
+    } catch {
+      toastError('Error', 'Could not cancel membership.')
+    } finally {
+      setCancellingMembership(false)
+    }
+  }
+
   function openFreezeModal(id: string) {
     setFreezeTarget(id)
     setFreezeReason('')
@@ -350,13 +376,17 @@ export function MembershipsScreen() {
     }
   }
 
-  async function handleDeletePlan(id: string) {
+  async function handleDeletePlan() {
+    if (!deletePlanTarget) return
+    setDeletingPlan(true)
     try {
-      const res = await api.membershipPlan.delete({ id })
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not delete plan.')
-      else loadPlans()
+      const res = await api.membershipPlan.delete({ id: deletePlanTarget.id })
+      if (res.success) { setDeletePlanTarget(null); loadPlans() }
+      else toastError('Error', res.error?.message ?? 'Could not delete plan.')
     } catch {
       toastError('Error', 'Could not delete plan.')
+    } finally {
+      setDeletingPlan(false)
     }
   }
 
@@ -505,7 +535,7 @@ export function MembershipsScreen() {
                             {m.status === 'ACTIVE' && (
                               <>
                                 <button onClick={() => openFreezeModal(m.id)} className="text-xs text-info border border-info/30 rounded-lg px-2 py-1">Freeze</button>
-                                <button onClick={() => handleStatusChange(m.id, 'CANCELLED')} className="text-xs text-danger border border-danger/30 rounded-lg px-2 py-1">Cancel</button>
+                                <button onClick={() => setCancelTarget(m)} className="text-xs text-danger border border-danger/30 rounded-lg px-2 py-1">Cancel</button>
                               </>
                             )}
                             {m.status === 'FROZEN' && (
@@ -554,7 +584,7 @@ export function MembershipsScreen() {
               )}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openPlanForm(plan)} className="flex-1 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Edit</button>
-                <button onClick={() => handleDeletePlan(plan.id)} className="h-8 px-3 rounded-lg border border-danger/30 text-xs text-danger hover:bg-danger/5">Delete</button>
+                <button onClick={() => setDeletePlanTarget(plan)} className="h-8 px-3 rounded-lg border border-danger/30 text-xs text-danger hover:bg-danger/5">Delete</button>
               </div>
             </Card>
           ))}
@@ -809,6 +839,25 @@ export function MembershipsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelMembership}
+        loading={cancellingMembership}
+        title="Cancel Membership"
+        message={cancelTarget ? `Cancel ${cancelTarget.client.customerName}'s ${cancelTarget.plan.planName} membership? This cannot be undone.` : ''}
+        confirmLabel="Cancel Membership"
+      />
+      <ConfirmDialog
+        open={deletePlanTarget !== null}
+        onClose={() => setDeletePlanTarget(null)}
+        onConfirm={handleDeletePlan}
+        loading={deletingPlan}
+        title="Delete Plan"
+        message={deletePlanTarget ? `Delete plan "${deletePlanTarget.planName}"? This cannot be undone.` : ''}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

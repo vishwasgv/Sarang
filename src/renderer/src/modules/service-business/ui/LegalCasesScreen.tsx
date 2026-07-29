@@ -178,10 +178,15 @@ export function LegalCasesScreen() {
   const loadCases = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const res = await api.legalCase.list({ status: statusFilter || undefined, search: search || undefined })
-    if (res.success) setCases(res.data as LegalCase[])
-    else setError(res.error?.message ?? 'Could not load cases.')
-    setLoading(false)
+    try {
+      const res = await api.legalCase.list({ status: statusFilter || undefined, search: search || undefined })
+      if (res.success) setCases(res.data as LegalCase[])
+      else setError(res.error?.message ?? 'Could not load cases.')
+    } catch {
+      setError('Could not load cases.')
+    } finally {
+      setLoading(false)
+    }
   }, [statusFilter, search])
 
   const loadHearings = useCallback(async () => {
@@ -302,41 +307,51 @@ export function LegalCasesScreen() {
     }
     setSavingCase(true)
     setCaseError(null)
-    const res = await api.legalCase.create({
-      caseNumber: caseForm.caseNumber.trim(),
-      caseTitle: caseForm.caseTitle.trim(),
-      caseType: caseForm.caseType,
-      courtName: caseForm.courtName.trim(),
-      courtDistrict: caseForm.courtDistrict || undefined,
-      courtState: caseForm.courtState || undefined,
-      eCourtId: caseForm.eCourtId || undefined,
-      clientId: caseForm.clientId,
-      advocateId: caseForm.advocateId || undefined,
-      filingDate: caseForm.filingDate || undefined,
-      opposingPartyName: caseForm.opposingPartyName.trim() || undefined,
-      limitationDate: caseForm.limitationDate || undefined,
-      feeAgreed: caseForm.feeAgreed ? Number(caseForm.feeAgreed) : undefined,
-      notes: caseForm.notes || undefined,
-    })
-    setSavingCase(false)
-    if (res.success) {
-      setShowCaseForm(false)
-      loadCases()
-      loadKpiStats()
-    } else {
-      setCaseError(res.error?.message ?? 'Could not save case.')
+    try {
+      const res = await api.legalCase.create({
+        caseNumber: caseForm.caseNumber.trim(),
+        caseTitle: caseForm.caseTitle.trim(),
+        caseType: caseForm.caseType,
+        courtName: caseForm.courtName.trim(),
+        courtDistrict: caseForm.courtDistrict || undefined,
+        courtState: caseForm.courtState || undefined,
+        eCourtId: caseForm.eCourtId || undefined,
+        clientId: caseForm.clientId,
+        advocateId: caseForm.advocateId || undefined,
+        filingDate: caseForm.filingDate || undefined,
+        opposingPartyName: caseForm.opposingPartyName.trim() || undefined,
+        limitationDate: caseForm.limitationDate || undefined,
+        feeAgreed: caseForm.feeAgreed ? Number(caseForm.feeAgreed) : undefined,
+        notes: caseForm.notes || undefined,
+      })
+      if (res.success) {
+        setShowCaseForm(false)
+        loadCases()
+        loadKpiStats()
+      } else {
+        setCaseError(res.error?.message ?? 'Could not save case.')
+      }
+    } catch {
+      setCaseError('Could not save case.')
+    } finally {
+      setSavingCase(false)
     }
   }
 
   async function handleSaveLimitationDate() {
     if (!selectedCase) return
     setSavingLimitation(true)
-    const res = await api.legalCase.update({ id: selectedCase.id, limitationDate: limitationForm || null })
-    setSavingLimitation(false)
-    if (res.success) {
-      loadCaseDetail(selectedCase.id)
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not update deadline.')
+    try {
+      const res = await api.legalCase.update({ id: selectedCase.id, limitationDate: limitationForm || null })
+      if (res.success) {
+        loadCaseDetail(selectedCase.id)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not update deadline.')
+      }
+    } catch {
+      toastError('Error', 'Could not update deadline.')
+    } finally {
+      setSavingLimitation(false)
     }
   }
 
@@ -361,23 +376,28 @@ export function LegalCasesScreen() {
     if (!selectedCase || !hearingForm.hearingDate) { setHearingError('Hearing date is required.'); return }
     setSavingHearing(true)
     setHearingError(null)
-    const res = await api.hearing.create({
-      caseId: selectedCase.id,
-      hearingDate: hearingForm.hearingDate,
-      hearingTime: hearingForm.hearingTime || undefined,
-      courtRoom: hearingForm.courtRoom || undefined,
-      purpose: hearingForm.purpose || undefined,
-      notes: hearingForm.notes || undefined,
-    })
-    setSavingHearing(false)
-    if (res.success) {
-      setShowHearingForm(false)
-      setHearingForm({ hearingDate: '', hearingTime: '', courtRoom: '', purpose: '', notes: '' })
-      loadCaseDetail(selectedCase.id)
-      loadCases()
-      loadKpiStats()
-    } else {
-      setHearingError(res.error?.message ?? 'Could not add hearing.')
+    try {
+      const res = await api.hearing.create({
+        caseId: selectedCase.id,
+        hearingDate: hearingForm.hearingDate,
+        hearingTime: hearingForm.hearingTime || undefined,
+        courtRoom: hearingForm.courtRoom || undefined,
+        purpose: hearingForm.purpose || undefined,
+        notes: hearingForm.notes || undefined,
+      })
+      if (res.success) {
+        setShowHearingForm(false)
+        setHearingForm({ hearingDate: '', hearingTime: '', courtRoom: '', purpose: '', notes: '' })
+        loadCaseDetail(selectedCase.id)
+        loadCases()
+        loadKpiStats()
+      } else {
+        setHearingError(res.error?.message ?? 'Could not add hearing.')
+      }
+    } catch {
+      setHearingError('Could not add hearing.')
+    } finally {
+      setSavingHearing(false)
     }
   }
 
@@ -428,21 +448,26 @@ export function LegalCasesScreen() {
     }
     setSavingTime(true)
     setTimeError(null)
-    const res = await api.timeEntry.create({
-      caseId: selectedCase.id,
-      employeeId: timeForm.employeeId || undefined,
-      date: timeForm.date,
-      description: timeForm.description.trim(),
-      hours: Number(timeForm.hours),
-      ratePerHour: Number(timeForm.ratePerHour) || 0,
-    })
-    setSavingTime(false)
-    if (res.success) {
-      setShowTimeForm(false)
-      setTimeForm({ date: new Date().toISOString().slice(0, 10), description: '', hours: '', ratePerHour: '', employeeId: '' })
-      loadCaseDetail(selectedCase.id)
-    } else {
-      setTimeError(res.error?.message ?? 'Could not log time.')
+    try {
+      const res = await api.timeEntry.create({
+        caseId: selectedCase.id,
+        employeeId: timeForm.employeeId || undefined,
+        date: timeForm.date,
+        description: timeForm.description.trim(),
+        hours: Number(timeForm.hours),
+        ratePerHour: Number(timeForm.ratePerHour) || 0,
+      })
+      if (res.success) {
+        setShowTimeForm(false)
+        setTimeForm({ date: new Date().toISOString().slice(0, 10), description: '', hours: '', ratePerHour: '', employeeId: '' })
+        loadCaseDetail(selectedCase.id)
+      } else {
+        setTimeError(res.error?.message ?? 'Could not log time.')
+      }
+    } catch {
+      setTimeError('Could not log time.')
+    } finally {
+      setSavingTime(false)
     }
   }
 
