@@ -125,37 +125,42 @@ function EventForm({
     if (!form.venueName.trim()) return setError('Venue name is required.')
     setSaving(true); setError('')
 
-    let res
-    if (isEdit) {
-      res = await api.eventBooking.update({
-        id: initial!.id,
-        eventName: form.eventName,
-        eventType: form.eventType,
-        eventDate: form.eventDate,
-        eventEndDate: form.eventEndDate || null,
-        venueName: form.venueName,
-        venueAddress: form.venueAddress || null,
-        expectedGuestCount: form.expectedGuestCount ? parseInt(form.expectedGuestCount) : null,
-        clientBudget: form.clientBudget ? parseFloat(form.clientBudget) : null,
-        finalAmount: form.finalAmount ? parseFloat(form.finalAmount) : null,
-        notes: form.notes || null,
-      })
-    } else {
-      res = await api.eventBooking.create({
-        clientId: pickedClient!.id,
-        eventName: form.eventName,
-        eventType: form.eventType,
-        eventDate: form.eventDate,
-        eventEndDate: form.eventEndDate || undefined,
-        venueName: form.venueName,
-        venueAddress: form.venueAddress || undefined,
-        expectedGuestCount: form.expectedGuestCount ? parseInt(form.expectedGuestCount) : undefined,
-        clientBudget: form.clientBudget ? parseFloat(form.clientBudget) : undefined,
-        notes: form.notes || undefined,
-      })
+    try {
+      let res
+      if (isEdit) {
+        res = await api.eventBooking.update({
+          id: initial!.id,
+          eventName: form.eventName,
+          eventType: form.eventType,
+          eventDate: form.eventDate,
+          eventEndDate: form.eventEndDate || null,
+          venueName: form.venueName,
+          venueAddress: form.venueAddress || null,
+          expectedGuestCount: form.expectedGuestCount ? parseInt(form.expectedGuestCount) : null,
+          clientBudget: form.clientBudget ? parseFloat(form.clientBudget) : null,
+          finalAmount: form.finalAmount ? parseFloat(form.finalAmount) : null,
+          notes: form.notes || null,
+        })
+      } else {
+        res = await api.eventBooking.create({
+          clientId: pickedClient!.id,
+          eventName: form.eventName,
+          eventType: form.eventType,
+          eventDate: form.eventDate,
+          eventEndDate: form.eventEndDate || undefined,
+          venueName: form.venueName,
+          venueAddress: form.venueAddress || undefined,
+          expectedGuestCount: form.expectedGuestCount ? parseInt(form.expectedGuestCount) : undefined,
+          clientBudget: form.clientBudget ? parseFloat(form.clientBudget) : undefined,
+          notes: form.notes || undefined,
+        })
+      }
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save event.') }
+    } catch {
+      setError('Failed to save event.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save event.') }
   }
 
   return (
@@ -277,18 +282,23 @@ function AddVendorForm({
       return setError('Quoted amount is required.')
     }
     setSaving(true); setError('')
-    const res = await api.eventVendorBooking.create({
-      eventId,
-      vendorId: form.vendorId,
-      vendorCategory: form.vendorCategory,
-      pricingType: form.pricingType,
-      quotedAmount: form.pricingType === 'FLAT' ? parseFloat(form.quotedAmount) : undefined,
-      perHeadRate: form.pricingType === 'PER_HEAD' ? parseFloat(form.perHeadRate) : undefined,
-      advancePaid: form.advancePaid ? parseFloat(form.advancePaid) : undefined,
-      notes: form.notes || undefined,
-    })
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to add vendor.') }
+    try {
+      const res = await api.eventVendorBooking.create({
+        eventId,
+        vendorId: form.vendorId,
+        vendorCategory: form.vendorCategory,
+        pricingType: form.pricingType,
+        quotedAmount: form.pricingType === 'FLAT' ? parseFloat(form.quotedAmount) : undefined,
+        perHeadRate: form.pricingType === 'PER_HEAD' ? parseFloat(form.perHeadRate) : undefined,
+        advancePaid: form.advancePaid ? parseFloat(form.advancePaid) : undefined,
+        notes: form.notes || undefined,
+      })
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to add vendor.') }
+    } catch {
+      setError('Failed to add vendor.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -342,9 +352,15 @@ function RunOfShowPanel({ eventId, eventDate }: { eventId: string; eventDate: st
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    const res = await api.eventRunOfShow.list({ eventId })
-    if (res.success) setItems((res.data as EventRunOfShowItem[]) ?? [])
-    setLoading(false)
+    try {
+      const res = await api.eventRunOfShow.list({ eventId })
+      if (res.success) setItems((res.data as EventRunOfShowItem[]) ?? [])
+      else setError(res.error?.message ?? 'Could not load run-of-show items.')
+    } catch {
+      setError('Could not load run-of-show items.')
+    } finally {
+      setLoading(false)
+    }
   }, [eventId])
 
   useEffect(() => { load() }, [load])
@@ -356,23 +372,38 @@ function RunOfShowPanel({ eventId, eventDate }: { eventId: string; eventDate: st
     // a bare "HH:MM" string from a <input type="time"> is not a parseable
     // Date on its own.
     const combined = `${toDateInput(eventDate)}T${form.scheduledTime}:00`
-    const res = await api.eventRunOfShow.create({
-      eventId, scheduledTime: combined, activity: form.activity.trim(),
-      responsibleParty: form.responsibleParty || undefined,
-    })
-    setSaving(false)
-    if (res.success) { setForm({ scheduledTime: '', activity: '', responsibleParty: '' }); load() }
-    else setError(res.error?.message ?? 'Could not add item.')
+    try {
+      const res = await api.eventRunOfShow.create({
+        eventId, scheduledTime: combined, activity: form.activity.trim(),
+        responsibleParty: form.responsibleParty || undefined,
+      })
+      if (res.success) { setForm({ scheduledTime: '', activity: '', responsibleParty: '' }); load() }
+      else setError(res.error?.message ?? 'Could not add item.')
+    } catch {
+      setError('Could not add item.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleToggle(item: EventRunOfShowItem) {
-    const res = await api.eventRunOfShow.update({ id: item.id, isDone: !item.isDone })
-    if (res.success) setItems(prev => prev.map(i => i.id === item.id ? { ...i, isDone: !i.isDone } : i))
+    try {
+      const res = await api.eventRunOfShow.update({ id: item.id, isDone: !item.isDone })
+      if (res.success) setItems(prev => prev.map(i => i.id === item.id ? { ...i, isDone: !i.isDone } : i))
+      else setError(res.error?.message ?? 'Could not update item.')
+    } catch {
+      setError('Could not update item.')
+    }
   }
 
   async function handleDelete(id: string) {
-    const res = await api.eventRunOfShow.delete({ id })
-    if (res.success) setItems(prev => prev.filter(i => i.id !== id))
+    try {
+      const res = await api.eventRunOfShow.delete({ id })
+      if (res.success) setItems(prev => prev.filter(i => i.id !== id))
+      else setError(res.error?.message ?? 'Could not remove item.')
+    } catch {
+      setError('Could not remove item.')
+    }
   }
 
   if (loading) return <p className="text-xs text-gray-400 dark:text-slate-500">Loading run-of-show...</p>
@@ -540,22 +571,31 @@ export default function EventsScreen() {
     if (!deleteTarget) return
     setDeleting(true)
     setErrorBanner(null)
-    const res = await api.eventBooking.delete(deleteTarget.id)
-    if (res.success) { setEvents(ev => ev.filter(e => e.id !== deleteTarget.id)); setDeleteTarget(null); loadKpis() }
-    else setErrorBanner(res.error?.message ?? 'Failed to delete event.')
-    setDeleting(false)
+    try {
+      const res = await api.eventBooking.delete(deleteTarget.id)
+      if (res.success) { setEvents(ev => ev.filter(e => e.id !== deleteTarget.id)); setDeleteTarget(null); loadKpis() }
+      else setErrorBanner(res.error?.message ?? 'Failed to delete event.')
+    } catch {
+      setErrorBanner('Failed to delete event.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function handleVendorStatusChange(vendorId: string, eventId: string, newStatus: string) {
-    const res = await api.eventVendorBooking.update({ id: vendorId, status: newStatus })
-    if (res.success) {
-      setEvents(ev => ev.map(e => {
-        if (e.id !== eventId) return e
-        return { ...e, vendorBookings: e.vendorBookings.map(v => v.id === vendorId ? { ...v, status: newStatus } : v) }
-      }))
-      loadKpis()
-    } else {
-      setErrorBanner(res.error?.message ?? 'Failed to update vendor status.')
+    try {
+      const res = await api.eventVendorBooking.update({ id: vendorId, status: newStatus })
+      if (res.success) {
+        setEvents(ev => ev.map(e => {
+          if (e.id !== eventId) return e
+          return { ...e, vendorBookings: e.vendorBookings.map(v => v.id === vendorId ? { ...v, status: newStatus } : v) }
+        }))
+        loadKpis()
+      } else {
+        setErrorBanner(res.error?.message ?? 'Failed to update vendor status.')
+      }
+    } catch {
+      setErrorBanner('Failed to update vendor status.')
     }
   }
 
@@ -564,25 +604,36 @@ export default function EventsScreen() {
     const { vendorId, eventId } = deleteVendorTarget
     setDeletingVendor(true)
     setErrorBanner(null)
-    const res = await api.eventVendorBooking.delete(vendorId)
-    if (res.success) {
-      setEvents(ev => ev.map(e => {
-        if (e.id !== eventId) return e
-        return { ...e, vendorBookings: e.vendorBookings.filter(v => v.id !== vendorId) }
-      }))
-      setDeleteVendorTarget(null)
-      loadKpis()
-    } else {
-      setErrorBanner(res.error?.message ?? 'Failed to remove vendor.')
+    try {
+      const res = await api.eventVendorBooking.delete(vendorId)
+      if (res.success) {
+        setEvents(ev => ev.map(e => {
+          if (e.id !== eventId) return e
+          return { ...e, vendorBookings: e.vendorBookings.filter(v => v.id !== vendorId) }
+        }))
+        setDeleteVendorTarget(null)
+        loadKpis()
+      } else {
+        setErrorBanner(res.error?.message ?? 'Failed to remove vendor.')
+      }
+    } catch {
+      setErrorBanner('Failed to remove vendor.')
+    } finally {
+      setDeletingVendor(false)
     }
-    setDeletingVendor(false)
   }
 
   async function handleVendorAdded(eventId: string) {
     setShowAddVendorFor(null)
-    const res = await api.eventVendorBooking.list(eventId)
-    if (res.success) {
-      setEvents(ev => ev.map(e => e.id === eventId ? { ...e, vendorBookings: (res.data as EventVendorBooking[]) ?? [] } : e))
+    try {
+      const res = await api.eventVendorBooking.list(eventId)
+      if (res.success) {
+        setEvents(ev => ev.map(e => e.id === eventId ? { ...e, vendorBookings: (res.data as EventVendorBooking[]) ?? [] } : e))
+      } else {
+        setErrorBanner(res.error?.message ?? 'Could not refresh vendor list.')
+      }
+    } catch {
+      setErrorBanner('Could not refresh vendor list.')
     }
     loadKpis()
   }
@@ -590,22 +641,31 @@ export default function EventsScreen() {
   async function handleGenerateInvoice(ev: EventBooking) {
     setErrorBanner(null)
     setGeneratingInvoiceId(ev.id)
-    const res = await api.eventBooking.generateInvoice(ev.id)
-    if (res.success) {
-      await loadEvents(statusFilter)
-    } else {
-      setErrorBanner(res.error?.message ?? 'Failed to generate invoice.')
+    try {
+      const res = await api.eventBooking.generateInvoice(ev.id)
+      if (res.success) {
+        await loadEvents(statusFilter)
+      } else {
+        setErrorBanner(res.error?.message ?? 'Failed to generate invoice.')
+      }
+    } catch {
+      setErrorBanner('Failed to generate invoice.')
+    } finally {
+      setGeneratingInvoiceId(null)
     }
-    setGeneratingInvoiceId(null)
   }
 
   async function handleStatusUpdate(eventId: string, status: string) {
-    const res = await api.eventBooking.update({ id: eventId, status })
-    if (res.success) {
-      await loadEvents(statusFilter)
-      loadKpis()
-    } else {
-      setErrorBanner(res.error?.message ?? 'Failed to update event status.')
+    try {
+      const res = await api.eventBooking.update({ id: eventId, status })
+      if (res.success) {
+        await loadEvents(statusFilter)
+        loadKpis()
+      } else {
+        setErrorBanner(res.error?.message ?? 'Failed to update event status.')
+      }
+    } catch {
+      setErrorBanner('Failed to update event status.')
     }
   }
 

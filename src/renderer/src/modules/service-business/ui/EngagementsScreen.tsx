@@ -4,6 +4,7 @@ import { api } from '@renderer/services/ipc-client'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
@@ -106,6 +107,8 @@ export default function EngagementsScreen(): React.JSX.Element {
 
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState<string | null>(null)
   const [invoiceError, setInvoiceError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Engagement | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadEngagements = useCallback(async () => {
     setLoading(true)
@@ -230,26 +233,35 @@ export default function EngagementsScreen(): React.JSX.Element {
     }
   }
 
-  async function handleDelete(id: string): Promise<void> {
+  async function handleDelete(): Promise<void> {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.engagement.delete({ id })
-      if (res.success) await loadEngagements()
+      const res = await api.engagement.delete({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); await loadEngagements() }
       else toastError('Error', res.error?.message ?? 'Could not delete engagement.')
     } catch {
       toastError('Error', 'Could not delete engagement.')
+    } finally {
+      setDeleting(false)
     }
   }
 
   async function handleGenerateInvoice(id: string): Promise<void> {
     setInvoiceError('')
     setGeneratingInvoiceId(id)
-    const res = await api.engagement.generateInvoice({ id })
-    if (res.success) {
-      await loadEngagements()
-    } else {
-      setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+    try {
+      const res = await api.engagement.generateInvoice({ id })
+      if (res.success) {
+        await loadEngagements()
+      } else {
+        setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+      }
+    } catch {
+      setInvoiceError('Could not generate invoice.')
+    } finally {
+      setGeneratingInvoiceId(null)
     }
-    setGeneratingInvoiceId(null)
   }
 
   const filtered = engagements.filter((e) => {
@@ -381,7 +393,7 @@ export default function EngagementsScreen(): React.JSX.Element {
                       <button onClick={() => openEditForm(eng)} className="p-1.5 text-gray-400 hover:text-violet-600 rounded hover:bg-violet-50 transition-colors dark:text-slate-500" title="Edit" style={{ minHeight: 32, minWidth: 32 }}>
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => void handleDelete(eng.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" title="Delete" style={{ minHeight: 32, minWidth: 32 }}>
+                      <button onClick={() => setDeleteTarget(eng)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors dark:text-slate-500" title="Delete" style={{ minHeight: 32, minWidth: 32 }}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -476,6 +488,16 @@ export default function EngagementsScreen(): React.JSX.Element {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDelete()}
+        loading={deleting}
+        title="Delete Engagement"
+        message={`Delete engagement "${deleteTarget?.title}" for ${deleteTarget?.client.customerName}? This cannot be undone.`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }
