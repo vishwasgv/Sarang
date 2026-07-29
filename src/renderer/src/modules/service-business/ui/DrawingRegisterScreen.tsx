@@ -84,6 +84,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       const res = await window.api.drawingRevision.list({ projectId: pid })
       if (res.success) setItems((res.data as DrawingRevision[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load drawing register.')
+    } catch {
+      toastError('Error', 'Could not load drawing register.')
     } finally {
       setLoading(false)
     }
@@ -114,6 +116,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       } else {
         setError(res.error?.message ?? 'Could not save drawing.')
       }
+    } catch {
+      setError('Could not save drawing.')
     } finally {
       setSaving(false)
     }
@@ -128,9 +132,13 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       setApproverName('')
       return
     }
-    const res = await window.api.drawingRevision.update({ id: item.id, status: next })
-    if (res.success) await load(projectId)
-    else toastError('Error', res.error?.message ?? 'Could not update status.')
+    try {
+      const res = await window.api.drawingRevision.update({ id: item.id, status: next })
+      if (res.success) await load(projectId)
+      else toastError('Error', res.error?.message ?? 'Could not update status.')
+    } catch {
+      toastError('Error', 'Could not update status.')
+    }
   }
 
   async function handleConfirmApproval() {
@@ -145,6 +153,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       } else {
         toastError('Error', res.error?.message ?? 'Could not record approval.')
       }
+    } catch {
+      toastError('Error', 'Could not record approval.')
     } finally {
       setApproving(false)
     }
@@ -175,6 +185,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       } else {
         setRevisionError(res.error?.message ?? 'Could not issue new revision.')
       }
+    } catch {
+      setRevisionError('Could not issue new revision.')
     } finally {
       setIssuingRevision(false)
     }
@@ -187,6 +199,8 @@ export function DrawingRegisterScreen(): React.JSX.Element {
       const res = await window.api.drawingRevision.delete({ id: deleteTarget.id })
       if (res.success) { toastSuccess('Deleted', 'Drawing revision removed.'); setDeleteTarget(null); await load(projectId) }
       else toastError('Error', res.error?.message ?? 'Could not delete.')
+    } catch {
+      toastError('Error', 'Could not delete.')
     } finally {
       setDeleting(false)
     }

@@ -280,31 +280,41 @@ export function DentalPatientScreen() {
 
   async function loadToothHistory(num: number) {
     if (!patientId) return
-    const res = await api.toothRecord.getHistory({ patientId, toothNumber: num })
-    if (res.success) setToothHistory((res.data as ToothHistoryEntry[]) ?? [])
+    try {
+      const res = await api.toothRecord.getHistory({ patientId, toothNumber: num })
+      if (res.success) setToothHistory((res.data as ToothHistoryEntry[]) ?? [])
+      else toastError('Error', res.error?.message ?? 'Could not load tooth history.')
+    } catch {
+      toastError('Error', 'Could not load tooth history.')
+    }
   }
 
   async function handleToothSave() {
     if (!patientId || selectedTooth === null) return
     setSaving(true)
     setSaveError(null)
-    const res = await api.toothRecord.upsert({
-      patientId,
-      toothNumber: selectedTooth,
-      condition: editCondition,
-      surface: JSON.stringify(editSurfaces),
-      notes: editNotes || null,
-    })
-    setSaving(false)
-    if (!res.success) {
-      setSaveError(res.error?.message ?? 'Could not save tooth record.')
-      return
+    try {
+      const res = await api.toothRecord.upsert({
+        patientId,
+        toothNumber: selectedTooth,
+        condition: editCondition,
+        surface: JSON.stringify(editSurfaces),
+        notes: editNotes || null,
+      })
+      if (!res.success) {
+        setSaveError(res.error?.message ?? 'Could not save tooth record.')
+        return
+      }
+      const chartRes = await api.toothRecord.getChart({ patientId })
+      if (chartRes.success && chartRes.data) setToothRecords(chartRes.data as ToothRecord[])
+      setSelectedTooth(null)
+      setShowHistory(false)
+      setToothHistory([])
+    } catch {
+      setSaveError('Could not save tooth record.')
+    } finally {
+      setSaving(false)
     }
-    const chartRes = await api.toothRecord.getChart({ patientId })
-    if (chartRes.success && chartRes.data) setToothRecords(chartRes.data as ToothRecord[])
-    setSelectedTooth(null)
-    setShowHistory(false)
-    setToothHistory([])
   }
 
   async function handleRecallSave() {
@@ -315,21 +325,26 @@ export function DentalPatientScreen() {
     }
     setRecallSaving(true)
     setRecallError(null)
-    const res = await api.recall.upsert({
-      patientId,
-      recallType: recallForm.recallType,
-      lastVisitDate: recallForm.lastVisitDate,
-      nextRecallDate: recallForm.nextRecallDate,
-      notes: recallForm.notes || null,
-    })
-    setRecallSaving(false)
-    if (!res.success) {
-      setRecallError(res.error?.message ?? 'Could not save recall record.')
-      return
+    try {
+      const res = await api.recall.upsert({
+        patientId,
+        recallType: recallForm.recallType,
+        lastVisitDate: recallForm.lastVisitDate,
+        nextRecallDate: recallForm.nextRecallDate,
+        notes: recallForm.notes || null,
+      })
+      if (!res.success) {
+        setRecallError(res.error?.message ?? 'Could not save recall record.')
+        return
+      }
+      setRecallSaved(true)
+      loadAll()
+      setTimeout(() => setRecallSaved(false), 2000)
+    } catch {
+      setRecallError('Could not save recall record.')
+    } finally {
+      setRecallSaving(false)
     }
-    setRecallSaved(true)
-    loadAll()
-    setTimeout(() => setRecallSaved(false), 2000)
   }
 
   if (loading) {
@@ -928,24 +943,29 @@ function TreatmentPlanModal({ patientId, plan, currSym, onClose, onSaved }: {
     setSaving(true)
     setError(null)
 
-    let res
-    if (plan) {
-      res = await api.treatmentPlan.update({
-        id: plan.id, title, status,
-        planItems: JSON.stringify(items), totalEstimatedCost,
-        notes: notes || null,
-      })
-    } else {
-      res = await api.treatmentPlan.create({
-        patientId, title, status,
-        planItems: JSON.stringify(items), totalEstimatedCost,
-        notes: notes || undefined,
-      })
-    }
+    try {
+      let res
+      if (plan) {
+        res = await api.treatmentPlan.update({
+          id: plan.id, title, status,
+          planItems: JSON.stringify(items), totalEstimatedCost,
+          notes: notes || null,
+        })
+      } else {
+        res = await api.treatmentPlan.create({
+          patientId, title, status,
+          planItems: JSON.stringify(items), totalEstimatedCost,
+          notes: notes || undefined,
+        })
+      }
 
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not save treatment plan.'); return }
-    onSaved()
+      if (!res.success) { setError(res.error?.message ?? 'Could not save treatment plan.'); return }
+      onSaved()
+    } catch {
+      setError('Could not save treatment plan.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   useEffect(() => {

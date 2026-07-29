@@ -6,6 +6,7 @@ import { cn } from '@shared/utils/cn'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 
@@ -157,6 +158,10 @@ export default function ComplianceScreen(): React.JSX.Element {
   const [updateAckNo, setUpdateAckNo] = useState('')
   const [updateSaving, setUpdateSaving] = useState(false)
 
+  // delete confirmation
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
+  const [deleteTaskSaving, setDeleteTaskSaving] = useState(false)
+
   // Clients modal (Phase 58 §2) — AGM date capture (feeds AGM-relative ROC
   // event auto-generation) + per-client document checklist.
   const [showClientsModal, setShowClientsModal] = useState(false)
@@ -297,12 +302,15 @@ export default function ComplianceScreen(): React.JSX.Element {
   }
 
   async function handleDeleteTask(id: string): Promise<void> {
+    setDeleteTaskSaving(true)
     try {
       const res = await api.complianceTask.delete({ id })
-      if (res.success) await loadTasks()
+      if (res.success) { setDeleteTaskId(null); await loadTasks() }
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleteTaskSaving(false)
     }
   }
 
@@ -408,15 +416,23 @@ export default function ComplianceScreen(): React.JSX.Element {
   }
 
   async function handleToggleChecklistStatus(item: ChecklistItem): Promise<void> {
-    const res = await api.clientDocumentChecklist.update({ id: item.id, status: item.status === 'COLLECTED' ? 'PENDING' : 'COLLECTED' })
-    if (res.success) await loadChecklist(item.clientId)
-    else toastError('Error', res.error?.message ?? 'Could not update checklist item.')
+    try {
+      const res = await api.clientDocumentChecklist.update({ id: item.id, status: item.status === 'COLLECTED' ? 'PENDING' : 'COLLECTED' })
+      if (res.success) await loadChecklist(item.clientId)
+      else toastError('Error', res.error?.message ?? 'Could not update checklist item.')
+    } catch {
+      toastError('Error', 'Could not update checklist item.')
+    }
   }
 
   async function handleRemoveChecklistItem(item: ChecklistItem): Promise<void> {
-    const res = await api.clientDocumentChecklist.remove({ id: item.id })
-    if (res.success) await loadChecklist(item.clientId)
-    else toastError('Error', res.error?.message ?? 'Could not remove checklist item.')
+    try {
+      const res = await api.clientDocumentChecklist.remove({ id: item.id })
+      if (res.success) await loadChecklist(item.clientId)
+      else toastError('Error', res.error?.message ?? 'Could not remove checklist item.')
+    } catch {
+      toastError('Error', 'Could not remove checklist item.')
+    }
   }
 
   const filtered = tasks.filter((t) => {
@@ -559,7 +575,7 @@ export default function ComplianceScreen(): React.JSX.Element {
                       <button onClick={() => openEditForm(task)} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-600" style={{ minHeight: 28 }}>
                         Edit
                       </button>
-                      <button onClick={() => void handleDeleteTask(task.id)} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors" style={{ minHeight: 28 }}>
+                      <button onClick={() => setDeleteTaskId(task.id)} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors" style={{ minHeight: 28 }}>
                         Delete
                       </button>
                     </div>
@@ -804,6 +820,16 @@ export default function ComplianceScreen(): React.JSX.Element {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTaskId !== null}
+        onClose={() => setDeleteTaskId(null)}
+        onConfirm={() => { if (deleteTaskId) void handleDeleteTask(deleteTaskId) }}
+        loading={deleteTaskSaving}
+        title="Delete Compliance Task"
+        message="Delete this compliance task? This cannot be undone."
+        confirmLabel="Delete"
+      />
     </div>
   )
 }
