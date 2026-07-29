@@ -9,6 +9,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Select } from '@shared/ui/atoms/Select'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Project { id: string; projectNumber: string; title: string }
 interface Ticket { id: string; ticketNumber: string; title: string }
@@ -34,6 +35,8 @@ export function WorkTrackingScreen() {
   })
   const [saving, setSaving] = useState(false)
   const [filterBillable, setFilterBillable] = useState<'all' | 'billable' | 'non-billable'>('all')
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -78,35 +81,50 @@ export function WorkTrackingScreen() {
     if (!entityId) { toastError(t('service.selectEntity')); return }
 
     setSaving(true)
-    const payload: Record<string, unknown> = {
-      title: form.title.trim(),
-      hours,
-      billable: form.billable,
-      logDate: form.logDate || undefined,
-      description: form.description || undefined
-    }
-    if (form.entityType === 'project') payload.projectId = form.projectId
-    if (form.entityType === 'ticket') payload.ticketId = form.ticketId
-    if (form.entityType === 'jobCard') payload.jobCardId = form.jobCardId
+    try {
+      const payload: Record<string, unknown> = {
+        title: form.title.trim(),
+        hours,
+        billable: form.billable,
+        logDate: form.logDate || undefined,
+        description: form.description || undefined
+      }
+      if (form.entityType === 'project') payload.projectId = form.projectId
+      if (form.entityType === 'ticket') payload.ticketId = form.ticketId
+      if (form.entityType === 'jobCard') payload.jobCardId = form.jobCardId
 
-    const res = await api.workLogs.create(payload as any)
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(t('service.workLogged'))
-      setShowForm(false)
-      setForm({ entityType: 'project', projectId: '', ticketId: '', jobCardId: '', title: '', description: '', hours: '', logDate: '', billable: true })
-      load()
-    } else {
-      toastError((res.error as any)?.message ?? t('service.couldNotLogWork'))
+      const res = await api.workLogs.create(payload as any)
+      if (res.success) {
+        toastSuccess(t('service.workLogged'))
+        setShowForm(false)
+        setForm({ entityType: 'project', projectId: '', ticketId: '', jobCardId: '', title: '', description: '', hours: '', logDate: '', billable: true })
+        load()
+      } else {
+        toastError((res.error as any)?.message ?? t('service.couldNotLogWork'))
+      }
+    } catch {
+      toastError(t('service.couldNotLogWork'))
+    } finally {
+      setSaving(false)
     }
   }
 
-  async function handleDelete(logId: string) {
-    const res = await api.workLogs.delete({ id: logId })
-    if (res.success) {
-      setLogs(prev => prev.filter(l => l.id !== logId))
-    } else {
+  async function handleDelete() {
+    if (!deleteTarget) return
+    const logId = deleteTarget
+    setDeleting(true)
+    try {
+      const res = await api.workLogs.delete({ id: logId })
+      if (res.success) {
+        setLogs(prev => prev.filter(l => l.id !== logId))
+        setDeleteTarget(null)
+      } else {
+        toastError(t('service.couldNotDeleteLog'))
+      }
+    } catch {
       toastError(t('service.couldNotDeleteLog'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -207,7 +225,7 @@ export function WorkTrackingScreen() {
                 </div>
                 <div className="shrink-0 text-right flex flex-col items-end gap-1">
                   <p className="text-base font-bold text-text-primary">{l.hours}h</p>
-                  <button onClick={() => handleDelete(l.id)} className="text-text-secondary hover:text-red-500 transition-colors">
+                  <button onClick={() => setDeleteTarget(l.id)} className="text-text-secondary hover:text-red-500 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -290,6 +308,16 @@ export function WorkTrackingScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete Work Log Entry"
+        message="Delete this work log entry? This cannot be undone."
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

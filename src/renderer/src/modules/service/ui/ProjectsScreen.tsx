@@ -59,6 +59,8 @@ export function ProjectsScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [confirmCancelStatus, setConfirmCancelStatus] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,64 +97,87 @@ export function ProjectsScreen() {
   async function handleCreate() {
     if (!form.title.trim()) return
     setSaving(true)
-    const res = await api.projects.create({
-      title: form.title.trim(),
-      description: form.description || undefined,
-      priority: form.priority,
-      customerId: form.customerId || undefined,
-      assignedToId: form.assignedToId || undefined,
-      estimatedHours: form.estimatedHours ? Number(form.estimatedHours) : undefined,
-      estimatedAmount: form.estimatedAmount ? Number(form.estimatedAmount) : undefined,
-      dueDate: form.dueDate || undefined,
-      notes: form.notes || undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(t('service.projectCreated'))
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      load()
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not create project')
+    try {
+      const res = await api.projects.create({
+        title: form.title.trim(),
+        description: form.description || undefined,
+        priority: form.priority,
+        customerId: form.customerId || undefined,
+        assignedToId: form.assignedToId || undefined,
+        estimatedHours: form.estimatedHours ? Number(form.estimatedHours) : undefined,
+        estimatedAmount: form.estimatedAmount ? Number(form.estimatedAmount) : undefined,
+        dueDate: form.dueDate || undefined,
+        notes: form.notes || undefined,
+      })
+      if (res.success) {
+        toastSuccess(t('service.projectCreated'))
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        load()
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not create project')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleStatusChange(projectId: string, status: string) {
-    const res = await api.projects.update({ id: projectId, status })
-    if (res.success) {
-      toastSuccess(t('service.projectStatusUpdated'))
-      setDetail(prev => prev ? { ...prev, status } : prev)
-      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status } : p))
-    } else {
+    if (statusUpdating) return
+    setStatusUpdating(true)
+    try {
+      const res = await api.projects.update({ id: projectId, status })
+      if (res.success) {
+        toastSuccess(t('service.projectStatusUpdated'))
+        setDetail(prev => prev ? { ...prev, status } : prev)
+        setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status } : p))
+      } else {
+        toastError(t('service.couldNotUpdateStatus'))
+      }
+    } catch {
       toastError(t('service.couldNotUpdateStatus'))
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
   async function handleDelete(projectId: string) {
     setDeleting(true)
-    const res = await api.projects.delete({ id: projectId })
-    setDeleting(false)
-    if (res.success) {
-      toastSuccess(t('service.projectDeleted'))
-      setDetail(null)
-      setConfirmDelete(false)
-      setProjects(prev => prev.filter(p => p.id !== projectId))
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not delete project')
+    try {
+      const res = await api.projects.delete({ id: projectId })
+      if (res.success) {
+        toastSuccess(t('service.projectDeleted'))
+        setDetail(null)
+        setConfirmDelete(false)
+        setProjects(prev => prev.filter(p => p.id !== projectId))
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not delete project')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setDeleting(false)
     }
   }
 
   async function handleGenerateInvoice(projectId: string) {
     setGeneratingInvoice(true)
-    const res = await api.projects.generateInvoice({ id: projectId })
-    setGeneratingInvoice(false)
-    if (res.success) {
-      const data = res.data as { invoiceId: string }
-      toastSuccess('Invoice generated')
-      setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
-      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, invoiceId: data.invoiceId } : p))
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not generate invoice')
+    try {
+      const res = await api.projects.generateInvoice({ id: projectId })
+      if (res.success) {
+        const data = res.data as { invoiceId: string }
+        toastSuccess('Invoice generated')
+        setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
+        setProjects(prev => prev.map(p => p.id === projectId ? { ...p, invoiceId: data.invoiceId } : p))
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setGeneratingInvoice(false)
     }
   }
 
@@ -358,7 +383,15 @@ export function ProjectsScreen() {
                 <Tabs
                   tabs={['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'].map(s => ({ id: s, label: t(STATUS_LABEL_KEY[s] ?? s) }))}
                   active={editStatus}
-                  onChange={(s) => { handleStatusChange(detail.id, s); setEditStatus(s) }}
+                  onChange={(s) => {
+                    if (statusUpdating) return
+                    // Cancelling a project is a real destructive step (unlike the
+                    // other statuses here) -- confirm before committing it, same
+                    // as "Cancel Job" in JobCardsScreen.tsx.
+                    if (s === 'CANCELLED') { setConfirmCancelStatus(true); return }
+                    handleStatusChange(detail.id, s)
+                    setEditStatus(s)
+                  }}
                   className="flex-wrap"
                 />
               </div>
@@ -423,6 +456,21 @@ export function ProjectsScreen() {
         title={t('service.deleteProject')}
         message={t('service.confirmDeleteProject')}
         confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={confirmCancelStatus}
+        onClose={() => setConfirmCancelStatus(false)}
+        onConfirm={async () => {
+          if (!detail) return
+          await handleStatusChange(detail.id, 'CANCELLED')
+          setEditStatus('CANCELLED')
+          setConfirmCancelStatus(false)
+        }}
+        loading={statusUpdating}
+        title={t(STATUS_LABEL_KEY.CANCELLED)}
+        message="Mark this project as cancelled? You can still view its history, but it will no longer be tracked as active work."
+        confirmLabel={t(STATUS_LABEL_KEY.CANCELLED)}
       />
     </div>
   )

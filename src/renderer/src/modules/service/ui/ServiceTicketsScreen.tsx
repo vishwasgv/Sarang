@@ -104,22 +104,27 @@ export function ServiceTicketsScreen() {
   async function handleCreate() {
     if (!form.title.trim()) return
     setSaving(true)
-    const res = await api.tickets.create({
-      title: form.title.trim(),
-      description: form.description || undefined,
-      priority: form.priority,
-      category: form.category || undefined,
-      customerId: form.customerId || undefined,
-      assignedToId: form.assignedToId || undefined
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(t('service.ticketCreated'))
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      load()
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not create ticket')
+    try {
+      const res = await api.tickets.create({
+        title: form.title.trim(),
+        description: form.description || undefined,
+        priority: form.priority,
+        category: form.category || undefined,
+        customerId: form.customerId || undefined,
+        assignedToId: form.assignedToId || undefined
+      })
+      if (res.success) {
+        toastSuccess(t('service.ticketCreated'))
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        load()
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not create ticket')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -128,29 +133,39 @@ export function ServiceTicketsScreen() {
     if (status === 'RESOLVED' && resolution.trim()) payload.resolution = resolution.trim()
 
     setSavingRes(true)
-    const res = await api.tickets.update(payload as any)
-    setSavingRes(false)
-    if (res.success) {
-      toastSuccess(t('service.ticketUpdated'))
-      setDetail(prev => prev ? { ...prev, status, resolution: payload.resolution as string ?? prev.resolution } : prev)
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t))
-      setResolution('')
-    } else {
+    try {
+      const res = await api.tickets.update(payload as any)
+      if (res.success) {
+        toastSuccess(t('service.ticketUpdated'))
+        setDetail(prev => prev ? { ...prev, status, resolution: payload.resolution as string ?? prev.resolution } : prev)
+        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t))
+        setResolution('')
+      } else {
+        toastError(t('service.couldNotUpdateTicket'))
+      }
+    } catch {
       toastError(t('service.couldNotUpdateTicket'))
+    } finally {
+      setSavingRes(false)
     }
   }
 
   async function handleDelete(ticketId: string) {
     setDeleting(true)
-    const res = await api.tickets.delete({ id: ticketId })
-    setDeleting(false)
-    if (res.success) {
-      toastSuccess(t('service.ticketDeleted'))
-      setDetail(null)
-      setConfirmDelete(false)
-      setTickets(prev => prev.filter(t => t.id !== ticketId))
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not delete ticket')
+    try {
+      const res = await api.tickets.delete({ id: ticketId })
+      if (res.success) {
+        toastSuccess(t('service.ticketDeleted'))
+        setDetail(null)
+        setConfirmDelete(false)
+        setTickets(prev => prev.filter(t => t.id !== ticketId))
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not delete ticket')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -158,16 +173,21 @@ export function ServiceTicketsScreen() {
     const amount = Number(invoiceAmount)
     if (!amount || amount <= 0) { toastError('Enter a billable amount greater than zero.'); return }
     setGeneratingInvoice(true)
-    const res = await api.tickets.generateInvoice({ id: ticketId, amount })
-    setGeneratingInvoice(false)
-    if (res.success) {
-      const data = res.data as { invoiceId: string }
-      toastSuccess('Invoice generated')
-      setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, invoiceId: data.invoiceId } : t))
-      setInvoiceAmount('')
-    } else {
-      toastError((res.error as any)?.message ?? 'Could not generate invoice')
+    try {
+      const res = await api.tickets.generateInvoice({ id: ticketId, amount })
+      if (res.success) {
+        const data = res.data as { invoiceId: string }
+        toastSuccess('Invoice generated')
+        setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
+        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, invoiceId: data.invoiceId } : t))
+        setInvoiceAmount('')
+      } else {
+        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+      }
+    } catch {
+      toastError(t('common.error'))
+    } finally {
+      setGeneratingInvoice(false)
     }
   }
 
