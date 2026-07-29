@@ -205,43 +205,48 @@ function PropertyForm({
     if (!form.area || isNaN(parseFloat(form.area))) return setError('Valid area is required.')
     setSaving(true); setError('')
 
-    let res
-    if (isEdit) {
-      res = await api.property.update({
-        id: initial!.id,
-        propertyType: form.propertyType,
-        listingType: form.listingType,
-        location: form.location,
-        area: parseFloat(form.area),
-        floorNumber: form.floorNumber ? parseInt(form.floorNumber) : null,
-        totalFloors: form.totalFloors ? parseInt(form.totalFloors) : null,
-        askingPrice: form.askingPrice ? parseFloat(form.askingPrice) : null,
-        monthlyRent: form.monthlyRent ? parseFloat(form.monthlyRent) : null,
-        securityDeposit: form.securityDeposit ? parseFloat(form.securityDeposit) : null,
-        brokeragePercent: form.brokeragePercent ? parseFloat(form.brokeragePercent) : null,
-        description: form.description || null,
-        notes: form.notes || null,
-        status: form.status,
-      })
-    } else {
-      res = await api.property.create({
-        ownerClientId: form.ownerClientId,
-        propertyType: form.propertyType,
-        listingType: form.listingType,
-        location: form.location,
-        area: parseFloat(form.area),
-        floorNumber: form.floorNumber ? parseInt(form.floorNumber) : undefined,
-        totalFloors: form.totalFloors ? parseInt(form.totalFloors) : undefined,
-        askingPrice: form.askingPrice ? parseFloat(form.askingPrice) : undefined,
-        monthlyRent: form.monthlyRent ? parseFloat(form.monthlyRent) : undefined,
-        securityDeposit: form.securityDeposit ? parseFloat(form.securityDeposit) : undefined,
-        brokeragePercent: form.brokeragePercent ? parseFloat(form.brokeragePercent) : undefined,
-        description: form.description || undefined,
-        notes: form.notes || undefined,
-      })
+    try {
+      let res
+      if (isEdit) {
+        res = await api.property.update({
+          id: initial!.id,
+          propertyType: form.propertyType,
+          listingType: form.listingType,
+          location: form.location,
+          area: parseFloat(form.area),
+          floorNumber: form.floorNumber ? parseInt(form.floorNumber) : null,
+          totalFloors: form.totalFloors ? parseInt(form.totalFloors) : null,
+          askingPrice: form.askingPrice ? parseFloat(form.askingPrice) : null,
+          monthlyRent: form.monthlyRent ? parseFloat(form.monthlyRent) : null,
+          securityDeposit: form.securityDeposit ? parseFloat(form.securityDeposit) : null,
+          brokeragePercent: form.brokeragePercent ? parseFloat(form.brokeragePercent) : null,
+          description: form.description || null,
+          notes: form.notes || null,
+          status: form.status,
+        })
+      } else {
+        res = await api.property.create({
+          ownerClientId: form.ownerClientId,
+          propertyType: form.propertyType,
+          listingType: form.listingType,
+          location: form.location,
+          area: parseFloat(form.area),
+          floorNumber: form.floorNumber ? parseInt(form.floorNumber) : undefined,
+          totalFloors: form.totalFloors ? parseInt(form.totalFloors) : undefined,
+          askingPrice: form.askingPrice ? parseFloat(form.askingPrice) : undefined,
+          monthlyRent: form.monthlyRent ? parseFloat(form.monthlyRent) : undefined,
+          securityDeposit: form.securityDeposit ? parseFloat(form.securityDeposit) : undefined,
+          brokeragePercent: form.brokeragePercent ? parseFloat(form.brokeragePercent) : undefined,
+          description: form.description || undefined,
+          notes: form.notes || undefined,
+        })
+      }
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save property.') }
+    } catch {
+      setError('Failed to save property.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save property.') }
   }
 
   const isSale = form.listingType === 'SALE'
@@ -348,14 +353,19 @@ function AddInquiryForm({
   async function handleSave() {
     if (!form.buyerClientId) return setError('Select a buyer.')
     setSaving(true); setError('')
-    const res = await api.propertyInquiry.create({
-      propertyId,
-      buyerClientId: form.buyerClientId,
-      notes: form.notes || undefined,
-      nextFollowUpDate: form.nextFollowUpDate || undefined,
-    })
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to add inquiry.') }
+    try {
+      const res = await api.propertyInquiry.create({
+        propertyId,
+        buyerClientId: form.buyerClientId,
+        notes: form.notes || undefined,
+        nextFollowUpDate: form.nextFollowUpDate || undefined,
+      })
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to add inquiry.') }
+    } catch {
+      setError('Failed to add inquiry.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -403,19 +413,24 @@ function AddDealForm({
     if (form.buyerClientId === form.sellerClientId) return setError('Buyer and seller must be different clients.')
     if (!form.dealValue || isNaN(parseFloat(form.dealValue))) return setError('Valid deal value is required.')
     setSaving(true); setError('')
-    const res = await api.propertyDeal.create({
-      propertyId,
-      buyerClientId: form.buyerClientId,
-      sellerClientId: form.sellerClientId,
-      dealValue: parseFloat(form.dealValue),
-      brokeragePercent: parseFloat(form.brokeragePercent) || 2,
-      expectedRegistrationDate: form.expectedRegistrationDate || undefined,
-      notes: form.notes || undefined,
-      coBrokerName: form.coBrokerName.trim() || undefined,
-      coBrokerSharePercent: form.coBrokerSharePercent ? parseFloat(form.coBrokerSharePercent) : undefined,
-    })
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to create deal.') }
+    try {
+      const res = await api.propertyDeal.create({
+        propertyId,
+        buyerClientId: form.buyerClientId,
+        sellerClientId: form.sellerClientId,
+        dealValue: parseFloat(form.dealValue),
+        brokeragePercent: parseFloat(form.brokeragePercent) || 2,
+        expectedRegistrationDate: form.expectedRegistrationDate || undefined,
+        notes: form.notes || undefined,
+        coBrokerName: form.coBrokerName.trim() || undefined,
+        coBrokerSharePercent: form.coBrokerSharePercent ? parseFloat(form.coBrokerSharePercent) : undefined,
+      })
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to create deal.') }
+    } catch {
+      setError('Failed to create deal.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const brokerage = form.dealValue && form.brokeragePercent
@@ -521,26 +536,32 @@ export default function PropertiesScreen() {
   }, [toastError])
 
   const loadKpis = useCallback(async () => {
-    const res = await api.property.kpis()
-    if (res.success && res.data) setKpis(res.data as PropertyKPIs)
+    try {
+      const res = await api.property.kpis()
+      if (res.success && res.data) setKpis(res.data as PropertyKPIs)
+    } catch { /* KPI strip is supplementary */ }
   }, [])
 
   const loadPropertyDetails = useCallback(async (id: string, currentProperties: Property[]) => {
-    const [inqRes, dealRes] = await Promise.all([
-      api.propertyInquiry.list(id),
-      api.propertyDeal.list({ propertyId: id }),
-    ])
-    const prop = currentProperties.find(p => p.id === id)
-    if (!prop) return
-    setPropertyDetails(prev => ({
-      ...prev,
-      [id]: {
-        ...prop,
-        inquiries: inqRes.success ? ((inqRes.data as PropertyInquiry[]) ?? []) : [],
-        deals: dealRes.success ? ((dealRes.data as PropertyDeal[]) ?? []) : [],
-      },
-    }))
-  }, [])
+    try {
+      const [inqRes, dealRes] = await Promise.all([
+        api.propertyInquiry.list(id),
+        api.propertyDeal.list({ propertyId: id }),
+      ])
+      const prop = currentProperties.find(p => p.id === id)
+      if (!prop) return
+      setPropertyDetails(prev => ({
+        ...prev,
+        [id]: {
+          ...prop,
+          inquiries: inqRes.success ? ((inqRes.data as PropertyInquiry[]) ?? []) : [],
+          deals: dealRes.success ? ((dealRes.data as PropertyDeal[]) ?? []) : [],
+        },
+      }))
+    } catch {
+      toastError('Error', 'Could not load property details.')
+    }
+  }, [toastError])
 
   useEffect(() => {
     async function init() {
@@ -615,46 +636,61 @@ export default function PropertiesScreen() {
   async function handleDelete(id: string) {
     setDeleting(true)
     setActionError(null)
-    const res = await api.property.delete(id)
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); setProperties(ps => ps.filter(p => p.id !== id)); loadKpis() }
-    else setActionError(res.error?.message ?? 'Failed to delete property.')
+    try {
+      const res = await api.property.delete(id)
+      if (res.success) { setDeleteTarget(null); setProperties(ps => ps.filter(p => p.id !== id)); loadKpis() }
+      else setActionError(res.error?.message ?? 'Failed to delete property.')
+    } catch {
+      setActionError('Failed to delete property.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function handleDeleteInquiry(inquiryId: string, propertyId: string) {
     setDeleting(true)
     setActionError(null)
-    const res = await api.propertyInquiry.delete(inquiryId)
-    setDeleting(false)
-    if (res.success) {
-      setDeleteTarget(null)
-      setPropertyDetails(prev => {
-        const existing = prev[propertyId]
-        if (!existing) return prev
-        return { ...prev, [propertyId]: { ...existing, inquiries: existing.inquiries.filter(i => i.id !== inquiryId) } }
-      })
-      loadKpis()
-    } else {
-      setActionError(res.error?.message ?? 'Failed to delete inquiry.')
+    try {
+      const res = await api.propertyInquiry.delete(inquiryId)
+      if (res.success) {
+        setDeleteTarget(null)
+        setPropertyDetails(prev => {
+          const existing = prev[propertyId]
+          if (!existing) return prev
+          return { ...prev, [propertyId]: { ...existing, inquiries: existing.inquiries.filter(i => i.id !== inquiryId) } }
+        })
+        loadKpis()
+      } else {
+        setActionError(res.error?.message ?? 'Failed to delete inquiry.')
+      }
+    } catch {
+      setActionError('Failed to delete inquiry.')
+    } finally {
+      setDeleting(false)
     }
   }
 
   async function handleDeleteDeal(dealId: string, propertyId: string) {
     setDeleting(true)
     setDealDeleteError(null)
-    const res = await api.propertyDeal.delete(dealId)
-    setDeleting(false)
-    if (res.success) {
-      setDeleteTarget(null)
-      setPropertyDetails(prev => {
-        const existing = prev[propertyId]
-        if (!existing) return prev
-        return { ...prev, [propertyId]: { ...existing, deals: existing.deals.filter(d => d.id !== dealId) } }
-      })
-      await loadProperties(statusFilter, listingTypeFilter)
-      loadKpis()
-    } else {
-      setDealDeleteError(res.error?.message ?? 'Failed to delete deal.')
+    try {
+      const res = await api.propertyDeal.delete(dealId)
+      if (res.success) {
+        setDeleteTarget(null)
+        setPropertyDetails(prev => {
+          const existing = prev[propertyId]
+          if (!existing) return prev
+          return { ...prev, [propertyId]: { ...existing, deals: existing.deals.filter(d => d.id !== dealId) } }
+        })
+        await loadProperties(statusFilter, listingTypeFilter)
+        loadKpis()
+      } else {
+        setDealDeleteError(res.error?.message ?? 'Failed to delete deal.')
+      }
+    } catch {
+      setDealDeleteError('Failed to delete deal.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -664,6 +700,8 @@ export default function PropertiesScreen() {
       const res = await api.propertySiteVisit.list({ inquiryId })
       if (res.success) setSiteVisits((res.data as PropertySiteVisit[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load site visits.')
+    } catch {
+      toastError('Error', 'Could not load site visits.')
     } finally {
       setVisitsLoading(false)
     }
@@ -679,24 +717,33 @@ export default function PropertiesScreen() {
   async function handleScheduleVisit(inquiryId: string, propertyId: string) {
     if (!newVisitDate) return
     setVisitScheduling(true)
-    const res = await api.propertySiteVisit.schedule({ inquiryId, scheduledDate: newVisitDate, scheduledTime: newVisitTime || undefined })
-    setVisitScheduling(false)
-    if (res.success) {
-      setNewVisitDate(''); setNewVisitTime('')
-      await loadSiteVisits(inquiryId)
-      // The backend flips the inquiry's own status to SITE_VISIT_SCHEDULED —
-      // refresh the property details so that real change is reflected here.
-      const fresh = await loadProperties(statusFilter, listingTypeFilter)
-      await loadPropertyDetails(propertyId, fresh)
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not schedule site visit.')
+    try {
+      const res = await api.propertySiteVisit.schedule({ inquiryId, scheduledDate: newVisitDate, scheduledTime: newVisitTime || undefined })
+      if (res.success) {
+        setNewVisitDate(''); setNewVisitTime('')
+        await loadSiteVisits(inquiryId)
+        // The backend flips the inquiry's own status to SITE_VISIT_SCHEDULED —
+        // refresh the property details so that real change is reflected here.
+        const fresh = await loadProperties(statusFilter, listingTypeFilter)
+        await loadPropertyDetails(propertyId, fresh)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not schedule site visit.')
+      }
+    } catch {
+      toastError('Error', 'Could not schedule site visit.')
+    } finally {
+      setVisitScheduling(false)
     }
   }
 
   async function handleCancelVisit(visit: PropertySiteVisit) {
-    const res = await api.propertySiteVisit.update({ id: visit.id, status: 'CANCELLED' })
-    if (res.success) await loadSiteVisits(visit.inquiryId)
-    else toastError('Error', res.error?.message ?? 'Could not cancel site visit.')
+    try {
+      const res = await api.propertySiteVisit.update({ id: visit.id, status: 'CANCELLED' })
+      if (res.success) await loadSiteVisits(visit.inquiryId)
+      else toastError('Error', res.error?.message ?? 'Could not cancel site visit.')
+    } catch {
+      toastError('Error', 'Could not cancel site visit.')
+    }
   }
 
   function openCompleteVisit(visit: PropertySiteVisit) {
@@ -708,16 +755,21 @@ export default function PropertiesScreen() {
   async function handleSaveCompleteVisit() {
     if (!completingVisit) return
     setCompletingSaving(true)
-    const res = await api.propertySiteVisit.update({
-      id: completingVisit.id, status: 'COMPLETED', feedback: completeFeedback.trim() || undefined, interestLevel: completeInterest,
-    })
-    setCompletingSaving(false)
-    if (res.success) {
-      const inquiryId = completingVisit.inquiryId
-      setCompletingVisit(null)
-      await loadSiteVisits(inquiryId)
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not save visit feedback.')
+    try {
+      const res = await api.propertySiteVisit.update({
+        id: completingVisit.id, status: 'COMPLETED', feedback: completeFeedback.trim() || undefined, interestLevel: completeInterest,
+      })
+      if (res.success) {
+        const inquiryId = completingVisit.inquiryId
+        setCompletingVisit(null)
+        await loadSiteVisits(inquiryId)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not save visit feedback.')
+      }
+    } catch {
+      toastError('Error', 'Could not save visit feedback.')
+    } finally {
+      setCompletingSaving(false)
     }
   }
 
@@ -730,40 +782,53 @@ export default function PropertiesScreen() {
 
   async function handleUpdateDealStatus(dealId: string, propertyId: string, status: string) {
     setActionError(null)
-    const res = await api.propertyDeal.update({ id: dealId, status })
-    if (res.success) {
-      const freshProperties = await loadProperties(statusFilter, listingTypeFilter)
-      await loadPropertyDetails(propertyId, freshProperties)
-      loadKpis()
-    } else {
-      setActionError(res.error?.message ?? 'Failed to update deal status.')
+    try {
+      const res = await api.propertyDeal.update({ id: dealId, status })
+      if (res.success) {
+        const freshProperties = await loadProperties(statusFilter, listingTypeFilter)
+        await loadPropertyDetails(propertyId, freshProperties)
+        loadKpis()
+      } else {
+        setActionError(res.error?.message ?? 'Failed to update deal status.')
+      }
+    } catch {
+      setActionError('Failed to update deal status.')
     }
   }
 
   async function handleGenerateInvoice(dealId: string, propertyId: string) {
     setInvoiceLoading(dealId)
     setInvoiceBanner(null)
-    const res = await api.propertyDeal.generateInvoice(dealId)
-    setInvoiceLoading(null)
-    if (res.success) {
-      await loadPropertyDetails(propertyId, properties)
-      setInvoiceBanner({ type: 'success', message: 'Commission invoice generated successfully.' })
-    } else {
-      setInvoiceBanner({ type: 'error', message: res.error?.message ?? 'Failed to generate invoice.' })
+    try {
+      const res = await api.propertyDeal.generateInvoice(dealId)
+      if (res.success) {
+        await loadPropertyDetails(propertyId, properties)
+        setInvoiceBanner({ type: 'success', message: 'Commission invoice generated successfully.' })
+      } else {
+        setInvoiceBanner({ type: 'error', message: res.error?.message ?? 'Failed to generate invoice.' })
+      }
+    } catch {
+      setInvoiceBanner({ type: 'error', message: 'Failed to generate invoice.' })
+    } finally {
+      setInvoiceLoading(null)
     }
   }
 
   async function handleInquiryStatusUpdate(inquiryId: string, propertyId: string, status: string) {
     setActionError(null)
-    const res = await api.propertyInquiry.update({ id: inquiryId, status })
-    if (res.success) {
-      setPropertyDetails(prev => {
-        const existing = prev[propertyId]
-        if (!existing) return prev
-        return { ...prev, [propertyId]: { ...existing, inquiries: existing.inquiries.map(i => i.id === inquiryId ? { ...i, status } : i) } }
-      })
-    } else {
-      setActionError(res.error?.message ?? 'Failed to update inquiry status.')
+    try {
+      const res = await api.propertyInquiry.update({ id: inquiryId, status })
+      if (res.success) {
+        setPropertyDetails(prev => {
+          const existing = prev[propertyId]
+          if (!existing) return prev
+          return { ...prev, [propertyId]: { ...existing, inquiries: existing.inquiries.map(i => i.id === inquiryId ? { ...i, status } : i) } }
+        })
+      } else {
+        setActionError(res.error?.message ?? 'Failed to update inquiry status.')
+      }
+    } catch {
+      setActionError('Failed to update inquiry status.')
     }
   }
 
