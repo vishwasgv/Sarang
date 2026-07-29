@@ -195,18 +195,23 @@ export default function TailoringScreen() {
     if (!trialForm.scheduledDate) { setTrialError(t('tailoring.errors.trialDateRequired')); return }
     setTrialSaving(true)
     setTrialError('')
-    const res = await api.tailoringOrder.scheduleTrialAppointment({
-      orderId: trialOrderId,
-      scheduledDate: trialForm.scheduledDate,
-      scheduledTime: trialForm.scheduledTime,
-      providerId: trialForm.providerId || undefined,
-    })
-    setTrialSaving(false)
-    if (res.success) {
-      setTrialOrderId(null)
-      await loadOrders(statusFilter || undefined, search || undefined)
-    } else {
-      setTrialError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    try {
+      const res = await api.tailoringOrder.scheduleTrialAppointment({
+        orderId: trialOrderId,
+        scheduledDate: trialForm.scheduledDate,
+        scheduledTime: trialForm.scheduledTime,
+        providerId: trialForm.providerId || undefined,
+      })
+      if (res.success) {
+        setTrialOrderId(null)
+        await loadOrders(statusFilter || undefined, search || undefined)
+      } else {
+        setTrialError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+      }
+    } catch {
+      setTrialError(t('tailoring.errors.saveFailed'))
+    } finally {
+      setTrialSaving(false)
     }
   }
 
@@ -225,21 +230,30 @@ export default function TailoringScreen() {
     if (!qty || qty <= 0) { setFabricError(t('tailoring.errors.fabricQuantityInvalid')); return }
     setFabricSaving(true)
     setFabricError('')
-    const res = await api.tailoringOrder.setFabric({ orderId: fabricOrderId, fabricProductId: pickedFabric.id, fabricQuantity: qty })
-    setFabricSaving(false)
-    if (res.success) {
-      setFabricOrderId(null)
-      await loadOrders(statusFilter || undefined, search || undefined)
-    } else {
-      setFabricError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    try {
+      const res = await api.tailoringOrder.setFabric({ orderId: fabricOrderId, fabricProductId: pickedFabric.id, fabricQuantity: qty })
+      if (res.success) {
+        setFabricOrderId(null)
+        await loadOrders(statusFilter || undefined, search || undefined)
+      } else {
+        setFabricError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+      }
+    } catch {
+      setFabricError(t('tailoring.errors.saveFailed'))
+    } finally {
+      setFabricSaving(false)
     }
   }
 
   async function handleClearFabric(orderId: string) {
     setActionError(null)
-    const res = await api.tailoringOrder.clearFabric(orderId)
-    if (res.success) await loadOrders(statusFilter || undefined, search || undefined)
-    else setActionError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    try {
+      const res = await api.tailoringOrder.clearFabric(orderId)
+      if (res.success) await loadOrders(statusFilter || undefined, search || undefined)
+      else setActionError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    } catch {
+      setActionError(t('tailoring.errors.saveFailed'))
+    }
   }
 
   const statusLabel = (s: string) => t(`tailoring.status.${s}`, STATUS_LABELS_FALLBACK[s] ?? s)
@@ -278,11 +292,17 @@ export default function TailoringScreen() {
 
   async function loadMeasurementsForClient(cid: string) {
     if (!cid) return
-    const res = await api.measurementRecord.list(cid)
-    if (res.success) {
-      const recs = res.data as MeasurementRecord[]
-      setMeasurements(recs)
-      setClientMeasurements(prev => ({ ...prev, [cid]: recs }))
+    try {
+      const res = await api.measurementRecord.list(cid)
+      if (res.success) {
+        const recs = res.data as MeasurementRecord[]
+        setMeasurements(recs)
+        setClientMeasurements(prev => ({ ...prev, [cid]: recs }))
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
     }
   }
 
@@ -358,21 +378,31 @@ export default function TailoringScreen() {
       notes: orderForm.notes || undefined,
       status: orderForm.status,
     }
-    const res = editOrder
-      ? await api.tailoringOrder.update({ id: editOrder.id, ...payload })
-      : await api.tailoringOrder.create(payload)
-    setOrderSaving(false)
-    if (res.success) { setShowOrderForm(false); await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
-    else setOrderFormError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    try {
+      const res = editOrder
+        ? await api.tailoringOrder.update({ id: editOrder.id, ...payload })
+        : await api.tailoringOrder.create(payload)
+      if (res.success) { setShowOrderForm(false); await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
+      else setOrderFormError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    } catch {
+      setOrderFormError(t('tailoring.errors.saveFailed'))
+    } finally {
+      setOrderSaving(false)
+    }
   }
 
   async function handleDeleteOrder(id: string) {
     setActionError(null)
     setDeletingOrder(true)
-    const res = await api.tailoringOrder.delete(id)
-    setDeletingOrder(false)
-    if (res.success) { setDeleteOrderId(null); await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? t('tailoring.errors.deleteOrderFailed'))
+    try {
+      const res = await api.tailoringOrder.delete(id)
+      if (res.success) { setDeleteOrderId(null); await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? t('tailoring.errors.deleteOrderFailed'))
+    } catch {
+      setActionError(t('tailoring.errors.deleteOrderFailed'))
+    } finally {
+      setDeletingOrder(false)
+    }
   }
 
   async function handleAdvanceStatus(order: TailoringOrder) {
@@ -380,21 +410,30 @@ export default function TailoringScreen() {
     if (!next) return
     setActionError(null)
     const payload = { id: order.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: toLocalISODate(new Date()) } : {}) }
-    const res = await api.tailoringOrder.update(payload)
-    if (res.success) { await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? t('tailoring.errors.updateStatusFailed'))
+    try {
+      const res = await api.tailoringOrder.update(payload)
+      if (res.success) { await loadOrders(statusFilter || undefined, search || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? t('tailoring.errors.updateStatusFailed'))
+    } catch {
+      setActionError(t('tailoring.errors.updateStatusFailed'))
+    }
   }
 
   async function handleGenerateInvoice(order: TailoringOrder) {
     setInvoiceLoading(order.id)
     setInvoiceBanners(prev => { const n = { ...prev }; delete n[order.id]; return n })
-    const res = await api.tailoringOrder.generateInvoice(order.id)
-    setInvoiceLoading(null)
-    if (res.success) {
-      setInvoiceBanners(prev => ({ ...prev, [order.id]: { ok: true, msg: t('tailoring.invoiceBanner.success') } }))
-      await loadOrders(statusFilter || undefined, search || undefined)
-    } else {
-      setInvoiceBanners(prev => ({ ...prev, [order.id]: { ok: false, msg: res.error?.message ?? t('tailoring.invoiceBanner.failure') } }))
+    try {
+      const res = await api.tailoringOrder.generateInvoice(order.id)
+      if (res.success) {
+        setInvoiceBanners(prev => ({ ...prev, [order.id]: { ok: true, msg: t('tailoring.invoiceBanner.success') } }))
+        await loadOrders(statusFilter || undefined, search || undefined)
+      } else {
+        setInvoiceBanners(prev => ({ ...prev, [order.id]: { ok: false, msg: res.error?.message ?? t('tailoring.invoiceBanner.failure') } }))
+      }
+    } catch {
+      setInvoiceBanners(prev => ({ ...prev, [order.id]: { ok: false, msg: t('tailoring.invoiceBanner.failure') } }))
+    } finally {
+      setInvoiceLoading(null)
     }
   }
 
@@ -448,20 +487,30 @@ export default function TailoringScreen() {
       notes: measForm.notes || undefined,
       takenById: measForm.takenById || undefined,
     }
-    const res = editMeas
-      ? await api.measurementRecord.update({ id: editMeas.id, ...payload })
-      : await api.measurementRecord.create(payload)
-    setMeasSaving(false)
-    if (res.success) { setShowMeasForm(false); loadMeasurementsForClient(measClientId) }
-    else setMeasError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    try {
+      const res = editMeas
+        ? await api.measurementRecord.update({ id: editMeas.id, ...payload })
+        : await api.measurementRecord.create(payload)
+      if (res.success) { setShowMeasForm(false); loadMeasurementsForClient(measClientId) }
+      else setMeasError(res.error?.message ?? t('tailoring.errors.saveFailed'))
+    } catch {
+      setMeasError(t('tailoring.errors.saveFailed'))
+    } finally {
+      setMeasSaving(false)
+    }
   }
 
   async function handleDeleteMeas(id: string) {
     setDeletingMeas(true)
-    const res = await api.measurementRecord.delete(id)
-    setDeletingMeas(false)
-    if (res.success) { setDeleteMeasId(null); setMeasurements(ms => ms.filter(m => m.id !== id)) }
-    else setActionError(res.error?.message ?? t('tailoring.errors.deleteMeasurementFailed'))
+    try {
+      const res = await api.measurementRecord.delete(id)
+      if (res.success) { setDeleteMeasId(null); setMeasurements(ms => ms.filter(m => m.id !== id)) }
+      else setActionError(res.error?.message ?? t('tailoring.errors.deleteMeasurementFailed'))
+    } catch {
+      setActionError(t('tailoring.errors.deleteMeasurementFailed'))
+    } finally {
+      setDeletingMeas(false)
+    }
   }
 
   // For measurement selector in order form: load measurements when clientId changes
