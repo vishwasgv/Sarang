@@ -122,31 +122,50 @@ export function ServiceCatalogScreen() {
     if (!data.serviceName) { setError('Service name is required.'); return }
     setSaving(true)
     setError(null)
-    const res = await api.serviceCatalog.create(data as Parameters<typeof api.serviceCatalog.create>[0])
-    if (res.success) { setShowForm(false); await load() }
-    else setError(res.error?.message ?? 'Could not create service.')
-    setSaving(false)
+    try {
+      const res = await api.serviceCatalog.create(data as Parameters<typeof api.serviceCatalog.create>[0])
+      if (res.success) { setShowForm(false); await load() }
+      else setError(res.error?.message ?? 'Could not create service.')
+    } catch {
+      setError('Could not create service.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleUpdate(id: string, data: Partial<ServiceItem>) {
     setSaving(true)
     setError(null)
-    const res = await api.serviceCatalog.update({ id, ...data })
-    if (res.success) { setEditingId(null); await load() }
-    else setError(res.error?.message ?? 'Could not update service.')
-    setSaving(false)
+    try {
+      const res = await api.serviceCatalog.update({ id, ...data })
+      if (res.success) { setEditingId(null); await load() }
+      else setError(res.error?.message ?? 'Could not update service.')
+    } catch {
+      setError('Could not update service.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleToggleActive(svc: ServiceItem) {
-    await api.serviceCatalog.update({ id: svc.id, isActive: !svc.isActive })
-    await load()
+    try {
+      const res = await api.serviceCatalog.update({ id: svc.id, isActive: !svc.isActive })
+      if (res.success) await load()
+      else setError(res.error?.message ?? 'Could not update service.')
+    } catch {
+      setError('Could not update service.')
+    }
   }
 
   async function handleDelete(id: string) {
     setConfirmDeleteId(null)
-    const res = await api.serviceCatalog.delete({ id })
-    if (res.success) await load()
-    else setError(res.error?.message ?? 'Could not delete service.')
+    try {
+      const res = await api.serviceCatalog.delete({ id })
+      if (res.success) await load()
+      else setError(res.error?.message ?? 'Could not delete service.')
+    } catch {
+      setError('Could not delete service.')
+    }
   }
 
   return (

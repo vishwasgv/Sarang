@@ -163,42 +163,47 @@ function ShootForm({
     if (!form.shootLocation.trim()) return setError('Location is required.')
     setSaving(true); setError('')
 
-    let res
-    if (isEdit) {
-      res = await api.shootBooking.update({
-        id: initial!.id,
-        shootType: form.shootType,
-        shootDate: form.shootDate,
-        shootTime: form.shootTime || null,
-        shootLocation: form.shootLocation,
-        estimatedDurationHours: parseFloat(form.estimatedDurationHours) || 4,
-        deliverableType: form.deliverableType,
-        expectedPhotosCount: form.expectedPhotosCount ? parseInt(form.expectedPhotosCount) : null,
-        deliveryDeadline: form.deliveryDeadline || null,
-        photographerIds: selectedPhotographers,
-        editorAssignedId: form.editorAssignedId || null,
-        status: form.status,
-        finalAmount: form.finalAmount ? parseFloat(form.finalAmount) : null,
-        notes: form.notes || null,
-      })
-    } else {
-      res = await api.shootBooking.create({
-        clientId: pickedClient!.id,
-        shootType: form.shootType,
-        shootDate: form.shootDate,
-        shootTime: form.shootTime || undefined,
-        shootLocation: form.shootLocation,
-        estimatedDurationHours: parseFloat(form.estimatedDurationHours) || 4,
-        deliverableType: form.deliverableType,
-        expectedPhotosCount: form.expectedPhotosCount ? parseInt(form.expectedPhotosCount) : undefined,
-        deliveryDeadline: form.deliveryDeadline || undefined,
-        photographerIds: selectedPhotographers.length > 0 ? selectedPhotographers : undefined,
-        editorAssignedId: form.editorAssignedId || undefined,
-        notes: form.notes || undefined,
-      })
+    try {
+      let res
+      if (isEdit) {
+        res = await api.shootBooking.update({
+          id: initial!.id,
+          shootType: form.shootType,
+          shootDate: form.shootDate,
+          shootTime: form.shootTime || null,
+          shootLocation: form.shootLocation,
+          estimatedDurationHours: parseFloat(form.estimatedDurationHours) || 4,
+          deliverableType: form.deliverableType,
+          expectedPhotosCount: form.expectedPhotosCount ? parseInt(form.expectedPhotosCount) : null,
+          deliveryDeadline: form.deliveryDeadline || null,
+          photographerIds: selectedPhotographers,
+          editorAssignedId: form.editorAssignedId || null,
+          status: form.status,
+          finalAmount: form.finalAmount ? parseFloat(form.finalAmount) : null,
+          notes: form.notes || null,
+        })
+      } else {
+        res = await api.shootBooking.create({
+          clientId: pickedClient!.id,
+          shootType: form.shootType,
+          shootDate: form.shootDate,
+          shootTime: form.shootTime || undefined,
+          shootLocation: form.shootLocation,
+          estimatedDurationHours: parseFloat(form.estimatedDurationHours) || 4,
+          deliverableType: form.deliverableType,
+          expectedPhotosCount: form.expectedPhotosCount ? parseInt(form.expectedPhotosCount) : undefined,
+          deliveryDeadline: form.deliveryDeadline || undefined,
+          photographerIds: selectedPhotographers.length > 0 ? selectedPhotographers : undefined,
+          editorAssignedId: form.editorAssignedId || undefined,
+          notes: form.notes || undefined,
+        })
+      }
+      if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save shoot booking.') }
+    } catch {
+      setError('Failed to save shoot booking.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    if (res.success) { onSave() } else { setError(res.error?.message ?? 'Failed to save shoot booking.') }
   }
 
   return (
@@ -390,12 +395,16 @@ export default function ShootsScreen() {
     const next = STATUS_NEXT[booking.status]
     if (!next) return
     setActionError(null)
-    const res = await api.shootBooking.update({ id: booking.id, status: next })
-    if (res.success) {
-      await loadBookings(statusFilter)
-      loadKpis()
-    } else {
-      setActionError(res.error?.message ?? 'Failed to advance status.')
+    try {
+      const res = await api.shootBooking.update({ id: booking.id, status: next })
+      if (res.success) {
+        await loadBookings(statusFilter)
+        loadKpis()
+      } else {
+        setActionError(res.error?.message ?? 'Failed to advance status.')
+      }
+    } catch {
+      setActionError('Failed to advance status.')
     }
   }
 
@@ -403,35 +412,55 @@ export default function ShootsScreen() {
     const errorKey = `${shootBookingId}:${field}`
     setMilestoneErrors(prev => { const next = { ...prev }; delete next[errorKey]; return next })
 
-    const res = await api.deliveryTracker.upsert({ shootBookingId, [field]: val })
-    if (res.success) {
-      setBookings(bs => bs.map(b => {
-        if (b.id !== shootBookingId) return b
-        return { ...b, delivery: (res.data as DeliveryTracker) }
-      }))
-    } else {
+    try {
+      const res = await api.deliveryTracker.upsert({ shootBookingId, [field]: val })
+      if (res.success) {
+        setBookings(bs => bs.map(b => {
+          if (b.id !== shootBookingId) return b
+          return { ...b, delivery: (res.data as DeliveryTracker) }
+        }))
+      } else {
+        setMilestoneErrors(prev => ({ ...prev, [errorKey]: 'failed' }))
+      }
+    } catch {
       setMilestoneErrors(prev => ({ ...prev, [errorKey]: 'failed' }))
     }
   }
 
   async function handleUpdateDeliveredCount(shootBookingId: string, count: string) {
     const val = count.trim() ? parseInt(count, 10) : null
-    const res = await api.deliveryTracker.upsert({ shootBookingId, deliveredPhotosCount: val })
-    if (res.success) {
-      setBookings(bs => bs.map(b => (b.id !== shootBookingId ? b : { ...b, delivery: (res.data as DeliveryTracker) })))
+    try {
+      const res = await api.deliveryTracker.upsert({ shootBookingId, deliveredPhotosCount: val })
+      if (res.success) {
+        setBookings(bs => bs.map(b => (b.id !== shootBookingId ? b : { ...b, delivery: (res.data as DeliveryTracker) })))
+      } else {
+        setActionError(res.error?.message ?? 'Could not save delivered photo count.')
+      }
+    } catch {
+      setActionError('Could not save delivered photo count.')
     }
   }
 
   // ── Equipment/Crew checklist ────────────────────────────────────────────────
 
   const loadChecklist = useCallback(async (shootBookingId: string) => {
-    const res = await api.shootChecklist.list({ shootBookingId })
-    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootChecklistItem[]) ?? [] }))
+    try {
+      const res = await api.shootChecklist.list({ shootBookingId })
+      if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootChecklistItem[]) ?? [] }))
+      else setActionError(res.error?.message ?? 'Could not load checklist.')
+    } catch {
+      setActionError('Could not load checklist.')
+    }
   }, [])
 
   const loadAddOns = useCallback(async (shootBookingId: string) => {
-    const res = await api.shootAddOn.list({ shootBookingId })
-    if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootAddOnItem[]) ?? [] }))
+    try {
+      const res = await api.shootAddOn.list({ shootBookingId })
+      if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (res.data as ShootAddOnItem[]) ?? [] }))
+      else setActionError(res.error?.message ?? 'Could not load add-ons.')
+    } catch {
+      setActionError('Could not load add-ons.')
+    }
   }, [])
 
   function toggleExpand(id: string) {
@@ -452,19 +481,31 @@ export default function ShootsScreen() {
       const res = await api.shootChecklist.add({ shootBookingId, label: checklistForm.label.trim(), category: checklistForm.category })
       if (res.success) { setChecklistForm({ label: '', category: checklistForm.category }); void loadChecklist(shootBookingId) }
       else setActionError(res.error?.message ?? 'Could not add checklist item.')
+    } catch {
+      setActionError('Could not add checklist item.')
     } finally {
       setChecklistSaving(false)
     }
   }
 
   async function handleToggleChecklistItem(shootBookingId: string, item: ShootChecklistItem) {
-    const res = await api.shootChecklist.toggle({ id: item.id, isDone: !item.isDone })
-    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).map(i => (i.id === item.id ? { ...i, isDone: !i.isDone } : i)) }))
+    try {
+      const res = await api.shootChecklist.toggle({ id: item.id, isDone: !item.isDone })
+      if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).map(i => (i.id === item.id ? { ...i, isDone: !i.isDone } : i)) }))
+      else setActionError(res.error?.message ?? 'Could not update checklist item.')
+    } catch {
+      setActionError('Could not update checklist item.')
+    }
   }
 
   async function handleDeleteChecklistItem(shootBookingId: string, id: string) {
-    const res = await api.shootChecklist.delete({ id })
-    if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
+    try {
+      const res = await api.shootChecklist.delete({ id })
+      if (res.success) setChecklistMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
+      else setActionError(res.error?.message ?? 'Could not remove checklist item.')
+    } catch {
+      setActionError('Could not remove checklist item.')
+    }
   }
 
   // ── Itemized add-ons ─────────────────────────────────────────────────────────
@@ -480,40 +521,56 @@ export default function ShootsScreen() {
       })
       if (res.success) { setAddOnForm({ description: '', quantity: '1', unitPrice: '' }); void loadAddOns(shootBookingId) }
       else setActionError(res.error?.message ?? 'Could not add add-on item.')
+    } catch {
+      setActionError('Could not add add-on item.')
     } finally {
       setAddOnSaving(false)
     }
   }
 
   async function handleDeleteAddOn(shootBookingId: string, id: string) {
-    const res = await api.shootAddOn.delete({ id })
-    if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
-    else setActionError(res.error?.message ?? 'Could not remove add-on item.')
+    try {
+      const res = await api.shootAddOn.delete({ id })
+      if (res.success) setAddOnMap(prev => ({ ...prev, [shootBookingId]: (prev[shootBookingId] ?? []).filter(i => i.id !== id) }))
+      else setActionError(res.error?.message ?? 'Could not remove add-on item.')
+    } catch {
+      setActionError('Could not remove add-on item.')
+    }
   }
 
   async function handleGenerateInvoice(booking: ShootBooking) {
     setActionError(null)
     setGeneratingInvoiceId(booking.id)
-    const res = await api.shootBooking.generateInvoice(booking.id)
-    if (res.success) {
-      await loadBookings(statusFilter)
-    } else {
-      setActionError(res.error?.message ?? 'Failed to generate invoice.')
+    try {
+      const res = await api.shootBooking.generateInvoice(booking.id)
+      if (res.success) {
+        await loadBookings(statusFilter)
+      } else {
+        setActionError(res.error?.message ?? 'Failed to generate invoice.')
+      }
+    } catch {
+      setActionError('Failed to generate invoice.')
+    } finally {
+      setGeneratingInvoiceId(null)
     }
-    setGeneratingInvoiceId(null)
   }
 
   async function handleDelete(id: string) {
     setDeleteError(null)
     setDeleting(true)
-    const res = await api.shootBooking.delete(id)
-    setDeleting(false)
-    if (res.success) {
-      setDeleteTargetId(null)
-      setBookings(bs => bs.filter(b => b.id !== id))
-      loadKpis()
-    } else {
-      setDeleteError(res.error?.message ?? 'Failed to delete.')
+    try {
+      const res = await api.shootBooking.delete(id)
+      if (res.success) {
+        setDeleteTargetId(null)
+        setBookings(bs => bs.filter(b => b.id !== id))
+        loadKpis()
+      } else {
+        setDeleteError(res.error?.message ?? 'Failed to delete.')
+      }
+    } catch {
+      setDeleteError('Failed to delete.')
+    } finally {
+      setDeleting(false)
     }
   }
 
