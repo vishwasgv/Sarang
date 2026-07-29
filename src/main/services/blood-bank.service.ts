@@ -443,6 +443,22 @@ export async function updateScreeningStatus(payload: { id: string; screeningStat
   const db = getPrisma()
   try {
     if (payload.screeningStatus === 'PASSED') {
+      // Real bug found live (2026-07-29, real-concurrency E2E stress —
+      // tests/e2e/suites/51-real-concurrency-stress.js): the atomic-claim
+      // fix below is correct (exactly one ProductBatch survives, confirmed
+      // under real 10-way concurrent IPC load), but without an extended
+      // transaction timeout, a losing call's transaction can queue behind
+      // the winner's long enough to hit Prisma's DEFAULT interactive-
+      // transaction timeout (5000ms, measured from when the transaction
+      // STARTS queuing, not from when it actually runs) — surfacing as a
+      // raw "Socket timeout" Prisma error caught by the generic BB-018
+      // branch below, instead of the intended clean "already recorded"
+      // BB-017. 9 of 9 losing calls hit this under a real 10-way burst,
+      // every time. Same root cause billing.service.ts's createInvoice
+      // already documents and fixes ("Phase 55 stress-test finding") —
+      // apply the identical extended timeout/maxWait here so a losing call
+      // gets the clean, expected error message instead of an opaque
+      // DB-engine one.
       const result = await db.$transaction(async (tx) => {
         const claim = await tx.donationRecord.updateMany({
           where: { id: payload.id, screeningStatus: 'PENDING' },
@@ -473,7 +489,7 @@ export async function updateScreeningStatus(payload: { id: string; screeningStat
           include: { productBatch: true },
         })
         return { ok: true as const, data: updated }
-      })
+      }, { timeout: 15000, maxWait: 10000 })
 
       if (!result.ok) {
         const existing = await db.donationRecord.findUnique({ where: { id: payload.id }, select: { screeningStatus: true } })

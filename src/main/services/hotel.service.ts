@@ -582,6 +582,22 @@ export async function checkInBooking(payload: {
     // immigration guest register this vertical exists to produce. Claim the
     // status transition atomically inside the transaction; the loser now
     // fails cleanly instead of double-writing.
+    //
+    // Real bug found live (2026-07-29, real-concurrency E2E stress —
+    // tests/e2e/suites/51-real-concurrency-stress.js): the atomic-claim fix
+    // above is correct (exactly one HotelGuestId register entry survives,
+    // confirmed under real 10-way concurrent IPC load), but without an
+    // extended transaction timeout, a losing call's transaction can queue
+    // behind the winner's long enough to hit Prisma's DEFAULT interactive-
+    // transaction timeout (5000ms, measured from when the transaction
+    // STARTS queuing, not from when it actually runs) — surfacing as a raw
+    // "Socket timeout" Prisma error caught by the generic HTL-033 branch
+    // below, instead of the intended clean "already checked in" HTL-032. 9
+    // of 9 losing calls hit this under a real 10-way burst, every time.
+    // Same root cause billing.service.ts's createInvoice already documents
+    // and fixes ("Phase 55 stress-test finding") — apply the identical
+    // extended timeout/maxWait here so a losing call gets the clean,
+    // expected error message instead of an opaque DB-engine one.
     await db.$transaction(async (tx) => {
       const claim = await tx.hotelBooking.updateMany({
         where: { id: payload.id, status: 'CONFIRMED' },
@@ -598,7 +614,7 @@ export async function checkInBooking(payload: {
         })),
       })
       await tx.hotelRoom.update({ where: { id: booking.roomId }, data: { status: 'OCCUPIED' } })
-    })
+    }, { timeout: 15000, maxWait: 10000 })
 
     await logAction({ userId: payload.userId, action: 'HOTEL_CHECKED_IN', entityType: 'HotelBooking', entityId: payload.id, newValue: { guestCount: payload.guests.length } })
     return getBooking(payload.id)
@@ -620,6 +636,11 @@ export async function checkOutBooking(payload: { id: string; userId?: string }):
     // Same double-processing race as checkInBooking above, fixed the same
     // way: claim the CHECKED_IN -> CHECKED_OUT transition atomically so a
     // double-click can't create two housekeeping tasks for one checkout.
+    // Same extended timeout/maxWait as checkInBooking above, for the same
+    // real-concurrency-stress-test-found reason (queued losing transactions
+    // otherwise hit Prisma's default 5000ms timeout under real contention
+    // and surface a raw "Socket timeout" instead of the clean HTL-034
+    // message).
     await db.$transaction(async (tx) => {
       const claim = await tx.hotelBooking.updateMany({
         where: { id: payload.id, status: 'CHECKED_IN' },
@@ -637,7 +658,7 @@ export async function checkOutBooking(payload: { id: string; userId?: string }):
       await tx.hotelHousekeepingTask.create({
         data: { roomId: booking.roomId, bookingId: payload.id, taskLabel: 'Clean & inspect room after checkout' },
       })
-    })
+    }, { timeout: 15000, maxWait: 10000 })
 
     await logAction({ userId: payload.userId, action: 'HOTEL_CHECKED_OUT', entityType: 'HotelBooking', entityId: payload.id })
     return getBooking(payload.id)
