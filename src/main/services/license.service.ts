@@ -85,7 +85,14 @@ function sign(payload: string): string {
 
 /** Issues a new signed key. Used by the website's key-issuance route (mirrored server-side, not called from the app) and by tests. */
 export function generateLicenseKey(tier: LicenseTier, region: LicenseRegion, issuedAt: Date = new Date()): string {
-  const nonce = randomBytes(3).toString('hex') // 6 hex chars — collision-space large enough that a same-tier/region/day repeat is negligible, and this key isn't a secret, so cryptographic unpredictability isn't required, just uniqueness
+  // 6 random bytes (12 hex chars, 48 bits of collision-space) — not a secret,
+  // so cryptographic unpredictability isn't required, just uniqueness. Sized
+  // from actually measuring the birthday-bound collision rate at 3 bytes
+  // (24 bits) live during this fix: ~2.9% chance of any collision at just
+  // 1,000 same-day/tier/region signups, rising to ~95% by 10,000 — nowhere
+  // near negligible for a product meant to grow. At 6 bytes the same math
+  // stays under ~0.002% even at 100,000 same-day signups in one region.
+  const nonce = randomBytes(6).toString('hex')
   const payload = buildSignedPayload(tier, region, issuedAt, nonce)
   return `SARANG-${payload}-${sign(payload)}`
 }
