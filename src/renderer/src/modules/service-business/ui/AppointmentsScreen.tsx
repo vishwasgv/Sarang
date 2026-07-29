@@ -12,6 +12,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
@@ -125,6 +126,11 @@ export function AppointmentsScreen() {
   const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null)
   // Phase 58 §2 — before/after photo attachment per appointment.
   const [photosAppt, setPhotosAppt] = useState<Appointment | null>(null)
+  // Cancelling is a one-way action from this screen (CANCELLED has no
+  // NEXT_STATUS, so there's no in-UI way back) — confirm before firing it,
+  // matching the ConfirmDialog pattern used for destructive actions elsewhere.
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   const loadAppointments = useCallback(async () => {
     setLoading(true)
@@ -179,15 +185,20 @@ export function AppointmentsScreen() {
     setInvoiceError('')
     setInvoiceSuccess('')
     setGeneratingBatch(true)
-    const res = await api.appointments.generateBatchInvoice({ ids: [...selectedIds] })
-    if (res.success) {
-      setInvoiceSuccess('Invoice generated successfully.')
-      setSelectedIds(new Set())
-      await loadAppointments()
-    } else {
-      setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+    try {
+      const res = await api.appointments.generateBatchInvoice({ ids: [...selectedIds] })
+      if (res.success) {
+        setInvoiceSuccess('Invoice generated successfully.')
+        setSelectedIds(new Set())
+        await loadAppointments()
+      } else {
+        setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+      }
+    } catch {
+      setInvoiceError('Could not generate invoice.')
+    } finally {
+      setGeneratingBatch(false)
     }
-    setGeneratingBatch(false)
   }
 
   async function handleStatusChange(id: string, status: AppointmentStatus) {
@@ -496,7 +507,7 @@ export function AppointmentsScreen() {
                         No Show
                       </button>
                       <button
-                        onClick={() => handleStatusChange(appt.id, 'CANCELLED')}
+                        onClick={() => setCancelTarget(appt)}
                         className="shrink-0 p-1.5 text-slate-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-colors"
                         title="Cancel appointment"
                       >
@@ -544,6 +555,23 @@ export function AppointmentsScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={async () => {
+          if (!cancelTarget) return
+          setCancelling(true)
+          await handleStatusChange(cancelTarget.id, 'CANCELLED')
+          setCancelling(false)
+          setCancelTarget(null)
+        }}
+        title="Cancel Appointment"
+        message={cancelTarget ? `Cancel the appointment for ${cancelTarget.customerName ?? cancelTarget.customer?.customerName ?? 'this client'} at ${cancelTarget.scheduledTime}? This cannot be undone from here.` : ''}
+        confirmLabel="Cancel Appointment"
+        confirmVariant="danger"
+        loading={cancelling}
+      />
     </div>
   )
 }

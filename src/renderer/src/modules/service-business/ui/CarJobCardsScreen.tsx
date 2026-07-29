@@ -139,6 +139,7 @@ export default function CarJobCardsScreen() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [invoiceBanners, setInvoiceBanners] = useState<Record<string, { ok: boolean; msg: string }>>({})
   const [invoiceLoading, setInvoiceLoading] = useState<string | null>(null)
+  const [advancingId, setAdvancingId] = useState<string | null>(null)
   const [pickedClient, setPickedClient] = useState<Customer | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [partQuery, setPartQuery] = useState('')
@@ -161,10 +162,13 @@ export default function CarJobCardsScreen() {
     try {
       const res = await api.carJobCard.vehiclesDueForService({ dueSoonDays: 14 })
       if (res.success) setDueVehicles(res.data as DueVehicle[])
+      else toastError('Error', res.error?.message ?? 'Could not load vehicles due for service.')
+    } catch {
+      toastError('Error', 'Could not load vehicles due for service.')
     } finally {
       setDueVehiclesLoading(false)
     }
-  }, [])
+  }, [toastError])
 
   useEffect(() => {
     if (view === 'vehicles') loadDueVehicles()
@@ -176,7 +180,10 @@ export default function CarJobCardsScreen() {
     try {
       const res = await api.carJobCard.vehicleHistory({ vehicleNumber })
       if (res.success) setVehicleHistory(res.data as CarJobCard[])
-      else setVehicleHistory([])
+      else { setVehicleHistory([]); toastError('Error', res.error?.message ?? 'Could not load vehicle history.') }
+    } catch {
+      setVehicleHistory([])
+      toastError('Error', 'Could not load vehicle history.')
     } finally {
       setHistoryLoading(false)
     }
@@ -185,12 +192,17 @@ export default function CarJobCardsScreen() {
   async function handleSendReminder(jobCardId: string) {
     setReminderSending(jobCardId)
     setReminderBanners(prev => { const n = { ...prev }; delete n[jobCardId]; return n })
-    const res = await api.carJobCard.scheduleServiceReminder({ jobCardId })
-    setReminderSending(null)
-    if (res.success) {
-      setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: true, msg: 'Reminder scheduled.' } }))
-    } else {
-      setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: false, msg: res.error?.message ?? 'Could not schedule reminder.' } }))
+    try {
+      const res = await api.carJobCard.scheduleServiceReminder({ jobCardId })
+      if (res.success) {
+        setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: true, msg: 'Reminder scheduled.' } }))
+      } else {
+        setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: false, msg: res.error?.message ?? 'Could not schedule reminder.' } }))
+      }
+    } catch {
+      setReminderBanners(prev => ({ ...prev, [jobCardId]: { ok: false, msg: 'Could not schedule reminder.' } }))
+    } finally {
+      setReminderSending(null)
     }
   }
 
@@ -307,16 +319,21 @@ export default function CarJobCardsScreen() {
       nextServiceDueDate: form.nextServiceDueDate || undefined,
       nextServiceDueKm: form.nextServiceDueKm ? parseInt(form.nextServiceDueKm) : undefined,
     }
-    const res = editCard
-      ? await api.carJobCard.update({ id: editCard.id, ...payload })
-      : await api.carJobCard.create(payload)
-    setFormSaving(false)
-    if (res.success) {
-      setShowForm(false)
-      await loadCards(statusFilter || undefined, search || undefined)
-      loadKpis()
-    } else {
-      setFormError(res.error?.message ?? 'Save failed.')
+    try {
+      const res = editCard
+        ? await api.carJobCard.update({ id: editCard.id, ...payload })
+        : await api.carJobCard.create(payload)
+      if (res.success) {
+        setShowForm(false)
+        await loadCards(statusFilter || undefined, search || undefined)
+        loadKpis()
+      } else {
+        setFormError(res.error?.message ?? 'Save failed.')
+      }
+    } catch {
+      setFormError('Save failed.')
+    } finally {
+      setFormSaving(false)
     }
   }
 
@@ -324,31 +341,48 @@ export default function CarJobCardsScreen() {
     if (!deleteTarget) return
     setDeleting(true)
     setActionError(null)
-    const res = await api.carJobCard.delete(deleteTarget.id)
-    if (res.success) { setDeleteTarget(null); await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? 'Failed to delete job card.')
-    setDeleting(false)
+    try {
+      const res = await api.carJobCard.delete(deleteTarget.id)
+      if (res.success) { setDeleteTarget(null); await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? 'Failed to delete job card.')
+    } catch {
+      setActionError('Failed to delete job card.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function handleAdvanceStatus(card: CarJobCard) {
     const next = STATUS_NEXT[card.status]
     if (!next) return
     setActionError(null)
-    const res = await api.carJobCard.update({ id: card.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: toLocalISODate(new Date()) } : {}) })
-    if (res.success) { await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
-    else setActionError(res.error?.message ?? 'Failed to update status.')
+    setAdvancingId(card.id)
+    try {
+      const res = await api.carJobCard.update({ id: card.id, status: next, ...(next === 'DELIVERED' ? { deliveredDate: toLocalISODate(new Date()) } : {}) })
+      if (res.success) { await loadCards(statusFilter || undefined, search || undefined); loadKpis() }
+      else setActionError(res.error?.message ?? 'Failed to update status.')
+    } catch {
+      setActionError('Failed to update status.')
+    } finally {
+      setAdvancingId(null)
+    }
   }
 
   async function handleGenerateInvoice(card: CarJobCard) {
     setInvoiceLoading(card.id)
     setInvoiceBanners(prev => { const n = { ...prev }; delete n[card.id]; return n })
-    const res = await api.carJobCard.generateInvoice(card.id)
-    setInvoiceLoading(null)
-    if (res.success) {
-      setInvoiceBanners(prev => ({ ...prev, [card.id]: { ok: true, msg: 'Invoice generated successfully.' } }))
-      await loadCards(statusFilter || undefined, search || undefined)
-    } else {
-      setInvoiceBanners(prev => ({ ...prev, [card.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+    try {
+      const res = await api.carJobCard.generateInvoice(card.id)
+      if (res.success) {
+        setInvoiceBanners(prev => ({ ...prev, [card.id]: { ok: true, msg: 'Invoice generated successfully.' } }))
+        await loadCards(statusFilter || undefined, search || undefined)
+      } else {
+        setInvoiceBanners(prev => ({ ...prev, [card.id]: { ok: false, msg: res.error?.message ?? 'Invoice generation failed.' } }))
+      }
+    } catch {
+      setInvoiceBanners(prev => ({ ...prev, [card.id]: { ok: false, msg: 'Invoice generation failed.' } }))
+    } finally {
+      setInvoiceLoading(null)
     }
   }
 
@@ -501,8 +535,12 @@ export default function CarJobCardsScreen() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {nextStatus && card.status !== 'DELIVERED' && card.status !== 'CANCELLED' && (
-                        <button onClick={() => handleAdvanceStatus(card)} className="text-xs px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 font-medium">
-                          → {STATUS_LABELS[nextStatus]}
+                        <button
+                          onClick={() => handleAdvanceStatus(card)}
+                          disabled={advancingId === card.id}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 font-medium disabled:opacity-50"
+                        >
+                          {advancingId === card.id ? 'Updating...' : `→ ${STATUS_LABELS[nextStatus]}`}
                         </button>
                       )}
                       {card.status === 'READY' && !card.invoiceId && (

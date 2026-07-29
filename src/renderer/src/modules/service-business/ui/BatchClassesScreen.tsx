@@ -153,15 +153,20 @@ export function BatchClassesScreen() {
       endDate: form.endDate || undefined,
       roomOrLocation: form.roomOrLocation || undefined,
     }
-    const res = editingClass
-      ? await api.batchClass.update({ id: editingClass.id, ...payload })
-      : await api.batchClass.create(payload)
-    setSaving(false)
-    if (res.success) {
-      setShowForm(false)
-      loadClasses()
-    } else {
-      setSaveError(res.error?.message ?? 'Could not save class.')
+    try {
+      const res = editingClass
+        ? await api.batchClass.update({ id: editingClass.id, ...payload })
+        : await api.batchClass.create(payload)
+      if (res.success) {
+        setShowForm(false)
+        loadClasses()
+      } else {
+        setSaveError(res.error?.message ?? 'Could not save class.')
+      }
+    } catch {
+      setSaveError('Could not save class.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -184,13 +189,18 @@ export function BatchClassesScreen() {
   async function handleEnroll(memberId: string) {
     if (!enrollClass) return
     setEnrolling(true)
-    const res = await api.batchClass.enroll({ batchClassId: enrollClass.id, memberId })
-    setEnrolling(false)
-    if (res.success) {
-      loadClasses()
-      setEnrollClass(null)
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not enroll member.')
+    try {
+      const res = await api.batchClass.enroll({ batchClassId: enrollClass.id, memberId })
+      if (res.success) {
+        loadClasses()
+        setEnrollClass(null)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not enroll member.')
+      }
+    } catch {
+      toastError('Error', 'Could not enroll member.')
+    } finally {
+      setEnrolling(false)
     }
   }
 

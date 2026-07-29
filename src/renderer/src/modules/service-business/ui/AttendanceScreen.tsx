@@ -166,19 +166,24 @@ export default function AttendanceScreen() {
     setSaveMsg('')
     const presentStudentIds = enrollments.filter((e) => (attendance[e.studentId] ?? true)).map((e) => e.studentId)
     const absentStudentIds = enrollments.filter((e) => !(attendance[e.studentId] ?? true)).map((e) => e.studentId)
-    const res = await api.coachingAttendance.save({
-      batchId: selectedBatchId,
-      attendanceDate: selectedDate,
-      presentStudentIds,
-      absentStudentIds,
-    })
-    if (res.success) {
-      setSaveMsg(`Attendance saved — ${presentStudentIds.length} present, ${absentStudentIds.length} absent.`)
-      loadEnrollmentsAndAttendance()
-    } else {
-      setSaveMsg(res.error?.message ?? 'Failed to save attendance.')
+    try {
+      const res = await api.coachingAttendance.save({
+        batchId: selectedBatchId,
+        attendanceDate: selectedDate,
+        presentStudentIds,
+        absentStudentIds,
+      })
+      if (res.success) {
+        setSaveMsg(`Attendance saved — ${presentStudentIds.length} present, ${absentStudentIds.length} absent.`)
+        loadEnrollmentsAndAttendance()
+      } else {
+        setSaveMsg(res.error?.message ?? 'Failed to save attendance.')
+      }
+    } catch {
+      setSaveMsg('Failed to save attendance.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const presentCount = Object.values(attendance).filter(Boolean).length
