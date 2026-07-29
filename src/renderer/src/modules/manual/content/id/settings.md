@@ -62,4 +62,4 @@ Tiga bagian lainnya berada dalam menu Settings yang sama tetapi dibahas di bab m
 
 ## About
 
-**Settings → About** menampilkan nomor versi terpasang Anda dan pernyataan transparansi Sarang (data apa yang dikumpulkan dan tidak dikumpulkan — tidak ada, karena Sarang sepenuhnya offline).
+**Settings → About** menampilkan nomor versi terpasang Anda dan pernyataan transparansi Sarang. Sarang bekerja sepenuhnya offline untuk setiap fitur bisnis inti — penagihan, inventaris, pelanggan, laporan — dengan tiga pengecualian terbatas yang diungkapkan secara jelas, yang tidak satu pun pernah menyertakan data bisnis Anda dan tidak satu pun pernah menghalangi aplikasi jika Anda sedang offline: pemeriksaan pembaruan perangkat lunak (hanya versi aplikasi Anda), pemeriksaan status lisensi opsional sekali sehari (hanya versi terenkripsi satu arah dari kunci lisensi Anda), dan sinyal durasi penggunaan harian anonim (berapa menit aplikasi dibuka, terkait dengan kunci terenkripsi yang sama, tidak pernah sesuatu yang mengidentifikasi Anda atau bisnis Anda). Lihat **Settings → About → Privacy & Data** untuk gambaran lengkap.

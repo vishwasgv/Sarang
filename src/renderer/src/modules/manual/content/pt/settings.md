@@ -62,4 +62,4 @@ Mais três seções ficam neste mesmo menu de Configurações, mas são cobertas
 
 ## About
 
-**Configurações → About** mostra o número da versão instalada e a declaração de transparência do Sarang (quais dados são e não são coletados — nenhum, já que o Sarang é totalmente offline).
+**Configurações → About** mostra o número da versão instalada e a declaração de transparência do Sarang. O Sarang funciona totalmente offline para cada função essencial do negócio — faturamento, estoque, clientes, relatórios — com três exceções limitadas e divulgadas, nenhuma das quais inclui seus dados de negócio, e nenhuma das quais bloqueia o aplicativo se você estiver offline: uma verificação de atualização de software (apenas a versão do seu aplicativo), uma verificação opcional do status da licença uma vez por dia (apenas uma versão embaralhada de mão única da sua chave de licença), e um sinal anônimo diário de duração de uso (quantos minutos o aplicativo ficou aberto, vinculado a essa mesma chave embaralhada, nunca nada que identifique você ou seu negócio). Consulte **Configurações → About → Privacy & Data** para ver o quadro completo.
