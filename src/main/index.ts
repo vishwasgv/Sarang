@@ -19,6 +19,7 @@ import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.servi
 import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData } from './services/tutorial.service'
 import { isSetupComplete, completeSetup } from './services/setup.service'
 import { login } from './services/auth.service'
+import { isAllowedExternalUrl } from './utils/external-link.util'
 
 process.env.APP_ROOT = app.getAppPath()
 
@@ -182,15 +183,11 @@ function createWindow(): void {
     if (!url.startsWith(appUrl)) event.preventDefault()
   })
 
-  // R27: Only allow opening known safe domains in the system browser
-  const ALLOWED_EXTERNAL_DOMAINS = ['aszurex.com', 'www.aszurex.com', 'github.com', 'www.github.com']
+  // R27: Only allow opening known safe domains (+ wa.me, mailto:) in the system browser/mail client
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const parsed = new URL(url)
-      if (ALLOWED_EXTERNAL_DOMAINS.includes(parsed.hostname)) {
-        shell.openExternal(url)
-      }
-    } catch { /* ignore malformed URLs */ }
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url)
+    }
     return { action: 'deny' }
   })
 
