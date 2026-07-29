@@ -23,8 +23,14 @@ export function TutorialPromptScreen({ onDone, businessType }: TutorialPromptScr
 
   async function handleSkip() {
     setStarting(true)
+    // Best-effort dismiss — this screen must always advance even if the
+    // dismiss-prompt IPC call fails (matches BackupPromptScreen.tsx's own
+    // "always advance" convention), so failure is swallowed intentionally
+    // here rather than left to become an unhandled rejection.
     try {
       await api.app.dismissTutorialPrompt()
+    } catch {
+      // ignore — advancing regardless is the intended behavior
     } finally {
       onDone()
     }
