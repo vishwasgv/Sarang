@@ -35,6 +35,8 @@ A purchase order moves through a fixed lifecycle:
 3. **Receive Stock** — this is the step that actually adds the ordered quantities into your inventory and records a PURCHASE movement for each item. Once received, the PO shows each item's resulting stock level alongside the order line.
 4. A Draft or Approved PO can instead be **cancelled**, with a reason.
 
+A purchase order can be **printed** or exported/shared as a PDF at any stage, laid out with your business details, the supplier's details, and the full line-item list — the same **WhatsApp** and **Email** share buttons described in the *Billing & Documents* chapter's "Sharing documents via WhatsApp and Email" section work here too, sending the PO straight to your supplier.
+
 ## Low-stock visibility
 
 Low and out-of-stock counts appear in three places that all stay in sync: the alert badges at the top of the Inventory screen, the low-stock and out-of-stock tiles on the Dashboard, and the low-stock filter on the Products/Inventory screens. Setting a sensible reorder level on each product (the default is 5) is what makes these alerts useful — a product with no reorder level set effectively never triggers a low-stock warning.

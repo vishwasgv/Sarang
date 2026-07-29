@@ -46,6 +46,20 @@ A quotation starts as **Draft** and can be **Sent**, **Accepted**, or **Expired*
 
 **Debit Notes** (`/billing/debit-notes`) are the supplier-side equivalent — money a supplier owes you back, for example a return of purchased stock or a billing correction. Linking a debit note to a supplier debits their ledger, reducing what you owe them. Both credit and debit notes can optionally reference the invoice or purchase order they relate to, can be edited or deleted, and print at A4 or receipt width.
 
+## Sharing documents via WhatsApp and Email
+
+Invoices, Quotations, Credit Notes, and Debit Notes each have **WhatsApp** and **Email** share buttons (a chat-bubble icon and an envelope icon) next to their existing Print/Export controls. Clicking one:
+
+1. Prompts you to save the document as a PDF — the same save dialog Print/Export already uses.
+2. Opens the folder containing that PDF, with the file highlighted.
+3. Opens your own WhatsApp (or email app), pre-filled with the customer's or supplier's phone number/email (from their saved contact details) and a short message with the document number and amount.
+
+**You still attach the file yourself** — drag it from the highlighted folder into the WhatsApp or email window that just opened, then click Send. Sarang cannot attach the file automatically: neither WhatsApp's click-to-chat links nor `mailto:` links support attachments, so this one drag-and-drop step is a real limitation of both, not a missing feature. Nothing is ever sent automatically — Sarang only opens your own WhatsApp/email app pre-filled; you always click Send yourself.
+
+If a customer or supplier has no phone number on file, the WhatsApp button is disabled. If they have no email on file, the Email button still opens your email app with the "To" field left blank for you to fill in.
+
+Opening WhatsApp this way launches WhatsApp Desktop if it's installed, or WhatsApp Web in your browser otherwise. Opening Email launches whichever app is set as your computer's default mail app — if none is set, Windows will ask you to choose one; this is normal.
+
 ## Notes on tax and rounding
 
 Every invoice total is rounded to the nearest whole unit of currency, with the rounding difference shown as its own line so the math always adds up visibly. Under the GST tax model, tax prints as CGST+SGST for an intra-state sale or a single IGST line for an inter-state one, based on the checkbox set when the invoice was created.

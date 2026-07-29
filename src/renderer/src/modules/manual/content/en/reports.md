@@ -49,3 +49,7 @@ Every entry can be exported once it has run:
 - **CSV** — a plain data export of the table.
 - **Excel** — the same table as a proper .xlsx workbook.
 - **PDF** — a formatted document with the summary numbers, any charts, and the full table, suitable for printing or sharing as-is.
+
+## Sharing a report via WhatsApp or Email
+
+If you have permission to view a report, a **WhatsApp** and an **Email** button appear alongside the CSV/Excel/PDF export buttons once it has loaded (report sharing is PDF-only — CSV/Excel export stays available separately, unchanged). Clicking one asks you to save the report as a PDF, opens the folder with that file highlighted, then opens your own WhatsApp or email app with a short message naming the report and its date range (the underlying figures aren't put in the message itself — they're in the PDF). As with document sharing elsewhere in Sarang, you attach the file yourself and click Send — nothing is ever sent automatically, and since a report isn't tied to one specific customer or supplier, both the phone number and the email "To" field start empty for you to fill in.
