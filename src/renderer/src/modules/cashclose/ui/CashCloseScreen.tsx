@@ -8,6 +8,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate, formatTime } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface DaySummary {
   date: string
@@ -69,6 +70,7 @@ export function CashCloseScreen() {
   const [actualCash, setActualCash] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false)
   const [history, setHistory] = useState<CashCloseRecord[]>([])
   const { success: toastSuccess, error: toastError } = useNotificationStore()
 
@@ -112,9 +114,20 @@ export function CashCloseScreen() {
   useEffect(() => { loadSummary() }, [loadSummary])
   useEffect(() => { loadHistory() }, [loadHistory])
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const cash = parseFloat(actualCash)
     if (isNaN(cash) || cash < 0) { toastError('Invalid Amount', 'Enter a valid cash amount.'); return }
+    // Resubmitting for a date that already has a recorded close overwrites
+    // that day's actualCash/variance — confirm before silently replacing an
+    // already-closed financial record.
+    if (summary?.alreadyClosed) {
+      setConfirmOverwrite(true)
+      return
+    }
+    doSubmit(cash)
+  }
+
+  async function doSubmit(cash: number) {
     setSubmitting(true)
     try {
       const res = await window.api.cashClose.create({ date, actualCash: cash, notes: notes.trim() || undefined })
@@ -129,6 +142,7 @@ export function CashCloseScreen() {
       toastError('Error', 'Failed to record cash close.')
     } finally {
       setSubmitting(false)
+      setConfirmOverwrite(false)
     }
   }
 
@@ -304,6 +318,17 @@ export function CashCloseScreen() {
           </table>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmOverwrite}
+        onClose={() => setConfirmOverwrite(false)}
+        onConfirm={() => doSubmit(parseFloat(actualCash) || 0)}
+        loading={submitting}
+        title={t('cashClose.updateClose')}
+        message={`A cash close for ${date} is already recorded. Recording again will overwrite the previous actual cash and variance for that day. Continue?`}
+        confirmLabel={t('cashClose.updateClose')}
+        confirmVariant="danger"
+      />
     </div>
   )
 }

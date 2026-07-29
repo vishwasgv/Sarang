@@ -49,6 +49,7 @@ export function LeaveScreen() {
   const [typeForm, setTypeForm] = useState({ name: '', maxDays: '12', isPaid: true })
   const [saving, setSaving] = useState(false)
   const [empBalances, setEmpBalances] = useState<LeaveBalance[]>([])
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
 
   const currentYear = new Date().getFullYear()
@@ -121,16 +122,20 @@ export function LeaveScreen() {
   }
 
   async function updateStatus(id: string, status: 'APPROVED' | 'REJECTED') {
+    if (updatingId) return
+    setUpdatingId(id)
     try {
       const res = await api.hr.updateLeaveStatus({ id, status })
       if (res.success) {
         toastSuccess(t(status === 'APPROVED' ? 'hr.leaveApproved' : 'hr.leaveRejected'))
-        load()
+        await load()
       } else {
         toastError(res.error?.message ?? t('hr.actionFailed'))
       }
     } catch {
       toastError(t('hr.actionFailed'))
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -226,12 +231,12 @@ export function LeaveScreen() {
                     </div>
                     {r.status === 'PENDING' && (
                       <div className="flex gap-2 ml-4">
-                        <button onClick={() => updateStatus(r.id, 'APPROVED')}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-success/10 text-success rounded-lg text-sm font-medium hover:bg-success/20 transition-colors">
+                        <button onClick={() => updateStatus(r.id, 'APPROVED')} disabled={updatingId !== null}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-success/10 text-success rounded-lg text-sm font-medium hover:bg-success/20 transition-colors disabled:opacity-50">
                           <Check size={14} />{t('hr.approve')}
                         </button>
-                        <button onClick={() => updateStatus(r.id, 'REJECTED')}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20 transition-colors">
+                        <button onClick={() => updateStatus(r.id, 'REJECTED')} disabled={updatingId !== null}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-danger/10 text-danger rounded-lg text-sm font-medium hover:bg-danger/20 transition-colors disabled:opacity-50">
                           <X size={14} />{t('hr.reject')}
                         </button>
                       </div>

@@ -22,8 +22,13 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
   const [saving, setSaving] = useState(false)
 
   async function finish() {
+    // Best-effort dismiss — this screen must always advance even if the
+    // dismiss-prompt IPC call fails, so failure is swallowed intentionally
+    // here (not left to become an unhandled rejection in callers).
     try {
       await api.app.dismissBackupPrompt()
+    } catch {
+      // ignore — advancing regardless is the intended behavior
     } finally {
       onDone()
     }
