@@ -140,6 +140,11 @@ export function ProductionOrdersScreen() {
   // this just makes it a real prompt instead of a silent rejection).
   const [qcTarget, setQcTarget] = useState<WorkOrderStep | null>(null)
   const [qcNotesInput, setQcNotesInput] = useState('')
+  const [qcSubmitting, setQcSubmitting] = useState(false)
+
+  // Which work-order step (by id) currently has an in-flight status toggle —
+  // guards against a double-click firing api.workOrders.updateStatus twice.
+  const [woBusyId, setWoBusyId] = useState<string | null>(null)
 
   // Start-order confirmation
   const [startTarget, setStartTarget] = useState<ProductionOrder | null>(null)
@@ -183,14 +188,19 @@ export function ProductionOrdersScreen() {
     const qty = parseFloat(newForm.plannedQty)
     if (!qty || qty <= 0) { toastError(t('common.enterValidQty')); return }
     setCreating(true)
-    const res = await api.production.create({ productId: newForm.productId, plannedQty: qty, notes: newForm.notes || undefined })
-    setCreating(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.orderCreated'))
-      setShowNew(false)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      const res = await api.production.create({ productId: newForm.productId, plannedQty: qty, notes: newForm.notes || undefined })
+      if (res.success) {
+        toastSuccess(t('manufacturing.orderCreated'))
+        setShowNew(false)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -198,15 +208,20 @@ export function ProductionOrdersScreen() {
     if (!startTarget) return
     const order = startTarget
     setActionBusy(true)
-    const res = await api.production.start({ id: order.id })
-    setActionBusy(false)
-    setStartTarget(null)
-    if (res.success) {
-      toastSuccess(t('manufacturing.orderStarted', { number: order.orderNumber }))
-      setDetailOrder(res.data as ProductionOrder)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    try {
+      const res = await api.production.start({ id: order.id })
+      if (res.success) {
+        toastSuccess(t('manufacturing.orderStarted', { number: order.orderNumber }))
+        setDetailOrder(res.data as ProductionOrder)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setActionBusy(false)
+      setStartTarget(null)
     }
   }
 
@@ -217,76 +232,109 @@ export function ProductionOrdersScreen() {
     const scrapQty = parseFloat(completeScrapQty) || 0
     const laborCost = parseFloat(completeLaborCost) || 0
     setActionBusy(true)
-    const res = await api.production.complete({ id: detailOrder.id, producedQty: qty, scrapQty, laborCost })
-    setActionBusy(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.orderCompleted', { qty }))
-      setShowComplete(false)
-      setDetailOrder(res.data as ProductionOrder)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    try {
+      const res = await api.production.complete({ id: detailOrder.id, producedQty: qty, scrapQty, laborCost })
+      if (res.success) {
+        toastSuccess(t('manufacturing.orderCompleted', { qty }))
+        setShowComplete(false)
+        setDetailOrder(res.data as ProductionOrder)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setActionBusy(false)
     }
   }
 
   async function handleCancel() {
     if (!detailOrder) return
     setActionBusy(true)
-    const res = await api.production.cancel({ id: detailOrder.id, notes: cancelNotes || undefined })
-    setActionBusy(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.orderCancelledMsg', { number: detailOrder.orderNumber }))
-      setShowCancel(false)
-      setDetailOrder(null)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    try {
+      const res = await api.production.cancel({ id: detailOrder.id, notes: cancelNotes || undefined })
+      if (res.success) {
+        toastSuccess(t('manufacturing.orderCancelledMsg', { number: detailOrder.orderNumber }))
+        setShowCancel(false)
+        setDetailOrder(null)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setActionBusy(false)
     }
   }
 
   async function openDetail(order: ProductionOrder) {
-    const [detRes, woRes] = await Promise.all([
-      api.production.get({ id: order.id }),
-      api.workOrders.list({ productionOrderId: order.id })
-    ])
-    if (detRes.success && detRes.data) setDetailOrder(detRes.data as ProductionOrder)
-    else setDetailOrder(order)
-    if (woRes.success && woRes.data) setWorkOrders((woRes.data as WorkOrderStep[]) ?? [])
-    else setWorkOrders([])
+    try {
+      const [detRes, woRes] = await Promise.all([
+        api.production.get({ id: order.id }),
+        api.workOrders.list({ productionOrderId: order.id })
+      ])
+      if (detRes.success && detRes.data) setDetailOrder(detRes.data as ProductionOrder)
+      else setDetailOrder(order)
+      if (woRes.success && woRes.data) setWorkOrders((woRes.data as WorkOrderStep[]) ?? [])
+      else setWorkOrders([])
+    } catch {
+      // Fall back to the summary already held from the list so the modal
+      // still opens with something useful, but flag that the fresh detail
+      // fetch failed instead of silently showing stale/partial data.
+      setDetailOrder(order)
+      setWorkOrders([])
+      toastError(t('common.error'), t('common.error'))
+    }
   }
 
   async function handleWorkOrderStatusToggle(wo: WorkOrderStep) {
-    if (wo.status === 'DONE') {
-      // Un-mark done — no QC result required to go backward.
-      const res = await api.workOrders.updateStatus({ id: wo.id, status: 'PENDING' })
-      if (res.success) setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'PENDING' } : w))
-      else toastError(res.error?.message ?? t('common.updated'))
-      return
-    }
-    // Phase 58 §2 — a QC-flagged step requires a real pass/fail result
-    // before it can be marked done (server-enforced too, not just this UI
-    // gate) — route to the QC prompt instead of a plain toggle.
-    if (wo.isQcStep) {
-      setQcTarget(wo)
-      setQcNotesInput('')
-      return
-    }
-    const res = await api.workOrders.updateStatus({ id: wo.id, status: 'DONE' })
-    if (res.success) {
-      setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'DONE' } : w))
-    } else {
-      toastError(res.error?.message ?? t('common.updated'))
+    setWoBusyId(wo.id)
+    try {
+      if (wo.status === 'DONE') {
+        // Un-mark done — no QC result required to go backward.
+        const res = await api.workOrders.updateStatus({ id: wo.id, status: 'PENDING' })
+        if (res.success) setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'PENDING' } : w))
+        else toastError(res.error?.message ?? t('common.updated'))
+        return
+      }
+      // Phase 58 §2 — a QC-flagged step requires a real pass/fail result
+      // before it can be marked done (server-enforced too, not just this UI
+      // gate) — route to the QC prompt instead of a plain toggle.
+      if (wo.isQcStep) {
+        setQcTarget(wo)
+        setQcNotesInput('')
+        return
+      }
+      const res = await api.workOrders.updateStatus({ id: wo.id, status: 'DONE' })
+      if (res.success) {
+        setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: 'DONE' } : w))
+      } else {
+        toastError(res.error?.message ?? t('common.updated'))
+      }
+    } catch {
+      toastError(t('common.updated'))
+    } finally {
+      setWoBusyId(null)
     }
   }
 
   async function submitQcResult(result: 'PASS' | 'FAIL') {
     if (!qcTarget) return
-    const res = await api.workOrders.updateStatus({ id: qcTarget.id, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || undefined })
-    if (res.success) {
-      setWorkOrders(prev => prev.map(w => w.id === qcTarget.id ? { ...w, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || null } : w))
-      setQcTarget(null)
-    } else {
-      toastError(res.error?.message ?? t('common.updated'))
+    setQcSubmitting(true)
+    try {
+      const res = await api.workOrders.updateStatus({ id: qcTarget.id, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || undefined })
+      if (res.success) {
+        setWorkOrders(prev => prev.map(w => w.id === qcTarget.id ? { ...w, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || null } : w))
+        setQcTarget(null)
+      } else {
+        toastError(res.error?.message ?? t('common.updated'))
+      }
+    } catch {
+      toastError(t('common.updated'))
+    } finally {
+      setQcSubmitting(false)
     }
   }
 
@@ -597,8 +645,8 @@ export function ProductionOrdersScreen() {
                         <div key={wo.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-surface">
                           <button
                             onClick={() => handleWorkOrderStatusToggle(wo)}
-                            disabled={detailOrder.status === 'COMPLETED' || detailOrder.status === 'CANCELLED'}
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${wo.status === 'DONE' ? 'bg-success border-success' : 'border-slate-300 hover:border-brand'}`}
+                            disabled={detailOrder.status === 'COMPLETED' || detailOrder.status === 'CANCELLED' || woBusyId === wo.id}
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors disabled:opacity-50 ${wo.status === 'DONE' ? 'bg-success border-success' : 'border-slate-300 hover:border-brand'}`}
                           >
                             {wo.status === 'DONE' && <CheckCircle2 size={12} className="text-white" />}
                           </button>
@@ -799,10 +847,10 @@ export function ProductionOrdersScreen() {
                 className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
               />
               <div className="flex gap-3">
-                <button onClick={() => submitQcResult('FAIL')} className="flex-1 h-12 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors">
+                <button onClick={() => submitQcResult('FAIL')} disabled={qcSubmitting} className="flex-1 h-12 rounded-xl border border-red-200 text-red-600 font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors">
                   {t('manufacturing.qcFail')}
                 </button>
-                <button onClick={() => submitQcResult('PASS')} className="flex-1 h-12 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">
+                <button onClick={() => submitQcResult('PASS')} disabled={qcSubmitting} className="flex-1 h-12 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors">
                   {t('manufacturing.qcPass')}
                 </button>
               </div>

@@ -126,12 +126,16 @@ export function BulkOrderScreen() {
   // the customer, or switch customers mid-order.
   async function repriceCartForCustomer(customerId: string | null) {
     if (items.length === 0) return
-    const repriced = await Promise.all(items.map(async (i) => {
-      const res = await api.products.resolveCustomerPrice({ productId: i.productId, customerId })
-      const unitPrice = res.success && res.data ? (res.data as { price: number }).price : i.unitPrice
-      return { ...i, unitPrice }
-    }))
-    setItems(repriced)
+    try {
+      const repriced = await Promise.all(items.map(async (i) => {
+        const res = await api.products.resolveCustomerPrice({ productId: i.productId, customerId })
+        const unitPrice = res.success && res.data ? (res.data as { price: number }).price : i.unitPrice
+        return { ...i, unitPrice }
+      }))
+      setItems(repriced)
+    } catch {
+      toastError('Pricing Failed', 'Could not update prices for this customer. Cart prices may be stale.')
+    }
   }
 
   function updateQty(productId: string, qty: number) {
@@ -279,6 +283,11 @@ export function BulkOrderScreen() {
                         {pct > 0 && (
                           <span className="text-[10px] font-semibold text-success bg-success/10 px-1.5 py-0.5 rounded">
                             {pct}% bulk discount
+                          </span>
+                        )}
+                        {item.quantity > item.availableQty && (
+                          <span className="text-[10px] font-semibold text-danger bg-danger/10 px-1.5 py-0.5 rounded">
+                            Exceeds stock ({item.availableQty} available)
                           </span>
                         )}
                       </div>

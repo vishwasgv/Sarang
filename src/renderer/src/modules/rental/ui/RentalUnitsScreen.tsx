@@ -82,18 +82,23 @@ export function RentalUnitsScreen() {
     if (!productId || !unitLabel.trim()) { setError(t('rental.fillAllFields') as string); return }
     setSaving(true)
     setError(null)
-    const res = await api.rental.createUnit({
-      productId, unitLabel: unitLabel.trim(), conditionNotes: conditionNotes.trim() || undefined,
-      serviceIntervalRentals: serviceIntervalRentals ? Number(serviceIntervalRentals) : undefined,
-      serviceIntervalDays: serviceIntervalDays ? Number(serviceIntervalDays) : undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      setShowAdd(false); setProductId(''); setUnitLabel(''); setConditionNotes('')
-      setServiceIntervalRentals(''); setServiceIntervalDays('')
-      await load()
-    } else {
-      setError(res.error?.message ?? t('rental.saveFailed') as string)
+    try {
+      const res = await api.rental.createUnit({
+        productId, unitLabel: unitLabel.trim(), conditionNotes: conditionNotes.trim() || undefined,
+        serviceIntervalRentals: serviceIntervalRentals ? Number(serviceIntervalRentals) : undefined,
+        serviceIntervalDays: serviceIntervalDays ? Number(serviceIntervalDays) : undefined,
+      })
+      if (res.success) {
+        setShowAdd(false); setProductId(''); setUnitLabel(''); setConditionNotes('')
+        setServiceIntervalRentals(''); setServiceIntervalDays('')
+        await load()
+      } else {
+        setError(res.error?.message ?? t('rental.saveFailed') as string)
+      }
+    } catch {
+      setError(t('rental.saveFailed') as string)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -108,18 +113,27 @@ export function RentalUnitsScreen() {
   }
 
   async function handleMarkServiced(unit: RentalUnit) {
-    const res = await api.rental.markUnitServiced({ id: unit.id })
-    if (res.success) await load()
-    else toastError(t('common.error'), res.error?.message ?? t('rental.saveFailed') as string)
+    try {
+      const res = await api.rental.markUnitServiced({ id: unit.id })
+      if (res.success) await load()
+      else toastError(t('common.error'), res.error?.message ?? t('rental.saveFailed') as string)
+    } catch {
+      toastError(t('common.error'), t('rental.saveFailed') as string)
+    }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await api.rental.deleteUnit({ id: deleteTarget.id })
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); await load() }
-    else toastError(t('common.error'), res.error?.message ?? t('rental.deleteFailed') as string)
+    try {
+      const res = await api.rental.deleteUnit({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); await load() }
+      else toastError(t('common.error'), res.error?.message ?? t('rental.deleteFailed') as string)
+    } catch {
+      toastError(t('common.error'), t('rental.deleteFailed') as string)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (

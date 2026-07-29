@@ -69,6 +69,8 @@ export function MetalExchangeScreen(): React.JSX.Element {
       const res = await window.api.metalExchange.list()
       if (res.success) setExchanges((res.data as MetalExchange[]) ?? [])
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
     } finally {
       setLoading(false)
     }

@@ -5,6 +5,7 @@ import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // Phase 58 §2 — Distributor field-rep order capture. Structural mirror of
 // KOTScreen.tsx's "Incoming Orders" panel (QR table ordering) — a rep's LAN
@@ -38,6 +39,8 @@ export function FieldOrdersScreen() {
   const [serverStatus, setServerStatus] = useState<{ running: boolean; lanUrls: string[]; token: string | null } | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [captureUrl, setCaptureUrl] = useState<string | null>(null)
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
 
   const erroredRef = useRef(false)
 
@@ -122,18 +125,21 @@ export function FieldOrdersScreen() {
   }
 
   async function handleRegenerateToken() {
-    if (!confirm(t('distributor.fieldOrders.regenerateConfirm'))) return
+    setRegenerating(true)
     try {
       const res = await api.distributor.regenerateFieldOrderToken()
       if (res.success) {
         toastSuccess(t('distributor.fieldOrders.regenerated'), t('distributor.fieldOrders.regeneratedMessage'))
         setQrDataUrl(null); setCaptureUrl(null)
+        setRegenerateConfirmOpen(false)
         loadStatus()
       } else {
         toastError(t('distributor.fieldOrders.error'), (res.error as { message?: string })?.message ?? t('distributor.fieldOrders.couldNotRegenerate'))
       }
     } catch {
       toastError(t('distributor.fieldOrders.error'), t('distributor.fieldOrders.couldNotRegenerate'))
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -158,7 +164,7 @@ export function FieldOrdersScreen() {
               <button onClick={handleShowQr} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors">
                 <QrCode size={13} /> {t('distributor.fieldOrders.showQr')}
               </button>
-              <button onClick={handleRegenerateToken} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors">
+              <button onClick={() => setRegenerateConfirmOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors">
                 <RotateCw size={13} /> {t('distributor.fieldOrders.regenerateLink')}
               </button>
             </div>
@@ -246,6 +252,16 @@ export function FieldOrdersScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={regenerateConfirmOpen}
+        onClose={() => setRegenerateConfirmOpen(false)}
+        onConfirm={handleRegenerateToken}
+        loading={regenerating}
+        title={t('distributor.fieldOrders.regenerateLink')}
+        message={t('distributor.fieldOrders.regenerateConfirm')}
+        confirmLabel={t('distributor.fieldOrders.regenerateLink')}
+      />
     </div>
   )
 }

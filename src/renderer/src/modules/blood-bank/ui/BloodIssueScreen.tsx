@@ -48,6 +48,7 @@ export function BloodIssueScreen() {
   const [incompatibleUnits, setIncompatibleUnits] = useState<{ donationRecordId: string; note: string }[]>([])
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   // Phase 58 §2 — the compatibility check now BLOCKS issuance by default;
   // this is the explicit, documented emergency-release override, not a
@@ -133,28 +134,33 @@ export function BloodIssueScreen() {
       return
     }
     setSaving(true)
-    const res = await api.bloodBank.createIssue({
-      customerId: pickedCustomer?.id || undefined,
-      recipientName: form.recipientName.trim(),
-      recipientBloodGroup: form.recipientBloodGroup || undefined,
-      purpose: form.purpose || undefined,
-      donationRecordIds: selectedUnitIds,
-      price: form.price ? Number(form.price) : undefined,
-      overrideIncompatibility: incompatibleUnits.length > 0 ? overrideIncompatibility : undefined,
-      overrideReason: incompatibleUnits.length > 0 ? overrideReason.trim() || undefined : undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess('Units Issued', 'Blood units issued successfully.')
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      setPickedCustomer(null)
-      setSelectedUnitIds([])
-      setOverrideIncompatibility(false)
-      setOverrideReason('')
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not issue units.')
+    try {
+      const res = await api.bloodBank.createIssue({
+        customerId: pickedCustomer?.id || undefined,
+        recipientName: form.recipientName.trim(),
+        recipientBloodGroup: form.recipientBloodGroup || undefined,
+        purpose: form.purpose || undefined,
+        donationRecordIds: selectedUnitIds,
+        price: form.price ? Number(form.price) : undefined,
+        overrideIncompatibility: incompatibleUnits.length > 0 ? overrideIncompatibility : undefined,
+        overrideReason: incompatibleUnits.length > 0 ? overrideReason.trim() || undefined : undefined,
+      })
+      if (res.success) {
+        toastSuccess('Units Issued', 'Blood units issued successfully.')
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        setPickedCustomer(null)
+        setSelectedUnitIds([])
+        setOverrideIncompatibility(false)
+        setOverrideReason('')
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not issue units.')
+      }
+    } catch {
+      toastError('Failed', 'Could not issue units.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -174,17 +180,30 @@ export function BloodIssueScreen() {
   async function handleCancel() {
     if (!detail) return
     setCancelling(true)
-    const res = await api.bloodBank.cancelIssue({ id: detail.id })
-    setCancelling(false)
-    setConfirmCancel(false)
-    if (res.success) { toastSuccess('Issue Cancelled', 'Units returned to stock.'); setDetail(null); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel issue.')
+    try {
+      const res = await api.bloodBank.cancelIssue({ id: detail.id })
+      setConfirmCancel(false)
+      if (res.success) { toastSuccess('Issue Cancelled', 'Units returned to stock.'); setDetail(null); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel issue.')
+    } catch {
+      setConfirmCancel(false)
+      toastError('Failed', 'Could not cancel issue.')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   async function handleGenerateInvoice(id: string) {
-    const res = await api.bloodBank.generateIssueInvoice({ id })
-    if (res.success) { toastSuccess('Invoice Generated', 'Invoice generated for this issue.'); refreshDetail(id); load() }
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not generate invoice.')
+    setGeneratingInvoice(true)
+    try {
+      const res = await api.bloodBank.generateIssueInvoice({ id })
+      if (res.success) { toastSuccess('Invoice Generated', 'Invoice generated for this issue.'); refreshDetail(id); load() }
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not generate invoice.')
+    } catch {
+      toastError('Failed', 'Could not generate invoice.')
+    } finally {
+      setGeneratingInvoice(false)
+    }
   }
 
   return (
@@ -370,7 +389,7 @@ export function BloodIssueScreen() {
               <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-secondary">Total</span><span className="font-semibold text-text-primary">{formatCurrency(detail.totalAmount)}</span></div>
 
               {canCreate && detail.customerId && !detail.invoiceId && detail.status === 'ISSUED' && (
-                <button onClick={() => handleGenerateInvoice(detail.id)} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors">Generate Invoice</button>
+                <button onClick={() => handleGenerateInvoice(detail.id)} disabled={generatingInvoice} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors disabled:opacity-50">{generatingInvoice ? 'Generating…' : 'Generate Invoice'}</button>
               )}
               {canManage && detail.status === 'ISSUED' && !detail.invoiceId && (
                 <button onClick={() => setConfirmCancel(true)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">Cancel Issue</button>

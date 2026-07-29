@@ -69,10 +69,15 @@ export default function CarriersScreen() {
       phone: form.phone || undefined, email: form.email || undefined,
       gstNumber: form.gstNumber || undefined, notes: form.notes || undefined,
     }
-    const res = editId ? await window.api.logisticsCarrier.update({ id: editId, ...payload }) : await window.api.logisticsCarrier.create(payload)
-    setSaving(false)
-    if (res.success) { setShowForm(false); load() }
-    else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = editId ? await window.api.logisticsCarrier.update({ id: editId, ...payload }) : await window.api.logisticsCarrier.create(payload)
+      if (res.success) { setShowForm(false); load() }
+      else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const toggle = async (id: string) => {
@@ -88,10 +93,15 @@ export default function CarriersScreen() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.logisticsCarrier.delete(deleteTarget.id)
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); load() }
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsCarrier.delete(deleteTarget.id)
+      if (res.success) { setDeleteTarget(null); load() }
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const filtered = carriers.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? '').includes(search))

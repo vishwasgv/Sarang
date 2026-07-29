@@ -73,6 +73,7 @@ export function HotelRoomsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<HotelRoom | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showRateCalendar, setShowRateCalendar] = useState(false)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -128,32 +129,49 @@ export function HotelRoomsScreen() {
       amenities: form.amenities.trim() || undefined,
       notes: form.notes.trim() || undefined,
     }
-    const res = editingRoom
-      ? await api.hotel.updateRoom({ id: editingRoom.id, ...payload })
-      : await api.hotel.createRoom({ roomNumber: form.roomNumber.trim(), ...payload })
-    setSaving(false)
-    if (res.success) {
-      setShowForm(false)
-      toastSuccess(editingRoom ? 'Room updated' : 'Room added', form.roomNumber)
-      await load()
-    } else {
-      setFormError(res.error?.message ?? 'Could not save room.')
+    try {
+      const res = editingRoom
+        ? await api.hotel.updateRoom({ id: editingRoom.id, ...payload })
+        : await api.hotel.createRoom({ roomNumber: form.roomNumber.trim(), ...payload })
+      if (res.success) {
+        setShowForm(false)
+        toastSuccess(editingRoom ? 'Room updated' : 'Room added', form.roomNumber)
+        await load()
+      } else {
+        setFormError(res.error?.message ?? 'Could not save room.')
+      }
+    } catch {
+      setFormError('Could not save room.')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleStatusChange(room: HotelRoom, status: string) {
-    const res = await api.hotel.updateRoom({ id: room.id, status: status as HotelRoom['status'] })
-    if (res.success) await load()
-    else toastError('Error', res.error?.message ?? 'Could not update room status.')
+    setStatusUpdatingId(room.id)
+    try {
+      const res = await api.hotel.updateRoom({ id: room.id, status: status as HotelRoom['status'] })
+      if (res.success) await load()
+      else toastError('Error', res.error?.message ?? 'Could not update room status.')
+    } catch {
+      toastError('Error', 'Could not update room status.')
+    } finally {
+      setStatusUpdatingId(null)
+    }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await api.hotel.deleteRoom({ id: deleteTarget.id })
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); await load() }
-    else toastError('Error', res.error?.message ?? 'Could not delete room.')
+    try {
+      const res = await api.hotel.deleteRoom({ id: deleteTarget.id })
+      if (res.success) { setDeleteTarget(null); await load() }
+      else toastError('Error', res.error?.message ?? 'Could not delete room.')
+    } catch {
+      toastError('Error', 'Could not delete room.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -216,7 +234,8 @@ export function HotelRoomsScreen() {
                   <td className="px-4 py-3">
                     {canManage && r.status !== 'OCCUPIED' ? (
                       <select value={r.status} onChange={(e) => handleStatusChange(r, e.target.value)}
-                        className={`text-xs font-semibold rounded-full px-2.5 py-0.5 border-0 ${STATUS_COLORS[r.status]}`}>
+                        disabled={statusUpdatingId === r.id}
+                        className={`text-xs font-semibold rounded-full px-2.5 py-0.5 border-0 disabled:opacity-50 ${STATUS_COLORS[r.status]}`}>
                         <option value="AVAILABLE">Available</option>
                         <option value="CLEANING">Cleaning</option>
                         <option value="MAINTENANCE">Maintenance</option>
@@ -288,13 +307,20 @@ function RateCalendarModal({ roomTypes, onClose }: { roomTypes: string[]; onClos
   const [rate, setRate] = useState('')
   const [label, setLabel] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleteEntryTarget, setDeleteEntryTarget] = useState<RateCalendarEntry | null>(null)
+  const [deletingEntry, setDeletingEntry] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await api.hotel.listRateCalendar()
-    if (res.success && res.data) setEntries((res.data as { entries: RateCalendarEntry[] }).entries)
-    else toastError('Error', res.error?.message ?? 'Could not load rate calendar.')
-    setLoading(false)
+    try {
+      const res = await api.hotel.listRateCalendar()
+      if (res.success && res.data) setEntries((res.data as { entries: RateCalendarEntry[] }).entries)
+      else toastError('Error', res.error?.message ?? 'Could not load rate calendar.')
+    } catch {
+      toastError('Error', 'Could not load rate calendar.')
+    } finally {
+      setLoading(false)
+    }
   }, [toastError])
 
   useEffect(() => { load() }, [load])
@@ -305,23 +331,36 @@ function RateCalendarModal({ roomTypes, onClose }: { roomTypes: string[]; onClos
       return
     }
     setSaving(true)
-    const res = await api.hotel.createRateCalendarEntry({
-      roomType: roomType || undefined, startDate, endDate, rate: Number(rate), label: label.trim() || undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess('Rate added', label || `${startDate} → ${endDate}`)
-      setStartDate(''); setEndDate(''); setRate(''); setLabel('')
-      await load()
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not add rate.')
+    try {
+      const res = await api.hotel.createRateCalendarEntry({
+        roomType: roomType || undefined, startDate, endDate, rate: Number(rate), label: label.trim() || undefined,
+      })
+      if (res.success) {
+        toastSuccess('Rate added', label || `${startDate} → ${endDate}`)
+        setStartDate(''); setEndDate(''); setRate(''); setLabel('')
+        await load()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not add rate.')
+      }
+    } catch {
+      toastError('Error', 'Could not add rate.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    const res = await api.hotel.deleteRateCalendarEntry({ id })
-    if (res.success) await load()
-    else toastError('Error', res.error?.message ?? 'Could not remove rate.')
+  async function handleDelete() {
+    if (!deleteEntryTarget) return
+    setDeletingEntry(true)
+    try {
+      const res = await api.hotel.deleteRateCalendarEntry({ id: deleteEntryTarget.id })
+      if (res.success) { setDeleteEntryTarget(null); await load() }
+      else toastError('Error', res.error?.message ?? 'Could not remove rate.')
+    } catch {
+      toastError('Error', 'Could not remove rate.')
+    } finally {
+      setDeletingEntry(false)
+    }
   }
 
   return (
@@ -363,13 +402,23 @@ function RateCalendarModal({ roomTypes, onClose }: { roomTypes: string[]; onClos
                     <p className="font-medium text-dark dark:text-slate-100">{e.label || 'Seasonal rate'} — {e.roomType || 'All room types'}</p>
                     <p className="text-xs text-slate-500">{new Date(e.startDate).toLocaleDateString()} → {new Date(e.endDate).toLocaleDateString()} · {formatCurrency(e.rate)}/night</p>
                   </div>
-                  <button onClick={() => handleDelete(e.id)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
+                  <button onClick={() => setDeleteEntryTarget(e)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteEntryTarget}
+        onClose={() => setDeleteEntryTarget(null)}
+        onConfirm={handleDelete}
+        loading={deletingEntry}
+        title="Delete Seasonal Rate"
+        message={`Delete this seasonal rate${deleteEntryTarget?.label ? ` ("${deleteEntryTarget.label}")` : ''}? Future bookings in this date range will fall back to the room's flat rate.`}
+        confirmLabel="Delete"
+      />
     </div>
   )
 }

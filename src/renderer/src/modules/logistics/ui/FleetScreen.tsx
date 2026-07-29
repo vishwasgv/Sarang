@@ -84,25 +84,39 @@ export default function FleetScreen() {
     if (!form.vehicleNumber.trim()) { setError(t('logistics.fleet.vehicleNumberRequired')); return }
     setSaving(true); setError(null)
     const payload = { ...form, capacity: form.capacity ? parseFloat(form.capacity) : undefined, driverName: form.driverName || undefined, driverPhone: form.driverPhone || undefined, notes: form.notes || undefined }
-    const res = editId ? await window.api.logisticsVehicle.update({ id: editId, ...payload }) : await window.api.logisticsVehicle.create(payload)
-    setSaving(false)
-    if (res.success) { setShowForm(false); load() }
-    else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = editId ? await window.api.logisticsVehicle.update({ id: editId, ...payload }) : await window.api.logisticsVehicle.create(payload)
+      if (res.success) { setShowForm(false); load() }
+      else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const updateStatus = async (id: string, status: string) => {
-    const res = await window.api.logisticsVehicle.updateStatus({ id, status })
-    if (res.success) load()
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsVehicle.updateStatus({ id, status })
+      if (res.success) load()
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    }
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.logisticsVehicle.delete(deleteTarget.id)
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); load() }
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsVehicle.delete(deleteTarget.id)
+      if (res.success) { setDeleteTarget(null); load() }
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Status filtering is server-side; ownerType and search are client-side

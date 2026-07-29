@@ -29,6 +29,7 @@ export function HotelHousekeepingScreen() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -52,18 +53,32 @@ export function HotelHousekeepingScreen() {
   }, [])
 
   async function handleAssign(taskId: string, assignedToId: string) {
-    const res = await api.hotel.assignHousekeepingTask({ id: taskId, assignedToId: assignedToId || null })
-    if (res.success) await load()
-    else toastError('Error', res.error?.message ?? 'Could not assign task.')
+    setBusyTaskId(taskId)
+    try {
+      const res = await api.hotel.assignHousekeepingTask({ id: taskId, assignedToId: assignedToId || null })
+      if (res.success) await load()
+      else toastError('Error', res.error?.message ?? 'Could not assign task.')
+    } catch {
+      toastError('Error', 'Could not assign task.')
+    } finally {
+      setBusyTaskId(null)
+    }
   }
 
   async function handleStatus(taskId: string, status: 'PENDING' | 'IN_PROGRESS' | 'DONE') {
-    const res = await api.hotel.updateHousekeepingTaskStatus({ id: taskId, status })
-    if (res.success) {
-      if (status === 'DONE') toastSuccess('Task completed', '')
-      await load()
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not update task.')
+    setBusyTaskId(taskId)
+    try {
+      const res = await api.hotel.updateHousekeepingTaskStatus({ id: taskId, status })
+      if (res.success) {
+        if (status === 'DONE') toastSuccess('Task completed', '')
+        await load()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not update task.')
+      }
+    } catch {
+      toastError('Error', 'Could not update task.')
+    } finally {
+      setBusyTaskId(null)
     }
   }
 
@@ -104,7 +119,8 @@ export function HotelHousekeepingScreen() {
 
               {canManage && employees.length > 0 && (
                 <select value={task.assignedToId ?? ''} onChange={(e) => handleAssign(task.id, e.target.value)}
-                  title="Assign housekeeping staff" className="w-full text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5">
+                  disabled={busyTaskId === task.id}
+                  title="Assign housekeeping staff" className="w-full text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 disabled:opacity-50">
                   <option value="">— Unassigned —</option>
                   {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
                 </select>
@@ -116,9 +132,9 @@ export function HotelHousekeepingScreen() {
               {canManage && task.status !== 'DONE' && (
                 <div className="flex gap-2">
                   {task.status === 'PENDING' && (
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleStatus(task.id, 'IN_PROGRESS')}>Start</Button>
+                    <Button size="sm" variant="outline" className="flex-1" disabled={busyTaskId === task.id} onClick={() => handleStatus(task.id, 'IN_PROGRESS')}>Start</Button>
                   )}
-                  <Button size="sm" className="flex-1" onClick={() => handleStatus(task.id, 'DONE')}>Mark Done</Button>
+                  <Button size="sm" className="flex-1" disabled={busyTaskId === task.id} onClick={() => handleStatus(task.id, 'DONE')}>Mark Done</Button>
                 </div>
               )}
             </Card>

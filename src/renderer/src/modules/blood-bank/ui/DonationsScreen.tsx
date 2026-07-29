@@ -45,6 +45,7 @@ export function DonationsScreen() {
   const [saving, setSaving] = useState(false)
   const [screeningTarget, setScreeningTarget] = useState<DonationRecord | null>(null)
   const [screeningNotes, setScreeningNotes] = useState('')
+  const [screeningBusy, setScreeningBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,34 +90,46 @@ export function DonationsScreen() {
     if (!form.donorId) { toastError('Missing Donor', 'Select a donor.'); return }
     if (!form.bloodGroup) { toastError('Missing Blood Group', 'Select the blood group collected.'); return }
     setSaving(true)
-    const res = await api.bloodBank.createDonationRecord({
-      donorId: form.donorId,
-      bloodGroup: form.bloodGroup,
-      componentType: form.componentType,
-      volumeMl: form.volumeMl ? Number(form.volumeMl) : undefined,
-      notes: form.notes || undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess('Donation Recorded', 'Donation recorded — pending screening.')
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record donation.')
+    try {
+      const res = await api.bloodBank.createDonationRecord({
+        donorId: form.donorId,
+        bloodGroup: form.bloodGroup,
+        componentType: form.componentType,
+        volumeMl: form.volumeMl ? Number(form.volumeMl) : undefined,
+        notes: form.notes || undefined,
+      })
+      if (res.success) {
+        toastSuccess('Donation Recorded', 'Donation recorded — pending screening.')
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record donation.')
+      }
+    } catch {
+      toastError('Failed', 'Could not record donation.')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleScreening(status: 'PASSED' | 'FAILED') {
     if (!screeningTarget) return
-    const res = await api.bloodBank.updateScreeningStatus({ id: screeningTarget.id, screeningStatus: status, screeningNotes: screeningNotes || undefined })
-    if (res.success) {
-      toastSuccess(status === 'PASSED' ? 'Unit Added to Stock' : 'Marked Failed', status === 'PASSED' ? 'Screening passed — unit is now in stock.' : 'Screening failed — unit discarded, not added to stock.')
-      setScreeningTarget(null)
-      setScreeningNotes('')
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record screening result.')
+    setScreeningBusy(true)
+    try {
+      const res = await api.bloodBank.updateScreeningStatus({ id: screeningTarget.id, screeningStatus: status, screeningNotes: screeningNotes || undefined })
+      if (res.success) {
+        toastSuccess(status === 'PASSED' ? 'Unit Added to Stock' : 'Marked Failed', status === 'PASSED' ? 'Screening passed — unit is now in stock.' : 'Screening failed — unit discarded, not added to stock.')
+        setScreeningTarget(null)
+        setScreeningNotes('')
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not record screening result.')
+      }
+    } catch {
+      toastError('Failed', 'Could not record screening result.')
+    } finally {
+      setScreeningBusy(false)
     }
   }
 
@@ -251,14 +264,14 @@ export function DonationsScreen() {
             <textarea value={screeningNotes} onChange={(e) => setScreeningNotes(e.target.value)} rows={2} placeholder="Notes (optional)"
               className="w-full px-4 py-3 rounded-xl border border-border text-sm resize-none" />
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => handleScreening('PASSED')} className="h-11 rounded-xl bg-success text-white text-sm font-semibold flex items-center justify-center gap-2">
+              <button onClick={() => handleScreening('PASSED')} disabled={screeningBusy} className="h-11 rounded-xl bg-success text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
                 <CheckCircle2 size={14} /> Passed
               </button>
-              <button onClick={() => handleScreening('FAILED')} className="h-11 rounded-xl bg-danger text-white text-sm font-semibold flex items-center justify-center gap-2">
+              <button onClick={() => handleScreening('FAILED')} disabled={screeningBusy} className="h-11 rounded-xl bg-danger text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
                 <XCircle size={14} /> Failed
               </button>
             </div>
-            <button onClick={() => { setScreeningTarget(null); setScreeningNotes('') }} className="w-full h-10 rounded-xl border border-border text-text-secondary text-sm font-semibold">Cancel</button>
+            <button onClick={() => { setScreeningTarget(null); setScreeningNotes('') }} disabled={screeningBusy} className="w-full h-10 rounded-xl border border-border text-text-secondary text-sm font-semibold disabled:opacity-50">Cancel</button>
           </div>
         </div>
       )}

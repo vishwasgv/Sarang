@@ -5,6 +5,7 @@ import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 // Phase 58 §2 — Distributor customer-class/negotiated pricing. Plain CRUD
 // over CustomerClassPrice (unique per productId+customerClass) — resolved
@@ -29,6 +30,8 @@ export function CustomerPricingScreen() {
   const [customerClass, setCustomerClass] = useState('')
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ClassPrice | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -81,13 +84,17 @@ export function CustomerPricingScreen() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      const res = await api.products.deleteCustomerClassPrice(id)
-      if (res.success) { toastSuccess(t('distributor.pricing.removed'), t('distributor.pricing.removedMessage')); load() }
+      const res = await api.products.deleteCustomerClassPrice(deleteTarget.id)
+      if (res.success) { toastSuccess(t('distributor.pricing.removed'), t('distributor.pricing.removedMessage')); setDeleteTarget(null); load() }
       else toastError(t('distributor.pricing.error'), res.error?.message ?? t('distributor.pricing.couldNotRemove'))
     } catch {
       toastError(t('distributor.pricing.error'), t('distributor.pricing.couldNotRemove'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -163,7 +170,7 @@ export function CustomerPricingScreen() {
                 <div className="col-span-2 text-right text-xs text-slate-400 line-through">{formatCurrency(cp.product.sellingPrice)}</div>
                 <div className="col-span-1 text-right text-sm font-semibold text-dark dark:text-slate-100">{formatCurrency(cp.price)}</div>
                 <div className="col-span-1 text-right">
-                  <button onClick={() => handleDelete(cp.id)} className="text-slate-300 hover:text-danger transition-colors">
+                  <button onClick={() => setDeleteTarget(cp)} className="text-slate-300 hover:text-danger transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -172,6 +179,16 @@ export function CustomerPricingScreen() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Remove Price"
+        message="Remove this customer-class price? This cannot be undone."
+        confirmLabel={t('common.delete')}
+      />
     </div>
   )
 }

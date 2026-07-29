@@ -107,23 +107,32 @@ export default function FreightLedgerScreen() {
     if (!form.amount || parseFloat(form.amount) <= 0) { setError(t('logistics.freight.amountRequired')); return }
     setSaving(true); setError(null)
     const selectedCarrier = carriers.find(c => c.id === form.carrierId)
-    const res = await window.api.logisticsFreight.create({
-      carrierId: form.carrierId || undefined,
-      carrierName: selectedCarrier?.name || form.carrierName || 'Unknown',
-      referenceNumber: form.referenceNumber || undefined,
-      amount: parseFloat(form.amount),
-      paidBy: form.paidBy,
-      notes: form.notes || undefined,
-    })
-    setSaving(false)
-    if (res.success) { setShowForm(false); setForm({ ...EMPTY_FORM }); load() }
-    else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsFreight.create({
+        carrierId: form.carrierId || undefined,
+        carrierName: selectedCarrier?.name || form.carrierName || 'Unknown',
+        referenceNumber: form.referenceNumber || undefined,
+        amount: parseFloat(form.amount),
+        paidBy: form.paidBy,
+        notes: form.notes || undefined,
+      })
+      if (res.success) { setShowForm(false); setForm({ ...EMPTY_FORM }); load() }
+      else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const markPaid = async (id: string) => {
-    const res = await window.api.logisticsFreight.markPaid({ id })
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    load()
+    try {
+      const res = await window.api.logisticsFreight.markPaid({ id })
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      load()
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    }
   }
 
   const openEditFreight = (e: FreightEntry) => {

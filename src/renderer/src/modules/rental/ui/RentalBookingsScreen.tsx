@@ -223,6 +223,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       const res = await api.rental.createNextCycle({ bookingId: booking.id })
       if (res.success) { toastSuccess(t('rental.nextCycleCreated'), ''); onChanged() }
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
     } finally {
       setCreatingNextCycle(false)
     }
@@ -424,8 +426,12 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
   async function handleCheckAvailability(item: DraftItem) {
     if (!item.productId || !startDateTime || !endDateTime) return
     updateItem(item.key, { checking: true })
-    const res = await api.rental.checkAvailability({ productId: item.productId, startDateTime, endDateTime, quantity: Number(item.quantity) || 1 })
-    updateItem(item.key, { checking: false, availability: res.success ? (res.data as { available: boolean; availableQuantity?: number }) : null })
+    try {
+      const res = await api.rental.checkAvailability({ productId: item.productId, startDateTime, endDateTime, quantity: Number(item.quantity) || 1 })
+      updateItem(item.key, { checking: false, availability: res.success ? (res.data as { available: boolean; availableQuantity?: number }) : null })
+    } catch {
+      updateItem(item.key, { checking: false, availability: null })
+    }
   }
 
   async function handleCreate() {
@@ -435,15 +441,20 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     }
     setSaving(true)
     setError(null)
-    const res = await api.rental.createBooking({
-      customerId: customer.id, startDateTime, endDateTime,
-      securityDepositCollected: Number(deposit) || 0,
-      recurrenceIntervalDays: isRecurring ? (Number(recurrenceIntervalDays) || undefined) : undefined,
-      items: items.map((it) => ({ productId: it.productId, rateBasis: it.rateBasis as 'HOUR' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', quantity: Number(it.quantity) || 1 })),
-    })
-    setSaving(false)
-    if (res.success) onCreated()
-    else setError(res.error?.message ?? t('rental.bookingFailed') as string)
+    try {
+      const res = await api.rental.createBooking({
+        customerId: customer.id, startDateTime, endDateTime,
+        securityDepositCollected: Number(deposit) || 0,
+        recurrenceIntervalDays: isRecurring ? (Number(recurrenceIntervalDays) || undefined) : undefined,
+        items: items.map((it) => ({ productId: it.productId, rateBasis: it.rateBasis as 'HOUR' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', quantity: Number(it.quantity) || 1 })),
+      })
+      if (res.success) onCreated()
+      else setError(res.error?.message ?? t('rental.bookingFailed') as string)
+    } catch {
+      setError(t('rental.bookingFailed') as string)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const anyUnavailable = items.some((it) => it.availability != null && !it.availability.available)

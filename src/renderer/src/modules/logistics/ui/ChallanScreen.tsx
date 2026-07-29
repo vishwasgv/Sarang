@@ -108,24 +108,33 @@ export default function ChallanScreen() {
     const validItems = items.filter(i => i.productName.trim() && parseFloat(i.quantity) > 0)
     if (!validItems.length) { setError(t('logistics.challan.atLeastOneValidItem')); return }
     setSaving(true); setError(null)
-    const res = await window.api.logisticsChallan.create({
-      challanType: form.challanType, customerName: form.customerName,
-      customerAddress: form.customerAddress || undefined,
-      vehicleId: form.vehicleId || undefined,
-      driverName: form.driverName || undefined, driverPhone: form.driverPhone || undefined,
-      dispatchDate: form.dispatchDate || undefined, expectedReturn: form.expectedReturn || undefined,
-      notes: form.notes || undefined,
-      items: validItems.map(i => ({ productName: i.productName, quantity: parseFloat(i.quantity), unit: i.unit, unitValue: i.unitValue ? parseFloat(i.unitValue) : 0, notes: i.notes || undefined }))
-    })
-    setSaving(false)
-    if (res.success) { setShowForm(false); setForm({ ...EMPTY_FORM }); setItems([{ ...EMPTY_ITEM }]); load() }
-    else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsChallan.create({
+        challanType: form.challanType, customerName: form.customerName,
+        customerAddress: form.customerAddress || undefined,
+        vehicleId: form.vehicleId || undefined,
+        driverName: form.driverName || undefined, driverPhone: form.driverPhone || undefined,
+        dispatchDate: form.dispatchDate || undefined, expectedReturn: form.expectedReturn || undefined,
+        notes: form.notes || undefined,
+        items: validItems.map(i => ({ productName: i.productName, quantity: parseFloat(i.quantity), unit: i.unit, unitValue: i.unitValue ? parseFloat(i.unitValue) : 0, notes: i.notes || undefined }))
+      })
+      if (res.success) { setShowForm(false); setForm({ ...EMPTY_FORM }); setItems([{ ...EMPTY_ITEM }]); load() }
+      else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const changeStatus = async (id: string, status: string) => {
-    const res = await window.api.logisticsChallan.updateStatus({ id, status })
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    load()
+    try {
+      const res = await window.api.logisticsChallan.updateStatus({ id, status })
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      load()
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    }
   }
 
   const handleCancelChallan = async () => {
@@ -162,32 +171,42 @@ export default function ChallanScreen() {
     const validEditItems = editItems.filter(i => i.productName.trim() && parseFloat(i.quantity) > 0)
     if (!validEditItems.length) { setEditError(t('logistics.challan.atLeastOneValidItem')); return }
     setEditSaving(true); setEditError(null)
-    const res = await window.api.logisticsChallan.update({
-      id: editChallanId!,
-      challanType: editForm.challanType, customerName: editForm.customerName,
-      customerAddress: editForm.customerAddress || undefined,
-      vehicleId: editForm.vehicleId || null,
-      driverName: editForm.driverName || undefined, driverPhone: editForm.driverPhone || undefined,
-      dispatchDate: editForm.dispatchDate || undefined,
-      expectedReturn: editForm.challanType === 'RETURNABLE' ? (editForm.expectedReturn || undefined) : null,
-      notes: editForm.notes || undefined,
-      items: validEditItems.map(i => ({
-        productName: i.productName, quantity: parseFloat(i.quantity),
-        unit: i.unit, unitValue: parseFloat(i.unitValue) || 0, notes: i.notes || undefined,
-      })),
-    })
-    setEditSaving(false)
-    if (res.success) { setEditChallanId(null); load() }
-    else setEditError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsChallan.update({
+        id: editChallanId!,
+        challanType: editForm.challanType, customerName: editForm.customerName,
+        customerAddress: editForm.customerAddress || undefined,
+        vehicleId: editForm.vehicleId || null,
+        driverName: editForm.driverName || undefined, driverPhone: editForm.driverPhone || undefined,
+        dispatchDate: editForm.dispatchDate || undefined,
+        expectedReturn: editForm.challanType === 'RETURNABLE' ? (editForm.expectedReturn || undefined) : null,
+        notes: editForm.notes || undefined,
+        items: validEditItems.map(i => ({
+          productName: i.productName, quantity: parseFloat(i.quantity),
+          unit: i.unit, unitValue: parseFloat(i.unitValue) || 0, notes: i.notes || undefined,
+        })),
+      })
+      if (res.success) { setEditChallanId(null); load() }
+      else setEditError(res.error?.message ?? t('common.error'))
+    } catch {
+      setEditError(t('common.error'))
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const handleDeleteChallan = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.logisticsChallan.delete(deleteTarget.id)
-    setDeleting(false)
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    else { setDeleteTarget(null); load() }
+    try {
+      const res = await window.api.logisticsChallan.delete(deleteTarget.id)
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else { setDeleteTarget(null); load() }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const openReturnDialog = (c: Challan) => {
@@ -200,13 +219,18 @@ export default function ChallanScreen() {
     if (!returnChallanId) return
     if (!returnItems.some(i => i.returnedQty > 0)) { setReturnError(t('logistics.challan.atLeastOneReturnQty')); return }
     setReturnSaving(true); setReturnError(null)
-    const res = await window.api.logisticsChallan.recordReturn({
-      id: returnChallanId,
-      items: returnItems.map(i => ({ itemId: i.itemId, returnedQty: i.returnedQty })),
-    })
-    setReturnSaving(false)
-    if (res.success) { setReturnChallanId(null); load() }
-    else setReturnError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsChallan.recordReturn({
+        id: returnChallanId,
+        items: returnItems.map(i => ({ itemId: i.itemId, returnedQty: i.returnedQty })),
+      })
+      if (res.success) { setReturnChallanId(null); load() }
+      else setReturnError(res.error?.message ?? t('common.error'))
+    } catch {
+      setReturnError(t('common.error'))
+    } finally {
+      setReturnSaving(false)
+    }
   }
 
   const printChallan = async (c: Challan) => {

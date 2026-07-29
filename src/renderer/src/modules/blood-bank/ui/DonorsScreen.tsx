@@ -45,6 +45,9 @@ export function DonorsScreen() {
   const [showDefer, setShowDefer] = useState(false)
   const [deferReason, setDeferReason] = useState('')
   const [deferUntil, setDeferUntil] = useState('')
+  const [recalling, setRecalling] = useState(false)
+  const [deferBusy, setDeferBusy] = useState(false)
+  const [clearingDeferral, setClearingDeferral] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -69,31 +72,43 @@ export function DonorsScreen() {
   async function handleCreate() {
     if (!form.fullName.trim()) { toastError('Missing Name', "Enter the donor's name."); return }
     setSaving(true)
-    const res = await api.bloodBank.createDonor({
-      fullName: form.fullName.trim(),
-      phone: form.phone || undefined,
-      email: form.email || undefined,
-      gender: form.gender || undefined,
-      bloodGroup: form.bloodGroup || undefined,
-      weightKg: form.weightKg ? Number(form.weightKg) : undefined,
-      address: form.address || undefined,
-      notes: form.notes || undefined,
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess('Donor Registered', 'Donor registered successfully.')
-      setShowCreate(false)
-      setForm({ ...BLANK_FORM })
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not register donor.')
+    try {
+      const res = await api.bloodBank.createDonor({
+        fullName: form.fullName.trim(),
+        phone: form.phone || undefined,
+        email: form.email || undefined,
+        gender: form.gender || undefined,
+        bloodGroup: form.bloodGroup || undefined,
+        weightKg: form.weightKg ? Number(form.weightKg) : undefined,
+        address: form.address || undefined,
+        notes: form.notes || undefined,
+      })
+      if (res.success) {
+        toastSuccess('Donor Registered', 'Donor registered successfully.')
+        setShowCreate(false)
+        setForm({ ...BLANK_FORM })
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not register donor.')
+      }
+    } catch {
+      toastError('Failed', 'Could not register donor.')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleRecall(donor: Donor) {
-    const res = await api.bloodBank.sendDonorRecall({ donorId: donor.id })
-    if (res.success) toastSuccess('Reminder Ready', 'A WhatsApp reminder link has been generated.')
-    else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not send recall reminder.')
+    setRecalling(true)
+    try {
+      const res = await api.bloodBank.sendDonorRecall({ donorId: donor.id })
+      if (res.success) toastSuccess('Reminder Ready', 'A WhatsApp reminder link has been generated.')
+      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not send recall reminder.')
+    } catch {
+      toastError('Failed', 'Could not send recall reminder.')
+    } finally {
+      setRecalling(false)
+    }
   }
 
   // Refresh via getDonor (not updateDonor's raw response) so the detail view
@@ -115,27 +130,41 @@ export function DonorsScreen() {
 
   async function handleMarkDeferred() {
     if (!detail) return
-    const res = await api.bloodBank.updateDonor({ id: detail.id, isDeferred: true, deferralReason: deferReason || undefined, deferredUntil: deferUntil || null })
-    if (res.success) {
-      toastSuccess('Donor Deferred', 'Donor marked as deferred.')
-      setShowDefer(false)
-      setDeferReason('')
-      setDeferUntil('')
-      refreshDetail(detail.id)
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update donor.')
+    setDeferBusy(true)
+    try {
+      const res = await api.bloodBank.updateDonor({ id: detail.id, isDeferred: true, deferralReason: deferReason || undefined, deferredUntil: deferUntil || null })
+      if (res.success) {
+        toastSuccess('Donor Deferred', 'Donor marked as deferred.')
+        setShowDefer(false)
+        setDeferReason('')
+        setDeferUntil('')
+        refreshDetail(detail.id)
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update donor.')
+      }
+    } catch {
+      toastError('Failed', 'Could not update donor.')
+    } finally {
+      setDeferBusy(false)
     }
   }
 
   async function handleClearDeferral(donor: Donor) {
-    const res = await api.bloodBank.updateDonor({ id: donor.id, isDeferred: false, deferralReason: null, deferredUntil: null })
-    if (res.success) {
-      toastSuccess('Deferral Cleared', 'Donor is eligible to donate again.')
-      refreshDetail(donor.id)
-      load()
-    } else {
-      toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update donor.')
+    setClearingDeferral(true)
+    try {
+      const res = await api.bloodBank.updateDonor({ id: donor.id, isDeferred: false, deferralReason: null, deferredUntil: null })
+      if (res.success) {
+        toastSuccess('Deferral Cleared', 'Donor is eligible to donate again.')
+        refreshDetail(donor.id)
+        load()
+      } else {
+        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update donor.')
+      }
+    } catch {
+      toastError('Failed', 'Could not update donor.')
+    } finally {
+      setClearingDeferral(false)
     }
   }
 
@@ -315,8 +344,8 @@ export function DonorsScreen() {
                 </div>
               )}
               {canCreate && detail.phone && (
-                <button onClick={() => handleRecall(detail)} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors flex items-center justify-center gap-2">
-                  <Send size={14} /> Send Recall Reminder
+                <button onClick={() => handleRecall(detail)} disabled={recalling} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                  <Send size={14} /> {recalling ? 'Sending…' : 'Send Recall Reminder'}
                 </button>
               )}
               {canManage && !detail.isDeferred && (
@@ -325,8 +354,8 @@ export function DonorsScreen() {
                 </button>
               )}
               {canManage && detail.isDeferred && (
-                <button onClick={() => handleClearDeferral(detail)} className="w-full h-11 rounded-xl border border-success text-success text-sm font-semibold hover:bg-success/5 transition-colors">
-                  Clear Deferral
+                <button onClick={() => handleClearDeferral(detail)} disabled={clearingDeferral} className="w-full h-11 rounded-xl border border-success text-success text-sm font-semibold hover:bg-success/5 transition-colors disabled:opacity-50">
+                  {clearingDeferral ? 'Clearing…' : 'Clear Deferral'}
                 </button>
               )}
             </div>
@@ -350,8 +379,8 @@ export function DonorsScreen() {
                 className="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-brand" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => { setShowDefer(false); setDeferReason(''); setDeferUntil('') }} className="flex-1 h-11 rounded-xl border border-border text-text-secondary text-sm font-semibold">Cancel</button>
-              <button onClick={handleMarkDeferred} className="flex-1 h-11 rounded-xl bg-danger text-white text-sm font-semibold">Mark Deferred</button>
+              <button onClick={() => { setShowDefer(false); setDeferReason(''); setDeferUntil('') }} disabled={deferBusy} className="flex-1 h-11 rounded-xl border border-border text-text-secondary text-sm font-semibold disabled:opacity-50">Cancel</button>
+              <button onClick={handleMarkDeferred} disabled={deferBusy} className="flex-1 h-11 rounded-xl bg-danger text-white text-sm font-semibold disabled:opacity-50">{deferBusy ? 'Saving…' : 'Mark Deferred'}</button>
             </div>
           </div>
         </div>

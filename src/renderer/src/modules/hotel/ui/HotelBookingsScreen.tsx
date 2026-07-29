@@ -110,6 +110,8 @@ export function HotelBookingsScreen() {
       const res = await api.hotel.generateGroupInvoice({ bookingIds: checkedIds })
       if (res.success) { toastSuccess('Combined bill generated', `${checkedIds.length} bookings`); setCheckedIds([]); await load() }
       else toastError('Error', res.error?.message ?? 'Could not generate combined bill.')
+    } catch {
+      toastError('Error', 'Could not generate combined bill.')
     } finally {
       setCombining(false)
     }
@@ -271,6 +273,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       })
       if (res.success) { toastSuccess('Checked in', booking.guestName); onChanged() }
       else toastError('Error', res.error?.message ?? 'Could not check in.')
+    } catch {
+      toastError('Error', 'Could not check in.')
     } finally {
       setBusy(false)
     }
@@ -282,6 +286,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       const res = await api.hotel.checkOut({ id: booking.id })
       if (res.success) { toastSuccess('Checked out', booking.guestName); onChanged() }
       else toastError('Error', res.error?.message ?? 'Could not check out.')
+    } catch {
+      toastError('Error', 'Could not check out.')
     } finally {
       setBusy(false)
     }
@@ -294,6 +300,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       setShowCancelConfirm(false)
       if (res.success) onChanged()
       else toastError('Error', res.error?.message ?? 'Could not cancel booking.')
+    } catch {
+      setShowCancelConfirm(false)
+      toastError('Error', 'Could not cancel booking.')
     } finally {
       setBusy(false)
     }
@@ -305,6 +314,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       const res = await api.hotel.markNoShow({ id: booking.id })
       if (res.success) onChanged()
       else toastError('Error', res.error?.message ?? 'Could not mark as no-show.')
+    } catch {
+      toastError('Error', 'Could not mark as no-show.')
     } finally {
       setBusy(false)
     }
@@ -316,6 +327,8 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       const res = await api.hotel.generateInvoice({ bookingId: booking.id })
       if (res.success) { toastSuccess('Bill generated', ''); onChanged() }
       else toastError('Error', res.error?.message ?? 'Could not generate invoice.')
+    } catch {
+      toastError('Error', 'Could not generate invoice.')
     } finally {
       setBusy(false)
     }
@@ -372,15 +385,24 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       })
       if (res.success) { setChargeDesc(''); setChargeQty('1'); setChargePrice(''); onChanged() }
       else toastError('Error', res.error?.message ?? 'Could not add charge.')
+    } catch {
+      toastError('Error', 'Could not add charge.')
     } finally {
       setBusy(false)
     }
   }
 
   async function handleRemoveCharge(chargeId: string) {
-    const res = await api.hotel.removeExtraCharge({ chargeId })
-    if (res.success) onChanged()
-    else toastError('Error', res.error?.message ?? 'Could not remove charge.')
+    setBusy(true)
+    try {
+      const res = await api.hotel.removeExtraCharge({ chargeId })
+      if (res.success) onChanged()
+      else toastError('Error', res.error?.message ?? 'Could not remove charge.')
+    } catch {
+      toastError('Error', 'Could not remove charge.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -405,7 +427,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                 <span className="flex items-center gap-2">
                   {formatCurrency(c.amount)}
                   {booking.status === 'CHECKED_IN' && canManage && (
-                    <button onClick={() => handleRemoveCharge(c.id)} className="text-slate-300 hover:text-danger"><Trash2 size={12} /></button>
+                    <button onClick={() => handleRemoveCharge(c.id)} disabled={busy} className="text-slate-300 hover:text-danger disabled:opacity-50"><Trash2 size={12} /></button>
                   )}
                 </span>
               </div>
@@ -556,8 +578,10 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     if (c) {
       if (!guestName) setGuestName(c.customerName)
       if (!guestPhone && c.phone) setGuestPhone(c.phone)
-      const res = await api.hotel.getCustomerStayHistory({ customerId: c.id })
-      if (res.success && res.data) setStayHistory(res.data as { stayCount: number; lastStayCheckOut: string | null })
+      try {
+        const res = await api.hotel.getCustomerStayHistory({ customerId: c.id })
+        if (res.success && res.data) setStayHistory(res.data as { stayCount: number; lastStayCheckOut: string | null })
+      } catch { /* returning-guest badge is supplementary — the booking form itself still works without it */ }
     } else {
       setStayHistory(null)
     }
@@ -571,6 +595,8 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
       const res = await api.hotel.listAvailableRooms({ checkInDate, checkOutDate: effectiveCheckOutDate })
       if (res.success && res.data) setAvailableRooms((res.data as { rooms: HotelRoom[] }).rooms)
       else toastError('Error', res.error?.message ?? 'Could not check availability.')
+    } catch {
+      toastError('Error', 'Could not check availability.')
     } finally {
       setChecking(false)
     }
@@ -592,19 +618,24 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
     }
     setSaving(true)
     setError(null)
-    const res = await api.hotel.createBooking({
-      roomId, customerId: customer?.id, guestName: guestName.trim(),
-      guestPhone: guestPhone.trim() || undefined, guestEmail: guestEmail.trim() || undefined,
-      numberOfGuests: Number(numberOfGuests) || 1,
-      checkInDate, checkOutDate: bookingType === 'DAY_USE' ? undefined : checkOutDate,
-      bookingType, channel,
-      ratePerNight: ratePerNight ? Number(ratePerNight) : undefined,
-      advanceAmount: Number(advanceAmount) || 0,
-      advancePaymentMethod: advanceMethod as 'CASH' | 'UPI' | 'CARD' | 'WALLET',
-    })
-    setSaving(false)
-    if (res.success) onCreated()
-    else setError(res.error?.message ?? 'Could not create booking.')
+    try {
+      const res = await api.hotel.createBooking({
+        roomId, customerId: customer?.id, guestName: guestName.trim(),
+        guestPhone: guestPhone.trim() || undefined, guestEmail: guestEmail.trim() || undefined,
+        numberOfGuests: Number(numberOfGuests) || 1,
+        checkInDate, checkOutDate: bookingType === 'DAY_USE' ? undefined : checkOutDate,
+        bookingType, channel,
+        ratePerNight: ratePerNight ? Number(ratePerNight) : undefined,
+        advanceAmount: Number(advanceAmount) || 0,
+        advancePaymentMethod: advanceMethod as 'CASH' | 'UPI' | 'CARD' | 'WALLET',
+      })
+      if (res.success) onCreated()
+      else setError(res.error?.message ?? 'Could not create booking.')
+    } catch {
+      setError('Could not create booking.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
