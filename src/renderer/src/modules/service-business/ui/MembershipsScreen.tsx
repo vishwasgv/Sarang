@@ -245,20 +245,6 @@ export function MembershipsScreen() {
     }
   }
 
-  async function handleStatusChange(id: string, status: string) {
-    try {
-      const res = await api.membership.update({ id, status })
-      if (res.success) {
-        loadMemberships()
-        loadMembershipCounts()
-      } else {
-        toastError('Error', res.error?.message ?? 'Could not update membership status.')
-      }
-    } catch {
-      toastError('Error', 'Could not update membership status.')
-    }
-  }
-
   async function handleCancelMembership() {
     if (!cancelTarget) return
     setCancellingMembership(true)
