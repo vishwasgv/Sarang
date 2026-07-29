@@ -2423,9 +2423,12 @@
       "itemNotesPlaceholder": "Item notes (optional)",
       "deleteConfirm": "Delete shipment {{number}}? This cannot be undone.",
       "destinationRequired": "Destination address is required.",
+      "cancelShipment": "Cancel Shipment",
+      "cancelConfirm": "Cancel shipment {{number}}? This cannot be undone.",
       "stops": {
         "title": "Stops",
         "addStop": "Add Stop",
+        "deleteStopConfirm": "Remove this stop from the route? This cannot be undone.",
         "customerName": "Customer Name (optional)",
         "destinationAddress": "Destination Address",
         "notes": "Notes (optional)",

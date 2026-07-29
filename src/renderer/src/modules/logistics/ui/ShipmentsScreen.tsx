@@ -66,6 +66,13 @@ export default function ShipmentsScreen() {
   const [shipments, setShipments] = useState<ShipmentListItem[]>([])
   const [deleteTarget, setDeleteTarget] = useState<ShipmentListItem | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<ShipmentListItem | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [stopBusyId, setStopBusyId] = useState<string | null>(null)
+  const [deleteStopTarget, setDeleteStopTarget] = useState<ShipmentStop | null>(null)
+  const [deletingStop, setDeletingStop] = useState(false)
+  const [openingEditId, setOpeningEditId] = useState<string | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [loading, setLoading] = useState(true)
@@ -142,28 +149,35 @@ export default function ShipmentsScreen() {
   const openAdd = () => { setForm({ ...EMPTY_FORM }); setItems([]); setStops([]); setEditId(null); setError(null); setShowForm(true) }
 
   const openEdit = async (s: ShipmentListItem) => {
-    const res = await window.api.logisticsShipment.get(s.id)
-    if (!res.success) { toastError(t('common.error'), t('common.error')); return }
-    const full = res.data as any
-    setForm({
-      shipmentType: full.shipmentType, originAddress: full.originAddress ?? '',
-      destinationAddress: full.destinationAddress,
-      customerName: full.customerName ?? '', supplierName: full.supplierName ?? '',
-      carrierId: full.carrierId ?? '', vehicleId: full.vehicleId ?? '',
-      trackingNumber: full.trackingNumber ?? '', ewayBillNumber: full.ewayBillNumber ?? '',
-      freightAmount: full.freightAmount?.toString() ?? '',
-      weight: full.weight?.toString() ?? '', packages: full.packages?.toString() ?? '1',
-      scheduledDate: full.scheduledDate?.split('T')[0] ?? '',
-      expectedDelivery: full.expectedDelivery?.split('T')[0] ?? '',
-      notes: full.notes ?? '',
-    })
-    setItems((full.items ?? []).map((i: ShipmentItem) => ({
-      productName: i.productName, quantity: i.quantity.toString(),
-      unit: i.unit, unitValue: i.unitValue?.toString() ?? '', notes: i.notes ?? '',
-    })))
-    setStops((full.stops ?? []) as ShipmentStop[])
-    setNewStopAddress(''); setNewStopCustomerName('')
-    setEditId(s.id); setError(null); setShowForm(true)
+    setOpeningEditId(s.id)
+    try {
+      const res = await window.api.logisticsShipment.get(s.id)
+      if (!res.success) { toastError(t('common.error'), t('common.error')); return }
+      const full = res.data as any
+      setForm({
+        shipmentType: full.shipmentType, originAddress: full.originAddress ?? '',
+        destinationAddress: full.destinationAddress,
+        customerName: full.customerName ?? '', supplierName: full.supplierName ?? '',
+        carrierId: full.carrierId ?? '', vehicleId: full.vehicleId ?? '',
+        trackingNumber: full.trackingNumber ?? '', ewayBillNumber: full.ewayBillNumber ?? '',
+        freightAmount: full.freightAmount?.toString() ?? '',
+        weight: full.weight?.toString() ?? '', packages: full.packages?.toString() ?? '1',
+        scheduledDate: full.scheduledDate?.split('T')[0] ?? '',
+        expectedDelivery: full.expectedDelivery?.split('T')[0] ?? '',
+        notes: full.notes ?? '',
+      })
+      setItems((full.items ?? []).map((i: ShipmentItem) => ({
+        productName: i.productName, quantity: i.quantity.toString(),
+        unit: i.unit, unitValue: i.unitValue?.toString() ?? '', notes: i.notes ?? '',
+      })))
+      setStops((full.stops ?? []) as ShipmentStop[])
+      setNewStopAddress(''); setNewStopCustomerName('')
+      setEditId(s.id); setError(null); setShowForm(true)
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setOpeningEditId(null)
+    }
   }
 
   const handleAddStop = async () => {
@@ -185,15 +199,30 @@ export default function ShipmentsScreen() {
   }
 
   const handleStopStatus = async (stopId: string, status: 'DELIVERED' | 'SKIPPED') => {
-    const res = await window.api.logisticsShipment.updateStopStatus({ id: stopId, status })
-    if (res.success && res.data) setStops(prev => prev.map(s => s.id === stopId ? (res.data as ShipmentStop) : s))
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    setStopBusyId(stopId)
+    try {
+      const res = await window.api.logisticsShipment.updateStopStatus({ id: stopId, status })
+      if (res.success && res.data) setStops(prev => prev.map(s => s.id === stopId ? (res.data as ShipmentStop) : s))
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setStopBusyId(null)
+    }
   }
 
-  const handleDeleteStop = async (stopId: string) => {
-    const res = await window.api.logisticsShipment.deleteStop(stopId)
-    if (res.success) setStops(prev => prev.filter(s => s.id !== stopId))
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+  const handleDeleteStop = async () => {
+    if (!deleteStopTarget) return
+    setDeletingStop(true)
+    try {
+      const res = await window.api.logisticsShipment.deleteStop(deleteStopTarget.id)
+      if (res.success) { setStops(prev => prev.filter(s => s.id !== deleteStopTarget.id)); setDeleteStopTarget(null) }
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeletingStop(false)
+    }
   }
 
   const save = async () => {
@@ -215,43 +244,78 @@ export default function ShipmentsScreen() {
         unit: i.unit, unitValue: parseFloat(i.unitValue) || 0, notes: i.notes || undefined,
       })),
     }
-    const res = editId
-      ? await window.api.logisticsShipment.update({
-          id: editId, ...sharedFields,
-          carrierId: form.carrierId || null, vehicleId: form.vehicleId || null,
-        })
-      : await window.api.logisticsShipment.create({
-          ...sharedFields,
-          carrierId: form.carrierId || undefined, vehicleId: form.vehicleId || undefined,
-        })
-    setSaving(false)
-    if (res.success) { setShowForm(false); load() }
-    else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = editId
+        ? await window.api.logisticsShipment.update({
+            id: editId, ...sharedFields,
+            carrierId: form.carrierId || null, vehicleId: form.vehicleId || null,
+          })
+        : await window.api.logisticsShipment.create({
+            ...sharedFields,
+            carrierId: form.carrierId || undefined, vehicleId: form.vehicleId || undefined,
+          })
+      if (res.success) { setShowForm(false); load() }
+      else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const changeStatus = async (id: string, status: string) => {
-    const res = await window.api.logisticsShipment.updateStatus({ id, status })
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    load()
+    setStatusChangingId(id)
+    try {
+      const res = await window.api.logisticsShipment.updateStatus({ id, status })
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      await load()
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setStatusChangingId(null)
+    }
+  }
+
+  const handleCancelShipment = async () => {
+    if (!cancelTarget) return
+    setCancelling(true)
+    await changeStatus(cancelTarget.id, 'CANCELLED')
+    setCancelling(false)
+    setCancelTarget(null)
   }
 
   const handleDeleteShipment = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.logisticsShipment.delete(deleteTarget.id)
-    setDeleting(false)
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    else { setDeleteTarget(null); load() }
+    try {
+      const res = await window.api.logisticsShipment.delete(deleteTarget.id)
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else { setDeleteTarget(null); load() }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const printShipment = async (s: ShipmentListItem) => {
-    const res = await window.api.logisticsShipment.get(s.id)
-    const full = res.success ? (res.data as any) : null
+    // Open the popup synchronously, still inside the click's user-gesture window —
+    // awaiting the item-detail IPC call *before* window.open() risks losing that
+    // gesture association and having the popup silently blocked (see ChallanScreen's
+    // printChallan comment for the same fix applied to its logo fetch). Everything
+    // else printed here already comes from the list row (s); only the item lines
+    // need this extra fetch, so a failure degrades to "no items" rather than
+    // aborting the print entirely.
+    const w = window.open('', '_blank')
+    let full: any = null
+    try {
+      const res = await window.api.logisticsShipment.get(s.id)
+      full = res.success ? (res.data as any) : null
+    } catch { /* degrade to no-items row below */ }
     const itemRows = full?.items?.length
       ? full.items.map((i: ShipmentItem) => `<tr><td>${i.productName}</td><td>${i.quantity}</td><td>${i.unit}</td><td>${formatCurrency(i.unitValue)}</td><td>${formatCurrency(i.totalValue)}</td></tr>`).join('')
       : '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:8px">No items recorded</td></tr>'
     const html = `<html><head><style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}.title{font-size:18px;font-weight:bold;margin-bottom:16px}.row{display:flex;gap:8px;margin-bottom:8px}.label{color:#666;width:160px;flex-shrink:0}h3{font-size:13px;margin:16px 0 8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px}th{background:#f5f5f5}footer{margin-top:32px;font-size:10px;color:#888;text-align:center}</style></head><body><div class="title">Shipment: ${s.shipmentNumber}</div><div class="row"><span class="label">Type:</span><span>${s.shipmentType}</span></div><div class="row"><span class="label">Status:</span><span>${s.status}</span></div>${s.originAddress ? `<div class="row"><span class="label">From:</span><span>${s.originAddress}</span></div>` : ''}<div class="row"><span class="label">To:</span><span>${s.destinationAddress}</span></div><div class="row"><span class="label">Customer:</span><span>${s.customerName ?? '-'}</span></div><div class="row"><span class="label">Supplier:</span><span>${s.supplierName ?? '-'}</span></div><div class="row"><span class="label">Carrier:</span><span>${s.carrierName ?? '-'}</span></div><div class="row"><span class="label">Vehicle:</span><span>${s.vehicleNumber ?? '-'}</span></div><div class="row"><span class="label">Tracking #:</span><span>${s.trackingNumber ?? '-'}</span></div>${s.ewayBillNumber ? `<div class="row"><span class="label">eWay Bill #:</span><span>${s.ewayBillNumber}</span></div>` : ''}<div class="row"><span class="label">Weight:</span><span>${s.weight ? `${s.weight} kg` : '-'}</span></div><div class="row"><span class="label">Packages:</span><span>${s.packages}</span></div><div class="row"><span class="label">Freight:</span><span>${formatCurrency(s.freightAmount)}</span></div><div class="row"><span class="label">Expected Delivery:</span><span>${s.expectedDelivery ? formatDate(s.expectedDelivery) : '-'}</span></div><h3>Items</h3><table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Value</th><th>Total</th></tr></thead><tbody>${itemRows}</tbody></table><footer>${aszurexFooterHtml(10)}</footer></body></html>`
-    const w = window.open('', '_blank')
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
@@ -313,12 +377,15 @@ export default function ShipmentsScreen() {
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 {VALID_TRANSITIONS[s.status]?.map(next => (
-                  <button key={next} onClick={() => changeStatus(s.id, next)} className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700">
+                  <button key={next}
+                    onClick={() => next === 'CANCELLED' ? setCancelTarget(s) : changeStatus(s.id, next)}
+                    disabled={statusChangingId === s.id}
+                    className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50">
                     → {next}
                   </button>
                 ))}
                 {!['DELIVERED', 'RETURNED', 'CANCELLED'].includes(s.status) && (
-                  <button onClick={() => openEdit(s)} className="text-xs text-blue-600 hover:underline ml-auto">{t('common.edit')}</button>
+                  <button onClick={() => openEdit(s)} disabled={openingEditId === s.id} className="text-xs text-blue-600 hover:underline ml-auto disabled:opacity-50">{t('common.edit')}</button>
                 )}
                 {['PENDING', 'CANCELLED'].includes(s.status) && (
                   <button onClick={() => setDeleteTarget(s)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
@@ -453,11 +520,11 @@ export default function ShipmentsScreen() {
                             <Badge variant={stop.status === 'DELIVERED' ? 'success' : stop.status === 'SKIPPED' ? 'warning' : 'neutral'} size="sm">{stop.status}</Badge>
                             {stop.status === 'PENDING' && (
                               <>
-                                <button onClick={() => handleStopStatus(stop.id, 'DELIVERED')} className="text-xs text-blue-600 hover:underline">{t('logistics.shipments.stops.markDelivered')}</button>
-                                <button onClick={() => handleStopStatus(stop.id, 'SKIPPED')} className="text-xs text-gray-500 hover:underline">{t('logistics.shipments.stops.skip')}</button>
+                                <button onClick={() => handleStopStatus(stop.id, 'DELIVERED')} disabled={stopBusyId === stop.id} className="text-xs text-blue-600 hover:underline disabled:opacity-50">{t('logistics.shipments.stops.markDelivered')}</button>
+                                <button onClick={() => handleStopStatus(stop.id, 'SKIPPED')} disabled={stopBusyId === stop.id} className="text-xs text-gray-500 hover:underline disabled:opacity-50">{t('logistics.shipments.stops.skip')}</button>
                               </>
                             )}
-                            <button onClick={() => handleDeleteStop(stop.id)} className="text-xs text-red-500 hover:underline">{t('logistics.shipments.stops.delete')}</button>
+                            <button onClick={() => setDeleteStopTarget(stop)} disabled={stopBusyId === stop.id} className="text-xs text-red-500 hover:underline disabled:opacity-50">{t('logistics.shipments.stops.delete')}</button>
                           </div>
                         </div>
                       ))}
@@ -491,6 +558,26 @@ export default function ShipmentsScreen() {
         title={t('common.delete')}
         message={deleteTarget ? t('logistics.shipments.deleteConfirm', { number: deleteTarget.shipmentNumber }) : ''}
         confirmLabel={t('common.delete')}
+      />
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelShipment}
+        loading={cancelling}
+        title={t('logistics.shipments.cancelShipment')}
+        message={cancelTarget ? t('logistics.shipments.cancelConfirm', { number: cancelTarget.shipmentNumber }) : ''}
+        confirmLabel={t('logistics.shipments.cancelShipment')}
+      />
+
+      <ConfirmDialog
+        open={!!deleteStopTarget}
+        onClose={() => setDeleteStopTarget(null)}
+        onConfirm={handleDeleteStop}
+        loading={deletingStop}
+        title={t('logistics.shipments.stops.delete')}
+        message={t('logistics.shipments.stops.deleteStopConfirm')}
+        confirmLabel={t('logistics.shipments.stops.delete')}
       />
     </div>
   )

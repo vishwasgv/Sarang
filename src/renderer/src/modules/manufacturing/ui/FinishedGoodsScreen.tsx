@@ -88,12 +88,19 @@ export function FinishedGoodsScreen() {
   async function openHistory(good: FinishedGood) {
     setHistoryTarget(good)
     setHistoryLoading(true)
-    const res = await api.production.list({ productId: good.id, limit: 50 })
-    if (res.success && res.data) {
-      const d = res.data as { orders: ProductionHistory[] }
-      setHistory(d.orders)
+    try {
+      const res = await api.production.list({ productId: good.id, limit: 50 })
+      if (res.success && res.data) {
+        const d = res.data as { orders: ProductionHistory[] }
+        setHistory(d.orders)
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setHistoryLoading(false)
     }
-    setHistoryLoading(false)
   }
 
   return (

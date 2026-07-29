@@ -152,16 +152,22 @@ export function ReturnScreen() {
 
     setSubmitting(true)
     setSubmitError(null)
-    const res = await api.returns.create({
-      originalInvoiceId: invoice.id,
-      items: selected.map(i => ({ productId: i.productId, quantity: i.returnQty, ...(i.variantId ? { variantId: i.variantId } : {}) })),
-      reason: reason.trim()
-    })
-    setSubmitting(false)
-    if (res.success && res.data) {
-      setResult(res.data as { invoiceNumber: string })
-    } else {
-      setSubmitError((res.error as { message?: string })?.message ?? 'Could not process return.')
+    try {
+      const res = await api.returns.create({
+        originalInvoiceId: invoice.id,
+        items: selected.map(i => ({ productId: i.productId, quantity: i.returnQty, ...(i.variantId ? { variantId: i.variantId } : {}) })),
+        reason: reason.trim()
+      })
+      if (res.success && res.data) {
+        setResult(res.data as { invoiceNumber: string })
+      } else {
+        setSubmitError((res.error as { message?: string })?.message ?? 'Could not process return.')
+      }
+    } catch {
+      setSubmitError('Could not process return. Please try again.')
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setSubmitting(false)
     }
   }
 

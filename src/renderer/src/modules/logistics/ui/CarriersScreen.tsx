@@ -32,6 +32,7 @@ export default function CarriersScreen() {
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Carrier | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const PAGE_SIZE = 100
   const [limit, setLimit] = useState(PAGE_SIZE)
@@ -81,12 +82,15 @@ export default function CarriersScreen() {
   }
 
   const toggle = async (id: string) => {
+    setTogglingId(id)
     try {
       const res = await window.api.logisticsCarrier.toggleActive(id)
-      if (res.success) load()
+      if (res.success) await load()
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -145,8 +149,8 @@ export default function CarriersScreen() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openEdit(c)} className="text-blue-600 text-xs hover:underline">{t('common.edit')}</button>
-                <button onClick={() => toggle(c.id)} className="text-yellow-600 text-xs hover:underline">{c.isActive ? t('logistics.carriers.deactivate') : t('logistics.carriers.activate')}</button>
-                <button onClick={() => setDeleteTarget(c)} className="text-red-500 text-xs hover:underline">{t('common.delete')}</button>
+                <button onClick={() => toggle(c.id)} disabled={togglingId === c.id} className="text-yellow-600 text-xs hover:underline disabled:opacity-50">{c.isActive ? t('logistics.carriers.deactivate') : t('logistics.carriers.activate')}</button>
+                <button onClick={() => setDeleteTarget(c)} disabled={togglingId === c.id} className="text-red-500 text-xs hover:underline disabled:opacity-50">{t('common.delete')}</button>
               </div>
             </Card>
           ))}

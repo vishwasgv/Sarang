@@ -132,45 +132,55 @@ export function RawMaterialsScreen() {
   async function handleSave() {
     if (!form.name.trim()) { toastError(t('common.nameRequired')); return }
     setSaving(true)
-    let res
-    if (editTarget) {
-      res = await api.rawMaterials.update({
-        id: editTarget.id,
-        name: form.name.trim(),
-        unit: form.unit,
-        reorderLevel: parseFloat(form.reorderLevel) || 0,
-        unitCost: parseFloat(form.unitCost) || 0
-      })
-    } else {
-      res = await api.rawMaterials.create({
-        name: form.name.trim(),
-        unit: form.unit,
-        currentStock: parseFloat(form.currentStock) || 0,
-        reorderLevel: parseFloat(form.reorderLevel) || 0,
-        unitCost: parseFloat(form.unitCost) || 0
-      })
-    }
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(editTarget ? t('manufacturing.materialUpdated') : t('manufacturing.materialAdded'))
-      setShowForm(false)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      let res
+      if (editTarget) {
+        res = await api.rawMaterials.update({
+          id: editTarget.id,
+          name: form.name.trim(),
+          unit: form.unit,
+          reorderLevel: parseFloat(form.reorderLevel) || 0,
+          unitCost: parseFloat(form.unitCost) || 0
+        })
+      } else {
+        res = await api.rawMaterials.create({
+          name: form.name.trim(),
+          unit: form.unit,
+          currentStock: parseFloat(form.currentStock) || 0,
+          reorderLevel: parseFloat(form.reorderLevel) || 0,
+          unitCost: parseFloat(form.unitCost) || 0
+        })
+      }
+      if (res.success) {
+        toastSuccess(editTarget ? t('manufacturing.materialUpdated') : t('manufacturing.materialAdded'))
+        setShowForm(false)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await api.rawMaterials.delete({ id: deleteTarget.id })
-    setDeleting(false)
-    if (res.success) {
-      toastSuccess(t('common.removed'))
-      setDeleteTarget(null)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    try {
+      const res = await api.rawMaterials.delete({ id: deleteTarget.id })
+      if (res.success) {
+        toastSuccess(t('common.removed'))
+        setDeleteTarget(null)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -184,28 +194,39 @@ export function RawMaterialsScreen() {
     const qty = parseFloat(adjustForm.quantity)
     if (isNaN(qty) || qty <= 0) { toastError(t('common.enterValidQty')); return }
     setAdjusting(true)
-    const res = await api.rawMaterials.adjustStock({
-      id: adjustTarget.id,
-      type: adjustForm.type as 'PURCHASE' | 'ADJUSTMENT' | 'RETURN',
-      quantity: qty,
-      notes: adjustForm.notes || undefined
-    })
-    setAdjusting(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.stockUpdated'))
-      setAdjustTarget(null)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.stockUpdated'))
+    try {
+      const res = await api.rawMaterials.adjustStock({
+        id: adjustTarget.id,
+        type: adjustForm.type as 'PURCHASE' | 'ADJUSTMENT' | 'RETURN',
+        quantity: qty,
+        notes: adjustForm.notes || undefined
+      })
+      if (res.success) {
+        toastSuccess(t('manufacturing.stockUpdated'))
+        setAdjustTarget(null)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.stockUpdated'))
+      }
+    } catch {
+      toastError(t('manufacturing.stockUpdated'))
+    } finally {
+      setAdjusting(false)
     }
   }
 
   async function openMovements(m: RawMaterial) {
     setMovementTarget(m)
     setMovementsLoading(true)
-    const res = await api.rawMaterials.movements({ rawMaterialId: m.id, limit: 50 })
-    if (res.success && res.data) setMovements(res.data as Movement[])
-    setMovementsLoading(false)
+    try {
+      const res = await api.rawMaterials.movements({ rawMaterialId: m.id, limit: 50 })
+      if (res.success && res.data) setMovements(res.data as Movement[])
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setMovementsLoading(false)
+    }
   }
 
   // Phase 58 §2 — raw-material lot/batch traceability
@@ -213,9 +234,15 @@ export function RawMaterialsScreen() {
     setBatchTarget(m)
     setNewBatchForm({ batchNumber: '', quantity: '', unitCost: '' })
     setBatchesLoading(true)
-    const res = await api.rawMaterials.listBatches({ rawMaterialId: m.id })
-    if (res.success && res.data) setBatches(res.data as RawMaterialBatch[])
-    setBatchesLoading(false)
+    try {
+      const res = await api.rawMaterials.listBatches({ rawMaterialId: m.id })
+      if (res.success && res.data) setBatches(res.data as RawMaterialBatch[])
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setBatchesLoading(false)
+    }
   }
 
   async function handleReceiveBatch() {
@@ -224,20 +251,25 @@ export function RawMaterialsScreen() {
     const qty = parseFloat(newBatchForm.quantity)
     if (!qty || qty <= 0) { toastError(t('common.error'), t('common.enterValidQty')); return }
     setReceivingBatch(true)
-    const res = await api.rawMaterials.receiveBatch({
-      rawMaterialId: batchTarget.id,
-      batchNumber: newBatchForm.batchNumber.trim(),
-      quantity: qty,
-      unitCost: newBatchForm.unitCost ? parseFloat(newBatchForm.unitCost) : undefined
-    })
-    setReceivingBatch(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.batchReceived'))
-      setNewBatchForm({ batchNumber: '', quantity: '', unitCost: '' })
-      openBatches(batchTarget)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      const res = await api.rawMaterials.receiveBatch({
+        rawMaterialId: batchTarget.id,
+        batchNumber: newBatchForm.batchNumber.trim(),
+        quantity: qty,
+        unitCost: newBatchForm.unitCost ? parseFloat(newBatchForm.unitCost) : undefined
+      })
+      if (res.success) {
+        toastSuccess(t('manufacturing.batchReceived'))
+        setNewBatchForm({ batchNumber: '', quantity: '', unitCost: '' })
+        openBatches(batchTarget)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setReceivingBatch(false)
     }
   }
 

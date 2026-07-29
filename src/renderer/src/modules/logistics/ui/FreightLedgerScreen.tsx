@@ -37,6 +37,7 @@ export default function FreightLedgerScreen() {
   const [entries, setEntries] = useState<FreightEntry[]>([])
   const [deleteTarget, setDeleteTarget] = useState<FreightEntry | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null)
   const [carriers, setCarriers] = useState<Carrier[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -126,12 +127,15 @@ export default function FreightLedgerScreen() {
   }
 
   const markPaid = async (id: string) => {
+    setMarkingPaidId(id)
     try {
       const res = await window.api.logisticsFreight.markPaid({ id })
       if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-      load()
+      await load()
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setMarkingPaidId(null)
     }
   }
 
@@ -151,27 +155,37 @@ export default function FreightLedgerScreen() {
     if (!editForm.amount || parseFloat(editForm.amount) <= 0) { setEditError(t('logistics.freight.amountRequired')); return }
     setEditSaving(true); setEditError(null)
     const selectedCarrier = carriers.find(c => c.id === editForm.carrierId)
-    const res = await window.api.logisticsFreight.update({
-      id: editId!,
-      carrierId: editForm.carrierId || undefined,
-      carrierName: selectedCarrier?.name || editForm.carrierName || undefined,
-      referenceNumber: editForm.referenceNumber || undefined,
-      amount: parseFloat(editForm.amount),
-      paidBy: editForm.paidBy,
-      notes: editForm.notes || undefined,
-    })
-    setEditSaving(false)
-    if (res.success) { setEditId(null); load() }
-    else setEditError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsFreight.update({
+        id: editId!,
+        carrierId: editForm.carrierId || undefined,
+        carrierName: selectedCarrier?.name || editForm.carrierName || undefined,
+        referenceNumber: editForm.referenceNumber || undefined,
+        amount: parseFloat(editForm.amount),
+        paidBy: editForm.paidBy,
+        notes: editForm.notes || undefined,
+      })
+      if (res.success) { setEditId(null); load() }
+      else setEditError(res.error?.message ?? t('common.error'))
+    } catch {
+      setEditError(t('common.error'))
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const handleDeleteFreightEntry = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.logisticsFreight.delete(deleteTarget.id)
-    setDeleting(false)
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    else { setDeleteTarget(null); load() }
+    try {
+      const res = await window.api.logisticsFreight.delete(deleteTarget.id)
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else { setDeleteTarget(null); load() }
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const printLedger = () => {
@@ -258,9 +272,9 @@ export default function FreightLedgerScreen() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      {e.status === 'PENDING' && <button onClick={() => markPaid(e.id)} className="text-xs text-green-600 hover:underline">{t('logistics.freight.markPaid')}</button>}
-                      {e.status === 'PENDING' && <button onClick={() => openEditFreight(e)} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
-                      {e.status === 'PENDING' && <button onClick={() => setDeleteTarget(e)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
+                      {e.status === 'PENDING' && <button onClick={() => markPaid(e.id)} disabled={markingPaidId === e.id} className="text-xs text-green-600 hover:underline disabled:opacity-50">{t('logistics.freight.markPaid')}</button>}
+                      {e.status === 'PENDING' && <button onClick={() => openEditFreight(e)} disabled={markingPaidId === e.id} className="text-xs text-blue-600 hover:underline disabled:opacity-50">{t('common.edit')}</button>}
+                      {e.status === 'PENDING' && <button onClick={() => setDeleteTarget(e)} disabled={markingPaidId === e.id} className="text-xs text-red-500 hover:underline disabled:opacity-50">{t('common.delete')}</button>}
                     </div>
                   </td>
                 </tr>

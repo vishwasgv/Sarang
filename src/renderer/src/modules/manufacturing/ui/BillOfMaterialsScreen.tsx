@@ -210,38 +210,48 @@ export function BillOfMaterialsScreen() {
     if (selfReference) { toastError(t('manufacturing.selfReferenceError')); return }
 
     setSaving(true)
-    const res = await api.bom.upsert({
-      productId: selectedProductId,
-      description: description || undefined,
-      outputQty: parseFloat(outputQty) || 1,
-      items: validItems.map(i => ({
-        rawMaterialId: i.rawMaterialId || undefined,
-        componentProductId: i.componentProductId || undefined,
-        quantityNeeded: parseFloat(i.quantityNeeded),
-        wastagePercent: parseFloat(i.wastagePercent) || 0
-      }))
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(editBom ? t('manufacturing.bomUpdated') : t('manufacturing.bomCreated'))
-      setShowEditor(false)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      const res = await api.bom.upsert({
+        productId: selectedProductId,
+        description: description || undefined,
+        outputQty: parseFloat(outputQty) || 1,
+        items: validItems.map(i => ({
+          rawMaterialId: i.rawMaterialId || undefined,
+          componentProductId: i.componentProductId || undefined,
+          quantityNeeded: parseFloat(i.quantityNeeded),
+          wastagePercent: parseFloat(i.wastagePercent) || 0
+        }))
+      })
+      if (res.success) {
+        toastSuccess(editBom ? t('manufacturing.bomUpdated') : t('manufacturing.bomCreated'))
+        setShowEditor(false)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await api.bom.delete({ productId: deleteTarget.productId })
-    setDeleting(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.bomDeleted'))
-      setDeleteTarget(null)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    try {
+      const res = await api.bom.delete({ productId: deleteTarget.productId })
+      if (res.success) {
+        toastSuccess(t('manufacturing.bomDeleted'))
+        setDeleteTarget(null)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setDeleting(false)
     }
   }
 

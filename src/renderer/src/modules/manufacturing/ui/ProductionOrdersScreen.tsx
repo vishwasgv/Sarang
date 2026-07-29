@@ -352,17 +352,22 @@ export function ProductionOrdersScreen() {
     const valid = woSteps.filter(s => s.taskName.trim())
     if (valid.length === 0) { toastError(t('manufacturing.addOneStep')); return }
     setSavingWO(true)
-    const res = await api.workOrders.upsert({
-      productionOrderId: detailOrder.id,
-      steps: valid.map((s, i) => ({ id: s.id, stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined, isQcStep: s.isQcStep }))
-    })
-    setSavingWO(false)
-    if (res.success && res.data) {
-      setWorkOrders(res.data as WorkOrderStep[])
-      toastSuccess(t('manufacturing.stepsSaved'))
-      setShowWOEditor(false)
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      const res = await api.workOrders.upsert({
+        productionOrderId: detailOrder.id,
+        steps: valid.map((s, i) => ({ id: s.id, stepNumber: i + 1, taskName: s.taskName.trim(), notes: s.notes.trim() || undefined, isQcStep: s.isQcStep }))
+      })
+      if (res.success && res.data) {
+        setWorkOrders(res.data as WorkOrderStep[])
+        toastSuccess(t('manufacturing.stepsSaved'))
+        setShowWOEditor(false)
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setSavingWO(false)
     }
   }
 

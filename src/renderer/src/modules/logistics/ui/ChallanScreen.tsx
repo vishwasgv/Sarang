@@ -68,6 +68,7 @@ export default function ChallanScreen() {
   const [deleting, setDeleting] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Challan | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const profile = useBusinessStore(s => s.profile)
   const PAGE_SIZE = 100
@@ -128,12 +129,15 @@ export default function ChallanScreen() {
   }
 
   const changeStatus = async (id: string, status: string) => {
+    setStatusChangingId(id)
     try {
       const res = await window.api.logisticsChallan.updateStatus({ id, status })
       if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-      load()
+      await load()
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setStatusChangingId(null)
     }
   }
 
@@ -242,8 +246,13 @@ export default function ChallanScreen() {
     // A window.open()/document.write() popup has no resolvable file:// base, so the
     // logo must travel as a self-contained base64 data URI (same technique already
     // used for the Aszurex partnership mark below), not a file path.
-    const logoRes = await api.app.getBusinessLogoDataUri()
-    const logoDataUri = logoRes.success ? logoRes.data : null
+    // Logo fetch failure should not leave the popup permanently blank — degrade
+    // to a no-logo print rather than let a thrown error abort before document.write.
+    let logoDataUri: string | null = null
+    try {
+      const logoRes = await api.app.getBusinessLogoDataUri()
+      logoDataUri = logoRes.success ? (logoRes.data as string | null) : null
+    } catch { /* proceed without logo */ }
     const bizName = profile?.businessName ?? ''
     const bizAddr = [profile?.address, profile?.city, profile?.state].filter(Boolean).join(', ')
     const watermarkHtml = profile?.enableDocumentWatermark && logoDataUri
@@ -299,8 +308,8 @@ export default function ChallanScreen() {
                   <div className="flex gap-2 mt-1 justify-end flex-wrap">
                     {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); openEdit(c) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
                     {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); setDeleteTarget(c) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
-                    {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'ISSUED') }} className="text-xs text-indigo-600 hover:underline">{t('logistics.challan.issue')}</button>}
-                    {c.status === 'ISSUED' && c.challanType !== 'RETURNABLE' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'DELIVERED') }} className="text-xs text-green-600 hover:underline">{t('logistics.challan.markDelivered')}</button>}
+                    {c.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'ISSUED') }} disabled={statusChangingId === c.id} className="text-xs text-indigo-600 hover:underline disabled:opacity-50">{t('logistics.challan.issue')}</button>}
+                    {c.status === 'ISSUED' && c.challanType !== 'RETURNABLE' && <button onClick={e => { e.stopPropagation(); changeStatus(c.id, 'DELIVERED') }} disabled={statusChangingId === c.id} className="text-xs text-green-600 hover:underline disabled:opacity-50">{t('logistics.challan.markDelivered')}</button>}
                     {c.challanType === 'RETURNABLE' && c.status === 'ISSUED' && <button onClick={e => { e.stopPropagation(); openReturnDialog(c) }} className="text-xs text-orange-600 hover:underline">{t('logistics.challan.recordReturn')}</button>}
                     {['DRAFT', 'ISSUED'].includes(c.status) && <button onClick={e => { e.stopPropagation(); setCancelTarget(c) }} className="text-xs text-gray-500 hover:underline">{t('logistics.challan.cancelChallan')}</button>}
                     <button onClick={e => { e.stopPropagation(); printChallan(c) }} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>

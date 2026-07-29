@@ -42,6 +42,7 @@ export default function FleetScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -96,12 +97,15 @@ export default function FleetScreen() {
   }
 
   const updateStatus = async (id: string, status: string) => {
+    setStatusUpdatingId(id)
     try {
       const res = await window.api.logisticsVehicle.updateStatus({ id, status })
-      if (res.success) load()
+      if (res.success) await load()
       else toastError(t('common.error'), res.error?.message ?? t('common.error'))
     } catch {
       toastError(t('common.error'), t('common.error'))
+    } finally {
+      setStatusUpdatingId(null)
     }
   }
 
@@ -184,7 +188,7 @@ export default function FleetScreen() {
                     {v.status === 'IN_TRANSIT' ? (
                       <Badge variant={STATUS_VARIANT[v.status] ?? 'neutral'} size="sm">{v.status}</Badge>
                     ) : (
-                      <select value={v.status} onChange={e => updateStatus(v.id, e.target.value)} className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_PILL_CLASSES[v.status] ?? ''}`}>
+                      <select value={v.status} onChange={e => updateStatus(v.id, e.target.value)} disabled={statusUpdatingId === v.id} className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer disabled:opacity-50 ${STATUS_PILL_CLASSES[v.status] ?? ''}`}>
                         {MANUAL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     )}

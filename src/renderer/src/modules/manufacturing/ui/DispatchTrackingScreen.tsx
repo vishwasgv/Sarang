@@ -54,6 +54,7 @@ export function DispatchTrackingScreen() {
   const [showCreate, setShowCreate] = useState(false)
   const [detailTarget, setDetailTarget] = useState<DispatchRecord | null>(null)
   const [saving, setSaving] = useState(false)
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null)
 
   const [form, setForm] = useState({ productId: '', quantity: '', customerId: '', destination: '', notes: '' })
 
@@ -114,33 +115,52 @@ export function DispatchTrackingScreen() {
   async function handleCreate() {
     if (!form.productId || !form.quantity) return
     setSaving(true)
-    const res = await api.dispatch.create({
-      productId: form.productId,
-      quantity: parseFloat(form.quantity),
-      customerId: form.customerId || undefined,
-      destination: form.destination || undefined,
-      notes: form.notes || undefined
-    })
-    setSaving(false)
-    if (res.success) {
-      toastSuccess(t('manufacturing.dispatchCreated'))
-      setShowCreate(false)
-      loadData()
-    } else {
-      toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+    try {
+      const res = await api.dispatch.create({
+        productId: form.productId,
+        quantity: parseFloat(form.quantity),
+        customerId: form.customerId || undefined,
+        destination: form.destination || undefined,
+        notes: form.notes || undefined
+      })
+      if (res.success) {
+        toastSuccess(t('manufacturing.dispatchCreated'))
+        setShowCreate(false)
+        loadData()
+      } else {
+        toastError(res.error?.message ?? t('manufacturing.saveFailed'))
+      }
+    } catch {
+      toastError(t('manufacturing.saveFailed'))
+    } finally {
+      setSaving(false)
     }
   }
 
   async function markDispatched(record: DispatchRecord) {
-    const res = await api.dispatch.updateStatus({ id: record.id, status: 'DISPATCHED' })
-    if (res.success) { toastSuccess(t('manufacturing.markedDispatched')); loadData() }
-    else toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    setStatusBusyId(record.id)
+    try {
+      const res = await api.dispatch.updateStatus({ id: record.id, status: 'DISPATCHED' })
+      if (res.success) { toastSuccess(t('manufacturing.markedDispatched')); loadData() }
+      else toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setStatusBusyId(null)
+    }
   }
 
   async function markDelivered(record: DispatchRecord) {
-    const res = await api.dispatch.updateStatus({ id: record.id, status: 'DELIVERED' })
-    if (res.success) { toastSuccess(t('manufacturing.markedDelivered')); loadData() }
-    else toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    setStatusBusyId(record.id)
+    try {
+      const res = await api.dispatch.updateStatus({ id: record.id, status: 'DELIVERED' })
+      if (res.success) { toastSuccess(t('manufacturing.markedDelivered')); loadData() }
+      else toastError(res.error?.message ?? t('manufacturing.actionFailed'))
+    } catch {
+      toastError(t('manufacturing.actionFailed'))
+    } finally {
+      setStatusBusyId(null)
+    }
   }
 
   const filtered = activeTab === 'ALL' ? records : records.filter(r => r.status === activeTab)
@@ -210,12 +230,12 @@ export function DispatchTrackingScreen() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {r.status === 'READY' && (
-                    <button onClick={() => markDispatched(r)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
+                    <button onClick={() => markDispatched(r)} disabled={statusBusyId === r.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition-colors">
                       {t('manufacturing.markDispatched')}
                     </button>
                   )}
                   {r.status === 'DISPATCHED' && (
-                    <button onClick={() => markDelivered(r)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                    <button onClick={() => markDelivered(r)} disabled={statusBusyId === r.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors">
                       {t('manufacturing.markDelivered')}
                     </button>
                   )}
@@ -354,13 +374,15 @@ export function DispatchTrackingScreen() {
             <div className="px-6 pb-6 flex gap-3">
               {detailTarget.status === 'READY' && (
                 <button onClick={() => { markDispatched(detailTarget); setDetailTarget(null) }}
-                  className="flex-1 h-12 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                  disabled={statusBusyId === detailTarget.id}
+                  className="flex-1 h-12 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
                   {t('manufacturing.markDispatched')}
                 </button>
               )}
               {detailTarget.status === 'DISPATCHED' && (
                 <button onClick={() => { markDelivered(detailTarget); setDetailTarget(null) }}
-                  className="flex-1 h-12 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors">
+                  disabled={statusBusyId === detailTarget.id}
+                  className="flex-1 h-12 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors">
                   {t('manufacturing.markDelivered')}
                 </button>
               )}

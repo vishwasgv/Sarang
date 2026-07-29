@@ -44,6 +44,7 @@ export default function GRNScreen() {
   const [grns, setGrns] = useState<GRN[]>([])
   const [confirmAction, setConfirmAction] = useState<{ type: 'post' | 'reverse' | 'delete'; id: string; grnNumber: string } | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
+  const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -166,18 +167,22 @@ export default function GRNScreen() {
   const handlePOLinkChange = async (poId: string) => {
     setLinkedPOId(poId)
     if (!poId) return
-    const res = await window.api.purchaseOrders.get(poId)
-    if (!res.success) { setError(res.error?.message ?? t('common.error')); return }
-    const po = res.data as { supplier: { id: string; supplierName: string }; items: POItemDetail[] }
-    setForm(f => ({ ...f, supplierId: po.supplier.id, supplierName: po.supplier.supplierName }))
-    setItems(po.items.map(i => ({
-      ...EMPTY_ITEM,
-      productId: i.productId,
-      itemName: i.product.productName,
-      unit: i.product.unit,
-      unitCost: i.unitCost.toString(),
-      orderedHint: t('logistics.grn.orderedHint', { qty: i.quantity, unit: i.product.unit, received: i.receivedQty }),
-    })))
+    try {
+      const res = await window.api.purchaseOrders.get(poId)
+      if (!res.success) { setError(res.error?.message ?? t('common.error')); return }
+      const po = res.data as { supplier: { id: string; supplierName: string }; items: POItemDetail[] }
+      setForm(f => ({ ...f, supplierId: po.supplier.id, supplierName: po.supplier.supplierName }))
+      setItems(po.items.map(i => ({
+        ...EMPTY_ITEM,
+        productId: i.productId,
+        itemName: i.product.productName,
+        unit: i.product.unit,
+        unitCost: i.unitCost.toString(),
+        orderedHint: t('logistics.grn.orderedHint', { qty: i.quantity, unit: i.product.unit, received: i.receivedQty }),
+      })))
+    } catch {
+      setError(t('common.error'))
+    }
   }
 
   const save = async () => {
@@ -185,50 +190,73 @@ export default function GRNScreen() {
     const validItems = items.filter(i => i.itemName.trim() && parseFloat(i.receivedQty) > 0)
     if (!validItems.length) { setError(t('logistics.grn.atLeastOneValidItem')); return }
     setSaving(true); setError(null)
-    const res = await window.api.logisticsGrn.create({
-      supplierId: form.supplierId || undefined,
-      supplierName: form.supplierName,
-      purchaseOrderId: linkedPOId || undefined,
-      invoiceNumber: form.invoiceNumber || undefined,
-      invoiceDate: form.invoiceDate || undefined,
-      receivedDate: form.receivedDate || undefined,
-      notes: form.notes || undefined,
-      items: validItems.map(i => ({
-        productId: i.productId || undefined,
-        itemName: i.itemName, receivedQty: parseFloat(i.receivedQty),
-        rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
-        unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
-        batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
-      }))
-    })
-    setSaving(false)
-    if (res.success) {
-      setShowForm(false)
-      setForm({ supplierId: '', supplierName: '', invoiceNumber: '', invoiceDate: '', receivedDate: '', notes: '' })
-      setItems([{ ...EMPTY_ITEM }])
-      setLinkedPOId('')
-      load()
-    } else setError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsGrn.create({
+        supplierId: form.supplierId || undefined,
+        supplierName: form.supplierName,
+        purchaseOrderId: linkedPOId || undefined,
+        invoiceNumber: form.invoiceNumber || undefined,
+        invoiceDate: form.invoiceDate || undefined,
+        receivedDate: form.receivedDate || undefined,
+        notes: form.notes || undefined,
+        items: validItems.map(i => ({
+          productId: i.productId || undefined,
+          itemName: i.itemName, receivedQty: parseFloat(i.receivedQty),
+          rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
+          unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
+          batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
+        }))
+      })
+      if (res.success) {
+        setShowForm(false)
+        setForm({ supplierId: '', supplierName: '', invoiceNumber: '', invoiceDate: '', receivedDate: '', notes: '' })
+        setItems([{ ...EMPTY_ITEM }])
+        setLinkedPOId('')
+        load()
+      } else setError(res.error?.message ?? t('common.error'))
+    } catch {
+      setError(t('common.error'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const verify = async (id: string) => {
-    const res = await window.api.logisticsGrn.update({ id, status: 'VERIFIED' })
-    if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
-    load()
+    setVerifyingId(id)
+    try {
+      const res = await window.api.logisticsGrn.update({ id, status: 'VERIFIED' })
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      await load()
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setVerifyingId(null)
+    }
   }
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return
+    const { type } = confirmAction
     setConfirmLoading(true)
-    const res = confirmAction.type === 'post'
-      ? await window.api.logisticsGrn.post(confirmAction.id)
-      : confirmAction.type === 'reverse'
-        ? await window.api.logisticsGrn.reverse(confirmAction.id)
-        : await window.api.logisticsGrn.delete(confirmAction.id)
-    setConfirmLoading(false)
-    setConfirmAction(null)
-    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); if (confirmAction.type !== 'delete') load(); return }
-    load()
+    try {
+      const res = type === 'post'
+        ? await window.api.logisticsGrn.post(confirmAction.id)
+        : type === 'reverse'
+          ? await window.api.logisticsGrn.reverse(confirmAction.id)
+          : await window.api.logisticsGrn.delete(confirmAction.id)
+      if (!res.success) {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        if (type !== 'delete') await load()
+        return
+      }
+      await load()
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+      if (type !== 'delete') await load()
+    } finally {
+      setConfirmLoading(false)
+      setConfirmAction(null)
+    }
   }
 
   const openEditGRN = (g: GRN) => {
@@ -273,24 +301,29 @@ export default function GRNScreen() {
     const validEditItems = editItems.filter(i => i.itemName.trim() && parseFloat(i.receivedQty) > 0)
     if (!validEditItems.length) { setEditError(t('logistics.grn.atLeastOneValidEditItem')); return }
     setEditSaving(true); setEditError(null)
-    const res = await window.api.logisticsGrn.update({
-      id: editId!,
-      supplierName: editForm.supplierName,
-      invoiceNumber: editForm.invoiceNumber || undefined,
-      invoiceDate: editForm.invoiceDate || undefined,
-      receivedDate: editForm.receivedDate || undefined,
-      notes: editForm.notes || undefined,
-      items: validEditItems.map(i => ({
-        productId: i.productId || undefined,
-        itemName: i.itemName, receivedQty: parseFloat(i.receivedQty),
-        rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
-        unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
-        batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
-      })),
-    })
-    setEditSaving(false)
-    if (res.success) { setEditId(null); load() }
-    else setEditError(res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.logisticsGrn.update({
+        id: editId!,
+        supplierName: editForm.supplierName,
+        invoiceNumber: editForm.invoiceNumber || undefined,
+        invoiceDate: editForm.invoiceDate || undefined,
+        receivedDate: editForm.receivedDate || undefined,
+        notes: editForm.notes || undefined,
+        items: validEditItems.map(i => ({
+          productId: i.productId || undefined,
+          itemName: i.itemName, receivedQty: parseFloat(i.receivedQty),
+          rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
+          unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
+          batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
+        })),
+      })
+      if (res.success) { setEditId(null); load() }
+      else setEditError(res.error?.message ?? t('common.error'))
+    } catch {
+      setEditError(t('common.error'))
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const printGRN = (g: GRN) => {
@@ -354,7 +387,7 @@ export default function GRNScreen() {
                   <p className="font-medium">{formatCurrency(g.totalValue)}</p>
                   <div className="flex gap-2 mt-1">
                     {!['POSTED', 'REVERSED'].includes(g.status) && <button onClick={e => { e.stopPropagation(); openEditGRN(g) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
-                    {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); verify(g.id) }} className="text-xs text-purple-600 hover:underline">{t('logistics.grn.verify')}</button>}
+                    {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); verify(g.id) }} disabled={verifyingId === g.id} className="text-xs text-purple-600 hover:underline disabled:opacity-50">{t('logistics.grn.verify')}</button>}
                     {g.status === 'VERIFIED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'post', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-green-600 hover:underline">{t('logistics.grn.post')}</button>}
                     {g.status === 'POSTED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'reverse', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-orange-600 hover:underline">{t('logistics.grn.reverse')}</button>}
                     {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'delete', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}

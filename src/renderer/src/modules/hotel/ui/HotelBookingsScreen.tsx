@@ -133,9 +133,14 @@ export function HotelBookingsScreen() {
   useEffect(() => { load() }, [load])
 
   async function refreshSelected(id: string) {
-    const res = await api.hotel.getBooking({ id })
-    if (res.success && res.data) setSelected(res.data as HotelBooking)
-    await load()
+    try {
+      const res = await api.hotel.getBooking({ id })
+      if (res.success && res.data) setSelected(res.data as HotelBooking)
+    } catch {
+      toastError('Error', 'Could not refresh booking details.')
+    } finally {
+      await load()
+    }
   }
 
   return (
@@ -236,6 +241,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [busy, setBusy] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [showNoShowConfirm, setShowNoShowConfirm] = useState(false)
   const [guestForms, setGuestForms] = useState<Array<{ guestName: string; idType: string; idNumber: string; nationality: string; address: string }>>([
     { guestName: booking.guestName, idType: '', idNumber: '', nationality: 'IN', address: '' },
   ])
@@ -312,9 +318,11 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
     setBusy(true)
     try {
       const res = await api.hotel.markNoShow({ id: booking.id })
+      setShowNoShowConfirm(false)
       if (res.success) onChanged()
       else toastError('Error', res.error?.message ?? 'Could not mark as no-show.')
     } catch {
+      setShowNoShowConfirm(false)
       toastError('Error', 'Could not mark as no-show.')
     } finally {
       setBusy(false)
@@ -472,7 +480,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
               <Button variant="outline" size="sm" onClick={addGuestForm}><Plus size={14} className="mr-1" /> Add Another Guest</Button>
               <div className="flex gap-2">
                 <Button onClick={handleCheckIn} disabled={busy} className="flex-1"><LogIn size={16} className="mr-1.5" /> Check In</Button>
-                <Button variant="outline" onClick={handleNoShow} disabled={busy}><UserX size={16} /></Button>
+                <Button variant="outline" onClick={() => setShowNoShowConfirm(true)} disabled={busy}><UserX size={16} /></Button>
                 <Button variant="outline" onClick={() => setShowCancelConfirm(true)} disabled={busy}><Ban size={16} /></Button>
               </div>
             </div>
@@ -538,6 +546,16 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
         title="Cancel Booking"
         message={`Cancel booking ${booking.bookingNumber} for ${booking.guestName}?`}
         confirmLabel="Cancel Booking"
+      />
+
+      <ConfirmDialog
+        open={showNoShowConfirm}
+        onClose={() => setShowNoShowConfirm(false)}
+        onConfirm={handleNoShow}
+        loading={busy}
+        title="Mark as No-Show"
+        message={`Mark booking ${booking.bookingNumber} for ${booking.guestName} as a no-show?`}
+        confirmLabel="Mark No-Show"
       />
     </div>
   )
