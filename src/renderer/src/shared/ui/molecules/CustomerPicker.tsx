@@ -48,8 +48,13 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
     const t = setTimeout(async () => {
-      const res = await api.customers.search(query)
-      if (res.success) setResults(((res.data as CustomerLite[]) ?? []))
+      try {
+        const res = await api.customers.search(query)
+        if (res.success) setResults(((res.data as CustomerLite[]) ?? []))
+      } catch {
+        // best-effort live search — a failure here just means no dropdown
+        // results appear, not worth surfacing as a toast in a shared widget
+      }
     }, 200)
     return () => clearTimeout(t)
   }, [query])
@@ -58,18 +63,23 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
     if (!quickName.trim()) { setQuickError('Name is required.'); return }
     setQuickAdding(true)
     setQuickError('')
-    const res = await api.customers.create({ customerName: quickName.trim(), phone: quickPhone.trim() || undefined })
-    if (res.success) {
-      onChange(res.data as CustomerLite)
-      setShowQuickAdd(false)
-      setQuickName('')
-      setQuickPhone('')
-      setQuery('')
-      setResults([])
-    } else {
-      setQuickError(res.error?.message ?? 'Failed to add customer.')
+    try {
+      const res = await api.customers.create({ customerName: quickName.trim(), phone: quickPhone.trim() || undefined })
+      if (res.success) {
+        onChange(res.data as CustomerLite)
+        setShowQuickAdd(false)
+        setQuickName('')
+        setQuickPhone('')
+        setQuery('')
+        setResults([])
+      } else {
+        setQuickError(res.error?.message ?? 'Failed to add customer.')
+      }
+    } catch {
+      setQuickError('Failed to add customer.')
+    } finally {
+      setQuickAdding(false)
     }
-    setQuickAdding(false)
   }
 
   if (value) {
