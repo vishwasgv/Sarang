@@ -7,6 +7,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Tabs } from '@shared/ui/molecules/Tabs'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { toLocalISODate } from '@shared/utils/locale.util'
 
@@ -174,6 +175,10 @@ export function DrivingSchoolScreen() {
   const [pickedEnrollLearner, setPickedEnrollLearner] = useState<Customer | null>(null)
   const [savingEnroll, setSavingEnroll] = useState(false)
   const [enrollError, setEnrollError] = useState<string | null>(null)
+  const [deletePackageTarget, setDeletePackageTarget] = useState<DrivingPackage | null>(null)
+  const [deletingPackage, setDeletingPackage] = useState(false)
+  const [deleteEnrollmentTarget, setDeleteEnrollmentTarget] = useState<DrivingPackageEnrollment | null>(null)
+  const [deletingEnrollment, setDeletingEnrollment] = useState(false)
 
   // Vehicles
   const [vehicles, setVehicles] = useState<DrivingVehicle[]>([])
@@ -234,10 +239,15 @@ export function DrivingSchoolScreen() {
     // midnight in IST. See src/main/utils/date.util.ts for the full writeup.
     if (sessionFilter === 'today') filters.date = toLocalISODate(new Date())
     else if (sessionFilter !== 'all') filters.status = sessionFilter
-    const res = await api.drivingSession.list(filters)
-    if (res.success) setSessions(res.data as DrivingSession[])
-    else setError(res.error?.message ?? 'Could not load sessions.')
-    setLoading(false)
+    try {
+      const res = await api.drivingSession.list(filters)
+      if (res.success) setSessions(res.data as DrivingSession[])
+      else setError(res.error?.message ?? 'Could not load sessions.')
+    } catch {
+      setError('Could not load sessions.')
+    } finally {
+      setLoading(false)
+    }
   }, [sessionFilter])
 
   const loadVehicles = useCallback(async () => {
@@ -267,8 +277,12 @@ export function DrivingSchoolScreen() {
   }, [toastError])
 
   const loadPassRates = useCallback(async () => {
-    const res = await api.drivingSession.instructorPassRates()
-    if (res.success) setPassRates(res.data as InstructorPassRate[])
+    try {
+      const res = await api.drivingSession.instructorPassRates()
+      if (res.success) setPassRates(res.data as InstructorPassRate[])
+    } catch {
+      /* supplementary stat panel — silent is acceptable, main tests table still loads independently */
+    }
   }, [])
 
   const loadPackages = useCallback(async () => {
@@ -314,46 +328,59 @@ export function DrivingSchoolScreen() {
   }, [sessions])
 
   async function handleSelectLearner(customerId: string) {
-    const res = await api.learnerProfile.get({ customerId })
     const c = customers.find((cu) => cu.id === customerId)
-    if (res.success && res.data) {
-      setSelectedLearner(res.data as LearnerProfile)
-      const p = res.data as LearnerProfile
-      setLearnerForm({
-        dlApplicationNumber: p.dlApplicationNumber ?? '',
-        learnerLicenseNumber: p.learnerLicenseNumber ?? '',
-        learnerLicenseDate: p.learnerLicenseDate ? p.learnerLicenseDate.slice(0, 10) : '',
-        permanentLicenseNumber: p.permanentLicenseNumber ?? '',
-        permanentLicenseDate: p.permanentLicenseDate ? p.permanentLicenseDate.slice(0, 10) : '',
-        licenseClass: p.licenseClass,
-        vehicleClassPreference: p.vehicleClassPreference ?? '',
-      })
-    } else if (c) {
-      setSelectedLearner({ id: '', customerId, dlApplicationNumber: null, learnerLicenseNumber: null, learnerLicenseDate: null, permanentLicenseNumber: null, permanentLicenseDate: null, licenseClass: 'LMV', vehicleClassPreference: null, customer: { id: c.id, customerName: c.customerName, phone: c.phone, email: null } })
-      setLearnerForm({ dlApplicationNumber: '', learnerLicenseNumber: '', learnerLicenseDate: '', permanentLicenseNumber: '', permanentLicenseDate: '', licenseClass: 'LMV', vehicleClassPreference: '' })
+    try {
+      const res = await api.learnerProfile.get({ customerId })
+      if (res.success && res.data) {
+        setSelectedLearner(res.data as LearnerProfile)
+        const p = res.data as LearnerProfile
+        setLearnerForm({
+          dlApplicationNumber: p.dlApplicationNumber ?? '',
+          learnerLicenseNumber: p.learnerLicenseNumber ?? '',
+          learnerLicenseDate: p.learnerLicenseDate ? p.learnerLicenseDate.slice(0, 10) : '',
+          permanentLicenseNumber: p.permanentLicenseNumber ?? '',
+          permanentLicenseDate: p.permanentLicenseDate ? p.permanentLicenseDate.slice(0, 10) : '',
+          licenseClass: p.licenseClass,
+          vehicleClassPreference: p.vehicleClassPreference ?? '',
+        })
+      } else if (c) {
+        setSelectedLearner({ id: '', customerId, dlApplicationNumber: null, learnerLicenseNumber: null, learnerLicenseDate: null, permanentLicenseNumber: null, permanentLicenseDate: null, licenseClass: 'LMV', vehicleClassPreference: null, customer: { id: c.id, customerName: c.customerName, phone: c.phone, email: null } })
+        setLearnerForm({ dlApplicationNumber: '', learnerLicenseNumber: '', learnerLicenseDate: '', permanentLicenseNumber: '', permanentLicenseDate: '', licenseClass: 'LMV', vehicleClassPreference: '' })
+      }
+      setLearnerError(null)
+    } catch {
+      if (c) {
+        setSelectedLearner({ id: '', customerId, dlApplicationNumber: null, learnerLicenseNumber: null, learnerLicenseDate: null, permanentLicenseNumber: null, permanentLicenseDate: null, licenseClass: 'LMV', vehicleClassPreference: null, customer: { id: c.id, customerName: c.customerName, phone: c.phone, email: null } })
+        setLearnerForm({ dlApplicationNumber: '', learnerLicenseNumber: '', learnerLicenseDate: '', permanentLicenseNumber: '', permanentLicenseDate: '', licenseClass: 'LMV', vehicleClassPreference: '' })
+      }
+      toastError('Error', 'Could not load learner profile.')
     }
-    setLearnerError(null)
   }
 
   async function handleSaveLearner() {
     if (!selectedLearner) return
     setSavingLearner(true)
     setLearnerError(null)
-    const res = await api.learnerProfile.upsert({
-      customerId: selectedLearner.customerId,
-      dlApplicationNumber: learnerForm.dlApplicationNumber || null,
-      learnerLicenseNumber: learnerForm.learnerLicenseNumber || null,
-      learnerLicenseDate: learnerForm.learnerLicenseDate || null,
-      permanentLicenseNumber: learnerForm.permanentLicenseNumber || null,
-      permanentLicenseDate: learnerForm.permanentLicenseDate || null,
-      licenseClass: learnerForm.licenseClass,
-      vehicleClassPreference: learnerForm.vehicleClassPreference || null,
-    })
-    setSavingLearner(false)
-    if (res.success) {
-      setSelectedLearner(res.data as LearnerProfile)
-    } else {
-      setLearnerError(res.error?.message ?? 'Could not save learner profile.')
+    try {
+      const res = await api.learnerProfile.upsert({
+        customerId: selectedLearner.customerId,
+        dlApplicationNumber: learnerForm.dlApplicationNumber || null,
+        learnerLicenseNumber: learnerForm.learnerLicenseNumber || null,
+        learnerLicenseDate: learnerForm.learnerLicenseDate || null,
+        permanentLicenseNumber: learnerForm.permanentLicenseNumber || null,
+        permanentLicenseDate: learnerForm.permanentLicenseDate || null,
+        licenseClass: learnerForm.licenseClass,
+        vehicleClassPreference: learnerForm.vehicleClassPreference || null,
+      })
+      if (res.success) {
+        setSelectedLearner(res.data as LearnerProfile)
+      } else {
+        setLearnerError(res.error?.message ?? 'Could not save learner profile.')
+      }
+    } catch {
+      setLearnerError('Could not save learner profile.')
+    } finally {
+      setSavingLearner(false)
     }
   }
 
@@ -364,24 +391,29 @@ export function DrivingSchoolScreen() {
     }
     setSavingSession(true)
     setSessionError(null)
-    const res = await api.drivingSession.create({
-      learnerId: sessionForm.learnerId,
-      instructorId: sessionForm.instructorId,
-      vehicleId: sessionForm.vehicleId,
-      sessionDate: sessionForm.sessionDate,
-      sessionTime: sessionForm.sessionTime,
-      durationMinutes: Number(sessionForm.durationMinutes),
-      pickupPoint: sessionForm.pickupPoint || undefined,
-      sessionFee: sessionForm.packageEnrollmentId ? undefined : (sessionForm.sessionFee ? Number(sessionForm.sessionFee) : undefined),
-      packageEnrollmentId: sessionForm.packageEnrollmentId || undefined,
-    })
-    setSavingSession(false)
-    if (res.success) {
-      setShowSessionForm(false)
-      setSessionForm((f) => ({ ...f, sessionFee: '', packageEnrollmentId: '' }))
-      loadSessions()
-    } else {
-      setSessionError(res.error?.message ?? 'Could not create session.')
+    try {
+      const res = await api.drivingSession.create({
+        learnerId: sessionForm.learnerId,
+        instructorId: sessionForm.instructorId,
+        vehicleId: sessionForm.vehicleId,
+        sessionDate: sessionForm.sessionDate,
+        sessionTime: sessionForm.sessionTime,
+        durationMinutes: Number(sessionForm.durationMinutes),
+        pickupPoint: sessionForm.pickupPoint || undefined,
+        sessionFee: sessionForm.packageEnrollmentId ? undefined : (sessionForm.sessionFee ? Number(sessionForm.sessionFee) : undefined),
+        packageEnrollmentId: sessionForm.packageEnrollmentId || undefined,
+      })
+      if (res.success) {
+        setShowSessionForm(false)
+        setSessionForm((f) => ({ ...f, sessionFee: '', packageEnrollmentId: '' }))
+        loadSessions()
+      } else {
+        setSessionError(res.error?.message ?? 'Could not create session.')
+      }
+    } catch {
+      setSessionError('Could not create session.')
+    } finally {
+      setSavingSession(false)
     }
   }
 
@@ -402,18 +434,27 @@ export function DrivingSchoolScreen() {
     const draft = feeDrafts[id]
     const fee = draft ? Number(draft) : null
     setInvoiceError(null)
-    const res = await api.drivingSession.update({ id, sessionFee: fee })
-    if (!res.success) setInvoiceError(res.error?.message ?? 'Could not save session fee.')
-    else loadSessions()
+    try {
+      const res = await api.drivingSession.update({ id, sessionFee: fee })
+      if (!res.success) setInvoiceError(res.error?.message ?? 'Could not save session fee.')
+      else loadSessions()
+    } catch {
+      setInvoiceError('Could not save session fee.')
+    }
   }
 
   async function handleGenerateSessionInvoice(id: string) {
     setInvoiceError(null)
     setGeneratingId(id)
-    const res = await api.drivingSession.generateInvoice({ id })
-    if (res.success) loadSessions()
-    else setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
-    setGeneratingId(null)
+    try {
+      const res = await api.drivingSession.generateInvoice({ id })
+      if (res.success) loadSessions()
+      else setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+    } catch {
+      setInvoiceError('Could not generate invoice.')
+    } finally {
+      setGeneratingId(null)
+    }
   }
 
   async function handleSaveVehicle() {
@@ -428,15 +469,20 @@ export function DrivingSchoolScreen() {
       vehicleClass: vehicleForm.vehicleClass, instructorId: vehicleForm.instructorId || undefined, status: vehicleForm.status,
       odometerKm: vehicleForm.odometerKm, serviceIntervalKm: vehicleForm.serviceIntervalKm, serviceIntervalSessions: vehicleForm.serviceIntervalSessions,
     }
-    const res = editVehicle
-      ? await api.drivingVehicle.update({ id: editVehicle.id, ...payload })
-      : await api.drivingVehicle.create(payload)
-    setSavingVehicle(false)
-    if (res.success) {
-      setShowVehicleForm(false)
-      loadVehicles()
-    } else {
-      setVehicleError(res.error?.message ?? 'Could not save vehicle.')
+    try {
+      const res = editVehicle
+        ? await api.drivingVehicle.update({ id: editVehicle.id, ...payload })
+        : await api.drivingVehicle.create(payload)
+      if (res.success) {
+        setShowVehicleForm(false)
+        loadVehicles()
+      } else {
+        setVehicleError(res.error?.message ?? 'Could not save vehicle.')
+      }
+    } catch {
+      setVehicleError('Could not save vehicle.')
+    } finally {
+      setSavingVehicle(false)
     }
   }
 
@@ -446,9 +492,14 @@ export function DrivingSchoolScreen() {
     setMaintenanceVehicle(v)
     setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: v.odometerKm, serviceType: '', cost: '', notes: '' })
     setMaintenanceError(null)
-    const res = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: v.id })
-    if (res.success) setMaintenanceLogs(res.data as MaintenanceLog[])
-    else setMaintenanceLogs([])
+    try {
+      const res = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: v.id })
+      if (res.success) setMaintenanceLogs(res.data as MaintenanceLog[])
+      else { setMaintenanceLogs([]); toastError('Error', res.error?.message ?? 'Could not load maintenance history.') }
+    } catch {
+      setMaintenanceLogs([])
+      toastError('Error', 'Could not load maintenance history.')
+    }
   }
 
   async function handleLogMaintenance() {
@@ -456,22 +507,27 @@ export function DrivingSchoolScreen() {
     if (!maintenanceForm.serviceType.trim()) { setMaintenanceError('Service type is required.'); return }
     setSavingMaintenance(true)
     setMaintenanceError(null)
-    const res = await api.drivingVehicle.logMaintenance({
-      vehicleId: maintenanceVehicle.id,
-      serviceDate: maintenanceForm.serviceDate,
-      odometerKm: maintenanceForm.odometerKm,
-      serviceType: maintenanceForm.serviceType,
-      cost: maintenanceForm.cost ? Number(maintenanceForm.cost) : undefined,
-      notes: maintenanceForm.notes || undefined,
-    })
-    setSavingMaintenance(false)
-    if (res.success) {
-      loadVehicles()
-      const logsRes = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: maintenanceVehicle.id })
-      if (logsRes.success) setMaintenanceLogs(logsRes.data as MaintenanceLog[])
-      setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: maintenanceForm.odometerKm, serviceType: '', cost: '', notes: '' })
-    } else {
-      setMaintenanceError(res.error?.message ?? 'Could not log maintenance.')
+    try {
+      const res = await api.drivingVehicle.logMaintenance({
+        vehicleId: maintenanceVehicle.id,
+        serviceDate: maintenanceForm.serviceDate,
+        odometerKm: maintenanceForm.odometerKm,
+        serviceType: maintenanceForm.serviceType,
+        cost: maintenanceForm.cost ? Number(maintenanceForm.cost) : undefined,
+        notes: maintenanceForm.notes || undefined,
+      })
+      if (res.success) {
+        loadVehicles()
+        const logsRes = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: maintenanceVehicle.id })
+        if (logsRes.success) setMaintenanceLogs(logsRes.data as MaintenanceLog[])
+        setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: maintenanceForm.odometerKm, serviceType: '', cost: '', notes: '' })
+      } else {
+        setMaintenanceError(res.error?.message ?? 'Could not log maintenance.')
+      }
+    } catch {
+      setMaintenanceError('Could not log maintenance.')
+    } finally {
+      setSavingMaintenance(false)
     }
   }
 
@@ -482,20 +538,25 @@ export function DrivingSchoolScreen() {
     }
     setSavingTest(true)
     setTestError(null)
-    const res = await api.drivingSession.createTest({
-      learnerId: testForm.learnerId,
-      testType: testForm.testType,
-      testDate: testForm.testDate,
-      testCenter: testForm.testCenter,
-      notes: testForm.notes || undefined,
-      instructorId: testForm.instructorId || undefined,
-    })
-    setSavingTest(false)
-    if (res.success) {
-      setShowTestForm(false)
-      loadTests()
-    } else {
-      setTestError(res.error?.message ?? 'Could not schedule test.')
+    try {
+      const res = await api.drivingSession.createTest({
+        learnerId: testForm.learnerId,
+        testType: testForm.testType,
+        testDate: testForm.testDate,
+        testCenter: testForm.testCenter,
+        notes: testForm.notes || undefined,
+        instructorId: testForm.instructorId || undefined,
+      })
+      if (res.success) {
+        setShowTestForm(false)
+        loadTests()
+      } else {
+        setTestError(res.error?.message ?? 'Could not schedule test.')
+      }
+    } catch {
+      setTestError('Could not schedule test.')
+    } finally {
+      setSavingTest(false)
     }
   }
 
@@ -530,52 +591,83 @@ export function DrivingSchoolScreen() {
     setSavingPackage(true)
     setPackageError(null)
     const payload = { packageName: packageForm.packageName, totalSessions: Number(packageForm.totalSessions), price: Number(packageForm.price), vehicleClass: packageForm.vehicleClass, isActive: packageForm.isActive }
-    const res = editPackage
-      ? await api.drivingPackage.update({ id: editPackage.id, ...payload })
-      : await api.drivingPackage.create(payload)
-    setSavingPackage(false)
-    if (res.success) {
-      setShowPackageForm(false)
-      loadPackages()
-    } else {
-      setPackageError(res.error?.message ?? 'Could not save package.')
+    try {
+      const res = editPackage
+        ? await api.drivingPackage.update({ id: editPackage.id, ...payload })
+        : await api.drivingPackage.create(payload)
+      if (res.success) {
+        setShowPackageForm(false)
+        loadPackages()
+      } else {
+        setPackageError(res.error?.message ?? 'Could not save package.')
+      }
+    } catch {
+      setPackageError('Could not save package.')
+    } finally {
+      setSavingPackage(false)
     }
   }
 
-  async function handleDeletePackage(id: string) {
-    const res = await api.drivingPackage.delete({ id })
-    if (!res.success) setPackageError(res.error?.message ?? 'Could not delete package.')
-    else loadPackages()
+  async function handleDeletePackage() {
+    if (!deletePackageTarget) return
+    setDeletingPackage(true)
+    try {
+      const res = await api.drivingPackage.delete({ id: deletePackageTarget.id })
+      if (res.success) { setDeletePackageTarget(null); loadPackages() }
+      else setPackageError(res.error?.message ?? 'Could not delete package.')
+    } catch {
+      setPackageError('Could not delete package.')
+    } finally {
+      setDeletingPackage(false)
+    }
   }
 
   async function handleCreateEnrollment() {
     if (!enrollForm.learnerId || !enrollForm.packageId) { setEnrollError('Learner and package are required.'); return }
     setSavingEnroll(true)
     setEnrollError(null)
-    const res = await api.drivingPackageEnrollment.create({ learnerId: enrollForm.learnerId, packageId: enrollForm.packageId })
-    setSavingEnroll(false)
-    if (res.success) {
-      setShowEnrollForm(false)
-      setEnrollForm({ learnerId: '', packageId: '' })
-      loadEnrollments()
-    } else {
-      setEnrollError(res.error?.message ?? 'Could not enroll learner.')
+    try {
+      const res = await api.drivingPackageEnrollment.create({ learnerId: enrollForm.learnerId, packageId: enrollForm.packageId })
+      if (res.success) {
+        setShowEnrollForm(false)
+        setEnrollForm({ learnerId: '', packageId: '' })
+        loadEnrollments()
+      } else {
+        setEnrollError(res.error?.message ?? 'Could not enroll learner.')
+      }
+    } catch {
+      setEnrollError('Could not enroll learner.')
+    } finally {
+      setSavingEnroll(false)
     }
   }
 
-  async function handleDeleteEnrollment(id: string) {
-    const res = await api.drivingPackageEnrollment.delete({ id })
-    if (!res.success) setPackageError(res.error?.message ?? 'Could not delete enrollment.')
-    else loadEnrollments()
+  async function handleDeleteEnrollment() {
+    if (!deleteEnrollmentTarget) return
+    setDeletingEnrollment(true)
+    try {
+      const res = await api.drivingPackageEnrollment.delete({ id: deleteEnrollmentTarget.id })
+      if (res.success) { setDeleteEnrollmentTarget(null); loadEnrollments() }
+      else setPackageError(res.error?.message ?? 'Could not delete enrollment.')
+    } catch {
+      setPackageError('Could not delete enrollment.')
+    } finally {
+      setDeletingEnrollment(false)
+    }
   }
 
   async function handleGeneratePackageInvoice(id: string) {
     setInvoiceError(null)
     setGeneratingId(id)
-    const res = await api.drivingPackageEnrollment.generateInvoice({ id })
-    if (res.success) loadEnrollments()
-    else setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
-    setGeneratingId(null)
+    try {
+      const res = await api.drivingPackageEnrollment.generateInvoice({ id })
+      if (res.success) loadEnrollments()
+      else setInvoiceError(res.error?.message ?? 'Could not generate invoice.')
+    } catch {
+      setInvoiceError('Could not generate invoice.')
+    } finally {
+      setGeneratingId(null)
+    }
   }
 
   const filteredCustomers = customers.filter((c) =>
@@ -950,7 +1042,7 @@ export function DrivingSchoolScreen() {
                   <p className="text-xl font-bold text-foreground">₹{Number(pkg.price).toLocaleString('en-IN')}</p>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => openPackageForm(pkg)} className="flex-1 h-8 rounded-lg border border-border text-xs text-foreground hover:bg-muted/50">Edit</button>
-                    <button onClick={() => handleDeletePackage(pkg.id)} className="h-8 px-3 rounded-lg border border-danger/30 text-xs text-danger hover:bg-danger/5"><Trash2 size={12} /></button>
+                    <button onClick={() => setDeletePackageTarget(pkg)} className="h-8 px-3 rounded-lg border border-danger/30 text-xs text-danger hover:bg-danger/5"><Trash2 size={12} /></button>
                   </div>
                 </Card>
               ))}
@@ -1015,7 +1107,7 @@ export function DrivingSchoolScreen() {
                               </button>
                             )}
                             {!e.invoiceId && (
-                              <button onClick={() => handleDeleteEnrollment(e.id)} className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/5 rounded-lg transition-colors">
+                              <button onClick={() => setDeleteEnrollmentTarget(e)} className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/5 rounded-lg transition-colors">
                                 <Trash2 size={14} />
                               </button>
                             )}
@@ -1381,6 +1473,25 @@ export function DrivingSchoolScreen() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deletePackageTarget !== null}
+        onClose={() => setDeletePackageTarget(null)}
+        onConfirm={handleDeletePackage}
+        loading={deletingPackage}
+        title="Delete Package"
+        message={`Delete package "${deletePackageTarget?.packageName}"? This cannot be undone.`}
+        confirmLabel="Delete"
+      />
+      <ConfirmDialog
+        open={deleteEnrollmentTarget !== null}
+        onClose={() => setDeleteEnrollmentTarget(null)}
+        onConfirm={handleDeleteEnrollment}
+        loading={deletingEnrollment}
+        title="Remove Enrollment"
+        message={`Remove ${deleteEnrollmentTarget?.learner.customerName ?? 'this learner'}'s enrollment in "${deleteEnrollmentTarget?.package.packageName}"? This cannot be undone.`}
+        confirmLabel="Remove"
+      />
     </div>
   )
 }
