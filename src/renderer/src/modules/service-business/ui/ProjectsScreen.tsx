@@ -329,9 +329,14 @@ export default function ProjectsScreen(): React.ReactElement {
   async function openBurndown(sprintId: string): Promise<void> {
     setBurndownFor(sprintId)
     setBurndownData(null)
-    const res = await api.sprint.burndown({ sprintId })
-    if (res.success) setBurndownData(res.data as SprintBurndown)
-    else toastError('Error', res.error?.message ?? 'Could not load burndown chart.')
+    try {
+      const res = await api.sprint.burndown({ sprintId })
+      if (res.success) setBurndownData(res.data as SprintBurndown)
+      else { toastError('Error', res.error?.message ?? 'Could not load burndown chart.'); setBurndownFor(null) }
+    } catch {
+      toastError('Error', 'Could not load burndown chart.')
+      setBurndownFor(null)
+    }
   }
 
   async function handleAddPerformanceEntry(projectId: string): Promise<void> {
@@ -351,15 +356,21 @@ export default function ProjectsScreen(): React.ReactElement {
       } else {
         toastError('Error', res.error?.message ?? 'Could not add performance entry.')
       }
+    } catch {
+      toastError('Error', 'Could not add performance entry.')
     } finally {
       setPerfSaving(false)
     }
   }
 
   async function handleDeletePerformanceEntry(projectId: string, id: string): Promise<void> {
-    const res = await api.campaignPerformance.delete({ id })
-    if (res.success) await loadPerformance(projectId)
-    else toastError('Error', res.error?.message ?? 'Could not remove performance entry.')
+    try {
+      const res = await api.campaignPerformance.delete({ id })
+      if (res.success) await loadPerformance(projectId)
+      else toastError('Error', res.error?.message ?? 'Could not remove performance entry.')
+    } catch {
+      toastError('Error', 'Could not remove performance entry.')
+    }
   }
 
   async function handleAddContentItem(projectId: string): Promise<void> {
@@ -376,30 +387,44 @@ export default function ProjectsScreen(): React.ReactElement {
       } else {
         toastError('Error', res.error?.message ?? 'Could not add content item.')
       }
+    } catch {
+      toastError('Error', 'Could not add content item.')
     } finally {
       setContentSaving(false)
     }
   }
 
   async function handleUpdateContentStatus(projectId: string, id: string, status: string): Promise<void> {
-    const res = await api.contentCalendar.update({ id, status })
-    if (res.success) await loadContent(projectId)
-    else toastError('Error', res.error?.message ?? 'Could not update content status.')
+    try {
+      const res = await api.contentCalendar.update({ id, status })
+      if (res.success) await loadContent(projectId)
+      else toastError('Error', res.error?.message ?? 'Could not update content status.')
+    } catch {
+      toastError('Error', 'Could not update content status.')
+    }
   }
 
   async function handleDeleteContentItem(projectId: string, id: string): Promise<void> {
-    const res = await api.contentCalendar.delete({ id })
-    if (res.success) await loadContent(projectId)
-    else toastError('Error', res.error?.message ?? 'Could not remove content item.')
+    try {
+      const res = await api.contentCalendar.delete({ id })
+      if (res.success) await loadContent(projectId)
+      else toastError('Error', res.error?.message ?? 'Could not remove content item.')
+    } catch {
+      toastError('Error', 'Could not remove content item.')
+    }
   }
 
   async function openPerformanceSummary(project: ServiceProject): Promise<void> {
-    const res = await api.campaignPerformance.summary({ projectId: project.id })
-    if (res.success) {
-      setSummaryData(res.data as CampaignPerformanceSummary)
-      setSummaryFor(project.id)
-    } else {
-      toastError('Error', res.error?.message ?? 'Could not generate performance summary.')
+    try {
+      const res = await api.campaignPerformance.summary({ projectId: project.id })
+      if (res.success) {
+        setSummaryData(res.data as CampaignPerformanceSummary)
+        setSummaryFor(project.id)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not generate performance summary.')
+      }
+    } catch {
+      toastError('Error', 'Could not generate performance summary.')
     }
   }
 
