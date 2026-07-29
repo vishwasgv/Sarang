@@ -77,6 +77,70 @@ describe('license key signing and verification', () => {
     expect(parseAndVerifyLicenseKey('')).toBeNull()
     expect(parseAndVerifyLicenseKey('SARANG-TRIAL-IN-abc')).toBeNull()
   })
+
+  // Real bug found+fixed 2026-07-29: the payload used to be built from only
+  // tier+region+issuedDay (no per-request entropy), so HMAC-SHA256's
+  // determinism meant two different people issued a key for the same
+  // tier+region on the same calendar day got the byte-for-byte identical
+  // key. Not a hypothetical -- this is the realistic case as soon as more
+  // than one person signs up from the same region on the same day.
+  it('never issues the same key twice for the same tier+region+day (the actual bug)', async () => {
+    const { generateLicenseKey, parseAndVerifyLicenseKey } = await importFresh()
+    const sameDay = new Date('2026-03-01T09:00:00Z')
+    const keys = new Set<string>()
+    for (let i = 0; i < 200; i++) {
+      const key = generateLicenseKey('TRIAL', 'IN', sameDay)
+      expect(parseAndVerifyLicenseKey(key)).not.toBeNull() // still a valid, verifiable key
+      keys.add(key)
+    }
+    expect(keys.size).toBe(200) // zero collisions across 200 same-day/tier/region issuances
+  })
+
+  it('the added nonce does not change the derived issuedAt day, tier, or region', async () => {
+    const { generateLicenseKey, parseAndVerifyLicenseKey } = await importFresh()
+    const issuedAt = new Date('2026-03-01T09:00:00Z')
+    const keyA = generateLicenseKey('TRIAL', 'IN', issuedAt)
+    const keyB = generateLicenseKey('TRIAL', 'IN', issuedAt)
+    const parsedA = parseAndVerifyLicenseKey(keyA)
+    const parsedB = parseAndVerifyLicenseKey(keyB)
+    expect(keyA).not.toBe(keyB)
+    expect(parsedA?.issuedAt.toISOString().slice(0, 10)).toBe('2026-03-01')
+    expect(parsedB?.issuedAt.toISOString().slice(0, 10)).toBe('2026-03-01')
+    expect(parsedA?.tier).toBe(parsedB?.tier)
+    expect(parsedA?.region).toBe(parsedB?.region)
+  })
+
+  // Every key issued and emailed to a real customer before this fix used the
+  // old 5-part (no-nonce) format and must keep working forever -- this is
+  // not a format this codebase controls the lifetime of once it's in a real
+  // inbox.
+  it('still validates a pre-2026-07-29 key with the old 5-part (no-nonce) format', async () => {
+    const { parseAndVerifyLicenseKey } = await importFresh()
+    // Hand-built exactly as the OLD buildSignedPayload() did: TIER-REGION-DAYS,
+    // signed with the same dev-placeholder secret this test suite always runs
+    // under (SARANG_LICENSE_HMAC_SECRET unset in this environment).
+    const { createHmac } = await import('crypto')
+    const days = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 86_400_000)
+    const payload = `TRIAL-IN-${days.toString(36)}`
+    const sig = createHmac('sha256', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP').update(payload).digest('hex').slice(0, 12)
+    const oldFormatKey = `SARANG-${payload}-${sig}`
+
+    const parsed = parseAndVerifyLicenseKey(oldFormatKey)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.tier).toBe('TRIAL')
+    expect(parsed?.region).toBe('IN')
+    expect(parsed?.issuedAt.toISOString().slice(0, 10)).toBe('2026-01-15')
+  })
+
+  it('rejects an old-format key with a tampered signature exactly like the new format does', async () => {
+    const { parseAndVerifyLicenseKey } = await importFresh()
+    const { createHmac } = await import('crypto')
+    const days = Math.floor(Date.now() / 86_400_000)
+    const payload = `TRIAL-IN-${days.toString(36)}`
+    const sig = createHmac('sha256', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP').update(payload).digest('hex').slice(0, 12)
+    const tampered = `SARANG-${payload}-${sig.slice(0, -2)}zz`
+    expect(parseAndVerifyLicenseKey(tampered)).toBeNull()
+  })
 })
 
 describe('getLicenseState — offline, tamper-resistant, threshold-correct', () => {

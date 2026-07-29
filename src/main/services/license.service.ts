@@ -51,10 +51,32 @@ interface ParsedLicenseKey {
   issuedAt: Date
 }
 
-/** SARANG-<TIER>-<REGION>-<issuedDateBase36Days>-<hmacSignatureHex12> */
-function buildSignedPayload(tier: LicenseTier, region: LicenseRegion, issuedAt: Date): string {
+/**
+ * SARANG-<TIER>-<REGION>-<issuedDateBase36Days>-<nonceHex6>-<hmacSignatureHex12>
+ *
+ * Real bug found+fixed 2026-07-29: the payload used to be built from only
+ * TIER-REGION-DAYS — three inputs with no per-request entropy at all, and
+ * HMAC-SHA256 is deterministic, so any two people issued a key for the same
+ * tier+region on the same *calendar day* (the timestamp component is already
+ * floored to day granularity for the 335/365-day trial math — see below)
+ * got the byte-for-byte identical key string. Not a shared-on-purpose key
+ * (that's a separate, already-documented, accepted risk — see
+ * activateLicenseKey()'s doc comment) but two total strangers issued the
+ * same "unique" license by the system itself: undermines one-key-per-device
+ * between people who never chose to share anything, merges unrelated
+ * customers' usage-ping data under one hash, and would collateral-damage an
+ * unrelated same-day customer if a refund's kill-switch revocation is ever
+ * keyed by hash. Fixed with a random nonce, added as its own payload segment
+ * rather than increasing timestamp precision — keeps the day-granularity
+ * date math this file's trial/renewal logic already depends on completely
+ * unchanged, and is the more conventional "just add a serial" fix. Old
+ * 5-part keys (no nonce) — already issued and emailed to real signups before
+ * this fix — must keep validating forever, never invalidated; see the
+ * two-shape handling in parseAndVerifyLicenseKey() below.
+ */
+function buildSignedPayload(tier: LicenseTier, region: LicenseRegion, issuedAt: Date, nonce: string): string {
   const daysSinceEpoch = Math.floor(issuedAt.getTime() / 86_400_000)
-  return `${tier}-${region}-${daysSinceEpoch.toString(36)}`
+  return `${tier}-${region}-${daysSinceEpoch.toString(36)}-${nonce}`
 }
 
 function sign(payload: string): string {
@@ -63,19 +85,32 @@ function sign(payload: string): string {
 
 /** Issues a new signed key. Used by the website's key-issuance route (mirrored server-side, not called from the app) and by tests. */
 export function generateLicenseKey(tier: LicenseTier, region: LicenseRegion, issuedAt: Date = new Date()): string {
-  const payload = buildSignedPayload(tier, region, issuedAt)
+  const nonce = randomBytes(3).toString('hex') // 6 hex chars — collision-space large enough that a same-tier/region/day repeat is negligible, and this key isn't a secret, so cryptographic unpredictability isn't required, just uniqueness
+  const payload = buildSignedPayload(tier, region, issuedAt, nonce)
   return `SARANG-${payload}-${sign(payload)}`
 }
 
 /** Parses + verifies a key's signature. Returns null for any malformed or tampered key — never throws, callers treat null as "invalid, prompt for a real key." */
 export function parseAndVerifyLicenseKey(key: string): ParsedLicenseKey | null {
   const parts = key.trim().toUpperCase().split('-')
-  if (parts.length !== 5 || parts[0] !== 'SARANG') return null
-  const [, tierRaw, regionRaw, daysRaw, signature] = parts
+  if (parts[0] !== 'SARANG') return null
+  if (parts.length !== 5 && parts.length !== 6) return null
+
+  // 6 parts = current format (with nonce); 5 parts = pre-2026-07-29 format
+  // (no nonce) — still validated exactly as originally issued, never broken.
+  const hasNonce = parts.length === 6
+  const tierRaw = parts[1]
+  const regionRaw = parts[2]
+  const daysRaw = parts[3]
+  const nonce = hasNonce ? parts[4] : null
+  const signature = hasNonce ? parts[5] : parts[4]
+
   if (tierRaw !== 'TRIAL' && tierRaw !== 'PAID') return null
   if (regionRaw !== 'IN' && regionRaw !== 'INTL') return null
 
-  const payload = `${tierRaw}-${regionRaw}-${daysRaw.toLowerCase()}`
+  const payload = hasNonce
+    ? `${tierRaw}-${regionRaw}-${daysRaw.toLowerCase()}-${(nonce as string).toLowerCase()}`
+    : `${tierRaw}-${regionRaw}-${daysRaw.toLowerCase()}`
   const expectedSig = sign(payload)
   // Constant-time compare — this is a licensing check not an auth token, but
   // there's no reason to leak timing information for free.
