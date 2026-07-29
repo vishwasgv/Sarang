@@ -46,9 +46,15 @@ interface ProgressReport {
   batches: ProgressBatch[]
 }
 
-async function printProgressReport(student: StudentProfile) {
-  const res = await api.coachingProgress.getReport({ studentId: student.customerId })
-  if (!res.success || !res.data) return
+async function printProgressReport(student: StudentProfile, onError: (msg: string) => void) {
+  let res
+  try {
+    res = await api.coachingProgress.getReport({ studentId: student.customerId })
+  } catch {
+    onError('Could not load progress report.')
+    return
+  }
+  if (!res.success || !res.data) { onError(res.error?.message ?? 'Could not load progress report.'); return }
   const report = res.data as ProgressReport
   const printedOn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -194,38 +200,43 @@ export default function StudentsScreen() {
     }
     setSaving(true)
     setFormError('')
-    let res
-    if (editStudent) {
-      res = await api.student.update({
-        id: editStudent.id,
-        customerName: form.customerName.trim(),
-        phone: form.phone || null,
-        email: form.email || null,
-        rollNumber: form.rollNumber || null,
-        classOrGrade: form.classOrGrade.trim(),
-        schoolName: form.schoolName || null,
-        parentPhone: form.parentPhone || null,
-      })
-    } else {
-      res = await api.student.create({
-        customerId: pickedCustomer!.id,
-        customerName: pickedCustomer!.customerName,
-        phone: pickedCustomer!.phone || undefined,
-        email: pickedCustomer!.email || undefined,
-        rollNumber: form.rollNumber || undefined,
-        classOrGrade: form.classOrGrade.trim(),
-        schoolName: form.schoolName || undefined,
-        parentPhone: form.parentPhone || undefined,
-        enrollmentDate: form.enrollmentDate || undefined,
-      })
+    try {
+      let res
+      if (editStudent) {
+        res = await api.student.update({
+          id: editStudent.id,
+          customerName: form.customerName.trim(),
+          phone: form.phone || null,
+          email: form.email || null,
+          rollNumber: form.rollNumber || null,
+          classOrGrade: form.classOrGrade.trim(),
+          schoolName: form.schoolName || null,
+          parentPhone: form.parentPhone || null,
+        })
+      } else {
+        res = await api.student.create({
+          customerId: pickedCustomer!.id,
+          customerName: pickedCustomer!.customerName,
+          phone: pickedCustomer!.phone || undefined,
+          email: pickedCustomer!.email || undefined,
+          rollNumber: form.rollNumber || undefined,
+          classOrGrade: form.classOrGrade.trim(),
+          schoolName: form.schoolName || undefined,
+          parentPhone: form.parentPhone || undefined,
+          enrollmentDate: form.enrollmentDate || undefined,
+        })
+      }
+      if (res.success) {
+        setShowForm(false)
+        loadAll()
+      } else {
+        setFormError(res.error?.message ?? 'Failed to save student.')
+      }
+    } catch {
+      setFormError('Failed to save student.')
+    } finally {
+      setSaving(false)
     }
-    if (res.success) {
-      setShowForm(false)
-      loadAll()
-    } else {
-      setFormError(res.error?.message ?? 'Failed to save student.')
-    }
-    setSaving(false)
   }
 
   async function handleToggleActive(s: StudentProfile) {
@@ -240,10 +251,15 @@ export default function StudentsScreen() {
 
   async function handleDelete(s: StudentProfile) {
     setDeleting(true)
-    const res = await api.student.delete({ id: s.id })
-    setDeleting(false)
-    if (res.success) { setDeleteTarget(null); loadAll() }
-    else setError(res.error?.message ?? 'Delete failed.')
+    try {
+      const res = await api.student.delete({ id: s.id })
+      if (res.success) { setDeleteTarget(null); loadAll() }
+      else setError(res.error?.message ?? 'Delete failed.')
+    } catch {
+      setError('Delete failed.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -321,7 +337,7 @@ export default function StudentsScreen() {
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2 justify-end">
-                    <button onClick={() => printProgressReport(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Print progress report">
+                    <button onClick={() => printProgressReport(s, (msg) => toastError('Error', msg))} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Print progress report">
                       <Printer size={14} />
                     </button>
                     <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Edit">

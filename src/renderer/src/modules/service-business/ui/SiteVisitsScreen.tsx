@@ -88,6 +88,8 @@ export function SiteVisitsScreen(): React.JSX.Element {
       const res = await window.api.siteVisit.list({ projectId: pid })
       if (res.success) setItems((res.data as SiteVisit[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load site visits.')
+    } catch {
+      toastError('Error', 'Could not load site visits.')
     } finally {
       setLoading(false)
     }
@@ -144,6 +146,8 @@ export function SiteVisitsScreen(): React.JSX.Element {
       } else {
         setError(res.error?.message ?? 'Could not save site visit.')
       }
+    } catch {
+      setError('Could not save site visit.')
     } finally {
       setSaving(false)
     }
@@ -155,6 +159,8 @@ export function SiteVisitsScreen(): React.JSX.Element {
       const res = await window.api.materialTestResult.list({ siteVisitId })
       if (res.success) setTestResults((res.data as MaterialTestResult[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load test results.')
+    } catch {
+      toastError('Error', 'Could not load test results.')
     } finally {
       setTestsLoading(false)
     }
@@ -187,23 +193,34 @@ export function SiteVisitsScreen(): React.JSX.Element {
       } else {
         setTestError(res.error?.message ?? 'Could not add test result.')
       }
+    } catch {
+      setTestError('Could not add test result.')
     } finally {
       setTestSaving(false)
     }
   }
 
   async function handleRemoveTestResult(siteVisitId: string, id: string) {
-    const res = await window.api.materialTestResult.delete({ id })
-    if (res.success) await loadTestResults(siteVisitId)
-    else toastError('Error', res.error?.message ?? 'Could not remove test result.')
+    try {
+      const res = await window.api.materialTestResult.delete({ id })
+      if (res.success) await loadTestResults(siteVisitId)
+      else toastError('Error', res.error?.message ?? 'Could not remove test result.')
+    } catch {
+      toastError('Error', 'Could not remove test result.')
+    }
   }
 
   async function handleDelete(id: string) {
     setDeleting(true)
-    const res = await window.api.siteVisit.delete({ id })
-    setDeleting(false)
-    if (res.success) { toastSuccess('Deleted', 'Site visit removed.'); setDeleteTargetId(null); await load(projectId) }
-    else toastError('Error', res.error?.message ?? 'Could not delete.')
+    try {
+      const res = await window.api.siteVisit.delete({ id })
+      if (res.success) { toastSuccess('Deleted', 'Site visit removed.'); setDeleteTargetId(null); await load(projectId) }
+      else toastError('Error', res.error?.message ?? 'Could not delete.')
+    } catch {
+      toastError('Error', 'Could not delete.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
