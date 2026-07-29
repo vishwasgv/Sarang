@@ -116,15 +116,20 @@ export function ImportWizardScreen() {
     if (!selectedModule) return
     setLoading(true)
     setError(null)
-    const res = await api.import.parseFile({ module: selectedModule })
-    setLoading(false)
-    if (res.success && res.data) {
-      const d = res.data as ParsedData
-      setParsed(d)
-      setMapping(d.suggestedMapping)
-      setStep(2)
-    } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
-      setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+    try {
+      const res = await api.import.parseFile({ module: selectedModule })
+      if (res.success && res.data) {
+        const d = res.data as ParsedData
+        setParsed(d)
+        setMapping(d.suggestedMapping)
+        setStep(2)
+      } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
+        setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+      }
+    } catch {
+      setError('Could not read file.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -138,25 +143,36 @@ export function ImportWizardScreen() {
     if (!filePath) { setError('Could not read the dropped file. Try using Browse File instead.'); return }
     setLoading(true)
     setError(null)
-    const res = await api.import.parseDroppedFile({ module: selectedModule, filePath })
-    setLoading(false)
-    if (res.success && res.data) {
-      const d = res.data as ParsedData
-      setParsed(d)
-      setMapping(d.suggestedMapping)
-      setStep(2)
-    } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
-      setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+    try {
+      const res = await api.import.parseDroppedFile({ module: selectedModule, filePath })
+      if (res.success && res.data) {
+        const d = res.data as ParsedData
+        setParsed(d)
+        setMapping(d.suggestedMapping)
+        setStep(2)
+      } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
+        setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+      }
+    } catch {
+      setError('Could not read file.')
+    } finally {
+      setLoading(false)
     }
   }
 
   async function handleDownloadTemplate() {
     if (!selectedModule) return
     setLoading(true)
-    const res = await api.import.downloadTemplate({ module: selectedModule })
-    setLoading(false)
-    if (!res.success && (res.error as { code?: string })?.code !== 'IMP-000') {
-      setError((res.error as { message?: string })?.message ?? 'Could not generate template.')
+    setError(null)
+    try {
+      const res = await api.import.downloadTemplate({ module: selectedModule })
+      if (!res.success && (res.error as { code?: string })?.code !== 'IMP-000') {
+        setError((res.error as { message?: string })?.message ?? 'Could not generate template.')
+      }
+    } catch {
+      setError('Could not generate template.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -166,13 +182,18 @@ export function ImportWizardScreen() {
     if (!parsed || !selectedModule) return
     setLoading(true)
     setError(null)
-    const res = await api.import.validatePreview({ sessionId: parsed.sessionId, mapping, module: selectedModule })
-    setLoading(false)
-    if (res.success && res.data) {
-      setPreviewData(res.data as PreviewData)
-      setStep(3)
-    } else {
-      setError((res.error as { message?: string })?.message ?? 'Preview failed.')
+    try {
+      const res = await api.import.validatePreview({ sessionId: parsed.sessionId, mapping, module: selectedModule })
+      if (res.success && res.data) {
+        setPreviewData(res.data as PreviewData)
+        setStep(3)
+      } else {
+        setError((res.error as { message?: string })?.message ?? 'Preview failed.')
+      }
+    } catch {
+      setError('Preview failed.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -195,6 +216,8 @@ export function ImportWizardScreen() {
       } else {
         setError((res.error as { message?: string })?.message ?? 'Import failed.')
       }
+    } catch {
+      setError('Import failed.')
     } finally {
       unsubscribe()
       setLoading(false)
