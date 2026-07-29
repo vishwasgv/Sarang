@@ -85,13 +85,18 @@ export function TokenQueueScreen() {
       skip:  () => api.tokenQueue.skip({ id }),
       reset: () => api.tokenQueue.reset({ id }),
     }
-    const res = await handlers[action]()
-    setActioningId(null)
-    if (!res.success) {
-      setActionError(res.error?.message ?? 'Action failed. Please try again.')
-      return
+    try {
+      const res = await handlers[action]()
+      if (!res.success) {
+        setActionError(res.error?.message ?? 'Action failed. Please try again.')
+        return
+      }
+      load()
+    } catch {
+      setActionError('Action failed. Please try again.')
+    } finally {
+      setActioningId(null)
     }
-    load()
   }
 
   async function handleCallNext() {
@@ -351,16 +356,21 @@ function AddTokenModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
     if (!form.patientName.trim()) { setError('Patient name is required.'); return }
     setSaving(true)
     setError(null)
-    const res = await api.tokenQueue.create({
-      patientName: form.patientName.trim(),
-      age: form.age.trim() || undefined,
-      gender: form.gender || undefined,
-      phone: form.phone.trim() || undefined,
-      notes: form.notes.trim() || undefined,
-    })
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not create token.'); return }
-    onSaved()
+    try {
+      const res = await api.tokenQueue.create({
+        patientName: form.patientName.trim(),
+        age: form.age.trim() || undefined,
+        gender: form.gender || undefined,
+        phone: form.phone.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+      })
+      if (!res.success) { setError(res.error?.message ?? 'Could not create token.'); return }
+      onSaved()
+    } catch {
+      setError('Could not create token.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

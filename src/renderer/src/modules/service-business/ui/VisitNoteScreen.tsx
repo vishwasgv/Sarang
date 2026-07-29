@@ -273,8 +273,13 @@ export function VisitNoteScreen() {
   useEffect(() => { load() }, [load])
 
   const loadReferrals = useCallback(async (visitNoteId: string) => {
-    const res = await api.visitNotes.listReferrals({ visitNoteId })
-    if (res.success) setReferrals((res.data as ReferralAppointment[]) ?? [])
+    try {
+      const res = await api.visitNotes.listReferrals({ visitNoteId })
+      if (res.success) setReferrals((res.data as ReferralAppointment[]) ?? [])
+      else setError(res.error?.message ?? 'Could not load referrals.')
+    } catch {
+      setError('Could not load referrals.')
+    }
   }, [])
 
   useEffect(() => {
@@ -294,7 +299,7 @@ export function VisitNoteScreen() {
     if (!note) { setRxItems([]); return }
     api.visitNotes.listPrescriptionItems({ visitNoteId: note.id }).then((res) => {
       if (res.success) setRxItems((res.data as PrescriptionItem[]) ?? [])
-    })
+    }).catch(() => { /* prescription table is supplementary — the note itself already loaded */ })
     setRxDirty(false)
   }, [note?.id])
 
@@ -303,7 +308,7 @@ export function VisitNoteScreen() {
     if (!appointmentId) return
     api.visitNotes.getVitalsTrend({ appointmentId }).then((res) => {
       if (res.success) setVitalsTrend((res.data as VitalsTrendPoint[]) ?? [])
-    })
+    }).catch(() => { /* trend chart is supplementary — the note itself already loaded */ })
   }, [appointmentId, note?.id])
 
   function addRxRow() {
@@ -324,24 +329,29 @@ export function VisitNoteScreen() {
   async function saveRx() {
     if (!note) return
     setRxSaving(true)
-    const res = await api.visitNotes.savePrescriptionItems({
-      visitNoteId: note.id,
-      items: rxItems
-        .filter((it) => it.drugName.trim())
-        .map((it) => ({
-          drugName: it.drugName.trim(),
-          dosage: it.dosage?.trim() || undefined,
-          frequency: it.frequency?.trim() || undefined,
-          duration: it.duration?.trim() || undefined,
-          instructions: it.instructions?.trim() || undefined,
-        })),
-    })
-    setRxSaving(false)
-    if (res.success) {
-      setRxItems((res.data as PrescriptionItem[]) ?? [])
-      setRxDirty(false)
-    } else {
-      setError((res.error as { message?: string })?.message ?? 'Could not save prescription.')
+    try {
+      const res = await api.visitNotes.savePrescriptionItems({
+        visitNoteId: note.id,
+        items: rxItems
+          .filter((it) => it.drugName.trim())
+          .map((it) => ({
+            drugName: it.drugName.trim(),
+            dosage: it.dosage?.trim() || undefined,
+            frequency: it.frequency?.trim() || undefined,
+            duration: it.duration?.trim() || undefined,
+            instructions: it.instructions?.trim() || undefined,
+          })),
+      })
+      if (res.success) {
+        setRxItems((res.data as PrescriptionItem[]) ?? [])
+        setRxDirty(false)
+      } else {
+        setError((res.error as { message?: string })?.message ?? 'Could not save prescription.')
+      }
+    } catch {
+      setError('Could not save prescription.')
+    } finally {
+      setRxSaving(false)
     }
   }
 
@@ -353,20 +363,25 @@ export function VisitNoteScreen() {
     }
     setReferring(true)
     setReferralError(null)
-    const res = await api.visitNotes.referToProvider({
-      visitNoteId: note.id,
-      providerId: referralForm.providerId,
-      scheduledDate: referralForm.scheduledDate,
-      scheduledTime: referralForm.scheduledTime,
-      reason: referralForm.reason.trim() || undefined,
-    })
-    setReferring(false)
-    if (res.success) {
-      setShowReferralForm(false)
-      setReferralForm({ providerId: '', scheduledDate: '', scheduledTime: '', reason: '' })
-      await loadReferrals(note.id)
-    } else {
-      setReferralError((res.error as { message?: string })?.message ?? 'Could not create the referral appointment.')
+    try {
+      const res = await api.visitNotes.referToProvider({
+        visitNoteId: note.id,
+        providerId: referralForm.providerId,
+        scheduledDate: referralForm.scheduledDate,
+        scheduledTime: referralForm.scheduledTime,
+        reason: referralForm.reason.trim() || undefined,
+      })
+      if (res.success) {
+        setShowReferralForm(false)
+        setReferralForm({ providerId: '', scheduledDate: '', scheduledTime: '', reason: '' })
+        await loadReferrals(note.id)
+      } else {
+        setReferralError((res.error as { message?: string })?.message ?? 'Could not create the referral appointment.')
+      }
+    } catch {
+      setReferralError('Could not create the referral appointment.')
+    } finally {
+      setReferring(false)
     }
   }
 
@@ -405,17 +420,23 @@ export function VisitNoteScreen() {
       weightKg: form.weightKg !== '' ? parseFloat(form.weightKg) : null,
     }
 
-    let res
-    if (note) {
-      res = await api.visitNotes.update({ id: note.id, ...fields })
-    } else {
-      res = await api.visitNotes.create({ appointmentId, ...fields })
+    try {
+      let res
+      if (note) {
+        res = await api.visitNotes.update({ id: note.id, ...fields })
+      } else {
+        res = await api.visitNotes.create({ appointmentId, ...fields })
+      }
+      if (!res.success) { setError(res.error?.message ?? 'Could not save note.'); return false }
+      setSaved(true)
+      load()
+      return true
+    } catch {
+      setError('Could not save note.')
+      return false
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not save note.'); return false }
-    setSaved(true)
-    load()
-    return true
   }
 
   async function handleFinalize() {
@@ -426,10 +447,15 @@ export function VisitNoteScreen() {
       if (!ok) return
     }
     setFinalizing(true)
-    const res = await api.visitNotes.finalize({ id: note.id })
-    setFinalizing(false)
-    if (!res.success) { setError(res.error?.message ?? 'Could not finalize note.'); return }
-    load()
+    try {
+      const res = await api.visitNotes.finalize({ id: note.id })
+      if (!res.success) { setError(res.error?.message ?? 'Could not finalize note.'); return }
+      load()
+    } catch {
+      setError('Could not finalize note.')
+    } finally {
+      setFinalizing(false)
+    }
   }
 
   const isFinalized = note?.isFinalized ?? false
