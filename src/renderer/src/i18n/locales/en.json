@@ -1611,7 +1611,7 @@
       "searchTitle": "Quick Search",
       "searchBody": "Press Ctrl+K anytime, from anywhere, to jump straight to any screen or action by typing its name.",
       "billingTitle": "Create a Real Invoice",
-      "billingBody": "Let's create one, start to finish. Add a customer, add a product, and submit — you'll see it appear immediately, exactly like a real sale. Try the grid icon next to the product search box too — it switches to Browse Products, a category-organized tile grid so you can click products straight into the cart without typing anything. Once the invoice is created, try the Print button (58mm/80mm thermal or A4 — try both) and look for the UPI QR code on the printed preview if you've set up a UPI ID. Nothing here is saved once you exit the tutorial.",
+      "billingBody": "Let's create one, start to finish. Add a customer, add a product, and submit — you'll see it appear immediately, exactly like a real sale. Try the grid icon next to the product search box too — it switches to Browse Products, a category-organized tile grid so you can click products straight into the cart without typing anything. Once the invoice is created, try the Print button (58mm/80mm thermal or A4 — try both) and look for the UPI QR code on the printed preview if you've set up a UPI ID. Look for the WhatsApp and Email icons next to Print too — they save the invoice as a PDF, open the folder so you can attach it, then open WhatsApp or your email app pre-filled and ready to send. Nothing here is saved once you exit the tutorial.",
       "customersTitle": "Customers",
       "customersBody": "Every customer you've ever billed lives here, with their full purchase and payment history.",
       "productsTitle": "Products",
