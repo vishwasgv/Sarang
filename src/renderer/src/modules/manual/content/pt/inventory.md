@@ -35,6 +35,8 @@ Um pedido de compra passa por um ciclo de vida fixo:
 3. **Receive Stock** — esta é a etapa que efetivamente adiciona as quantidades pedidas ao seu estoque e registra um movimento de compra para cada item. Uma vez recebido, o pedido mostra o nível de estoque resultante de cada item ao lado da linha do pedido.
 4. Um pedido em Draft ou Approve pode, em vez disso, ser **cancelado**, com um motivo.
 
+Um pedido de compra pode ser **impresso** ou exportado/compartilhado como PDF em qualquer etapa, formatado com os dados do seu negócio, os dados do fornecedor e a lista completa de itens — os mesmos botões de compartilhamento **WhatsApp** e **E-mail** descritos na seção "Compartilhando documentos por WhatsApp e E-mail" do capítulo *Faturamento e Documentos* também funcionam aqui, enviando o pedido de compra diretamente ao seu fornecedor.
+
 ## Visibilidade de estoque baixo
 
 As contagens de estoque baixo e sem estoque aparecem em três lugares que permanecem sempre sincronizados: os selos de alerta no topo da tela de Estoque, os cartões de estoque baixo e sem estoque no Painel, e o filtro de estoque baixo nas telas de Produtos/Estoque. Definir um ponto de reposição sensato em cada produto (o padrão é 5) é o que torna esses alertas úteis — um produto sem ponto de reposição definido efetivamente nunca dispara um alerta de estoque baixo.

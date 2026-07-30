@@ -46,6 +46,20 @@ Um orçamento começa como **RASCUNHO** e pode ser marcado como **ENVIADO**, **A
 
 **Notas de Débito** (`/billing/debit-notes`) são o equivalente do lado do fornecedor — dinheiro que um fornecedor deve devolver a você, por exemplo uma devolução de estoque comprado ou uma correção de cobrança. Vincular uma nota de débito a um fornecedor debita o razão dele, reduzindo o que você deve a ele. Tanto as notas de crédito quanto as de débito podem opcionalmente referenciar a nota fiscal ou o pedido de compra relacionado, podem ser editadas ou excluídas, e são impressas em A4 ou na largura de recibo.
 
+## Compartilhando documentos por WhatsApp e E-mail
+
+Notas, Orçamentos, Notas de Crédito e Notas de Débito têm, cada um, botões de compartilhamento **WhatsApp** e **E-mail** (um ícone de balão de conversa e um ícone de envelope) ao lado dos controles existentes de Imprimir/Exportar. Clicar em um deles:
+
+1. Solicita que você salve o documento como PDF — a mesma caixa de diálogo de salvamento que Imprimir/Exportar já usa.
+2. Abre a pasta que contém esse PDF, com o arquivo destacado.
+3. Abre o seu próprio WhatsApp (ou aplicativo de e-mail), já preenchido com o número de telefone/e-mail do cliente ou fornecedor (a partir dos dados de contato salvos) e uma breve mensagem com o número e o valor do documento.
+
+**Você ainda precisa anexar o arquivo você mesmo** — arraste-o da pasta destacada para a janela do WhatsApp ou do e-mail que acabou de abrir, depois clique em Enviar. O Sarang não consegue anexar o arquivo automaticamente: nem os links de clique-para-conversar do WhatsApp nem os links `mailto:` aceitam anexos, então essa única etapa de arrastar e soltar é uma limitação real de ambos, não um recurso ausente. Nada é enviado automaticamente — o Sarang apenas abre o seu próprio WhatsApp/aplicativo de e-mail já preenchido; você sempre clica em Enviar.
+
+Se um cliente ou fornecedor não tiver número de telefone cadastrado, o botão WhatsApp fica desativado. Se não tiver e-mail cadastrado, o botão E-mail ainda abre seu aplicativo de e-mail com o campo "Para" em branco para você preencher.
+
+Abrir o WhatsApp dessa forma inicia o WhatsApp Desktop, se estiver instalado, ou o WhatsApp Web no seu navegador, caso contrário. Abrir o E-mail inicia o aplicativo definido como padrão de e-mail no seu computador — se nenhum estiver definido, o Windows pedirá que você escolha um; isso é normal.
+
 ## Observações sobre impostos e arredondamento
 
 Todo total de nota fiscal é arredondado para a unidade inteira mais próxima da moeda, com a diferença de arredondamento mostrada em sua própria linha para que a conta sempre feche de forma visível. No modelo de imposto GST, o imposto é impresso como CGST+SGST para uma venda dentro do mesmo estado, ou como uma única linha de IGST para uma venda interestadual, com base na caixa de seleção marcada no momento em que a nota foi criada.

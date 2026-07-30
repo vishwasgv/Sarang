@@ -347,7 +347,10 @@
       "date": "Data da Prescrição (opcional)",
       "addToCart": "Adicionar ao Carrinho",
       "required": "O nome do paciente e do médico são obrigatórios."
-    }
+    },
+    "shareWhatsAppMessage": "{{businessName}}: {{documentType}} {{number}} — Total {{amount}}. O documento detalhado está anexado como arquivo.",
+    "shareEmailSubject": "{{documentType}} {{number}} de {{businessName}}",
+    "shareEmailBody": "Prezado(a) Senhor(a),\n\nSegue em anexo {{documentType}} {{number}} de {{businessName}}, no valor total de {{amount}}.\n\nObrigado.\n\n{{businessName}}"
   },
   "products": {
     "title": "Produtos",
@@ -1212,7 +1215,11 @@
       "warrantyExpiringSoon": "Vencendo em Breve",
       "warrantyActive": "Ativa",
       "noWarranty": "Sem Garantia"
-    }
+    },
+    "allTimeRange": "Todo o período",
+    "shareWhatsAppMessage": "{{businessName}}: relatório de {{reportType}} ({{dateRange}}). O arquivo do relatório está anexado.",
+    "shareEmailSubject": "Relatório de {{reportType}} de {{businessName}}",
+    "shareEmailBody": "Prezado(a) Senhor(a),\n\nSegue em anexo o relatório de {{reportType}} de {{businessName}}, referente a {{dateRange}}.\n\nObrigado.\n\n{{businessName}}"
   },
   "cashClose": {
     "title": "Fechamento de Caixa",
@@ -1515,7 +1522,7 @@
       "searchTitle": "Busca rápida",
       "searchBody": "Pressione Ctrl+K a qualquer momento, de qualquer lugar, para ir direto a qualquer tela ou ação digitando seu nome.",
       "billingTitle": "Crie uma fatura real",
-      "billingBody": "Vamos criar uma do início ao fim. Adicione um cliente, adicione um produto e envie — ela aparecerá imediatamente, exatamente como uma venda real. Experimente também o ícone de grade ao lado da caixa de busca de produtos — ele muda para Navegar Produtos, uma grade de blocos organizada por categoria para que você possa clicar nos produtos direto no carrinho sem digitar nada. Depois de criada, experimente o botão Imprimir (térmica 58mm/80mm ou A4 — experimente ambas) e procure o código QR UPI na pré-visualização de impressão se você configurou um ID UPI. Nada disso permanece salvo depois que você sai do tutorial.",
+      "billingBody": "Vamos criar uma do início ao fim. Adicione um cliente, adicione um produto e envie — ela aparecerá imediatamente, exatamente como uma venda real. Experimente também o ícone de grade ao lado da caixa de busca de produtos — ele muda para Navegar Produtos, uma grade de blocos organizada por categoria para que você possa clicar nos produtos direto no carrinho sem digitar nada. Depois de criada, experimente o botão Imprimir (térmica 58mm/80mm ou A4 — experimente ambas) e procure o código QR UPI na pré-visualização de impressão se você configurou um ID UPI. Observe também os ícones de WhatsApp e E-mail ao lado de Imprimir — eles salvam a nota como PDF, abrem a pasta para que você possa anexá-lo, e então abrem o WhatsApp ou seu aplicativo de e-mail já preenchidos e prontos para enviar. Nada disso permanece salvo depois que você sai do tutorial.",
       "customersTitle": "Clientes",
       "customersBody": "Todo cliente que você já faturou está aqui, com seu histórico completo de compras e pagamentos.",
       "productsTitle": "Produtos",
@@ -2237,6 +2244,21 @@
     "updateDebitNote": "Atualizar Nota de Débito",
     "noSupplier": "Sem fornecedor",
     "refPO": "Ref: {{number}}"
+  },
+  "share": {
+    "whatsapp": "WhatsApp",
+    "email": "E-mail",
+    "noPhoneOnFile": "Nenhum número de telefone cadastrado",
+    "noPhoneTitle": "Não é possível compartilhar via WhatsApp",
+    "noPhoneMessage": "Não há um número de telefone válido cadastrado para este contato.",
+    "openingWhatsApp": "Abrindo o WhatsApp…",
+    "openingEmail": "Abrindo seu aplicativo de e-mail…",
+    "revealFailed": "Não foi possível abrir a pasta do arquivo salvo.",
+    "docTypeInvoice": "Nota",
+    "docTypeQuotation": "Orçamento",
+    "docTypeCreditNote": "Nota de Crédito",
+    "docTypeDebitNote": "Nota de Débito",
+    "docTypePurchaseOrder": "Pedido de Compra"
   },
   "disclaimer": {
     "legalNotice": "Sarang Business OS Lite é uma ferramenta organizacional gratuita para pequenas empresas. Não é um sistema de registros médicos, software de contabilidade, ferramenta de aconselhamento jurídico ou produto financeiro licenciado. Todas as informações são dados próprios do usuário, armazenados localmente em seu dispositivo. A Aszurex não oferece garantias quanto à precisão, integridade ou adequação deste software para qualquer finalidade regulamentada. Os usuários são os únicos responsáveis pelo cumprimento das leis e regulamentações profissionais aplicáveis."
