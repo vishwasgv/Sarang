@@ -16,7 +16,17 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src'),
+      // Renderer-side aliases, matching electron.vite.config.ts's `renderer`
+      // target exactly — added 2026-07-30 alongside the first renderer-side
+      // unit test (manual-match.util.ts). No main-process file uses these
+      // alias names (they import via relative paths instead), so this is
+      // additive and doesn't affect any existing main-process test.
+      '@renderer': resolve(__dirname, 'src/renderer/src'),
+      '@shared': resolve(__dirname, 'src/renderer/src/shared'),
+      '@modules': resolve(__dirname, 'src/renderer/src/modules'),
+      '@app': resolve(__dirname, 'src/renderer/src/app'),
+      '@assets': resolve(__dirname, 'src/renderer/src/assets')
     }
   }
 })

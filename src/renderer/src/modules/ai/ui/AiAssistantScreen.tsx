@@ -4,16 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { Sparkles, Send, BookOpen } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
-import { MANUAL_CHAPTERS } from '@modules/manual/manifest'
-import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/content-loader'
+import { findManualMatch, type ManualChapterRef } from '@modules/ai/manual-match.util'
 
 // Phase 57 — AI Assistant chat panel. English-only (see
-// AI_ASSISTANT_MASTER_PROMPT.md Section 6 — small local models' non-English
-// quality is weaker and untested), matching the plain-English convention
-// already used for Hotel/Jewellery/Rental (all languageLock-adjacent
-// verticals). Never names the underlying model/runtime anywhere here —
-// "Sarang AI Assistant" only, enforced by never importing or displaying
-// anything from ai-llama-provider.ts's internals.
+// docs/manual chapter ai-assistant.md's "Language" section, which discloses
+// this directly to users — small local models' non-English quality is
+// weaker and untested), matching the plain-English convention already used
+// for Hotel/Jewellery/Rental (all languageLock-adjacent verticals). Never
+// names the underlying model/runtime anywhere here — "Sarang AI Assistant"
+// only, enforced by never importing or displaying anything from
+// ai-llama-provider.ts's internals.
 //
 // Latency is real for any question the deterministic fast-path doesn't
 // match (~20-30s typical, up to ~60s for the FIRST answer in a session while
@@ -28,56 +28,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   manualSlug?: string
-}
-
-// Navigation-help interception — answered entirely client-side, never sent
-// through the ~20-30s model pipeline, since the model has no knowledge of
-// the app's UI anyway (its templates only cover business-data questions).
-// The Manual (Phase 56) is the single source of truth here — this only
-// decides whether to point the user at one of its chapters, it never
-// invents navigation instructions of its own.
-const NAV_INTENT_PATTERN = /\bhow (do|can|to)\b|\bwhere (is|can|do)\b|\bhow to\b/i
-const STOPWORDS = new Set(['how', 'do', 'i', 'can', 'to', 'the', 'a', 'an', 'is', 'are', 'where', 'find', 'my', 'me', 'in', 'on', 'for', 'of', 'what', 'does', 'you', 'and'])
-
-function tokenize(s: string): string[] {
-  return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w.length > 2 && !STOPWORDS.has(w))
-}
-
-function findManualMatch(question: string, locale: string): { slug: string; title: string } | null {
-  if (!NAV_INTENT_PATTERN.test(question)) return null
-  const qWords = new Set(tokenize(question))
-  if (qWords.size === 0) return null
-  let best: { slug: string; title: string; score: number } | null = null
-  for (const chapter of MANUAL_CHAPTERS) {
-    const title = getChapterTitle(locale, chapter.slug, chapter.title)
-    const titleWords = tokenize(title)
-    const titleHit = titleWords.some((w) => qWords.has(w))
-    // Body content is searched too (not just the title) — "how do I create an
-    // invoice" shares no words with the title "Billing & Documents", but the
-    // chapter body obviously discusses invoices at length. Still 100%
-    // deterministic keyword matching, never generated text — only decides
-    // WHICH real, already-written chapter to point at.
-    //
-    // Scored by TERM FREQUENCY, not just distinct-word presence — found live:
-    // "how do I create an invoice" matched both `getting-started.md` (which
-    // mentions "invoice" once, in its own walkthrough) and `billing.md` (which
-    // discusses invoices at length) with the same distinct-word count, and the
-    // tie went to whichever chapter happens to come first in MANUAL_CHAPTERS.
-    // Counting occurrences instead means the chapter that's actually ABOUT the
-    // topic wins, not just the first one that mentions it in passing.
-    const bodyTokens = tokenize(getChapterContentWithFallback(locale, chapter.slug))
-    const bodyCounts = new Map<string, number>()
-    for (const w of bodyTokens) bodyCounts.set(w, (bodyCounts.get(w) ?? 0) + 1)
-    const matchedDistinct = [...qWords].filter((w) => bodyCounts.has(w) || titleWords.includes(w))
-    if (matchedDistinct.length === 0) continue
-    const strongMatch = matchedDistinct.some((w) => w.length >= 6)
-    if (matchedDistinct.length < 2 && !strongMatch) continue
-    let occurrenceScore = 0
-    for (const w of qWords) occurrenceScore += bodyCounts.get(w) ?? 0
-    const score = occurrenceScore + (titleHit ? 20 : 0)
-    if (!best || score > best.score) best = { slug: chapter.slug, title, score }
-  }
-  return best ? { slug: best.slug, title: best.title } : null
+  manualSuggestions?: ManualChapterRef[]
 }
 
 export function AiAssistantScreen() {
@@ -111,11 +62,24 @@ export function AiAssistantScreen() {
     setQuestion('')
 
     const navMatch = findManualMatch(q, i18n.language)
-    if (navMatch) {
+    if (navMatch.kind === 'confident') {
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        text: `Here's how — see the "${navMatch.title}" chapter of the Manual for step-by-step instructions.`,
-        manualSlug: navMatch.slug
+        text: `Here's how — see the "${navMatch.chapter.title}" chapter of the Manual for step-by-step instructions.`,
+        manualSlug: navMatch.chapter.slug
+      }])
+      return
+    }
+    if (navMatch.kind === 'weak') {
+      // Never sent to the AI pipeline — it has no knowledge of the app's UI
+      // and would misclassify this as out_of_scope, producing a misleading
+      // "I can only answer questions about your business data" refusal for
+      // a perfectly reasonable navigation question. This is a graceful
+      // "couldn't find an exact match" instead, with real candidates.
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        text: "I couldn't find an exact match for that in the Manual, but these chapters might help:",
+        manualSuggestions: navMatch.candidates
       }])
       return
     }
@@ -196,6 +160,25 @@ export function AiAssistantScreen() {
                   >
                     <BookOpen size={13} /> Open in Manual
                   </button>
+                )}
+                {m.manualSuggestions && (
+                  <div className="mt-2 flex flex-col items-start gap-1">
+                    {m.manualSuggestions.map((s) => (
+                      <button
+                        key={s.slug}
+                        onClick={() => navigate(`/manual/${s.slug}`)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+                      >
+                        <BookOpen size={13} /> {s.title}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => navigate('/manual')}
+                      className="mt-1 text-xs text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 hover:underline"
+                    >
+                      Or browse the full Manual
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
