@@ -46,6 +46,20 @@ Les **Credit Notes** (`/billing/credit-notes`) enregistrent une somme due *en re
 
 Les **Debit Notes** (`/billing/debit-notes`) sont l'équivalent côté fournisseur : une somme qu'un fournisseur vous doit en retour, par exemple un retour de stock acheté ou une correction de facturation. Lier une Debit Note à un fournisseur débite son grand livre, réduisant ce que vous lui devez. Les Credit Notes et Debit Notes peuvent toutes deux référencer facultativement la facture ou le bon de commande auquel elles se rapportent, peuvent être modifiées ou supprimées, et s'impriment au format A4 ou largeur reçu.
 
+## Partager des documents par WhatsApp et E-mail
+
+Les factures, Quotations, Credit Notes et Debit Notes disposent chacune de boutons de partage **WhatsApp** et **E-mail** (une icône de bulle de discussion et une icône d'enveloppe) à côté de leurs contrôles Print/Export existants. Cliquer sur l'un d'eux :
+
+1. Vous invite à enregistrer le document au format PDF — la même boîte de dialogue d'enregistrement déjà utilisée par Print/Export.
+2. Ouvre le dossier contenant ce PDF, avec le fichier mis en surbrillance.
+3. Ouvre votre propre WhatsApp (ou application e-mail), pré-rempli avec le numéro de téléphone ou l'e-mail du client ou du fournisseur (à partir de ses coordonnées enregistrées) et un court message indiquant le numéro et le montant du document.
+
+**Vous devez joindre le fichier vous-même** — glissez-le depuis le dossier mis en surbrillance vers la fenêtre WhatsApp ou e-mail qui vient de s'ouvrir, puis cliquez sur Envoyer. Sarang ne peut pas joindre le fichier automatiquement : ni les liens de discussion instantanée de WhatsApp ni les liens `mailto:` ne prennent en charge les pièces jointes, donc cette unique étape de glisser-déposer est une véritable limitation des deux, et non une fonctionnalité manquante. Rien n'est jamais envoyé automatiquement — Sarang se contente d'ouvrir votre propre WhatsApp/application e-mail pré-rempli ; c'est toujours vous qui cliquez sur Envoyer.
+
+Si un client ou un fournisseur n'a aucun numéro de téléphone enregistré, le bouton WhatsApp est désactivé. S'il n'a aucun e-mail enregistré, le bouton E-mail ouvre quand même votre application e-mail avec le champ « À » laissé vide pour que vous le complétiez.
+
+Ouvrir WhatsApp de cette façon lance WhatsApp Desktop s'il est installé, ou WhatsApp Web dans votre navigateur sinon. Ouvrir E-mail lance l'application définie comme messagerie par défaut sur votre ordinateur — si aucune n'est définie, Windows vous demandera d'en choisir une ; c'est normal.
+
 ## Notes sur la taxe et l'arrondi
 
 Chaque total de facture est arrondi à l'unité monétaire entière la plus proche, la différence d'arrondi étant affichée sur sa propre ligne afin que le calcul reste toujours visiblement cohérent. Sous le modèle fiscal GST, la taxe s'imprime en CGST+SGST pour une vente intra-État ou en une seule ligne IGST pour une vente inter-États, selon la case cochée lors de la création de la facture.

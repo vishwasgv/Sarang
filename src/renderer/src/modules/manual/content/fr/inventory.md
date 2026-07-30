@@ -35,6 +35,8 @@ Un bon de commande suit un cycle de vie fixe :
 3. **Recevoir le stock** — c'est l'étape qui ajoute réellement les quantités commandées à votre stock et enregistre un mouvement PURCHASE pour chaque article. Une fois reçu, le bon de commande affiche le niveau de stock résultant de chaque article à côté de la ligne de commande.
 4. Un bon de commande en Brouillon ou Approuvé peut à la place être **annulé**, avec un motif.
 
+Un bon de commande peut être **imprimé** ou exporté/partagé au format PDF à n'importe quelle étape, mis en page avec les coordonnées de votre entreprise, celles du fournisseur, et la liste complète des articles — les mêmes boutons de partage **WhatsApp** et **E-mail** décrits dans la section « Partager des documents par WhatsApp et E-mail » du chapitre *Facturation et documents* fonctionnent également ici, en envoyant le bon de commande directement à votre fournisseur.
+
 ## Visibilité du stock faible
 
 Les décomptes de stock faible et de rupture de stock apparaissent à trois endroits qui restent toujours synchronisés : les badges d'alerte en haut de l'écran Stock, les tuiles de stock faible et de rupture de stock sur le Tableau de bord, et le filtre de stock faible sur les écrans Produits/Stock. Définir un seuil de réapprovisionnement sensé sur chaque produit (la valeur par défaut est 5) est ce qui rend ces alertes utiles — un produit sans seuil de réapprovisionnement défini ne déclenche pratiquement jamais d'alerte de stock faible.

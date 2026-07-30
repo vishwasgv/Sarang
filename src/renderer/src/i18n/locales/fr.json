@@ -347,7 +347,10 @@
       "date": "Date de l'Ordonnance (facultatif)",
       "addToCart": "Ajouter au Panier",
       "required": "Le nom du patient et du médecin sont requis."
-    }
+    },
+    "shareWhatsAppMessage": "{{businessName}} : {{documentType}} {{number}} — Total {{amount}}. Le document détaillé est joint en tant que fichier.",
+    "shareEmailSubject": "{{documentType}} {{number}} de {{businessName}}",
+    "shareEmailBody": "Madame, Monsieur,\n\nVeuillez trouver ci-joint le {{documentType}} {{number}} de {{businessName}}, d'un montant total de {{amount}}.\n\nMerci.\n\n{{businessName}}"
   },
   "products": {
     "title": "Produits",
@@ -1212,7 +1215,11 @@
       "warrantyExpiringSoon": "Bientôt Expirée",
       "warrantyActive": "Active",
       "noWarranty": "Sans Garantie"
-    }
+    },
+    "allTimeRange": "Toute la période",
+    "shareWhatsAppMessage": "{{businessName}} : rapport {{reportType}} ({{dateRange}}). Le fichier du rapport est joint.",
+    "shareEmailSubject": "Rapport {{reportType}} de {{businessName}}",
+    "shareEmailBody": "Madame, Monsieur,\n\nVeuillez trouver ci-joint le rapport {{reportType}} de {{businessName}}, couvrant {{dateRange}}.\n\nMerci.\n\n{{businessName}}"
   },
   "cashClose": {
     "title": "Clôture de caisse",
@@ -1515,7 +1522,7 @@
       "searchTitle": "Recherche rapide",
       "searchBody": "Appuyez sur Ctrl+K à tout moment, depuis n'importe où, pour aller directement à n'importe quel écran ou action en tapant son nom.",
       "billingTitle": "Créez une vraie facture",
-      "billingBody": "Créons-en une du début à la fin. Ajoutez un client, ajoutez un produit et validez — elle apparaîtra immédiatement, exactement comme une vraie vente. Essayez aussi l'icône de grille à côté de la zone de recherche de produits — elle passe en mode Parcourir les Produits, une grille de vignettes organisée par catégorie pour que vous puissiez cliquer sur les produits directement dans le panier sans rien taper. Une fois créée, essayez le bouton Imprimer (thermique 58 mm/80 mm ou A4 — essayez les deux) et cherchez le code QR UPI sur l'aperçu d'impression si vous avez configuré un identifiant UPI. Rien de tout cela n'est conservé une fois le tutoriel quitté.",
+      "billingBody": "Créons-en une du début à la fin. Ajoutez un client, ajoutez un produit et validez — elle apparaîtra immédiatement, exactement comme une vraie vente. Essayez aussi l'icône de grille à côté de la zone de recherche de produits — elle passe en mode Parcourir les Produits, une grille de vignettes organisée par catégorie pour que vous puissiez cliquer sur les produits directement dans le panier sans rien taper. Une fois créée, essayez le bouton Imprimer (thermique 58 mm/80 mm ou A4 — essayez les deux) et cherchez le code QR UPI sur l'aperçu d'impression si vous avez configuré un identifiant UPI. Repérez aussi les icônes WhatsApp et E-mail à côté d'Imprimer — elles enregistrent la facture au format PDF, ouvrent le dossier pour que vous puissiez la joindre, puis ouvrent WhatsApp ou votre application e-mail pré-rempli et prêt à envoyer. Rien de tout cela n'est conservé une fois le tutoriel quitté.",
       "customersTitle": "Clients",
       "customersBody": "Chaque client que vous avez déjà facturé se trouve ici, avec son historique complet d'achats et de paiements.",
       "productsTitle": "Produits",
@@ -2237,6 +2244,21 @@
     "updateDebitNote": "Mettre à Jour la Note de Débit",
     "noSupplier": "Aucun fournisseur",
     "refPO": "Réf : {{number}}"
+  },
+  "share": {
+    "whatsapp": "WhatsApp",
+    "email": "E-mail",
+    "noPhoneOnFile": "Aucun numéro de téléphone enregistré",
+    "noPhoneTitle": "Impossible de partager via WhatsApp",
+    "noPhoneMessage": "Aucun numéro de téléphone valide n'est enregistré pour ce contact.",
+    "openingWhatsApp": "Ouverture de WhatsApp…",
+    "openingEmail": "Ouverture de votre application e-mail…",
+    "revealFailed": "Impossible d'ouvrir le dossier du fichier enregistré.",
+    "docTypeInvoice": "Facture",
+    "docTypeQuotation": "Devis",
+    "docTypeCreditNote": "Avoir",
+    "docTypeDebitNote": "Note de Débit",
+    "docTypePurchaseOrder": "Bon de Commande"
   },
   "disclaimer": {
     "legalNotice": "Sarang Business OS Lite est un outil organisationnel gratuit pour les petites entreprises. Ce n'est pas un système de dossiers médicaux, un logiciel de comptabilité, un outil de conseil juridique ou un produit financier agréé. Toutes les informations sont les données propres de l'utilisateur, stockées localement sur son appareil. Aszurex n'offre aucune garantie quant à l'exactitude, l'exhaustivité ou l'adéquation de ce logiciel à des fins réglementées. Les utilisateurs sont seuls responsables du respect des lois et réglementations professionnelles applicables."

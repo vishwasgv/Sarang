@@ -47,3 +47,7 @@ Chaque entrée peut être exportée une fois exécutée :
 - **CSV** — un export brut des données du tableau.
 - **Excel** — le même tableau sous forme de véritable classeur .xlsx.
 - **PDF** — un document mis en forme avec les chiffres de synthèse, tout graphique éventuel, et le tableau complet, adapté à l'impression ou au partage tel quel.
+
+## Partager un rapport par WhatsApp ou E-mail
+
+Si vous avez le droit de consulter un rapport, un bouton **WhatsApp** et un bouton **E-mail** apparaissent à côté des boutons d'exportation CSV/Excel/PDF une fois qu'il est chargé (le partage de rapport se fait uniquement en PDF — l'export CSV/Excel reste disponible séparément, sans changement). Cliquer sur l'un d'eux vous invite à enregistrer le rapport au format PDF, ouvre le dossier avec ce fichier mis en surbrillance, puis ouvre votre propre WhatsApp ou application e-mail avec un court message indiquant le nom du rapport et sa plage de dates (les chiffres eux-mêmes ne figurent pas dans le message — ils sont dans le PDF). Comme pour le partage de documents ailleurs dans Sarang, vous joignez vous-même le fichier et cliquez sur Envoyer — rien n'est jamais envoyé automatiquement, et comme un rapport n'est lié à aucun client ou fournisseur en particulier, le numéro de téléphone et le champ « À » de l'e-mail commencent vides pour que vous les complétiez.
