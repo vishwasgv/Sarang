@@ -46,6 +46,20 @@ Una cotización comienza como **Borrador** y puede ser **Enviada**, **Aceptada**
 
 **Debit Notes** (`/billing/debit-notes`) son el equivalente del lado del proveedor — dinero que un proveedor le debe a usted, por ejemplo una devolución de stock comprado o una corrección de facturación. Vincular una nota de débito a un proveedor debita su libro, reduciendo lo que usted le debe. Tanto las notas de crédito como las de débito pueden referenciar opcionalmente la factura u orden de compra a la que se relacionan, se pueden editar o eliminar, y se imprimen en tamaño A4 o ancho de recibo.
 
+## Compartir documentos por WhatsApp y Correo
+
+Las facturas, cotizaciones, notas de crédito y notas de débito tienen cada una botones para compartir por **WhatsApp** y **Correo** (un icono de burbuja de chat y un icono de sobre) junto a sus controles de Print/Export existentes. Al hacer clic en uno de ellos:
+
+1. Se le pide guardar el documento como PDF — el mismo cuadro de diálogo de guardado que ya usan Print/Export.
+2. Se abre la carpeta que contiene ese PDF, con el archivo resaltado.
+3. Se abre su propio WhatsApp (o aplicación de correo), con el número de teléfono o correo del cliente o proveedor ya completado (tomado de sus datos de contacto guardados) y un mensaje breve con el número y el importe del documento.
+
+**Usted mismo debe adjuntar el archivo** — arrástrelo desde la carpeta resaltada hasta la ventana de WhatsApp o correo que se acaba de abrir, y luego haga clic en Enviar. Sarang no puede adjuntar el archivo automáticamente: ni los enlaces de clic-para-chatear de WhatsApp ni los enlaces `mailto:` admiten adjuntos, así que este único paso de arrastrar y soltar es una limitación real de ambos, no una función faltante. Nada se envía nunca de forma automática — Sarang solo abre su propio WhatsApp/aplicación de correo con los datos ya completados; usted siempre hace clic en Enviar.
+
+Si un cliente o proveedor no tiene número de teléfono registrado, el botón de WhatsApp aparece deshabilitado. Si no tiene correo registrado, el botón de Correo igual abre su aplicación de correo con el campo "Para" vacío para que usted lo complete.
+
+Abrir WhatsApp de esta manera inicia WhatsApp Desktop si está instalado, o WhatsApp Web en su navegador en caso contrario. Abrir Correo inicia la aplicación configurada como predeterminada en su computadora — si no hay ninguna configurada, Windows le pedirá elegir una; esto es normal.
+
 ## Notas sobre impuestos y redondeo
 
 Cada total de factura se redondea a la unidad de moneda entera más cercana, con la diferencia de redondeo mostrada como su propia línea para que las cuentas siempre cuadren de forma visible. Bajo el modelo de impuesto GST, el impuesto se imprime como CGST+SGST para una venta dentro del mismo estado, o como una única línea de IGST para una venta entre estados, según la casilla marcada al crear la factura.

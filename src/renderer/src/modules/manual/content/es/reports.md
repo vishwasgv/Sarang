@@ -47,3 +47,7 @@ Cada entrada se puede exportar una vez que se ha ejecutado:
 - **CSV** — una exportación de datos simple de la tabla.
 - **Excel** — la misma tabla como un libro .xlsx propiamente dicho.
 - **PDF** — un documento con formato que incluye los números de resumen, cualquier gráfico y la tabla completa, adecuado para imprimir o compartir tal cual.
+
+## Compartir un informe por WhatsApp o Correo
+
+Si tiene permiso para ver un informe, aparecen un botón de **WhatsApp** y uno de **Correo** junto a los botones de exportación CSV/Excel/PDF una vez que se ha cargado (compartir informes es solo en PDF — la exportación a CSV/Excel sigue disponible por separado, sin cambios). Al hacer clic en uno de ellos se le pide guardar el informe como PDF, se abre la carpeta con ese archivo resaltado, y luego se abre su propio WhatsApp o aplicación de correo con un mensaje breve que indica el nombre del informe y su rango de fechas (las cifras en sí no se incluyen en el mensaje — están en el PDF). Igual que al compartir documentos en otras partes de Sarang, usted mismo adjunta el archivo y hace clic en Enviar — nada se envía nunca de forma automática, y como un informe no está vinculado a un cliente o proveedor específico, tanto el número de teléfono como el campo "Para" del correo comienzan vacíos para que usted los complete.

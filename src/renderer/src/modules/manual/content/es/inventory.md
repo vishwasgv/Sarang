@@ -35,6 +35,8 @@ Una orden de compra pasa por un ciclo de vida fijo:
 3. **Receive Stock** — este es el paso que realmente agrega las cantidades pedidas a su inventario y registra un movimiento de COMPRA para cada artículo. Una vez recibida, la OC muestra el nivel de stock resultante de cada artículo junto a la línea del pedido.
 4. Una OC en estado Draft o Approved puede en cambio ser **cancelada**, con un motivo.
 
+Una orden de compra se puede **imprimir** o exportar/compartir como PDF en cualquier etapa, con un diseño que incluye los datos de su negocio, los datos del proveedor y la lista completa de artículos — los mismos botones para compartir por **WhatsApp** y **Correo** descritos en la sección "Compartir documentos por WhatsApp y Correo" del capítulo *Facturación y Documentos* también funcionan aquí, enviando la OC directamente a su proveedor.
+
 ## Visibilidad de stock bajo
 
 Los conteos de stock bajo y agotado aparecen en tres lugares que se mantienen siempre sincronizados: las insignias de alerta en la parte superior de la pantalla de Inventario, los mosaicos de stock bajo y agotado en el Panel, y el filtro de stock bajo en las pantallas de Productos/Inventario. Configurar un nivel de reposición sensato en cada producto (el valor predeterminado es 5) es lo que hace útiles estas alertas — un producto sin nivel de reposición configurado efectivamente nunca dispara una advertencia de stock bajo.
