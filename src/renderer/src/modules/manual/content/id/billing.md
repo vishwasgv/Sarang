@@ -46,6 +46,20 @@ Sebuah quotation dimulai sebagai **Draft** dan bisa menjadi **Sent**, **Accepted
 
 **Debit Notes** (`/billing/debit-notes`) adalah padanannya dari sisi pemasok — uang yang harus dikembalikan pemasok kepada Anda, misalnya retur stok yang dibeli atau koreksi tagihan. Mengaitkan debit note dengan pemasok mendebit buku besar mereka, mengurangi jumlah yang Anda utang kepada mereka. Baik credit note maupun debit note bisa opsional merujuk ke faktur atau pesanan pembelian yang terkait, bisa diedit atau dihapus, dan dicetak dalam lebar A4 atau struk.
 
+## Membagikan dokumen via WhatsApp dan Email
+
+Invoice, Quotations, Credit Notes, dan Debit Notes masing-masing memiliki tombol berbagi **WhatsApp** dan **Email** (ikon gelembung chat dan ikon amplop) di samping kontrol Print/Export yang sudah ada. Mengklik salah satunya:
+
+1. Meminta Anda menyimpan dokumen sebagai PDF — dialog simpan yang sama yang sudah digunakan Print/Export.
+2. Membuka folder yang berisi PDF tersebut, dengan file yang disorot.
+3. Membuka WhatsApp Anda sendiri (atau aplikasi email), yang sudah terisi dengan nomor telepon/email pelanggan atau pemasok (dari detail kontak yang tersimpan) dan pesan singkat berisi nomor dan jumlah dokumen.
+
+**Anda tetap harus melampirkan file itu sendiri** — seret dari folder yang disorot ke jendela WhatsApp atau email yang baru saja terbuka, lalu klik Send. Sarang tidak dapat melampirkan file secara otomatis: baik tautan click-to-chat WhatsApp maupun tautan `mailto:` tidak mendukung lampiran, jadi langkah seret-dan-lepas ini adalah keterbatasan nyata dari keduanya, bukan fitur yang hilang. Tidak ada yang pernah terkirim secara otomatis — Sarang hanya membuka WhatsApp/aplikasi email Anda sendiri yang sudah terisi; Anda selalu yang mengklik Send.
+
+Jika pelanggan atau pemasok tidak memiliki nomor telepon yang tercatat, tombol WhatsApp dinonaktifkan. Jika mereka tidak memiliki email yang tercatat, tombol Email tetap membuka aplikasi email Anda dengan kolom "To" dibiarkan kosong untuk Anda isi.
+
+Membuka WhatsApp dengan cara ini akan menjalankan WhatsApp Desktop jika terpasang, atau WhatsApp Web di browser Anda jika tidak. Membuka Email akan menjalankan aplikasi mana pun yang diatur sebagai aplikasi email default komputer Anda — jika belum ada yang diatur, Windows akan meminta Anda memilih satu; ini normal.
+
 ## Catatan tentang pajak dan pembulatan
 
 Setiap total faktur dibulatkan ke unit mata uang bulat terdekat, dengan selisih pembulatan ditampilkan sebagai barisnya sendiri sehingga perhitungannya selalu terlihat jelas. Pada model pajak GST, pajak dicetak sebagai CGST+SGST untuk penjualan dalam satu negara bagian atau satu baris IGST untuk penjualan antar-negara bagian, berdasarkan kotak centang yang diatur saat faktur dibuat.

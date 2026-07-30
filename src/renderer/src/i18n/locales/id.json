@@ -347,7 +347,10 @@
       "date": "Tanggal Resep (opsional)",
       "addToCart": "Tambah ke Keranjang",
       "required": "Nama pasien dan nama dokter wajib diisi."
-    }
+    },
+    "shareWhatsAppMessage": "{{businessName}}: {{documentType}} {{number}} — Total {{amount}}. Dokumen lengkap terlampir sebagai file.",
+    "shareEmailSubject": "{{documentType}} {{number}} dari {{businessName}}",
+    "shareEmailBody": "Yth. Bapak/Ibu,\n\nBerikut kami lampirkan {{documentType}} {{number}} dari {{businessName}}, dengan jumlah total {{amount}}.\n\nTerima kasih.\n\n{{businessName}}"
   },
   "products": {
     "title": "Produk",
@@ -1212,7 +1215,11 @@
       "warrantyExpiringSoon": "Akan Kedaluwarsa",
       "warrantyActive": "Aktif",
       "noWarranty": "Tanpa Garansi"
-    }
+    },
+    "allTimeRange": "Sepanjang waktu",
+    "shareWhatsAppMessage": "{{businessName}}: laporan {{reportType}} ({{dateRange}}). File laporan terlampir.",
+    "shareEmailSubject": "Laporan {{reportType}} dari {{businessName}}",
+    "shareEmailBody": "Yth. Bapak/Ibu,\n\nBerikut kami lampirkan laporan {{reportType}} untuk {{businessName}}, mencakup {{dateRange}}.\n\nTerima kasih.\n\n{{businessName}}"
   },
   "cashClose": {
     "title": "Tutup Kasir",
@@ -1515,7 +1522,7 @@
       "searchTitle": "Pencarian Cepat",
       "searchBody": "Tekan Ctrl+K kapan saja, dari mana saja, untuk langsung menuju ke layar atau tindakan apa pun dengan mengetikkan namanya.",
       "billingTitle": "Buat Faktur Asli",
-      "billingBody": "Mari buat satu dari awal sampai akhir. Tambahkan pelanggan, tambahkan produk, dan kirim — akan langsung muncul, persis seperti penjualan asli. Coba juga ikon kisi di sebelah kotak pencarian produk — ini beralih ke Jelajahi Produk, kisi ubin yang diorganisir berdasarkan kategori sehingga Anda bisa mengklik produk langsung ke keranjang tanpa mengetik apa pun. Setelah dibuat, coba tombol Cetak (termal 58mm/80mm atau A4 — coba keduanya) dan cari kode QR UPI pada pratinjau cetak jika Anda telah menyiapkan ID UPI. Semua ini tidak akan tersimpan setelah Anda keluar dari tutorial.",
+      "billingBody": "Mari buat satu dari awal sampai akhir. Tambahkan pelanggan, tambahkan produk, dan kirim — akan langsung muncul, persis seperti penjualan asli. Coba juga ikon kisi di sebelah kotak pencarian produk — ini beralih ke Jelajahi Produk, kisi ubin yang diorganisir berdasarkan kategori sehingga Anda bisa mengklik produk langsung ke keranjang tanpa mengetik apa pun. Setelah dibuat, coba tombol Cetak (termal 58mm/80mm atau A4 — coba keduanya) dan cari kode QR UPI pada pratinjau cetak jika Anda telah menyiapkan ID UPI. Perhatikan juga ikon WhatsApp dan Email di sebelah Cetak — ikon ini menyimpan faktur sebagai PDF, membuka folder agar Anda bisa melampirkannya, lalu membuka WhatsApp atau aplikasi email Anda yang sudah terisi dan siap dikirim. Semua ini tidak akan tersimpan setelah Anda keluar dari tutorial.",
       "customersTitle": "Pelanggan",
       "customersBody": "Setiap pelanggan yang pernah Anda tagih ada di sini, lengkap dengan riwayat pembelian dan pembayarannya.",
       "productsTitle": "Produk",
@@ -2237,6 +2244,21 @@
     "updateDebitNote": "Perbarui Nota Debit",
     "noSupplier": "Tidak ada pemasok",
     "refPO": "Ref: {{number}}"
+  },
+  "share": {
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "noPhoneOnFile": "Tidak ada nomor telepon yang tercatat",
+    "noPhoneTitle": "Tidak Dapat Membagikan via WhatsApp",
+    "noPhoneMessage": "Tidak ada nomor telepon yang valid tercatat untuk kontak ini.",
+    "openingWhatsApp": "Membuka WhatsApp…",
+    "openingEmail": "Membuka aplikasi email Anda…",
+    "revealFailed": "Tidak dapat membuka folder file yang tersimpan.",
+    "docTypeInvoice": "Faktur",
+    "docTypeQuotation": "Penawaran",
+    "docTypeCreditNote": "Nota Kredit",
+    "docTypeDebitNote": "Nota Debit",
+    "docTypePurchaseOrder": "Pesanan Pembelian"
   },
   "disclaimer": {
     "legalNotice": "Sarang Business OS Lite adalah alat organisasi gratis untuk usaha kecil. Ini bukan sistem rekam medis, perangkat lunak akuntansi, alat konsultasi hukum, atau produk keuangan berlisensi. Semua informasi adalah data pengguna sendiri yang disimpan secara lokal di perangkat mereka. Aszurex tidak memberikan jaminan atas keakuratan, kelengkapan, atau kesesuaian perangkat lunak ini untuk tujuan apa pun yang diatur. Pengguna sepenuhnya bertanggung jawab atas kepatuhan terhadap hukum dan peraturan profesional yang berlaku."

@@ -47,3 +47,7 @@ Setiap entri dapat diekspor setelah dijalankan:
 - **CSV** — ekspor data mentah dari tabel.
 - **Excel** — tabel yang sama sebagai workbook .xlsx yang proper.
 - **PDF** — dokumen yang diformat dengan angka ringkasan, grafik apa pun, dan tabel lengkap, cocok untuk dicetak atau dibagikan apa adanya.
+
+## Membagikan laporan via WhatsApp atau Email
+
+Jika Anda memiliki izin untuk melihat sebuah laporan, tombol **WhatsApp** dan tombol **Email** muncul di samping tombol ekspor CSV/Excel/PDF setelah laporan dimuat (berbagi laporan hanya dalam bentuk PDF — ekspor CSV/Excel tetap tersedia secara terpisah, tidak berubah). Mengklik salah satunya meminta Anda menyimpan laporan sebagai PDF, membuka folder dengan file itu disorot, lalu membuka WhatsApp atau aplikasi email Anda sendiri dengan pesan singkat yang menyebutkan nama laporan dan rentang tanggalnya (angka-angkanya sendiri tidak dimasukkan ke dalam pesan — angka itu ada di dalam PDF). Seperti halnya berbagi dokumen di tempat lain di Sarang, Anda melampirkan file itu sendiri dan mengklik Send — tidak ada yang pernah terkirim secara otomatis, dan karena sebuah laporan tidak terkait dengan pelanggan atau pemasok tertentu, baik nomor telepon maupun kolom "To" pada email dimulai kosong untuk Anda isi.

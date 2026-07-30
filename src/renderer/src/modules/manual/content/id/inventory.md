@@ -35,6 +35,8 @@ Sebuah pesanan pembelian melalui siklus hidup yang tetap:
 3. **Receive Stock** — ini adalah langkah yang benar-benar menambahkan kuantitas yang dipesan ke inventaris Anda dan mencatat pergerakan PURCHASE untuk setiap item. Setelah diterima, PO menampilkan tingkat stok hasil setiap item di samping baris pesanan.
 4. PO berstatus Draft atau Approved dapat dibatalkan (**Cancel PO**) dengan alasan.
 
+Sebuah PO dapat **dicetak** atau diekspor/dibagikan sebagai PDF di tahap mana pun, ditata dengan detail bisnis Anda, detail pemasok, dan daftar item lengkap — tombol berbagi **WhatsApp** dan **Email** yang sama seperti dijelaskan pada bagian "Membagikan dokumen via WhatsApp dan Email" di bab *Penagihan & Dokumen* juga berfungsi di sini, mengirim PO langsung ke pemasok Anda.
+
 ## Visibilitas stok rendah
 
 Hitungan stok rendah dan stok habis muncul di tiga tempat yang selalu selaras: lencana peringatan di bagian atas layar Inventaris, ubin stok-rendah dan stok-habis di Dasbor, dan filter stok-rendah di layar Produk/Inventaris. Menetapkan tingkat reorder yang masuk akal pada setiap produk (defaultnya 5) adalah yang membuat peringatan ini berguna — produk tanpa tingkat reorder yang ditetapkan secara efektif tidak akan pernah memicu peringatan stok rendah.
