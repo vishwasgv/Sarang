@@ -35,9 +35,13 @@ Several business types get their own extra questions once that business type is 
 - Coaching Institute: "How are students scoring on tests?"
 - Driving School / Service businesses: "How are appointments this week?" / "What's our client retention?"
 
+## Asking "how do I...?" questions about Sarang itself
+
+Ask Sarang also recognizes navigation questions about the app — "How do I create an invoice?", "Where is the backup screen?", "Is there a way to add a customer?" — and answers those instantly, without waiting for the AI model at all, by pointing you straight to the right chapter of this Manual instead of guessing.
+
 ## What it won't do
 
-Ask Sarang only answers questions about your own business records. It will not give legal, tax, medical, investment, or compliance advice, and it will not answer anything outside your business data — it's a lookup assistant for your own numbers, not a general chatbot. If it can't find enough in your database to answer, it says so plainly rather than guessing.
+Ask Sarang only answers questions about your own business records (plus the navigation help above). It will not give legal, tax, medical, investment, or compliance advice, and it will not answer anything outside your business data — it's a lookup assistant for your own numbers, not a general chatbot. If it can't find enough in your database to answer, it says so plainly rather than guessing.
 
 ## Language
 

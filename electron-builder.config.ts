@@ -160,6 +160,13 @@ const config: Configuration = {
     installerHeaderIcon: 'resources/icon.ico',
     installerIcon: 'resources/icon.ico',
     uninstallerIcon: 'resources/icon.ico',
+    // Custom branded artwork (generated from resources/branding-v2 assets) —
+    // replaces electron-builder's plain default header/sidebar so the
+    // installer reads as a real Aszurex product, not a generic NSIS wizard.
+    // Exact-size 24-bit BMPs are required: header 150x57, sidebar 164x314.
+    installerHeader: 'resources/installer-header.bmp',
+    installerSidebar: 'resources/installer-sidebar.bmp',
+    uninstallerSidebar: 'resources/installer-sidebar.bmp',
     // Explicit, not relying on electron-builder's auto-detection-by-filename —
     // without this (or a license.txt present at all), the spec-required
     // Welcome -> License -> Path -> Install -> Launch flow silently falls

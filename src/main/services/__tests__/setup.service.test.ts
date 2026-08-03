@@ -6,6 +6,17 @@ vi.mock('../../database/seed', () => ({ seedDefaultData: vi.fn().mockResolvedVal
 vi.mock('../auth.service', () => ({
   hashPassword: vi.fn().mockResolvedValue('hashed'),
   generateRecoveryCode: vi.fn().mockReturnValue('RECOVERY-CODE-123'),
+  // Mirrors the real function's shape (null = OK, ApiResponse = rejected) so
+  // the existing "happy path" tests (11-char default password) still pass
+  // through cleanly, and the new short-password test below exercises real
+  // pass/fail behavior instead of a fixed stub.
+  checkPasswordLength: vi.fn((password: string) =>
+    Promise.resolve(
+      password.length < 10
+        ? { success: false, error: { code: 'VAL-001', message: 'Password must be at least 10 characters.' } }
+        : null
+    )
+  ),
 }))
 vi.mock('../industry-template.service', () => ({
   SERVICE_TEMPLATE_TYPES: new Set(['VET_CLINIC']),
@@ -52,6 +63,11 @@ function makeMockDb() {
   const db: Record<string, any> = {
     role: { findFirst: vi.fn().mockResolvedValue({ id: 'role-admin' }) },
     user: { findUnique: vi.fn().mockResolvedValue(null) },
+    // Real Prisma exposes `.setting` at the top level too (one client, not
+    // one per transaction) — completeSetup() now calls checkPasswordLength()
+    // (which reads the password_min_length Setting) before the transaction
+    // even starts, so this needs to exist outside txClient as well.
+    setting: { findUnique: vi.fn().mockResolvedValue(null) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => {
       const result = await cb(txClient) // an unhandled throw here propagates out, matching real rollback-on-error semantics
       committed = true
@@ -124,6 +140,22 @@ describe('setup.service.completeSetup', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('USER-001')
+    expect(db.$transaction).not.toHaveBeenCalled()
+  })
+
+  // Real bug found+fixed 2026-07-30: the Admin account — the single most
+  // powerful credential on the install — was only held to a min(6) schema
+  // floor with no real policy check, while users:create/adminResetPassword/
+  // changePassword all deferred to checkPasswordLength() for the actual
+  // configured minimum (default 10). See setup.service.ts's completeSetup().
+  it('rejects an admin password shorter than the configured policy minimum, before touching anything else', async () => {
+    const { db } = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeSetup(makeSetupPayload({ adminPassword: 'short1' }) as never)
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('VAL-001')
     expect(db.$transaction).not.toHaveBeenCalled()
   })
 })

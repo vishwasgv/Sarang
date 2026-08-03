@@ -93,12 +93,36 @@ export async function deleteTable(tableId: string, userId?: string) {
 // between "invoice settled" and "table released" can't happen. Accepts a tx
 // client with the same shape decrementVariantStockTx/reduceStockTx already
 // use for this exact reason.
+// REAL BUG found+fixed 2026-07-30: this used to release on a single
+// invoiceId reaching PAID/CANCELLED, unaware that billing.service.ts's
+// splitInvoice() can turn one table's tab into N sibling invoices
+// (id === original.id start, splitFromInvoiceId === original.id for each
+// child) while re-pointing the table's currentInvoiceId at only the FIRST
+// child. Releasing as soon as that first split check was paid freed the
+// table for a new party while the other split checks were still fully
+// unpaid and now had no table reference at all — easy to lose track of.
+// Fixed by resolving the whole split group (this invoice + its
+// splitFromInvoiceId original + every sibling sharing that same original)
+// and only releasing once every invoice in that group is settled, matching
+// on any invoice id in the group since the table's currentInvoiceId may
+// point at any one of them.
 export async function releaseTablesForInvoiceTx(
   tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
   invoiceId: string
 ): Promise<void> {
+  const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: { splitFromInvoiceId: true } })
+  const groupRootId = invoice?.splitFromInvoiceId ?? invoiceId
+
+  const groupInvoices = await tx.invoice.findMany({
+    where: { OR: [{ id: groupRootId }, { splitFromInvoiceId: groupRootId }] },
+    select: { id: true, status: true, paymentStatus: true }
+  })
+  const groupIds = groupInvoices.map(i => i.id)
+  const allSettled = groupInvoices.every(i => i.status === 'CANCELLED' || i.paymentStatus === 'PAID')
+  if (!allSettled) return
+
   await tx.restaurantTable.updateMany({
-    where: { currentInvoiceId: invoiceId },
+    where: { currentInvoiceId: { in: groupIds } },
     data: { currentInvoiceId: null, status: 'AVAILABLE' }
   })
 }
@@ -467,8 +491,17 @@ export async function performDailyClose(userId?: string) {
     // Reset table statuses to AVAILABLE (close the shift)
     const openTables = await db.restaurantTable.findMany({ where: { status: 'OCCUPIED' } })
 
+    // REAL BUG found+fixed 2026-07-30: this only reset `status`, never
+    // `currentInvoiceId` — every table-claiming path (createInvoice's
+    // tableClaim, mergeTableIntoInvoice) gates on currentInvoiceId being
+    // null, not on status. A table left with a stale currentInvoiceId
+    // showed AVAILABLE in the UI but silently failed to be re-seated
+    // ("already part of another running order") until staff manually found
+    // and settled the orphaned invoice. Clearing both together matches
+    // every other release path in this file (releaseTablesForInvoiceTx,
+    // mergeTableIntoInvoice's claim guard).
     for (const table of openTables) {
-      await db.restaurantTable.update({ where: { id: table.id }, data: { status: 'AVAILABLE' } })
+      await db.restaurantTable.update({ where: { id: table.id }, data: { status: 'AVAILABLE', currentInvoiceId: null } })
     }
 
     const summary = await getDailyClosingSummary()

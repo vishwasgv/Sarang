@@ -50,7 +50,7 @@ function getTutorialFlagPath(): string {
   return join(tutorialBaseDir(), 'tutorial-session.json')
 }
 
-function deleteTutorialArtifacts(): void {
+export function deleteTutorialArtifacts(): void {
   const dbPath = getTutorialDbPath()
   for (const suffix of ['', '-wal', '-shm']) {
     try { if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix) } catch { /* best-effort cleanup only */ }

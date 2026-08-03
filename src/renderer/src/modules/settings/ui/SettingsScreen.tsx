@@ -131,7 +131,8 @@ const SECTIONS: SettingsSection[] = [
     label: 'License',
     description: 'Free for your first 12 months — status, activation, and renewal',
     icon: <BadgeDollarSign size={18} />,
-    permission: 'settings.view',
+    // 2026-08-03: was settings.view (Manager holds this) — see license.handler.ts.
+    permission: 'settings.manageLicense',
     status: 'available',
     linkTo: '/license' // dedicated screen, same pattern as About (Phase 39) — needs more real estate than an inline section
   },

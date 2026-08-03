@@ -353,7 +353,9 @@ export function AppRouter() {
         <Route path="/physio/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><PhysioPatientScreen /></ProtectedRoute>} />
         <Route path="/physio/session-packs" element={<ProtectedRoute permission="billing.view"><SessionPacksScreen /></ProtectedRoute>} />
         {/* Phase 27 — Salon, Gym, Driving School */}
-        <Route path="/commission" element={<ProtectedRoute permission="billing.view"><StaffCommissionScreen /></ProtectedRoute>} />
+        {/* 2026-08-03: was billing.view — a Cashier permission, unrelated to
+            viewing colleagues' individual earnings. See staff-commission.handler.ts. */}
+        <Route path="/commission" element={<ProtectedRoute permission="hr.view"><StaffCommissionScreen /></ProtectedRoute>} />
         <Route path="/gym/memberships" element={<ProtectedRoute permission="billing.view"><MembershipsScreen /></ProtectedRoute>} />
         <Route path="/gym/classes" element={<ProtectedRoute permission="billing.view"><BatchClassesScreen /></ProtectedRoute>} />
         <Route path="/driving/learners" element={<ProtectedRoute permission="billing.view"><DrivingSchoolScreen /></ProtectedRoute>} />
@@ -403,7 +405,10 @@ export function AppRouter() {
         <Route path="/audit" element={<ProtectedRoute permission="audit.view"><AuditLogsScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute permission="settings.view"><SettingsScreen /></ProtectedRoute>} />
         <Route path="/about" element={<AboutScreen />} />
-        <Route path="/license" element={<ProtectedRoute permission="settings.view"><LicenseScreen /></ProtectedRoute>} />
+        {/* 2026-08-03: was settings.view (Manager holds this) — seed.ts
+            defines settings.manageLicense explicitly as Admin-only, "same
+            sensitivity bar as Security". See license.handler.ts. */}
+        <Route path="/license" element={<ProtectedRoute permission="settings.manageLicense"><LicenseScreen /></ProtectedRoute>} />
         <Route path="/manual/*" element={<ManualScreen />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

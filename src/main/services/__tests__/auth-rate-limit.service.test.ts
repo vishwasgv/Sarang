@@ -11,8 +11,37 @@ vi.mock('../../security/session-persistence', () => ({
 
 import { getPrisma } from '../../database/db'
 
-// Must re-import after mocks to get a fresh module with clean rate-limit state
-// Vitest isolates module state per file, so rate limit Map starts empty
+// REAL BUG found+fixed 2026-08-03 (security audit): the rate limiter used to
+// be a plain in-memory Map local to the main process — anyone with local
+// access could reset the attempt counter to zero simply by closing and
+// relaunching the app, making the "5 attempts per 15 min" lockout purely
+// cosmetic. Now persisted via db.setting (this app's key-value store), so
+// this file's mock needs a real Setting-table-shaped store, not the old
+// "assume vi.resetModules() alone clears rate-limit state" design this file
+// was originally written around (see the now-removed comment this replaced).
+
+function makeSettingStore(initial: Record<string, string> = {}) {
+  const store = new Map<string, string>(Object.entries(initial))
+  return {
+    findUnique: vi.fn(({ where }: { where: { settingKey: string } }) => {
+      const v = store.get(where.settingKey)
+      return Promise.resolve(v === undefined ? null : { settingKey: where.settingKey, settingValue: v })
+    }),
+    upsert: vi.fn(({ where, create, update }: { where: { settingKey: string }; create?: { settingValue: string }; update?: { settingValue: string } }) => {
+      const value = store.has(where.settingKey) ? (update?.settingValue ?? '') : (create?.settingValue ?? '')
+      store.set(where.settingKey, value)
+      return Promise.resolve({ settingKey: where.settingKey, settingValue: value })
+    }),
+    update: vi.fn(({ where, data }: { where: { settingKey: string }; data: { settingValue: string } }) => {
+      store.set(where.settingKey, data.settingValue)
+      return Promise.resolve({ settingKey: where.settingKey, settingValue: data.settingValue })
+    }),
+    delete: vi.fn(({ where }: { where: { settingKey: string } }) => {
+      store.delete(where.settingKey)
+      return Promise.resolve({})
+    }),
+  }
+}
 
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -30,6 +59,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(makeUser()),
       update: vi.fn().mockResolvedValue(makeUser())
     },
+    setting: makeSettingStore(),
     ...overrides
   }
 }
@@ -105,7 +135,7 @@ describe('auth.changePassword', () => {
     const hash = await bcrypt.hash('oldpass', 10)
     const db = makeDb()
     db.user.findUnique = vi.fn().mockResolvedValue(makeUser({ passwordHash: hash }))
-    const dbWithSetting = { ...db, setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_min_length', settingValue: '8', settingType: 'NUMBER' }) } }
+    const dbWithSetting = { ...db, setting: makeSettingStore({ password_min_length: '8' }) }
     vi.mocked(getPrisma).mockReturnValue(dbWithSetting as never)
     const { changePassword } = await import('../auth.service')
 

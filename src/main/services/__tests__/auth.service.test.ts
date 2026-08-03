@@ -17,6 +17,37 @@ import {
   generateRecoveryCode, resetPasswordWithRecoveryCode, regenerateRecoveryCode
 } from '../auth.service'
 
+// Real Setting-table-shaped mock — needed because the rate limiter
+// (2026-08-03 fix, now DB-backed instead of an in-memory Map) reads its own
+// counter via db.setting.findUnique and writes it back via upsert/update,
+// and must genuinely persist across the repeated calls a single "locks out
+// after N attempts" test makes. A static mockResolvedValue (the previous
+// pattern here) would return the SAME canned row regardless of which
+// settingKey was actually queried — silently feeding e.g. the
+// password_min_length fixture into the rate limiter's own lookup.
+function makeSettingStore(initial: Record<string, string> = {}) {
+  const store = new Map<string, string>(Object.entries(initial))
+  return {
+    findUnique: vi.fn(({ where }: { where: { settingKey: string } }) => {
+      const v = store.get(where.settingKey)
+      return Promise.resolve(v === undefined ? null : { settingKey: where.settingKey, settingValue: v })
+    }),
+    upsert: vi.fn(({ where, create, update }: { where: { settingKey: string }; create?: { settingValue: string }; update?: { settingValue: string } }) => {
+      const value = store.has(where.settingKey) ? (update?.settingValue ?? '') : (create?.settingValue ?? '')
+      store.set(where.settingKey, value)
+      return Promise.resolve({ settingKey: where.settingKey, settingValue: value })
+    }),
+    update: vi.fn(({ where, data }: { where: { settingKey: string }; data: { settingValue: string } }) => {
+      store.set(where.settingKey, data.settingValue)
+      return Promise.resolve({ settingKey: where.settingKey, settingValue: data.settingValue })
+    }),
+    delete: vi.fn(({ where }: { where: { settingKey: string } }) => {
+      store.delete(where.settingKey)
+      return Promise.resolve({})
+    }),
+  }
+}
+
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user-1', username: 'admin', fullName: 'Admin', email: null,
@@ -161,7 +192,7 @@ describe('changePassword', () => {
         findUnique: vi.fn().mockResolvedValue({ id: 'user-1', passwordHash: oldHash }),
         update: vi.fn().mockResolvedValue({}),
       },
-      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_min_length', settingValue: '10', settingType: 'NUMBER' }) },
+      setting: makeSettingStore({ password_min_length: '10' }),
       ...overrides
     }
   }
@@ -227,6 +258,32 @@ describe('changePassword', () => {
 
     expect(result.success).toBe(true)
   }, 15000)
+
+  // REAL BUG found+fixed 2026-08-03 (security audit): the rate limiter used
+  // to be a plain in-memory Map local to the main process — anyone with
+  // local access could reset the attempt counter to zero simply by closing
+  // and relaunching the app, making the lockout purely cosmetic. Now
+  // persisted via db.setting, so it must survive the limiter's own module
+  // being freshly re-imported (vi.resetModules simulates the app-restart
+  // scenario the bug was about) as long as the underlying DB row persists.
+  it('lockout survives a fresh re-import of the module (simulated app restart) as long as the DB row persists', async () => {
+    const db = makeChangePasswordDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    for (let i = 0; i < 5; i++) {
+      await changePassword('user-restart-test', 'WrongPassword', 'NewLongEnoughPassword1')
+    }
+
+    vi.resetModules()
+    const fresh = await import('../auth.service')
+    const freshGetPrisma = (await import('../../database/db')).getPrisma
+    vi.mocked(freshGetPrisma).mockReturnValue(db as never)
+
+    const result = await fresh.changePassword('user-restart-test', OLD_PASSWORD, 'NewLongEnoughPassword1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-004')
+  }, 15000)
 })
 
 describe('generateRecoveryCode', () => {
@@ -247,7 +304,7 @@ describe('resetPasswordWithRecoveryCode', () => {
 
   function makeRecoveryDb(overrides: Record<string, unknown> = {}) {
     return {
-      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'recovery_code_hash', settingValue: codeHash }) },
+      setting: makeSettingStore({ recovery_code_hash: codeHash, password_min_length: '10' }),
       user: {
         findUnique: vi.fn().mockResolvedValue({ id: 'user-1', username: 'admin', isActive: true, passwordHash: 'irrelevant' }),
         update: vi.fn().mockResolvedValue({}),
@@ -257,7 +314,7 @@ describe('resetPasswordWithRecoveryCode', () => {
   }
 
   it('returns AUTH-005 when no recovery code has ever been generated for this install', async () => {
-    vi.mocked(getPrisma).mockReturnValue({ setting: { findUnique: vi.fn().mockResolvedValue(null) } } as never)
+    vi.mocked(getPrisma).mockReturnValue({ setting: makeSettingStore() } as never)
 
     const result = await resetPasswordWithRecoveryCode('admin', RECOVERY_CODE, 'NewLongEnoughPassword1')
 

@@ -2119,7 +2119,7 @@ export function ReportsScreen() {
           ) : !reportData ? (
             <EmptyState title={t('reports.noData')} subtitle={t('common.tryAgain')} />
           ) : (
-            <ReportContent reportType={activeReport} data={reportData} fmt={fmt} currencySymbol={currencySymbol} onAuditPageChange={goToAuditPage} />
+            <ReportContent reportType={activeReport} data={reportData} fmt={fmt} onAuditPageChange={goToAuditPage} />
           )}
         </div>
       </div>
@@ -2204,9 +2204,9 @@ function DataTable({ headers, rows, emptyText = 'No records found.' }: {
 // Report Content dispatcher
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChange }: {
+function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
   reportType: ReportType; data: unknown
-  fmt: (n: number) => string; currencySymbol: string
+  fmt: (n: number) => string
   onAuditPageChange: (page: number) => void
 }) {
   switch (reportType) {
@@ -2214,11 +2214,11 @@ function ReportContent({ reportType, data, fmt, currencySymbol, onAuditPageChang
     case 'inventory': return <InventoryReportView data={data as InventoryReport} fmt={fmt} />
     case 'tax': return <TaxReportView data={data as TaxReport} fmt={fmt} />
     case 'outstanding': return <OutstandingReportView data={data as OutstandingReport} fmt={fmt} />
-    case 'customerLedger': return <LedgerReportView data={data as CustomerLedgerReport} entityType="customer" fmt={fmt} currencySymbol={currencySymbol} />
-    case 'supplierLedger': return <LedgerReportView data={data as CustomerLedgerReport} entityType="supplier" fmt={fmt} currencySymbol={currencySymbol} />
+    case 'customerLedger': return <LedgerReportView data={data as CustomerLedgerReport} entityType="customer" fmt={fmt} />
+    case 'supplierLedger': return <LedgerReportView data={data as CustomerLedgerReport} entityType="supplier" fmt={fmt} />
     case 'expenses': return <ExpenseReportView data={data as ExpenseReport} fmt={fmt} />
     case 'profitAndLoss': return <ProfitAndLossView data={data as ProfitAndLossReport} fmt={fmt} />
-    case 'cashBook': return <CashBookView data={data as CashBookReport} fmt={fmt} currencySymbol={currencySymbol} />
+    case 'cashBook': return <CashBookView data={data as CashBookReport} fmt={fmt} />
     case 'trialBalance': return <TrialBalanceView data={data as TrialBalanceReport} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
@@ -2420,9 +2420,9 @@ function OutstandingReportView({ data, fmt }: { data: OutstandingReport; fmt: (n
   )
 }
 
-function LedgerReportView({ data, entityType, fmt, currencySymbol }: {
+function LedgerReportView({ data, entityType, fmt }: {
   data: CustomerLedgerReport
-  entityType: 'customer' | 'supplier'; fmt: (n: number) => string; currencySymbol: string
+  entityType: 'customer' | 'supplier'; fmt: (n: number) => string
 }) {
   const { t } = useTranslation()
   const entity = entityType === 'customer' ? data.customer : data.supplier
@@ -2445,13 +2445,22 @@ function LedgerReportView({ data, entityType, fmt, currencySymbol }: {
           <div className={cn('text-sm font-bold', data.closingBalance > 0 ? 'text-danger' : 'text-success')}>{fmt(data.closingBalance)}</div>
         </div>
       </Card>
+      {/* REAL BUG found+fixed 2026-07-30: these three cells used raw .toFixed(2)
+          — no digit grouping, and always 2 decimals regardless of currency —
+          while every other amount on this same screen (the summary cards
+          above, and every other report view in this file) goes through fmt()
+          (Intl.NumberFormat-based, via currency.util.ts's formatCurrency).
+          Fixed to match; header currency-symbol suffixes removed to match
+          the rest of this file's convention (symbol lives in fmt()'s output,
+          not duplicated into the header) — see ExpenseReportView below for
+          the same convention already in use. */}
       <DataTable
-        headers={[t('common.date'), t('reports.col.reference'), t('reports.col.refId'), `${t('common.debit')} (${currencySymbol})`, `${t('common.credit')} (${currencySymbol})`, `${t('common.balance')} (${currencySymbol})`, t('reports.col.remarks')]}
+        headers={[t('common.date'), t('reports.col.reference'), t('reports.col.refId'), t('common.debit'), t('common.credit'), t('common.balance'), t('reports.col.remarks')]}
         rows={data.rows.map(r => [
           formatDate(r.date), r.referenceType, r.referenceId,
-          r.debitAmount > 0 ? r.debitAmount.toFixed(2) : '',
-          r.creditAmount > 0 ? r.creditAmount.toFixed(2) : '',
-          r.balance.toFixed(2), r.remarks
+          r.debitAmount > 0 ? fmt(r.debitAmount) : '',
+          r.creditAmount > 0 ? fmt(r.creditAmount) : '',
+          fmt(r.balance), r.remarks
         ])}
         emptyText={t('reports.empty.ledgerEntries')}
       />
@@ -2537,7 +2546,7 @@ function ProfitAndLossView({ data, fmt }: { data: ProfitAndLossReport; fmt: (n: 
   )
 }
 
-function CashBookView({ data, fmt, currencySymbol }: { data: CashBookReport; fmt: (n: number) => string; currencySymbol: string }) {
+function CashBookView({ data, fmt }: { data: CashBookReport; fmt: (n: number) => string }) {
   const { t } = useTranslation()
   return (
     <div className="space-y-6">
@@ -2550,13 +2559,16 @@ function CashBookView({ data, fmt, currencySymbol }: { data: CashBookReport; fmt
           <div className={cn('text-sm font-bold', data.closingBalance >= 0 ? 'text-success' : 'text-danger')}>{fmt(data.closingBalance)}</div>
         </div>
       </Card>
+      {/* REAL BUG found+fixed 2026-07-30: same fix as LedgerReportView above —
+          raw .toFixed(2) had no digit grouping and always 2 decimals
+          regardless of currency; routed through fmt() to match. */}
       <DataTable
-        headers={[t('common.date'), t('reports.col.description'), t('reports.col.method'), `${t('reports.col.in')} (${currencySymbol})`, `${t('reports.col.out')} (${currencySymbol})`, `${t('common.balance')} (${currencySymbol})`]}
+        headers={[t('common.date'), t('reports.col.description'), t('reports.col.method'), t('reports.col.in'), t('reports.col.out'), t('common.balance')]}
         rows={data.entries.map(e => [
           formatDate(e.date), e.description, e.paymentMethod,
-          e.type === 'IN' ? e.amount.toFixed(2) : '',
-          e.type === 'OUT' ? e.amount.toFixed(2) : '',
-          e.runningBalance.toFixed(2)
+          e.type === 'IN' ? fmt(e.amount) : '',
+          e.type === 'OUT' ? fmt(e.amount) : '',
+          fmt(e.runningBalance)
         ])}
         emptyText={t('reports.empty.ledgerEntries')}
       />

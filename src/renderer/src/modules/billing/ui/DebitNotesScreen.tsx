@@ -6,6 +6,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
@@ -21,13 +22,10 @@ interface DebitNote {
 interface Supplier { id: string; supplierName: string }
 interface PurchaseOrder { id: string; poNumber: string }
 
-function fmtMoney(n: number, sym: string) { return `${sym}${n.toFixed(2)}` }
-
 export function DebitNotesScreen() {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
-  const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [debitNotes, setDebitNotes] = useState<DebitNote[]>([])
@@ -265,7 +263,7 @@ export function DebitNotesScreen() {
                   {dn.purchaseOrder && ` • ${t('debitNotes.refPO', { number: dn.purchaseOrder.poNumber })}`}
                 </p>
               </div>
-              <p className="text-sm font-bold text-danger shrink-0">{fmtMoney(dn.amount, sym)}</p>
+              <p className="text-sm font-bold text-danger shrink-0">{formatCurrency(dn.amount)}</p>
               {canPrint && (
                 <>
                   <button onClick={() => handlePrint(dn)} disabled={printingId === dn.id} title="Print (A4)"
@@ -279,9 +277,9 @@ export function DebitNotesScreen() {
                   <ShareMenu
                     recipientPhone={dn.supplier?.phone}
                     recipientEmail={dn.supplier?.email}
-                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, amount: fmtMoney(dn.amount, sym) })}
+                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, amount: formatCurrency(dn.amount) })}
                     buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, businessName })}
-                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, businessName, amount: fmtMoney(dn.amount, sym) })}
+                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeDebitNote'), number: dn.debitNoteNumber, businessName, amount: formatCurrency(dn.amount) })}
                     onExportPdf={() => handleExportPdfForShare(dn)}
                   />
                 </>

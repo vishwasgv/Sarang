@@ -14,7 +14,16 @@ import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/
 // src/main/utils/external-link.util.ts's extraction: untested logic living
 // inline inside a component is exactly the kind of thing that ships subtly
 // wrong and stays that way.
-const NAV_INTENT_PATTERN = /\bhow (do|can|to)\b|\bwhere (is|can|do)\b|\bhow to\b/i
+// REAL BUG found+fixed 2026-07-31: the 2026-07-30 fix (the 'weak' branch
+// below) only helps once a question is actually recognized as nav-shaped —
+// this pattern only covered "how do/can/to..." and "where is/can/do...".
+// A perfectly reasonable navigation question phrased another common way
+// ("Can I export invoices to Excel?", "Is there a way to add a customer?",
+// "What's the way to print a label?") never matched, fell through to the AI
+// pipeline, got classified out_of_scope, and produced the exact misleading
+// business-data-only refusal this whole feature exists to avoid — just for
+// a different trigger phrase than the one already fixed.
+const NAV_INTENT_PATTERN = /\bhow (do|can|to|would|does)\b|\bwhere (is|can|do|to)\b|\bcan i\b|\bis there (a |any )?way to\b|\b(what'?s|what is) the (way|best way) to\b|\bany way to\b/i
 const STOPWORDS = new Set(['how', 'do', 'i', 'can', 'to', 'the', 'a', 'an', 'is', 'are', 'where', 'find', 'my', 'me', 'in', 'on', 'for', 'of', 'what', 'does', 'you', 'and'])
 
 function tokenize(s: string): string[] {

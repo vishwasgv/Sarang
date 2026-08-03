@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock, getExpiryAlerts, updateBatch, deleteBatch } from '../batch.service'
+import { deductBatchStockFIFO, hasEnoughNonExpiredBatchStock, getExpiryAlerts, updateBatch, deleteBatch, createBatch } from '../batch.service'
 
 const DAY = 24 * 60 * 60 * 1000
 const now = new Date()
@@ -39,6 +39,68 @@ function makeTx(batches: Array<{ id: string; quantityRemaining: number; expiryDa
     __state: state
   }
 }
+
+// REAL BUG found+fixed 2026-07-31: `new Date('2026-08-15')` parses as UTC
+// midnight, which is 5:30 AM local in IST — a batch stamped "expiry 15-Aug"
+// was treated as already expired starting 5:30 AM IST on the 15th itself,
+// ~18.5 hours before the date it's printed as good through, blocking a
+// legitimate sale. Same bug class already fixed for Membership.endDate.
+describe('createBatch', () => {
+  function makeCreateDb() {
+    const tx = {
+      productBatch: {
+        create: vi.fn(async (args: { data: { productId: string; batchNumber: string; expiryDate: Date; mfgDate: Date | null } }) => {
+          const data = args.data
+          return {
+            id: 'batch-1',
+            productId: data.productId,
+            batchNumber: data.batchNumber,
+            expiryDate: data.expiryDate,
+            mfgDate: data.mfgDate,
+            quantityReceived: 10,
+            quantityRemaining: 10,
+            unitCost: 0,
+            supplierId: null,
+            isActive: true,
+            createdAt: new Date(),
+            product: { productName: 'Test Product', expiryAlertLeadDays: null },
+            supplier: null
+          }
+        })
+      },
+      inventory: { upsert: vi.fn().mockResolvedValue({}) }
+    }
+    const db = {
+      product: { findUnique: vi.fn().mockResolvedValue({ productName: 'Test Product' }) },
+      $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(tx))
+    }
+    return { db, tx }
+  }
+
+  it('anchors expiryDate at the end of its local calendar day (not UTC midnight)', async () => {
+    const { db } = makeCreateDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBatch({
+      productId: 'prod-1', batchNumber: 'B001', expiryDate: '2026-08-15', quantityReceived: 10
+    })
+
+    expect(res.success).toBe(true)
+    expect(new Date(res.data!.expiryDate)).toEqual(new Date(2026, 7, 15, 23, 59, 59, 999))
+  })
+
+  it('anchors mfgDate at local midnight (not UTC midnight)', async () => {
+    const { db } = makeCreateDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createBatch({
+      productId: 'prod-1', batchNumber: 'B001', expiryDate: '2026-08-15', mfgDate: '2026-08-01', quantityReceived: 10
+    })
+
+    expect(res.success).toBe(true)
+    expect(new Date(res.data!.mfgDate!)).toEqual(new Date(2026, 7, 1))
+  })
+})
 
 describe('deductBatchStockFIFO', () => {
   it('skips an expired batch entirely and draws from the next non-expired one instead', async () => {

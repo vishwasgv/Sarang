@@ -1039,7 +1039,21 @@ model AuditLog {
   hash       String?
   prevHash   String?
 
-  user User? @relation(fields: [userId], references: [id])
+  // REAL BUG found+fixed 2026-07-30: this relation had no explicit onDelete,
+  // so Prisma's default for a nullable FK (SetNull) applied — meaning a hard
+  // delete of a User would silently null out `userId` on every AuditLog row
+  // that ever referenced them, including old rows whose `hash` was computed
+  // and frozen with the *original* userId baked in (see computeHash() in
+  // audit.service.ts). verifyAuditLogChain() recomputes each hash from the
+  // row's *current* userId column, so that cascade would flip provably
+  // untampered historical rows to a false "hash_mismatch". There is no
+  // shipped users:delete feature today (only users:deactivate), so this was
+  // a latent risk rather than an active one — but Restrict closes it
+  // properly: deleting a User with any audit history now fails loudly at
+  // the DB level instead of silently corrupting the tamper-evident chain,
+  // forcing any future hard-delete feature to consciously handle it (e.g.
+  // by requiring deactivation instead).
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([action])

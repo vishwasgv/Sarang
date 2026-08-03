@@ -7,6 +7,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
@@ -32,10 +33,6 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'danger'> 
   EXPIRED: 'danger'
 }
 
-function fmtMoney(n: number, sym: string) {
-  return `${sym}${n.toFixed(2)}`
-}
-
 const STATUS_FILTER_VALUES = ['All', 'DRAFT', 'SENT', 'ACCEPTED', 'EXPIRED'] as const
 type StatusFilter = typeof STATUS_FILTER_VALUES[number]
 
@@ -44,7 +41,6 @@ export function QuotationsScreen() {
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
-  const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [quotations, setQuotations] = useState<Quotation[]>([])
@@ -219,7 +215,7 @@ export function QuotationsScreen() {
                   {q.validUntil && ` • ${t('quotations.validTill', { date: formatDate(q.validUntil) })}`}
                 </p>
               </div>
-              <p className="text-sm font-bold text-dark dark:text-slate-100 shrink-0">{fmtMoney(q.totalAmount, sym)}</p>
+              <p className="text-sm font-bold text-dark dark:text-slate-100 shrink-0">{formatCurrency(q.totalAmount)}</p>
               {q.invoice ? (
                 <button onClick={() => navigate(`/billing/invoices/${q.invoice!.id}`)}
                   className="text-xs text-success font-semibold whitespace-nowrap">
@@ -246,9 +242,9 @@ export function QuotationsScreen() {
                 <ShareMenu
                   recipientPhone={q.customer?.phone}
                   recipientEmail={q.customer?.email}
-                  buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeQuotation'), number: q.quotationNumber, amount: fmtMoney(q.totalAmount, sym) })}
+                  buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeQuotation'), number: q.quotationNumber, amount: formatCurrency(q.totalAmount) })}
                   buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName })}
-                  buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName, amount: fmtMoney(q.totalAmount, sym) })}
+                  buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName, amount: formatCurrency(q.totalAmount) })}
                   onExportPdf={() => handleExportPdfForShare(q)}
                 />
               )}

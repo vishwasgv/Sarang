@@ -6,6 +6,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
@@ -21,13 +22,10 @@ interface CreditNote {
 interface Customer { id: string; customerName: string }
 interface Invoice { id: string; invoiceNumber: string }
 
-function fmtMoney(n: number, sym: string) { return `${sym}${n.toFixed(2)}` }
-
 export function CreditNotesScreen() {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
-  const sym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
 
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([])
@@ -265,7 +263,7 @@ export function CreditNotesScreen() {
                   {cn.invoice && ` • ${t('creditNotes.refInvoice', { number: cn.invoice.invoiceNumber })}`}
                 </p>
               </div>
-              <p className="text-sm font-bold text-warning shrink-0">{fmtMoney(cn.amount, sym)}</p>
+              <p className="text-sm font-bold text-warning shrink-0">{formatCurrency(cn.amount)}</p>
               {canPrint && (
                 <>
                   <button onClick={() => handlePrint(cn)} disabled={printingId === cn.id} title="Print (A4)"
@@ -279,9 +277,9 @@ export function CreditNotesScreen() {
                   <ShareMenu
                     recipientPhone={cn.customer?.phone}
                     recipientEmail={cn.customer?.email}
-                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, amount: fmtMoney(cn.amount, sym) })}
+                    buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, amount: formatCurrency(cn.amount) })}
                     buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, businessName })}
-                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, businessName, amount: fmtMoney(cn.amount, sym) })}
+                    buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeCreditNote'), number: cn.creditNoteNumber, businessName, amount: formatCurrency(cn.amount) })}
                     onExportPdf={() => handleExportPdfForShare(cn)}
                   />
                 </>

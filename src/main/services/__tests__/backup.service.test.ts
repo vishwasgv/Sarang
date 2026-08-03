@@ -266,6 +266,89 @@ describe('restoreBackup', () => {
   })
 })
 
+// REAL BUG found+fixed 2026-07-30: createBackup only ever bundled the DB
+// itself — never the business logo (userData/logos/) or attached documents
+// (userData/documents/, used across 15+ entity types). The DB rows for those
+// files survived a restore, but the actual files never did — every
+// attachment link came back permanently dead, with the backup still
+// reporting success. These tests exercise the real fix end to end with real
+// fs + real archiver/yauzl, same convention as the rest of this file.
+describe('backup/restore of logo and attached-document files', () => {
+  function userDataRoot() {
+    return join(backupDir, '..')
+  }
+
+  async function createRealBackup(label: string) {
+    const { createBackup } = await importFresh()
+    const res = await createBackup(`user-${label}`)
+    if (!res.success || !res.data) throw new Error('setup: failed to create real backup for test')
+    return res.data
+  }
+
+  it('round-trips logo and document files through a backup and restore', async () => {
+    const logoDir = join(userDataRoot(), 'logos')
+    const docDir = join(userDataRoot(), 'documents')
+    mkdirSync(logoDir, { recursive: true })
+    mkdirSync(docDir, { recursive: true })
+    writeFileSync(join(logoDir, 'business-logo.png'), 'original-logo-bytes')
+    writeFileSync(join(docDir, 'invoice-scan.pdf'), 'original-document-bytes')
+
+    const target = await createRealBackup('with-files')
+    db.backup.findUnique.mockResolvedValue(target)
+
+    // Simulate the files being lost/changed after the backup was taken —
+    // e.g. a disk failure, or just time passing before a restore is needed.
+    writeFileSync(join(logoDir, 'business-logo.png'), 'CORRUPTED-or-changed')
+    writeFileSync(join(docDir, 'invoice-scan.pdf'), 'CORRUPTED-or-changed')
+
+    const { restoreBackup } = await importFresh()
+    const res = await restoreBackup(target.id, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(readFileSync(join(logoDir, 'business-logo.png'), 'utf8')).toBe('original-logo-bytes')
+    expect(readFileSync(join(docDir, 'invoice-scan.pdf'), 'utf8')).toBe('original-document-bytes')
+  })
+
+  it('does not touch the current logo/document folders when restoring an older backup that predates this feature (no logos/documents entries in the zip)', async () => {
+    // Backup taken with NO logos/documents present at all — matches the
+    // shape of a real pre-fix backup.
+    const target = await createRealBackup('no-files-yet')
+    db.backup.findUnique.mockResolvedValue(target)
+
+    // Files added to the real folders AFTER that backup was taken.
+    const logoDir = join(userDataRoot(), 'logos')
+    mkdirSync(logoDir, { recursive: true })
+    writeFileSync(join(logoDir, 'added-after-backup.png'), 'must-survive-the-restore')
+
+    const { restoreBackup } = await importFresh()
+    const res = await restoreBackup(target.id, 'user-1')
+
+    expect(res.success).toBe(true)
+    // Must NOT have been wiped just because the backup had nothing to restore.
+    expect(existsSync(join(logoDir, 'added-after-backup.png'))).toBe(true)
+    expect(readFileSync(join(logoDir, 'added-after-backup.png'), 'utf8')).toBe('must-survive-the-restore')
+  })
+
+  it('fully replaces (not merges) the document folder — a file only present before the restore must be gone after', async () => {
+    const docDir = join(userDataRoot(), 'documents')
+    mkdirSync(docDir, { recursive: true })
+    writeFileSync(join(docDir, 'kept.pdf'), 'in-the-backup')
+
+    const target = await createRealBackup('replace-test')
+    db.backup.findUnique.mockResolvedValue(target)
+
+    // A file that exists locally but was never part of the backed-up state.
+    writeFileSync(join(docDir, 'stray-not-in-backup.pdf'), 'should-not-survive')
+
+    const { restoreBackup } = await importFresh()
+    const res = await restoreBackup(target.id, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(existsSync(join(docDir, 'kept.pdf'))).toBe(true)
+    expect(existsSync(join(docDir, 'stray-not-in-backup.pdf'))).toBe(false)
+  })
+})
+
 describe('deleteBackup', () => {
   it('deletes the file and the record', async () => {
     const record = { id: 'bk-1', backupPath: join(backupDir, 'bk-1.sarang-backup'), backupName: 'bk-1' }

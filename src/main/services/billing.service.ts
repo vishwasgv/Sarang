@@ -894,6 +894,25 @@ export const billingService = {
   // bill that no longer exists in its original shape.
   async splitInvoice(payload: SplitInvoicePayload, userId?: string) {
     const db = getPrisma()
+
+    // REAL BUG found+fixed 2026-07-30: createInvoice() and the quotation-to-
+    // invoice conversion both correctly gate on an EXPIRED license (see
+    // createInvoice's own doc comment on this exact check), but splitInvoice
+    // creates brand-new, independently-payable Invoice rows too — with fresh
+    // invoice numbers, printable/exportable, appearing in every report — and
+    // had no gate at all. That let an EXPIRED install mint unlimited new
+    // billable documents by repeatedly splitting any existing unpaid
+    // invoice (each split child can itself be split again), fully defeating
+    // the "only new billable documents are blocked" enforcement point. Same
+    // check, same message, as createInvoice.
+    const licenseState = await getLicenseState()
+    if (licenseState.status === 'EXPIRED') {
+      const message = licenseState.tier === 'PAID'
+        ? 'Your license has expired. Renew (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.'
+        : 'Your free year has ended. Renew your license (Settings → License) to keep creating new invoices — all your existing data remains fully accessible.'
+      return { success: false, error: { code: 'LIC-002', message } }
+    }
+
     const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
 

@@ -291,7 +291,12 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
   for (const p of products) {
     const stock = p.inventory?.quantity ?? 0
     const lowAlert = p.inventory ? stock <= (p.inventory.reorderLevel ?? 0) && stock > 0 : false
-    const stockValue = stock * p.costPrice
+    // REAL BUG found+fixed 2026-07-30: was Product.costPrice (a static value
+    // never updated by purchases/receiving/adjustments), diverging from the
+    // Inventory screen's "Total Value" (Inventory.averageCost, the live
+    // weighted-average cost basis) for any business with purchase-price
+    // history. See analytics.service.ts's getDashboardKpis for the same fix.
+    const stockValue = stock * (p.inventory?.averageCost ?? p.costPrice)
 
     if (params?.lowStockOnly && !lowAlert && stock !== 0) continue
 
@@ -430,25 +435,23 @@ async function generateOutstandingReport(): Promise<OutstandingReport> {
   const now = new Date()
 
   // Batch-load everything in 4 parallel queries instead of N+1
-  const [customers, suppliers, allUnpaidInvoices, allSupplierLedger] = await Promise.all([
+  const [customers, suppliers, allCustomerLedger, allSupplierLedger] = await Promise.all([
     db.customer.findMany({ where: { isActive: true }, select: { id: true, customerName: true, phone: true } }),
     db.supplier.findMany({ where: { isActive: true }, select: { id: true, supplierName: true, phone: true } }),
-    db.invoice.findMany({
-      where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] }, status: { not: 'CANCELLED' }, customerId: { not: null } },
-      select: { customerId: true, balanceAmount: true, invoiceDate: true, dueDate: true }
+    db.customerLedger.findMany({
+      select: { customerId: true, debitAmount: true, creditAmount: true, createdAt: true }
     }),
     db.supplierLedger.findMany({
       select: { supplierId: true, debitAmount: true, creditAmount: true, createdAt: true }
     })
   ])
 
-  // Group invoices by customer in memory
-  const invoicesByCustomer = new Map<string, { balanceAmount: number; invoiceDate: Date; dueDate: Date | null }[]>()
-  for (const inv of allUnpaidInvoices) {
-    if (!inv.customerId) continue
-    const arr = invoicesByCustomer.get(inv.customerId) ?? []
-    arr.push({ balanceAmount: inv.balanceAmount, invoiceDate: inv.invoiceDate, dueDate: inv.dueDate })
-    invoicesByCustomer.set(inv.customerId, arr)
+  // Group customer ledger entries by customerId in memory
+  const ledgerByCustomer = new Map<string, { debitAmount: number; creditAmount: number; createdAt: Date }[]>()
+  for (const e of allCustomerLedger) {
+    const arr = ledgerByCustomer.get(e.customerId) ?? []
+    arr.push(e)
+    ledgerByCustomer.set(e.customerId, arr)
   }
 
   // Group supplier ledger entries by supplierId in memory
@@ -459,27 +462,39 @@ async function generateOutstandingReport(): Promise<OutstandingReport> {
     ledgerBySupplier.set(e.supplierId, arr)
   }
 
+  // REAL BUG found+fixed 2026-07-30: this used to sum unpaid Invoice.balanceAmount
+  // instead of the CustomerLedger (RULE AN001 — the same rule the Dashboard's
+  // outstanding tile and getTopOutstanding()/getOutstandingAmount() already
+  // follow correctly; only this report's customer branch diverged, while its
+  // own sibling supplier branch below was already ledger-based). A customer
+  // with a standalone OPENING_BALANCE or CREDIT_NOTE ledger entry (debt with
+  // no Invoice row at all) showed correctly on the Dashboard but was entirely
+  // absent here — understating total receivables versus the same session's
+  // Dashboard figure. Now ledger-based, mirroring the supplier branch exactly
+  // (including its FIFO-oldest-debit-first aging allocation), which also
+  // means aging is now relative to when each ledger entry was recorded rather
+  // than an invoice's due date — consistent with the supplier side, and the
+  // only basis that makes sense for a non-invoice ledger entry.
   const customerRows: OutstandingCustomer[] = []
   for (const c of customers) {
-    const unpaidInvoices = invoicesByCustomer.get(c.id) ?? []
-    if (unpaidInvoices.length === 0) continue
+    const ledgerEntries = ledgerByCustomer.get(c.id) ?? []
+    if (ledgerEntries.length === 0) continue
 
-    let outstanding = 0
+    const outstanding = ledgerEntries.reduce((sum, e) => sum + e.debitAmount - e.creditAmount, 0)
+    if (outstanding <= 0.01) continue
+
     let aging: AgingBuckets = { ...ZERO_AGING }
-    for (const inv of unpaidInvoices) {
-      const balance = inv.balanceAmount
-      if (balance <= 0.01) continue
-      outstanding += balance
-      // Aging is relative to the payment due date when set (e.g. a credit-terms invoice);
-      // falls back to invoiceDate for invoices with no due date recorded.
-      const agingBasis = inv.dueDate ?? inv.invoiceDate
-      const daysOld = Math.floor((now.getTime() - agingBasis.getTime()) / 86400000)
-      aging = mergeAging(aging, agingBucket(daysOld, balance))
+    let remaining = outstanding
+    const debitEntries = ledgerEntries.filter(e => e.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    for (const entry of debitEntries) {
+      if (remaining <= 0) break
+      const portion = Math.min(entry.debitAmount, remaining)
+      const daysOld = Math.floor((now.getTime() - entry.createdAt.getTime()) / 86400000)
+      aging = mergeAging(aging, agingBucket(daysOld, portion))
+      remaining -= portion
     }
 
-    if (outstanding > 0.01) {
-      customerRows.push({ id: c.id, customerName: c.customerName, phone: c.phone, outstanding, aging })
-    }
+    customerRows.push({ id: c.id, customerName: c.customerName, phone: c.phone, outstanding, aging })
   }
 
   const supplierRows: OutstandingSupplier[] = []

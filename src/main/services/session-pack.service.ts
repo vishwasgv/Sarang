@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 // ClientSessionPack.pricePerPack is a Prisma Decimal — Electron's IPC
 // (structured clone) cannot serialize a Decimal instance and throws
@@ -94,8 +95,17 @@ export async function createPack(payload: {
         packName: payload.packName,
         totalSessions: payload.totalSessions,
         usedSessions: 0,
-        purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : new Date(),
-        expiryDate: payload.expiryDate ? new Date(payload.expiryDate) : null,
+        purchaseDate: payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : new Date(),
+        // REAL BUG found+fixed 2026-07-31: `new Date("YYYY-MM-DD")` parses
+        // as UTC midnight — 5:30 AM *local* on that date in IST — not local
+        // midnight and nowhere near end-of-day. getActivePack/deductSession
+        // both gate on `expiryDate >= now`, so a pack sold with expiry
+        // "15-Aug" became unusable starting 5:30 AM IST on the 15th itself —
+        // a paying client showing up for their last session that morning
+        // was denied a session they'd already paid for. Same bug class
+        // already fixed for Membership.endDate (see membership.service.ts);
+        // parseLocalDateEnd anchors expiry to the real end of that local day.
+        expiryDate: payload.expiryDate ? parseLocalDateEnd(payload.expiryDate) : null,
         pricePerPack: payload.pricePerPack ?? 0,
         taxRate: payload.taxRate ?? 18,
         sacCode: payload.sacCode ?? null,

@@ -15,42 +15,63 @@ const SALT_ROUNDS = 12
 // In-memory session (single-user desktop app)
 let currentSession: { userId: string; username: string; roleId: string } | null = null
 
-// In-memory brute-force guard: 5 attempts per 15 min window per key.
+// Brute-force guard: 5 attempts per 15 min window per key.
 // Shared factory so login (keyed by username) and changePassword (keyed by
 // userId — see below) get the identical lockout behavior from one place,
 // rather than changePassword silently having none at all.
+//
+// REAL BUG found+fixed 2026-08-03 (security audit): this used to be a plain
+// in-memory Map with no DB/disk backing. Anyone with local access to the
+// machine — a colleague/family member guessing another user's password, or
+// a stolen/shared laptop — could reset the attempt counter to zero simply
+// by closing and relaunching the app, making the "5 attempts per 15 min"
+// lockout purely cosmetic against exactly the threat model this desktop
+// app's login screen exists to resist (there's no server to enforce it
+// independently of the client process). Persisted to the Setting table
+// (this app's existing key-value store) so the window survives a restart.
 const MAX_ATTEMPTS = 5
 const WINDOW_MS = 15 * 60 * 1000
 
-function makeRateLimiter(maxAttempts: number, windowMs: number) {
-  const attempts = new Map<string, { count: number; windowStart: number }>()
+function makeRateLimiter(namespace: string, maxAttempts: number, windowMs: number) {
+  const settingKey = (key: string) => `ratelimit_${namespace}_${key}`
   return {
-    check(key: string): { blocked: boolean; remainingMs?: number } {
+    async check(key: string): Promise<{ blocked: boolean; remainingMs?: number }> {
+      const db = getPrisma()
       const now = Date.now()
-      const entry = attempts.get(key)
+      const row = await db.setting.findUnique({ where: { settingKey: settingKey(key) } })
+      const entry = row ? (JSON.parse(row.settingValue) as { count: number; windowStart: number }) : null
+
       if (!entry || now - entry.windowStart > windowMs) {
-        attempts.set(key, { count: 1, windowStart: now })
+        await db.setting.upsert({
+          where: { settingKey: settingKey(key) },
+          update: { settingValue: JSON.stringify({ count: 1, windowStart: now }) },
+          create: { settingKey: settingKey(key), settingValue: JSON.stringify({ count: 1, windowStart: now }), settingType: 'STRING' }
+        })
         return { blocked: false }
       }
       if (entry.count >= maxAttempts) {
         return { blocked: true, remainingMs: windowMs - (now - entry.windowStart) }
       }
-      entry.count++
+      await db.setting.update({
+        where: { settingKey: settingKey(key) },
+        data: { settingValue: JSON.stringify({ count: entry.count + 1, windowStart: entry.windowStart }) }
+      })
       return { blocked: false }
     },
-    reset(key: string): void {
-      attempts.delete(key)
+    async reset(key: string): Promise<void> {
+      const db = getPrisma()
+      await db.setting.delete({ where: { settingKey: settingKey(key) } }).catch(() => { /* nothing to reset */ })
     }
   }
 }
 
-const loginRateLimiter = makeRateLimiter(MAX_ATTEMPTS, WINDOW_MS)
-const changePasswordRateLimiter = makeRateLimiter(MAX_ATTEMPTS, WINDOW_MS)
+const loginRateLimiter = makeRateLimiter('login', MAX_ATTEMPTS, WINDOW_MS)
+const changePasswordRateLimiter = makeRateLimiter('changepw', MAX_ATTEMPTS, WINDOW_MS)
 
 /** Authenticates with rate limiting (AUTH-004 after 5 failures per 15 min). Resets counter on success. */
 export async function login(username: string, password: string, rememberMe = false): Promise<ApiResponse> {
   try {
-    const rateCheck = loginRateLimiter.check(username)
+    const rateCheck = await loginRateLimiter.check(username)
     if (rateCheck.blocked) {
       const waitMin = Math.ceil((rateCheck.remainingMs ?? 0) / 60000)
       return { success: false, error: { code: 'AUTH-004', message: `Too many failed login attempts. Please try again in ${waitMin} minute(s).` } }
@@ -77,7 +98,7 @@ export async function login(username: string, password: string, rememberMe = fal
       return { success: false, error: { code: 'AUTH-001', message: 'Incorrect username or password. Please try again.' } }
     }
 
-    loginRateLimiter.reset(username)
+    await loginRateLimiter.reset(username)
 
     // Session persistence (GAP D6) — raw token in electron-store, hashed token in DB
     let sessionToken: string | undefined
@@ -211,7 +232,7 @@ export async function getCurrentUser(): Promise<ApiResponse> {
 
 export async function changePassword(userId: string, oldPassword: string, newPassword: string): Promise<ApiResponse> {
   try {
-    const rateCheck = changePasswordRateLimiter.check(userId)
+    const rateCheck = await changePasswordRateLimiter.check(userId)
     if (rateCheck.blocked) {
       const waitMin = Math.ceil((rateCheck.remainingMs ?? 0) / 60000)
       return { success: false, error: { code: 'AUTH-004', message: `Too many password-change attempts. Please try again in ${waitMin} minute(s).` } }
@@ -227,7 +248,7 @@ export async function changePassword(userId: string, oldPassword: string, newPas
     const lengthError = await checkPasswordLength(newPassword)
     if (lengthError) return lengthError
 
-    changePasswordRateLimiter.reset(userId)
+    await changePasswordRateLimiter.reset(userId)
     const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
     // Invalidate all remember-me sessions so stolen tokens cannot be reused after a password change
     await db.user.update({ where: { id: userId }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })
@@ -276,12 +297,12 @@ function normalizeRecoveryCode(input: string): string {
   return groups.join('-')
 }
 
-const recoveryRateLimiter = makeRateLimiter(MAX_ATTEMPTS, WINDOW_MS)
+const recoveryRateLimiter = makeRateLimiter('recovery', MAX_ATTEMPTS, WINDOW_MS)
 
 /** Pre-login password reset using the offline recovery code — no session required by design. */
 export async function resetPasswordWithRecoveryCode(username: string, recoveryCode: string, newPassword: string): Promise<ApiResponse> {
   try {
-    const rateCheck = recoveryRateLimiter.check(username)
+    const rateCheck = await recoveryRateLimiter.check(username)
     if (rateCheck.blocked) {
       const waitMin = Math.ceil((rateCheck.remainingMs ?? 0) / 60000)
       return { success: false, error: { code: 'AUTH-004', message: `Too many attempts. Please try again in ${waitMin} minute(s).` } }
@@ -305,7 +326,7 @@ export async function resetPasswordWithRecoveryCode(username: string, recoveryCo
     const lengthError = await checkPasswordLength(newPassword)
     if (lengthError) return lengthError
 
-    recoveryRateLimiter.reset(username)
+    await recoveryRateLimiter.reset(username)
     const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
     // Same invalidation as changePassword — a stolen remember-me token must not survive a recovery reset either.
     await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })

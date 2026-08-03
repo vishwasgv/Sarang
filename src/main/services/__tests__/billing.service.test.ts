@@ -615,6 +615,11 @@ describe('billingService.createInvoice — Phase 58 §2 restaurant table binding
 
   it('releases the table immediately for a CASH order — it was fully paid in this same call, no later recordPayment is coming', async () => {
     const db = makeMockDb()
+    // releaseTablesForInvoiceTx now resolves the invoice's split group before
+    // releasing (2026-07-30 fix) — this invoice isn't a split at all, so it's
+    // its own one-invoice group, settled (PAID) immediately since this is a
+    // same-call CASH payment.
+    db.invoice.findMany = vi.fn().mockResolvedValue([{ id: 'inv-1', status: 'ACTIVE', paymentStatus: 'PAID' }])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await billingService.createInvoice({ ...basePayload, paymentMethod: 'CASH', tableIds: ['table-5'] })
@@ -625,7 +630,7 @@ describe('billingService.createInvoice — Phase 58 §2 restaurant table binding
     // AVAILABLE) — both against the same invoice within the one transaction.
     expect(db.restaurantTable.updateMany).toHaveBeenCalledTimes(2)
     expect(db.restaurantTable.updateMany).toHaveBeenLastCalledWith({
-      where: { currentInvoiceId: 'inv-1' },
+      where: { currentInvoiceId: { in: ['inv-1'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
   })

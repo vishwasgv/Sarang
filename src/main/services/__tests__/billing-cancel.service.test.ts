@@ -34,7 +34,7 @@ function makeActiveInvoice(overrides: Record<string, unknown> = {}) {
 // now looks up the invoice (and re-checks its status) INSIDE the transaction
 // rather than against a pre-read snapshot, closing a double-cancel race.
 let sharedTx: {
-  invoice: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
+  invoice: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }
   inventory: { update: ReturnType<typeof vi.fn> }
   inventoryMovement: { create: ReturnType<typeof vi.fn> }
   customerLedger: { findMany: ReturnType<typeof vi.fn> }
@@ -48,7 +48,12 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
   sharedTx = {
     invoice: {
       findUnique: vi.fn().mockResolvedValue(makeActiveInvoice(invoiceOverride ?? {})),
-      update: vi.fn().mockResolvedValue({})
+      update: vi.fn().mockResolvedValue({}),
+      // releaseTablesForInvoiceTx (2026-07-30 split-group fix) resolves the
+      // invoice's split group via findMany before releasing its table(s) —
+      // this invoice isn't a split, and cancelling settles it, so it's its
+      // own one-invoice, already-settled group.
+      findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', status: 'CANCELLED', paymentStatus: 'PAID' }])
     },
     inventory: { update: vi.fn().mockResolvedValue({ quantity: 52 }) },
     inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) },
@@ -231,7 +236,7 @@ describe('billingService.cancelInvoice', () => {
 
     expect(result.success).toBe(true)
     expect(sharedTx.restaurantTable.updateMany).toHaveBeenCalledWith({
-      where: { currentInvoiceId: 'inv-1' },
+      where: { currentInvoiceId: { in: ['inv-1'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
   })

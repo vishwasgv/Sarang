@@ -123,7 +123,8 @@ describe('generateReportHtml', () => {
     vi.mocked(getPrisma).mockReturnValue({
       businessProfile: {
         findFirst: vi.fn().mockResolvedValue({ businessName: 'My Shop', address: '123 St', taxNumber: 'GST1', currencySymbol: '₹' })
-      }
+      },
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
     } as never)
 
     const html = await generateReportHtml({ title: 'Sales Report', tables: [{ headers: ['A'], rows: [] }] })
@@ -134,7 +135,13 @@ describe('generateReportHtml', () => {
   })
 
   it('renders an empty-state row instead of an empty table when there are no rows', async () => {
-    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+      // generateReportHtml (2026-07-30 currency-formatter fix) now reads
+      // number_format/decimal_places/currency_symbol_position via
+      // db.setting.findMany before building its chart-label formatter.
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
+    } as never)
 
     const html = await generateReportHtml({ title: 'Empty', tables: [{ headers: ['A', 'B'], rows: [] }] })
 
@@ -142,7 +149,13 @@ describe('generateReportHtml', () => {
   })
 
   it('includes the Aszurex footer', async () => {
-    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+      // generateReportHtml (2026-07-30 currency-formatter fix) now reads
+      // number_format/decimal_places/currency_symbol_position via
+      // db.setting.findMany before building its chart-label formatter.
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
+    } as never)
 
     const html = await generateReportHtml({ title: 'X', tables: [] })
 
@@ -156,7 +169,13 @@ describe('generateReportHtml', () => {
   // containing `<`, `>`, or `"` (real, user-enterable data) could corrupt
   // the exported report's HTML/table structure.
   it('HTML-escapes a table cell containing markup-like characters instead of injecting it raw', async () => {
-    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+      // generateReportHtml (2026-07-30 currency-formatter fix) now reads
+      // number_format/decimal_places/currency_symbol_position via
+      // db.setting.findMany before building its chart-label formatter.
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
+    } as never)
 
     const html = await generateReportHtml({
       title: 'Sales Report',
@@ -169,7 +188,8 @@ describe('generateReportHtml', () => {
 
   it('HTML-escapes the business name, title, subtitle, and table headers', async () => {
     vi.mocked(getPrisma).mockReturnValue({
-      businessProfile: { findFirst: vi.fn().mockResolvedValue({ businessName: 'A & B "Traders"', address: null, taxNumber: null, currencySymbol: '₹' }) }
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ businessName: 'A & B "Traders"', address: null, taxNumber: null, currencySymbol: '₹' }) },
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
     } as never)
 
     const html = await generateReportHtml({
@@ -186,7 +206,13 @@ describe('generateReportHtml', () => {
   })
 
   it('still renders a real number cell correctly, unaffected by the new escaping', async () => {
-    vi.mocked(getPrisma).mockReturnValue({ businessProfile: { findFirst: vi.fn().mockResolvedValue(null) } } as never)
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+      // generateReportHtml (2026-07-30 currency-formatter fix) now reads
+      // number_format/decimal_places/currency_symbol_position via
+      // db.setting.findMany before building its chart-label formatter.
+      setting: { findMany: vi.fn().mockResolvedValue([]) }
+    } as never)
 
     const html = await generateReportHtml({
       title: 'X',

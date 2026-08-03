@@ -112,6 +112,28 @@ export async function createFieldOrderRequest(
     ))
     const amount = items.reduce((sum, i, idx) => sum + itemPrices[idx] * i.quantity, 0)
 
+    // REAL BUG found+fixed 2026-07-30: no idempotency guard at all — the LAN
+    // client (resources/field-order/index.html) shows a generic "Connection
+    // error, please try again" and resets the form on ANY fetch failure,
+    // including a dropped response after the POST already reached this
+    // server (a flaky field connection, or a doubled tap). That produced two
+    // identical PENDING requests for one physical order, indistinguishable
+    // to office staff, who could accept both — double-billing the order and,
+    // for a CREDIT customer, double-counting against their credit limit.
+    // Guard: if an identical PENDING request (same rep, same customer, same
+    // exact item set) was created in the last 2 minutes, treat this as a
+    // resubmission of that same request rather than a new order.
+    const dedupeWindowStart = new Date(Date.now() - 2 * 60 * 1000)
+    const recentPending = await db.fieldOrderRequest.findMany({
+      where: { repName: repName.trim(), customerId: resolvedCustomerId ?? null, status: 'PENDING', createdAt: { gte: dedupeWindowStart } },
+      include: { items: { select: { productId: true, quantity: true } } }
+    })
+    const incomingKey = items.map(i => `${i.productId}:${i.quantity}`).sort().join('|')
+    const isDuplicate = recentPending.some(r => r.items.map(i => `${i.productId}:${i.quantity}`).sort().join('|') === incomingKey)
+    if (isDuplicate) {
+      return { success: true, data: { amount } }
+    }
+
     await db.fieldOrderRequest.create({
       data: {
         repName: repName.trim(),

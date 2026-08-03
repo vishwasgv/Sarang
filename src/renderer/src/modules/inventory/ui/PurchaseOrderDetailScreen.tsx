@@ -11,6 +11,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
@@ -137,7 +138,7 @@ export function PurchaseOrderDetailScreen() {
 
   function buildShareWhatsAppMessage(): string {
     if (!po) return ''
-    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, amount: po.totalAmount.toFixed(2) })
+    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, amount: formatCurrency(po.totalAmount) })
   }
 
   function buildShareEmailSubject(): string {
@@ -147,7 +148,7 @@ export function PurchaseOrderDetailScreen() {
 
   function buildShareEmailBody(): string {
     if (!po) return ''
-    return t('billing.shareEmailBody', { documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, businessName, amount: po.totalAmount.toFixed(2) })
+    return t('billing.shareEmailBody', { documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, businessName, amount: formatCurrency(po.totalAmount) })
   }
 
   async function handleCancel() {
@@ -308,9 +309,9 @@ export function PurchaseOrderDetailScreen() {
                     {item.product.sku && <p className="text-xs text-slate-400">SKU: {item.product.sku}</p>}
                   </td>
                   <td className="px-5 py-3 text-right text-slate-700 dark:text-slate-300">{item.quantity} {item.product.unit}</td>
-                  <td className="px-5 py-3 text-right text-slate-700 dark:text-slate-300">{item.unitCost.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right text-slate-700 dark:text-slate-300">{formatCurrency(item.unitCost)}</td>
                   <td className="px-5 py-3 text-right text-slate-500 dark:text-slate-400">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
-                  <td className="px-5 py-3 text-right font-medium text-dark dark:text-slate-100">{item.total.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right font-medium text-dark dark:text-slate-100">{formatCurrency(item.total)}</td>
                   {po.status === 'RECEIVED' && (
                     <td className="px-5 py-3 text-right text-success font-medium">
                       {item.product.inventory?.quantity ?? '—'} {item.product.unit}
@@ -327,15 +328,15 @@ export function PurchaseOrderDetailScreen() {
           <div className="space-y-1.5 min-w-48">
             <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
               <span>{t('billing.subtotal')}</span>
-              <span>{po.subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(po.subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
               <span>{t('billing.tax')}</span>
-              <span>{po.taxAmount.toFixed(2)}</span>
+              <span>{formatCurrency(po.taxAmount)}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
-              <span>{po.totalAmount.toFixed(2)}</span>
+              <span>{formatCurrency(po.totalAmount)}</span>
             </div>
           </div>
         </div>

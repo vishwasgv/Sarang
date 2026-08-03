@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { hashPassword, generateRecoveryCode } from './auth.service'
+import { hashPassword, generateRecoveryCode, checkPasswordLength } from './auth.service'
 import { seedDefaultData } from '../database/seed'
 import { logAction } from './audit.service'
 import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.service'
@@ -55,6 +55,16 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
     if (!isValidLogoPath(payload.logoPath)) {
       return { success: false, error: { code: 'VAL-002', message: 'Invalid logo file path.' } }
     }
+
+    // REAL BUG found+fixed 2026-07-30: this Admin account — the single most
+    // powerful credential on the whole install — was only held to
+    // SetupPayload's own floor-level `min(6)` schema check. Every other
+    // password-setting path (users:create, adminResetPassword, changePassword,
+    // recovery-code reset) defers to the real, configurable policy via
+    // checkPasswordLength(), so a fresh install let its Admin password be
+    // weaker than the minimum enforced on every user created after it.
+    const passwordError = await checkPasswordLength(payload.adminPassword)
+    if (passwordError) return passwordError
 
     const db = getPrisma()
 

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export interface BatchRecord {
   id: string
@@ -114,8 +115,19 @@ export async function createBatch(payload: {
         data: {
           productId: payload.productId,
           batchNumber: payload.batchNumber.trim().toUpperCase(),
-          expiryDate: new Date(payload.expiryDate),
-          mfgDate: payload.mfgDate ? new Date(payload.mfgDate) : null,
+          // REAL BUG found+fixed 2026-07-31: `new Date("YYYY-MM-DD")` parses
+          // as UTC midnight, which in IST (UTC+5:30) is 5:30 AM *local* on
+          // that date — not local midnight, and nowhere near end-of-day.
+          // deductBatchStockFIFO/hasEnoughNonExpiredBatchStock filter on
+          // `expiryDate: { gte: new Date() }`, so a batch stamped "expiry
+          // 15-Aug" was treated as already expired starting 5:30 AM IST on
+          // the 15th itself, ~18.5 hours before the date it's printed as
+          // good through — blocking a legitimate sale of stock that hadn't
+          // actually expired yet. Same bug class already fixed for
+          // Membership.endDate (see membership.service.ts); parseLocalDateEnd
+          // anchors expiry to the real end of that local calendar day.
+          expiryDate: parseLocalDateEnd(payload.expiryDate),
+          mfgDate: payload.mfgDate ? parseLocalDateStart(payload.mfgDate) : null,
           quantityReceived: payload.quantityReceived,
           quantityRemaining: payload.quantityReceived,
           unitCost: payload.unitCost ?? 0,
@@ -205,8 +217,9 @@ export async function updateBatch(payload: {
       await tx.productBatch.update({
         where: { id: payload.id },
         data: {
-          ...(payload.expiryDate ? { expiryDate: new Date(payload.expiryDate) } : {}),
-          ...(payload.mfgDate ? { mfgDate: new Date(payload.mfgDate) } : {}),
+          // Same fix as createBatch above — see its comment.
+          ...(payload.expiryDate ? { expiryDate: parseLocalDateEnd(payload.expiryDate) } : {}),
+          ...(payload.mfgDate ? { mfgDate: parseLocalDateStart(payload.mfgDate) } : {}),
           ...(payload.quantityRemaining !== undefined ? { quantityRemaining: payload.quantityRemaining } : {}),
           ...(payload.unitCost !== undefined ? { unitCost: payload.unitCost } : {})
         }

@@ -100,12 +100,61 @@ describe('restaurant.service.assignWaiter', () => {
   })
 })
 
+// REAL BUG found+fixed 2026-07-30: releaseTablesForInvoiceTx used to release
+// on a single invoiceId reaching PAID/CANCELLED with no awareness that
+// billing.service.ts's splitInvoice() turns one table's tab into N sibling
+// invoices while re-pointing the table at only the first child — paying off
+// that first split check released the table while other split checks were
+// still fully unpaid. Fixed to resolve the whole split group and only
+// release once every invoice in it is settled. See restaurant.service.ts's
+// doc comment on the function for the full write-up.
 describe('restaurant.service.releaseTablesForInvoiceTx', () => {
-  it('clears currentInvoiceId and resets status to AVAILABLE for every table pointing at the invoice', async () => {
-    const tx = { restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 2 }) } }
+  function makeTx(invoices: Array<{ id: string; status: string; paymentStatus: string; splitFromInvoiceId?: string | null }>) {
+    return {
+      invoice: {
+        findUnique: vi.fn(({ where }: { where: { id: string } }) => {
+          const inv = invoices.find(i => i.id === where.id)
+          return Promise.resolve(inv ? { splitFromInvoiceId: inv.splitFromInvoiceId ?? null } : null)
+        }),
+        findMany: vi.fn(({ where }: { where: { OR: [{ id: string }, { splitFromInvoiceId: string }] } }) => {
+          const rootId = where.OR[0].id
+          return Promise.resolve(invoices.filter(i => i.id === rootId || i.splitFromInvoiceId === rootId))
+        })
+      },
+      restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) }
+    }
+  }
+
+  it('releases a non-split invoice\'s table once it is PAID (unchanged happy path)', async () => {
+    const tx = makeTx([{ id: 'inv-1', status: 'ACTIVE', paymentStatus: 'PAID' }])
     await releaseTablesForInvoiceTx(tx as never, 'inv-1')
     expect(tx.restaurantTable.updateMany).toHaveBeenCalledWith({
-      where: { currentInvoiceId: 'inv-1' },
+      where: { currentInvoiceId: { in: ['inv-1'] } },
+      data: { currentInvoiceId: null, status: 'AVAILABLE' }
+    })
+  })
+
+  it('does NOT release the table when one split-bill sibling is still unpaid', async () => {
+    // original split into B (paid) and C (still unpaid) — table currently points at B
+    const tx = makeTx([
+      { id: 'orig-1', status: 'SPLIT', paymentStatus: 'PAID' },
+      { id: 'split-B', status: 'ACTIVE', paymentStatus: 'PAID', splitFromInvoiceId: 'orig-1' },
+      { id: 'split-C', status: 'ACTIVE', paymentStatus: 'UNPAID', splitFromInvoiceId: 'orig-1' }
+    ])
+    await releaseTablesForInvoiceTx(tx as never, 'split-B')
+    expect(tx.restaurantTable.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('releases the table once every split-bill sibling is settled, matching on any invoice id in the group', async () => {
+    const tx = makeTx([
+      { id: 'orig-1', status: 'SPLIT', paymentStatus: 'PAID' },
+      { id: 'split-B', status: 'ACTIVE', paymentStatus: 'PAID', splitFromInvoiceId: 'orig-1' },
+      { id: 'split-C', status: 'ACTIVE', paymentStatus: 'PAID', splitFromInvoiceId: 'orig-1' }
+    ])
+    // The table's currentInvoiceId points at split-B, but split-C is the one that just got paid
+    await releaseTablesForInvoiceTx(tx as never, 'split-C')
+    expect(tx.restaurantTable.updateMany).toHaveBeenCalledWith({
+      where: { currentInvoiceId: { in: ['orig-1', 'split-B', 'split-C'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
   })

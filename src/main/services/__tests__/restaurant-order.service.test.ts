@@ -166,6 +166,45 @@ describe('createOrderRequest (customer-facing, unauthenticated)', () => {
     expect(res.success).toBe(true)
     expect(res.data?.upiQrDataUrl).toBeUndefined()
   })
+
+  // REAL BUG found+fixed 2026-07-30: a flaky WiFi connection dropping the
+  // response after the POST already reached the server (or a doubled tap)
+  // used to create two identical PENDING orders for one physical order at
+  // the same table — indistinguishable to staff, who could accept both and
+  // bill the guest twice.
+  it('treats a resubmission of the exact same pending order (same table, same items) as a duplicate, not a new order', async () => {
+    const db = makeMockDb({
+      tableOrderRequest: {
+        create: vi.fn().mockResolvedValue({ id: 'req-1' }),
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'existing-req', tableId: 'table-1', status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }] }
+        ]),
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createOrderRequest('table-1', [{ productId: 'prod-1', quantity: 2 }])
+
+    expect(res.success).toBe(true)
+    expect(db.tableOrderRequest.create).not.toHaveBeenCalled()
+  })
+
+  it('does NOT treat a different item set at the same table as a duplicate', async () => {
+    const db = makeMockDb({
+      tableOrderRequest: {
+        create: vi.fn().mockResolvedValue({ id: 'req-2' }),
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'existing-req', tableId: 'table-1', status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }] }
+        ]),
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createOrderRequest('table-1', [{ productId: 'prod-2', quantity: 1 }])
+
+    expect(res.success).toBe(true)
+    expect(db.tableOrderRequest.create).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('listMenuProducts', () => {

@@ -205,6 +205,38 @@ describe('session-pack.service — expiry enforcement', () => {
     expect(res.success).toBe(false)
     expect(db.clientSessionPack.update).not.toHaveBeenCalled()
   })
+
+  // REAL BUG found+fixed 2026-07-31: `new Date('2026-08-15')` parses as UTC
+  // midnight, which is 5:30 AM local in IST — a pack sold with expiry
+  // "15-Aug" became unusable starting 5:30 AM IST on the 15th itself, a
+  // paying client showing up for their last session that morning was
+  // denied a session they'd already paid for. Same bug class already
+  // fixed for Membership.endDate.
+  it('createPack anchors expiryDate at the end of its local calendar day (not UTC midnight)', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createPack({
+      customerId: 'cust-1', packName: 'Test Pack', totalSessions: 10, expiryDate: '2026-08-15'
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = db.clientSessionPack.create.mock.calls[0][0] as { data: { expiryDate: Date } }
+    expect(createCall.data.expiryDate).toEqual(new Date(2026, 7, 15, 23, 59, 59, 999))
+  })
+
+  it('createPack anchors purchaseDate at local midnight (not UTC midnight)', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createPack({
+      customerId: 'cust-1', packName: 'Test Pack', totalSessions: 10, purchaseDate: '2026-08-01'
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = db.clientSessionPack.create.mock.calls[0][0] as { data: { purchaseDate: Date } }
+    expect(createCall.data.purchaseDate).toEqual(new Date(2026, 7, 1))
+  })
 })
 
 // Phase 41 — generateSessionPackInvoice

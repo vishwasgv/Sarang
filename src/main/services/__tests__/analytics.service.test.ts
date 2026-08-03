@@ -6,7 +6,7 @@ vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockRe
 import { getPrisma } from '../../database/db'
 import {
   getTopProducts, getTopOutstanding, getRevenueTrend, getDashboardAlerts,
-  getTopCategories, getInventoryValue, getOutstandingAmount, getEstimatedProfit
+  getTopCategories, getOutstandingAmount, getEstimatedProfit
 } from '../analytics.service'
 
 function zeroAgg(field: string) {
@@ -518,23 +518,6 @@ describe('getTopCategories', () => {
     const result = await getTopCategories(5)
 
     expect(result.find(c => c.categoryName === 'Beverages')?.itemsSold).toBe(4)
-  })
-})
-
-// ─── getInventoryValue ───────────────────────────────────────────────────────
-
-describe('getInventoryValue', () => {
-  it('values stock at cost price and excludes inactive products', async () => {
-    const db = makeDb()
-    db.inventory.findMany = vi.fn().mockResolvedValue([
-      { quantity: 10, product: { costPrice: 50, isActive: true } },
-      { quantity: 100, product: { costPrice: 999, isActive: false } }
-    ])
-    vi.mocked(getPrisma).mockReturnValue(db as never)
-
-    const value = await getInventoryValue()
-
-    expect(value).toBe(500)
   })
 })
 

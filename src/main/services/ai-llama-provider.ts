@@ -94,10 +94,30 @@ export class NodeLlamaProvider implements AIProvider {
   private context: any = null
   private session: any = null
   private initialized = false
+  // REAL BUG found+fixed 2026-07-31: the only reentrancy guard was
+  // `if (this.initialized) return`, set true only after the full load
+  // sequence resolves (up to a minute per the comment below). Two calls to
+  // askQuestion() close together before that resolves — e.g. two IPC calls
+  // arriving in quick succession — each saw `initialized === false` and
+  // independently re-ran the entire load, overwriting this.model/context/
+  // session without disposing the first set of native handles: a genuine
+  // double-load/leak with nothing preventing it. This promise-based lock
+  // makes every concurrent caller await the SAME in-flight initialization
+  // instead of starting a second one.
+  private initPromise: Promise<void> | null = null
 
   async initialize(): Promise<void> {
     if (this.initialized) return
+    if (this.initPromise) return this.initPromise
+    this.initPromise = this.doInitialize()
+    try {
+      await this.initPromise
+    } finally {
+      this.initPromise = null
+    }
+  }
 
+  private async doInitialize(): Promise<void> {
     const modelPath = getModelPath()
     if (!existsSync(modelPath)) {
       throw new Error(

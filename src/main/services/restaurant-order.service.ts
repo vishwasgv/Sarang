@@ -97,6 +97,25 @@ export async function createOrderRequest(
     }
     const amount = items.reduce((sum, i) => sum + (priceById.get(i.productId) ?? 0) * i.quantity, 0)
 
+    // REAL BUG found+fixed 2026-07-30: no idempotency guard — a flaky WiFi
+    // connection dropping the response after the POST already reached this
+    // server (or a doubled tap) produced two identical PENDING orders for
+    // one physical order at the same table, indistinguishable to staff, who
+    // could accept both and bill the guest twice. Same fix as
+    // field-order.service.ts's createFieldOrderRequest: treat an identical
+    // PENDING request (same table, same exact item set) created in the last
+    // 2 minutes as a resubmission rather than a new order.
+    const dedupeWindowStart = new Date(Date.now() - 2 * 60 * 1000)
+    const recentPending = await db.tableOrderRequest.findMany({
+      where: { tableId, status: 'PENDING', createdAt: { gte: dedupeWindowStart } },
+      include: { items: { select: { productId: true, quantity: true } } }
+    })
+    const incomingKey = items.map(i => `${i.productId}:${i.quantity}`).sort().join('|')
+    const isDuplicate = recentPending.some(r => r.items.map(i => `${i.productId}:${i.quantity}`).sort().join('|') === incomingKey)
+    if (isDuplicate) {
+      return { success: true, data: { amount } }
+    }
+
     await db.tableOrderRequest.create({
       data: {
         tableId,

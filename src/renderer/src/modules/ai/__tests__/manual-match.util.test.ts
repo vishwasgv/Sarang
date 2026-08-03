@@ -64,6 +64,31 @@ describe('findManualMatch', () => {
     expect(result.kind).toBe('confident')
   })
 
+  // REAL BUG found+fixed 2026-07-31: the nav-intent pattern only covered
+  // "how do/can/to..." and "where is/can/do..." — a nav-shaped question
+  // phrased another common way fell through to the AI pipeline and got the
+  // exact misleading refusal the 2026-07-30 fix above was meant to prevent,
+  // just for a different trigger phrase.
+  it("recognizes 'can I...' as navigation-shaped", () => {
+    const result = findManualMatch('Can I export invoices to Excel?', 'en')
+    expect(result.kind).not.toBe('none')
+  })
+
+  it("recognizes 'is there a way to...' as navigation-shaped", () => {
+    const result = findManualMatch('Is there a way to add a customer?', 'en')
+    expect(result.kind).not.toBe('none')
+  })
+
+  it("recognizes 'what's the way to...' as navigation-shaped", () => {
+    const result = findManualMatch("What's the way to print a label?", 'en')
+    expect(result.kind).not.toBe('none')
+  })
+
+  it("recognizes 'any way to...' as navigation-shaped", () => {
+    const result = findManualMatch('Any way to back up my data?', 'en')
+    expect(result.kind).not.toBe('none')
+  })
+
   it('falls back to English content when the requested locale has no translation for a real chapter', () => {
     // 'xx' is not a real locale — getChapterContentWithFallback falls back
     // to English, so this should behave identically to the English case.

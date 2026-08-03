@@ -5,6 +5,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
+import { generateLicenseKey } from '../license.service'
 
 function makeOriginalInvoice(overrides: Record<string, unknown> = {}) {
   return {
@@ -46,6 +47,54 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
 beforeEach(() => vi.clearAllMocks())
 
 describe('billingService.splitInvoice', () => {
+  // REAL BUG found+fixed 2026-07-30: createInvoice() correctly blocks new
+  // invoices on an EXPIRED license, but splitInvoice() creates brand-new,
+  // independently-payable Invoice rows too (fresh invoice numbers,
+  // printable/exportable, appearing in every report) and had no license
+  // check at all — letting an EXPIRED install mint unlimited new billable
+  // documents by repeatedly splitting any existing unpaid invoice. Same
+  // check, same pattern, as billing.service.test.ts's createInvoice license
+  // enforcement tests.
+  it('blocks splitting when the license has genuinely expired', async () => {
+    const db = makeDb()
+    const expiredKey = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: expiredKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.splitInvoice({
+      invoiceId: 'inv-1',
+      splits: [
+        { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+        { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+      ],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LIC-002')
+    expect(db.invoice.create).not.toHaveBeenCalled()
+  })
+
+  it('does NOT block splitting for a PAID license still within its paid year', async () => {
+    const db = makeDb()
+    const paidKey = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 10 * 86_400_000))
+    db.setting.findUnique = vi.fn().mockImplementation(({ where }: { where: { settingKey: string } }) =>
+      Promise.resolve(where.settingKey === 'license_key' ? { settingKey: 'license_key', settingValue: paidKey } : null)
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.splitInvoice({
+      invoiceId: 'inv-1',
+      splits: [
+        { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+        { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+      ],
+    })
+
+    expect(res.success).toBe(true)
+  })
+
   it('rejects an invoice that has already had a payment recorded', async () => {
     const db = makeDb({ paidAmount: 200 })
     vi.mocked(getPrisma).mockReturnValue(db as never)

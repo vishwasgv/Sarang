@@ -25,6 +25,10 @@ function makeMockDb(invoiceOverrides: Record<string, unknown> = {}) {
   const db: Record<string, any> = {
     invoice: {
       findUnique: vi.fn().mockResolvedValue(baseInvoice(invoiceOverrides)),
+      // releaseTablesForInvoiceTx (2026-07-30 split-group fix) resolves the
+      // invoice's split group via findMany before releasing its table(s) —
+      // this invoice isn't a split, so it's its own one-invoice group.
+      findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', status: 'ACTIVE', paymentStatus: 'PAID' }]),
       update: vi.fn().mockResolvedValue({}),
     },
     payment: {
@@ -109,7 +113,7 @@ describe('paymentService.recordPayment', () => {
 
     expect(res.success).toBe(true)
     expect(db.restaurantTable.updateMany).toHaveBeenCalledWith({
-      where: { currentInvoiceId: 'inv-1' },
+      where: { currentInvoiceId: { in: ['inv-1'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
   })
@@ -228,7 +232,7 @@ describe('paymentService.recordSplitPayment', () => {
 
     expect(res.success).toBe(true)
     expect(db.restaurantTable.updateMany).toHaveBeenCalledWith({
-      where: { currentInvoiceId: 'inv-1' },
+      where: { currentInvoiceId: { in: ['inv-1'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
   })

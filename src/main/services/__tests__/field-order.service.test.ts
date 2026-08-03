@@ -140,6 +140,45 @@ describe('createFieldOrderRequest (rep-facing, unauthenticated LAN endpoint)', (
     expect(res.data?.amount).toBe(2 * 100 + 3 * 50)
     expect(resolveCustomerPrice).not.toHaveBeenCalled()
   })
+
+  // REAL BUG found+fixed 2026-07-30: a flaky LAN connection dropping the
+  // response after the POST already reached the server (or a doubled tap)
+  // used to create two identical PENDING requests for one physical order —
+  // indistinguishable to office staff, who could accept both and double-bill
+  // (and double-count against a CREDIT customer's credit limit).
+  it('treats a resubmission of the exact same pending order (same rep, customer, items) as a duplicate, not a new order', async () => {
+    const db = makeMockDb({
+      fieldOrderRequest: {
+        create: vi.fn().mockResolvedValue({ id: 'req-1' }),
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'existing-req', repName: 'Rep A', customerId: null, status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }] }
+        ]),
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createFieldOrderRequest('Rep A', undefined, undefined, [{ productId: 'prod-1', quantity: 2 }])
+
+    expect(res.success).toBe(true)
+    expect(db.fieldOrderRequest.create).not.toHaveBeenCalled()
+  })
+
+  it('does NOT treat a different item set from the same rep as a duplicate', async () => {
+    const db = makeMockDb({
+      fieldOrderRequest: {
+        create: vi.fn().mockResolvedValue({ id: 'req-2' }),
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'existing-req', repName: 'Rep A', customerId: null, status: 'PENDING', items: [{ productId: 'prod-1', quantity: 2 }] }
+        ]),
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createFieldOrderRequest('Rep A', undefined, undefined, [{ productId: 'prod-2', quantity: 1 }])
+
+    expect(res.success).toBe(true)
+    expect(db.fieldOrderRequest.create).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('acceptFieldOrderRequest (staff-facing, permissioned)', () => {

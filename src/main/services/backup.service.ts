@@ -1,8 +1,8 @@
 import { app } from 'electron'
-import { join, isAbsolute } from 'path'
+import { join, isAbsolute, dirname } from 'path'
 import {
   existsSync, mkdirSync, createReadStream, createWriteStream,
-  renameSync, unlinkSync
+  renameSync, unlinkSync, rmSync
 } from 'fs'
 import { stat, writeFile, copyFile } from 'fs/promises'
 import { createHash } from 'crypto'
@@ -133,7 +133,11 @@ async function sha256(filePath: string): Promise<string> {
   })
 }
 
-async function createZip(files: { path: string; name: string }[], zipPath: string): Promise<void> {
+async function createZip(
+  files: { path: string; name: string }[],
+  zipPath: string,
+  directories: { path: string; name: string }[] = []
+): Promise<void> {
   // archiver@8 is pure ESM (no CJS export) — electron-vite compiles the main
   // process to CommonJS, so a static import becomes a require() that
   // Electron's bundled Node cannot satisfy. Dynamic import() works from CJS.
@@ -145,6 +149,12 @@ async function createZip(files: { path: string; name: string }[], zipPath: strin
     archive.on('error', reject)
     archive.pipe(output)
     for (const { path, name } of files) archive.file(path, { name })
+    // Only added when the source directory actually exists and has content —
+    // a fresh install with no logo/attachments yet has neither, and this must
+    // stay a no-op rather than an error for that (very common) case.
+    for (const { path, name } of directories) {
+      if (existsSync(path)) archive.directory(path, name)
+    }
     archive.finalize()
   })
 }
@@ -228,6 +238,62 @@ async function extractDb(zipPath: string, destPath: string): Promise<void> {
   })
 }
 
+// Extracts every entry whose path starts with `${prefix}/` into `destDir`,
+// preserving relative structure. Returns the number of files extracted —
+// callers use this to decide whether to touch the real destination
+// directory at all: an OLDER backup made before this fix (or one from a
+// business with no logo/documents yet) legitimately has zero matching
+// entries, and must leave the current directory untouched rather than wipe
+// it, so restoring an old backup can never regress an otherwise-untouched
+// logos/documents folder.
+async function extractDirectory(zipPath: string, prefix: string, destDir: string): Promise<number> {
+  const entryPrefix = `${prefix}/`
+  let extractedCount = 0
+
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err || !zipfile) { reject(err ?? new Error('Cannot open ZIP')); return }
+      zipfile.readEntry()
+
+      zipfile.on('entry', (entry: yauzl.Entry) => {
+        const isUnderPrefix = entry.fileName.startsWith(entryPrefix) && entry.fileName.length > entryPrefix.length
+        const isDirMarker = entry.fileName.endsWith('/')
+        if (!isUnderPrefix || isDirMarker) { zipfile.readEntry(); return }
+
+        const relativePath = entry.fileName.slice(entryPrefix.length)
+        const destPath = join(destDir, relativePath)
+        zipfile.openReadStream(entry, (sErr, stream) => {
+          if (sErr || !stream) { zipfile.readEntry(); return }
+          mkdirSync(dirname(destPath), { recursive: true })
+          const out = createWriteStream(destPath)
+          stream.pipe(out)
+          out.on('finish', () => { extractedCount++; zipfile.readEntry() })
+          out.on('error', () => zipfile.readEntry())
+        })
+      })
+
+      zipfile.on('end', () => resolve(extractedCount))
+      zipfile.on('error', reject)
+    })
+  })
+}
+
+// Wraps extractDirectory with the "don't touch on zero matches" rule above,
+// plus a full replace (not a merge) when the backup does have content — a
+// restore should reflect the backup's exact state, not accumulate leftover
+// files from whatever was on disk before it.
+async function restoreDirectoryFromZip(zipPath: string, prefix: string, destDir: string): Promise<void> {
+  const tempDir = `${destDir}.restore_tmp`
+  try { rmSync(tempDir, { recursive: true, force: true }) } catch { /* nothing to clean up */ }
+  const count = await extractDirectory(zipPath, prefix, tempDir)
+  if (count === 0) {
+    try { rmSync(tempDir, { recursive: true, force: true }) } catch { /* nothing extracted, nothing to remove */ }
+    return
+  }
+  rmSync(destDir, { recursive: true, force: true })
+  renameSync(tempDir, destDir)
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function checkDatabaseIntegrity(): Promise<{ ok: boolean; message: string }> {
@@ -304,10 +370,26 @@ export async function createBackup(userId?: string): Promise<{
     await writeFile(metaPath, JSON.stringify(metadata, null, 2), 'utf8')
 
     // 7. Create ZIP
-    await createZip([
-      { path: tempDbPath, name: 'sarang.db' },
-      { path: metaPath, name: 'metadata.json' }
-    ], zipPath)
+    // REAL BUG found+fixed 2026-07-30: the backup used to only ever bundle
+    // the DB + metadata — never the business logo (userData/logos/) or any
+    // attached document (userData/documents/, used by 15+ entity types:
+    // invoices, POs, legal cases, resumes, lab scans, etc.). The DB rows for
+    // those files (BusinessProfile.logoPath, Document records) survived a
+    // restore, but the actual files never did — every attachment link came
+    // back permanently dead, with the backup still reporting success. Now
+    // bundled under logos/ and documents/ inside the ZIP.
+    const userDataDir = app.getPath('userData')
+    await createZip(
+      [
+        { path: tempDbPath, name: 'sarang.db' },
+        { path: metaPath, name: 'metadata.json' }
+      ],
+      zipPath,
+      [
+        { path: join(userDataDir, 'logos'), name: 'logos' },
+        { path: join(userDataDir, 'documents'), name: 'documents' }
+      ]
+    )
 
     // 8. Cleanup temp files — best-effort; a leftover temp file doesn't
     // invalidate the ZIP that was already written and checksummed below.
@@ -491,6 +573,29 @@ export async function restoreBackup(backupId: string, userId?: string): Promise<
       entityId: backupId,
       newValue: { backupName: record.backupName, safetyBackupId }
     })
+
+    // Restore the logo/attached-document files bundled alongside the DB (see
+    // createBackup's matching comment on why these are now included) — done
+    // here, before closeDatabase()/the DB file swap below, purely so a
+    // failure can still be logged against the live DB connection. Best-
+    // effort: the DB itself (the primary, most important data) restores
+    // unconditionally below regardless of what happens here, and an old
+    // backup made before this fix legitimately has none of these entries —
+    // restoreDirectoryFromZip leaves the current folder untouched in that
+    // case, never wiping it over a false negative.
+    try {
+      const userDataDir = app.getPath('userData')
+      await restoreDirectoryFromZip(record.backupPath, 'logos', join(userDataDir, 'logos'))
+      await restoreDirectoryFromZip(record.backupPath, 'documents', join(userDataDir, 'documents'))
+    } catch (err) {
+      await logAction({
+        userId,
+        action: 'BACKUP_RESTORE_FILES_FAILED',
+        entityType: 'Backup',
+        entityId: backupId,
+        newValue: { message: err instanceof Error ? err.message : 'Unknown error restoring logo/document files.' }
+      }).catch(() => {})
+    }
 
     try {
       // Close Prisma before replacing the database file

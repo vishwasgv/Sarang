@@ -153,11 +153,24 @@ describe('lab-test-order.service', () => {
     it('creates an order with a numeric-max sequence, not string-sorted (past-9999 safe)', async () => {
       // String-sort would place "...-10000" before "...-9999" — same bug class
       // this project already hit once in logistics-counter.service.ts.
-      const { db } = makeMockDb(null, { existingOrderNumbers: ['LAB-202607-9999'] })
-      vi.mocked(getPrisma).mockReturnValue(db as never)
-      const res = await createLabTestOrder({ patientName: 'Ravi', items: [{ testName: 'CBC', price: 300 }] })
-      expect(res.success).toBe(true)
-      expect((res.data as any).orderNumber).toBe('LAB-202607-10000')
+      // Real bug found+fixed 2026-08-03: this test used to hard-code the
+      // expected month prefix ("LAB-202607-...") against createLabTestOrder's
+      // real `new Date()`-derived prefix — passed only as long as the suite
+      // happened to run in July 2026, and broke the instant real wall-clock
+      // time rolled into August, with nothing wrong in the actual code.
+      // Pinning the clock makes this test's result independent of whenever
+      // it's actually run, forever.
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(2026, 6, 15))
+      try {
+        const { db } = makeMockDb(null, { existingOrderNumbers: ['LAB-202607-9999'] })
+        vi.mocked(getPrisma).mockReturnValue(db as never)
+        const res = await createLabTestOrder({ patientName: 'Ravi', items: [{ testName: 'CBC', price: 300 }] })
+        expect(res.success).toBe(true)
+        expect((res.data as any).orderNumber).toBe('LAB-202607-10000')
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('sums item prices into totalAmount', async () => {

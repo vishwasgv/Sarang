@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electro
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { registerAllIpcHandlers } from './ipc'
-import { initializeDatabase } from './database/db'
+import { initializeDatabase, closeDatabase } from './database/db'
 import { checkDatabaseIntegrity, createBackup } from './services/backup.service'
 import { createNotification } from './services/notification.service'
 import { getPrisma } from './database/db'
@@ -16,7 +16,8 @@ import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-windo
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
-import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData } from './services/tutorial.service'
+import { shutdownAi } from './services/ai-query.service'
+import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData, deleteTutorialArtifacts } from './services/tutorial.service'
 import { isSetupComplete, completeSetup } from './services/setup.service'
 import { login } from './services/auth.service'
 import { isAllowedExternalUrl } from './utils/external-link.util'
@@ -219,44 +220,92 @@ app.whenReady().then(async () => {
   // way, it's just talking to different data.
   const tutorialFlag = resolveTutorialBoot()
 
+  // REAL BUG found+fixed 2026-08-04 (live install verification): every
+  // tutorial session, on a genuinely fresh tutorial.db, was crashing with
+  // "Tutorial auto-login failed: Incorrect username or password." Root cause
+  // was `if (!setupCheck.data)` below — isSetupComplete() always resolves to
+  // a truthy `{ complete, needsLicenseOnly }` object, even when complete is
+  // false, so that check never actually ran completeSetup(), no admin was
+  // ever created, and the subsequent login() with the flag's random
+  // credentials always failed. Fixed by checking `.data?.complete` instead.
+  // A stale/locked tutorial.db orphaned by a previous run that never reached
+  // exitTutorial()'s clean shutdown (crash, forced kill, file still locked
+  // on Windows) is a second, separate way this same login failure can occur,
+  // so bootTutorialSession() is still retried once after a hard reset if the
+  // first attempt fails for any reason, and if it STILL fails, the whole
+  // tutorial boot is abandoned in favor of the real app instead of crashing —
+  // the tutorial's own UI copy promises it "never affects your actual data,"
+  // so its failure must never block the real app behind a scary "Database
+  // Error... contact support" dialog implying the user's actual business
+  // data is at risk, when it never was.
+  async function bootTutorialSession(flag: NonNullable<typeof tutorialFlag>): Promise<void> {
+    const setupCheck = await isSetupComplete()
+    if (!setupCheck.data?.complete) {
+      const setupResult = await completeSetup({
+        businessName: 'Sarang Demo Business',
+        businessType: flag.businessType,
+        ownerName: 'Demo Owner',
+        country: 'India',
+        currencyCode: 'INR',
+        currencySymbol: '₹',
+        taxModel: 'GST',
+        adminUsername: flag.adminUsername,
+        adminPassword: flag.adminPassword,
+        adminFullName: 'Demo Admin'
+      })
+      if (!setupResult.success) {
+        throw new Error(`Tutorial setup failed: ${setupResult.error?.message ?? 'unknown error'}`)
+      }
+      await seedTutorialDemoData()
+    }
+    const loginResult = await login(flag.adminUsername, flag.adminPassword)
+    if (!loginResult.success) {
+      throw new Error(`Tutorial auto-login failed: ${loginResult.error?.message ?? 'unknown error'}`)
+    }
+  }
+
   try {
     await initializeDatabase(tutorialFlag ? getTutorialDbPath() : undefined)
     // Idempotent — ensures expense categories and GST tax configs exist for existing installs
     await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
 
     if (tutorialFlag) {
-      const setupCheck = await isSetupComplete()
-      if (!setupCheck.data) {
-        const setupResult = await completeSetup({
-          businessName: 'Sarang Demo Business',
-          businessType: tutorialFlag.businessType,
-          ownerName: 'Demo Owner',
-          country: 'India',
-          currencyCode: 'INR',
-          currencySymbol: '₹',
-          taxModel: 'GST',
-          adminUsername: tutorialFlag.adminUsername,
-          adminPassword: tutorialFlag.adminPassword,
-          adminFullName: 'Demo Admin'
-        })
-        if (!setupResult.success) {
-          throw new Error(`Tutorial setup failed: ${setupResult.error?.message ?? 'unknown error'}`)
-        }
-        await seedTutorialDemoData()
-      }
-      const loginResult = await login(tutorialFlag.adminUsername, tutorialFlag.adminPassword)
-      if (!loginResult.success) {
-        throw new Error(`Tutorial auto-login failed: ${loginResult.error?.message ?? 'unknown error'}`)
+      try {
+        await bootTutorialSession(tutorialFlag)
+      } catch (firstErr) {
+        logger.warn('[Tutorial] First boot attempt failed (likely a stale tutorial.db orphaned by a previous session) — resetting and retrying fresh.', firstErr)
+        await closeDatabase()
+        deleteTutorialArtifacts()
+        await initializeDatabase(getTutorialDbPath())
+        await bootTutorialSession(tutorialFlag)
       }
     }
   } catch (err) {
-    closeSplash()
-    dialog.showErrorBox(
-      'Sarang — Database Error',
-      `Failed to initialize the database.\n\n${(err as Error).message ?? String(err)}\n\nPlease ensure you have write access to:\n${app.getPath('userData')}\n\nContact support if this issue persists.`
-    )
-    app.quit()
-    return
+    if (tutorialFlag) {
+      logger.error('[Tutorial] Tutorial boot failed even after a reset retry — abandoning the tutorial and booting the real app instead.', err)
+      await closeDatabase().catch(() => {})
+      deleteTutorialArtifacts()
+      try {
+        await initializeDatabase(undefined)
+        await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
+      } catch (realAppErr) {
+        closeSplash()
+        dialog.showErrorBox(
+          'Sarang — Database Error',
+          `Failed to initialize the database.\n\n${(realAppErr as Error).message ?? String(realAppErr)}\n\nPlease ensure you have write access to:\n${app.getPath('userData')}\n\nContact support if this issue persists.`
+        )
+        app.quit()
+        return
+      }
+    } else {
+      closeSplash()
+      dialog.showErrorBox(
+        'Sarang — Database Error',
+        `Failed to initialize the database.\n\n${(err as Error).message ?? String(err)}\n\nPlease ensure you have write access to:\n${app.getPath('userData')}\n\nContact support if this issue persists.`
+      )
+      app.quit()
+      return
+    }
   }
 
   // Async integrity check — logs for diagnostics, and pushes a real notification
@@ -344,6 +393,12 @@ app.on('window-all-closed', () => {
   stopQrOrderServer().catch(() => {})
   stopKitchenDisplayServer().catch(() => {})
   stopFieldOrderServer().catch(() => {})
+  // REAL BUG found+fixed 2026-07-31: shutdownAi() (disposes the local LLM's
+  // native context/model handles) was defined but never called from
+  // anywhere — dead code, so the AI Assistant's native resources were never
+  // explicitly released on quit (the OS reclaims the process's memory
+  // regardless, but the intended explicit release path never ran).
+  shutdownAi().catch(() => {})
   if (process.platform !== 'darwin') app.quit()
 })
 

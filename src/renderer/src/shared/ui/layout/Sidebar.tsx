@@ -130,7 +130,7 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 26 — Physio
   { label: 'Session Packs', path: '/physio/session-packs', icon: Package, permissionKey: 'billing.view', requiredModule: 'session_packs' },
   // Phase 27 — Salon, Gym, Driving School
-  { label: 'Commission', path: '/commission', icon: DollarSign, permissionKey: 'billing.view', requiredModule: 'staff_commission' },
+  { label: 'Commission', path: '/commission', icon: DollarSign, permissionKey: 'hr.view', requiredModule: 'staff_commission' },
   { label: 'Memberships', path: '/gym/memberships', icon: Dumbbell, permissionKey: 'billing.view', requiredModule: 'memberships' },
   { label: 'Group Classes', path: '/gym/classes', icon: Layers, permissionKey: 'billing.view', requiredModule: 'batch_classes' },
   { label: 'Learners', path: '/driving/learners', icon: GraduationCap, permissionKey: 'billing.view', requiredModule: 'learner_profiles' },

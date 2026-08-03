@@ -126,7 +126,11 @@ const schema = z.object({
   logoPath: z.string().optional(),
   adminFullName: z.string().min(1, 'Full name is required'),
   adminUsername: z.string().min(3, 'Username must be at least 3 characters').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores allowed'),
-  adminPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  // Matches the server's default password policy minimum (setup.service.ts's
+  // completeSetup() now enforces this too — was previously only min(6) here,
+  // letting the Admin account, the single most powerful credential on the
+  // install, be weaker than every password set after it).
+  adminPassword: z.string().min(10, 'Password must be at least 10 characters'),
   adminPasswordConfirm: z.string()
 }).refine((d) => d.adminPassword === d.adminPasswordConfirm, {
   message: "Passwords don't match",
@@ -643,7 +647,7 @@ function AdminStep({ submitError }: { submitError: string | null }) {
       </div>
       <Input label="Full Name" placeholder="e.g. Vishwas Sharma" required error={errors.adminFullName?.message} {...register('adminFullName')} />
       <Input label="Username" placeholder="e.g. admin" required error={errors.adminUsername?.message} hint="Letters, numbers, underscores only." {...register('adminUsername')} />
-      <Input label="Password" type="password" placeholder="Create a strong password" required error={errors.adminPassword?.message} {...register('adminPassword')} />
+      <Input label="Password" type="password" placeholder="Create a strong password" required error={errors.adminPassword?.message} hint="At least 10 characters." {...register('adminPassword')} />
       <Input label="Confirm Password" type="password" placeholder="Repeat your password" required error={errors.adminPasswordConfirm?.message} {...register('adminPasswordConfirm')} />
       {submitError && (
         <motion.p

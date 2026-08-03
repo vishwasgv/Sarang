@@ -39,6 +39,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllEnvs()
 })
 
 async function importFresh() {
@@ -115,10 +116,20 @@ describe('license key signing and verification', () => {
   // not a format this codebase controls the lifetime of once it's in a real
   // inbox.
   it('still validates a pre-2026-07-29 key with the old 5-part (no-nonce) format', async () => {
+    // REAL BUG found+fixed here 2026-07-30: this test used to hard-code the
+    // dev placeholder secret, silently assuming SARANG_LICENSE_HMAC_SECRET is
+    // unset in every environment this suite runs in. On a machine that has
+    // the real production secret exported (exactly what a real release build
+    // requires — see scripts/check-license-secret.js), the module under test
+    // signs with that real secret while this test still signed with the
+    // placeholder, so the signatures never matched and the test failed for a
+    // reason that had nothing to do with the backward-compat logic actually
+    // being broken. vi.stubEnv pins the secret this test signs with to
+    // exactly what the freshly-imported module will read, regardless of the
+    // host machine's ambient environment.
+    vi.stubEnv('SARANG_LICENSE_HMAC_SECRET', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP')
     const { parseAndVerifyLicenseKey } = await importFresh()
-    // Hand-built exactly as the OLD buildSignedPayload() did: TIER-REGION-DAYS,
-    // signed with the same dev-placeholder secret this test suite always runs
-    // under (SARANG_LICENSE_HMAC_SECRET unset in this environment).
+    // Hand-built exactly as the OLD buildSignedPayload() did: TIER-REGION-DAYS.
     const { createHmac } = await import('crypto')
     const days = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 86_400_000)
     const payload = `TRIAL-IN-${days.toString(36)}`
@@ -133,6 +144,8 @@ describe('license key signing and verification', () => {
   })
 
   it('rejects an old-format key with a tampered signature exactly like the new format does', async () => {
+    // Same env-isolation fix as the test above — see its comment.
+    vi.stubEnv('SARANG_LICENSE_HMAC_SECRET', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP')
     const { parseAndVerifyLicenseKey } = await importFresh()
     const { createHmac } = await import('crypto')
     const days = Math.floor(Date.now() / 86_400_000)

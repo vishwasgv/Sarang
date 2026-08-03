@@ -47,6 +47,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
     product: { findMany: vi.fn().mockResolvedValue([]) },
     customer: { findMany: vi.fn().mockResolvedValue([]) },
+    customerLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
     supplier: { findMany: vi.fn().mockResolvedValue([]) },
     supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
     payment: { findMany: vi.fn().mockResolvedValue([]) },
@@ -626,12 +627,20 @@ describe('reportService.generateGSTR3BPreview', () => {
 // ─── Outstanding Report ─────────────────────────────────────────────────────
 
 describe('reportService.generateOutstandingReport', () => {
-  it('sums unpaid/partial invoice balances per customer and skips fully paid ones', async () => {
+  // REAL BUG found+fixed 2026-07-30: this report's customer branch used to
+  // sum unpaid Invoice.balanceAmount directly instead of the CustomerLedger
+  // (RULE AN001 — the same rule the Dashboard's outstanding tile and
+  // getTopOutstanding()/getOutstandingAmount() already follow; the sibling
+  // supplier branch just below was already ledger-based, so only customers
+  // diverged). Rewritten to be ledger-based, mirroring the supplier branch
+  // exactly — these tests now exercise that real behavior instead of the
+  // old invoice-balance shortcut.
+  it('sums customer ledger debit minus credit, skipping customers with a zero/settled balance', async () => {
     const db = makeDb()
     db.customer.findMany = vi.fn().mockResolvedValue([{ id: 'cust-1', customerName: 'ABC Corp', phone: '111' }])
-    db.invoice.findMany = vi.fn().mockResolvedValue([
-      { customerId: 'cust-1', balanceAmount: 300, invoiceDate: new Date(), dueDate: null },
-      { customerId: 'cust-1', balanceAmount: 200, invoiceDate: new Date(), dueDate: null }
+    db.customerLedger.findMany = vi.fn().mockResolvedValue([
+      { customerId: 'cust-1', debitAmount: 300, creditAmount: 0, createdAt: new Date() },
+      { customerId: 'cust-1', debitAmount: 200, creditAmount: 0, createdAt: new Date() }
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -642,32 +651,31 @@ describe('reportService.generateOutstandingReport', () => {
     expect(result.customers.totalOutstanding).toBe(500)
   })
 
-  it('ages customer balances from dueDate when set, not invoiceDate', async () => {
+  // Directly proves the fix: a standalone OPENING_BALANCE or CREDIT_NOTE
+  // ledger entry (debt with no Invoice row at all) must appear here exactly
+  // like it already does in the Dashboard's outstanding tile — this is the
+  // exact scenario the old invoice-only version silently omitted.
+  it('includes a customer whose outstanding balance comes entirely from a non-invoice ledger entry (e.g. an imported opening balance)', async () => {
     const db = makeDb()
-    const now = new Date()
-    const fortyDaysAgo = new Date(now.getTime() - 40 * 86400000)
-    const fiveDaysAgo = new Date(now.getTime() - 5 * 86400000)
-    db.customer.findMany = vi.fn().mockResolvedValue([{ id: 'cust-1', customerName: 'ABC Corp', phone: null }])
-    // Invoiced 40 days ago (would be days31to60 by invoiceDate) but due only 5 days ago
-    // (days1to30 by dueDate) — proves dueDate, not invoiceDate, drives the bucket.
-    db.invoice.findMany = vi.fn().mockResolvedValue([
-      { customerId: 'cust-1', balanceAmount: 100, invoiceDate: fortyDaysAgo, dueDate: fiveDaysAgo }
+    db.customer.findMany = vi.fn().mockResolvedValue([{ id: 'cust-1', customerName: 'Legacy Customer', phone: null }])
+    db.customerLedger.findMany = vi.fn().mockResolvedValue([
+      { customerId: 'cust-1', debitAmount: 8000, creditAmount: 0, createdAt: new Date() }
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await reportService.generateOutstandingReport()
 
-    expect(result.customers.rows[0].aging.days1to30).toBe(100)
-    expect(result.customers.rows[0].aging.days31to60).toBe(0)
+    expect(result.customers.rows).toHaveLength(1)
+    expect(result.customers.rows[0].outstanding).toBe(8000)
   })
 
-  it('falls back to invoiceDate when dueDate is null', async () => {
+  it('ages customer balance from when the ledger debit was recorded', async () => {
     const db = makeDb()
     const now = new Date()
     const fortyDaysAgo = new Date(now.getTime() - 40 * 86400000)
     db.customer.findMany = vi.fn().mockResolvedValue([{ id: 'cust-1', customerName: 'ABC Corp', phone: null }])
-    db.invoice.findMany = vi.fn().mockResolvedValue([
-      { customerId: 'cust-1', balanceAmount: 100, invoiceDate: fortyDaysAgo, dueDate: null }
+    db.customerLedger.findMany = vi.fn().mockResolvedValue([
+      { customerId: 'cust-1', debitAmount: 100, creditAmount: 0, createdAt: fortyDaysAgo }
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 

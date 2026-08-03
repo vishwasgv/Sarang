@@ -193,9 +193,19 @@ export async function getDashboardKpis(forceRefresh = false): Promise<DashboardK
   const monthSales = monthAgg._sum.totalAmount ?? 0
   const monthExpenses = monthExpAgg._sum.amount ?? 0
 
+  // REAL BUG found+fixed 2026-07-30: this used Product.costPrice (a static
+  // value set once on the product record, never updated by purchases/
+  // receiving/adjustments) while the Inventory screen's own "Total Value"
+  // (inventory.service.ts's getInventoryValue) uses Inventory.averageCost
+  // (the live, weighted-average cost basis that DOES update on every
+  // addStock/PO receipt/upward adjustStock). The two would silently diverge
+  // for any business with purchase-price history, showing two different
+  // "inventory value" numbers one click apart in the same app with no
+  // indication which is authoritative. averageCost is the correct one —
+  // matching it here.
   const inventoryValue = inventoryItems.reduce((sum, inv) => {
     if (!inv.product.isActive) return sum
-    return sum + inv.quantity * inv.product.costPrice
+    return sum + inv.quantity * inv.averageCost
   }, 0)
 
   const inventoryTotal = allInventory.length
@@ -721,22 +731,6 @@ export async function getTopCategories(limit: number = 5): Promise<TopCategory[]
     }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// getInventoryValue — total stock value at cost (IMPLEMENTATION_PLAN §6.1)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function getInventoryValue(): Promise<number> {
-  const db = getPrisma()
-  const items = await db.inventory.findMany({
-    include: { product: { select: { costPrice: true, isActive: true } } }
-  })
-  const value = items.reduce((sum, inv) => {
-    if (!inv.product.isActive) return sum
-    return sum + inv.quantity * inv.product.costPrice
-  }, 0)
-  return Math.round(value * 100) / 100
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
