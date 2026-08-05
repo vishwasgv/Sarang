@@ -215,7 +215,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
             <p className="text-sm text-slate-500 dark:text-slate-400">{productName}</p>
           </div>
           {summary && (
-            <div className="text-right">
+            <div className="text-end">
               <p className="text-base font-semibold text-dark dark:text-slate-100">{summary.totalVariants} variants</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Total stock: {summary.totalStock}</p>
             </div>
@@ -250,19 +250,19 @@ export function VariantManagementModal({ open, productId, productName, onClose }
               <table className="w-full text-base">
                 <thead>
                   <tr className="text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                    <th className="py-3 pr-3 text-left">Size</th>
-                    <th className="py-3 pr-3 text-left">Colour</th>
-                    <th className="py-3 pr-3 text-left">SKU</th>
-                    <th className="py-3 pr-3 text-left">Barcode</th>
-                    <th className="py-3 pr-3 text-left">+Price</th>
-                    <th className="py-3 pr-3 text-left">Stock</th>
+                    <th className="py-3 pe-3 text-start">Size</th>
+                    <th className="py-3 pe-3 text-start">Colour</th>
+                    <th className="py-3 pe-3 text-start">SKU</th>
+                    <th className="py-3 pe-3 text-start">Barcode</th>
+                    <th className="py-3 pe-3 text-start">+Price</th>
+                    <th className="py-3 pe-3 text-start">Stock</th>
                     <th className="py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {rows.map((row, idx) => (
                     <tr key={idx}>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <input
                           list={`sizes-${idx}`}
                           value={row.size}
@@ -274,7 +274,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           {[...COMMON_SIZES_CLOTHING, ...COMMON_SIZES_FOOTWEAR].map(s => <option key={s} value={s}/>)}
                         </datalist>
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <input
                           list={`colors-${idx}`}
                           value={row.color}
@@ -286,7 +286,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           {COMMON_COLORS.map(c => <option key={c} value={c}/>)}
                         </datalist>
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <input
                           value={row.sku}
                           onChange={e => updateRow(idx, 'sku', e.target.value)}
@@ -294,7 +294,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <div className="flex items-center gap-1.5">
                           <input
                             value={row.barcode}
@@ -314,7 +314,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           )}
                         </div>
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <input
                           type="number"
                           value={row.additionalPrice}
@@ -324,7 +324,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           className="w-24 h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3">
                         <input
                           type="number"
                           value={row.stockQty}
@@ -358,7 +358,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
 
               <div className="flex gap-3">
                 <Button size="md" className="flex-1" onClick={handleSave} disabled={saving}>
-                  <Save size={16} className="mr-1.5" />
+                  <Save size={16} className="me-1.5" />
                   {saving ? 'Saving…' : 'Save Variants'}
                 </Button>
                 <Button size="md" variant="outline" onClick={onClose}>Cancel</Button>

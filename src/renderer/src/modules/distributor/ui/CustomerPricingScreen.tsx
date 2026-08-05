@@ -112,19 +112,19 @@ export function CustomerPricingScreen() {
             {selectedProduct ? (
               <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-brand/30 bg-brand/5 text-sm h-[38px]">
                 <span className="truncate text-dark dark:text-slate-100">{selectedProduct.productName}</span>
-                <button onClick={() => { setSelectedProduct(null); setProductQuery('') }} className="text-slate-400 hover:text-danger shrink-0 ml-2">×</button>
+                <button onClick={() => { setSelectedProduct(null); setProductQuery('') }} className="text-slate-400 hover:text-danger shrink-0 ms-2">×</button>
               </div>
             ) : (
               <>
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input value={productQuery} onChange={e => setProductQuery(e.target.value)}
                   placeholder={t('distributor.pricing.searchProduct')}
-                  className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand" />
+                  className="w-full ps-8 pe-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand" />
                 {productResults.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                  <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
                     {productResults.slice(0, 8).map(p => (
                       <button key={p.id} onClick={() => { setSelectedProduct(p); setProductResults([]) }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-brand/5 dark:hover:bg-brand/10 text-sm border-b border-slate-50 dark:border-slate-800 last:border-0">
+                        className="w-full flex items-center justify-between px-3 py-2 text-start hover:bg-brand/5 dark:hover:bg-brand/10 text-sm border-b border-slate-50 dark:border-slate-800 last:border-0">
                         <span className="text-dark dark:text-slate-100 truncate">{p.productName}</span>
                         <span className="text-xs text-slate-400 shrink-0">{formatCurrency(p.sellingPrice)}</span>
                       </button>
@@ -151,8 +151,8 @@ export function CustomerPricingScreen() {
         <div className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
           <div className="col-span-5">{t('distributor.pricing.columnProduct')}</div>
           <div className="col-span-3">{t('distributor.pricing.columnClass')}</div>
-          <div className="col-span-2 text-right">{t('distributor.pricing.columnListPrice')}</div>
-          <div className="col-span-1 text-right">{t('distributor.pricing.columnPrice')}</div>
+          <div className="col-span-2 text-end">{t('distributor.pricing.columnListPrice')}</div>
+          <div className="col-span-1 text-end">{t('distributor.pricing.columnPrice')}</div>
           <div className="col-span-1"></div>
         </div>
         {loading ? (
@@ -167,9 +167,9 @@ export function CustomerPricingScreen() {
                 <div className="col-span-3">
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand bg-brand/10 px-2 py-0.5 rounded"><Tag size={10} />{cp.customerClass}</span>
                 </div>
-                <div className="col-span-2 text-right text-xs text-slate-400 line-through">{formatCurrency(cp.product.sellingPrice)}</div>
-                <div className="col-span-1 text-right text-sm font-semibold text-dark dark:text-slate-100">{formatCurrency(cp.price)}</div>
-                <div className="col-span-1 text-right">
+                <div className="col-span-2 text-end text-xs text-slate-400 line-through">{formatCurrency(cp.product.sellingPrice)}</div>
+                <div className="col-span-1 text-end text-sm font-semibold text-dark dark:text-slate-100">{formatCurrency(cp.price)}</div>
+                <div className="col-span-1 text-end">
                   <button onClick={() => setDeleteTarget(cp)} className="text-slate-300 hover:text-danger transition-colors">
                     <Trash2 size={14} />
                   </button>

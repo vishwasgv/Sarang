@@ -204,7 +204,7 @@ export function DebitNotesScreen() {
           </button>
           {canCreate && (
             <Button size="md" onClick={() => { setEditTarget(null); setShowForm(true) }}>
-              <PlusCircle size={16} className="mr-1.5" /> {t('debitNotes.newDebitNote')}
+              <PlusCircle size={16} className="me-1.5" /> {t('debitNotes.newDebitNote')}
             </Button>
           )}
         </div>

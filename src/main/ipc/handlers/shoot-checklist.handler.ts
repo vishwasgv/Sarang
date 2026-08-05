@@ -13,21 +13,21 @@ export function registerShootChecklist(handle: HandleFn): void {
   })
 
   handle('shootChecklist:add', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootProduction.manage'); if (deny) return deny
     const parsed = AddShootChecklistItemSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addShootChecklistItem(parsed.data)
   })
 
   handle('shootChecklist:toggle', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootProduction.manage'); if (deny) return deny
     const parsed = ToggleShootChecklistItemSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return toggleShootChecklistItem(parsed.data)
   })
 
   handle('shootChecklist:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootProduction.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteShootChecklistItem(parsed.data.id)

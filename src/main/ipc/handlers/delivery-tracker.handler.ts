@@ -11,7 +11,7 @@ export function registerDeliveryTracker(handle: HandleFn): void {
   })
 
   handle('deliveryTracker:upsert', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootProduction.manage'); if (deny) return deny
     const parsed = UpsertDeliveryTrackerSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return upsertDeliveryTracker(parsed.data)

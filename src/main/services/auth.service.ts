@@ -35,28 +35,59 @@ const WINDOW_MS = 15 * 60 * 1000
 function makeRateLimiter(namespace: string, maxAttempts: number, windowMs: number) {
   const settingKey = (key: string) => `ratelimit_${namespace}_${key}`
   return {
+    // REAL BUG found+fixed in this session's pre-release audit: the previous
+    // version did a plain findUnique then a separate upsert/update, not
+    // wrapped in any atomicity — two concurrent calls (e.g. a scripted
+    // Promise.all burst of login attempts) could both read the same
+    // pre-increment count and both proceed as blocked:false, letting a
+    // scripted burst obtain far more than maxAttempts guesses per window.
+    // Fixed the same way this codebase already closes this exact race class
+    // elsewhere (sequence.service.ts's generateSequenceNumber, audit.service.ts's
+    // logAction): claim the row via a conditional `updateMany` keyed on the
+    // previously-read value, and retry from a fresh read on contention
+    // instead of blindly trusting the stale read.
     async check(key: string): Promise<{ blocked: boolean; remainingMs?: number }> {
       const db = getPrisma()
       const now = Date.now()
-      const row = await db.setting.findUnique({ where: { settingKey: settingKey(key) } })
-      const entry = row ? (JSON.parse(row.settingValue) as { count: number; windowStart: number }) : null
+      const sKey = settingKey(key)
 
-      if (!entry || now - entry.windowStart > windowMs) {
-        await db.setting.upsert({
-          where: { settingKey: settingKey(key) },
-          update: { settingValue: JSON.stringify({ count: 1, windowStart: now }) },
-          create: { settingKey: settingKey(key), settingValue: JSON.stringify({ count: 1, windowStart: now }), settingType: 'STRING' }
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const row = await db.setting.findUnique({ where: { settingKey: sKey } })
+        const entry = row ? (JSON.parse(row.settingValue) as { count: number; windowStart: number }) : null
+
+        if (!entry || now - entry.windowStart > windowMs) {
+          if (!row) {
+            try {
+              await db.setting.create({
+                data: { settingKey: sKey, settingValue: JSON.stringify({ count: 1, windowStart: now }), settingType: 'STRING' }
+              })
+              return { blocked: false }
+            } catch {
+              continue // another concurrent call created it first — re-read and retry
+            }
+          }
+          const claim = await db.setting.updateMany({
+            where: { settingKey: sKey, settingValue: row.settingValue },
+            data: { settingValue: JSON.stringify({ count: 1, windowStart: now }) }
+          })
+          if (claim.count === 0) continue // lost the race — re-read and retry
+          return { blocked: false }
+        }
+
+        if (entry.count >= maxAttempts) {
+          return { blocked: true, remainingMs: windowMs - (now - entry.windowStart) }
+        }
+
+        const claim = await db.setting.updateMany({
+          where: { settingKey: sKey, settingValue: row!.settingValue },
+          data: { settingValue: JSON.stringify({ count: entry.count + 1, windowStart: entry.windowStart }) }
         })
+        if (claim.count === 0) continue // lost the race — re-read and retry
         return { blocked: false }
       }
-      if (entry.count >= maxAttempts) {
-        return { blocked: true, remainingMs: windowMs - (now - entry.windowStart) }
-      }
-      await db.setting.update({
-        where: { settingKey: settingKey(key) },
-        data: { settingValue: JSON.stringify({ count: entry.count + 1, windowStart: entry.windowStart }) }
-      })
-      return { blocked: false }
+      // Exhausted retries under sustained contention — fail safe (block)
+      // rather than silently letting an uncounted attempt through.
+      return { blocked: true, remainingMs: windowMs }
     },
     async reset(key: string): Promise<void> {
       const db = getPrisma()

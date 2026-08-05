@@ -21,21 +21,21 @@ export function registerPropertySiteVisit(handle: HandleFn): void {
   })
 
   handle('propertySiteVisit:schedule', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = SchedulePropertySiteVisitSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return schedulePropertySiteVisit(parsed.data)
   })
 
   handle('propertySiteVisit:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = UpdatePropertySiteVisitSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updatePropertySiteVisit(parsed.data)
   })
 
   handle('propertySiteVisit:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = PropertySiteVisitIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deletePropertySiteVisit(parsed.data.id)

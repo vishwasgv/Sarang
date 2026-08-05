@@ -153,12 +153,12 @@ export function HotelBookingsScreen() {
         <div className="flex items-center gap-2">
           {checkedIds.length >= 2 && (
             <Button variant="secondary" onClick={handleCombineInvoice} loading={combining}>
-              <Users size={16} className="mr-1.5" /> Generate Combined Bill ({checkedIds.length})
+              <Users size={16} className="me-1.5" /> Generate Combined Bill ({checkedIds.length})
             </Button>
           )}
           {canManage && (
             <Button onClick={() => setShowNewBooking(true)}>
-              <Plus size={16} className="mr-1.5" /> New Booking
+              <Plus size={16} className="me-1.5" /> New Booking
             </Button>
           )}
         </div>
@@ -187,12 +187,12 @@ export function HotelBookingsScreen() {
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="w-8 px-4 py-3"></th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Booking</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Guest</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Room</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Stay</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Channel</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Est. Total</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Booking</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Guest</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Room</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Stay</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Channel</th>
+                <th className="text-end px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Est. Total</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Status</th>
               </tr>
             </thead>
@@ -206,12 +206,12 @@ export function HotelBookingsScreen() {
                       <input type="checkbox" checked={checkedIds.includes(b.id)} onChange={() => toggleChecked(b.id)} aria-label={`Select ${b.bookingNumber} for combined bill`} />
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium text-dark dark:text-slate-100">{b.bookingNumber}{b.bookingType === 'DAY_USE' && <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">Day Use</span>}</td>
+                  <td className="px-4 py-3 font-medium text-dark dark:text-slate-100">{b.bookingNumber}{b.bookingType === 'DAY_USE' && <span className="ms-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand">Day Use</span>}</td>
                   <td className="px-4 py-3">{b.guestName}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{b.roomNumber} · {b.roomType}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{new Date(b.checkInDate).toLocaleDateString()} → {new Date(b.checkOutDate).toLocaleDateString()} ({b.nights}n)</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{channelLabel(b.channel)}</td>
-                  <td className="px-4 py-3 text-right font-medium">{formatCurrency(b.estimatedTotal)}</td>
+                  <td className="px-4 py-3 text-end font-medium">{formatCurrency(b.estimatedTotal)}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={b.status === 'CHECKED_IN' ? 'brand' : b.status === 'CHECKED_OUT' ? 'success' : b.status === 'CANCELLED' || b.status === 'NO_SHOW' ? 'neutral' : 'warning'}>
                       {b.status.replace(/_/g, ' ')}
@@ -418,7 +418,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-dark dark:text-slate-100">{booking.bookingNumber} · Room {booking.roomNumber}{booking.bookingType === 'DAY_USE' && <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand align-middle">Day Use</span>}</p>
+            <p className="font-semibold text-dark dark:text-slate-100">{booking.bookingNumber} · Room {booking.roomNumber}{booking.bookingType === 'DAY_USE' && <span className="ms-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand/10 text-brand align-middle">Day Use</span>}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">{booking.guestName} · {booking.numberOfGuests} guest(s) · {channelLabel(booking.channel)}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={18} /></button>
@@ -477,9 +477,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                   <Input placeholder="Address (optional)" value={g.address} onChange={(e) => updateGuestForm(idx, { address: e.target.value })} />
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={addGuestForm}><Plus size={14} className="mr-1" /> Add Another Guest</Button>
+              <Button variant="outline" size="sm" onClick={addGuestForm}><Plus size={14} className="me-1" /> Add Another Guest</Button>
               <div className="flex gap-2">
-                <Button onClick={handleCheckIn} disabled={busy} className="flex-1"><LogIn size={16} className="mr-1.5" /> Check In</Button>
+                <Button onClick={handleCheckIn} disabled={busy} className="flex-1"><LogIn size={16} className="me-1.5" /> Check In</Button>
                 <Button variant="outline" onClick={() => setShowNoShowConfirm(true)} disabled={busy}><UserX size={16} /></Button>
                 <Button variant="outline" onClick={() => setShowCancelConfirm(true)} disabled={busy}><Ban size={16} /></Button>
               </div>
@@ -495,13 +495,13 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                 <Input placeholder="Unit Price" type="number" value={chargePrice} onChange={(e) => setChargePrice(e.target.value)} className="col-span-2" />
               </div>
               <Button variant="outline" size="sm" onClick={handleAddCharge} disabled={busy}>Add Charge</Button>
-              <Button onClick={handleCheckOut} disabled={busy} className="w-full"><LogOut size={16} className="mr-1.5" /> Check Out</Button>
+              <Button onClick={handleCheckOut} disabled={busy} className="w-full"><LogOut size={16} className="me-1.5" /> Check Out</Button>
             </div>
           )}
 
           {booking.status === 'CHECKED_OUT' && canManage && !booking.invoiceId && (
             <Button variant="secondary" onClick={handleInvoice} disabled={busy} className="w-full">
-              <Receipt size={16} className="mr-1.5" /> Generate Bill
+              <Receipt size={16} className="me-1.5" /> Generate Bill
             </Button>
           )}
           {booking.invoiceId && (

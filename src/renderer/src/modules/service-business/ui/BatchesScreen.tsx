@@ -431,7 +431,7 @@ export default function BatchesScreen() {
                     {b.roomOrLocation && ` · ${b.roomOrLocation}`}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p className="font-semibold text-gray-900 dark:text-slate-100">₹{Number(b.feePerMonth).toLocaleString()}/mo</p>
                   <p className="text-xs text-gray-500 dark:text-slate-400">{activeEnrs.length}/{b.maxCapacity} students</p>
                 </div>
@@ -465,11 +465,11 @@ export default function BatchesScreen() {
                   ) : (
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-left text-xs text-gray-500 dark:text-slate-400">
+                        <tr className="text-start text-xs text-gray-500 dark:text-slate-400">
                           <th className="pb-2 font-medium">Student</th>
                           <th className="pb-2 font-medium">Phone</th>
                           <th className="pb-2 font-medium">Discount</th>
-                          <th className="pb-2 font-medium text-right">Eff. Fee</th>
+                          <th className="pb-2 font-medium text-end">Eff. Fee</th>
                           <th className="pb-2 font-medium">Status</th>
                           <th className="pb-2" />
                         </tr>
@@ -482,11 +482,11 @@ export default function BatchesScreen() {
                             <td className="py-2 text-gray-500 dark:text-slate-400">
                               {e.discountType !== 'NONE' ? `${e.discountType} ₹${Number(e.discountAmount).toLocaleString()}` : '—'}
                             </td>
-                            <td className="py-2 text-right font-medium text-gray-900 dark:text-slate-100">₹{Number(e.effectiveFee).toLocaleString()}</td>
+                            <td className="py-2 text-end font-medium text-gray-900 dark:text-slate-100">₹{Number(e.effectiveFee).toLocaleString()}</td>
                             <td className="py-2">
                               <Badge variant={ENR_STATUS_VARIANT[e.status] ?? 'neutral'} size="sm">{e.status}</Badge>
                             </td>
-                            <td className="py-2 text-right">
+                            <td className="py-2 text-end">
                               <div className="flex items-center justify-end gap-2">
                                 {e.status === 'WAITLISTED' && activeEnrs.length < b.maxCapacity && (
                                   <button onClick={() => handlePromoteFromWaitlist(e)} className="text-emerald-600 hover:text-emerald-700" title="Promote to active — a seat is free">
@@ -511,7 +511,7 @@ export default function BatchesScreen() {
               {/* Syllabus panel (Phase 58 §2) */}
               {isOpen && (
                 <div className="border-t border-gray-100 bg-white p-4 dark:bg-slate-900 dark:border-slate-800">
-                  <button onClick={() => toggleSyllabus(b.id)} className="w-full flex items-center justify-between text-left">
+                  <button onClick={() => toggleSyllabus(b.id)} className="w-full flex items-center justify-between text-start">
                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 dark:text-slate-300">
                       <BookOpen size={14} /> Syllabus
                     </h3>

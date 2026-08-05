@@ -67,17 +67,17 @@ function ProductPicker({ products, value, onChange, error }: {
   return (
     <div className="relative" ref={wrapRef}>
       <div className="relative">
-        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         <input
           value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
           onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
           onFocus={() => { setQuery(''); setOpen(true) }}
           placeholder="Search product…"
-          className="w-full h-8 pl-6 pr-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
+          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
         />
       </div>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
+        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
           {results.length === 0 ? (
             <p className="px-3 py-2 text-xs text-slate-400">No products match.</p>
           ) : (
@@ -86,7 +86,7 @@ function ProductPicker({ products, value, onChange, error }: {
                 key={p.id}
                 type="button"
                 onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-left px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
+                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
               >
                 <p className="text-dark dark:text-slate-100">{p.productName}</p>
                 {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}

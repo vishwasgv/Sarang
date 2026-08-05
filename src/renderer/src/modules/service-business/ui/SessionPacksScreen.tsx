@@ -140,7 +140,7 @@ export function SessionPacksScreen() {
             >
               {cfg && <span className={cfg.color}>{cfg.icon}</span>}
               {b === 'ALL' ? 'All' : BAND_CONFIG[b].label}
-              <span className={`ml-0.5 ${isActive ? '' : 'text-slate-400'}`}>({counts[b]})</span>
+              <span className={`ms-0.5 ${isActive ? '' : 'text-slate-400'}`}>({counts[b]})</span>
             </button>
           )
         })}
@@ -149,7 +149,7 @@ export function SessionPacksScreen() {
           placeholder="Search patient..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="ml-2 h-8 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+          className="ms-2 h-8 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
         />
       </div>
 
@@ -199,12 +199,12 @@ export function SessionPacksScreen() {
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className={`text-lg font-bold ${remaining <= 2 ? 'text-warning' : 'text-success'}`}>{remaining}</p>
                     <p className="text-xs text-slate-400">of {pack.totalSessions} left</p>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     {pack.expiryDate ? (
                       <>
                         <p className={`text-xs font-medium ${band === 'EXPIRED' ? 'text-danger' : 'text-slate-600 dark:text-slate-300'}`}>{fmt(pack.expiryDate)}</p>

@@ -541,8 +541,8 @@ export function BatchClassesScreen() {
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Add Member</p>
                 <div className="relative mb-2">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
-                  <input value={enrollSearch} onChange={(e) => setEnrollSearch(e.target.value)} placeholder="Search member..." className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-dark dark:text-slate-100" />
+                  <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+                  <input value={enrollSearch} onChange={(e) => setEnrollSearch(e.target.value)} placeholder="Search member..." className="w-full h-10 ps-9 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-dark dark:text-slate-100" />
                 </div>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {availableCustomers.slice(0, 20).map((c) => (

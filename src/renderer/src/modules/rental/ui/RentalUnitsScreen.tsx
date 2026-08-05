@@ -145,7 +145,7 @@ export function RentalUnitsScreen() {
         </div>
         {canManage && (
           <Button onClick={() => setShowAdd(true)}>
-            <Plus size={16} className="mr-1.5" /> {t('rental.addUnit')}
+            <Plus size={16} className="me-1.5" /> {t('rental.addUnit')}
           </Button>
         )}
       </div>
@@ -161,11 +161,11 @@ export function RentalUnitsScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.item')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.unitLabel')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('common.status')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.service')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.item')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.unitLabel')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('common.status')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.service')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -200,7 +200,7 @@ export function RentalUnitsScreen() {
                       </div>
                     ) : <span className="text-slate-300 text-xs">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-end">
                     {canManage && u.status !== 'RENTED' && (
                       <button onClick={() => setDeleteTarget(u)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
                     )}

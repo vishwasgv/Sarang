@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { Plus, RefreshCw, UtensilsCrossed, Trash2, CheckCircle2, Clock, AlertTriangle, MoonStar, QrCode, X, Receipt, Merge, CalendarClock } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
@@ -35,13 +36,24 @@ interface Reservation {
   table?: { id: string; tableNumber: string; tableName?: string | null } | null
 }
 
-const STATUS_CONFIG = {
-  AVAILABLE: { label: 'Available', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
-  OCCUPIED:  { label: 'Occupied',  color: 'bg-danger/10 text-danger border-danger/20',   icon: Clock },
-  RESERVED:  { label: 'Reserved',  color: 'bg-warning/10 text-warning border-warning/20', icon: AlertTriangle },
+const STATUS_COLOR = {
+  AVAILABLE: 'bg-success/10 text-success border-success/20',
+  OCCUPIED:  'bg-danger/10 text-danger border-danger/20',
+  RESERVED:  'bg-warning/10 text-warning border-warning/20',
+}
+const STATUS_ICON = {
+  AVAILABLE: CheckCircle2,
+  OCCUPIED:  Clock,
+  RESERVED:  AlertTriangle,
 }
 
 export function RestaurantTablesScreen() {
+  const { t } = useTranslation()
+  const STATUS_CONFIG = {
+    AVAILABLE: { label: t('restaurantTables.statusAvailable'), color: STATUS_COLOR.AVAILABLE, icon: STATUS_ICON.AVAILABLE },
+    OCCUPIED:  { label: t('restaurantTables.statusOccupied'), color: STATUS_COLOR.OCCUPIED, icon: STATUS_ICON.OCCUPIED },
+    RESERVED:  { label: t('restaurantTables.statusReserved'), color: STATUS_COLOR.RESERVED, icon: STATUS_ICON.RESERVED },
+  }
   const navigate = useNavigate()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [tables, setTables] = useState<RestaurantTable[]>([])
@@ -52,7 +64,7 @@ export function RestaurantTablesScreen() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [closingDay, setClosingDay] = useState(false)
-  const [closeResult, setCloseResult] = useState<string | null>(null)
+  const [closeResult, setCloseResult] = useState<{ message: string; success: boolean } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RestaurantTable | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showDailyCloseConfirm, setShowDailyCloseConfirm] = useState(false)
@@ -91,14 +103,14 @@ export function RestaurantTablesScreen() {
       if (res.success && res.data) {
         setTables(res.data as RestaurantTable[])
       } else {
-        toastError('Error', res.error?.message ?? 'Could not load tables.')
+        toastError('Error', res.error?.message ?? t('restaurantTables.couldNotLoadTables'))
       }
     } catch {
-      toastError('Error', 'Could not load tables.')
+      toastError('Error', t('restaurantTables.couldNotLoadTables'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   const loadQrStatus = useCallback(async () => {
     try {
@@ -106,12 +118,12 @@ export function RestaurantTablesScreen() {
       if (res.success && res.data) {
         setQrStatus(res.data as { running: boolean; port: number | null; lanUrls: string[] })
       } else {
-        toastError('Error', res.error?.message ?? 'Could not load QR ordering status.')
+        toastError('Error', res.error?.message ?? t('restaurantTables.couldNotLoadQrStatus'))
       }
     } catch {
-      toastError('Error', 'Could not load QR ordering status.')
+      toastError('Error', t('restaurantTables.couldNotLoadQrStatus'))
     }
-  }, [toastError])
+  }, [toastError, t])
 
   const loadUpcomingReservations = useCallback(async () => {
     try {
@@ -125,13 +137,13 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.reservations.list({ status: 'CONFIRMED' })
       if (res.success && res.data) setReservations(res.data as Reservation[])
-      else toastError('Error', res.error?.message ?? 'Could not load reservations.')
+      else toastError('Error', res.error?.message ?? t('restaurantTables.couldNotLoadReservations'))
     } catch {
-      toastError('Error', 'Could not load reservations.')
+      toastError('Error', t('restaurantTables.couldNotLoadReservations'))
     } finally {
       setLoadingReservations(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load(); loadQrStatus(); loadUpcomingReservations() }, [load, loadQrStatus, loadUpcomingReservations])
   useEffect(() => { if (showReservations) loadReservations() }, [showReservations, loadReservations])
@@ -146,10 +158,10 @@ export function RestaurantTablesScreen() {
     setAssigningWaiterFor(tableId)
     try {
       const res = await api.restaurant.assignWaiter({ tableId, waiterId: waiterId || null })
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not assign waiter.')
+      if (!res.success) toastError('Error', res.error?.message ?? t('restaurantTables.couldNotAssignWaiter'))
       await load()
     } catch {
-      toastError('Error', 'Could not assign waiter.')
+      toastError('Error', t('restaurantTables.couldNotAssignWaiter'))
     } finally {
       setAssigningWaiterFor(null)
     }
@@ -160,10 +172,10 @@ export function RestaurantTablesScreen() {
     try {
       const next = on ? [...enabledModules, 'qr_table_ordering' as never] : enabledModules.filter(m => m !== 'qr_table_ordering')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update QR ordering setting.')
+      if (!res.success) toastError('Error', res.error?.message ?? t('restaurantTables.couldNotUpdateQrSetting'))
       await loadQrStatus()
     } catch {
-      toastError('Error', 'Could not update QR ordering setting.')
+      toastError('Error', t('restaurantTables.couldNotUpdateQrSetting'))
     } finally {
       setQrToggling(false)
     }
@@ -176,20 +188,20 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.restaurant.generateTableQr({ tableId: table.id })
       if (res.success && res.data) setQrImage(res.data as { qrDataUrl: string; orderUrl: string })
-      else setQrModalError((res.error as { message?: string })?.message ?? 'Could not generate QR code.')
+      else setQrModalError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotGenerateQr'))
     } catch {
-      setQrModalError('Could not generate QR code.')
+      setQrModalError(t('restaurantTables.couldNotGenerateQr'))
     }
   }
 
   function printTableQr(table: RestaurantTable, qrDataUrl: string) {
     const w = window.open('', '_blank')
-    const html = `<html><head><style>body{font-family:Arial,sans-serif;text-align:center;padding:40px}h1{font-size:20px;margin-bottom:4px}p{color:#666;margin-top:0}img{width:280px;height:280px;margin:20px auto}footer{margin-top:24px;font-size:10px;color:#888}</style></head><body><h1>${table.tableName || table.tableNumber}</h1><p>Scan to view the menu and place your order</p><img src="${qrDataUrl}" alt="QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
+    const html = `<html><head><style>body{font-family:Arial,sans-serif;text-align:center;padding:40px}h1{font-size:20px;margin-bottom:4px}p{color:#666;margin-top:0}img{width:280px;height:280px;margin:20px auto}footer{margin-top:24px;font-size:10px;color:#888}</style></head><body><h1>${table.tableName || table.tableNumber}</h1><p>${t('restaurantTables.scanToOrder')}</p><img src="${qrDataUrl}" alt="QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
   async function handleAdd() {
-    if (!tableNumber.trim()) { setError('Table number is required.'); return }
+    if (!tableNumber.trim()) { setError(t('restaurantTables.tableNumberRequired')); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -198,10 +210,10 @@ export function RestaurantTablesScreen() {
         setTableNumber(''); setTableName(''); setAdding(false)
         load()
       } else {
-        setError((res.error as { message?: string })?.message ?? 'Could not create table.')
+        setError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotCreateTable'))
       }
     } catch {
-      setError('Could not create table.')
+      setError(t('restaurantTables.couldNotCreateTable'))
     } finally {
       setSubmitting(false)
     }
@@ -210,9 +222,9 @@ export function RestaurantTablesScreen() {
   async function handleStatus(tableId: string, status: string) {
     try {
       const res = await api.restaurant.updateTableStatus({ tableId, status })
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update table status.')
+      if (!res.success) toastError('Error', res.error?.message ?? t('restaurantTables.couldNotUpdateStatus'))
     } catch {
-      toastError('Error', 'Could not update table status.')
+      toastError('Error', t('restaurantTables.couldNotUpdateStatus'))
     } finally {
       load()
     }
@@ -224,13 +236,13 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.restaurant.deleteTable({ tableId: deleteTarget.id })
       if (!res.success) {
-        setError((res.error as { message?: string })?.message ?? 'Could not delete table.')
+        setError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotDeleteTable'))
       } else {
         setDeleteTarget(null)
         load()
       }
     } catch {
-      setError('Could not delete table.')
+      setError(t('restaurantTables.couldNotDeleteTable'))
     } finally {
       setDeleting(false)
     }
@@ -247,14 +259,14 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.restaurant.mergeTableIntoInvoice({ tableId: freeTableId, invoiceId: mergeTarget.currentInvoiceId })
       if (res.success) {
-        toastSuccess('Merged', 'Table merged into the running order.')
+        toastSuccess(t('restaurantTables.merged'), t('restaurantTables.tableMergedIntoOrder'))
         setMergeTarget(null)
         load()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not merge table.')
+        toastError('Error', res.error?.message ?? t('restaurantTables.couldNotMergeTable'))
       }
     } catch {
-      toastError('Error', 'Could not merge table.')
+      toastError('Error', t('restaurantTables.couldNotMergeTable'))
     } finally {
       setMerging(false)
     }
@@ -262,7 +274,7 @@ export function RestaurantTablesScreen() {
 
   async function handleAddReservation() {
     if (!rsvName.trim() || !rsvPhone.trim() || !rsvDateTime) {
-      toastError('Missing Details', 'Name, phone, and date/time are required.')
+      toastError(t('restaurantTables.missingDetails'), t('restaurantTables.reservationDetailsRequired'))
       return
     }
     setSavingReservation(true)
@@ -275,15 +287,15 @@ export function RestaurantTablesScreen() {
         notes: rsvNotes.trim() || undefined,
       })
       if (res.success) {
-        toastSuccess('Reservation Added', `${rsvName} — ${new Date(rsvDateTime).toLocaleString()}`)
+        toastSuccess(t('restaurantTables.reservationAdded'), t('restaurantTables.reservationAddedDesc', { name: rsvName, datetime: new Date(rsvDateTime).toLocaleString() }))
         setRsvName(''); setRsvPhone(''); setRsvPartySize('2'); setRsvDateTime(''); setRsvTableId(''); setRsvNotes('')
         setAddingReservation(false)
         loadReservations(); loadUpcomingReservations()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not add reservation.')
+        toastError('Error', res.error?.message ?? t('restaurantTables.couldNotAddReservation'))
       }
     } catch {
-      toastError('Error', 'Could not add reservation.')
+      toastError('Error', t('restaurantTables.couldNotAddReservation'))
     } finally {
       setSavingReservation(false)
     }
@@ -292,10 +304,10 @@ export function RestaurantTablesScreen() {
   async function handleReservationStatus(id: string, status: string) {
     try {
       const res = await api.reservations.updateStatus({ id, status })
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update reservation.')
+      if (!res.success) toastError('Error', res.error?.message ?? t('restaurantTables.couldNotUpdateReservation'))
       loadReservations(); loadUpcomingReservations(); load()
     } catch {
-      toastError('Error', 'Could not update reservation.')
+      toastError('Error', t('restaurantTables.couldNotUpdateReservation'))
     }
   }
 
@@ -307,13 +319,16 @@ export function RestaurantTablesScreen() {
       const res = await api.restaurant.performDailyClose()
       if (res.success && res.data) {
         const d = res.data as { kots: { DONE: number; CANCELLED: number }; revenue: { total: number; invoiceCount: number } }
-        setCloseResult(`Day closed. KOTs served: ${d.kots?.DONE ?? 0} | Revenue: ${formatCurrency(d.revenue?.total ?? 0)} from ${d.revenue?.invoiceCount ?? 0} invoices.`)
+        setCloseResult({
+          success: true,
+          message: t('restaurantTables.dayClosed', { kotCount: d.kots?.DONE ?? 0, revenue: formatCurrency(d.revenue?.total ?? 0), invoiceCount: d.revenue?.invoiceCount ?? 0 }),
+        })
         load()
       } else {
-        setCloseResult('Daily close failed: ' + ((res.error as { message?: string })?.message ?? 'Unknown error'))
+        setCloseResult({ success: false, message: t('restaurantTables.dailyCloseFailed', { message: (res.error as { message?: string })?.message ?? 'Unknown error' }) })
       }
     } catch {
-      setCloseResult('Daily close failed: Unknown error')
+      setCloseResult({ success: false, message: t('restaurantTables.dailyCloseFailedUnknown') })
     } finally {
       setClosingDay(false)
     }
@@ -323,27 +338,27 @@ export function RestaurantTablesScreen() {
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark dark:text-slate-100">Restaurant Tables</h2>
-          <p className="text-sm text-slate-400">{tables.length} tables configured</p>
+          <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('restaurantTables.title')}</h2>
+          <p className="text-sm text-slate-400">{t('restaurantTables.tablesConfigured', { count: tables.length })}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={load} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
           <button
             onClick={() => setShowReservations(v => !v)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors',
               showReservations ? 'bg-brand/10 border-brand text-brand' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300')}>
-            <CalendarClock size={14} /> Reservations
+            <CalendarClock size={14} /> {t('restaurantTables.reservations')}
           </button>
           <button
             onClick={() => setShowDailyCloseConfirm(true)}
             disabled={closingDay}
             className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
-            <MoonStar size={14} /> {closingDay ? 'Closing…' : 'End of Day'}
+            <MoonStar size={14} /> {closingDay ? t('restaurantTables.closing') : t('restaurantTables.endOfDay')}
           </button>
           <button onClick={() => setAdding(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-            <Plus size={14} /> Add Table
+            <Plus size={14} /> {t('restaurantTables.addTable')}
           </button>
         </div>
       </div>
@@ -354,22 +369,22 @@ export function RestaurantTablesScreen() {
       <Card padding="lg" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><QrCode size={16} /> QR Table Ordering</h3>
-            <p className="text-xs text-slate-400 mt-1">Let customers scan a table's QR code to browse the menu and send an order — staff always confirm before it becomes a bill.</p>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><QrCode size={16} /> {t('restaurantTables.qrTableOrdering')}</h3>
+            <p className="text-xs text-slate-400 mt-1">{t('restaurantTables.qrTableOrderingDesc')}</p>
           </div>
           <button
             onClick={() => toggleQrOrdering(!qrEnabled)}
             disabled={qrToggling}
             className={cn('px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50',
               qrEnabled ? 'bg-success/10 text-success border border-success/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
-            {qrToggling ? 'Updating…' : qrEnabled ? 'Enabled' : 'Enable'}
+            {qrToggling ? t('restaurantTables.updating') : qrEnabled ? t('restaurantTables.enabled') : t('restaurantTables.enable')}
           </button>
         </div>
         {qrEnabled && (
           qrStatus?.running ? (
-            <p className="text-xs text-success">Running — customers on your WiFi can scan a table's QR code. Print a table's QR from its card below.</p>
+            <p className="text-xs text-success">{t('restaurantTables.qrRunningHint')}</p>
           ) : (
-            <p className="text-xs text-warning">Enabled but not yet running — check that another app isn't already using the same port, or try refreshing.</p>
+            <p className="text-xs text-warning">{t('restaurantTables.qrNotRunningHint')}</p>
           )
         )}
       </Card>
@@ -378,37 +393,37 @@ export function RestaurantTablesScreen() {
       {showReservations && (
         <Card padding="lg" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> Reservations</h3>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> {t('restaurantTables.reservations')}</h3>
             <button onClick={() => setAddingReservation(v => !v)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand/90 transition-colors">
-              <Plus size={13} /> Add Reservation
+              <Plus size={13} /> {t('restaurantTables.addReservation')}
             </button>
           </div>
 
           {addingReservation && (
             <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <input value={rsvName} onChange={e => setRsvName(e.target.value)} placeholder="Customer name"
+                <input value={rsvName} onChange={e => setRsvName(e.target.value)} placeholder={t('restaurantTables.customerNamePlaceholder')}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
-                <input value={rsvPhone} onChange={e => setRsvPhone(e.target.value)} placeholder="Phone"
+                <input value={rsvPhone} onChange={e => setRsvPhone(e.target.value)} placeholder={t('restaurantTables.phonePlaceholder')}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
-                <input type="number" min="1" value={rsvPartySize} onChange={e => setRsvPartySize(e.target.value)} placeholder="Party size"
+                <input type="number" min="1" value={rsvPartySize} onChange={e => setRsvPartySize(e.target.value)} placeholder={t('restaurantTables.partySizePlaceholder')}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
                 <input type="datetime-local" value={rsvDateTime} onChange={e => setRsvDateTime(e.target.value)}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
                 <select value={rsvTableId} onChange={e => setRsvTableId(e.target.value)}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand">
-                  <option value="">— No table pre-assigned —</option>
-                  {tables.map(t => <option key={t.id} value={t.id}>{t.tableName || t.tableNumber}</option>)}
+                  <option value="">{t('restaurantTables.noTablePreAssigned')}</option>
+                  {tables.map(t2 => <option key={t2.id} value={t2.id}>{t2.tableName || t2.tableNumber}</option>)}
                 </select>
-                <input value={rsvNotes} onChange={e => setRsvNotes(e.target.value)} placeholder="Notes (optional)"
+                <input value={rsvNotes} onChange={e => setRsvNotes(e.target.value)} placeholder={t('restaurantTables.notesOptionalPlaceholder')}
                   className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
               </div>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setAddingReservation(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">Cancel</button>
+                <button onClick={() => setAddingReservation(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">{t('restaurantTables.cancel')}</button>
                 <button onClick={handleAddReservation} disabled={savingReservation}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
-                  {savingReservation && <RefreshCw size={12} className="animate-spin" />} Save Reservation
+                  {savingReservation && <RefreshCw size={12} className="animate-spin" />} {t('restaurantTables.saveReservation')}
                 </button>
               </div>
             </div>
@@ -417,14 +432,14 @@ export function RestaurantTablesScreen() {
           {loadingReservations ? (
             <div className="flex justify-center py-6"><RefreshCw size={18} className="animate-spin text-brand" /></div>
           ) : reservations.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">No upcoming reservations.</p>
+            <p className="text-sm text-slate-400 text-center py-6">{t('restaurantTables.noUpcomingReservations')}</p>
           ) : (
             <div className="divide-y divide-slate-50 dark:divide-slate-800">
               {reservations.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-semibold text-dark dark:text-slate-100">
-                      {r.customerName} <span className="text-slate-400 font-normal">· {r.partySize} guests · {r.phone}</span>
+                      {r.customerName} <span className="text-slate-400 font-normal">· {t('restaurantTables.guestsAndPhone', { partySize: r.partySize, phone: r.phone })}</span>
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       {new Date(r.reservedFor).toLocaleString()}{r.table ? ` · ${r.table.tableName || r.table.tableNumber}` : ''}
@@ -433,11 +448,11 @@ export function RestaurantTablesScreen() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => handleReservationStatus(r.id, 'SEATED')}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors">Seat</button>
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors">{t('restaurantTables.seat')}</button>
                     <button onClick={() => handleReservationStatus(r.id, 'NO_SHOW')}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition-colors">No-show</button>
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition-colors">{t('restaurantTables.noShow')}</button>
                     <button onClick={() => handleReservationStatus(r.id, 'CANCELLED')}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors">Cancel</button>
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors">{t('restaurantTables.cancel')}</button>
                   </div>
                 </div>
               ))}
@@ -447,8 +462,8 @@ export function RestaurantTablesScreen() {
       )}
 
       {closeResult && (
-        <div className={`rounded-xl px-4 py-3 text-sm ${closeResult.startsWith('Day closed') ? 'bg-success/5 border border-success/20 text-success' : 'bg-danger/5 border border-danger/20 text-danger'}`}>
-          {closeResult}
+        <div className={`rounded-xl px-4 py-3 text-sm ${closeResult.success ? 'bg-success/5 border border-success/20 text-success' : 'bg-danger/5 border border-danger/20 text-danger'}`}>
+          {closeResult.message}
         </div>
       )}
 
@@ -456,30 +471,30 @@ export function RestaurantTablesScreen() {
       {adding && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <Card padding="lg" className="space-y-3">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100">Add Table</h3>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{t('restaurantTables.addTable')}</h3>
           <div className="flex gap-3">
             <input
               value={tableNumber}
               onChange={e => setTableNumber(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Table number (e.g. T1)"
+              placeholder={t('restaurantTables.tableNumberPlaceholder')}
               className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand"
             />
             <input
               value={tableName}
               onChange={e => setTableName(e.target.value)}
-              placeholder="Display name (optional)"
+              placeholder={t('restaurantTables.displayNamePlaceholder')}
               className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand"
             />
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => { setAdding(false); setError(null) }}
               className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-              Cancel
+              {t('restaurantTables.cancel')}
             </button>
             <button onClick={handleAdd} disabled={submitting}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
-              {submitting && <RefreshCw size={12} className="animate-spin" />} Add Table
+              {submitting && <RefreshCw size={12} className="animate-spin" />} {t('restaurantTables.addTable')}
             </button>
           </div>
         </Card>
@@ -493,8 +508,8 @@ export function RestaurantTablesScreen() {
       ) : tables.length === 0 ? (
         <Card padding="none" className="p-12 text-center">
           <UtensilsCrossed size={32} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No tables configured</p>
-          <p className="text-xs text-slate-400 mt-1">Add your first table to get started</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('restaurantTables.noTablesConfigured')}</p>
+          <p className="text-xs text-slate-400 mt-1">{t('restaurantTables.addFirstTableHint')}</p>
         </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -513,7 +528,7 @@ export function RestaurantTablesScreen() {
                   <div className="flex items-center gap-1">
                     {qrEnabled && (
                       <button onClick={() => openQrModal(table)}
-                        className="text-slate-300 hover:text-brand transition-colors p-1" title="Print table QR code">
+                        className="text-slate-300 hover:text-brand transition-colors p-1" title={t('restaurantTables.printTableQrTitle')}>
                         <QrCode size={14} />
                       </button>
                     )}
@@ -528,15 +543,15 @@ export function RestaurantTablesScreen() {
                   <Icon size={12} />
                   <span className="text-xs font-semibold">{config.label}</span>
                   {table.kots.length > 0 && (
-                    <span className="ml-auto text-xs bg-warning/10 text-warning px-1.5 py-0.5 rounded-full">
-                      {table.kots.length} KOT
+                    <span className="ms-auto text-xs bg-warning/10 text-warning px-1.5 py-0.5 rounded-full">
+                      {t('restaurantTables.kotCount', { count: table.kots.length })}
                     </span>
                   )}
                 </div>
 
                 {upcomingByTable[table.id] && (
                   <p className="text-xs text-warning flex items-center gap-1">
-                    <CalendarClock size={11} /> Reserved {new Date(upcomingByTable[table.id].reservedFor).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} — {upcomingByTable[table.id].customerName}
+                    <CalendarClock size={11} /> {t('restaurantTables.reservedAt', { time: new Date(upcomingByTable[table.id].reservedFor).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), name: upcomingByTable[table.id].customerName })}
                   </p>
                 )}
 
@@ -546,17 +561,17 @@ export function RestaurantTablesScreen() {
                   <div className="flex gap-1.5">
                     <button onClick={() => navigate(`/billing/invoices/${table.currentInvoiceId}`)}
                       className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-brand/10 text-brand hover:bg-brand/20 transition-colors">
-                      <Receipt size={12} /> View Bill
+                      <Receipt size={12} /> {t('restaurantTables.viewBill')}
                     </button>
                     <button onClick={() => setMergeTarget(table)}
                       className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-brand/10 hover:text-brand transition-colors">
-                      <Merge size={12} /> Merge In
+                      <Merge size={12} /> {t('restaurantTables.mergeIn')}
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => startOrder(table)}
                     className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg font-semibold bg-brand text-white hover:bg-brand/90 transition-colors">
-                    <UtensilsCrossed size={12} /> Start Order
+                    <UtensilsCrossed size={12} /> {t('restaurantTables.startOrder')}
                   </button>
                 )}
 
@@ -571,7 +586,7 @@ export function RestaurantTablesScreen() {
                           ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-default'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-brand/10 hover:text-brand'
                       )}>
-                      {s === 'AVAILABLE' ? 'Free' : s === 'OCCUPIED' ? 'Busy' : 'Rsv'}
+                      {s === 'AVAILABLE' ? t('restaurantTables.statusShortFree') : s === 'OCCUPIED' ? t('restaurantTables.statusShortBusy') : t('restaurantTables.statusShortReserved')}
                     </button>
                   ))}
                 </div>
@@ -582,9 +597,9 @@ export function RestaurantTablesScreen() {
                     onChange={(e) => handleAssignWaiter(table.id, e.target.value)}
                     disabled={assigningWaiterFor === table.id}
                     className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50"
-                    title="Assign waiter for tip pooling"
+                    title={t('restaurantTables.assignWaiterTitle')}
                   >
-                    <option value="">— No waiter —</option>
+                    <option value="">{t('restaurantTables.noWaiter')}</option>
                     {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
                   </select>
                 )}
@@ -597,20 +612,20 @@ export function RestaurantTablesScreen() {
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
-            <h2 className="text-lg font-bold text-dark dark:text-slate-100">Delete Table?</h2>
+            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('restaurantTables.deleteTableTitle')}</h2>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Remove table <span className="font-semibold">{deleteTarget.tableName || deleteTarget.tableNumber}</span>? This cannot be undone.
+              {t('restaurantTables.deleteTableConfirm', { name: deleteTarget.tableName || deleteTarget.tableNumber })}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-danger text-white text-sm font-semibold hover:bg-danger/90 transition-colors disabled:opacity-50">
-                {deleting ? 'Deleting…' : 'Delete'}
+                {deleting ? t('restaurantTables.deleting') : t('restaurantTables.delete')}
               </button>
               <button onClick={() => setDeleteTarget(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors">
-                Cancel
+                {t('restaurantTables.cancel')}
               </button>
             </div>
           </div>
@@ -621,18 +636,18 @@ export function RestaurantTablesScreen() {
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-dark dark:text-slate-100">Merge into {mergeTarget.tableName || mergeTarget.tableNumber}</h2>
+              <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('restaurantTables.mergeIntoTitle', { name: mergeTarget.tableName || mergeTarget.tableNumber })}</h2>
               <button onClick={() => setMergeTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Pick a free table to add to this same running bill — for a large party spread across tables.</p>
-            {tables.filter(t => t.id !== mergeTarget.id && !t.currentInvoiceId).length === 0 ? (
-              <p className="text-sm text-slate-400 italic py-4 text-center">No free tables to merge in.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('restaurantTables.mergeHint')}</p>
+            {tables.filter(t2 => t2.id !== mergeTarget.id && !t2.currentInvoiceId).length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4 text-center">{t('restaurantTables.noFreeTablesToMerge')}</p>
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {tables.filter(t => t.id !== mergeTarget.id && !t.currentInvoiceId).map(t => (
-                  <button key={t.id} onClick={() => handleMerge(t.id)} disabled={merging}
+                {tables.filter(t2 => t2.id !== mergeTarget.id && !t2.currentInvoiceId).map(t2 => (
+                  <button key={t2.id} onClick={() => handleMerge(t2.id)} disabled={merging}
                     className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
-                    <span>{t.tableName || t.tableNumber}</span>
+                    <span>{t2.tableName || t2.tableNumber}</span>
                     <Merge size={14} />
                   </button>
                 ))}
@@ -657,7 +672,7 @@ export function RestaurantTablesScreen() {
                 <p className="text-xs text-slate-400 break-all">{qrImage.orderUrl}</p>
                 <button onClick={() => printTableQr(qrModalTable, qrImage.qrDataUrl)}
                   className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-                  Print
+                  {t('restaurantTables.print')}
                 </button>
               </>
             ) : (
@@ -672,9 +687,9 @@ export function RestaurantTablesScreen() {
         onClose={() => setShowDailyCloseConfirm(false)}
         onConfirm={handleDailyClose}
         loading={closingDay}
-        title="End of Day"
-        message="Perform daily close? This will mark all occupied tables as available and log a closing summary."
-        confirmLabel="End of Day"
+        title={t('restaurantTables.endOfDay')}
+        message={t('restaurantTables.performDailyCloseConfirm')}
+        confirmLabel={t('restaurantTables.endOfDay')}
         confirmVariant="primary"
       />
     </div>

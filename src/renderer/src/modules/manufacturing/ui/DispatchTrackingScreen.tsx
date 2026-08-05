@@ -261,18 +261,18 @@ export function DispatchTrackingScreen() {
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">{t('billing.product')} *</label>
                 <div className="relative">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <Search size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                   <input
                     value={form.productId ? selectedProduct?.productName ?? '' : productQuery}
                     onChange={e => { setForm(f => ({ ...f, productId: '' })); setSelectedProduct(null); setProductQuery(e.target.value) }}
                     placeholder="Search product by name or SKU…"
-                    className="w-full h-12 pl-10 pr-3 rounded-xl border border-border text-sm bg-white dark:bg-slate-900 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                    className="w-full h-12 ps-10 pe-3 rounded-xl border border-border text-sm bg-white dark:bg-slate-900 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/30" />
                   {productResults.length > 0 && !form.productId && (
                     <div className="absolute z-10 mt-1 w-full border border-border rounded-xl overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                       {productResults.map(p => (
                         <button key={p.id} type="button"
                           onClick={() => { setForm(f => ({ ...f, productId: p.id })); setSelectedProduct(p); setProductQuery(''); setProductResults([]) }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                          className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                           {p.productName}
                         </button>
                       ))}
@@ -297,18 +297,18 @@ export function DispatchTrackingScreen() {
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">{t('billing.customer')} ({t('common.optional')})</label>
                 <div className="relative">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <Search size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                   <input
                     value={form.customerId ? selectedCustomer?.customerName ?? '' : customerQuery}
                     onChange={e => { setForm(f => ({ ...f, customerId: '' })); setSelectedCustomer(null); setCustomerQuery(e.target.value) }}
                     placeholder="Search customer…"
-                    className="w-full h-12 pl-10 pr-3 rounded-xl border border-border text-sm bg-white dark:bg-slate-900 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                    className="w-full h-12 ps-10 pe-3 rounded-xl border border-border text-sm bg-white dark:bg-slate-900 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/30" />
                   {customerResults.length > 0 && !form.customerId && (
                     <div className="absolute z-10 mt-1 w-full border border-border rounded-xl overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                       {customerResults.map(c => (
                         <button key={c.id} type="button"
                           onClick={() => { setForm(f => ({ ...f, customerId: c.id })); setSelectedCustomer(c); setCustomerQuery(''); setCustomerResults([]) }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                          className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                           {c.customerName}
                         </button>
                       ))}
@@ -367,7 +367,7 @@ export function DispatchTrackingScreen() {
               ].map(row => (
                 <div key={row.label} className="flex justify-between gap-4">
                   <span className="text-text-secondary">{row.label}</span>
-                  <span className="font-medium text-text-primary text-right">{row.value}</span>
+                  <span className="font-medium text-text-primary text-end">{row.value}</span>
                 </div>
               ))}
             </div>

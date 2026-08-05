@@ -23,21 +23,21 @@ export function registerTailoringOrder(handle: HandleFn): void {
   })
 
   handle('tailoringOrder:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.create'); if (deny) return deny
     const parsed = CreateTailoringOrderSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createTailoringOrder(parsed.data)
   })
 
   handle('tailoringOrder:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.manage'); if (deny) return deny
     const parsed = UpdateTailoringOrderSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateTailoringOrder(parsed.data)
   })
 
   handle('tailoringOrder:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.manage'); if (deny) return deny
     const parsed = TailoringOrderIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteTailoringOrder(parsed.data)
@@ -56,21 +56,21 @@ export function registerTailoringOrder(handle: HandleFn): void {
   })
 
   handle('tailoringOrder:scheduleTrialAppointment', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.manage'); if (deny) return deny
     const parsed = ScheduleTrialAppointmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return scheduleTrialAppointment(parsed.data)
   })
 
   handle('tailoringOrder:setFabric', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.manage'); if (deny) return deny
     const parsed = SetOrderFabricSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return setOrderFabric(parsed.data)
   })
 
   handle('tailoringOrder:clearFabric', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tailoringOrders.manage'); if (deny) return deny
     const parsed = TailoringOrderIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return clearOrderFabric(parsed.data)

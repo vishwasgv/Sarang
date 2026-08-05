@@ -33,7 +33,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('vaccinations:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('vaccinations.manage')
     if (deny) return deny
     const parsed = CreateVaccinationRecordSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
@@ -41,7 +41,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('vaccinations:update', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('vaccinations.manage')
     if (deny) return deny
     const parsed = UpdateVaccinationRecordSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
@@ -57,7 +57,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('vaccinations:createReminder', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('vaccinations.manage')
     if (deny) return deny
     const parsed = CreateVaccineReminderSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }

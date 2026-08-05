@@ -274,10 +274,10 @@ export default function RetainersScreen(): React.ReactElement {
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 dark:border-slate-700">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by title or client..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+            className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
         </div>
         <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="">All Statuses</option>
@@ -299,14 +299,14 @@ export default function RetainersScreen(): React.ReactElement {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Title</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Client</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Type</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Monthly</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Hours</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Billing Day</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Period</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Title</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Client</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Type</th>
+                  <th className="text-end px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Monthly</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Hours</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Billing Day</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Status</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Period</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -319,7 +319,7 @@ export default function RetainersScreen(): React.ReactElement {
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.client.customerName}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{TYPE_LABELS[r.retainerType] ?? r.retainerType}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-slate-100">{fmtAmount(r.monthlyAmount)}</td>
+                    <td className="px-4 py-3 text-end font-medium text-gray-900 dark:text-slate-100">{fmtAmount(r.monthlyAmount)}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                       {r.retainerType === 'HOURLY_BUCKET' && r.hoursPerMonth != null ? (
                         hoursUsage[r.id] ? (

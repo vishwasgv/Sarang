@@ -149,7 +149,7 @@ export function ClinicalNotesListScreen() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-dark dark:text-slate-100 truncate">{note.patientName}</p>
                     {note.patientAge && <span className="text-xs text-slate-400">{note.patientAge}</span>}
-                    <Badge variant={note.isFinalized ? 'success' : 'warning'} size="sm" className="ml-auto shrink-0">
+                    <Badge variant={note.isFinalized ? 'success' : 'warning'} size="sm" className="ms-auto shrink-0">
                       {note.isFinalized ? 'Finalized' : 'In Progress'}
                     </Badge>
                   </div>

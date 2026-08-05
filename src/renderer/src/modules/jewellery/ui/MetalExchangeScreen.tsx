@@ -62,6 +62,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
   const [linkInvoiceNumber, setLinkInvoiceNumber] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<MetalExchange | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [linking, setLinking] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -120,22 +121,30 @@ export function MetalExchangeScreen(): React.JSX.Element {
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.metalExchange.delete({ id: deleteTarget.id })
-    setDeleting(false)
-    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.metalExchange.delete({ id: deleteTarget.id })
+      if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function handleLink() {
-    if (!linkTarget || !linkInvoiceNumber.trim()) return
-    const res = await window.api.metalExchange.linkToInvoice({ exchangeId: linkTarget.id, invoiceId: linkInvoiceNumber.trim() })
-    if (res.success) {
-      toastSuccess(t('jewellery.linked'), t('jewellery.linkedDesc'))
-      setLinkTarget(null)
-      setLinkInvoiceNumber('')
-      await load()
-    } else {
-      toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    if (!linkTarget || !linkInvoiceNumber.trim() || linking) return
+    setLinking(true)
+    try {
+      const res = await window.api.metalExchange.linkToInvoice({ exchangeId: linkTarget.id, invoiceId: linkInvoiceNumber.trim() })
+      if (res.success) {
+        toastSuccess(t('jewellery.linked'), t('jewellery.linkedDesc'))
+        setLinkTarget(null)
+        setLinkInvoiceNumber('')
+        await load()
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      }
+    } finally {
+      setLinking(false)
     }
   }
 
@@ -189,8 +198,8 @@ export function MetalExchangeScreen(): React.JSX.Element {
           <Input label={t('jewellery.invoiceNumber')} placeholder={t('jewellery.invoiceNumberPlaceholder')} value={linkInvoiceNumber} onChange={(e) => setLinkInvoiceNumber(e.target.value)} />
           <p className="text-xs text-slate-400">{t('jewellery.linkHint', { amount: `${sym}${linkTarget.valueGiven.toFixed(2)}` })}</p>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setLinkTarget(null)}>{t('jewellery.cancel')}</Button>
-            <Button size="sm" onClick={() => void handleLink()}>{t('jewellery.link')}</Button>
+            <Button variant="secondary" size="sm" onClick={() => setLinkTarget(null)} disabled={linking}>{t('jewellery.cancel')}</Button>
+            <Button size="sm" onClick={() => void handleLink()} loading={linking}>{t('jewellery.link')}</Button>
           </div>
         </Card>
       )}

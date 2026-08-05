@@ -40,6 +40,28 @@ function makeSettingStore(initial: Record<string, string> = {}) {
       store.delete(where.settingKey)
       return Promise.resolve({})
     }),
+    // Pre-existing test-mock gap found while verifying this session's
+    // permission-audit fix (unrelated to it): auth.service.ts's rate-limiter
+    // calls db.setting.create() (first attempt in a window) and
+    // db.setting.updateMany() (the optimistic-concurrency claim on every
+    // subsequent attempt) — this mock never implemented either, so every
+    // call fell through the retry loop's catch-and-continue path and the
+    // limiter always returned blocked:true, even on a login's very first
+    // attempt. Matches real Prisma semantics: create() throws on an
+    // already-existing key (simulating the unique-constraint conflict the
+    // code's own comment says it's defending against), updateMany() only
+    // applies when the passed settingValue still matches what's stored
+    // (the same compare-and-swap the real conditional update relies on).
+    create: vi.fn(({ data }: { data: { settingKey: string; settingValue: string } }) => {
+      if (store.has(data.settingKey)) throw new Error('Unique constraint failed on settingKey')
+      store.set(data.settingKey, data.settingValue)
+      return Promise.resolve({ settingKey: data.settingKey, settingValue: data.settingValue })
+    }),
+    updateMany: vi.fn(({ where, data }: { where: { settingKey: string; settingValue: string }; data: { settingValue: string } }) => {
+      if (store.get(where.settingKey) !== where.settingValue) return Promise.resolve({ count: 0 })
+      store.set(where.settingKey, data.settingValue)
+      return Promise.resolve({ count: 1 })
+    }),
   }
 }
 

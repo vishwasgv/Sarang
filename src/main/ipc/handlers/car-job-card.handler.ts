@@ -23,21 +23,21 @@ export function registerCarJobCard(handle: HandleFn): void {
   })
 
   handle('carJobCard:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('carJobCard.create'); if (deny) return deny
     const parsed = CreateCarJobCardSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createCarJobCard(parsed.data)
   })
 
   handle('carJobCard:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('carJobCard.manage'); if (deny) return deny
     const parsed = UpdateCarJobCardSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateCarJobCard(parsed.data)
   })
 
   handle('carJobCard:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('carJobCard.manage'); if (deny) return deny
     const parsed = CarJobCardIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteCarJobCard(parsed.data)
@@ -70,7 +70,7 @@ export function registerCarJobCard(handle: HandleFn): void {
   })
 
   handle('carJobCard:scheduleServiceReminder', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('carJobCard.manage'); if (deny) return deny
     const parsed = ScheduleNextServiceReminderSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return scheduleNextServiceReminder(parsed.data.jobCardId, parsed.data.daysBefore)

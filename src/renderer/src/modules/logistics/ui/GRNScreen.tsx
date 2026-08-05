@@ -383,7 +383,7 @@ export default function GRNScreen() {
                   <p className="text-sm text-gray-500 mt-1">{g.supplierName} {g.invoiceNumber && `| Inv: ${g.invoiceNumber}`}</p>
                   <p className="text-xs text-gray-400">{formatDate(g.receivedDate)} · {g.items.length} items</p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="font-medium">{formatCurrency(g.totalValue)}</p>
                   <div className="flex gap-2 mt-1">
                     {!['POSTED', 'REVERSED'].includes(g.status) && <button onClick={e => { e.stopPropagation(); openEditGRN(g) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
@@ -398,18 +398,18 @@ export default function GRNScreen() {
               {expanded === g.id && (
                 <div className="border-t border-gray-100 px-4 py-3 overflow-x-auto">
                   <table className="w-full text-xs">
-                    <thead><tr className="text-gray-500"><th className="text-left py-1">Item</th><th className="text-right py-1">{t('logistics.grn.receivedQty')}</th><th className="text-right py-1">{t('logistics.grn.rejectedQty')}</th><th className="text-right py-1">Unit Cost</th><th className="text-right py-1">{t('common.total')}</th></tr></thead>
+                    <thead><tr className="text-gray-500"><th className="text-start py-1">Item</th><th className="text-end py-1">{t('logistics.grn.receivedQty')}</th><th className="text-end py-1">{t('logistics.grn.rejectedQty')}</th><th className="text-end py-1">Unit Cost</th><th className="text-end py-1">{t('common.total')}</th></tr></thead>
                     <tbody>
                       {g.items.map(i => (
                         <tr key={i.id} className="border-t border-gray-50">
                           <td className="py-1">
-                            {i.itemName}{i.batchNumber && <span className="text-gray-400 ml-1">({i.batchNumber})</span>}
-                            {!i.productId && !i.rawMaterialId && <span className="text-amber-500 ml-1" title={t('logistics.grn.unlinkedWarning')}>⚠ {t('logistics.grn.unlinked')}</span>}
+                            {i.itemName}{i.batchNumber && <span className="text-gray-400 ms-1">({i.batchNumber})</span>}
+                            {!i.productId && !i.rawMaterialId && <span className="text-amber-500 ms-1" title={t('logistics.grn.unlinkedWarning')}>⚠ {t('logistics.grn.unlinked')}</span>}
                           </td>
-                          <td className="text-right">{i.receivedQty} {i.unit}</td>
-                          <td className="text-right">{i.rejectedQty}</td>
-                          <td className="text-right">{formatCurrency(i.unitCost)}</td>
-                          <td className="text-right">{formatCurrency(i.totalCost)}</td>
+                          <td className="text-end">{i.receivedQty} {i.unit}</td>
+                          <td className="text-end">{i.rejectedQty}</td>
+                          <td className="text-end">{formatCurrency(i.unitCost)}</td>
+                          <td className="text-end">{formatCurrency(i.totalCost)}</td>
                         </tr>
                       ))}
                     </tbody>

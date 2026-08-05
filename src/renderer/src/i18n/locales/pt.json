@@ -212,6 +212,7 @@
     "card": "Cartão",
     "credit": "Crédito",
     "cheque": "Cheque",
+    "bankTransfer": "Transferência bancária",
     "finalize": "Finalizar",
     "saveDraft": "Salvar Rascunho",
     "cancel": "Cancelar Nota",

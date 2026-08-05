@@ -81,6 +81,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
   const [hourlyRetainers, setHourlyRetainers] = useState<HourlyRetainer[]>([])
   const [loading, setLoading] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Invoice generation
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -233,7 +234,9 @@ export default function TimeEntryScreen(): React.JSX.Element {
   }
 
   async function handleDelete(e: TimeEntry): Promise<void> {
+    if (deletingId) return
     setDeleteError('')
+    setDeletingId(e.id)
     try {
       const res = await api.timeEntry.delete({ id: e.id })
       if (res.success) {
@@ -243,6 +246,8 @@ export default function TimeEntryScreen(): React.JSX.Element {
       }
     } catch {
       setDeleteError('Could not delete entry.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -356,8 +361,8 @@ export default function TimeEntryScreen(): React.JSX.Element {
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
-          <input type="text" placeholder="Search description, staff or project..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+          <input type="text" placeholder="Search description, staff or project..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
         </div>
         <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
         <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
@@ -394,7 +399,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
               <tr>
                 <th className="px-4 py-3 w-10"></th>
                 {['Date', 'Staff', 'Description', 'Hours', 'Rate/hr', 'Amount', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                  <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -443,9 +448,10 @@ export default function TimeEntryScreen(): React.JSX.Element {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => { if (!entry.isBilled) void handleDelete(entry) }}
+                        onClick={() => { if (!entry.isBilled && !deletingId) void handleDelete(entry) }}
+                        disabled={!!deletingId}
                         title={entry.isBilled ? 'Cannot delete billed entry' : 'Delete'}
-                        className={cn('p-1.5 rounded transition-colors', entry.isBilled ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50')}
+                        className={cn('p-1.5 rounded transition-colors', (entry.isBilled || deletingId) ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50')}
                         style={{ minHeight: 32, minWidth: 32 }}
                       >
                         <Trash2 className="w-4 h-4" />

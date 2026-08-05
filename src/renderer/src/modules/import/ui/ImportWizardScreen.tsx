@@ -4,6 +4,7 @@ import {
   Upload, ArrowRight, ArrowLeft, Download, CheckCircle2,
   XCircle, AlertTriangle, RefreshCw, FileSpreadsheet, Info
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AszurexMark } from '@shared/ui/atoms/Brand'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api, fileUtils, onPushEvent } from '@renderer/services/ipc-client'
@@ -22,23 +23,15 @@ interface ImportProgress { processed: number; total: number }
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MODULES: { key: ImportModule; label: string; desc: string; icon: React.ReactNode }[] = [
-  { key: 'products', label: 'Products', desc: 'Import product catalog with prices, categories, and units', icon: <Package size={22} /> },
-  { key: 'customers', label: 'Customers', desc: 'Import customer list with contact details and credit limits', icon: <Users size={22} /> },
-  { key: 'suppliers', label: 'Suppliers', desc: 'Import supplier list with contact and tax information', icon: <Truck size={22} /> },
-  { key: 'inventory', label: 'Inventory', desc: 'Add opening stock quantities by product SKU', icon: <BarChart3 size={22} /> },
-  { key: 'openingBalances', label: 'Opening Balances', desc: 'Set customer opening debit/credit balances', icon: <DollarSign size={22} /> },
-]
-
-const MODULE_LABELS: Record<ImportModule, string> = {
-  products: 'Products',
-  customers: 'Customers',
-  suppliers: 'Suppliers',
-  inventory: 'Inventory',
-  openingBalances: 'Opening Balances',
+const MODULE_ICONS: Record<ImportModule, React.ReactNode> = {
+  products: <Package size={22} />,
+  customers: <Users size={22} />,
+  suppliers: <Truck size={22} />,
+  inventory: <BarChart3 size={22} />,
+  openingBalances: <DollarSign size={22} />,
 }
 
-const STEPS = ['Choose Module', 'Upload File', 'Map Columns', 'Preview', 'Confirm', 'Results']
+const MODULE_KEYS: ImportModule[] = ['products', 'customers', 'suppliers', 'inventory', 'openingBalances']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -66,6 +59,25 @@ interface PreviewData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ImportWizardScreen() {
+  const { t } = useTranslation()
+  const MODULE_LABELS: Record<ImportModule, string> = {
+    products: t('import.moduleProducts'),
+    customers: t('import.moduleCustomers'),
+    suppliers: t('import.moduleSuppliers'),
+    inventory: t('import.moduleInventory'),
+    openingBalances: t('import.moduleOpeningBalances'),
+  }
+  const MODULE_DESCS: Record<ImportModule, string> = {
+    products: t('import.moduleProductsDesc'),
+    customers: t('import.moduleCustomersDesc'),
+    suppliers: t('import.moduleSuppliersDesc'),
+    inventory: t('import.moduleInventoryDesc'),
+    openingBalances: t('import.moduleOpeningBalancesDesc'),
+  }
+  const MODULES: { key: ImportModule; label: string; desc: string; icon: React.ReactNode }[] =
+    MODULE_KEYS.map((key) => ({ key, label: MODULE_LABELS[key], desc: MODULE_DESCS[key], icon: MODULE_ICONS[key] }))
+  const STEPS = [t('import.stepChooseModule'), t('import.stepUploadFile'), t('import.stepMapColumns'), t('import.stepPreview'), t('import.stepConfirm'), t('import.stepResults')]
+
   const [step, setStep] = useState(0)
   const [selectedModule, setSelectedModule] = useState<ImportModule | null>(null)
   const [moduleFields, setModuleFields] = useState<ImportField[] | null>(null)
@@ -102,10 +114,10 @@ export function ImportWizardScreen() {
       if (res.success && res.data) {
         setModuleFields(res.data)
       } else {
-        setError((res.error as { message?: string })?.message ?? 'Could not load the field list for this module.')
+        setError((res.error as { message?: string })?.message ?? t('import.couldNotLoadFields'))
       }
     }).catch(() => {
-      if (!cancelled) setError('Could not load the field list for this module.')
+      if (!cancelled) setError(t('import.couldNotLoadFields'))
     })
     return () => { cancelled = true }
   }, [selectedModule])
@@ -124,10 +136,10 @@ export function ImportWizardScreen() {
         setMapping(d.suggestedMapping)
         setStep(2)
       } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
-        setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+        setError((res.error as { message?: string })?.message ?? t('import.couldNotReadFile'))
       }
     } catch {
-      setError('Could not read file.')
+      setError(t('import.couldNotReadFile'))
     } finally {
       setLoading(false)
     }
@@ -140,7 +152,7 @@ export function ImportWizardScreen() {
     const file = e.dataTransfer.files?.[0]
     if (!file) return
     const filePath = fileUtils.getPathForFile(file)
-    if (!filePath) { setError('Could not read the dropped file. Try using Browse File instead.'); return }
+    if (!filePath) { setError(t('import.couldNotReadDroppedFile')); return }
     setLoading(true)
     setError(null)
     try {
@@ -151,10 +163,10 @@ export function ImportWizardScreen() {
         setMapping(d.suggestedMapping)
         setStep(2)
       } else if ((res.error as { code?: string })?.code !== 'IMP-000') {
-        setError((res.error as { message?: string })?.message ?? 'Could not read file.')
+        setError((res.error as { message?: string })?.message ?? t('import.couldNotReadFile'))
       }
     } catch {
-      setError('Could not read file.')
+      setError(t('import.couldNotReadFile'))
     } finally {
       setLoading(false)
     }
@@ -167,10 +179,10 @@ export function ImportWizardScreen() {
     try {
       const res = await api.import.downloadTemplate({ module: selectedModule })
       if (!res.success && (res.error as { code?: string })?.code !== 'IMP-000') {
-        setError((res.error as { message?: string })?.message ?? 'Could not generate template.')
+        setError((res.error as { message?: string })?.message ?? t('import.couldNotGenerateTemplate'))
       }
     } catch {
-      setError('Could not generate template.')
+      setError(t('import.couldNotGenerateTemplate'))
     } finally {
       setLoading(false)
     }
@@ -188,10 +200,10 @@ export function ImportWizardScreen() {
         setPreviewData(res.data as PreviewData)
         setStep(3)
       } else {
-        setError((res.error as { message?: string })?.message ?? 'Preview failed.')
+        setError((res.error as { message?: string })?.message ?? t('import.previewFailed'))
       }
     } catch {
-      setError('Preview failed.')
+      setError(t('import.previewFailed'))
     } finally {
       setLoading(false)
     }
@@ -214,10 +226,10 @@ export function ImportWizardScreen() {
         setImportResult(res.data as ImportResult)
         setStep(5)
       } else {
-        setError((res.error as { message?: string })?.message ?? 'Import failed.')
+        setError((res.error as { message?: string })?.message ?? t('import.importFailed'))
       }
     } catch {
-      setError('Import failed.')
+      setError(t('import.importFailed'))
     } finally {
       unsubscribe()
       setLoading(false)
@@ -230,12 +242,12 @@ export function ImportWizardScreen() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark dark:text-slate-100">Data Import Wizard</h2>
-          <p className="text-sm text-slate-400">Import products, customers, suppliers, inventory, and opening balances</p>
+          <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('import.title')}</h2>
+          <p className="text-sm text-slate-400">{t('import.subtitle')}</p>
         </div>
         {step > 0 && step < 5 && (
           <button onClick={reset} className="text-xs text-slate-400 hover:text-brand transition-colors">
-            Start Over
+            {t('import.startOver')}
           </button>
         )}
       </div>
@@ -274,7 +286,7 @@ export function ImportWizardScreen() {
                 <button key={m.key}
                   onClick={() => setSelectedModule(m.key)}
                   className={cn(
-                    'text-left rounded-xl border p-5 flex items-start gap-4 transition-all hover:shadow-sm',
+                    'text-start rounded-xl border p-5 flex items-start gap-4 transition-all hover:shadow-sm',
                     selectedModule === m.key ? 'border-brand bg-brand/5 shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-brand/40'
                   )}
                 >
@@ -293,7 +305,7 @@ export function ImportWizardScreen() {
             <div className="flex justify-end mt-4">
               <button onClick={() => setStep(1)} disabled={!selectedModule}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                Next: Upload File <ArrowRight size={14} />
+                {t('import.nextUploadFile')} <ArrowRight size={14} />
               </button>
             </div>
           </motion.div>
@@ -314,19 +326,19 @@ export function ImportWizardScreen() {
               <div className="w-16 h-16 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-4">
                 <FileSpreadsheet size={28} className="text-brand" />
               </div>
-              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">Upload {MODULE_LABELS[selectedModule]} File</h3>
-              <p className="text-xs text-slate-400 mb-6">Drag & drop a CSV or Excel (.xlsx) file here, or</p>
+              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('import.uploadTitle', { module: MODULE_LABELS[selectedModule] })}</h3>
+              <p className="text-xs text-slate-400 mb-6">{t('import.uploadHint')}</p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button onClick={handleUpload} disabled={loading}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
                   {loading ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
-                  {loading ? 'Reading file…' : 'Browse File'}
+                  {loading ? t('import.readingFile') : t('import.browseFile')}
                 </button>
                 <button onClick={handleDownloadTemplate} disabled={loading}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
                   <Download size={14} />
-                  Download Template
+                  {t('import.downloadTemplate')}
                 </button>
               </div>
             </div>
@@ -334,10 +346,10 @@ export function ImportWizardScreen() {
             {/* Field guide — fetched live from the backend so this can never
                 drift out of sync with what the import engine actually accepts */}
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 p-4">
-              <p className="text-xs font-semibold text-dark dark:text-slate-100 mb-3">Expected columns for {MODULE_LABELS[selectedModule]}</p>
+              <p className="text-xs font-semibold text-dark dark:text-slate-100 mb-3">{t('import.expectedColumnsFor', { module: MODULE_LABELS[selectedModule] })}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {moduleFields === null
-                  ? <p className="text-xs text-slate-400 col-span-full">Loading…</p>
+                  ? <p className="text-xs text-slate-400 col-span-full">{t('import.loadingFields')}</p>
                   : moduleFields.map(f => (
                     <div key={f.key} className="flex items-center gap-1.5">
                       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', f.required ? 'bg-danger' : 'bg-slate-300')} />
@@ -355,12 +367,12 @@ export function ImportWizardScreen() {
                 recovered by any importer. */}
             <div className="bg-warning/5 border border-warning/20 rounded-xl p-3 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
               <Info size={14} className="text-warning shrink-0 mt-0.5" />
-              <p>If your SKU, Barcode, or Phone codes have leading zeros (e.g. "0012"), format that column as <strong>Text</strong> in Excel before saving — otherwise Excel strips the leading zeros before this file ever reaches Sarang.</p>
+              <p>{t('import.leadingZeroWarning')}</p>
             </div>
 
             <div className="flex justify-between">
               <button onClick={() => setStep(0)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                <ArrowLeft size={14} /> Back
+                <ArrowLeft size={14} /> {t('common.back')}
               </button>
             </div>
           </motion.div>
@@ -372,11 +384,11 @@ export function ImportWizardScreen() {
             <Card padding="none">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-dark dark:text-slate-100">Map Columns</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{parsed.totalRows} rows detected · {parsed.headers.length} columns</p>
+                  <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{t('import.mapColumnsTitle')}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{t('import.rowsAndColumnsDetected', { rows: parsed.totalRows, columns: parsed.headers.length })}</p>
                 </div>
                 <span className="text-xs text-brand font-medium bg-brand/5 px-2.5 py-1 rounded-full">
-                  {Object.keys(mapping).length} of {parsed.headers.length} mapped
+                  {t('import.fieldsMapped', { mapped: Object.keys(mapping).length, total: parsed.headers.length })}
                 </span>
               </div>
 
@@ -387,7 +399,7 @@ export function ImportWizardScreen() {
                     <div key={field.key} className="flex items-center gap-3">
                       <div className="w-48 shrink-0">
                         <p className="text-xs font-medium text-dark dark:text-slate-100">{field.label}</p>
-                        {field.required && <span className="text-xs text-danger">Required</span>}
+                        {field.required && <span className="text-xs text-danger">{t('import.required')}</span>}
                         {field.description && <p className="text-xs text-slate-400">{field.description}</p>}
                       </div>
                       <div className="flex-1">
@@ -407,7 +419,7 @@ export function ImportWizardScreen() {
                             setMapping(newMapping)
                           }}
                         >
-                          <option value="">— Not mapped —</option>
+                          <option value="">{t('import.notMapped')}</option>
                           {parsed.headers.map(h => (
                             <option key={h} value={h}>{h}</option>
                           ))}
@@ -421,12 +433,12 @@ export function ImportWizardScreen() {
 
             <div className="flex justify-between">
               <button onClick={() => setStep(1)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                <ArrowLeft size={14} /> Back
+                <ArrowLeft size={14} /> {t('common.back')}
               </button>
               <button onClick={handlePreview} disabled={loading}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
                 {loading ? <RefreshCw size={14} className="animate-spin" /> : null}
-                {loading ? 'Validating…' : 'Preview Data'} {!loading && <ArrowRight size={14} />}
+                {loading ? t('import.validating') : t('import.previewData')} {!loading && <ArrowRight size={14} />}
               </button>
             </div>
           </motion.div>
@@ -438,22 +450,22 @@ export function ImportWizardScreen() {
             {/* Summary chips */}
             <div className="flex gap-3 flex-wrap">
               <Badge variant="success" icon={<CheckCircle2 size={13} />}>
-                {previewData.validCount} Valid (sample)
+                {t('import.validInSample', { count: previewData.validCount })}
               </Badge>
               {previewData.warningCount > 0 && (
                 <Badge variant="warning" icon={<AlertTriangle size={13} />}>
-                  {previewData.warningCount} Duplicates in sample (will be skipped)
+                  {t('import.duplicatesInSample', { count: previewData.warningCount })}
                 </Badge>
               )}
               {previewData.invalidCount > 0 && (
                 <Badge variant="danger" icon={<XCircle size={13} />}>
-                  {previewData.invalidCount} Invalid in sample (will be skipped)
+                  {t('import.invalidInSample', { count: previewData.invalidCount })}
                 </Badge>
               )}
-              <Badge variant="neutral">{previewData.totalCount} Total rows</Badge>
+              <Badge variant="neutral">{t('import.totalRows', { count: previewData.totalCount })}</Badge>
             </div>
 
-            <p className="text-xs text-slate-400">Showing first 20 rows. All {previewData.totalCount} rows will be processed on import.</p>
+            <p className="text-xs text-slate-400">{t('import.previewSampleHint', { count: previewData.totalCount })}</p>
 
             <Card padding="none" className="overflow-hidden">
               <div className="divide-y divide-slate-50">
@@ -489,7 +501,7 @@ export function ImportWizardScreen() {
                       size="sm"
                       className="shrink-0"
                     >
-                      {row.status === 'valid' ? 'Valid' : row.status === 'warning' ? 'Duplicate' : 'Error'}
+                      {row.status === 'valid' ? t('import.rowValid') : row.status === 'warning' ? t('import.rowDuplicate') : t('import.rowError')}
                     </Badge>
                   </div>
                 ))}
@@ -498,11 +510,11 @@ export function ImportWizardScreen() {
 
             <div className="flex justify-between">
               <button onClick={() => setStep(2)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                <ArrowLeft size={14} /> Back
+                <ArrowLeft size={14} /> {t('common.back')}
               </button>
               <button onClick={() => setStep(4)}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-                Confirm Import <ArrowRight size={14} />
+                {t('import.confirmImport')} <ArrowRight size={14} />
               </button>
             </div>
           </motion.div>
@@ -512,53 +524,53 @@ export function ImportWizardScreen() {
         {step === 4 && previewData && selectedModule && parsed && (
           <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <Card padding="lg">
-              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Import Summary</h3>
+              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('import.importSummary')}</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between py-2 border-b border-slate-50">
-                  <span className="text-slate-500 dark:text-slate-400">Module</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('import.module')}</span>
                   <span className="font-semibold text-dark dark:text-slate-100">{MODULE_LABELS[selectedModule]}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-slate-50">
-                  <span className="text-slate-500 dark:text-slate-400">Total rows in file</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('import.totalRowsInFile')}</span>
                   <span className="font-semibold text-dark dark:text-slate-100">{previewData.totalCount}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-slate-50">
-                  <span className="text-slate-500 dark:text-slate-400">Valid rows in first 20 sampled</span>
-                  <span className="font-semibold text-success">{previewData.validCount} of {Math.min(20, previewData.totalCount)}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('import.validRowsSampled')}</span>
+                  <span className="font-semibold text-success">{t('import.ofSampled', { valid: previewData.validCount, sampled: Math.min(20, previewData.totalCount) })}</span>
                 </div>
                 {previewData.warningCount > 0 && (
                   <div className="flex justify-between py-2 border-b border-slate-50">
-                    <span className="text-slate-500 dark:text-slate-400">Duplicate rows in sample (will be skipped)</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t('import.duplicateRowsInSample')}</span>
                     <span className="font-semibold text-warning">{previewData.warningCount}</span>
                   </div>
                 )}
                 {previewData.invalidCount > 0 && (
                   <div className="flex justify-between py-2 border-b border-slate-50">
-                    <span className="text-slate-500 dark:text-slate-400">Invalid rows in sample (will be skipped)</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t('import.invalidRowsInSample')}</span>
                     <span className="font-semibold text-danger">{previewData.invalidCount}</span>
                   </div>
                 )}
               </div>
               {previewData.totalCount > 20 && (
-                <p className="text-xs text-slate-400 mt-3">Only the first 20 rows were validated for this preview. The remaining {previewData.totalCount - 20} rows will be validated as they're processed during the actual import — final counts may differ from the sample above.</p>
+                <p className="text-xs text-slate-400 mt-3">{t('import.remainingRowsHint', { count: previewData.totalCount - 20 })}</p>
               )}
             </Card>
 
             <div className="bg-brand/5 border border-brand/15 rounded-xl p-4 flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300">
               <CheckCircle2 size={14} className="text-brand shrink-0 mt-0.5" />
-              <p>A <strong className="text-brand">safety backup</strong> from the last 15 minutes will be reused, or a fresh one created if none exists — no import proceeds without one.</p>
+              <p>{t('import.safetyBackupNotice')}</p>
             </div>
 
             <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 flex items-start gap-3 text-xs text-warning">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-              <p>Import mode is <strong>Create Only</strong>. Existing records with duplicate keys will be skipped. This action cannot be undone (unless you restore from backup).</p>
+              <p>{t('import.createOnlyWarning')}</p>
             </div>
 
             {loading && progress && (
               <Card padding="md">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-dark dark:text-slate-100">
-                    {progress.processed === 0 ? 'Checking safety backup…' : `Importing… ${progress.processed.toLocaleString()} of ${progress.total.toLocaleString()} rows`}
+                    {progress.processed === 0 ? t('import.checkingBackup') : t('import.importingProgress', { processed: progress.processed.toLocaleString(), total: progress.total.toLocaleString() })}
                   </span>
                   <span className="text-xs text-slate-400">{progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0}%</span>
                 </div>
@@ -573,12 +585,12 @@ export function ImportWizardScreen() {
 
             <div className="flex justify-between">
               <button onClick={() => setStep(3)} disabled={loading} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors disabled:opacity-40">
-                <ArrowLeft size={14} /> Back
+                <ArrowLeft size={14} /> {t('common.back')}
               </button>
               <button onClick={handleExecute} disabled={loading}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
                 {loading ? <RefreshCw size={14} className="animate-spin" /> : null}
-                {loading ? 'Importing…' : 'Run Import'}
+                {loading ? t('import.importing') : t('import.runImport')}
               </button>
             </div>
           </motion.div>
@@ -594,23 +606,23 @@ export function ImportWizardScreen() {
                   ? <CheckCircle2 size={36} className="text-success mx-auto mb-2" />
                   : <XCircle size={36} className="text-danger mx-auto mb-2" />}
                 <h3 className="text-base font-bold text-dark dark:text-slate-100">
-                  {importResult.imported > 0 ? 'Import Complete' : 'Import Finished with Issues'}
+                  {importResult.imported > 0 ? t('import.importComplete') : t('import.importFinishedWithIssues')}
                 </h3>
               </div>
 
               {/* Result cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                <KpiCard label="Imported" value={importResult.imported} color="success" />
-                <KpiCard label="Skipped" value={importResult.skipped} color="warning" />
-                <KpiCard label="Failed" value={importResult.failed} color="danger" />
-                <KpiCard label="Warnings" value={importResult.warnings} color="neutral" />
+                <KpiCard label={t('import.imported')} value={importResult.imported} color="success" />
+                <KpiCard label={t('import.skipped')} value={importResult.skipped} color="warning" />
+                <KpiCard label={t('import.failed')} value={importResult.failed} color="danger" />
+                <KpiCard label={t('import.warnings')} value={importResult.warnings} color="neutral" />
               </div>
 
               {/* Backup notice */}
               {importResult.backupCreated && (
                 <div className="bg-brand/5 border border-brand/15 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
                   <CheckCircle2 size={13} className="text-brand shrink-0" />
-                  A safety backup covers this import (ID: <span className="font-mono">{importResult.backupId?.slice(-8)}</span>)
+                  {t('import.backupCoversImport', { id: importResult.backupId?.slice(-8) ?? '' })}
                 </div>
               )}
 
@@ -618,12 +630,12 @@ export function ImportWizardScreen() {
               {importResult.errors.length > 0 && (
                 <div className="border border-danger/20 rounded-xl overflow-hidden">
                   <div className="bg-danger/5 px-4 py-2.5 border-b border-danger/10">
-                    <p className="text-xs font-semibold text-danger">Row Errors ({importResult.errors.length})</p>
+                    <p className="text-xs font-semibold text-danger">{t('import.rowErrors', { count: importResult.errors.length })}</p>
                   </div>
                   <div className="max-h-40 overflow-y-auto divide-y divide-slate-50">
                     {importResult.errors.map((e, i) => (
                       <div key={i} className="px-4 py-2 flex items-start gap-2 text-xs">
-                        <span className="text-slate-400 shrink-0 w-10">Row {e.row}</span>
+                        <span className="text-slate-400 shrink-0 w-10">{t('import.rowN', { row: e.row })}</span>
                         <span className="text-danger">{e.message}</span>
                       </div>
                     ))}
@@ -635,11 +647,11 @@ export function ImportWizardScreen() {
             <div className="flex gap-3 justify-end">
               <button onClick={reset}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                Import Another File
+                {t('import.importAnotherFile')}
               </button>
               <button onClick={reset}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-                Done
+                {t('import.done')}
               </button>
             </div>
           </motion.div>
@@ -649,9 +661,9 @@ export function ImportWizardScreen() {
       {/* Aszurex footer */}
       <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <p className="text-xs font-medium text-brand inline-flex items-center gap-1.5">
-          Sarang Business OS Lite · Powered by Aszurex <AszurexMark width={12} />
+          {t('common.offlineFooterBrand')} <AszurexMark width={12} />
         </p>
-        <p className="text-xs text-slate-400">No cloud. No tracking. 100% offline.</p>
+        <p className="text-xs text-slate-400">{t('common.offlineFooterTagline')}</p>
       </div>
     </div>
   )

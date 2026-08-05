@@ -68,19 +68,19 @@ function ProductPicker({ value, onChange }: { value: string; onChange: (id: stri
   return (
     <div className="relative">
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           value={value ? name : query}
           onChange={e => { onChange('', ''); setQuery(e.target.value) }}
           placeholder="Search product by name or SKU…"
-          className="w-full h-11 pl-10 pr-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+          className="w-full h-11 ps-10 pe-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
       </div>
       {results.length > 0 && !value && (
         <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
           {results.map(p => (
             <button key={p.id} type="button"
               onClick={() => { onChange(p.id, p.productName); setName(p.productName); setQuery(''); setResults([]) }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-dark dark:text-slate-100">
+              className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-dark dark:text-slate-100">
               {p.productName}
             </button>
           ))}
@@ -349,10 +349,10 @@ export function SerialTrackingScreen() {
         </div>
         <div className="flex gap-2">
           <Button size="md" variant="outline" onClick={() => setShowBulk(true)}>
-            <Upload size={16} className="mr-1.5" /> {t('inventory.bulkImport')}
+            <Upload size={16} className="me-1.5" /> {t('inventory.bulkImport')}
           </Button>
           <Button size="md" onClick={() => setShowForm(true)}>
-            <Plus size={16} className="mr-1.5" /> {t('inventory.addDevice')}
+            <Plus size={16} className="me-1.5" /> {t('inventory.addDevice')}
           </Button>
         </div>
       </div>
@@ -367,7 +367,7 @@ export function SerialTrackingScreen() {
               placeholder={t('inventory.imeiPlaceholder')}
               className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
             <Button size="md" variant="outline" onClick={handleImeiSearch}>
-              <Search size={16} className="mr-1.5" /> {t('common.search')}
+              <Search size={16} className="me-1.5" /> {t('common.search')}
             </Button>
           </div>
           {imeiResult && (

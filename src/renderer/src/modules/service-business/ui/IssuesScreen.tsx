@@ -91,9 +91,9 @@ const STATUS_HEADER_COLORS: Record<string, string> = {
 }
 
 const PRIORITY_CARD_BORDER: Record<string, string> = {
-  HIGH: 'border-l-4 border-l-red-500',
-  MED:  'border-l-4 border-l-amber-500',
-  LOW:  'border-l-4 border-l-blue-400',
+  HIGH: 'border-s-4 border-s-red-500',
+  MED:  'border-s-4 border-s-amber-500',
+  LOW:  'border-s-4 border-s-blue-400',
 }
 
 const PRIORITIES  = ['HIGH', 'MED', 'LOW']
@@ -415,10 +415,10 @@ export default function IssuesScreen(): React.ReactElement {
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search issues..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+            className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
         </div>
         <select value={filterProjectId} onChange={(e) => setFilterProjectId(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
@@ -454,14 +454,14 @@ export default function IssuesScreen(): React.ReactElement {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Title</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Project</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Priority</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Sprint</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Pts</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Assigned To</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Reported</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Title</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Project</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Priority</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Status</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Sprint</th>
+                    <th className="text-end px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Pts</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Assigned To</th>
+                    <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Reported</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -469,7 +469,7 @@ export default function IssuesScreen(): React.ReactElement {
                   {displayed.map((i) => (
                     <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
                       <td className="px-4 py-3">
-                        <button onClick={() => void openDetail(i)} className="font-medium text-gray-900 dark:text-slate-100 hover:text-indigo-600 text-left">{i.title}</button>
+                        <button onClick={() => void openDetail(i)} className="font-medium text-gray-900 dark:text-slate-100 hover:text-indigo-600 text-start">{i.title}</button>
                         {i.description && <div className="text-xs text-gray-400 truncate max-w-xs dark:text-slate-500">{i.description}</div>}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap dark:text-slate-400">{i.project?.projectName ?? '—'}</td>
@@ -482,7 +482,7 @@ export default function IssuesScreen(): React.ReactElement {
                       <td className="px-4 py-3 text-gray-600 text-xs dark:text-slate-400">
                         {i.sprint ? `Sprint ${i.sprint.sprintNumber}${i.sprint.name ? ` — ${i.sprint.name}` : ''}` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600 text-xs dark:text-slate-400">{i.storyPoints ?? '—'}</td>
+                      <td className="px-4 py-3 text-end text-gray-600 text-xs dark:text-slate-400">{i.storyPoints ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{i.assignedTo?.fullName ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs dark:text-slate-400">{fmtDate(i.reportedDate)}</td>
                       <td className="px-4 py-3">

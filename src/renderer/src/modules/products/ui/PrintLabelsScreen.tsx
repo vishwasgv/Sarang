@@ -242,16 +242,16 @@ export function PrintLabelsScreen() {
       {/* Batch label printing */}
       <div className="space-y-4">
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Search or scan a product to add…"
-            className="w-full h-11 pl-10 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
+            className="w-full h-11 ps-10 pe-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
           />
           {results.length > 0 && (
             <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
               {results.map(p => (
-                <button key={p.id} onClick={() => addLine(p)} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm flex items-center justify-between">
+                <button key={p.id} onClick={() => addLine(p)} className="w-full text-start px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm flex items-center justify-between">
                   <span>{p.productName}</span>
                   <span className="text-xs text-slate-400">{p.barcode ? p.barcode : 'No barcode yet'}</span>
                 </button>
@@ -325,7 +325,7 @@ export function PrintLabelsScreen() {
           </div>
           <Button variant="secondary" onClick={handlePreview} disabled={lines.length === 0} loading={busy}>Preview</Button>
           <Button onClick={handlePrint} disabled={lines.length === 0} loading={busy}>
-            <Printer size={14} className="mr-1" /> Print {lines.reduce((s, l) => s + l.copies, 0) || ''} Label{lines.reduce((s, l) => s + l.copies, 0) === 1 ? '' : 's'}
+            <Printer size={14} className="me-1" /> Print {lines.reduce((s, l) => s + l.copies, 0) || ''} Label{lines.reduce((s, l) => s + l.copies, 0) === 1 ? '' : 's'}
           </Button>
         </div>
       </div>
@@ -346,7 +346,7 @@ export function PrintLabelsScreen() {
             {looseResults.length > 0 && !looseProduct && (
               <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-56 overflow-y-auto">
                 {looseResults.map(p => (
-                  <button key={p.id} onClick={() => { setLooseProduct(p); setLooseResults([]) }} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm">
+                  <button key={p.id} onClick={() => { setLooseProduct(p); setLooseResults([]) }} className="w-full text-start px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm">
                     {p.productName} <span className="text-xs text-slate-400">({formatCurrency(p.pricePerWeightUnit ?? 0)}/{p.weightUnit})</span>
                   </button>
                 ))}
@@ -355,7 +355,7 @@ export function PrintLabelsScreen() {
           </div>
           <Input label="Weight (grams)" type="number" min="1" max="99999" value={weightGrams} onChange={e => setWeightGrams(e.target.value)} className="w-40" />
           <Button onClick={handleWeighAndPrint} disabled={!looseProduct || !weightGrams} loading={weighPrinting}>
-            <Printer size={14} className="mr-1" /> Print Label
+            <Printer size={14} className="me-1" /> Print Label
           </Button>
         </div>
       </div>
@@ -376,7 +376,7 @@ export function PrintLabelsScreen() {
             <div className="flex justify-end gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
               <Button variant="outline" onClick={() => setPreviewHtml(null)}>Cancel</Button>
               <Button onClick={handlePrint} loading={busy}>
-                <Printer size={14} className="mr-1" /> Print
+                <Printer size={14} className="me-1" /> Print
               </Button>
             </div>
           </div>

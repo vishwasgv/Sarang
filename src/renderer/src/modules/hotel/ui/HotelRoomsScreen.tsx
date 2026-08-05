@@ -184,10 +184,10 @@ export function HotelRoomsScreen() {
         {canManage && (
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setShowRateCalendar(true)}>
-              <CalendarRange size={16} className="mr-1.5" /> Manage Seasonal Rates
+              <CalendarRange size={16} className="me-1.5" /> Manage Seasonal Rates
             </Button>
             <Button onClick={openCreate}>
-              <Plus size={16} className="mr-1.5" /> Add Room
+              <Plus size={16} className="me-1.5" /> Add Room
             </Button>
           </div>
         )}
@@ -214,13 +214,13 @@ export function HotelRoomsScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Room</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Floor</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Max Occupancy</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Rate / Night</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Room</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Type</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Floor</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Max Occupancy</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Rate / Night</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Status</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -245,7 +245,7 @@ export function HotelRoomsScreen() {
                       <Badge variant={r.status === 'OCCUPIED' ? 'brand' : r.status === 'AVAILABLE' ? 'success' : 'neutral'}>{r.status.replace(/_/g, ' ')}</Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-end">
                     {canManage && r.status !== 'OCCUPIED' && (
                       <button onClick={() => setDeleteTarget(r)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
                     )}

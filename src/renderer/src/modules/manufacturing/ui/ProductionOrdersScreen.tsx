@@ -385,7 +385,7 @@ export function ProductionOrdersScreen() {
               {t('manufacturing.productionOrders')}
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              {draftCount > 0 && <span className="mr-3">{t('manufacturing.draftsCount', { count: draftCount })}</span>}
+              {draftCount > 0 && <span className="me-3">{t('manufacturing.draftsCount', { count: draftCount })}</span>}
               {inProgressCount > 0 && <span className="text-blue-600 font-medium">{t('manufacturing.inProgressCount', { count: inProgressCount })}</span>}
             </p>
           </div>
@@ -477,18 +477,18 @@ export function ProductionOrdersScreen() {
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">{t('manufacturing.productToManufacture')} *</label>
                 <div className="relative">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <Search size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                   <input
                     value={newForm.productId ? selectedProductName : productQuery}
                     onChange={e => { setNewForm(p => ({ ...p, productId: '' })); setSelectedProductName(''); setProductQuery(e.target.value) }}
                     placeholder="Search product by name or SKU…"
-                    className="w-full h-12 pl-10 pr-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand" />
+                    className="w-full h-12 ps-10 pe-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand" />
                   {productResults.length > 0 && !newForm.productId && (
                     <div className="absolute z-10 mt-1 w-full border border-border rounded-xl overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                       {productResults.map(p => (
                         <button key={p.id} type="button"
                           onClick={() => { setNewForm(f => ({ ...f, productId: p.id })); setSelectedProductName(p.productName); setProductQuery(''); setProductResults([]) }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                          className="w-full px-4 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                           {p.productName}
                         </button>
                       ))}
@@ -599,9 +599,9 @@ export function ProductionOrdersScreen() {
                     <table className="w-full text-sm">
                       <thead className="bg-surface-alt">
                         <tr>
-                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.material')}</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.planned')}</th>
-                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.producedStat')}</th>
+                          <th className="text-start px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.material')}</th>
+                          <th className="text-end px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.planned')}</th>
+                          <th className="text-end px-4 py-2.5 text-xs font-semibold text-text-secondary">{t('manufacturing.producedStat')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -609,7 +609,7 @@ export function ProductionOrdersScreen() {
                           <tr key={u.id}>
                             <td className="px-4 py-2.5 text-text-primary">
                               {u.materialName ?? u.componentProductName}
-                              {u.componentProductId && <span className="ml-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
+                              {u.componentProductId && <span className="ms-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
                               {/* Phase 58 §2 — raw-material lot/batch traceability */}
                               {u.batchConsumption.length > 0 && (
                                 <p className="text-xs text-text-secondary mt-0.5">
@@ -617,8 +617,8 @@ export function ProductionOrdersScreen() {
                                 </p>
                               )}
                             </td>
-                            <td className="px-4 py-2.5 text-right text-text-secondary">{formatNumber(u.quantityPlanned, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
-                            <td className="px-4 py-2.5 text-right text-text-primary font-medium">{formatNumber(u.quantityActual, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
+                            <td className="px-4 py-2.5 text-end text-text-secondary">{formatNumber(u.quantityPlanned, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
+                            <td className="px-4 py-2.5 text-end text-text-primary font-medium">{formatNumber(u.quantityActual, { maximumFractionDigits: 3 })} {u.materialUnit ?? ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -658,7 +658,7 @@ export function ProductionOrdersScreen() {
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${wo.status === 'DONE' ? 'line-through text-text-secondary' : 'text-text-primary'}`}>
                               {wo.stepNumber}. {wo.taskName}
-                              {wo.isQcStep && <span className="ml-1.5 text-xs font-normal text-brand/70">{t('manufacturing.qcCheckpointTag')}</span>}
+                              {wo.isQcStep && <span className="ms-1.5 text-xs font-normal text-brand/70">{t('manufacturing.qcCheckpointTag')}</span>}
                             </p>
                             {wo.notes && <p className="text-xs text-text-secondary mt-0.5">{wo.notes}</p>}
                             {wo.qcNotes && <p className="text-xs text-text-secondary mt-0.5">{t('manufacturing.qcNotesLabel')}: {wo.qcNotes}</p>}

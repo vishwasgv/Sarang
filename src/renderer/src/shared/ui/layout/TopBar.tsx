@@ -163,7 +163,7 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
           >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center leading-none">
+              <span className="absolute top-1 end-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center leading-none">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -176,7 +176,7 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute right-0 top-full mt-1 w-80 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-modal z-50 overflow-hidden"
+                className="absolute end-0 top-full mt-1 w-80 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-modal z-50 overflow-hidden"
               >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notifications</p>
@@ -243,7 +243,7 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-modal py-1 z-50"
+                className="absolute end-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-modal py-1 z-50"
               >
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.fullName}</p>

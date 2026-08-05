@@ -661,7 +661,22 @@ export const billingService = {
       // transaction back cleanly — so surfacing a specific, honest,
       // retry-suggesting message here is a pure improvement with no
       // correctness downside.
-      if (err instanceof Error && /transaction already closed|expired transaction/i.test(err.message)) {
+      // REAL BUG found in this session's pre-release stress-testing audit:
+      // under genuine 20-way concurrent write contention, Prisma's SQLite
+      // connector frequently threw a *different* timeout error shape —
+      // "Socket timeout" (Prisma error code P1008) — than the
+      // "transaction already closed"/"expired transaction" text this check
+      // was originally written for (Phase 55 stress work). That shape
+      // didn't match the regex below and fell through to the same
+      // unhelpful, misleading generic SYS-001 this whole check exists to
+      // avoid — even though it's the identical "ordinary busy-system
+      // contention, no data corruption" situation. Widened to also catch
+      // P1008 by its error code, not just by message text.
+      const isBusyContention = err instanceof Error && (
+        /transaction already closed|expired transaction/i.test(err.message) ||
+        (err as { code?: string }).code === 'P1008'
+      )
+      if (isBusyContention) {
         return { success: false, error: { code: 'INVOC-012', message: 'The system is busy processing another sale right now. Please try again in a moment.' } }
       }
       // A concurrent createInvoice call claimed the invoice-number sequence
@@ -778,6 +793,18 @@ export const billingService = {
         // — so the return's credit would never be clawed back either.
         if (invoice.invoiceType === 'RETURN') {
           throw new ServiceError('INVOC-016', 'Cannot cancel a return invoice.')
+        }
+        // Same bug class as INVOC-016 above, just never extended to SPLIT:
+        // splitInvoice() zeroes the original's totals and sets status:'SPLIT'
+        // but leaves invoice.items (the original quantities) attached and
+        // touches no inventory/ledger for the original row itself — the sold
+        // goods now live on the two+ child invoices instead. Cancelling the
+        // SPLIT parent here would restore the full original quantities into
+        // stock (already legitimately sold via the children) and reverse the
+        // original CREDIT-sale ledger entry a second time on top of whatever
+        // the child invoices' own payments/reversals post.
+        if (invoice.status === 'SPLIT') {
+          throw new ServiceError('INVOC-018', 'Cannot cancel an invoice that has been split — cancel or manage the individual split invoices instead.')
         }
 
         // Serials aren't stored on InvoiceItem (linked the other way, via

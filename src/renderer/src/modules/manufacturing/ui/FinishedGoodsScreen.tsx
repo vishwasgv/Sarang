@@ -136,9 +136,9 @@ export function FinishedGoodsScreen() {
             <table className="w-full text-sm">
               <thead className="bg-surface-alt border-b border-border">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('billing.product')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.inStock')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.sellingPrice')}</th>
+                  <th className="text-start px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('billing.product')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.inStock')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.sellingPrice')}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -149,15 +149,15 @@ export function FinishedGoodsScreen() {
                       <p className="font-medium text-text-primary">{g.productName}</p>
                       {g.sku && <p className="text-xs text-text-secondary mt-0.5">SKU: {g.sku}</p>}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       <span className={`font-semibold ${g.currentStock > 0 ? 'text-success' : 'text-text-secondary'}`}>
                         {formatNumber(g.currentStock, { maximumFractionDigits: 2 })} {g.unit}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-text-secondary">
+                    <td className="px-4 py-3 text-end text-text-secondary">
                       {formatCurrency(g.sellingPrice)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       <button onClick={() => openHistory(g)} className="px-3 py-1.5 rounded-lg text-xs text-brand hover:bg-brand/5 border border-brand/30 transition-colors">
                         {t('manufacturing.productionHistory')}
                       </button>
@@ -196,7 +196,7 @@ export function FinishedGoodsScreen() {
                         <p className="font-mono text-sm font-semibold text-brand">{h.orderNumber}</p>
                         <p className="text-xs text-text-secondary mt-0.5">{formatDate(h.createdAt)}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <Badge variant={STATUS_VARIANT[h.status] ?? 'neutral'} size="sm">{h.status}</Badge>
                         <p className="text-xs text-text-secondary mt-1">
                           {h.status === 'COMPLETED' ? `${t('manufacturing.producedStat')} ${h.producedQty}` : `${t('manufacturing.planned')} ${h.plannedQty}`}

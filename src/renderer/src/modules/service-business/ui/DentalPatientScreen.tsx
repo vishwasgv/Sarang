@@ -693,7 +693,7 @@ function ToothChartTab({
                           </span>
                           <div className="flex-1">
                             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cfg.bg, cfg.color)}>{cfg.label}</span>
-                            {surfaces.length > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{surfaces.join(', ')}</span>}
+                            {surfaces.length > 0 && <span className="ms-2 text-slate-500 dark:text-slate-400">{surfaces.join(', ')}</span>}
                             {h.notes && <p className="mt-1 text-slate-600 dark:text-slate-300">{h.notes}</p>}
                             {h.recordedBy && <p className="mt-0.5 text-slate-400">by {h.recordedBy.fullName}</p>}
                           </div>
@@ -755,7 +755,7 @@ function TreatmentPlansTab({ plans, currSym, canWrite, onNew, onEdit }: {
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Created {fmt(plan.createdAt)}{plan.createdBy ? ` by ${plan.createdBy.fullName}` : ''}</p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="text-sm font-bold text-dark dark:text-slate-100">{currSym}{Number(plan.totalEstimatedCost).toLocaleString('en-IN')}</p>
                     <p className="text-xs text-slate-400">estimated</p>
                   </div>
@@ -830,7 +830,7 @@ function RecallTab({ recall, form, saving, error, saved, canWrite, onChange, onS
             : daysUntilRecall !== null
             ? `Next recall in ${daysUntilRecall} days — ${fmt(recall.nextRecallDate)}`
             : ''}
-          {recall.reminderSent && <span className="ml-auto text-xs opacity-70">Reminder sent</span>}
+          {recall.reminderSent && <span className="ms-auto text-xs opacity-70">Reminder sent</span>}
         </div>
       )}
 
@@ -1059,7 +1059,7 @@ function TreatmentPlanModal({ patientId, plan, currSym, onClose, onSaved }: {
                     min={0}
                     value={item.estimatedCost}
                     onChange={(e) => updateItem(idx, 'estimatedCost', parseFloat(e.target.value) || 0)}
-                    className="w-20 h-9 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand/30 text-right"
+                    className="w-20 h-9 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand/30 text-end"
                   />
                   <select
                     value={item.itemStatus}

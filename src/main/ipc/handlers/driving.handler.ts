@@ -56,7 +56,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('learnerProfile:upsert', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = UpsertLearnerProfileSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return upsertLearnerProfile(parsed.data)
@@ -111,14 +111,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('drivingSession:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = CreateDrivingSessionSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createDrivingSession(parsed.data)
   })
 
   handle('drivingSession:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = UpdateDrivingSessionSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateDrivingSession(parsed.data)
@@ -139,14 +139,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('drivingSession:createTest', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = CreateDrivingTestSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createDrivingTest(parsed.data)
   })
 
   handle('drivingSession:updateTest', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = UpdateDrivingTestSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateDrivingTest(parsed.data)
@@ -207,14 +207,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('drivingPackageEnrollment:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = CreateDrivingPackageEnrollmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createDrivingPackageEnrollment(parsed.data)
   })
 
   handle('drivingPackageEnrollment:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = DeleteDrivingPackageEnrollmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteDrivingPackageEnrollment(parsed.data.id)

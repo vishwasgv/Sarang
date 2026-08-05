@@ -199,7 +199,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: sidebarCollapsed ? 72 : 280 }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
-      className="flex flex-col h-full bg-dark border-r border-slate-800 shrink-0 overflow-hidden"
+      className="flex flex-col h-full bg-dark border-e border-slate-800 shrink-0 overflow-hidden"
     >
       {/* Logo area */}
       <div className="flex items-center h-16 px-4 border-b border-slate-800 shrink-0">
@@ -211,7 +211,7 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.15 }}
-              className="ml-3 overflow-hidden"
+              className="ms-3 overflow-hidden"
             >
               <p className="text-base font-bold text-white leading-none truncate max-w-[160px]">
                 {profile?.businessName ?? 'Sarang'}
@@ -300,7 +300,7 @@ function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
 
       {/* Tooltip when collapsed */}
       {collapsed && (
-        <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-sm rounded whitespace-nowrap
+        <div className="absolute start-full ms-2 px-2.5 py-1.5 bg-slate-800 text-white text-sm rounded whitespace-nowrap
                         opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
           {displayLabel}
         </div>

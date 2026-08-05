@@ -18,21 +18,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('issue:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = CreateIssueSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createIssue(parsed.data)
   })
 
   handle('issue:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = UpdateIssueSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateIssue(parsed.data)
   })
 
   handle('issue:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = DeleteIssueSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteIssue(parsed.data.id)
@@ -48,14 +48,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('issueComment:add', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = AddIssueCommentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addIssueComment(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('issueComment:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteIssueComment(parsed.data.id)
@@ -71,21 +71,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('issueSubtask:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = CreateIssueSubtaskSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createIssueSubtask(parsed.data)
   })
 
   handle('issueSubtask:toggle', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = ToggleIssueSubtaskSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return toggleIssueSubtask(parsed.data)
   })
 
   handle('issueSubtask:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteIssueSubtask(parsed.data.id)

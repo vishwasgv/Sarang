@@ -330,12 +330,12 @@ export function RawMaterialsScreen() {
             <table className="w-full text-sm">
               <thead className="bg-surface-alt border-b border-border">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.material')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.stockCol')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.reorderAt')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.unitCost')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.stockValue')}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.supplierCol')}</th>
+                  <th className="text-start px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.material')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.stockCol')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.reorderAt')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.unitCost')}</th>
+                  <th className="text-end px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.stockValue')}</th>
+                  <th className="text-start px-4 py-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('manufacturing.supplierCol')}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -349,16 +349,16 @@ export function RawMaterialsScreen() {
                         <span className="text-xs text-text-secondary">({m.unit})</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       <span className={`font-semibold ${m.isLowStock ? 'text-danger' : 'text-text-primary'}`}>
                         {formatNumber(m.currentStock, { maximumFractionDigits: 2 })}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-text-secondary">{formatNumber(m.reorderLevel, { maximumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right text-text-secondary">
+                    <td className="px-4 py-3 text-end text-text-secondary">{formatNumber(m.reorderLevel, { maximumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end text-text-secondary">
                       {m.unitCost > 0 ? formatCurrency(m.unitCost) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       {m.unitCost > 0 && m.currentStock > 0
                         ? <span className="font-semibold text-text-primary">{formatCurrency(m.currentStock * m.unitCost)}</span>
                         : <span className="text-text-secondary">—</span>}
@@ -550,11 +550,11 @@ export function RawMaterialsScreen() {
                       <div key={mv.id} className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
                         <div>
                           <Badge variant={TYPE_VARIANT[mv.type] ?? 'neutral'} size="sm">{t(info.tKey)}</Badge>
-                          {mv.reference && <span className="text-xs text-text-secondary ml-2">{t('common.ref')}: {mv.reference}</span>}
+                          {mv.reference && <span className="text-xs text-text-secondary ms-2">{t('common.ref')}: {mv.reference}</span>}
                           {mv.notes && <p className="text-xs text-text-secondary mt-0.5">{mv.notes}</p>}
                           <p className="text-xs text-text-secondary mt-0.5">{formatDateTime(mv.createdAt)}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-end">
                           <p className="text-sm font-semibold text-text-primary">{formatNumber(mv.quantity, { maximumFractionDigits: 3 })} {movementTarget.unit}</p>
                           <p className="text-xs text-text-secondary">{t('manufacturing.balanceAfter')}: {formatNumber(mv.balanceAfter, { maximumFractionDigits: 3 })}</p>
                         </div>
@@ -630,7 +630,7 @@ export function RawMaterialsScreen() {
                         <p className="text-sm font-mono font-semibold text-text-primary">{b.batchNumber}</p>
                         <p className="text-xs text-text-secondary mt-0.5">{formatDateTime(b.receivedDate)}{b.supplierName ? ` · ${b.supplierName}` : ''}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <p className="text-sm font-semibold text-text-primary">{t('manufacturing.remainingQty')}: {formatNumber(b.quantityRemaining, { maximumFractionDigits: 3 })}</p>
                         <p className="text-xs text-text-secondary">{t('manufacturing.quantity')}: {formatNumber(b.quantityReceived, { maximumFractionDigits: 3 })}</p>
                       </div>

@@ -240,7 +240,16 @@ export const inventoryService = {
           }
         })
         return { updated: inv, previous: inventory }
-      })
+      // REAL BUG found in this session's pre-release stress-testing audit:
+      // this transaction had no extended timeout (Prisma's default 5s/2s),
+      // unlike billing.service.ts's createInvoice (15s/10s) — under genuine
+      // heavy concurrent write contention on the same product this timed
+      // out far more often than createInvoice did, on top of always falling
+      // through to a generic, unhelpful SYS-001 instead of the same honest
+      // "system is busy" message createInvoice gives for the identical
+      // no-data-corruption contention scenario. Matched to createInvoice's
+      // values below for consistency.
+      }, { timeout: 15000, maxWait: 10000 })
 
       await logAction({
         userId, action: 'INVENTORY_ADJUST_STOCK', entityType: 'Inventory', entityId: payload.productId,
@@ -250,6 +259,13 @@ export const inventoryService = {
       return { success: true, data: result.updated }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      const isBusyContention = err instanceof Error && (
+        /transaction already closed|expired transaction/i.test(err.message) ||
+        (err as { code?: string }).code === 'P1008'
+      )
+      if (isBusyContention) {
+        return { success: false, error: { code: 'INV-007', message: 'The system is busy processing another stock change right now. Please try again in a moment.' } }
+      }
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
   },

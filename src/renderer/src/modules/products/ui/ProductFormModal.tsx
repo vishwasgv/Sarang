@@ -420,9 +420,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
               <input type="checkbox" {...register('sellByWeight')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Sell this product loose / by weight</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ml-6">e.g. rice sold per kg instead of by the packet. Stock for this product is tracked directly in the unit below.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. rice sold per kg instead of by the packet. Stock for this product is tracked directly in the unit below.</p>
             {sellByWeight && (
-              <div className="grid grid-cols-2 gap-4 mt-3 ml-6">
+              <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
                 <div>
                   <Select label="Unit *" {...register('weightUnit')} error={errors.weightUnit?.message}>
                     <option value="">Select…</option>
@@ -448,9 +448,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
               <input type="checkbox" {...register('sellByPack')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Received in cartons/boxes, sold as individual pieces</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ml-6">e.g. a box of 50 screws — stock stays tracked in the unit above, this just converts pack quantity to pieces when receiving stock.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. a box of 50 screws — stock stays tracked in the unit above, this just converts pack quantity to pieces when receiving stock.</p>
             {sellByPack && (
-              <div className="grid grid-cols-2 gap-4 mt-3 ml-6">
+              <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
                 <Input label="Pack Unit *" placeholder="e.g. BOX, CARTON" {...register('packUnit')} error={errors.packUnit?.message} />
                 <Input label="Units per Pack *" type="number" step="1" min="1" placeholder="e.g. 50" {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
               </div>
@@ -467,7 +467,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">This item can be rented out</span>
             </label>
             {isRentable && (
-              <div className="mt-3 ml-6 space-y-3">
+              <div className="mt-3 ms-6 space-y-3">
                 <Select label="Tracking Type *" {...register('rentalTrackingType')} error={errors.rentalTrackingType?.message}>
                   <option value="">Select…</option>
                   <option value="UNIT">Individual units (e.g. a specific car, bike, or villa)</option>

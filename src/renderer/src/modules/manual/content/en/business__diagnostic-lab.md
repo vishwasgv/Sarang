@@ -32,7 +32,7 @@ Generate an invoice directly from a lab order once every test has a price greate
 
 ## Reports
 
-The **Reports** screen includes a Lab Turnaround report specific to this vertical, showing orders by stage (ordered, sample collected, in process, reported) and the turnaround time from order to report for each one — useful for spotting where samples are piling up.
+The **Reports** screen includes a Lab Test Throughput report specific to this vertical, showing orders by stage (ordered, sample collected, in process, reported) and the turnaround time from order to report for each one — useful for spotting where samples are piling up.
 
 ## Language
 

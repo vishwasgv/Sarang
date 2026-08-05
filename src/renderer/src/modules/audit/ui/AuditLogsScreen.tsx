@@ -145,10 +145,10 @@ export function AuditLogsScreen() {
             ))}
           </Select>
           <Button variant="outline" size="sm" onClick={handleVerifyChain} disabled={verifying}>
-            <Shield size={14} className={cn('mr-1.5', verifying && 'animate-spin')} /> {verifying ? t('audit.verifying') : t('audit.verifyIntegrity')}
+            <Shield size={14} className={cn('me-1.5', verifying && 'animate-spin')} /> {verifying ? t('audit.verifying') : t('audit.verifyIntegrity')}
           </Button>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw size={14} className={cn('mr-1.5', loading && 'animate-spin')} /> {t('common.refresh')}
+            <RefreshCw size={14} className={cn('me-1.5', loading && 'animate-spin')} /> {t('common.refresh')}
           </Button>
         </div>
       </div>
@@ -173,11 +173,11 @@ export function AuditLogsScreen() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-40">{t('audit.time')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('audit.action')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-32">{t('audit.entity')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-32">{t('audit.user')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-16">{t('common.details')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase w-40">{t('audit.time')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('audit.action')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase w-32">{t('audit.entity')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase w-32">{t('audit.user')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase w-16">{t('common.details')}</th>
             </tr>
           </thead>
           <tbody>

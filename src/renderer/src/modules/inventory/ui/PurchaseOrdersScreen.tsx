@@ -153,7 +153,7 @@ export function PurchaseOrdersScreen() {
         </div>
         {canCreate && (
           <Button size="sm" onClick={() => setFormOpen(true)}>
-            <Plus size={14} className="mr-1.5" /> {t('purchaseOrders.newPO')}
+            <Plus size={14} className="me-1.5" /> {t('purchaseOrders.newPO')}
           </Button>
         )}
       </div>
@@ -185,10 +185,10 @@ export function PurchaseOrdersScreen() {
           <span>{t('audit.page')} {page} {t('audit.of')} {Math.max(1, Math.ceil(total / limit))}</span>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft size={14} className="mr-1" /> {t('inventory.previous')}
+              <ChevronLeft size={14} className="me-1" /> {t('inventory.previous')}
             </Button>
             <Button variant="secondary" size="sm" disabled={page >= Math.ceil(total / limit)} onClick={() => setPage(p => p + 1)}>
-              {t('common.next')} <ChevronRight size={14} className="ml-1" />
+              {t('common.next')} <ChevronRight size={14} className="ms-1" />
             </Button>
           </div>
         </div>

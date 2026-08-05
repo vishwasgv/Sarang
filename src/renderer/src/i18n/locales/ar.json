@@ -212,6 +212,7 @@
     "card": "بطاقة",
     "credit": "ائتمان",
     "cheque": "شيك",
+    "bankTransfer": "تحويل بنكي",
     "finalize": "إنهاء",
     "saveDraft": "حفظ كمسودة",
     "cancel": "إلغاء الفاتورة",

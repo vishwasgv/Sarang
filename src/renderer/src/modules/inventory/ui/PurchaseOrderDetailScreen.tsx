@@ -221,23 +221,23 @@ export function PurchaseOrderDetailScreen() {
         <div className="flex items-center gap-2">
           {po.status === 'DRAFT' && canApprove && (
             <Button size="sm" onClick={handleApprove} loading={approving}>
-              <CheckCircle size={14} className="mr-1.5" /> {t('purchaseOrders.approve')}
+              <CheckCircle size={14} className="me-1.5" /> {t('purchaseOrders.approve')}
             </Button>
           )}
           {po.status === 'APPROVED' && canReceive && (
             <Button size="sm" onClick={handleReceive} loading={receiving}>
-              <Truck size={14} className="mr-1.5" /> {t('purchaseOrders.receiveStock')}
+              <Truck size={14} className="me-1.5" /> {t('purchaseOrders.receiveStock')}
             </Button>
           )}
           {(po.status === 'DRAFT' || po.status === 'APPROVED') && canCancel && (
             <Button variant="danger" size="sm" onClick={() => setCancelOpen(true)}>
-              <XCircle size={14} className="mr-1.5" /> {t('purchaseOrders.cancelPO')}
+              <XCircle size={14} className="me-1.5" /> {t('purchaseOrders.cancelPO')}
             </Button>
           )}
           {canPrint && (
             <>
               <Button size="sm" variant="outline" onClick={handlePrint} loading={printing}>
-                <Printer size={14} className="mr-1.5" /> {t('billing.print')}
+                <Printer size={14} className="me-1.5" /> {t('billing.print')}
               </Button>
               <ShareMenu
                 variant="button"
@@ -291,13 +291,13 @@ export function PurchaseOrderDetailScreen() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('billing.product')}</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('billing.qty')}</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('purchaseOrders.unitCost')}</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('purchaseOrders.taxPercent')}</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.total')}</th>
+                <th className="px-5 py-3 text-start text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('billing.product')}</th>
+                <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('billing.qty')}</th>
+                <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('purchaseOrders.unitCost')}</th>
+                <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('purchaseOrders.taxPercent')}</th>
+                <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.total')}</th>
                 {po.status === 'RECEIVED' && (
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('inventory.currentStock')}</th>
+                  <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('inventory.currentStock')}</th>
                 )}
               </tr>
             </thead>
@@ -308,12 +308,12 @@ export function PurchaseOrderDetailScreen() {
                     <p className="font-medium text-dark dark:text-slate-100">{item.product.productName}</p>
                     {item.product.sku && <p className="text-xs text-slate-400">SKU: {item.product.sku}</p>}
                   </td>
-                  <td className="px-5 py-3 text-right text-slate-700 dark:text-slate-300">{item.quantity} {item.product.unit}</td>
-                  <td className="px-5 py-3 text-right text-slate-700 dark:text-slate-300">{formatCurrency(item.unitCost)}</td>
-                  <td className="px-5 py-3 text-right text-slate-500 dark:text-slate-400">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
-                  <td className="px-5 py-3 text-right font-medium text-dark dark:text-slate-100">{formatCurrency(item.total)}</td>
+                  <td className="px-5 py-3 text-end text-slate-700 dark:text-slate-300">{item.quantity} {item.product.unit}</td>
+                  <td className="px-5 py-3 text-end text-slate-700 dark:text-slate-300">{formatCurrency(item.unitCost)}</td>
+                  <td className="px-5 py-3 text-end text-slate-500 dark:text-slate-400">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
+                  <td className="px-5 py-3 text-end font-medium text-dark dark:text-slate-100">{formatCurrency(item.total)}</td>
                   {po.status === 'RECEIVED' && (
-                    <td className="px-5 py-3 text-right text-success font-medium">
+                    <td className="px-5 py-3 text-end text-success font-medium">
                       {item.product.inventory?.quantity ?? '—'} {item.product.unit}
                     </td>
                   )}

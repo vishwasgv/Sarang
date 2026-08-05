@@ -248,13 +248,13 @@ export default function FreightLedgerScreen() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left px-4 py-3">{t('common.date')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.freight.carrier')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.freight.referenceNumber')}</th>
-                <th className="text-right px-4 py-3">{t('common.amount')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.freight.paymentMode')}</th>
-                <th className="text-left px-4 py-3">{t('common.status')}</th>
-                <th className="text-left px-4 py-3">{t('common.actions')}</th>
+                <th className="text-start px-4 py-3">{t('common.date')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.freight.carrier')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.freight.referenceNumber')}</th>
+                <th className="text-end px-4 py-3">{t('common.amount')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.freight.paymentMode')}</th>
+                <th className="text-start px-4 py-3">{t('common.status')}</th>
+                <th className="text-start px-4 py-3">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -263,7 +263,7 @@ export default function FreightLedgerScreen() {
                   <td className="px-4 py-3 text-gray-500">{formatDate(e.createdAt)}</td>
                   <td className="px-4 py-3 font-medium">{e.carrierName}</td>
                   <td className="px-4 py-3 text-gray-500">{e.shipmentNumber ?? e.referenceNumber ?? '—'}</td>
-                  <td className="px-4 py-3 text-right">{formatCurrency(e.amount)}</td>
+                  <td className="px-4 py-3 text-end">{formatCurrency(e.amount)}</td>
                   <td className="px-4 py-3">{e.paidBy}</td>
                   <td className="px-4 py-3">
                     <Badge variant={STATUS_VARIANT[e.status] ?? 'neutral'} size="sm">

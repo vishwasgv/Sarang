@@ -107,7 +107,7 @@ export function BloodStockScreen() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
-                  <tr className="text-left text-text-secondary">
+                  <tr className="text-start text-text-secondary">
                     <th className="px-4 py-2 font-semibold">Unit</th>
                     <th className="px-4 py-2 font-semibold">Group</th>
                     <th className="px-4 py-2 font-semibold">Component</th>
@@ -124,7 +124,7 @@ export function BloodStockScreen() {
                       <td className="px-4 py-2">{formatDate(u.collectionDate)}</td>
                       <td className="px-4 py-2">
                         <span className={u.isExpiringSoon ? 'text-warning font-semibold' : 'text-text-primary'}>{formatDate(u.expiryDate)}</span>
-                        {u.isExpiringSoon && <span className="ml-1 text-xs text-warning">({u.daysToExpiry}d)</span>}
+                        {u.isExpiringSoon && <span className="ms-1 text-xs text-warning">({u.daysToExpiry}d)</span>}
                       </td>
                     </tr>
                   ))}

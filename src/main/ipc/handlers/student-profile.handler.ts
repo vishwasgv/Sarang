@@ -18,21 +18,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('student:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('students.create'); if (deny) return deny
     const parsed = CreateStudentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createStudent(parsed.data)
   })
 
   handle('student:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('students.manage'); if (deny) return deny
     const parsed = UpdateStudentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateStudent(parsed.data)
   })
 
   handle('student:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('students.manage'); if (deny) return deny
     const parsed = DeleteStudentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteStudent(parsed.data.id)

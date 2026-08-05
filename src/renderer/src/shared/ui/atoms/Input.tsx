@@ -20,12 +20,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label htmlFor={inputId} className="text-base font-semibold text-slate-700 dark:text-slate-300">
             {label}
-            {required && <span className="text-danger ml-1">*</span>}
+            {required && <span className="text-danger ms-1">*</span>}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{leftIcon}</span>
+            <span className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400">{leftIcon}</span>
           )}
           <input
             ref={ref}
@@ -38,14 +38,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent',
               'disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-500',
               error ? 'border-danger focus:ring-danger' : 'border-slate-200 dark:border-slate-700',
-              leftIcon ? 'pl-11' : '',
-              rightIcon ? 'pr-11' : '',
+              leftIcon ? 'ps-11' : '',
+              rightIcon ? 'pe-11' : '',
               className
             )}
             {...props}
           />
           {rightIcon && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{rightIcon}</span>
+            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400">{rightIcon}</span>
           )}
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}

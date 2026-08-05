@@ -63,7 +63,7 @@ function Column({ title, icon, colorClass, kots, onAdvance, busyId }: {
       <div className={cn('flex items-center gap-2 px-4 py-3 rounded-xl mb-3', colorClass)}>
         {icon}
         <h2 className="text-lg font-bold">{title}</h2>
-        <span className="ml-auto text-lg font-bold">{kots.length}</span>
+        <span className="ms-auto text-lg font-bold">{kots.length}</span>
       </div>
       <div className="space-y-3">
         {kots.length === 0 ? (

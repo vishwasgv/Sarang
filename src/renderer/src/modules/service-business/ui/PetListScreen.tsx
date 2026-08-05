@@ -212,14 +212,14 @@ export function PetListScreen() {
       {/* Filters */}
       <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-3 shrink-0 flex-wrap">
         <div className="relative flex-1 min-w-52 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search patient or owner..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-slate-900"
+            className="w-full ps-8 pe-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-slate-900"
           />
-          {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={13} /></button>}
+          {search && <button onClick={() => setSearch('')} className="absolute end-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={13} /></button>}
         </div>
         <div className="flex gap-1 flex-wrap">
           {SPECIES.map((s) => (
@@ -235,7 +235,7 @@ export function PetListScreen() {
         {/* Active / Archived toggle */}
         <button
           onClick={() => setShowInactive(!showInactive)}
-          className={cn('ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors', showInactive ? 'bg-slate-600 text-white border-slate-600' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400')}
+          className={cn('ms-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors', showInactive ? 'bg-slate-600 text-white border-slate-600' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400')}
         >
           <Archive size={12} />
           {showInactive ? 'Showing Archived' : 'Archived'}
@@ -264,7 +264,7 @@ export function PetListScreen() {
                   <button
                     key={v.id}
                     onClick={() => navigate(`/vet/pets/${v.pet.id}`)}
-                    className="w-full flex items-center justify-between text-xs text-amber-900 hover:bg-amber-100 px-2 py-1.5 rounded-lg transition-colors text-left"
+                    className="w-full flex items-center justify-between text-xs text-amber-900 hover:bg-amber-100 px-2 py-1.5 rounded-lg transition-colors text-start"
                   >
                     <span>
                       <span className="font-semibold">{v.pet.petName}</span>
@@ -272,7 +272,7 @@ export function PetListScreen() {
                       <span>{v.vaccineName}</span>
                       {v.pet.customer && <span className="text-amber-500"> · {v.pet.customer.customerName}</span>}
                     </span>
-                    <span className={cn('font-semibold shrink-0 ml-3', days <= 7 ? 'text-danger' : 'text-amber-700')}>
+                    <span className={cn('font-semibold shrink-0 ms-3', days <= 7 ? 'text-danger' : 'text-amber-700')}>
                       {days === 0 ? 'Today' : days < 0 ? 'Overdue' : `in ${days}d`}
                     </span>
                   </button>
@@ -307,7 +307,7 @@ export function PetListScreen() {
                 <button
                   key={pet.id}
                   onClick={() => navigate(`/vet/pets/${pet.id}`)}
-                  className={cn('text-left bg-white dark:bg-slate-900 border rounded-xl p-4 hover:shadow-sm transition-all', pet.isActive ? 'border-slate-200 dark:border-slate-700 hover:border-brand/40' : 'border-slate-200 dark:border-slate-700 opacity-60 hover:opacity-80')}
+                  className={cn('text-start bg-white dark:bg-slate-900 border rounded-xl p-4 hover:shadow-sm transition-all', pet.isActive ? 'border-slate-200 dark:border-slate-700 hover:border-brand/40' : 'border-slate-200 dark:border-slate-700 opacity-60 hover:opacity-80')}
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-xl bg-brand/10 flex items-center justify-center text-xl shrink-0">

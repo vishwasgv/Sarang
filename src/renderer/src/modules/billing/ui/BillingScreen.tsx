@@ -944,7 +944,7 @@ export function BillingScreen() {
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
       {/* LEFT: Product search + Cart */}
-      <div className="flex-1 flex flex-col border-r border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="flex-1 flex flex-col border-e border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center">
@@ -975,7 +975,7 @@ export function BillingScreen() {
         <div className="px-6 pt-4 pb-2 relative">
           <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               ref={productSearchRef}
               value={productQuery}
@@ -1018,10 +1018,10 @@ export function BillingScreen() {
                 else if (e.key === 'Escape') { setProductResults([]); setProductQuery('') }
               }}
               placeholder={t('billing.searchProducts')}
-              className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+              className="w-full h-10 ps-9 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
               autoFocus
             />
-            {productSearching && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />}
+            {productSearching && <div className="absolute end-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />}
           </div>
 
           {catalogMode !== null && (
@@ -1056,7 +1056,7 @@ export function BillingScreen() {
                   <button
                     key={p.id}
                     onClick={() => addToCart(p)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-left"
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-start"
                   >
                     <p className="text-xs font-medium text-dark dark:text-slate-100 truncate max-w-[9rem]">{p.productName}</p>
                     <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
@@ -1097,13 +1097,13 @@ export function BillingScreen() {
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-72 overflow-y-auto pe-1">
                 {browseGridProducts.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => addToCart(p)}
                     disabled={!!(p.unavailableUntil && new Date(p.unavailableUntil) > new Date())}
-                    className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white"
+                    className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-start disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white"
                   >
                     <p className="text-xs font-medium text-dark dark:text-slate-100 truncate">{p.productName}</p>
                     <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
@@ -1115,13 +1115,13 @@ export function BillingScreen() {
 
           {/* Product dropdown */}
           {productResults.length > 0 && (
-            <div className="absolute left-6 right-6 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-64 overflow-y-auto">
+            <div className="absolute start-6 end-6 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-64 overflow-y-auto">
               {productResults.map((p, idx) => (
                 <button
                   key={p.id}
                   onClick={() => addToCart(p)}
                   onMouseEnter={() => setProductDropdownIdx(idx)}
-                  className={cn('w-full flex items-center justify-between px-4 py-3 text-left border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors',
+                  className={cn('w-full flex items-center justify-between px-4 py-3 text-start border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors',
                     productDropdownIdx === idx ? 'bg-brand/5 dark:bg-brand/10' : 'hover:bg-brand/5 dark:hover:bg-brand/10'
                   )}
                 >
@@ -1134,11 +1134,11 @@ export function BillingScreen() {
                     </div>
                     {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-sm font-semibold text-brand">
                       {formatCurrency(p.sellingPrice)}
                       {p.mrp != null && p.mrp > p.sellingPrice && (
-                        <span className="ml-1.5 text-xs font-normal text-slate-400 line-through">{formatCurrency(p.mrp)}</span>
+                        <span className="ms-1.5 text-xs font-normal text-slate-400 line-through">{formatCurrency(p.mrp)}</span>
                       )}
                     </p>
                     {p.productType === 'STANDARD' && (
@@ -1167,8 +1167,8 @@ export function BillingScreen() {
               <div className="grid grid-cols-[2fr_120px_100px_100px_36px] gap-2 px-3 py-1">
                 <span className="text-xs font-semibold text-slate-500 uppercase">{t('products.productName')}</span>
                 <span className="text-xs font-semibold text-slate-500 uppercase text-center">{t('billing.qty')}</span>
-                <span className="text-xs font-semibold text-slate-500 uppercase text-right">{t('products.sellingPrice')}</span>
-                <span className="text-xs font-semibold text-slate-500 uppercase text-right">{t('common.total')}</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase text-end">{t('products.sellingPrice')}</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase text-end">{t('common.total')}</span>
                 <span />
               </div>
 
@@ -1216,7 +1216,7 @@ export function BillingScreen() {
                               placeholder="0"
                               title={t('jewellery.makingChargeOverrideHint')}
                               className={cn(
-                                'w-16 h-5 text-xs px-1.5 rounded border text-right focus:outline-none focus:ring-1 focus:ring-brand',
+                                'w-16 h-5 text-xs px-1.5 rounded border text-end focus:outline-none focus:ring-1 focus:ring-brand',
                                 item.jewelleryDetail.makingChargeOverridden ? 'border-brand text-brand bg-brand/5' : 'border-slate-200'
                               )}
                             />
@@ -1263,7 +1263,7 @@ export function BillingScreen() {
                             }}
                             placeholder={discountMode[ck] === 'finalPrice' ? formatCurrency(item.quantity * item.unitPrice) : '0'}
                             className={cn(
-                              'h-5 text-xs px-1.5 rounded border focus:outline-none focus:ring-1 focus:ring-brand text-right',
+                              'h-5 text-xs px-1.5 rounded border focus:outline-none focus:ring-1 focus:ring-brand text-end',
                               discountMode[ck] === 'finalPrice' ? 'w-20 border-brand text-brand font-semibold' : 'w-14 border-slate-200'
                             )}
                           />
@@ -1313,7 +1313,7 @@ export function BillingScreen() {
                             <Ruler size={10} /> {t('billing.areaLabel')}
                           </button>
                           {areaCalc[ck]?.open && (
-                            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 bg-white rounded-xl border border-slate-200 shadow-lg p-3 w-40 space-y-2">
+                            <div className="absolute top-5 start-1/2 -translate-x-1/2 z-20 bg-white rounded-xl border border-slate-200 shadow-lg p-3 w-40 space-y-2">
                               <p className="text-xs font-semibold text-dark text-center">{t('billing.areaFormula')}</p>
                               <div className="flex gap-1 items-center">
                                 <input
@@ -1353,12 +1353,12 @@ export function BillingScreen() {
                       )}
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="text-sm font-medium text-dark">{formatCurrency(item.quantity * item.unitPrice)}</p>
                       {item.discountAmount > 0 && <p className="text-xs text-danger">-{formatCurrency(item.discountAmount)}</p>}
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="text-sm font-bold text-dark">{formatCurrency(lineTotal)}</p>
                     </div>
 
@@ -1398,20 +1398,20 @@ export function BillingScreen() {
               <>
                 <div className="relative" ref={customerDropdownRef}>
                   <div className="relative">
-                    <UserPlus size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <UserPlus size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                       value={customerQuery}
                       onChange={e => { setCustomerQuery(e.target.value); setShowCustomerDropdown(true) }}
                       onFocus={() => setShowCustomerDropdown(true)}
                       placeholder={t('customers.searchCustomers')}
-                      className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+                      className="w-full h-9 ps-9 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
                     />
                   </div>
                   {showCustomerDropdown && customerResults.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto">
+                    <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto">
                       {customerResults.map(c => (
                         <button key={c.id} onClick={() => { setCustomer(c); setCustomerQuery(''); setShowCustomerDropdown(false); setCustomerResults([]) }}
-                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-brand/5 dark:hover:bg-brand/10 text-left border-b border-slate-50 dark:border-slate-800 last:border-0 text-sm">
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-brand/5 dark:hover:bg-brand/10 text-start border-b border-slate-50 dark:border-slate-800 last:border-0 text-sm">
                           <span className="font-medium text-dark dark:text-slate-100">{c.customerName}</span>
                           {c.phone && <span className="text-xs text-slate-400">{c.phone}</span>}
                         </button>
@@ -1619,7 +1619,7 @@ export function BillingScreen() {
             title="Press F10 or Ctrl+Enter to confirm"
           >
             {paymentMethod === 'SPLIT' ? `${t('billing.splitPayment')} — ${formatCurrency(totals.totalAmount)}` : paymentMethod === 'CREDIT' ? t('billing.creditInvoice') : `${t('billing.confirmSale')} — ${formatCurrency(totals.totalAmount)}`}
-            {!submitting && cart.length > 0 && <span className="ml-2 text-xs opacity-70">[F10]</span>}
+            {!submitting && cart.length > 0 && <span className="ms-2 text-xs opacity-70">[F10]</span>}
           </Button>
 
           <button
@@ -1655,7 +1655,7 @@ export function BillingScreen() {
                     disabled={outOfStock}
                     onClick={() => addToCartDirect(variantPickProduct, v)}
                     className={cn(
-                      'flex flex-col p-3 rounded-xl border text-left transition-colors',
+                      'flex flex-col p-3 rounded-xl border text-start transition-colors',
                       outOfStock
                         ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
                         : 'border-slate-200 hover:border-brand hover:bg-brand/5'
@@ -1704,7 +1704,7 @@ export function BillingScreen() {
                 <button
                   key={s.id}
                   onClick={() => addToCartDirect(serialPickProduct, undefined, s)}
-                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 text-left hover:border-brand hover:bg-brand/5 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 text-start hover:border-brand hover:bg-brand/5 transition-colors"
                 >
                   <div>
                     <span className="text-sm font-semibold text-dark">{s.serialNumber}</span>
@@ -1827,7 +1827,7 @@ export function BillingScreen() {
                   <button
                     key={ex.id}
                     onClick={() => { setSelectedExchange(ex); setShowExchangePicker(false); setExchangeSearch('') }}
-                    className="w-full flex items-center justify-between border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-left hover:border-brand transition-colors"
+                    className="w-full flex items-center justify-between border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-start hover:border-brand transition-colors"
                   >
                     <div>
                       <p className="text-sm font-mono text-dark dark:text-slate-100">{ex.exchangeNumber}</p>

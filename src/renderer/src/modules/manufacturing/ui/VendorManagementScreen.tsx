@@ -153,7 +153,7 @@ export function VendorManagementScreen() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="text-xs text-text-secondary">{v.rawMaterialCount} {t('manufacturing.rawMaterials').toLowerCase()}</p>
                     {v.outstandingBalance > 0 && (
                       <p className="text-xs text-danger font-semibold mt-1">{formatCurrency(v.outstandingBalance)}</p>
@@ -161,7 +161,7 @@ export function VendorManagementScreen() {
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-end text-xs text-brand">
-                  <span>{t('manufacturing.viewMaterials')}</span> <ChevronRight size={12} className="ml-0.5" />
+                  <span>{t('manufacturing.viewMaterials')}</span> <ChevronRight size={12} className="ms-0.5" />
                 </div>
               </Card>
             ))}
@@ -204,9 +204,9 @@ export function VendorManagementScreen() {
                 <table className="w-full text-sm">
                   <thead className="bg-surface-alt border-b border-border sticky top-0">
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.material')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.stockCol')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.unitCost')}</th>
+                      <th className="text-start px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.material')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.stockCol')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.unitCost')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -216,10 +216,10 @@ export function VendorManagementScreen() {
                           <p className="font-medium text-text-primary">{m.name}</p>
                           {m.isLowStock && <p className="text-xs text-danger mt-0.5">{t('manufacturing.lowStockBadge')}</p>}
                         </td>
-                        <td className="px-4 py-2 text-right text-text-secondary">
+                        <td className="px-4 py-2 text-end text-text-secondary">
                           {formatNumber(m.currentStock, { maximumFractionDigits: 2 })} {m.unit}
                         </td>
-                        <td className="px-4 py-2 text-right text-text-secondary">
+                        <td className="px-4 py-2 text-end text-text-secondary">
                           {formatCurrency(m.unitCost)}
                         </td>
                       </tr>

@@ -168,13 +168,13 @@ export default function FleetScreen() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left px-4 py-3">{t('logistics.fleet.colVehicleNo')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.fleet.colTypeOwner')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.fleet.colDriver')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.fleet.colCapacity')}</th>
-                <th className="text-left px-4 py-3">{t('common.status')}</th>
-                <th className="text-left px-4 py-3">{t('logistics.fleet.colTrips')}</th>
-                <th className="text-left px-4 py-3">{t('common.actions')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.fleet.colVehicleNo')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.fleet.colTypeOwner')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.fleet.colDriver')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.fleet.colCapacity')}</th>
+                <th className="text-start px-4 py-3">{t('common.status')}</th>
+                <th className="text-start px-4 py-3">{t('logistics.fleet.colTrips')}</th>
+                <th className="text-start px-4 py-3">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

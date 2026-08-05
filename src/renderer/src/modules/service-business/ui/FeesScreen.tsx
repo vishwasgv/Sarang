@@ -311,13 +311,13 @@ export default function FeesScreen() {
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Student</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
-              <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Amount Due</th>
-              <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Received</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Status</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Due Date</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Paid Date</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Student</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
+              <th className="text-end py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Amount Due</th>
+              <th className="text-end py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Received</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Status</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Due Date</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Paid Date</th>
               <th className="py-3 px-4" />
             </tr>
           </thead>
@@ -344,13 +344,13 @@ export default function FeesScreen() {
                     <p className="text-gray-700 dark:text-slate-300">{r.enrollment.batch.batchName}</p>
                     <p className="text-xs text-gray-400 dark:text-slate-500">{r.enrollment.batch.subjectOrCourse}</p>
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-end">
                     <p className="font-medium text-gray-900 dark:text-slate-100">₹{Number(r.amountDue).toLocaleString()}</p>
                     {hasGst && (
                       <p className="text-xs text-gray-400 dark:text-slate-500">Base ₹{Number(r.baseAmount).toLocaleString()} + GST ₹{Number(r.taxAmount).toLocaleString()}</p>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-right text-gray-700 dark:text-slate-300">₹{Number(r.amountReceived).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-end text-gray-700 dark:text-slate-300">₹{Number(r.amountReceived).toLocaleString()}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-col gap-1">
                       <Badge variant={STATUS_VARIANT[r.status] ?? 'neutral'} size="sm" className="w-fit">{r.status}</Badge>
@@ -411,7 +411,7 @@ export default function FeesScreen() {
                 <p className="text-xs text-gray-400 mt-1 dark:text-slate-500">
                   Due: ₹{Number(editRecord.amountDue).toLocaleString()}
                   {Number(editRecord.taxRate) > 0 && (
-                    <span className="ml-1">(Base ₹{Number(editRecord.baseAmount).toLocaleString()} + GST {editRecord.taxRate}% ₹{Number(editRecord.taxAmount).toLocaleString()})</span>
+                    <span className="ms-1">(Base ₹{Number(editRecord.baseAmount).toLocaleString()} + GST {editRecord.taxRate}% ₹{Number(editRecord.taxAmount).toLocaleString()})</span>
                   )}
                 </p>
               </div>

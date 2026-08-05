@@ -20,21 +20,21 @@ export function registerPestContract(handle: HandleFn): void {
   })
 
   handle('pestContract:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = CreatePestContractSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createPestContract(parsed.data)
   })
 
   handle('pestContract:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = UpdatePestContractSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updatePestContract(parsed.data)
   })
 
   handle('pestContract:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     return deletePestContract(raw as string)
   })
 

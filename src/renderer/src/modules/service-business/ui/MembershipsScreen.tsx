@@ -442,8 +442,8 @@ export function MembershipsScreen() {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-xs">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search member..." className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-card text-sm text-foreground" />
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search member..." className="w-full h-10 ps-9 pe-3 rounded-xl border border-border bg-card text-sm text-foreground" />
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 px-3 rounded-xl border border-border bg-card text-sm text-foreground">
               <option value="">All Status</option>
@@ -472,9 +472,9 @@ export function MembershipsScreen() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Member</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Plan</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Valid Till</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Member</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Plan</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Valid Till</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Sessions Used</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Payment</th>
@@ -586,12 +586,12 @@ export function MembershipsScreen() {
       {tab === 'checkin' && (
         <div className="space-y-4">
           <div className="relative max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={checkInSearch}
               onChange={(e) => setCheckInSearch(e.target.value)}
               placeholder="Search by name or phone..."
-              className="w-full h-12 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+              className="w-full h-12 ps-9 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -656,9 +656,9 @@ export function MembershipsScreen() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Member</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Plan</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Expires On</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Member</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Plan</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Expires On</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Days Left</th>
                   </tr>
                 </thead>

@@ -12,21 +12,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('retainer:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('retainers.manage'); if (deny) return deny
     const parsed = CreateRetainerSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createRetainer(parsed.data)
   })
 
   handle('retainer:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('retainers.manage'); if (deny) return deny
     const parsed = UpdateRetainerSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateRetainer(parsed.data)
   })
 
   handle('retainer:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('retainers.manage'); if (deny) return deny
     const parsed = RetainerIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteRetainer(parsed.data.id)

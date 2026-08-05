@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+import { formatAmount } from './print.service'
 
 // RetainerAgreement.monthlyAmount/hoursPerMonth are Prisma Decimal fields —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -48,7 +49,10 @@ async function scheduleRetainerReminder(retainerId: string, clientName: string, 
     const reminderDate = new Date(nextBilling.getTime() - 3 * 86400000)
     const now = new Date()
     if (reminderDate > now) {
-      const body = `Retainer invoice for ${clientName} (${title}) [${retainerId}] of ₹${Number(monthlyAmount).toLocaleString('en-IN')}/month is due in 3 days (${nextBilling.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}). Please generate the invoice. Powered by Sarang | www.aszurex.com`
+      const profile = await db.businessProfile.findFirst({ select: { currencySymbol: true } })
+      const formattedAmount = await formatAmount(Number(monthlyAmount), profile?.currencySymbol ?? '₹')
+      const nextBillingStr = nextBilling.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })
+      const body = `Retainer invoice for ${clientName} (${title}) [${retainerId}] of ${formattedAmount}/month is due in 3 days (${nextBillingStr}). Please generate the invoice. Powered by Sarang | www.aszurex.com`
       await db.notificationQueue.create({
         data: { customerId: null, customerName: clientName, customerPhone: null, notificationType: 'RETAINER_INVOICE_DUE_3D', templateBody: body, whatsappLink: null, scheduledFor: reminderDate, status: 'PENDING' },
       })

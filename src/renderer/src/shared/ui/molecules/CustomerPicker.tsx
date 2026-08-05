@@ -106,23 +106,23 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
         <>
           <div className="relative" ref={dropdownRef}>
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
               <input
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setShowDropdown(true) }}
                 onFocus={() => setShowDropdown(true)}
                 placeholder={placeholder ?? 'Search by name or phone...'}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
             {showDropdown && results.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-20 max-h-44 overflow-y-auto">
+              <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-20 max-h-44 overflow-y-auto">
                 {results.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => { onChange(c); setQuery(''); setShowDropdown(false); setResults([]) }}
-                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 text-left border-b border-gray-50 dark:border-slate-800 last:border-0 text-sm"
+                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 text-start border-b border-gray-50 dark:border-slate-800 last:border-0 text-sm"
                   >
                     <span className="font-medium text-gray-900 dark:text-slate-100">{c.customerName}</span>
                     {c.phone && <span className="text-xs text-gray-400 dark:text-slate-500">{c.phone}</span>}

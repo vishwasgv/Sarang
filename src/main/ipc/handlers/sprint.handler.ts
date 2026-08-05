@@ -12,21 +12,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('sprint:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = CreateSprintSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createSprint(parsed.data)
   })
 
   handle('sprint:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = UpdateSprintSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateSprint(parsed.data)
   })
 
   handle('sprint:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('issueTracker.manage'); if (deny) return deny
     const parsed = DeleteSprintSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteSprint(parsed.data.id)

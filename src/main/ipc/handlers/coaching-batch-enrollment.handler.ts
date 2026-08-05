@@ -25,28 +25,28 @@ export function register(handle: HandleFn): void {
   })
 
   handle('enrollment:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('coachingEnrollment.create'); if (deny) return deny
     const parsed = CreateEnrollmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createEnrollment(parsed.data)
   })
 
   handle('enrollment:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('coachingEnrollment.manage'); if (deny) return deny
     const parsed = UpdateEnrollmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateEnrollment(parsed.data)
   })
 
   handle('enrollment:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('coachingEnrollment.manage'); if (deny) return deny
     const parsed = EnrollmentIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteEnrollment(parsed.data.id)
   })
 
   handle('enrollment:promoteFromWaitlist', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('coachingEnrollment.manage'); if (deny) return deny
     const parsed = EnrollmentIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return promoteFromWaitlist(parsed.data.id)

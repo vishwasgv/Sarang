@@ -233,9 +233,9 @@ export function EmployeesScreen() {
       {/* Filters */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('hr.searchEmployees')}
-            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-dark dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            className="w-full ps-9 pe-3 py-2 bg-white dark:bg-slate-800 text-dark dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
           <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="rounded" />
@@ -274,7 +274,7 @@ export function EmployeesScreen() {
                   {emp.phone && <span className="flex items-center gap-1"><Phone size={12} />{emp.phone}</span>}
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
+              <div className="text-end flex-shrink-0">
                 <p className="text-sm font-semibold text-dark dark:text-slate-100">₹{totalSalary(emp).toLocaleString()}</p>
                 <p className="text-xs text-slate-400">{t(`hr.salType${emp.salaryType}`)}</p>
               </div>

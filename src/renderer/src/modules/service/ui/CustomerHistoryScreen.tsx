@@ -134,7 +134,7 @@ export function CustomerHistoryScreen() {
               return (
                 <Card key={customer.id} padding="none" className="overflow-hidden">
                   <button onClick={() => toggleCustomer(customer.id)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-hover/30 transition-colors">
+                    className="w-full flex items-center justify-between p-4 text-start hover:bg-surface-hover/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-text-primary">{customer.customerName}</p>
                       <div className="flex items-center gap-3 mt-0.5">

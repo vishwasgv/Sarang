@@ -467,13 +467,13 @@ export default function CarJobCardsScreen() {
             </button>
           ))}
         </div>
-        <div className="relative ml-auto">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+        <div className="relative ms-auto">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
           <input
             value={search}
             onChange={e => handleSearch(e.target.value)}
             placeholder="Vehicle No, Make, Client…"
-            className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+            className="ps-8 pe-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
           />
         </div>
       </div>
@@ -581,19 +581,19 @@ export default function CarJobCardsScreen() {
                         <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1 dark:text-slate-400"><Wrench size={12} /> Service Items</div>
                         {svcItems.length === 0 ? <p className="text-xs text-gray-400 dark:text-slate-500">No service items</p> : (
                           <table className="w-full text-xs">
-                            <thead><tr className="text-gray-500 dark:text-slate-400"><th className="text-left py-1">Item</th><th className="text-right py-1">Qty</th><th className="text-right py-1">Rate</th><th className="text-right py-1">Amount</th></tr></thead>
+                            <thead><tr className="text-gray-500 dark:text-slate-400"><th className="text-start py-1">Item</th><th className="text-end py-1">Qty</th><th className="text-end py-1">Rate</th><th className="text-end py-1">Amount</th></tr></thead>
                             <tbody>
                               {svcItems.map((si, i) => (
                                 <tr key={i} className="border-t border-gray-50">
                                   <td className="py-1">{si.name}</td>
-                                  <td className="text-right py-1">{si.quantity}</td>
-                                  <td className="text-right py-1">₹{si.unitPrice.toFixed(2)}</td>
-                                  <td className="text-right py-1 font-medium">₹{(si.quantity * si.unitPrice).toFixed(2)}</td>
+                                  <td className="text-end py-1">{si.quantity}</td>
+                                  <td className="text-end py-1">₹{si.unitPrice.toFixed(2)}</td>
+                                  <td className="text-end py-1 font-medium">₹{(si.quantity * si.unitPrice).toFixed(2)}</td>
                                 </tr>
                               ))}
                               <tr className="border-t border-gray-200 font-semibold dark:border-slate-700">
-                                <td colSpan={3} className="py-1 text-right text-gray-600 dark:text-slate-400">Labor Total</td>
-                                <td className="text-right py-1">₹{labor.toFixed(2)}</td>
+                                <td colSpan={3} className="py-1 text-end text-gray-600 dark:text-slate-400">Labor Total</td>
+                                <td className="text-end py-1">₹{labor.toFixed(2)}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -603,20 +603,20 @@ export default function CarJobCardsScreen() {
                         <div className="text-xs font-semibold text-gray-600 mb-2 dark:text-slate-400">Parts</div>
                         {prtItems.length === 0 ? <p className="text-xs text-gray-400 dark:text-slate-500">No parts</p> : (
                           <table className="w-full text-xs">
-                            <thead><tr className="text-gray-500 dark:text-slate-400"><th className="text-left py-1">Part</th><th className="text-left py-1">Part #</th><th className="text-right py-1">Qty</th><th className="text-right py-1">Rate</th><th className="text-right py-1">Amount</th></tr></thead>
+                            <thead><tr className="text-gray-500 dark:text-slate-400"><th className="text-start py-1">Part</th><th className="text-start py-1">Part #</th><th className="text-end py-1">Qty</th><th className="text-end py-1">Rate</th><th className="text-end py-1">Amount</th></tr></thead>
                             <tbody>
                               {prtItems.map((pi, i) => (
                                 <tr key={i} className="border-t border-gray-50">
                                   <td className="py-1">{pi.name}</td>
                                   <td className="py-1 text-gray-400 dark:text-slate-500">{pi.partNumber || '—'}</td>
-                                  <td className="text-right py-1">{pi.quantity}</td>
-                                  <td className="text-right py-1">₹{pi.unitPrice.toFixed(2)}</td>
-                                  <td className="text-right py-1 font-medium">₹{(pi.quantity * pi.unitPrice).toFixed(2)}</td>
+                                  <td className="text-end py-1">{pi.quantity}</td>
+                                  <td className="text-end py-1">₹{pi.unitPrice.toFixed(2)}</td>
+                                  <td className="text-end py-1 font-medium">₹{(pi.quantity * pi.unitPrice).toFixed(2)}</td>
                                 </tr>
                               ))}
                               <tr className="border-t border-gray-200 font-semibold dark:border-slate-700">
-                                <td colSpan={4} className="py-1 text-right text-gray-600 dark:text-slate-400">Parts Total</td>
-                                <td className="text-right py-1">₹{parts.toFixed(2)}</td>
+                                <td colSpan={4} className="py-1 text-end text-gray-600 dark:text-slate-400">Parts Total</td>
+                                <td className="text-end py-1">₹{parts.toFixed(2)}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -628,7 +628,7 @@ export default function CarJobCardsScreen() {
                           {card.internalNotes && <p><span className="font-medium text-gray-600 dark:text-slate-400">Internal:</span> {card.internalNotes}</p>}
                         </div>
                       )}
-                      <div className="col-span-2 text-right text-sm font-semibold text-gray-800 dark:text-slate-200">
+                      <div className="col-span-2 text-end text-sm font-semibold text-gray-800 dark:text-slate-200">
                         Grand Total: ₹{total.toFixed(2)} (excl. GST)
                       </div>
                     </div>
@@ -850,12 +850,12 @@ export default function CarJobCardsScreen() {
                     {form.serviceItems.map((si, idx) => (
                       <div key={idx} className="grid grid-cols-[1fr_80px_100px_32px] gap-2 items-center">
                         <input value={si.name} onChange={e => updateServiceItem(idx, 'name', e.target.value)} placeholder="Service name" className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
-                        <input type="number" value={si.quantity} onChange={e => updateServiceItem(idx, 'quantity', e.target.value)} min="1" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
-                        <input type="number" value={si.unitPrice} onChange={e => updateServiceItem(idx, 'unitPrice', e.target.value)} min="0" placeholder="₹ Rate" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" value={si.quantity} onChange={e => updateServiceItem(idx, 'quantity', e.target.value)} min="1" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-end focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" value={si.unitPrice} onChange={e => updateServiceItem(idx, 'unitPrice', e.target.value)} min="0" placeholder="₹ Rate" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-end focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                         <button onClick={() => removeServiceItem(idx)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
                       </div>
                     ))}
-                    <div className="text-right text-xs font-medium text-gray-700 dark:text-slate-300">Labor Total: ₹{laborTotal.toFixed(2)}</div>
+                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Labor Total: ₹{laborTotal.toFixed(2)}</div>
                   </div>
                 )}
               </div>
@@ -873,12 +873,12 @@ export default function CarJobCardsScreen() {
                     not tracked against inventory, matching a one-off sourced part. */}
                 <div className="relative mb-2">
                   <div className="relative">
-                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                    <Search size={13} className="absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                     <input
                       value={partQuery}
                       onChange={e => setPartQuery(e.target.value)}
                       placeholder="Search inventory to add a tracked part…"
-                      className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      className="w-full border border-gray-300 rounded-lg ps-8 pe-3 py-1.5 text-xs focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     />
                   </div>
                   {partResults.length > 0 && (
@@ -888,7 +888,7 @@ export default function CarJobCardsScreen() {
                           key={p.id}
                           type="button"
                           onClick={() => addLinkedPart(p)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-orange-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
+                          className="w-full text-start px-3 py-2 text-xs hover:bg-orange-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
                         >
                           <span className="text-gray-800 dark:text-slate-200">{p.productName}{p.sku ? ` (${p.sku})` : ''}</span>
                           <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">₹{p.sellingPrice.toFixed(2)} · stock {p.inventory?.quantity ?? 0}</span>
@@ -910,23 +910,23 @@ export default function CarJobCardsScreen() {
                             title={pi.productId ? 'Linked to inventory — deducted from stock when billed' : 'Free text — not tracked against inventory'}
                             className={cn(
                               'w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100',
-                              pi.productId ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 pr-6' : 'border-gray-300 dark:border-slate-600 bg-white'
+                              pi.productId ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 pe-6' : 'border-gray-300 dark:border-slate-600 bg-white'
                             )}
                           />
-                          {pi.productId && <Search size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-orange-500 dark:text-orange-400" />}
+                          {pi.productId && <Search size={11} className="absolute end-2 top-1/2 -translate-y-1/2 text-orange-500 dark:text-orange-400" />}
                         </div>
                         <input value={pi.partNumber ?? ''} onChange={e => updatePartItem(idx, 'partNumber', e.target.value)} placeholder="Part #" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
-                        <input type="number" value={pi.quantity} onChange={e => updatePartItem(idx, 'quantity', e.target.value)} min="1" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
-                        <input type="number" value={pi.unitPrice} onChange={e => updatePartItem(idx, 'unitPrice', e.target.value)} min="0" placeholder="₹ Rate" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" value={pi.quantity} onChange={e => updatePartItem(idx, 'quantity', e.target.value)} min="1" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-end focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                        <input type="number" value={pi.unitPrice} onChange={e => updatePartItem(idx, 'unitPrice', e.target.value)} min="0" placeholder="₹ Rate" className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-end focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                         <button onClick={() => removePartItem(idx)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
                       </div>
                     ))}
-                    <div className="text-right text-xs font-medium text-gray-700 dark:text-slate-300">Parts Total: ₹{partsTotal.toFixed(2)}</div>
+                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Parts Total: ₹{partsTotal.toFixed(2)}</div>
                   </div>
                 )}
               </div>
               {(form.serviceItems.length > 0 || form.partsItems.length > 0) && (
-                <div className="text-right text-sm font-semibold text-gray-800 border-t border-gray-100 pt-2 dark:border-slate-800 dark:text-slate-200">
+                <div className="text-end text-sm font-semibold text-gray-800 border-t border-gray-100 pt-2 dark:border-slate-800 dark:text-slate-200">
                   Grand Total: ₹{(laborTotal + partsTotal).toFixed(2)} (excl. GST)
                 </div>
               )}

@@ -139,7 +139,7 @@ export function CustomersScreen() {
         </div>
         {canCreate && (
           <Button size="md" onClick={() => { setEditCustomer(null); setFormOpen(true) }}>
-            <Plus size={16} className="mr-1.5" /> {t('customers.addCustomer')}
+            <Plus size={16} className="me-1.5" /> {t('customers.addCustomer')}
           </Button>
         )}
       </div>

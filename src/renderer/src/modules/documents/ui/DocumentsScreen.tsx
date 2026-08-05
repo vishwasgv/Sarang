@@ -19,9 +19,16 @@ interface DocRecord {
   createdAt: string
 }
 
-// DocumentEntityType is a closed 6-value union (document.service.ts) — every
-// value is mapped to a distinct Badge variant below, no fallback needed for
-// a real value.
+// REAL BUG found+fixed in this session's pre-release audit: this comment
+// used to claim DocumentEntityType was a closed 6-value union, but
+// document.service.ts's real type has grown to 19 values across several
+// later phases (Drawing Revision/Site Visit, then 8 more in Phase 58 §1,
+// then 3 more in Phase 58 §2) — this map (and ENTITY_LABELS below) was never
+// extended to match, so a document attached via any of the 13 newer types
+// fell back to a generic 'neutral' badge showing the raw enum string (e.g.
+// "LEGAL_CASE") instead of a real label, and couldn't be filtered to in the
+// dropdown below. Not a crash (both maps already had safe `?? fallback`s),
+// but a real, user-visible completeness gap. Every value now mapped.
 const ENTITY_VARIANT: Record<string, 'brand' | 'info' | 'success' | 'warning' | 'danger' | 'neutral'> = {
   INVOICE: 'brand',
   PURCHASE_ORDER: 'info',
@@ -29,6 +36,19 @@ const ENTITY_VARIANT: Record<string, 'brand' | 'info' | 'success' | 'warning' | 
   SUPPLIER: 'warning',
   EXPENSE: 'danger',
   PRODUCTION_ORDER: 'neutral',
+  DRAWING_REVISION: 'info',
+  SITE_VISIT: 'info',
+  LEGAL_CASE: 'danger',
+  COMPLIANCE_TASK: 'warning',
+  ENGAGEMENT: 'brand',
+  ROC_FILING: 'danger',
+  BOARD_MEETING: 'warning',
+  VISIT_NOTE: 'success',
+  TREATMENT_PLAN: 'success',
+  LAB_TEST_ORDER: 'success',
+  RENTAL_BOOKING_ITEM: 'brand',
+  APPOINTMENT: 'brand',
+  CANDIDATE: 'neutral',
 }
 
 function fileIcon(mimeType: string) {
@@ -64,6 +84,19 @@ export function DocumentsScreen() {
     SUPPLIER: t('documents.entitySupplier'),
     EXPENSE: t('documents.entityExpense'),
     PRODUCTION_ORDER: t('documents.entityProductionOrder'),
+    DRAWING_REVISION: t('documents.entityDrawingRevision'),
+    SITE_VISIT: t('documents.entitySiteVisit'),
+    LEGAL_CASE: t('documents.entityLegalCase'),
+    COMPLIANCE_TASK: t('documents.entityComplianceTask'),
+    ENGAGEMENT: t('documents.entityEngagement'),
+    ROC_FILING: t('documents.entityRocFiling'),
+    BOARD_MEETING: t('documents.entityBoardMeeting'),
+    VISIT_NOTE: t('documents.entityVisitNote'),
+    TREATMENT_PLAN: t('documents.entityTreatmentPlan'),
+    LAB_TEST_ORDER: t('documents.entityLabTestOrder'),
+    RENTAL_BOOKING_ITEM: t('documents.entityRentalBookingItem'),
+    APPOINTMENT: t('documents.entityAppointment'),
+    CANDIDATE: t('documents.entityCandidate'),
   }
 
   useEffect(() => { load() }, [])

@@ -192,7 +192,7 @@ export function WorkTrackingScreen() {
             active={filterBillable}
             onChange={setFilterBillable}
           />
-          <span className="ml-auto text-sm text-text-secondary self-center">{filteredLogs.length} {t('service.entries')}</span>
+          <span className="ms-auto text-sm text-text-secondary self-center">{filteredLogs.length} {t('service.entries')}</span>
         </div>
 
         {/* Log list */}
@@ -223,7 +223,7 @@ export function WorkTrackingScreen() {
                     </span>
                   </div>
                 </div>
-                <div className="shrink-0 text-right flex flex-col items-end gap-1">
+                <div className="shrink-0 text-end flex flex-col items-end gap-1">
                   <p className="text-base font-bold text-text-primary">{l.hours}h</p>
                   <button onClick={() => setDeleteTarget(l.id)} className="text-text-secondary hover:text-red-500 transition-colors">
                     <Trash2 size={14} />

@@ -135,7 +135,7 @@ export function SuppliersScreen() {
         </div>
         {canCreate && (
           <Button size="sm" onClick={() => { setEditSupplier(null); setFormOpen(true) }}>
-            <Plus size={14} className="mr-1.5" /> {t('suppliers.addSupplier')}
+            <Plus size={14} className="me-1.5" /> {t('suppliers.addSupplier')}
           </Button>
         )}
       </div>

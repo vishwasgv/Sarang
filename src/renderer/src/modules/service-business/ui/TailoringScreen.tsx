@@ -582,13 +582,13 @@ export default function TailoringScreen() {
                 </button>
               ))}
             </div>
-            <div className="relative ml-auto">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <div className="relative ms-auto">
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input
                 value={search}
                 onChange={e => handleSearch(e.target.value)}
                 placeholder={t('tailoring.searchPlaceholder')}
-                className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="ps-8 pe-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-violet-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -611,7 +611,7 @@ export default function TailoringScreen() {
                         t('tailoring.table.qtyPrice'), t('tailoring.table.advance'), t('tailoring.table.delivery'),
                         t('tailoring.table.status'), t('tailoring.table.actions'),
                       ].map(h => (
-                        <th key={h} className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 dark:text-slate-400">{h}</th>
+                        <th key={h} className="text-start text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 dark:text-slate-400">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -952,7 +952,7 @@ export default function TailoringScreen() {
                 {!pickedFabric && fabricResults.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                     {fabricResults.map(p => (
-                      <button key={p.id} type="button" onClick={() => { setPickedFabric(p); setFabricResults([]) }} className="w-full text-left px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
+                      <button key={p.id} type="button" onClick={() => { setPickedFabric(p); setFabricResults([]) }} className="w-full text-start px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
                         <span className="text-gray-800 dark:text-slate-200">{p.productName}</span>
                         <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatCurrency(p.sellingPrice)} · stock {p.inventory?.quantity ?? 0}</span>
                       </button>

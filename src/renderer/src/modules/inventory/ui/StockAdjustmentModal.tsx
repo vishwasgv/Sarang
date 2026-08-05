@@ -122,7 +122,7 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Current stock: <span className="font-medium text-dark dark:text-slate-100">{inventoryItem.quantity} {inventoryItem.product.unit}</span>
               {inventoryItem.averageCost !== undefined && (
-                <span className="ml-2 text-slate-400">· Avg cost: {inventoryItem.averageCost.toFixed(2)}</span>
+                <span className="ms-2 text-slate-400">· Avg cost: {inventoryItem.averageCost.toFixed(2)}</span>
               )}
             </p>
           </div>

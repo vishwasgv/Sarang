@@ -16,21 +16,21 @@ export function registerPestJobSheet(handle: HandleFn): void {
   })
 
   handle('pestJobSheet:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = CreatePestJobSheetSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createPestJobSheet(parsed.data)
   })
 
   handle('pestJobSheet:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = UpdatePestJobSheetSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updatePestJobSheet(parsed.data)
   })
 
   handle('pestJobSheet:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = PestJobSheetIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deletePestJobSheet(parsed.data)
@@ -51,14 +51,14 @@ export function registerPestJobSheet(handle: HandleFn): void {
   })
 
   handle('pestJobSheet:addPesticide', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = AddJobSheetPesticideSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addJobSheetPesticide(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('pestJobSheet:removePesticide', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('pestControl.manage'); if (deny) return deny
     const parsed = PestJobSheetIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return removeJobSheetPesticide(parsed.data, getCurrentSession()?.userId)

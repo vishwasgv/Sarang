@@ -493,7 +493,7 @@ function CalendarView({
                       key={ev.id}
                       onClick={() => onSelectEvent(ev)}
                       title={`${ev.eventName} — ${ev.venueName}`}
-                      className={`w-full text-left text-[10px] px-1 py-0.5 rounded truncate block ${STATUS_VARIANT[ev.status] === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'}`}
+                      className={`w-full text-start text-[10px] px-1 py-0.5 rounded truncate block ${STATUS_VARIANT[ev.status] === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'}`}
                     >
                       {ev.eventName}
                     </button>
@@ -764,7 +764,7 @@ export default function EventsScreen() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{ev.client.customerName} · {fmtLabel(ev.eventType)} · {fmtDate(ev.eventDate)}</p>
                 </div>
-                <div className="text-right flex-shrink-0 space-y-0.5">
+                <div className="text-end flex-shrink-0 space-y-0.5">
                   <p className="text-xs text-gray-500 dark:text-slate-400">{ev.venueName}</p>
                   {ev.clientBudget && <p className="text-xs text-green-700 font-medium">{fmtCurrency(ev.clientBudget)}</p>}
                 </div>
@@ -836,7 +836,7 @@ export default function EventsScreen() {
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200 dark:border-slate-800">
                       <div className="text-xs text-gray-500 dark:text-slate-400">
                         {ev.finalAmount != null ? `Final Amount: ${fmtCurrency(ev.finalAmount)}` : 'Final amount not set'}
-                        {ev.invoiceId && <span className="ml-2 text-green-600 font-medium">Invoiced</span>}
+                        {ev.invoiceId && <span className="ms-2 text-green-600 font-medium">Invoiced</span>}
                       </div>
                       {!ev.invoiceId && ev.finalAmount != null && ev.finalAmount > 0 && (
                         <button

@@ -174,7 +174,7 @@ export function PayrollScreen() {
         </div>
         {canManage && (
           <Button onClick={handleGenerate} disabled={generating}>
-            <Plus size={16} className="mr-1.5" /> {generating ? '…' : t('hr.generatePayroll')}
+            <Plus size={16} className="me-1.5" /> {generating ? '…' : t('hr.generatePayroll')}
           </Button>
         )}
       </div>
@@ -192,7 +192,7 @@ export function PayrollScreen() {
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('hr.total')} {t('hr.netPayable')}</p>
             <p className="text-xl font-bold text-dark dark:text-slate-100">₹{totalNetPayable.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
           </div>
-          <span className="ml-auto text-xs text-slate-400">{records.length} {t('hr.employees')}</span>
+          <span className="ms-auto text-xs text-slate-400">{records.length} {t('hr.employees')}</span>
         </div>
       )}
 
@@ -209,10 +209,10 @@ export function PayrollScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.grossSalary')}</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.totalDeductions')}</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.netPayable')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
+                <th className="text-end px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.grossSalary')}</th>
+                <th className="text-end px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.totalDeductions')}</th>
+                <th className="text-end px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.netPayable')}</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.status')}</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600 dark:text-slate-300"></th>
               </tr>
@@ -223,9 +223,9 @@ export function PayrollScreen() {
                   <td className="px-4 py-3 cursor-pointer" onClick={() => openRecord(r)}>
                     <p className="font-medium text-dark dark:text-slate-100">{r.employeeName}</p>
                   </td>
-                  <td className="text-right px-4 py-3">₹{r.grossSalary.toLocaleString()}</td>
-                  <td className="text-right px-4 py-3">₹{r.totalDeductions.toLocaleString()}</td>
-                  <td className="text-right px-4 py-3 font-semibold text-dark dark:text-slate-100">₹{r.netPayable.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className="text-end px-4 py-3">₹{r.grossSalary.toLocaleString()}</td>
+                  <td className="text-end px-4 py-3">₹{r.totalDeductions.toLocaleString()}</td>
+                  <td className="text-end px-4 py-3 font-semibold text-dark dark:text-slate-100">₹{r.netPayable.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td className="text-center px-4 py-3">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.status === 'PAID' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                       {r.status === 'PAID' ? t('hr.paid') : t('hr.draft')}
@@ -292,10 +292,13 @@ export function PayrollScreen() {
                   <div className="flex items-center gap-2 mt-3">
                     <input value={newDeductionName} onChange={e => setNewDeductionName(e.target.value)} placeholder={t('hr.deductionName') as string}
                       className="flex-1 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100" />
-                    <input value={newDeductionAmount} onChange={e => setNewDeductionAmount(e.target.value)} type="number" placeholder={t('hr.amount') as string}
+                    <input value={newDeductionAmount} onChange={e => setNewDeductionAmount(e.target.value)} type="number" min="0" placeholder={t('hr.amount') as string}
                       className="w-24 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100" />
                     <Button size="sm" variant="secondary" onClick={() => {
-                      addDeductionLine(newDeductionName, Number(newDeductionAmount) || 0)
+                      // A negative amount here would silently deflate the Net Pay
+                      // preview below with no inline warning until save-time
+                      // backend validation rejects it — clamp at entry instead.
+                      addDeductionLine(newDeductionName, Math.max(0, Number(newDeductionAmount) || 0))
                       setNewDeductionName(''); setNewDeductionAmount('')
                     }}>{t('hr.addDeduction')}</Button>
                   </div>
@@ -319,13 +322,13 @@ export function PayrollScreen() {
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
                       <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
                         className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100">
-                        <option value="CASH">Cash</option>
-                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                        <option value="CHEQUE">Cheque</option>
-                        <option value="UPI">UPI</option>
+                        <option value="CASH">{t('billing.cash')}</option>
+                        <option value="BANK_TRANSFER">{t('billing.bankTransfer')}</option>
+                        <option value="CHEQUE">{t('billing.cheque')}</option>
+                        <option value="UPI">{t('billing.upi')}</option>
                       </select>
                       <Button onClick={() => setConfirmMarkPaid(true)} disabled={markingPaid} className="w-full">
-                        <CheckCircle2 size={16} className="mr-1.5" /> {markingPaid ? '…' : t('hr.markAsPaid')}
+                        <CheckCircle2 size={16} className="me-1.5" /> {markingPaid ? '…' : t('hr.markAsPaid')}
                       </Button>
                     </div>
                   )}
@@ -337,7 +340,7 @@ export function PayrollScreen() {
               )}
 
               <Button variant="outline" onClick={() => handlePrint(selected.id)} className="w-full">
-                <Printer size={16} className="mr-1.5" /> {t('hr.printPayslip')}
+                <Printer size={16} className="me-1.5" /> {t('hr.printPayslip')}
               </Button>
             </div>
           </div>

@@ -215,13 +215,13 @@ export function StaffCommissionScreen() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Staff</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Revenue Generated</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Commission</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Tips</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Paid</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Pending</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Sessions</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Staff</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Revenue Generated</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Commission</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Tips</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Paid</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Pending</th>
+                  <th className="text-end px-4 py-3 font-medium text-muted-foreground">Sessions</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,24 +231,24 @@ export function StaffCommissionScreen() {
                       <p className="font-medium text-foreground">{row.staffName}</p>
                       {row.designation && <p className="text-xs text-muted-foreground">{row.designation}</p>}
                     </td>
-                    <td className="px-4 py-3 text-right text-foreground">₹{row.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">₹{row.totalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right text-foreground">₹{row.totalTips.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right text-success">₹{row.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right text-warning">₹{row.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{row.recordCount}</td>
+                    <td className="px-4 py-3 text-end text-foreground">₹{row.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end font-semibold text-foreground">₹{row.totalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end text-foreground">₹{row.totalTips.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end text-success">₹{row.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end text-warning">₹{row.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-end text-muted-foreground">{row.recordCount}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="bg-muted/20 font-semibold">
                   <td className="px-4 py-3 text-foreground">Total</td>
-                  <td className="px-4 py-3 text-right text-foreground">₹{report.reduce((s, r) => s + r.totalRevenue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-3 text-right text-foreground">₹{totalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-3 text-right text-foreground">₹{report.reduce((s, r) => s + r.totalTips, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-3 text-right text-success">₹{report.reduce((s, r) => s + r.paidAmount, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-3 text-right text-warning">₹{totalPending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{report.reduce((s, r) => s + r.recordCount, 0)}</td>
+                  <td className="px-4 py-3 text-end text-foreground">₹{report.reduce((s, r) => s + r.totalRevenue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 text-end text-foreground">₹{totalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 text-end text-foreground">₹{report.reduce((s, r) => s + r.totalTips, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 text-end text-success">₹{report.reduce((s, r) => s + r.paidAmount, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 text-end text-warning">₹{totalPending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 text-end text-muted-foreground">{report.reduce((s, r) => s + r.recordCount, 0)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -310,12 +310,12 @@ export function StaffCommissionScreen() {
                         className="rounded"
                       />
                     </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Staff</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Appointment</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Revenue</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Rate</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Commission</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Tips</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Staff</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Appointment</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Revenue</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Rate</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Commission</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Tips</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                   </tr>
                 </thead>
@@ -346,12 +346,12 @@ export function StaffCommissionScreen() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right text-foreground">₹{Number(r.serviceRevenue).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
+                      <td className="px-4 py-3 text-end text-foreground">₹{Number(r.serviceRevenue).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-3 text-end text-muted-foreground">
                         {r.commissionType === 'PERCENT' ? `${r.commissionRate}%` : `₹${r.commissionRate}`}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">₹{Number(r.commissionAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3 text-right text-foreground">₹{Number(r.tipAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 text-end font-semibold text-foreground">₹{Number(r.commissionAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 text-end text-foreground">₹{Number(r.tipAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={r.isPaid ? 'success' : 'warning'} size="sm" icon={r.isPaid ? <CheckCircle size={12} /> : <Clock size={12} />}>
                           {r.isPaid ? 'Paid' : 'Pending'}

@@ -157,9 +157,9 @@ export function OutstandingAnalyticsScreen() {
             <div className="col-span-3">Customer</div>
             <div className="col-span-2">Code</div>
             <div className="col-span-2">Phone</div>
-            <div className="col-span-2 text-right">Credit Limit</div>
-            <div className="col-span-2 text-right">Outstanding</div>
-            <div className="col-span-1 text-right">90+ Days</div>
+            <div className="col-span-2 text-end">Credit Limit</div>
+            <div className="col-span-2 text-end">Outstanding</div>
+            <div className="col-span-1 text-end">90+ Days</div>
           </div>
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
             {customers.map((c, i) => {
@@ -183,13 +183,13 @@ export function OutstandingAnalyticsScreen() {
                   </div>
                   <div className="col-span-2 text-xs text-slate-400 dark:text-slate-500">{c.customerCode ?? '—'}</div>
                   <div className="col-span-2 text-xs text-slate-400 dark:text-slate-500">{c.phone ?? '—'}</div>
-                  <div className="col-span-2 text-right text-xs text-slate-500 dark:text-slate-400">
+                  <div className="col-span-2 text-end text-xs text-slate-500 dark:text-slate-400">
                     {c.creditLimit > 0 ? `${sym}${c.creditLimit.toFixed(0)}` : '—'}
                   </div>
-                  <div className={cn('col-span-2 text-right text-sm font-semibold', isOver ? 'text-danger' : 'text-dark')}>
+                  <div className={cn('col-span-2 text-end text-sm font-semibold', isOver ? 'text-danger' : 'text-dark')}>
                     {sym}{c.outstandingBalance.toFixed(2)}
                   </div>
-                  <div className="col-span-1 text-right text-xs font-medium">
+                  <div className="col-span-1 text-end text-xs font-medium">
                     {aging && aging.days90plus > 0.01 ? (
                       <span className="text-danger">{sym}{aging.days90plus.toFixed(0)}</span>
                     ) : (

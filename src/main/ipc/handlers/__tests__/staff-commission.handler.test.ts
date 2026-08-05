@@ -58,18 +58,23 @@ describe('staff-commission.handler — HR-tier permission gating', () => {
     expect(requirePermission).not.toHaveBeenCalledWith('billing.createInvoice')
   })
 
-  // calculate deliberately stays on billing.createInvoice — see the handler's
-  // own comment. It's auto-triggered by AppointmentsScreen.tsx when a Cashier
-  // marks a routine appointment COMPLETED, not called from the HR-tier
-  // /commission screen at all. Regressing this to hr.manage would silently
-  // stop commission ever being calculated for any appointment a Cashier
-  // completes.
-  it('calculate stays on billing.createInvoice (routine appointment-completion side effect, not an HR action)', async () => {
+  // calculate deliberately does NOT require hr.manage/hr.view — see the
+  // handler's own comment. It's auto-triggered by AppointmentsScreen.tsx when
+  // a Cashier marks a routine appointment COMPLETED, not called from the
+  // HR-tier /commission screen at all. Regressing this to hr.manage would
+  // silently stop commission ever being calculated for any appointment a
+  // Cashier completes. Security audit fix (2026-08-04): it previously reused
+  // billing.createInvoice itself (a borrowed gate, same bug class as the
+  // other 34 mis-gated verticals) — now uses its own dedicated
+  // staffCommission.record key, seeded at the same Manager+Cashier trust
+  // tier billing.createInvoice already was, so behavior is unchanged.
+  it('calculate requires staffCommission.record, not billing.createInvoice or hr.manage', async () => {
     const handlers = captureHandlers()
     await handlers.get('staffCommission:calculate')!({
       appointmentId: 'apt-1', staffId: 'emp-1', serviceRevenue: 500, commissionType: 'PERCENT', commissionRate: 10
     })
-    expect(requirePermission).toHaveBeenCalledWith('billing.createInvoice')
+    expect(requirePermission).toHaveBeenCalledWith('staffCommission.record')
+    expect(requirePermission).not.toHaveBeenCalledWith('billing.createInvoice')
     expect(requirePermission).not.toHaveBeenCalledWith('hr.manage')
   })
 

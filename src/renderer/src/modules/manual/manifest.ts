@@ -28,6 +28,11 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'dashboard', group: 'universal', title: 'Dashboard' },
   { slug: 'tutorial-tour', group: 'universal', title: 'Guided Tutorial' },
   { slug: 'licensing', group: 'universal', title: 'License & Renewal' },
+  { slug: 'hr', group: 'universal', title: 'HR: Employees, Attendance & Leave' },
+  { slug: 'payroll', group: 'universal', title: 'Payroll' },
+  { slug: 'cash-close', group: 'universal', title: 'Cash Close' },
+  { slug: 'documents', group: 'universal', title: 'Document Management' },
+  { slug: 'import-wizard', group: 'universal', title: 'Data Import Wizard' },
 
   // AI Assistant (Phase 57) — cross-cutting, opt-in
   { slug: 'ai-assistant', group: 'ai', title: 'Ask Sarang (AI Assistant)' },

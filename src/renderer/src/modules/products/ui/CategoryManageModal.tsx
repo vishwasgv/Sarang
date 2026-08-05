@@ -140,10 +140,10 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
           <div className="flex items-center justify-between w-full">
             {canCreate && !showAddForm && (
               <Button size="sm" onClick={() => setShowAddForm(true)}>
-                <Plus size={14} className="mr-1.5" /> New Category
+                <Plus size={14} className="me-1.5" /> New Category
               </Button>
             )}
-            <Button variant="secondary" size="sm" onClick={onClose} className="ml-auto">Done</Button>
+            <Button variant="secondary" size="sm" onClick={onClose} className="ms-auto">Done</Button>
           </div>
         }
       >

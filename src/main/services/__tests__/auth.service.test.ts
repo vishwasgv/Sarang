@@ -41,6 +41,28 @@ function makeSettingStore(initial: Record<string, string> = {}) {
       store.set(where.settingKey, data.settingValue)
       return Promise.resolve({ settingKey: where.settingKey, settingValue: data.settingValue })
     }),
+    // Real Prisma rejects create() on a @unique collision — the rate
+    // limiter's atomic-claim CAS (2026-08 fix) relies on that rejection to
+    // detect a concurrent caller that created the row first.
+    create: vi.fn(({ data }: { data: { settingKey: string; settingValue: string } }) => {
+      if (store.has(data.settingKey)) {
+        return Promise.reject(Object.assign(new Error('Unique constraint failed'), { code: 'P2002' }))
+      }
+      store.set(data.settingKey, data.settingValue)
+      return Promise.resolve({ settingKey: data.settingKey, settingValue: data.settingValue })
+    }),
+    // Real Prisma's updateMany only touches rows matching the full `where`
+    // clause and reports how many it changed — the rate limiter's CAS keys
+    // `where.settingValue` on the previously-read value so a concurrent
+    // writer that already changed it causes `count: 0` (contention) instead
+    // of silently overwriting a newer value.
+    updateMany: vi.fn(({ where, data }: { where: { settingKey: string; settingValue?: string }; data: { settingValue: string } }) => {
+      const current = store.get(where.settingKey)
+      if (current === undefined) return Promise.resolve({ count: 0 })
+      if (where.settingValue !== undefined && where.settingValue !== current) return Promise.resolve({ count: 0 })
+      store.set(where.settingKey, data.settingValue)
+      return Promise.resolve({ count: 1 })
+    }),
     delete: vi.fn(({ where }: { where: { settingKey: string } }) => {
       store.delete(where.settingKey)
       return Promise.resolve({})
@@ -246,6 +268,28 @@ describe('changePassword', () => {
 
     expect(lastResult!.success).toBe(false)
     expect((lastResult as { error: { code: string } }).error.code).toBe('AUTH-004')
+  }, 15000)
+
+  // REAL BUG regression (found in this session's pre-release audit): the
+  // rate limiter's old findUnique-then-upsert/update was not atomic — a
+  // scripted burst of concurrent calls (Promise.all, as a malicious/buggy
+  // renderer could fire via repeated IPC calls) could all read the same
+  // pre-increment count and all proceed as blocked:false, letting far more
+  // than maxAttempts guesses through per window. Fixed via a claim-and-retry
+  // compare-and-swap (see makeRateLimiter). This test fires 10 concurrent
+  // wrong-password attempts for one userId and asserts AT MOST 5 of them
+  // report blocked:false — i.e. the 6th-through-10th genuinely serialize
+  // behind the CAS and correctly see themselves as the 6th+ attempt, rather
+  // than all racing past on stale reads.
+  it('serializes concurrent attempts correctly — a 10-way burst never allows more than 5 through (AUTH-004 race fix)', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeChangePasswordDb() as never)
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => changePassword('user-concurrent-burst', 'WrongPassword', 'NewLongEnoughPassword1'))
+    )
+
+    const unlocked = results.filter((r) => (r as { error?: { code: string } }).error?.code !== 'AUTH-004')
+    expect(unlocked.length).toBeLessThanOrEqual(5)
   }, 15000)
 
   it('does not lock out a different userId sharing no attempts with the failing one', async () => {

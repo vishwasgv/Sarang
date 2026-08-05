@@ -402,7 +402,7 @@ export function LabOrdersScreen() {
           <div className="space-y-3">
             {visible.map((o) => (
               <button key={o.id} onClick={() => refreshDetail(o.id)}
-                className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
+                className="w-full text-start bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -416,7 +416,7 @@ export function LabOrdersScreen() {
                     <p className="text-sm text-text-secondary truncate">{o.items.map((i) => i.testName).join(', ')}</p>
                     {o.customer?.customerName && <p className="text-xs text-text-secondary mt-1">{o.customer.customerName}</p>}
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="text-sm font-bold text-text-primary">{formatCurrency(o.totalAmount)}</p>
                     <p className="text-xs text-text-secondary">{formatDate(o.createdAt)}</p>
                   </div>

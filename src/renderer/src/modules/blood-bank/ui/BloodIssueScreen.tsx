@@ -242,7 +242,7 @@ export function BloodIssueScreen() {
           <div className="space-y-3">
             {issues.map((i) => (
               <button key={i.id} onClick={() => refreshDetail(i.id)}
-                className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
+                className="w-full text-start bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -252,7 +252,7 @@ export function BloodIssueScreen() {
                     <p className="mt-1 font-semibold text-text-primary">{i.recipientName}</p>
                     <p className="text-sm text-text-secondary">{i.items.length} unit(s) · {i.items.map((it) => it.bloodGroup).join(', ')}</p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="text-sm font-bold text-text-primary">{formatCurrency(i.totalAmount)}</p>
                     <p className="text-xs text-text-secondary">{formatDate(i.createdAt)}</p>
                   </div>
@@ -319,7 +319,7 @@ export function BloodIssueScreen() {
                       <span className="font-mono text-xs text-text-secondary">{u.donationNumber}</span>
                       <Badge variant="brand" size="sm">{u.bloodGroup}</Badge>
                       <span className="text-xs text-text-secondary">{u.componentType.replace('_', ' ')}</span>
-                      <span className="text-xs text-text-secondary ml-auto">Expires {formatDate(u.expiryDate)}</span>
+                      <span className="text-xs text-text-secondary ms-auto">Expires {formatDate(u.expiryDate)}</span>
                     </label>
                   ))}
                 </div>
@@ -339,14 +339,14 @@ export function BloodIssueScreen() {
                       {incompatibleUnits.map((u) => <p key={u.donationRecordId}>{u.note}</p>)}
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-medium text-text-primary pl-6">
+                  <label className="flex items-center gap-2 text-xs font-medium text-text-primary ps-6">
                     <input type="checkbox" checked={overrideIncompatibility} onChange={(e) => setOverrideIncompatibility(e.target.checked)} />
                     Override — emergency release (documented reason required)
                   </label>
                   {overrideIncompatibility && (
                     <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} rows={2}
                       placeholder="Why this incompatible unit is being issued anyway (e.g. life-threatening emergency, no compatible unit in stock, physician's order)..."
-                      className="w-full px-3 py-2 ml-6 rounded-lg border border-border text-xs resize-none" style={{ width: 'calc(100% - 1.5rem)' }} />
+                      className="w-full px-3 py-2 ms-6 rounded-lg border border-border text-xs resize-none" style={{ width: 'calc(100% - 1.5rem)' }} />
                   )}
                 </div>
               )}
@@ -380,7 +380,7 @@ export function BloodIssueScreen() {
               <div className="space-y-2">
                 {detail.items.map((it) => (
                   <div key={it.id} className="border border-border rounded-lg p-3">
-                    <div className="flex items-center gap-2"><Badge variant="brand" size="sm">{it.bloodGroup}</Badge><span className="text-xs text-text-secondary">{it.componentType.replace('_', ' ')}</span><span className="ml-auto text-xs font-semibold">{formatCurrency(it.price)}</span></div>
+                    <div className="flex items-center gap-2"><Badge variant="brand" size="sm">{it.bloodGroup}</Badge><span className="text-xs text-text-secondary">{it.componentType.replace('_', ' ')}</span><span className="ms-auto text-xs font-semibold">{formatCurrency(it.price)}</span></div>
                     {it.compatibilityNote && <p className={`text-xs mt-1 ${it.overrideReason ? 'text-danger' : 'text-text-secondary'}`}>{it.compatibilityNote}</p>}
                     {it.overrideReason && <p className="text-xs text-text-secondary mt-0.5"><strong>Override reason:</strong> {it.overrideReason}</p>}
                   </div>

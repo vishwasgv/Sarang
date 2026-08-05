@@ -103,7 +103,7 @@ export function RentalBookingsScreen() {
         </div>
         {canManage && (
           <Button onClick={() => setShowNewBooking(true)}>
-            <Plus size={16} className="mr-1.5" /> {t('rental.newBooking')}
+            <Plus size={16} className="me-1.5" /> {t('rental.newBooking')}
           </Button>
         )}
       </div>
@@ -129,10 +129,10 @@ export function RentalBookingsScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.booking')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.customer')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.items')}</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.period')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.booking')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.customer')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.items')}</th>
+                <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('rental.col.period')}</th>
                 <th className="text-center px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('common.status')}</th>
               </tr>
             </thead>
@@ -299,7 +299,7 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                 </div>
               ))}
               <div className="flex gap-2">
-                <Button onClick={handleCheckout} disabled={busy} className="flex-1"><Clock size={16} className="mr-1.5" /> {t('rental.checkOut')}</Button>
+                <Button onClick={handleCheckout} disabled={busy} className="flex-1"><Clock size={16} className="me-1.5" /> {t('rental.checkOut')}</Button>
                 <Button variant="outline" onClick={() => setShowCancelConfirm(true)} disabled={busy}><Ban size={16} /></Button>
               </div>
             </div>
@@ -331,13 +331,13 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
                 <label className="block text-xs text-slate-500 mb-1">{t('rental.refundDeposit')}</label>
                 <input type="number" value={depositRefund} onChange={(e) => setDepositRefund(e.target.value)} className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100" />
               </div>
-              <Button onClick={handleReturn} disabled={busy} className="w-full"><RotateCcw size={16} className="mr-1.5" /> {t('rental.confirmReturn')}</Button>
+              <Button onClick={handleReturn} disabled={busy} className="w-full"><RotateCcw size={16} className="me-1.5" /> {t('rental.confirmReturn')}</Button>
             </div>
           )}
 
           {(booking.status === 'RETURNED' || booking.status === 'CHECKED_OUT') && canManage && !booking.invoiceId && (
             <Button variant="secondary" onClick={handleInvoice} disabled={busy} className="w-full">
-              <CheckCircle2 size={16} className="mr-1.5" /> {t('rental.generateInvoice')}
+              <CheckCircle2 size={16} className="me-1.5" /> {t('rental.generateInvoice')}
             </Button>
           )}
           {booking.invoiceId && (
@@ -349,13 +349,13 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
               <div className="text-xs text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg p-3 flex items-center gap-1.5"><Repeat size={12} /> {t('rental.nextCycleCreated')}</div>
             ) : (
               <Button variant="outline" onClick={handleCreateNextCycle} loading={creatingNextCycle} className="w-full">
-                <Repeat size={16} className="mr-1.5" /> {t('rental.createNextCycle')}
+                <Repeat size={16} className="me-1.5" /> {t('rental.createNextCycle')}
               </Button>
             )
           )}
 
           <Button variant="outline" className="w-full" onClick={() => window.print()}>
-            <Printer size={16} className="mr-1.5" /> {t('common.print')}
+            <Printer size={16} className="me-1.5" /> {t('common.print')}
           </Button>
         </div>
       </div>
@@ -532,7 +532,7 @@ function NewBookingModal({ onClose, onCreated }: { onClose: () => void; onCreate
               )
             })}
           </div>
-          <Button variant="outline" size="sm" onClick={addItemRow}><Plus size={14} className="mr-1" /> {t('rental.addItem')}</Button>
+          <Button variant="outline" size="sm" onClick={addItemRow}><Plus size={14} className="me-1" /> {t('rental.addItem')}</Button>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('rental.deposit')}</label>

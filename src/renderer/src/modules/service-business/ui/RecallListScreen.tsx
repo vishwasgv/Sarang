@@ -146,7 +146,7 @@ export function RecallListScreen() {
             >
               {cfg && <span className={cfg.color}>{cfg.icon}</span>}
               {b === 'ALL' ? 'All' : BAND_CONFIG[b].label}
-              <span className={`ml-0.5 ${isActive ? '' : 'text-slate-400'}`}>({counts[b]})</span>
+              <span className={`ms-0.5 ${isActive ? '' : 'text-slate-400'}`}>({counts[b]})</span>
             </button>
           )
         })}
@@ -155,7 +155,7 @@ export function RecallListScreen() {
           placeholder="Search patient..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="ml-2 h-8 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+          className="ms-2 h-8 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
         />
       </div>
 
@@ -203,7 +203,7 @@ export function RecallListScreen() {
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className={`text-sm font-semibold ${cfg.color}`}>{fmt(r.nextRecallDate)}</p>
                     <p className="text-xs text-slate-400 mt-0.5">Last: {fmt(r.lastVisitDate)}</p>
                   </div>

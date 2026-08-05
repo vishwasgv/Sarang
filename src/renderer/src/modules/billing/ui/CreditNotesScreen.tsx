@@ -204,7 +204,7 @@ export function CreditNotesScreen() {
           </button>
           {canCreate && (
             <Button size="md" onClick={() => { setEditTarget(null); setShowForm(true) }}>
-              <Plus size={16} className="mr-1.5" /> {t('creditNotes.newCreditNote')}
+              <Plus size={16} className="me-1.5" /> {t('creditNotes.newCreditNote')}
             </Button>
           )}
         </div>

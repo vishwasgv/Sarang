@@ -217,24 +217,24 @@ export function BulkOrderScreen() {
           {/* Product search */}
           <Card padding="md" className="space-y-3">
             <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search products by name or SKU…"
-                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
+                className="w-full ps-9 pe-4 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
               />
             </div>
             {results.length > 0 && (
               <div className="border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800">
                 {results.slice(0, 6).map(p => (
                   <button key={p.id} onClick={() => addProduct(p)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-brand/5 transition-colors">
+                    className="w-full flex items-center justify-between px-4 py-3 text-start hover:bg-brand/5 transition-colors">
                     <div>
                       <p className="text-sm font-medium text-dark">{p.productName}</p>
                       <p className="text-xs text-slate-400">{p.sku ?? ''} · {p.unit}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="text-sm font-semibold text-dark">{sym}{p.sellingPrice.toFixed(2)}</p>
                       <p className={cn('text-xs', (p.inventory?.quantity ?? 0) <= 0 ? 'text-danger' : 'text-slate-400')}>
                         Stock: {p.inventory?.quantity ?? 0}
@@ -252,8 +252,8 @@ export function BulkOrderScreen() {
               <div className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
                 <div className="col-span-5">Product</div>
                 <div className="col-span-3 text-center">Qty</div>
-                <div className="col-span-2 text-right">Unit Price</div>
-                <div className="col-span-2 text-right">Total</div>
+                <div className="col-span-2 text-end">Unit Price</div>
+                <div className="col-span-2 text-end">Total</div>
               </div>
               <div className="divide-y divide-slate-50 dark:divide-slate-800">
                 {items.map(item => {
@@ -291,11 +291,11 @@ export function BulkOrderScreen() {
                           </span>
                         )}
                       </div>
-                      <div className="col-span-2 text-right text-xs text-slate-500">
+                      <div className="col-span-2 text-end text-xs text-slate-500">
                         {sym}{item.unitPrice.toFixed(2)}
                       </div>
                       <div className="col-span-2 flex items-center justify-end gap-2">
-                        <div className="text-right">
+                        <div className="text-end">
                           {pct > 0 && (
                             <p className="text-xs text-slate-400 line-through">{sym}{lineGross.toFixed(2)}</p>
                           )}
@@ -339,19 +339,19 @@ export function BulkOrderScreen() {
                 </div>
               ) : (
                 <div className="relative">
-                  <UserPlus size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <UserPlus size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     value={customerQuery}
                     onChange={e => setCustomerQuery(e.target.value)}
                     placeholder="Search wholesale customer…"
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
+                    className="w-full ps-9 pe-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
                   />
                   {customerResults.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                    <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
                       {customerResults.map(c => (
                         <button key={c.id}
                           onClick={() => { setCustomer(c); setCustomerQuery(''); setCustomerResults([]); void repriceCartForCustomer(c.id) }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-brand/5 dark:hover:bg-brand/10 text-sm border-b border-slate-50 dark:border-slate-800 last:border-0">
+                          className="w-full flex items-center justify-between px-3 py-2 text-start hover:bg-brand/5 dark:hover:bg-brand/10 text-sm border-b border-slate-50 dark:border-slate-800 last:border-0">
                           <span className="text-dark">{c.customerName}</span>
                           {c.phone && <span className="text-xs text-slate-400">{c.phone}</span>}
                         </button>

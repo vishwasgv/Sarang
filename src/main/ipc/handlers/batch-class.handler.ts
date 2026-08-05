@@ -33,35 +33,35 @@ export function register(handle: HandleFn): void {
   })
 
   handle('batchClass:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('batchClass.manage'); if (deny) return deny
     const parsed = CreateBatchClassSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createBatchClass(parsed.data)
   })
 
   handle('batchClass:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('batchClass.manage'); if (deny) return deny
     const parsed = UpdateBatchClassSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateBatchClass(parsed.data)
   })
 
   handle('batchClass:enroll', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('batchClass.enroll'); if (deny) return deny
     const parsed = EnrollMemberSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return enrollMember(parsed.data.batchClassId, parsed.data.memberId)
   })
 
   handle('batchClass:unenroll', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('batchClass.enroll'); if (deny) return deny
     const parsed = UnenrollMemberSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return unenrollMember(parsed.data.batchClassId, parsed.data.memberId)
   })
 
   handle('batchClass:markAttendance', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('batchClass.enroll'); if (deny) return deny
     const parsed = MarkAttendanceSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return markBatchClassAttendance(parsed.data.classId, parsed.data.memberIds, parsed.data.sessionDate)

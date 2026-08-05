@@ -1,6 +1,23 @@
 import { create } from 'zustand'
 import { api } from '@renderer/services/ipc-client'
 import { useBusinessStore } from './business.store'
+import { i18n, setLanguage } from '../../i18n'
+
+// REAL BUG found+fixed in this session's pre-release audit: languageLock was
+// computed and persisted (industry-template.service.ts's getLanguageLockFor,
+// written on setup and on every business-type change) but never read
+// anywhere at runtime — a user on a languageLock:'en' service vertical
+// (Hotel, Lawyer, Vet Clinic, and 20 others whose own screens are hardcoded
+// English by design) could still switch the whole app to any of the other
+// 12 languages via Settings, landing on a genuinely broken mixed-language
+// app: translated global chrome next to that vertical's still-English
+// screens. Enforced here, the single place both the initial load and every
+// later business-type change flow through — matches the standing rule in
+// industry-template.service.ts's own comment ("languageLock: 'en' for all
+// service business templates").
+function enforceLanguageLock(languageLock: 'en' | 'multi') {
+  if (languageLock === 'en' && i18n.language !== 'en') setLanguage('en')
+}
 
 export type TemplateModule =
   | 'tables' | 'kot' | 'recipes' | 'ingredient_tracking'
@@ -90,6 +107,7 @@ interface IndustryState {
   businessType: string
   enabledModules: TemplateModule[]
   dashboardLayout: string
+  languageLock: 'en' | 'multi'
   isLoaded: boolean
   loadTemplate: () => Promise<void>
   isModuleEnabled: (module: TemplateModule) => boolean
@@ -104,13 +122,15 @@ export const useIndustryStore = create<IndustryState>((set, get) => ({
   businessType: 'GENERAL',
   enabledModules: [],
   dashboardLayout: 'general',
+  languageLock: 'multi',
   isLoaded: false,
 
   loadTemplate: async () => {
     const res = await api.industry.getTemplate()
     if (res.success && res.data) {
-      const d = res.data as { businessType: string; enabledModules: TemplateModule[]; dashboardLayout: string }
-      set({ businessType: d.businessType, enabledModules: d.enabledModules, dashboardLayout: d.dashboardLayout, isLoaded: true })
+      const d = res.data as { businessType: string; enabledModules: TemplateModule[]; dashboardLayout: string; languageLock: 'en' | 'multi' }
+      set({ businessType: d.businessType, enabledModules: d.enabledModules, dashboardLayout: d.dashboardLayout, languageLock: d.languageLock, isLoaded: true })
+      enforceLanguageLock(d.languageLock)
     } else {
       set({ isLoaded: true })
     }
@@ -121,8 +141,9 @@ export const useIndustryStore = create<IndustryState>((set, get) => ({
   changeBusinessType: async (type) => {
     const res = await api.industry.changeBusinessType({ businessType: type })
     if (res.success && res.data) {
-      const d = res.data as { businessType: string; enabledModules: TemplateModule[]; dashboardLayout: string }
-      set({ businessType: d.businessType, enabledModules: d.enabledModules, dashboardLayout: d.dashboardLayout })
+      const d = res.data as { businessType: string; enabledModules: TemplateModule[]; dashboardLayout: string; languageLock: 'en' | 'multi' }
+      set({ businessType: d.businessType, enabledModules: d.enabledModules, dashboardLayout: d.dashboardLayout, languageLock: d.languageLock })
+      enforceLanguageLock(d.languageLock)
       // Fresh-audit fix (2026-07-12): this store's businessType and
       // business.store.ts's profile.businessType are two separate pieces of
       // state — updating only this one left the Dashboard's Industry
@@ -131,7 +152,7 @@ export const useIndustryStore = create<IndustryState>((set, get) => ({
       // every module-gated screen (which reads isModuleEnabled from this
       // store) correctly reflected the switch immediately.
       const currentProfile = useBusinessStore.getState().profile
-      if (currentProfile) useBusinessStore.getState().setProfile({ ...currentProfile, businessType: d.businessType })
+      if (currentProfile) useBusinessStore.getState().setProfile({ ...currentProfile, businessType: d.businessType, languageLock: d.languageLock })
     }
     return res as { success: boolean; error?: { message: string } }
   },

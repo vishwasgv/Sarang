@@ -411,8 +411,21 @@ export async function getMonthlySummaries(payload: {
         // basicSalary is per-hour; assume 8-hour workday as reference
         netPayable = emp.basicSalary * effectiveDays * 8 + totalAllowances
       } else {
-        // MONTHLY: pro-rate gross by effective days
-        netPayable = daysInMonth > 0 ? (grossSalary * effectiveDays) / daysInMonth : 0
+        // REAL BUG found+fixed in this session's pre-release audit: this used
+        // to pro-rate by `effectiveDays` (present + halfDay*0.5) over
+        // `daysInMonth`, the same "days worked / calendar days" ratio the
+        // DAILY/HOURLY branches above correctly use — but for a MONTHLY
+        // salary, that formula silently docked pay for every WEEK_OFF and
+        // HOLIDAY day too, since neither counts toward effectiveDays while
+        // both still count toward daysInMonth's denominator. A monthly
+        // salary is, by definition, a fixed amount that doesn't shrink
+        // because a Sunday or a public holiday fell in that month — only
+        // genuine unauthorized absence should reduce it. Fixed by pro-rating
+        // against payableDays (daysInMonth minus ABSENT/HALF_DAY only) —
+        // WEEK_OFF, HOLIDAY, LEAVE, and PRESENT all now correctly leave a
+        // MONTHLY employee's pay untouched; only ABSENT/HALF_DAY dock it.
+        const payableDays = daysInMonth - absent - halfDay * 0.5
+        netPayable = daysInMonth > 0 ? (grossSalary * payableDays) / daysInMonth : 0
       }
 
       return {

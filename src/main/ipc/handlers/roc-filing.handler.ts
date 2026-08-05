@@ -18,21 +18,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('rocFiling:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('rocFilings.manage'); if (deny) return deny
     const parsed = CreateROCFilingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createROCFiling(parsed.data)
   })
 
   handle('rocFiling:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('rocFilings.manage'); if (deny) return deny
     const parsed = UpdateROCFilingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateROCFiling(parsed.data)
   })
 
   handle('rocFiling:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('rocFilings.manage'); if (deny) return deny
     const parsed = ROCFilingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteROCFiling(parsed.data.id)

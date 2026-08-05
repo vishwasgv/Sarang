@@ -7,6 +7,7 @@ import { SetupWizard } from '@modules/setup/ui/SetupWizard'
 import { LicenseActivationGate } from '@modules/setup/ui/LicenseActivationGate'
 import { DashboardScreen } from '@modules/dashboard/ui/DashboardScreen'
 import { SettingsScreen } from '@modules/settings/ui/SettingsScreen'
+import { IndustrySettingsScreen } from '@modules/industry/ui/IndustrySettingsScreen'
 import { ProductsScreen } from '@modules/products/ui/ProductsScreen'
 import { PrintLabelsScreen } from '@modules/products/ui/PrintLabelsScreen'
 import { CustomersScreen } from '@modules/customers/ui/CustomersScreen'
@@ -33,7 +34,6 @@ import { KOTScreen } from '@modules/restaurant/ui/KOTScreen'
 import { RecipesScreen } from '@modules/restaurant/ui/RecipesScreen'
 import { KitchenDisplayBoardScreen } from '@modules/restaurant/ui/KitchenDisplayBoardScreen'
 import { ReturnScreen } from '@modules/retail/ui/ReturnScreen'
-import { IndustrySettingsScreen } from '@modules/industry/ui/IndustrySettingsScreen'
 import { AboutScreen } from '@modules/settings/ui/AboutScreen'
 import { LicenseScreen } from '@modules/settings/ui/LicenseScreen'
 import { ManualScreen } from '@modules/manual/ui/ManualScreen'
@@ -399,7 +399,12 @@ export function AppRouter() {
         <Route path="/logistics/challan" element={<ProtectedRoute permission="logistics.view"><ChallanScreen /></ProtectedRoute>} />
         <Route path="/logistics/freight" element={<ProtectedRoute permission="logistics.view"><FreightLedgerScreen /></ProtectedRoute>} />
         <Route path="/logistics/analytics" element={<ProtectedRoute permission="logistics.view"><LogisticsAnalyticsScreen /></ProtectedRoute>} />
-        {/* Industry settings */}
+        {/* No renderer navigation link points here directly (IndustrySettingsScreen
+            is rendered inline inside SettingsScreen's own tab for real users) —
+            but tests/e2e/harness.js's switchBusinessType() navigates straight to
+            this hash to reach the Industry tab without clicking through Settings'
+            tab UI first. Removing this route (once, in this session's audit)
+            broke that helper across every suite that switches business type. */}
         <Route path="/settings/industry" element={<ProtectedRoute permission="settings.modify"><IndustrySettingsScreen /></ProtectedRoute>} />
         <Route path="/cash-close" element={<ProtectedRoute permission="billing.createInvoice"><CashCloseScreen /></ProtectedRoute>} />
         <Route path="/audit" element={<ProtectedRoute permission="audit.view"><AuditLogsScreen /></ProtectedRoute>} />

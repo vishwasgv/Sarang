@@ -302,7 +302,7 @@ export default function ChallanScreen() {
                   <p className="text-sm text-gray-600 mt-1">{c.customerName}</p>
                   {c.vehicleNumber && <p className="text-xs text-gray-400">{t('logistics.challan.vehicleLabel')} {c.vehicleNumber}{c.driverName ? ` (${c.driverName})` : ''}</p>}
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="font-medium">{formatCurrency(c.totalValue)}</p>
                   <p className="text-xs text-gray-400">{t('logistics.challan.itemsCount', { count: c.items.length })}</p>
                   <div className="flex gap-2 mt-1 justify-end flex-wrap">
@@ -319,15 +319,15 @@ export default function ChallanScreen() {
               {expanded === c.id && (
                 <div className="border-t border-gray-100 px-4 py-3 overflow-x-auto">
                   <table className="w-full text-xs">
-                    <thead><tr className="text-gray-500"><th className="text-left py-1">Item</th><th className="text-right py-1">{t('logistics.shipments.qty')}</th><th className="text-right py-1">{t('logistics.grn.rejectedQty')}</th><th className="text-right py-1">{t('common.unit')}</th><th className="text-right py-1">{t('common.total')}</th></tr></thead>
+                    <thead><tr className="text-gray-500"><th className="text-start py-1">Item</th><th className="text-end py-1">{t('logistics.shipments.qty')}</th><th className="text-end py-1">{t('logistics.grn.rejectedQty')}</th><th className="text-end py-1">{t('common.unit')}</th><th className="text-end py-1">{t('common.total')}</th></tr></thead>
                     <tbody>
                       {c.items.map(i => (
                         <tr key={i.id} className="border-t border-gray-50">
                           <td className="py-1">{i.productName}</td>
-                          <td className="text-right">{i.quantity}</td>
-                          <td className="text-right">{i.returnedQty > 0 ? i.returnedQty : '—'}</td>
-                          <td className="text-right">{i.unit}</td>
-                          <td className="text-right">{formatCurrency(i.totalValue)}</td>
+                          <td className="text-end">{i.quantity}</td>
+                          <td className="text-end">{i.returnedQty > 0 ? i.returnedQty : '—'}</td>
+                          <td className="text-end">{i.unit}</td>
+                          <td className="text-end">{formatCurrency(i.totalValue)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -508,7 +508,7 @@ export default function ChallanScreen() {
                   <input
                     type="number" min={0} max={ri.quantity} value={ri.returnedQty}
                     onChange={e => setReturnItems(prev => prev.map((r, i) => i === idx ? { ...r, returnedQty: Math.min(ri.quantity, Math.max(0, parseInt(e.target.value) || 0)) } : r))}
-                    className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right"
+                    className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-end"
                   />
                 </div>
               ))}

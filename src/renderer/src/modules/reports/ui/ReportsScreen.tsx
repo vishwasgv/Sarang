@@ -1893,7 +1893,7 @@ export function ReportsScreen() {
   return (
     <div className="flex h-full">
       {/* ─── Sidebar ──────────────────────────────────────────────────────── */}
-      <div className="w-64 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0">
+      <div className="w-64 border-e border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0">
         <div className="px-4 py-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-brand/10 flex items-center justify-center">
@@ -1919,14 +1919,14 @@ export function ReportsScreen() {
                 {defs.map(r => (
                   <button key={r.id} onClick={() => selectReport(r.id)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                      'w-full flex items-center gap-3 px-4 py-2.5 text-start transition-colors',
                       activeReport === r.id
-                        ? 'bg-brand/10 text-brand border-r-2 border-brand'
+                        ? 'bg-brand/10 text-brand border-e-2 border-brand'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     )}>
                     <span className={cn('shrink-0', activeReport === r.id ? 'text-brand' : 'text-slate-400 dark:text-slate-500')}>{r.icon}</span>
                     <span className="text-sm font-medium truncate">{r.label}</span>
-                    <ChevronRight size={12} className={cn('ml-auto shrink-0 transition-opacity', activeReport === r.id ? 'opacity-100 text-brand' : 'opacity-0')} />
+                    <ChevronRight size={12} className={cn('ms-auto shrink-0 transition-opacity', activeReport === r.id ? 'opacity-100 text-brand' : 'opacity-0')} />
                   </button>
                 ))}
               </div>
@@ -2053,10 +2053,10 @@ export function ReportsScreen() {
                   placeholder={t('customers.searchCustomers')}
                   className="h-9 w-52 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 {customerResults.length > 0 && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-52 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+                  <div className="absolute top-full start-0 z-20 mt-1 w-52 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
                     {customerResults.slice(0, 8).map(c => (
                       <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.customerName); setCustomerResults([]) }}
-                        className="w-full text-left px-3 py-2 text-sm dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        className="w-full text-start px-3 py-2 text-sm dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         {c.customerName}
                       </button>
                     ))}
@@ -2073,10 +2073,10 @@ export function ReportsScreen() {
                   placeholder={t('suppliers.searchSuppliers')}
                   className="h-9 w-52 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 {supplierResults.length > 0 && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-52 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+                  <div className="absolute top-full start-0 z-20 mt-1 w-52 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
                     {supplierResults.slice(0, 8).map(s => (
                       <button key={s.id} onClick={() => { setSupplierId(s.id); setSupplierSearch(s.supplierName); setSupplierResults([]) }}
-                        className="w-full text-left px-3 py-2 text-sm dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        className="w-full text-start px-3 py-2 text-sm dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         {s.supplierName}
                       </button>
                     ))}
@@ -2182,7 +2182,7 @@ function DataTable({ headers, rows, emptyText = 'No records found.' }: {
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             {headers.map(h => (
-              <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">{h}</th>
+              <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
@@ -2527,7 +2527,7 @@ function ProfitAndLossView({ data, fmt }: { data: ProfitAndLossReport; fmt: (n: 
             <span className="text-sm font-semibold text-dark dark:text-slate-100">{fmt(s.grossProfit)} <span className="text-xs text-slate-400 font-normal">({s.grossMarginPercent}%)</span></span>
           </div>
           {data.expensesByCategory.map(c => (
-            <div key={c.category} className="flex items-center justify-between px-5 py-2.5 pl-8">
+            <div key={c.category} className="flex items-center justify-between px-5 py-2.5 ps-8">
               <span className="text-sm text-slate-500 dark:text-slate-400">{c.category}</span>
               <span className="text-sm text-slate-500 dark:text-slate-400">({fmt(c.amount)})</span>
             </div>
@@ -2589,23 +2589,23 @@ function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: nu
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 font-semibold uppercase">
-              <th className="text-left px-5 py-3">{t('reports.col.account')}</th>
-              <th className="text-right px-5 py-3">{t('common.debit')}</th>
-              <th className="text-right px-5 py-3">{t('common.credit')}</th>
+              <th className="text-start px-5 py-3">{t('reports.col.account')}</th>
+              <th className="text-end px-5 py-3">{t('common.debit')}</th>
+              <th className="text-end px-5 py-3">{t('common.credit')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.rows.map((r) => (
               <tr key={r.account}>
                 <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{r.account}</td>
-                <td className="px-5 py-3 text-right text-dark dark:text-slate-100">{r.debit > 0 ? fmt(r.debit) : ''}</td>
-                <td className="px-5 py-3 text-right text-dark dark:text-slate-100">{r.credit > 0 ? fmt(r.credit) : ''}</td>
+                <td className="px-5 py-3 text-end text-dark dark:text-slate-100">{r.debit > 0 ? fmt(r.debit) : ''}</td>
+                <td className="px-5 py-3 text-end text-dark dark:text-slate-100">{r.credit > 0 ? fmt(r.credit) : ''}</td>
               </tr>
             ))}
             <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold">
               <td className="px-5 py-4 text-dark dark:text-slate-100">{t('common.total')}</td>
-              <td className="px-5 py-4 text-right text-dark dark:text-slate-100">{fmt(data.totalDebit)}</td>
-              <td className="px-5 py-4 text-right text-dark dark:text-slate-100">{fmt(data.totalCredit)}</td>
+              <td className="px-5 py-4 text-end text-dark dark:text-slate-100">{fmt(data.totalDebit)}</td>
+              <td className="px-5 py-4 text-end text-dark dark:text-slate-100">{fmt(data.totalCredit)}</td>
             </tr>
           </tbody>
         </table>
@@ -2627,7 +2627,7 @@ function AuditReportView({ data, onPageChange }: { data: AuditReport; onPageChan
           <span className="text-sm font-semibold text-dark">
             {data.totalRecords === 0 ? '0' : `${rangeStart}-${rangeEnd}`} {t('common.of')} {data.totalRecords}
           </span>
-          <span className="text-xs text-slate-400 ml-1">{t('reports.section.auditRecordsFound')}</span>
+          <span className="text-xs text-slate-400 ms-1">{t('reports.section.auditRecordsFound')}</span>
         </div>
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
@@ -2663,7 +2663,7 @@ function BackupReportView({ data }: { data: unknown[] }) {
     <div className="space-y-6">
       <Card padding="md">
         <span className="text-sm font-semibold text-dark">{backups.length}</span>
-        <span className="text-xs text-slate-400 ml-1">{t('reports.section.backupsFound', { count: backups.length })}</span>
+        <span className="text-xs text-slate-400 ms-1">{t('reports.section.backupsFound', { count: backups.length })}</span>
       </Card>
       <DataTable
         headers={[t('reports.col.backupName'), t('common.date'), t('reports.col.sizeShort'), t('reports.col.version'), t('reports.col.schemaVersion'), t('reports.col.valid')]}

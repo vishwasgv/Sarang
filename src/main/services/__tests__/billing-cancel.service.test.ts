@@ -217,6 +217,26 @@ describe('billingService.cancelInvoice', () => {
     expect(sharedTx.invoice.update).not.toHaveBeenCalled()
   })
 
+  // Regression for a real bug found in this session's pre-release audit:
+  // cancelInvoice guarded RETURN (INVOC-016) but not SPLIT, even though
+  // splitInvoice() leaves the original invoice's items/quantities attached
+  // without touching inventory or the ledger for that row (the sold goods
+  // live on the child invoices instead). Reaching this path would restore
+  // the full original quantity into stock a second time (already sold via
+  // the children) and reverse the original ledger entry on top of whatever
+  // the children's own payments/reversals post.
+  it('returns INVOC-018 and does not touch inventory when cancelling a SPLIT invoice', async () => {
+    const db = makeDb({ status: 'SPLIT' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await billingService.cancelInvoice(makeCancelPayload())
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('INVOC-018')
+    expect(sharedTx.inventory.update).not.toHaveBeenCalled()
+    expect(sharedTx.invoice.update).not.toHaveBeenCalled()
+  })
+
   it('reads the invoice inside the transaction (no double-cancel race)', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

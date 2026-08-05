@@ -230,7 +230,7 @@ export function LeaveScreen() {
                       {r.reason && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 italic">"{r.reason}"</p>}
                     </div>
                     {r.status === 'PENDING' && (
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 ms-4">
                         <button onClick={() => updateStatus(r.id, 'APPROVED')} disabled={updatingId !== null}
                           className="flex items-center gap-1 px-3 py-1.5 bg-success/10 text-success rounded-lg text-sm font-medium hover:bg-success/20 transition-colors disabled:opacity-50">
                           <Check size={14} />{t('hr.approve')}

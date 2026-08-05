@@ -128,7 +128,7 @@ function ReportBody({ order, profile }: { order: LabTestOrder; profile: Business
             {params.length > 0 && (
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-slate-400">
+                  <tr className="text-start text-slate-400">
                     <th className="pb-1 font-semibold">Parameter</th>
                     <th className="pb-1 font-semibold">Result</th>
                     <th className="pb-1 font-semibold">Unit</th>

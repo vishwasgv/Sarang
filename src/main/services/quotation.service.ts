@@ -191,14 +191,39 @@ export const quotationService = {
     // billing.service.ts's own createInvoice behaviour.
     const creditLimitModuleEnabled = await isModuleEnabled('credit_limit_enforcement')
 
+    // REAL BUG found+fixed in this session's pre-release audit: this used to
+    // (a) round the discount as a single `qty*unitPrice*pct` expression,
+    // while create() above rounds the gross FIRST and applies the percent to
+    // that rounded gross — two different formulas that can disagree by a
+    // cent on a fractional qty/price landing on a rounding boundary — and
+    // (b) copy the invoice header totals (subtotal/tax/discount/total)
+    // verbatim from the quotation instead of deriving them from the
+    // invoice's own freshly-computed line items, unlike every other
+    // invoice-creating path in this app (createInvoice, splitInvoice), which
+    // always sums its own line rows for the header. Together these could
+    // produce an Invoice.totalAmount that didn't equal the sum of its own
+    // InvoiceItem.lineTotal rows. Fixed by computing line rows once here
+    // (mirroring create()'s exact rounding order) and deriving the header
+    // from summing them, exactly like createInvoice/splitInvoice do.
+    const invoiceLineRows = resolvedItems.map((item) => {
+      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
+      const lineDiscountAmount = roundCurrency(lineGross * (item.discount / 100), currencyDecimals)
+      const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscountAmount, item.taxRate, currencyDecimals)
+      return { item, lineGross, lineDiscountAmount, lineTaxAmount, lineTotal }
+    })
+    const invoiceSubtotal = sumCurrency(invoiceLineRows.map(r => r.lineGross), currencyDecimals)
+    const invoiceDiscountAmount = sumCurrency(invoiceLineRows.map(r => r.lineDiscountAmount), currencyDecimals)
+    const invoiceTaxAmount = sumCurrency(invoiceLineRows.map(r => r.lineTaxAmount), currencyDecimals)
+    const invoiceTotalAmount = roundCurrency(invoiceSubtotal - invoiceDiscountAmount + invoiceTaxAmount, currencyDecimals)
+
     try {
       const invoice = await db.$transaction(async (tx) => {
         if (q.customerId && creditLimitModuleEnabled) {
           const customer = await tx.customer.findUnique({ where: { id: q.customerId } })
           if (customer && customer.creditLimit > 0) {
-            const projectedBalance = customer.outstandingBalance + q.totalAmount
+            const projectedBalance = customer.outstandingBalance + invoiceTotalAmount
             if (projectedBalance > customer.creditLimit) {
-              throw new ServiceError('CUST-003', `Credit limit exceeded. Outstanding: ${customer.outstandingBalance.toFixed(2)}, invoice: ${q.totalAmount.toFixed(2)}, limit: ${customer.creditLimit.toFixed(2)}.`)
+              throw new ServiceError('CUST-003', `Credit limit exceeded. Outstanding: ${customer.outstandingBalance.toFixed(2)}, invoice: ${invoiceTotalAmount.toFixed(2)}, limit: ${customer.creditLimit.toFixed(2)}.`)
             }
           }
         }
@@ -210,27 +235,17 @@ export const quotationService = {
             invoiceNumber,
             invoiceType: 'RETAIL',
             customerId: q.customerId ?? null,
-            subtotal: q.subtotal,
-            taxAmount: q.taxAmount,
-            discountAmount: q.discountAmount,
-            totalAmount: q.totalAmount,
-            balanceAmount: q.totalAmount,
+            subtotal: invoiceSubtotal,
+            taxAmount: invoiceTaxAmount,
+            discountAmount: invoiceDiscountAmount,
+            totalAmount: invoiceTotalAmount,
+            balanceAmount: invoiceTotalAmount,
             quotationId: q.id,
             createdById: userId
           }
         })
 
-        for (const item of resolvedItems) {
-          // Real bug found live (core-commerce audit): discountAmount/taxAmount
-          // used to be recomputed here with raw float arithmetic (and taxAmount
-          // via a subtraction against `item.lineTotal`, which was itself a raw-
-          // float value from create() above) instead of routing through the
-          // same calculateLineTotal every other invoice line in this app goes
-          // through. QuotationItem.discount is a PERCENT, so it's converted to
-          // a currency amount (rounded) first, exactly mirroring create()'s own
-          // fix above.
-          const lineDiscountAmount = roundCurrency(item.quantity * item.unitPrice * (item.discount / 100), currencyDecimals)
-          const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscountAmount, item.taxRate, currencyDecimals)
+        for (const { item, lineDiscountAmount, lineTaxAmount, lineTotal } of invoiceLineRows) {
           await tx.invoiceItem.create({
             data: {
               invoiceId: inv.id,
@@ -259,7 +274,7 @@ export const quotationService = {
             customerId: q.customerId,
             referenceType: 'INVOICE',
             referenceId: inv.id,
-            debitAmount: q.totalAmount,
+            debitAmount: invoiceTotalAmount,
             creditAmount: 0,
             remarks: `Invoice ${invoiceNumber} (converted from quotation ${q.quotationNumber})`
           }, tx)

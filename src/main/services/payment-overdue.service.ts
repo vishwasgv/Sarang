@@ -1,10 +1,13 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { formatAmount } from './print.service'
 
 export async function scanPaymentOverdueNotifications(): Promise<void> {
   try {
     const db = getPrisma()
     const now = new Date()
+    const profile = await db.businessProfile.findFirst({ select: { currencySymbol: true } })
+    const currencySymbol = profile?.currencySymbol ?? '₹'
 
     const overdueInvoices = await db.invoice.findMany({
       where: {
@@ -37,8 +40,9 @@ export async function scanPaymentOverdueNotifications(): Promise<void> {
 
       const customerName = inv.customer?.customerName ?? inv.customerId ?? 'Customer'
       const phone = inv.customer?.phone ?? null
-      const dueDateStr = inv.dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-      const body = `Dear ${customerName}, invoice #${inv.invoiceNumber} [${idAnchor}] of ₹${inv.balanceAmount.toFixed(2)} was due on ${dueDateStr} and is now overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}. Please clear at your earliest convenience. Powered by Sarang | www.aszurex.com`
+      const dueDateStr = inv.dueDate.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+      const formattedBalance = await formatAmount(inv.balanceAmount, currencySymbol)
+      const body = `Dear ${customerName}, invoice #${inv.invoiceNumber} [${idAnchor}] of ${formattedBalance} was due on ${dueDateStr} and is now overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}. Please clear at your earliest convenience. Powered by Sarang | www.aszurex.com`
       const whatsappLink = phone ? await buildWhatsAppLink(phone, body) : null
 
       await db.notificationQueue.create({

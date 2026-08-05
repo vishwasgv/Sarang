@@ -672,7 +672,7 @@ export default function ShootsScreen() {
                     </div>
                   )}
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-end flex-shrink-0">
                   <p className="text-xs text-gray-500 dark:text-slate-400">{fmtLabel(b.deliverableType)}</p>
                   {b.deliveryDeadline && <p className="text-xs text-orange-600 font-medium">Due {fmtDate(b.deliveryDeadline)}</p>}
                 </div>
@@ -772,7 +772,7 @@ export default function ShootsScreen() {
                           <div key={item.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 rounded px-2 py-1.5 border border-gray-100 dark:border-slate-800">
                             <span className="flex-1 text-gray-700 dark:text-slate-300">{item.description}</span>
                             <span className="text-gray-500 dark:text-slate-400">{item.quantity} × ₹{item.unitPrice.toLocaleString('en-IN')}</span>
-                            <span className="font-medium text-gray-900 dark:text-slate-100 w-16 text-right">₹{(item.quantity * item.unitPrice).toLocaleString('en-IN')}</span>
+                            <span className="font-medium text-gray-900 dark:text-slate-100 w-16 text-end">₹{(item.quantity * item.unitPrice).toLocaleString('en-IN')}</span>
                             {!b.invoiceId && <button onClick={() => handleDeleteAddOn(b.id, item.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={12} /></button>}
                           </div>
                         ))}
@@ -809,7 +809,7 @@ export default function ShootsScreen() {
                           )}
                         </>
                       ) : 'Final amount not set'}
-                      {b.invoiceId && <span className="ml-2 text-green-600 font-medium">Invoiced</span>}
+                      {b.invoiceId && <span className="ms-2 text-green-600 font-medium">Invoiced</span>}
                     </div>
                     {!b.invoiceId && b.finalAmount != null && b.finalAmount > 0 && (
                       <button

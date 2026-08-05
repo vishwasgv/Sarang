@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Paperclip, Trash2, ExternalLink, FileText, Image, FileSpreadsheet, RefreshCw, UploadCloud } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function DocumentPanel({ entityType, entityId, compact = false }: Props) {
+  const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [docs, setDocs] = useState<DocRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,13 +57,13 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (res.success && res.data) {
         setDocs(res.data as DocRecord[])
       } else {
-        const msg = (res.error as { message?: string })?.message ?? 'Could not load documents.'
+        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotLoad')
         setError(msg)
         toastError('Error', msg)
       }
     } catch {
-      setError('Could not load documents.')
-      toastError('Error', 'Could not load documents.')
+      setError(t('documents.couldNotLoad'))
+      toastError('Error', t('documents.couldNotLoad'))
     } finally {
       setLoading(false)
     }
@@ -70,9 +72,9 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
   async function handleAttach() {
     setError(null)
     try {
-      const picked = await api.documents.pick({ title: 'Attach Document' })
+      const picked = await api.documents.pick({ title: t('documents.attachDialogTitle') })
       if (!picked.success) {
-        const msg = (picked.error as { message?: string })?.message ?? 'Could not open file picker.'
+        const msg = (picked.error as { message?: string })?.message ?? t('documents.couldNotOpenPicker')
         setError(msg)
         toastError('Error', msg)
         return
@@ -85,13 +87,13 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (res.success) {
         await load()
       } else {
-        const msg = (res.error as { message?: string })?.message ?? 'Could not attach file.'
+        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotAttach')
         setError(msg)
         toastError('Error', msg)
       }
     } catch {
-      setError('Could not attach file.')
-      toastError('Error', 'Could not attach file.')
+      setError(t('documents.couldNotAttach'))
+      toastError('Error', t('documents.couldNotAttach'))
     } finally {
       setAttaching(false)
     }
@@ -106,13 +108,13 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
         setDocs(prev => prev.filter(d => d.id !== confirmDelete.id))
         setConfirmDelete(null)
       } else {
-        const msg = (res.error as { message?: string })?.message ?? 'Could not delete document.'
+        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotDelete')
         setError(msg)
         toastError('Error', msg)
       }
     } catch {
-      setError('Could not delete document.')
-      toastError('Error', 'Could not delete document.')
+      setError(t('documents.couldNotDelete'))
+      toastError('Error', t('documents.couldNotDelete'))
     } finally {
       setDeletingId(null)
     }
@@ -122,13 +124,13 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
     try {
       const res = await api.documents.open({ id })
       if (!res.success) {
-        const msg = (res.error as { message?: string })?.message ?? 'Could not open file.'
+        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotOpen')
         setError(msg)
         toastError('Error', msg)
       }
     } catch {
-      setError('Could not open file.')
-      toastError('Error', 'Could not open file.')
+      setError(t('documents.couldNotOpen'))
+      toastError('Error', t('documents.couldNotOpen'))
     }
   }
 
@@ -138,7 +140,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
         <div className="flex items-center gap-1.5">
           <Paperclip size={13} className="text-slate-400" />
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            Documents {docs.length > 0 && `(${docs.length})`}
+            {t('documents.title')} {docs.length > 0 && `(${docs.length})`}
           </span>
         </div>
         <button
@@ -147,7 +149,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
           className="flex items-center gap-1.5 text-xs text-brand hover:text-brand/80 font-medium transition-colors disabled:opacity-50"
         >
           {attaching ? <RefreshCw size={11} className="animate-spin" /> : <UploadCloud size={11} />}
-          Attach file
+          {t('documents.attach')}
         </button>
       </div>
 
@@ -162,7 +164,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       ) : docs.length === 0 ? (
         <div className="text-center py-5 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
           <Paperclip size={20} className="text-slate-300 mx-auto mb-1.5" />
-          <p className="text-xs text-slate-400">No documents attached</p>
+          <p className="text-xs text-slate-400">{t('documents.noDocuments')}</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -177,12 +179,12 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => handleOpen(doc.id)}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/5 transition-colors"
-                  title="Open file">
+                  title={t('documents.open')}>
                   <ExternalLink size={13} />
                 </button>
                 <button onClick={() => setConfirmDelete(doc)} disabled={deletingId === doc.id}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-danger hover:bg-danger/5 transition-colors"
-                  title="Remove">
+                  title={t('documents.delete')}>
                   {deletingId === doc.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               </div>
@@ -195,18 +197,18 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <p className="text-sm font-semibold text-dark dark:text-slate-100">Remove document?</p>
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('documents.removeDocumentTitle')}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              "<strong>{confirmDelete.fileName}</strong>" will be permanently removed. This cannot be undone.
+              "<strong>{confirmDelete.fileName}</strong>" {t('documents.confirmDeleteText')}
             </p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setConfirmDelete(null)}
                 className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={handleDeleteConfirmed} disabled={!!deletingId}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-danger text-white text-sm font-semibold hover:bg-danger/90 transition-colors disabled:opacity-50">
-                {deletingId ? <RefreshCw size={12} className="animate-spin" /> : null} Remove
+                {deletingId ? <RefreshCw size={12} className="animate-spin" /> : null} {t('documents.delete')}
               </button>
             </div>
           </div>

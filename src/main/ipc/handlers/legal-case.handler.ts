@@ -25,21 +25,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('legalCase:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
     const parsed = CreateLegalCaseSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createLegalCase(parsed.data)
   })
 
   handle('legalCase:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
     const parsed = UpdateLegalCaseSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateLegalCase(parsed.data)
   })
 
   handle('legalCase:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
     const payload = raw as { id: string }
     return deleteLegalCase(payload.id)
   })

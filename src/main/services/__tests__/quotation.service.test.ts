@@ -150,6 +150,51 @@ describe('quotationService.convertToInvoice — float precision fix', () => {
     expect(itemCreateCall.data.discountAmount).toBe(0)
     expect(itemCreateCall.data.lineTotal).toBe(0.3)
   })
+
+  // Regression for a real bug found in this session's pre-release audit:
+  // this function used to round the line discount as a single
+  // `qty*unitPrice*pct` expression, while create() above rounds the gross
+  // FIRST and applies the percent to that rounded gross — two different
+  // formulas that can disagree by a cent on a fractional qty/price landing
+  // on a rounding boundary. It also used to copy the invoice header totals
+  // straight from the quotation instead of deriving them from the invoice's
+  // own freshly-computed line items (unlike createInvoice/splitInvoice,
+  // which always sum their own lines) — so the header and the item could
+  // each be internally "correct" by a different definition and still
+  // disagree with each other. qty=3, unitPrice=33.335, discount=50%,
+  // tax=18% makes qty*unitPrice land exactly on a rounding boundary
+  // (100.005): the old code produced item.lineTotal=59.01 against a
+  // header.totalAmount of 59.00 copied from the quotation — a real 1-cent
+  // "doesn't add up" inconsistency between the invoice and its own line.
+  it('keeps the invoice header exactly equal to the sum of its own line items at a fractional rounding boundary', async () => {
+    const quotation = {
+      id: 'qt-1', quotationNumber: 'QT-00001', customerId: null, invoice: null,
+      subtotal: 100.01, discountAmount: 50.01, taxAmount: 9.00, totalAmount: 59.00,
+      items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 3, unitPrice: 33.335, discount: 50, taxRate: 18, lineTotal: 59.00 }]
+    }
+    const { db, txClient } = makeConvertDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'PAID', region: 'IN', daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = txClient.invoice.create.mock.calls[0][0] as { data: { subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number } }
+    const itemCreateCall = txClient.invoiceItem.create.mock.calls[0][0] as { data: { discountAmount: number; taxAmount: number; lineTotal: number } }
+
+    // Old buggy formula would give discountAmount=50.00, lineTotal=59.01 here.
+    expect(itemCreateCall.data.discountAmount).toBe(50.01)
+    expect(itemCreateCall.data.taxAmount).toBe(9.00)
+    expect(itemCreateCall.data.lineTotal).toBe(59.00)
+
+    // The invariant this fix guarantees: header always equals the sum of
+    // the invoice's own lines (single item here, so they're identical).
+    expect(invoiceCreateCall.data.totalAmount).toBe(itemCreateCall.data.lineTotal)
+    expect(invoiceCreateCall.data.discountAmount).toBe(itemCreateCall.data.discountAmount)
+    expect(invoiceCreateCall.data.taxAmount).toBe(itemCreateCall.data.taxAmount)
+  })
 })
 
 // Regression test for a real bug found+fixed 2026-07-28: convertToInvoice

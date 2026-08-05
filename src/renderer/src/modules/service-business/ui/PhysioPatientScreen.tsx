@@ -844,7 +844,7 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
               <p className="text-sm font-semibold text-dark dark:text-slate-100">{activePack.packName}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Purchased {fmt(activePack.purchaseDate)}{activePack.expiryDate ? ` · Expires ${fmt(activePack.expiryDate)}` : ''}</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-end shrink-0">
               <p className="text-2xl font-bold text-success">{activePack.totalSessions - activePack.usedSessions}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">of {activePack.totalSessions} sessions left</p>
             </div>
@@ -962,7 +962,7 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
                     </div>
                   )}
                 </div>
-                <div className={cn('text-right shrink-0', remaining <= 2 && remaining > 0 ? 'text-warning' : remaining === 0 ? 'text-slate-400' : 'text-success')}>
+                <div className={cn('text-end shrink-0', remaining <= 2 && remaining > 0 ? 'text-warning' : remaining === 0 ? 'text-slate-400' : 'text-success')}>
                   <p className="text-lg font-bold">{remaining}</p>
                   <p className="text-xs">remaining</p>
                 </div>
@@ -1071,7 +1071,7 @@ function HEPBody({ exercises, title, patientName, profile }: {
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Patient</p>
           <p className="text-base font-bold">{patientName}</p>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Date</p>
           <p className="text-sm">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
@@ -1086,14 +1086,14 @@ function HEPBody({ exercises, title, patientName, profile }: {
               <span className="text-base font-bold text-brand shrink-0">{idx + 1}.</span>
               <p className="text-base font-bold">{ex.name}</p>
             </div>
-            {ex.description && <p className="text-xs text-slate-700 dark:text-slate-300 mb-3 ml-6 leading-relaxed">{ex.description}</p>}
-            <div className="flex gap-4 ml-6 flex-wrap">
+            {ex.description && <p className="text-xs text-slate-700 dark:text-slate-300 mb-3 ms-6 leading-relaxed">{ex.description}</p>}
+            <div className="flex gap-4 ms-6 flex-wrap">
               {ex.sets && <span className="text-xs font-medium"><span className="text-slate-400">Sets: </span>{ex.sets}</span>}
               {ex.reps && <span className="text-xs font-medium"><span className="text-slate-400">Reps: </span>{ex.reps}</span>}
               {ex.hold && <span className="text-xs font-medium"><span className="text-slate-400">Hold: </span>{ex.hold}</span>}
               {ex.frequency && <span className="text-xs font-medium"><span className="text-slate-400">Frequency: </span>{ex.frequency}</span>}
             </div>
-            {ex.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic ml-6 mt-2">{ex.notes}</p>}
+            {ex.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic ms-6 mt-2">{ex.notes}</p>}
           </div>
         ))}
       </div>

@@ -344,7 +344,7 @@ function WelcomeStep() {
           </div>
         ))}
       </div>
-      <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 text-left">
+      <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 text-start">
         <p className="text-xs font-semibold text-brand mb-1">Setup takes about 2 minutes</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">We'll ask about your business type, location, tax preferences, and create your admin account.</p>
       </div>
@@ -374,7 +374,7 @@ function BusinessTypeStep() {
         </button>
         <h2 className="text-base font-semibold text-dark dark:text-slate-100 mb-1">Select your service type</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">All 24 templates are English-only and include appointment booking, service catalog, and WhatsApp notifications.</p>
-        <div className="max-h-72 overflow-y-auto pr-1 space-y-3">
+        <div className="max-h-72 overflow-y-auto pe-1 space-y-3">
           {serviceGroups.map((group) => (
             <div key={group}>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{group}</p>
@@ -384,7 +384,7 @@ function BusinessTypeStep() {
                     key={type.value}
                     type="button"
                     onClick={() => { setValue('businessType', type.value, { shouldValidate: true }); setShowServicePicker(false) }}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border text-start transition-colors ${
                       selected === type.value
                         ? 'border-brand bg-brand/5 text-brand'
                         : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -408,13 +408,13 @@ function BusinessTypeStep() {
       <h2 className="text-base font-semibold text-dark dark:text-slate-100 mb-1">What type of business do you run?</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">This helps us set up the right modules and layout for you.</p>
       {errors.businessType && <p className="text-xs text-danger mb-3">{errors.businessType.message}</p>}
-      <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto pe-1">
         {BUSINESS_TYPES.map((type) => (
           <button
             key={type.value}
             type="button"
             onClick={() => setValue('businessType', type.value, { shouldValidate: true })}
-            className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+            className={`flex items-center gap-3 p-3 rounded-lg border text-start transition-colors ${
               selected === type.value
                 ? 'border-brand bg-brand/5 text-brand'
                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -429,7 +429,7 @@ function BusinessTypeStep() {
         <button
           type="button"
           onClick={() => setShowServicePicker(true)}
-          className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+          className={`flex items-center gap-3 p-3 rounded-lg border text-start transition-colors ${
             isServiceSelected
               ? 'border-brand bg-brand/5 text-brand'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -535,7 +535,7 @@ function TaxStep() {
             key={t.value}
             type="button"
             onClick={() => setValue('taxModel', t.value, { shouldValidate: true })}
-            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-start transition-colors ${
               selected === t.value
                 ? 'border-brand bg-brand/5'
                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -726,7 +726,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
       </p>
 
       {recoveryCode && (
-        <div className="mb-6 p-4 bg-warning/5 border-2 border-warning/30 rounded-lg text-left">
+        <div className="mb-6 p-4 bg-warning/5 border-2 border-warning/30 rounded-lg text-start">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert size={16} className="text-warning shrink-0" />
             <p className="text-sm font-bold text-dark dark:text-slate-100">Save your Password Recovery Code</p>
@@ -749,7 +749,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
         </div>
       )}
 
-      <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-left">
+      <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-start">
         <p className="text-sm font-bold text-dark dark:text-slate-100 mb-2">Activate your license</p>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
           Sarang is free to use for your first 12 months. After that, {priceLine} keeps it running — you'll get a reminder well before it applies, and your existing data is never at risk. This key ties to this one device.
@@ -782,7 +782,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
       <Button onClick={onComplete} size="lg" className="w-full" disabled={!canLaunch}>
         Launch Dashboard
       </Button>
-      <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-left">
+      <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-start">
         <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Sarang Business OS Lite</p>
         <p className="text-xs text-slate-400 mt-0.5">No cloud. No data sharing. Your business data stays on your device.</p>
         <p className="text-xs text-slate-400 mt-1.5">

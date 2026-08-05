@@ -121,7 +121,7 @@ export function NormalRangesScreen() {
           </div>
         </div>
         {canWrite && !showForm && (
-          <Button size="sm" onClick={() => setShowForm(true)}><Plus size={14} className="mr-1" /> Add Range</Button>
+          <Button size="sm" onClick={() => setShowForm(true)}><Plus size={14} className="me-1" /> Add Range</Button>
         )}
       </div>
 
@@ -174,11 +174,11 @@ export function NormalRangesScreen() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Test / Vital</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Normal Range</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Critical (Panic)</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Applies To</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Species</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Test / Vital</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Normal Range</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Critical (Panic)</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Applies To</th>
+                  <th className="text-start px-4 py-3 font-medium text-gray-600 dark:text-slate-400">Species</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -196,7 +196,7 @@ export function NormalRangesScreen() {
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.gender === 'ALL' ? 'Everyone' : r.gender}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{r.species === 'ALL' ? '—' : r.species}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-end">
                       {canWrite && (
                         <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded dark:text-slate-500">
                           <Trash2 className="w-4 h-4" />

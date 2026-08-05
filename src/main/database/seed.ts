@@ -232,7 +232,216 @@ const PERMISSIONS = [
   // all of that would be exactly the side-channel the spec's permission-parity
   // requirement forbids. Admin/Manager already have that breadth on their
   // normal screens, so this is genuine parity, not a new exposure.
-  { permissionKey: 'ai.query', permissionName: 'Ask the AI Assistant Business Questions' }
+  { permissionKey: 'ai.query', permissionName: 'Ask the AI Assistant Business Questions' },
+
+  // ─── Security audit fix (2026-08-04) ───────────────────────────────────────
+  // 59 handler files (196 call sites) across ~35 business-vertical modules
+  // were using billing.createInvoice as their ONLY permission gate for
+  // create/update/delete operations on entities that have nothing to do with
+  // billing, because dedicated permission keys were never seeded for them.
+  // Concretely this let the Cashier role — granted billing.createInvoice for
+  // its real job at the checkout counter — also delete legal case files,
+  // board resolutions, ROC filings, etc. via direct IPC calls, since
+  // window.api exposes every method regardless of role and the IPC-layer
+  // check was the only enforcement boundary that mattered. Each vertical
+  // below gets its own dedicated key. List/get reads in these same files were
+  // already (correctly) gated on billing.view and are untouched — only the
+  // create/update/delete/action endpoints move off the mis-borrowed key.
+  // Any handler's own generateInvoice-style action that genuinely creates a
+  // real Invoice (verified per-file against billingService.createInvoice
+  // usage) was deliberately left on billing.createInvoice, same as the
+  // already-correct precedent in job-card.handler.ts/project.handler.ts/
+  // service-ticket.handler.ts (sales.manage for CRUD, billing.createInvoice
+  // only for the actual invoice-generating action).
+
+  // Appointments — the generic booking/scheduling system shared by every
+  // SERVICE_BASE_MODULES vertical (salons, clinics, gyms, driving schools,
+  // etc.). Booking/rescheduling/checking a walk-in customer in is the same
+  // front-desk, bounded trust level as billing.createInvoice (Cashier already
+  // has it); deletion stays on billing.void, untouched. Reminder generation
+  // (notification-queue) is tied 1:1 to the same front-desk workflow.
+  { permissionKey: 'appointments.manage', permissionName: 'Create & Update Appointments' },
+  { permissionKey: 'notifications.manage', permissionName: 'Generate Appointment Reminders' },
+
+  // Gym/Fitness Studio — Batch Classes, Memberships, Session Packs, Staff
+  // Commission. Selling a membership and assigning/deducting a session pack
+  // are the same bounded front-desk transaction as billing.createInvoice
+  // (Cashier already reaches this); enrolling/marking attendance for a batch
+  // class is the same tier, split into its own key from actually
+  // creating/rescheduling the CLASS ITSELF (schedule, instructor, capacity),
+  // which is a shop-wide scheduling decision at the same trust tier as
+  // jewellery.manageRates (Manager+ only). staffCommission.record is
+  // narrower still — it fires automatically the instant a Cashier generates
+  // an appointment invoice (AppointmentsScreen.tsx), so it has to stay at the
+  // same trust level as billing.createInvoice or that existing checkout flow
+  // breaks for Cashier.
+  { permissionKey: 'batchClass.manage', permissionName: 'Create & Reschedule Batch Classes' },
+  { permissionKey: 'batchClass.enroll', permissionName: 'Enroll & Mark Attendance For Batch Classes' },
+  { permissionKey: 'memberships.manage', permissionName: 'Sell, Check-In & Freeze/Resume Memberships' },
+  { permissionKey: 'sessionPacks.manage', permissionName: 'Sell & Deduct Session Packs' },
+  { permissionKey: 'staffCommission.record', permissionName: 'Record Staff Commission At Time Of Billing' },
+
+  // Driving School — enrolling a learner and booking/updating a driving
+  // session or test is the same bounded front-desk trust level as
+  // billing.createInvoice (Cashier already has it); the vehicle/package
+  // master data stays on settings.modify, untouched.
+  { permissionKey: 'drivingSchool.manage', permissionName: 'Manage Learner Profiles, Driving Sessions & Tests' },
+
+  // Veterinary Clinic — registering/updating a pet's profile (name, species,
+  // weight log) is the same bounded trust level as customers.create/update,
+  // which Cashier already has; deletion stays on billing.void, untouched.
+  // Vaccination records are actual clinical/medical history, though, so they
+  // stay at the same Manager+-only trust tier as clinicalNotes — NOT
+  // extended to Cashier even though pets.manage is.
+  { permissionKey: 'pets.manage', permissionName: 'Register & Update Pet Profiles' },
+  { permissionKey: 'vaccinations.manage', permissionName: 'Record Vaccinations & Reminders' },
+
+  // Clinic/Lab walk-in Token Queue — calling/skipping/resetting the queue is
+  // literally the front-desk receptionist's job, same trust level as
+  // billing.createInvoice.
+  { permissionKey: 'tokenQueue.manage', permissionName: 'Manage Walk-In Token Queue' },
+
+  // Photo Studio — booking a shoot and adding paid add-ons at intake is the
+  // same bounded counter trust level as billing.createInvoice; the shoot-day
+  // equipment/crew checklist and post-shoot delivery pipeline are internal
+  // production coordination, not a customer-facing transaction, so they sit
+  // at Manager+ only.
+  { permissionKey: 'shootBookings.manage', permissionName: 'Book Shoots & Add-Ons' },
+  { permissionKey: 'shootProduction.manage', permissionName: 'Manage Shoot Checklists & Delivery Tracking' },
+
+  // Event Management — booking an event at intake is the same bounded
+  // counter trust level as billing.createInvoice; vendor contracting and
+  // day-of-show run-sheet planning are back-office operational work, Manager+
+  // only.
+  { permissionKey: 'eventBookings.manage', permissionName: 'Book Events' },
+  { permissionKey: 'eventOperations.manage', permissionName: 'Manage Event Vendor Bookings & Run-of-Show' },
+
+  // Real Estate — property/deal/inquiry/site-visit records are agent-level
+  // back-office sales-pipeline data, not a walk-in counter transaction (same
+  // "default deny Cashier" reasoning as Leads/Legal/CA/CS data below) —
+  // Manager+ only. propertyDeal:generateInvoice stays on
+  // billing.createInvoice, untouched (it genuinely creates a real Invoice).
+  { permissionKey: 'properties.manage', permissionName: 'Manage Properties, Deals, Inquiries & Site Visits' },
+
+  // Generic Leads (CRM) — shared by Real Estate, Architect, Civil Engineer,
+  // Consultant, Marketing/Software Agency, Event Management. Back-office
+  // sales-pipeline data, Manager+ only — not a Cashier-reachable counter
+  // transaction.
+  { permissionKey: 'leads.manage', permissionName: 'Manage Leads' },
+
+  // Lawyer — legal case files and hearing records. Manager+ only; this is
+  // exactly the kind of sensitive professional client data the Cashier role
+  // (billing counter staff) must never be able to touch.
+  { permissionKey: 'legalCases.manage', permissionName: 'Manage Legal Cases & Hearings' },
+
+  // CA Firm / Company Secretary — shared statutory compliance calendar
+  // (compliance-task + compliance-event, the same "CA + CS" library Phase 29
+  // seeds below). Manager+ only — back-office statutory tracking, not
+  // customer-facing.
+  { permissionKey: 'compliance.manage', permissionName: 'Manage Compliance Tasks & Events' },
+
+  // CA Firm — client engagements and their document checklists. Manager+
+  // only; engagement:generateInvoice stays on billing.createInvoice, untouched.
+  { permissionKey: 'engagements.manage', permissionName: 'Manage Client Engagements & Document Checklists' },
+
+  // Company Secretary — board meetings/resolutions and ROC filings are
+  // statutory corporate-governance records. Manager+ only.
+  { permissionKey: 'boardGovernance.manage', permissionName: 'Manage Board Meetings & Resolutions' },
+  { permissionKey: 'rocFilings.manage', permissionName: 'Manage ROC Filings' },
+
+  // Architect — drawing register/revisions. Manager+ only.
+  { permissionKey: 'drawingRegister.manage', permissionName: 'Manage Drawing Revisions' },
+
+  // Civil Engineer — site visit log & material test results. Manager+ only.
+  { permissionKey: 'siteVisitLog.manage', permissionName: 'Manage Site Visits & Material Test Results' },
+
+  // Architect / Civil Engineer / Consultant / Marketing & Software Agency —
+  // professional-services projects (Phase 30's ServiceProject, distinct from
+  // the legacy Phase 4 sales.manage-gated Project model) and their
+  // milestones. Manager+ only; milestone:generateInvoice stays on
+  // billing.createInvoice, untouched.
+  { permissionKey: 'serviceProjects.manage', permissionName: 'Manage Service Projects & Milestones' },
+
+  // Independent Consultant / Marketing & Software Agency — retainer
+  // agreements. Manager+ only; retainer:generateInvoice stays on
+  // billing.createInvoice, untouched.
+  { permissionKey: 'retainers.manage', permissionName: 'Manage Retainer Agreements' },
+
+  // Marketing Agency — campaign performance & content calendar. Manager+ only.
+  { permissionKey: 'marketingCampaigns.manage', permissionName: 'Manage Marketing Campaigns & Content Calendar' },
+
+  // Software Agency — issue tracker (issues/comments/subtasks) and sprints.
+  // Manager+ only (conservative default — a dev-team member's own ticket
+  // updates would also reasonably need this, but the app has no dedicated
+  // "Developer" role to scope it to, so it stays at the Manager tier rather
+  // than opening it to Cashier/Staff).
+  { permissionKey: 'issueTracker.manage', permissionName: 'Manage Issues, Comments & Sprints' },
+
+  // Time-billed professions (Lawyer/CA/CS/Architect/Civil Engineer/
+  // Consultant/Software Agency) — logged time entries. Manager+ only
+  // (conservative default, same reasoning as issueTracker.manage above);
+  // timeEntry:generateInvoice stays on billing.createInvoice, untouched.
+  { permissionKey: 'timeEntries.manage', permissionName: 'Manage Time Entries' },
+
+  // Coaching Institute — registering a new student is the same bounded
+  // front-desk trust level as customers.create, which Cashier already has;
+  // editing/deleting an existing student record is Manager+ only.
+  { permissionKey: 'students.create', permissionName: 'Register New Student' },
+  { permissionKey: 'students.manage', permissionName: 'Update & Delete Student Profiles' },
+  // Batch/curriculum scheduling, syllabus topics, and performance/recital
+  // events are shop-wide curriculum decisions, same trust tier as
+  // jewellery.manageRates — Manager+ only. (Also covers StudentTestScore —
+  // real academic mark/grade records, same sensitivity as the recital/
+  // syllabus data it's grouped with here.)
+  { permissionKey: 'coachingBatches.manage', permissionName: 'Manage Coaching Batches, Syllabus, Performances & Test Scores' },
+  // Enrolling a student into a batch at the front desk is the same bounded
+  // trust level as billing.createInvoice; updating/deleting an enrollment,
+  // promoting from a waitlist, and recording attendance are Manager+ only.
+  { permissionKey: 'coachingEnrollment.create', permissionName: 'Enroll Student In Batch' },
+  { permissionKey: 'coachingEnrollment.manage', permissionName: 'Update Enrollments, Waitlist & Attendance' },
+  // Generating a month's fee-due records is a bulk administrative batch job
+  // (all active enrollments at once), not a per-customer counter
+  // transaction — Manager+ only. coachingFee:update (marking a record PAID,
+  // which conditionally creates a real Invoice) stays on
+  // billing.createInvoice, untouched.
+  { permissionKey: 'coachingFees.manage', permissionName: 'Generate Monthly Coaching Fees' },
+
+  // Car Service Center — opening a job card at intake is the same bounded
+  // trust level as repairTickets.create (Cashier already has that exact
+  // pattern elsewhere); updating/deleting a job card or scheduling a service
+  // reminder is Manager+ only. carJobCard:generateInvoice stays on
+  // billing.createInvoice, untouched.
+  { permissionKey: 'carJobCard.create', permissionName: 'Open New Car Job Card' },
+  { permissionKey: 'carJobCard.manage', permissionName: 'Update, Delete & Schedule Reminders For Car Job Cards' },
+
+  // Tailor Boutique — taking a new order and recording a customer's
+  // measurements at the counter is the same bounded trust level as
+  // billing.createInvoice; editing an order, setting/clearing assigned
+  // fabric, scheduling a trial appointment, and updating/deleting a
+  // measurement record are Manager+ only. tailoringOrder:generateInvoice
+  // stays on billing.createInvoice, untouched.
+  { permissionKey: 'tailoringOrders.create', permissionName: 'Take New Tailoring Order & Record Measurements' },
+  { permissionKey: 'tailoringOrders.manage', permissionName: 'Update Tailoring Orders, Fabric & Trial Scheduling' },
+
+  // Pest Control — contracts and job sheets (incl. pesticide usage records)
+  // are B2B field-service scheduling, not a walk-in counter transaction —
+  // Manager+ only. Both handlers' generateInvoice actions stay on
+  // billing.createInvoice, untouched.
+  { permissionKey: 'pestControl.manage', permissionName: 'Manage Pest Contracts & Job Sheets' },
+
+  // Placement Agency — candidates, interview rounds, placements, and client
+  // job orders are recruitment back-office work, Manager+ only.
+  // placement:generateInvoice stays on billing.createInvoice, untouched.
+  { permissionKey: 'placements.manage', permissionName: 'Manage Candidates, Interviews, Placements & Job Orders' },
+
+  // Retail Returns & Cash Drawer Close. A return reverses a completed sale
+  // (refunds money/restocks goods) — same Manager+-only trust tier as
+  // payments.reverse, not Cashier-reachable. Cash-drawer close is the
+  // Cashier's own literal end-of-shift task (counting and recording their own
+  // drawer), same trust level as the reports.print end-of-shift workflow
+  // Cashier already has.
+  { permissionKey: 'billing.manageReturns', permissionName: 'Process Sales Returns' },
+  { permissionKey: 'billing.cashClose', permissionName: 'Close Cash Drawer' }
 ]
 
 // Role → permission assignments from PERMISSIONS_MATRIX.md
@@ -274,7 +483,30 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'rental.view', 'rental.manage',
     'hotel.view', 'hotel.manage',
     'jewellery.view', 'jewellery.manageRates', 'jewellery.manageExchanges',
-    'ai.query'
+    'ai.query',
+    // Security audit fix (2026-08-04) — dedicated vertical permission keys
+    // replacing the mis-borrowed billing.createInvoice gate (see PERMISSIONS
+    // above for full per-vertical reasoning). Manager gets all of them, same
+    // "operational control" breadth Manager already has everywhere else.
+    'appointments.manage', 'notifications.manage',
+    'batchClass.manage', 'batchClass.enroll', 'memberships.manage', 'sessionPacks.manage', 'staffCommission.record',
+    'drivingSchool.manage',
+    'pets.manage', 'vaccinations.manage',
+    'tokenQueue.manage',
+    'shootBookings.manage', 'shootProduction.manage',
+    'eventBookings.manage', 'eventOperations.manage',
+    'properties.manage', 'leads.manage',
+    'legalCases.manage',
+    'compliance.manage', 'engagements.manage',
+    'boardGovernance.manage', 'rocFilings.manage',
+    'drawingRegister.manage', 'siteVisitLog.manage',
+    'serviceProjects.manage', 'retainers.manage', 'marketingCampaigns.manage', 'issueTracker.manage', 'timeEntries.manage',
+    'students.create', 'students.manage', 'coachingBatches.manage', 'coachingEnrollment.create', 'coachingEnrollment.manage', 'coachingFees.manage',
+    'carJobCard.create', 'carJobCard.manage',
+    'tailoringOrders.create', 'tailoringOrders.manage',
+    'pestControl.manage',
+    'placements.manage',
+    'billing.manageReturns', 'billing.cashClose'
   ],
   Cashier: [
     'auth.login', 'auth.changeOwnPassword',
@@ -318,7 +550,32 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Recording an old-metal exchange at the counter is the same bounded,
     // per-transaction trust level — but NOT jewellery.manageRates, which
     // affects the price of every future sale shop-wide (Manager+ only).
-    'jewellery.view', 'jewellery.manageExchanges'
+    'jewellery.view', 'jewellery.manageExchanges',
+    // Security audit fix (2026-08-04) — narrow, bounded grants only, exactly
+    // matching the per-transaction/front-desk actions Cashier already has
+    // elsewhere (billing.createInvoice/repairTickets.create/rental.manage/
+    // hotel.manage/customers.create). Everything else in the newly-seeded
+    // vertical permissions above (legal cases, board/ROC filings, compliance
+    // tasks, leads, real-estate deals, professional-services projects/
+    // retainers/time entries/issue tracker, pest control, placement agency,
+    // coaching curriculum/fees, vaccinations, sales returns) is deliberately
+    // NOT granted here — that back-office/professional/clinical data is
+    // exactly what the Cashier role (billing counter staff) must not reach.
+    'appointments.manage', 'notifications.manage', // front-desk booking/reminders
+    'batchClass.enroll', // enrolling a walk-in member into a class, not scheduling the class itself
+    'memberships.manage', // selling/checking in a membership at the counter
+    'sessionPacks.manage', // selling/deducting a session pack at the counter
+    'staffCommission.record', // fires automatically alongside Cashier's own appointment-invoice generation
+    'drivingSchool.manage', // enrolling a learner / booking a driving session at the counter
+    'pets.manage', // registering/updating a pet profile — same tier as customers.create/update
+    'tokenQueue.manage', // running the walk-in token queue is the front-desk job itself
+    'shootBookings.manage', // booking a shoot & add-ons at intake
+    'eventBookings.manage', // booking an event at intake
+    'students.create', // registering a new student — same tier as customers.create
+    'coachingEnrollment.create', // enrolling a student into a batch at the front desk
+    'carJobCard.create', // opening a job card at intake — same tier as repairTickets.create
+    'tailoringOrders.create', // taking a new order / recording measurements at the counter
+    'billing.cashClose' // counting/recording their own drawer at end of shift, same tier as reports.print
   ],
   Staff: [
     'auth.login', 'auth.changeOwnPassword',

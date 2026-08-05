@@ -732,10 +732,10 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 dark:border-slate-700">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by project name or client..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+            className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
         </div>
         <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="">All Statuses</option>
@@ -784,12 +784,12 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                       {p.adSpendBudget != null && ` · Ad spend ${fmtAmount(p.adSpendBudget)}`}
                     </div>
                   </div>
-                  <div className="text-right text-sm hidden sm:block">
+                  <div className="text-end text-sm hidden sm:block">
                     <div className="font-medium text-gray-900 dark:text-slate-100">{fmtAmount(p.totalContractValue)}</div>
                     <div className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(p.startDate)} – {fmtDate(p.expectedEndDate)}</div>
                   </div>
                   {/* Action buttons */}
-                  <div className="flex items-center gap-1 ml-2">
+                  <div className="flex items-center gap-1 ms-2">
                     <button onClick={() => toggleTab(p.id, 'milestones')}
                       className={cn('flex items-center gap-1 px-2 py-1 rounded text-xs font-medium',
                         tab === 'milestones' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800')}
@@ -847,18 +847,18 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-gray-500 dark:text-slate-400">
-                            <th className="text-left py-1 pl-2">Milestone</th>
-                            <th className="text-right py-1">Amount</th>
-                            <th className="text-left py-1 px-3">Status</th>
-                            <th className="text-left py-1">Due</th>
+                            <th className="text-start py-1 ps-2">Milestone</th>
+                            <th className="text-end py-1">Amount</th>
+                            <th className="text-start py-1 px-3">Status</th>
+                            <th className="text-start py-1">Due</th>
                             <th className="py-1" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {p.milestones.map((m) => (
                             <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
-                              <td className="py-1.5 pl-2 text-gray-800 dark:text-slate-200">{m.milestoneName}</td>
-                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{fmtAmount(m.milestoneAmount)}</td>
+                              <td className="py-1.5 ps-2 text-gray-800 dark:text-slate-200">{m.milestoneName}</td>
+                              <td className="py-1.5 text-end text-gray-700 dark:text-slate-300">{fmtAmount(m.milestoneAmount)}</td>
                               <td className="py-1.5 px-3">
                                 <Badge variant={MILESTONE_STATUS_VARIANT[m.status] ?? 'neutral'} size="sm">{m.status.replace('_', ' ')}</Badge>
                               </td>
@@ -907,11 +907,11 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-gray-500 dark:text-slate-400">
-                            <th className="text-left py-1 pl-2">Sprint</th>
-                            <th className="text-left py-1 px-3">Status</th>
-                            <th className="text-left py-1">Period</th>
-                            <th className="text-left py-1">Goal</th>
-                            <th className="text-right py-1 px-3">Issues</th>
+                            <th className="text-start py-1 ps-2">Sprint</th>
+                            <th className="text-start py-1 px-3">Status</th>
+                            <th className="text-start py-1">Period</th>
+                            <th className="text-start py-1">Goal</th>
+                            <th className="text-end py-1 px-3">Issues</th>
                             <th className="py-1" />
                           </tr>
                         </thead>
@@ -921,7 +921,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                             const openCount   = s.issues?.filter((i) => i.status === 'OPEN' || i.status === 'IN_PROGRESS').length ?? 0
                             return (
                             <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
-                              <td className="py-1.5 pl-2 font-medium text-gray-800 dark:text-slate-200">
+                              <td className="py-1.5 ps-2 font-medium text-gray-800 dark:text-slate-200">
                                 Sprint {s.sprintNumber}{s.name ? ` — ${s.name}` : ''}
                               </td>
                               <td className="py-1.5 px-3">
@@ -931,7 +931,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                                 {fmtDate(s.startDate)} – {fmtDate(s.endDate)}
                               </td>
                               <td className="py-1.5 text-gray-500 truncate max-w-[200px] dark:text-slate-400">{s.goal ?? '—'}</td>
-                              <td className="py-1.5 text-right px-3">
+                              <td className="py-1.5 text-end px-3">
                                 {issueCount > 0 ? (
                                   <span className="text-xs text-gray-600 dark:text-slate-400">
                                     {openCount} open / {issueCount} total
@@ -1004,22 +1004,22 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                       <table className="w-full text-xs mb-2">
                         <thead>
                           <tr className="text-gray-500 dark:text-slate-400">
-                            <th className="text-left py-1 pl-2">Period</th>
-                            <th className="text-right py-1">Impr.</th>
-                            <th className="text-right py-1">Clicks</th>
-                            <th className="text-right py-1">Conv.</th>
-                            <th className="text-right py-1 px-3">Spend</th>
+                            <th className="text-start py-1 ps-2">Period</th>
+                            <th className="text-end py-1">Impr.</th>
+                            <th className="text-end py-1">Clicks</th>
+                            <th className="text-end py-1">Conv.</th>
+                            <th className="text-end py-1 px-3">Spend</th>
                             <th className="py-1" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {(performanceMap[p.id] ?? []).map((e) => (
                             <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
-                              <td className="py-1.5 pl-2 text-gray-800 dark:text-slate-200">{fmtDate(e.periodStart)} – {fmtDate(e.periodEnd)}</td>
-                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.impressions ?? '—'}</td>
-                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.clicks ?? '—'}</td>
-                              <td className="py-1.5 text-right text-gray-700 dark:text-slate-300">{e.conversions ?? '—'}</td>
-                              <td className="py-1.5 text-right px-3 text-gray-700 dark:text-slate-300">{e.actualSpend == null ? '—' : fmtAmount(e.actualSpend)}</td>
+                              <td className="py-1.5 ps-2 text-gray-800 dark:text-slate-200">{fmtDate(e.periodStart)} – {fmtDate(e.periodEnd)}</td>
+                              <td className="py-1.5 text-end text-gray-700 dark:text-slate-300">{e.impressions ?? '—'}</td>
+                              <td className="py-1.5 text-end text-gray-700 dark:text-slate-300">{e.clicks ?? '—'}</td>
+                              <td className="py-1.5 text-end text-gray-700 dark:text-slate-300">{e.conversions ?? '—'}</td>
+                              <td className="py-1.5 text-end px-3 text-gray-700 dark:text-slate-300">{e.actualSpend == null ? '—' : fmtAmount(e.actualSpend)}</td>
                               <td className="py-1.5">
                                 <button onClick={() => void handleDeletePerformanceEntry(p.id, e.id)} className="p-1 text-gray-400 hover:text-red-600 rounded dark:text-slate-500"><Trash2 className="w-3 h-3" /></button>
                               </td>
@@ -1076,9 +1076,9 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                           <div key={c.id} className="flex items-center justify-between gap-2 flex-wrap text-xs bg-gray-50 dark:bg-slate-800 rounded px-2 py-1.5">
                             <div>
                               <span className="font-medium text-gray-700 dark:text-slate-300">{fmtDate(c.scheduledDate)}</span>
-                              <span className="ml-2 text-gray-600 dark:text-slate-400">{c.title}</span>
-                              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-slate-400">{c.contentType.replace(/_/g, ' ')}</span>
-                              {c.platform && <span className="ml-1 text-gray-400 dark:text-slate-500">· {c.platform}</span>}
+                              <span className="ms-2 text-gray-600 dark:text-slate-400">{c.title}</span>
+                              <span className="ms-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-slate-400">{c.contentType.replace(/_/g, ' ')}</span>
+                              {c.platform && <span className="ms-1 text-gray-400 dark:text-slate-500">· {c.platform}</span>}
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <select value={c.status} onChange={(e) => void handleUpdateContentStatus(p.id, c.id, e.target.value)} className="text-xs h-6 px-1 border border-gray-200 rounded bg-white dark:bg-slate-900 dark:border-slate-700">

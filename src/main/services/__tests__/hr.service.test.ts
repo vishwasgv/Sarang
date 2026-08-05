@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { createLeaveRequest, updateLeaveStatus } from '../hr.service'
+import { createLeaveRequest, updateLeaveStatus, getMonthlySummaries } from '../hr.service'
 
 function makeMockDb() {
   return {
@@ -148,5 +148,75 @@ describe('hr.service.updateLeaveStatus — leave-day cap enforcement on approval
       data: expect.objectContaining({ status: 'REJECTED' }),
     })
     expect(db.leaveType.findUnique).not.toHaveBeenCalled()
+  })
+})
+
+// Regression for a real bug found in this session's pre-release audit:
+// getMonthlySummaries pro-rated a MONTHLY employee's netPayable as
+// `grossSalary * effectiveDays / daysInMonth`, where effectiveDays only
+// counted PRESENT/HALF_DAY — so every WEEK_OFF and HOLIDAY day in the month
+// silently docked pay, even though a monthly salary is supposed to be a
+// fixed amount unaffected by weekends/holidays. Fixed to pro-rate against
+// payableDays (daysInMonth minus ABSENT/HALF_DAY only).
+describe('hr.service.getMonthlySummaries — MONTHLY salary payroll correctness', () => {
+  function makeMonthlyDb(attendanceRows: { status: string }[]) {
+    return {
+      employee: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'emp-1', fullName: 'Test Employee', isActive: true, salaryType: 'MONTHLY', basicSalary: 30000, allowances: '[]' },
+        ]),
+      },
+      attendance: {
+        findMany: vi.fn().mockResolvedValue(
+          attendanceRows.map((r, i) => ({ employeeId: 'emp-1', date: new Date(2026, 3, i + 1), status: r.status }))
+        ),
+      },
+    } as unknown as ReturnType<typeof getPrisma>
+  }
+
+  // April 2026 has 30 days: 4 WEEK_OFF (Sundays) + 26 PRESENT, zero ABSENT.
+  it('pays the FULL monthly salary when every non-present day is a WEEK_OFF, not docked for weekends', async () => {
+    const rows = [
+      ...Array(26).fill({ status: 'PRESENT' }),
+      ...Array(4).fill({ status: 'WEEK_OFF' }),
+    ]
+    vi.mocked(getPrisma).mockReturnValue(makeMonthlyDb(rows) as never)
+
+    const res = await getMonthlySummaries({ year: 2026, month: 4 })
+
+    expect(res.success).toBe(true)
+    expect(res.data!.summaries[0].salary.netPayable).toBe(30000)
+  })
+
+  // Same month, but 2 of those PRESENT days become genuine unauthorized
+  // ABSENCE — only the 2 absent days should dock pay, not the 4 week-offs.
+  it('docks pay only for genuine ABSENT days, not for WEEK_OFF/HOLIDAY days in the same month', async () => {
+    const rows = [
+      ...Array(24).fill({ status: 'PRESENT' }),
+      ...Array(2).fill({ status: 'ABSENT' }),
+      ...Array(4).fill({ status: 'WEEK_OFF' }),
+    ]
+    vi.mocked(getPrisma).mockReturnValue(makeMonthlyDb(rows) as never)
+
+    const res = await getMonthlySummaries({ year: 2026, month: 4 })
+
+    expect(res.success).toBe(true)
+    // payableDays = 30 - 2 absent = 28 -> 30000 * 28/30 = 28000
+    expect(res.data!.summaries[0].salary.netPayable).toBe(28000)
+  })
+
+  // A HOLIDAY-only month (no week-offs marked at all) must also pay in full —
+  // confirms the fix isn't narrowly special-cased to WEEK_OFF alone.
+  it('pays the FULL monthly salary when the only non-present days are HOLIDAY', async () => {
+    const rows = [
+      ...Array(28).fill({ status: 'PRESENT' }),
+      ...Array(2).fill({ status: 'HOLIDAY' }),
+    ]
+    vi.mocked(getPrisma).mockReturnValue(makeMonthlyDb(rows) as never)
+
+    const res = await getMonthlySummaries({ year: 2026, month: 4 })
+
+    expect(res.success).toBe(true)
+    expect(res.data!.summaries[0].salary.netPayable).toBe(30000)
   })
 })

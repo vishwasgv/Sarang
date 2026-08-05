@@ -63,6 +63,7 @@ export interface BusinessProfile {
   enableDocumentWatermark?: boolean
   timezone: string
   clinicSpecialty?: string | null
+  languageLock: string
 }
 
 export type IndustryTemplate = 'RESTAURANT' | 'RETAIL' | 'HARDWARE' | 'DISTRIBUTOR' | 'GENERAL'

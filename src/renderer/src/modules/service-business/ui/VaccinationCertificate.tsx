@@ -149,7 +149,7 @@ function CertificateBody({ record, pet, profile }: { record: VaccinationRecord; 
                 ['Microchip ID', pet.microchipId ?? '—'],
               ].map(([label, value]) => (
                 <tr key={label}>
-                  <td className="py-1 pr-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
+                  <td className="py-1 pe-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
                   <td className="py-1 font-semibold text-dark dark:text-slate-100 text-xs">{value}</td>
                 </tr>
               ))}
@@ -167,7 +167,7 @@ function CertificateBody({ record, pet, profile }: { record: VaccinationRecord; 
                 ['Phone', pet.customer?.phone ?? '—'],
               ].map(([label, value]) => (
                 <tr key={label}>
-                  <td className="py-1 pr-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
+                  <td className="py-1 pe-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
                   <td className="py-1 font-semibold text-dark dark:text-slate-100 text-xs">{value}</td>
                 </tr>
               ))}
@@ -187,7 +187,7 @@ function CertificateBody({ record, pet, profile }: { record: VaccinationRecord; 
                 ['Administered By', record.administeredBy ?? '—'],
               ].map(([label, value]) => (
                 <tr key={label}>
-                  <td className="py-1 pr-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
+                  <td className="py-1 pe-3 text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium text-xs w-28">{label}</td>
                   <td className="py-1 font-semibold text-dark dark:text-slate-100 text-xs">{value}</td>
                 </tr>
               ))}

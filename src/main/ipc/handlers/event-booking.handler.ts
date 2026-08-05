@@ -19,21 +19,21 @@ export function registerEventBooking(handle: HandleFn): void {
   })
 
   handle('eventBooking:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('eventBookings.manage'); if (deny) return deny
     const parsed = CreateEventBookingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createEventBooking(parsed.data)
   })
 
   handle('eventBooking:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('eventBookings.manage'); if (deny) return deny
     const parsed = UpdateEventBookingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateEventBooking(parsed.data)
   })
 
   handle('eventBooking:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('eventBookings.manage'); if (deny) return deny
     const parsed = EventBookingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteEventBooking(parsed.data)

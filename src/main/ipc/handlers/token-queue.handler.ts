@@ -26,35 +26,35 @@ export function register(handle: HandleFn): void {
   })
 
   handle('tokenQueue:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
     const parsed = CreateTokenSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createToken(parsed.data)
   })
 
   handle('tokenQueue:call', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
     const parsed = TokenQueueIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return callToken(parsed.data.id)
   })
 
   handle('tokenQueue:seen', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
     const parsed = TokenQueueIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return markSeen(parsed.data.id)
   })
 
   handle('tokenQueue:skip', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
     const parsed = TokenQueueIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return skipToken(parsed.data.id)
   })
 
   handle('tokenQueue:reset', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
     const parsed = TokenQueueIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return resetToken(parsed.data.id)

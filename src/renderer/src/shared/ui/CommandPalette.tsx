@@ -164,7 +164,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="fixed top-[15vh] left-1/2 -translate-x-1/2 w-full max-w-xl z-50 px-4"
+            className="fixed top-[15vh] start-1/2 -translate-x-1/2 w-full max-w-xl z-50 px-4"
           >
             <div role="dialog" aria-modal="true" aria-label="Global search" className="bg-white dark:bg-slate-900 rounded-2xl shadow-modal dark:shadow-none dark:border dark:border-slate-700 overflow-hidden">
               {/* Search input */}
@@ -226,7 +226,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                             onClick={() => handleSelect(item)}
                             onMouseEnter={() => setSelectedIdx(globalIdx)}
                             className={cn(
-                              'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                              'w-full flex items-center gap-3 px-4 py-2.5 text-start transition-colors',
                               selectedIdx === globalIdx
                                 ? 'bg-brand/5 dark:bg-brand/10'
                                 : 'hover:bg-slate-50 dark:hover:bg-slate-800'

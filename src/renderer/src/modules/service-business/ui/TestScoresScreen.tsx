@@ -226,11 +226,11 @@ export default function TestScoresScreen() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Student</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Test</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Date</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Score</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Student</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Test</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Date</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Score</th>
               <th className="py-3 px-4" />
             </tr>
           </thead>
@@ -252,7 +252,7 @@ export default function TestScoresScreen() {
                   <td className="py-3 px-4 text-gray-700 dark:text-slate-300">{new Date(s.testDate).toLocaleDateString()}</td>
                   <td className="py-3 px-4">
                     <span className="font-medium text-gray-900 dark:text-slate-100">{s.marksObtained}/{s.maxMarks}</span>
-                    <Badge variant={pct >= 50 ? 'success' : 'danger'} size="sm" className="ml-2">
+                    <Badge variant={pct >= 50 ? 'success' : 'danger'} size="sm" className="ms-2">
                       {pct}% {s.grade ? `· ${s.grade}` : ''}
                     </Badge>
                   </td>

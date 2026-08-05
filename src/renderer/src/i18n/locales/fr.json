@@ -212,6 +212,7 @@
     "card": "Carte",
     "credit": "Crédit",
     "cheque": "Chèque",
+    "bankTransfer": "Virement bancaire",
     "finalize": "Finaliser",
     "saveDraft": "Enregistrer le brouillon",
     "cancel": "Annuler la facture",

@@ -17,21 +17,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('complianceTask:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('compliance.manage'); if (deny) return deny
     const parsed = CreateComplianceTaskSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createComplianceTask(parsed.data)
   })
 
   handle('complianceTask:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('compliance.manage'); if (deny) return deny
     const parsed = UpdateComplianceTaskSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateComplianceTask(parsed.data)
   })
 
   handle('complianceTask:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('compliance.manage'); if (deny) return deny
     const parsed = ComplianceTaskIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteComplianceTask(parsed.data.id)

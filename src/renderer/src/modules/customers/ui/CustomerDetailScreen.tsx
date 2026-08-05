@@ -126,7 +126,7 @@ export function CustomerDetailScreen() {
           </div>
         </div>
         {!customer.isActive && (
-          <Badge variant="neutral" size="sm" className="ml-auto">{t('customers.archived')}</Badge>
+          <Badge variant="neutral" size="sm" className="ms-auto">{t('customers.archived')}</Badge>
         )}
       </div>
 
@@ -171,7 +171,7 @@ export function CustomerDetailScreen() {
           <div className="flex items-center gap-2">
             <CreditCard size={14} className="text-slate-400 shrink-0" />
             <span className="text-sm text-slate-600 dark:text-slate-300">{t('customers.creditLimit')}</span>
-            <span className="ml-auto text-sm font-semibold text-dark dark:text-slate-100">
+            <span className="ms-auto text-sm font-semibold text-dark dark:text-slate-100">
               {customer.creditLimit > 0 ? customer.creditLimit.toFixed(2) : '—'}
             </span>
           </div>
@@ -183,7 +183,7 @@ export function CustomerDetailScreen() {
                 <TrendingDown size={14} className="text-success shrink-0" />
               )}
               <span className="text-sm text-slate-600 dark:text-slate-300">{t('customers.outstanding')}</span>
-              <span className={`ml-auto text-sm font-semibold ${outstanding > 0 ? 'text-danger' : 'text-success'}`}>
+              <span className={`ms-auto text-sm font-semibold ${outstanding > 0 ? 'text-danger' : 'text-success'}`}>
                 {outstanding.toFixed(2)}
               </span>
             </div>
@@ -232,11 +232,11 @@ export function CustomerDetailScreen() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800">
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.date')}</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.reference')}</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.debit')}</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.credit')}</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.balance')}</th>
+                    <th className="px-5 py-3 text-start text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.date')}</th>
+                    <th className="px-5 py-3 text-start text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.reference')}</th>
+                    <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.debit')}</th>
+                    <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.credit')}</th>
+                    <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.balance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,13 +246,13 @@ export function CustomerDetailScreen() {
                         {formatDate(entry.createdAt)}
                       </td>
                       <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{entry.remarks ?? entry.referenceType}</td>
-                      <td className="px-5 py-3 text-right text-danger font-medium">
+                      <td className="px-5 py-3 text-end text-danger font-medium">
                         {entry.debitAmount > 0 ? entry.debitAmount.toFixed(2) : '—'}
                       </td>
-                      <td className="px-5 py-3 text-right text-success font-medium">
+                      <td className="px-5 py-3 text-end text-success font-medium">
                         {entry.creditAmount > 0 ? entry.creditAmount.toFixed(2) : '—'}
                       </td>
-                      <td className={`px-5 py-3 text-right font-semibold ${entry.balance > 0 ? 'text-danger' : entry.balance < 0 ? 'text-success' : 'text-slate-500 dark:text-slate-400'}`}>
+                      <td className={`px-5 py-3 text-end font-semibold ${entry.balance > 0 ? 'text-danger' : entry.balance < 0 ? 'text-success' : 'text-slate-500 dark:text-slate-400'}`}>
                         {entry.balance.toFixed(2)}
                       </td>
                     </tr>

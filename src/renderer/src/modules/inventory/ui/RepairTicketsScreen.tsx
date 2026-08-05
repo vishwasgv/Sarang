@@ -105,19 +105,19 @@ function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId
   return (
     <div className="relative">
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search serial number or IMEI of a sold unit…"
-          className="w-full h-11 pl-10 pr-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+          className="w-full h-11 ps-10 pe-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
       </div>
       {results.length > 0 && (
         <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
           {results.map(s => (
             <button key={s.id} type="button"
               onClick={() => { onChange(s); setQuery(''); setResults([]) }}
-              className="w-full px-3 py-2 text-left hover:bg-brand/5 transition-colors">
+              className="w-full px-3 py-2 text-start hover:bg-brand/5 transition-colors">
               <p className="text-sm font-medium text-dark dark:text-slate-100">{s.productName}</p>
               <p className="text-sm font-mono text-slate-400">{s.serialNumber}{s.imeiNumber ? ` · IMEI ${s.imeiNumber}` : ''}</p>
             </button>
@@ -398,7 +398,7 @@ export function RepairTicketsScreen() {
           </div>
         </div>
         <Button size="md" onClick={() => openCreateForSerial()}>
-          <Plus size={16} className="mr-1.5" /> New Repair Ticket
+          <Plus size={16} className="me-1.5" /> New Repair Ticket
         </Button>
       </div>
 
@@ -411,7 +411,7 @@ export function RepairTicketsScreen() {
             <div className="flex gap-2">
               {historySerial && (
                 <Button size="sm" onClick={() => openCreateForSerial(historySerial)}>
-                  <Plus size={14} className="mr-1" /> New Ticket for This Unit
+                  <Plus size={14} className="me-1" /> New Ticket for This Unit
                 </Button>
               )}
               <Button size="sm" variant="outline" onClick={() => setSearchParams({})}>Clear filter</Button>
@@ -419,7 +419,7 @@ export function RepairTicketsScreen() {
           </div>
           {history.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No repair tickets yet for this unit.</p>}
           {history.map(h => (
-            <button key={h.id} onClick={() => openDetail(h)} className="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-left hover:border-brand transition-colors">
+            <button key={h.id} onClick={() => openDetail(h)} className="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-start hover:border-brand transition-colors">
               <span className="text-sm font-mono text-slate-500 dark:text-slate-400">{h.claimNumber}</span>
               <span className="text-sm text-slate-500 dark:text-slate-400">{h.issueDescription}</span>
               <Badge variant={STATUS_VARIANT[h.status]} size="sm">{STATUS_LABELS[h.status]}</Badge>
@@ -435,11 +435,11 @@ export function RepairTicketsScreen() {
             {s === 'ALL' ? 'All' : STATUS_LABELS[s as RepairStatus]}
           </button>
         ))}
-        <div className="relative ml-auto w-64">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative ms-auto w-64">
+          <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search claim, RMA, serial, customer…"
-            className="w-full h-10 pl-9 pr-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+            className="w-full h-10 ps-9 pe-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
         </div>
       </div>
 

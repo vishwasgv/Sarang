@@ -307,7 +307,7 @@ function InterviewRoundsPanel({ candidateId, jobOrders }: { candidateId: string;
                 {round.scheduledDate && <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(round.scheduledDate).toLocaleDateString('en-IN')}</span>}
                 {round.interviewerName && <span className="text-xs text-gray-400 dark:text-slate-500">· {round.interviewerName}</span>}
                 <select value={round.status} onChange={e => handleStatusChange(round, e.target.value)}
-                  className="ml-auto text-xs h-6 px-1.5 border border-gray-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900">
+                  className="ms-auto text-xs h-6 px-1.5 border border-gray-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900">
                   {ROUND_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
                 <Badge variant={ROUND_STATUS_VARIANT[round.status] ?? 'neutral'} size="sm">{round.status.replace('_', ' ')}</Badge>
@@ -759,11 +759,11 @@ export default function PlacementScreen() {
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input
                 value={candSearch} onChange={e => setCandSearch(e.target.value)}
                 placeholder="Search candidates…"
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full ps-9 pe-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -942,9 +942,9 @@ export default function PlacementScreen() {
         <div className="flex-1 overflow-auto p-6">
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input value={joSearch} onChange={e => setJoSearch(e.target.value)} placeholder="Search job orders…"
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                className="w-full ps-9 pe-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
             </div>
             <div className="flex gap-2 flex-wrap">
               <button onClick={() => setJoStatusFilter('')} className={`px-3 py-1.5 rounded-full text-xs font-medium ${!joStatusFilter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'}`}>All</button>
@@ -1122,9 +1122,9 @@ export default function PlacementScreen() {
         <div className="flex-1 overflow-auto p-6">
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input value={plcSearch} onChange={e => setPlcSearch(e.target.value)} placeholder="Search placements…"
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                className="w-full ps-9 pe-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
             </div>
             <div className="flex gap-2 flex-wrap">
               <button onClick={() => setPlcStatusFilter('')} className={`px-3 py-1.5 rounded-full text-xs font-medium ${!plcStatusFilter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'}`}>All</button>
@@ -1271,7 +1271,7 @@ export default function PlacementScreen() {
                       {invoiceBanners[p.id] && (
                         <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg flex items-center justify-between ${invoiceBanners[p.id].ok ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'}`}>
                           <span>{invoiceBanners[p.id].msg}</span>
-                          <button onClick={() => setInvoiceBanners(prev => { const n = { ...prev }; delete n[p.id]; return n })} className="ml-2 opacity-60 hover:opacity-100"><X size={12} /></button>
+                          <button onClick={() => setInvoiceBanners(prev => { const n = { ...prev }; delete n[p.id]; return n })} className="ms-2 opacity-60 hover:opacity-100"><X size={12} /></button>
                         </div>
                       )}
                   </Card>

@@ -4,7 +4,7 @@ Sarang inclut une visite guidée, étape par étape, de l'application — une co
 
 ## Démarrer le tutoriel pour la première fois
 
-La première fois que vous terminez la configuration de Sarang et atteignez le Tableau de bord, on vous demande : **"Vous voulez une visite guidée rapide de Sarang ?"** Si vous choisissez **Oui, montrez-moi**, vous pouvez choisir d'explorer votre propre type d'activité ou un type différent, puis la visite commence. Si vous choisissez **Peut-être plus tard**, cette invite se ferme simplement — elle ne réapparaît plus jamais d'elle-même, mais le tutoriel reste toujours accessible plus tard depuis les deux emplacements ci-dessous.
+La première fois que vous terminez la configuration de Sarang et atteignez le Tableau de bord, on vous demande : **"Vous voulez une visite guidée rapide de Sarang ?"** Si vous choisissez **Oui, montrez-moi**, la visite commence immédiatement pour votre propre type d'activité — sans aucun choix à ce stade. Si vous choisissez **Peut-être plus tard**, cette invite se ferme simplement — elle ne réapparaît plus jamais d'elle-même, mais le tutoriel (y compris l'option d'explorer un type d'activité différent, pas seulement le vôtre) reste toujours accessible plus tard depuis les deux emplacements ci-dessous.
 
 ## Y revenir plus tard
 

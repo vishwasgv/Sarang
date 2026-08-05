@@ -4,7 +4,7 @@ Sarang includes a guided, step-by-step walkthrough of the app — a real, workin
 
 ## Starting the tutorial for the first time
 
-The first time you finish setting up Sarang and reach the Dashboard, you're asked: **"Want a quick guided tour of Sarang?"** Choosing **Yes, show me around** lets you pick between exploring your own business type or a different one, then starts the tour. Choosing **Maybe later** simply dismisses the prompt — it never appears again on its own, but the tutorial is always available later from the two places below.
+The first time you finish setting up Sarang and reach the Dashboard, you're asked: **"Want a quick guided tour of Sarang?"** Choosing **Yes, show me around** starts the tour immediately for your own business type — no picker at this point. Choosing **Maybe later** simply dismisses the prompt — it never appears again on its own, but the tutorial (including the option to explore a *different* business type, not just your own) is always available later from the two places below.
 
 ## Coming back to it later
 

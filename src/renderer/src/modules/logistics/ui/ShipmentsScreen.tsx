@@ -369,7 +369,7 @@ export default function ShipmentsScreen() {
                   {s.carrierName && <p className="text-xs text-gray-400">{t('logistics.shipments.carrierLabel')} {s.carrierName} {s.vehicleNumber && `| ${s.vehicleNumber}`}</p>}
                   {s.trackingNumber && <p className="text-xs text-gray-400">{t('logistics.shipments.trackingLabel')} {s.trackingNumber}</p>}
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="text-sm font-medium">{formatCurrency(s.freightAmount)}</p>
                   {s.weight && <p className="text-xs text-gray-400">{s.weight} kg · {s.packages} pkg</p>}
                   {s.expectedDelivery && <p className="text-xs text-gray-400">{t('logistics.shipments.eta')} {formatDate(s.expectedDelivery)}</p>}
@@ -385,7 +385,7 @@ export default function ShipmentsScreen() {
                   </button>
                 ))}
                 {!['DELIVERED', 'RETURNED', 'CANCELLED'].includes(s.status) && (
-                  <button onClick={() => openEdit(s)} disabled={openingEditId === s.id} className="text-xs text-blue-600 hover:underline ml-auto disabled:opacity-50">{t('common.edit')}</button>
+                  <button onClick={() => openEdit(s)} disabled={openingEditId === s.id} className="text-xs text-blue-600 hover:underline ms-auto disabled:opacity-50">{t('common.edit')}</button>
                 )}
                 {['PENDING', 'CANCELLED'].includes(s.status) && (
                   <button onClick={() => setDeleteTarget(s)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
@@ -452,7 +452,7 @@ export default function ShipmentsScreen() {
                 <input type="number" min="0" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">{t('logistics.shipments.freightAmount')} ({currSym}) {suggestedFreight && <span className="text-xs text-blue-500 ml-1">{t('logistics.shipments.suggested', { amount: `${currSym}${suggestedFreight}` })}</span>}</label>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.shipments.freightAmount')} ({currSym}) {suggestedFreight && <span className="text-xs text-blue-500 ms-1">{t('logistics.shipments.suggested', { amount: `${currSym}${suggestedFreight}` })}</span>}</label>
                 <input type="number" min="0" value={form.freightAmount} onChange={e => setForm(f => ({ ...f, freightAmount: e.target.value }))} placeholder={suggestedFreight ?? ''} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>

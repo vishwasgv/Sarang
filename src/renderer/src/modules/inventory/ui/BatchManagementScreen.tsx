@@ -322,7 +322,7 @@ export function BatchManagementScreen() {
           </div>
         </div>
         <Button size="md" onClick={() => setShowForm(true)}>
-          <Plus size={16} className="mr-1.5" /> {t('inventory.addBatch')}
+          <Plus size={16} className="me-1.5" /> {t('inventory.addBatch')}
         </Button>
       </div>
 
@@ -371,19 +371,19 @@ export function BatchManagementScreen() {
             <div className="space-y-1 relative">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('billing.product')}</label>
               <div className="relative">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   value={form.productId ? productName : productQuery}
                   onChange={e => { setForm(f => ({ ...f, productId: '' })); setProductName(''); setProductQuery(e.target.value) }}
                   placeholder="Search product by name or SKU…"
-                  className="w-full h-11 pl-10 pr-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="w-full h-11 ps-10 pe-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
               </div>
               {productResults.length > 0 && !form.productId && (
                 <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                   {productResults.map(p => (
                     <button key={p.id} type="button"
                       onClick={() => { setForm(f => ({ ...f, productId: p.id })); setProductName(p.productName); setProductQuery(''); setProductResults([]) }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-dark dark:text-slate-100">
+                      className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-dark dark:text-slate-100">
                       {p.productName}
                     </button>
                   ))}

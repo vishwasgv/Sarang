@@ -174,7 +174,7 @@ export function CashCloseScreen() {
           className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand"
         />
         <Button variant="outline" size="sm" onClick={loadSummary} disabled={loading}>
-          <RefreshCw size={13} className={cn('mr-1.5', loading && 'animate-spin')} /> {t('common.refresh')}
+          <RefreshCw size={13} className={cn('me-1.5', loading && 'animate-spin')} /> {t('common.refresh')}
         </Button>
       </div>
 
@@ -293,11 +293,11 @@ export function CashCloseScreen() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">{t('common.date')}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{t('cashClose.expected')}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{t('cashClose.actual')}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{t('cashClose.variance')}</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">{t('cashClose.notes')}</th>
+                <th className="px-4 py-2 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.date')}</th>
+                <th className="px-4 py-2 text-end text-xs font-semibold text-slate-500 uppercase">{t('cashClose.expected')}</th>
+                <th className="px-4 py-2 text-end text-xs font-semibold text-slate-500 uppercase">{t('cashClose.actual')}</th>
+                <th className="px-4 py-2 text-end text-xs font-semibold text-slate-500 uppercase">{t('cashClose.variance')}</th>
+                <th className="px-4 py-2 text-start text-xs font-semibold text-slate-500 uppercase">{t('cashClose.notes')}</th>
               </tr>
             </thead>
             <tbody>
@@ -306,9 +306,9 @@ export function CashCloseScreen() {
                   <td className="px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">
                     {formatDate(r.closeDate)}
                   </td>
-                  <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300">{fmt(r.expectedCash)}</td>
-                  <td className="px-4 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">{fmt(r.actualCash)}</td>
-                  <td className={cn('px-4 py-2 text-right font-semibold', varianceColor(r.variance))}>
+                  <td className="px-4 py-2 text-end text-slate-600 dark:text-slate-300">{fmt(r.expectedCash)}</td>
+                  <td className="px-4 py-2 text-end font-semibold text-slate-700 dark:text-slate-200">{fmt(r.actualCash)}</td>
+                  <td className={cn('px-4 py-2 text-end font-semibold', varianceColor(r.variance))}>
                     {r.variance >= 0 ? '+' : '-'}{fmt(r.variance)}
                   </td>
                   <td className="px-4 py-2 text-slate-500 text-xs max-w-[180px] truncate">{r.notes ?? '—'}</td>

@@ -112,10 +112,10 @@ export function ShareMenu({
           loading={busy === 'whatsapp'} disabled={disabled || !hasPhone || !!busy}
           title={!hasPhone ? t('share.noPhoneOnFile') : undefined}
         >
-          <MessageCircle size={14} className="mr-1" /> {t('share.whatsapp')}
+          <MessageCircle size={14} className="me-1" /> {t('share.whatsapp')}
         </Button>
         <Button size="sm" variant="outline" onClick={() => handleShare('email')} loading={busy === 'email'} disabled={disabled || !!busy}>
-          <Mail size={14} className="mr-1" /> {t('share.email')}
+          <Mail size={14} className="me-1" /> {t('share.email')}
         </Button>
       </>
     )

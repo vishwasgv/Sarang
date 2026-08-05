@@ -84,10 +84,13 @@ export function MetalRatesScreen(): React.JSX.Element {
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    const res = await window.api.metalRate.delete({ id: deleteTarget.id })
-    setDeleting(false)
-    if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
-    else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    try {
+      const res = await window.api.metalRate.delete({ id: deleteTarget.id })
+      if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
+      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -137,8 +140,8 @@ export function MetalRatesScreen(): React.JSX.Element {
           <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
             <div className="col-span-3">{t('jewellery.metalType')}</div>
             <div className="col-span-3">{t('jewellery.purity')}</div>
-            <div className="col-span-3 text-right">{t('jewellery.ratePerGram')}</div>
-            <div className="col-span-2 text-right">{t('jewellery.updated')}</div>
+            <div className="col-span-3 text-end">{t('jewellery.ratePerGram')}</div>
+            <div className="col-span-2 text-end">{t('jewellery.updated')}</div>
             <div className="col-span-1"></div>
           </div>
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -146,9 +149,9 @@ export function MetalRatesScreen(): React.JSX.Element {
               <div key={r.id} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center">
                 <div className="col-span-3 text-sm font-medium text-dark dark:text-slate-100">{r.metalType}</div>
                 <div className="col-span-3 text-sm text-slate-600 dark:text-slate-300">{r.purity}</div>
-                <div className="col-span-3 text-right text-sm font-semibold text-dark dark:text-slate-100">{sym}{r.ratePerGram.toFixed(2)}</div>
-                <div className="col-span-2 text-right text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</div>
-                <div className="col-span-1 text-right">
+                <div className="col-span-3 text-end text-sm font-semibold text-dark dark:text-slate-100">{sym}{r.ratePerGram.toFixed(2)}</div>
+                <div className="col-span-2 text-end text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</div>
+                <div className="col-span-1 text-end">
                   {canManage && (
                     <button onClick={() => setDeleteTarget(r)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
                   )}

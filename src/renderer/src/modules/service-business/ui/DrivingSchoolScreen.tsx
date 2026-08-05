@@ -717,15 +717,15 @@ export function DrivingSchoolScreen() {
           {/* Left: Customer List */}
           <div className="w-72 shrink-0 space-y-3">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input value={learnerSearch} onChange={(e) => setLearnerSearch(e.target.value)} placeholder="Search learner..." className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-card text-sm text-foreground" />
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input value={learnerSearch} onChange={(e) => setLearnerSearch(e.target.value)} placeholder="Search learner..." className="w-full h-10 ps-9 pe-3 rounded-xl border border-border bg-card text-sm text-foreground" />
             </div>
             <div className="space-y-1 max-h-[60vh] overflow-y-auto">
               {filteredCustomers.slice(0, 50).map((c) => (
                 <button
                   key={c.id}
                   onClick={() => handleSelectLearner(c.id)}
-                  className={cn('w-full text-left px-3 py-3 rounded-xl border transition-colors', selectedLearner?.customerId === c.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/30')}
+                  className={cn('w-full text-start px-3 py-3 rounded-xl border transition-colors', selectedLearner?.customerId === c.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/30')}
                 >
                   <p className="text-sm font-medium text-foreground">{c.customerName}</p>
                   {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
@@ -819,10 +819,10 @@ export function DrivingSchoolScreen() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Learner</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Instructor</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vehicle</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Learner</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Instructor</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Vehicle</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Session #</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Fee / Invoice</th>
@@ -981,11 +981,11 @@ export function DrivingSchoolScreen() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Learner</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Test Center</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Instructor</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Learner</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Type</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Date</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Test Center</th>
+                  <th className="text-start px-4 py-3 font-medium text-muted-foreground">Instructor</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Result</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -1070,10 +1070,10 @@ export function DrivingSchoolScreen() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Learner</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Package</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Learner</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Package</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Sessions Used</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Purchased</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Purchased</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Invoice</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>
                     </tr>

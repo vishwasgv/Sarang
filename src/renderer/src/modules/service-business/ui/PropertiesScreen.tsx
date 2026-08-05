@@ -884,7 +884,7 @@ export default function PropertiesScreen() {
       {invoiceBanner && (
         <div className={`mx-6 mb-2 text-sm rounded-lg px-4 py-2 flex items-center justify-between border ${invoiceBanner.type === 'success' ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'}`}>
           <span>{invoiceBanner.message}</span>
-          <button onClick={() => setInvoiceBanner(null)} className="ml-3 opacity-60 hover:opacity-100"><X size={14} /></button>
+          <button onClick={() => setInvoiceBanner(null)} className="ms-3 opacity-60 hover:opacity-100"><X size={14} /></button>
         </div>
       )}
       {/* Action error banner */}
@@ -924,7 +924,7 @@ export default function PropertiesScreen() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{fmtLabel(p.propertyType)} · {p.area} sq ft · Owner: {p.owner.customerName}</p>
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-end flex-shrink-0">
                   <p className="text-sm font-bold text-green-700">{displayPrice(p)}</p>
                   <p className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(p.createdAt)}</p>
                 </div>
@@ -993,8 +993,8 @@ export default function PropertiesScreen() {
                                         <div key={v.id} className="flex items-center justify-between gap-2 flex-wrap text-xs bg-gray-50 dark:bg-slate-800 rounded px-2 py-1.5">
                                           <div>
                                             <span className="font-medium text-gray-700 dark:text-slate-300">{fmtDate(v.scheduledDate)}{v.scheduledTime ? ` ${v.scheduledTime}` : ''}</span>
-                                            <span className="ml-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400">{fmtLabel(v.status)}</span>
-                                            {v.interestLevel && <span className="ml-1 text-orange-600">Interest: {fmtLabel(v.interestLevel)}</span>}
+                                            <span className="ms-2 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-slate-400">{fmtLabel(v.status)}</span>
+                                            {v.interestLevel && <span className="ms-1 text-orange-600">Interest: {fmtLabel(v.interestLevel)}</span>}
                                             {v.feedback && <div className="text-gray-500 dark:text-slate-400 mt-0.5">{v.feedback}</div>}
                                           </div>
                                           {v.status === 'SCHEDULED' && (
@@ -1038,7 +1038,7 @@ export default function PropertiesScreen() {
                         {dealDeleteError && (
                           <div className="mb-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-1.5 flex items-center justify-between">
                             <span>{dealDeleteError}</span>
-                            <button onClick={() => setDealDeleteError(null)} className="text-red-400 hover:text-red-600 ml-2"><X size={11} /></button>
+                            <button onClick={() => setDealDeleteError(null)} className="text-red-400 hover:text-red-600 ms-2"><X size={11} /></button>
                           </div>
                         )}
                         {details.deals.length === 0 ? (
@@ -1136,7 +1136,7 @@ export default function PropertiesScreen() {
                               onClick={() => handleRemovePhoto(p, photoPath)}
                               disabled={photoBusyFor === p.id}
                               title="Remove photo"
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                              className="absolute -top-1.5 -end-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                             >
                               <X size={11} />
                             </button>

@@ -224,12 +224,12 @@ export function InventoryScreen() {
         <div className="flex items-center gap-2">
           {canViewMovements && (
             <Button variant="secondary" size="sm" onClick={() => navigate('/inventory/movements')}>
-              <Package size={14} className="mr-1.5" /> {t('inventory.movements')}
+              <Package size={14} className="me-1.5" /> {t('inventory.movements')}
             </Button>
           )}
           {canViewPOs && (
             <Button size="sm" onClick={() => navigate('/purchase-orders')}>
-              <ClipboardList size={14} className="mr-1.5" /> {t('inventory.purchaseOrders')}
+              <ClipboardList size={14} className="me-1.5" /> {t('inventory.purchaseOrders')}
             </Button>
           )}
         </div>
@@ -292,10 +292,10 @@ export function InventoryScreen() {
           <span>{t('audit.page')} {page} {t('audit.of')} {totalPages} · {total} {t('nav.products').toLowerCase()}</span>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft size={14} className="mr-1" /> {t('inventory.previous')}
+              <ChevronLeft size={14} className="me-1" /> {t('inventory.previous')}
             </Button>
             <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-              {t('common.next')} <ChevronRight size={14} className="ml-1" />
+              {t('common.next')} <ChevronRight size={14} className="ms-1" />
             </Button>
           </div>
         </div>

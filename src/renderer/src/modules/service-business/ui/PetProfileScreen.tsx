@@ -721,7 +721,7 @@ export function PetProfileScreen() {
                             <>
                               <button onClick={() => openEditVac(v)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/5 transition-colors"><Edit2 size={13} /></button>
                               {confirmDeleteVacId === v.id ? (
-                                <div className="flex items-center gap-1 ml-1">
+                                <div className="flex items-center gap-1 ms-1">
                                   <span className="text-xs text-danger font-medium">Delete?</span>
                                   <button onClick={() => handleDeleteVac(v.id)} className="px-2 py-0.5 text-xs bg-danger text-white rounded-lg">Yes</button>
                                   <button onClick={() => setConfirmDeleteVacId(null)} className="px-2 py-0.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300">No</button>

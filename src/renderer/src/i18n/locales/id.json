@@ -212,6 +212,7 @@
     "card": "Kartu",
     "credit": "Kredit",
     "cheque": "Cek",
+    "bankTransfer": "Transfer Bank",
     "finalize": "Selesaikan",
     "saveDraft": "Simpan Draf",
     "cancel": "Batalkan Faktur",

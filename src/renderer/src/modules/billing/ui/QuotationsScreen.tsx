@@ -173,7 +173,7 @@ export function QuotationsScreen() {
           </button>
           {canCreate && (
             <Button size="md" onClick={() => navigate('/billing/quotations/new')}>
-              <Plus size={16} className="mr-1.5" /> {t('quotations.newQuotation')}
+              <Plus size={16} className="me-1.5" /> {t('quotations.newQuotation')}
             </Button>
           )}
         </div>
@@ -197,7 +197,7 @@ export function QuotationsScreen() {
           <p className="text-base">{t('quotations.noQuotations')}</p>
           {canCreate && (
             <Button size="sm" onClick={() => navigate('/billing/quotations/new')}>
-              <Plus size={14} className="mr-1" /> {t('quotations.createFirst')}
+              <Plus size={14} className="me-1" /> {t('quotations.createFirst')}
             </Button>
           )}
         </div>

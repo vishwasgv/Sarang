@@ -413,7 +413,7 @@ export function JobCardsScreen() {
               const stageIdx = getStageIndex(c.status)
               return (
                 <button key={c.id} onClick={() => { setDetail(c); setActualCost(''); setWarrantyDaysInput(c.warrantyDays != null ? String(c.warrantyDays) : ''); setPartsError(''); setPickedPartProduct(null); setPartSearch(''); setParts([]); loadParts(c.id) }}
-                  className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
+                  className="w-full text-start bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -424,7 +424,7 @@ export function JobCardsScreen() {
                       {c.itemDescription && <p className="text-sm text-text-secondary truncate">{c.itemDescription}</p>}
                       {c.customerName && <p className="text-xs text-text-secondary mt-1">{c.customerName}</p>}
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-end shrink-0">
                       <p className="text-sm font-bold text-text-primary">{formatCurrency(c.estimatedCost)}</p>
                       <p className="text-xs text-text-secondary">{t('service.estCost')}</p>
                     </div>
@@ -639,10 +639,10 @@ export function JobCardsScreen() {
                         placeholder={t('service.searchProduct')}
                         className="w-full h-10 px-3 rounded-lg border border-border text-sm focus:outline-none focus:border-brand" />
                       {!pickedPartProduct && partSearchResults.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-border rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-border rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                           {partSearchResults.map(p => (
                             <button key={p.id} type="button" onClick={() => { setPickedPartProduct(p); setPartSearchResults([]) }}
-                              className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover text-left text-sm border-b border-border last:border-0">
+                              className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover text-start text-sm border-b border-border last:border-0">
                               <span className="text-text-primary">{p.productName}</span>
                               <span className="text-xs text-text-secondary">{formatCurrency(p.sellingPrice)} · {p.inventory?.quantity ?? 0} {t('common.inStock')}</span>
                             </button>

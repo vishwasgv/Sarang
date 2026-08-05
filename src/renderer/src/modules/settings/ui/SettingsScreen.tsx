@@ -189,7 +189,7 @@ function TutorialSection() {
       >
         <GraduationCap size={20} />
         {restarting ? 'Starting tutorial…' : `Restart Tutorial for ${myBusinessType ?? 'My Business'}`}
-        <ChevronRight size={18} className="ml-auto" />
+        <ChevronRight size={18} className="ms-auto" />
       </button>
       <button
         onClick={() => setPickerOpen(true)}
@@ -197,7 +197,7 @@ function TutorialSection() {
       >
         <Layers size={20} />
         Explore a Different Business Type
-        <ChevronRight size={18} className="ml-auto" />
+        <ChevronRight size={18} className="ms-auto" />
       </button>
       <TutorialStartModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
     </div>
@@ -218,7 +218,7 @@ function BackupLinkSection() {
       >
         <HardDrive size={20} />
         Open Backup &amp; Recovery
-        <ChevronRight size={18} className="ml-auto" />
+        <ChevronRight size={18} className="ms-auto" />
       </button>
     </div>
   )
@@ -239,7 +239,7 @@ export function SettingsScreen() {
   return (
     <div className="flex h-full">
       {/* Settings sidebar */}
-      <div className="w-64 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0 overflow-y-auto">
+      <div className="w-64 border-e border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0 overflow-y-auto">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800">
           <h2 className="text-base font-bold text-slate-700 dark:text-slate-200">Settings</h2>
         </div>
@@ -252,7 +252,7 @@ export function SettingsScreen() {
                 disabled={!hasAccess}
                 onClick={() => selectSection(section, hasAccess)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left text-base transition-colors',
+                  'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-start text-base transition-colors',
                   activeSection === section.id
                     ? 'bg-brand text-white'
                     : hasAccess
@@ -411,7 +411,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         </div>
         {!editing && (
           <Button size="sm" variant="outline" onClick={startEdit}>
-            <Edit2 size={14} className="mr-1" /> Edit
+            <Edit2 size={14} className="me-1" /> Edit
           </Button>
         )}
       </div>
@@ -680,7 +680,7 @@ function TaxConfigurationSection() {
         </div>
         {!showForm && !editId && (
           <Button size="md" onClick={() => setShowForm(true)}>
-            <Plus size={16} className="mr-1.5" /> Add Tax
+            <Plus size={16} className="me-1.5" /> Add Tax
           </Button>
         )}
       </div>
@@ -897,7 +897,7 @@ function UsersManagementSection() {
         <p className="text-sm text-slate-500">{users.length} staff account{users.length !== 1 ? 's' : ''}</p>
         {canCreate && (
           <Button size="sm" onClick={openAdd}>
-            <Plus size={14} className="mr-1" /> Add User
+            <Plus size={14} className="me-1" /> Add User
           </Button>
         )}
       </div>
@@ -968,8 +968,8 @@ function UsersManagementSection() {
                     <div className="relative">
                       <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                         autoComplete="new-password"
-                        className="w-full h-11 pl-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
-                      <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        className="w-full h-11 ps-3 pe-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+                      <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -1013,8 +1013,8 @@ function UsersManagementSection() {
               <div className="relative">
                 <input type={showResetPwd ? 'text' : 'password'} value={resetPwd} onChange={e => setResetPwd(e.target.value)}
                   autoComplete="new-password" placeholder="Min. 6 characters"
-                  className="w-full h-11 pl-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
-                <button type="button" onClick={() => setShowResetPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  className="w-full h-11 ps-3 pe-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+                <button type="button" onClick={() => setShowResetPwd(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showResetPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -1132,7 +1132,7 @@ function SecuritySection() {
     }
   }
 
-  const inputCls = 'w-full h-11 pl-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand'
+  const inputCls = 'w-full h-11 ps-3 pe-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand'
 
   return (
     <div className="max-w-xl space-y-6">
@@ -1149,7 +1149,7 @@ function SecuritySection() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Password</label>
           <div className="relative">
             <input type={showOld ? 'text' : 'password'} value={oldPwd} onChange={e => setOldPwd(e.target.value)} className={inputCls} />
-            <button type="button" onClick={() => setShowOld(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <button type="button" onClick={() => setShowOld(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
               {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
@@ -1158,7 +1158,7 @@ function SecuritySection() {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
           <div className="relative">
             <input type={showNew ? 'text' : 'password'} value={newPwd} onChange={e => setNewPwd(e.target.value)} className={inputCls} placeholder={`Min. ${minLen} characters`} />
-            <button type="button" onClick={() => setShowNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <button type="button" onClick={() => setShowNew(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
@@ -1247,8 +1247,8 @@ function RecoveryCodeCard() {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your Current Password</label>
             <div className="relative">
               <input type={showPwd ? 'text' : 'password'} value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
-                className="w-full h-11 pl-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
-              <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="w-full h-11 ps-3 pe-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+              <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                 {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -1405,10 +1405,24 @@ function CurrencyLocaleSection() {
 }
 
 function LanguageSection() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [selected, setSelected] = useState(i18n.language)
+  // REAL BUG found+fixed in this session's pre-release audit: languageLock
+  // (computed on setup/business-type-change, see industry-template.service.ts's
+  // standing "languageLock: 'en' for all service business templates" rule)
+  // was never enforced here — this picker let a user on e.g. Hotel/Lawyer/
+  // Vet Clinic (whose own screens are hardcoded English by design) switch
+  // the whole app to any other language, landing on a genuinely broken
+  // mixed-language app. industry.store.ts now force-reverts the language the
+  // instant it detects a locked business type, so a locked user who somehow
+  // still sees this section can't actually make the switch stick — but
+  // showing them a disabled, explained picker (instead of one that looks
+  // live and then silently snaps back) is the honest UI for that state.
+  const languageLock = useIndustryStore((s) => s.languageLock)
+  const locked = languageLock === 'en'
 
   function handleChange(code: string) {
+    if (locked) return
     setSelected(code)
     setLanguage(code as Parameters<typeof setLanguage>[0])
   }
@@ -1417,12 +1431,30 @@ function LanguageSection() {
   const international = SUPPORTED_LANGUAGES.filter(l => l.flag !== '🇮🇳' && l.code !== 'en')
   const english = SUPPORTED_LANGUAGES.find(l => l.code === 'en')!
 
+  if (locked) {
+    return (
+      <div className="max-w-md space-y-5">
+        <div>
+          <h3 className="text-base font-semibold text-dark">{t('settings.languageLockedTitle')}</h3>
+          <p className="text-sm text-slate-500 mt-1">{t('settings.languageLockedDesc')}</p>
+        </div>
+        <Card padding="lg" className="flex items-center gap-3 bg-slate-50">
+          <span className="text-lg">{english.flag}</span>
+          <div>
+            <p className="text-sm font-semibold text-dark">{english.nativeName}</p>
+            <p className="text-xs text-slate-400">{english.name}</p>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   function LangRow({ lang }: { lang: typeof SUPPORTED_LANGUAGES[number] }) {
     return (
       <button
         key={lang.code}
         onClick={() => handleChange(lang.code)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors text-left"
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors text-start"
       >
         <div className="flex items-center gap-3">
           <span className="text-lg">{lang.flag}</span>
@@ -1631,7 +1663,7 @@ function AppearanceSection() {
               { value: 'THERMAL_58MM', label: 'Thermal 58mm', desc: 'Narrow POS receipt' }
             ].map(opt => (
               <button key={opt.value} onClick={() => savePrintType(opt.value)}
-                className={cn('px-3 py-2.5 rounded-xl border text-left transition-colors',
+                className={cn('px-3 py-2.5 rounded-xl border text-start transition-colors',
                   printType === opt.value
                     ? 'border-brand bg-brand/5'
                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -2065,7 +2097,7 @@ function BusinessFeaturesSection() {
           const on = enabledModules.includes(m.key)
           return (
             <div key={m.key} className="flex items-center justify-between px-5 py-4">
-              <div className="pr-4">
+              <div className="pe-4">
                 <p className="text-sm font-semibold text-dark dark:text-slate-100">{m.label}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{m.desc}</p>
               </div>
@@ -2087,7 +2119,7 @@ function BusinessFeaturesSection() {
           )
         })}
         <div className="flex items-center justify-between px-5 py-4">
-          <div className="pr-4">
+          <div className="pe-4">
             <p className="text-sm font-semibold text-dark dark:text-slate-100">Logistics &amp; Supply Chain</p>
             <p className="text-xs text-slate-400 mt-0.5">Fleet, carriers, shipments, goods receipt (GRN), delivery challans, and freight tracking — for any business that moves goods via its own vehicles or receives supplier deliveries it wants to track formally (Retail/Distributor/Pharmacy/Manufacturing and similar goods-based types default on)</p>
           </div>
@@ -2225,7 +2257,7 @@ function BarcodeSection() {
           const on = enabledModules.includes(m.key)
           return (
             <div key={m.key} className="flex items-center justify-between px-5 py-4">
-              <div className="pr-4">
+              <div className="pe-4">
                 <p className="text-sm font-semibold text-dark dark:text-slate-100">{m.label}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{m.desc}</p>
               </div>
@@ -2351,7 +2383,7 @@ function AiAssistantSection() {
 
       <Card padding="none">
         <div className="flex items-center justify-between px-5 py-4">
-          <div className="pr-4">
+          <div className="pe-4">
             <p className="text-sm font-semibold text-dark dark:text-slate-100">Enable AI Assistant</p>
             <p className="text-xs text-slate-400 mt-0.5">Adds "Ask Sarang" to the sidebar. Off by default — nothing changes until you turn this on.</p>
           </div>

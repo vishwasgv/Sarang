@@ -245,7 +245,7 @@ export function ServiceTicketsScreen() {
           <div className="space-y-3">
             {visible.map(ticket => (
               <button key={ticket.id} onClick={() => { setDetail(ticket); setResolution('') }}
-                className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
+                className="w-full text-start bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

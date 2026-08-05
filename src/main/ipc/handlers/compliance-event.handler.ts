@@ -11,7 +11,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('complianceEvent:setClientAgmDate', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('compliance.manage'); if (deny) return deny
     const payload = raw as { clientId: string; agmDate: string | null }
     if (!payload?.clientId) return { success: false, error: { code: 'VAL-001', message: 'Client is required.' } }
     return setClientAgmDate(payload.clientId, payload.agmDate ?? null)

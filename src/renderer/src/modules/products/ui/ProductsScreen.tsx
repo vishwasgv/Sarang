@@ -164,7 +164,7 @@ export function ProductsScreen() {
       accessorKey: 'sellingPrice',
       header: t('products.sellingPrice'),
       cell: ({ row }) => (
-        <div className="text-right">
+        <div className="text-end">
           <p className="font-medium text-dark dark:text-slate-100">{row.original.sellingPrice.toFixed(2)}</p>
           <p className="text-xs text-slate-400">{row.original.unit}</p>
         </div>
@@ -239,12 +239,12 @@ export function ProductsScreen() {
         <div className="flex items-center gap-2">
           {hasPermission('products.create') && (
             <Button variant="secondary" size="md" onClick={() => setCatManageOpen(true)}>
-              <FolderOpen size={16} className="mr-1.5" /> {t('products.category')}
+              <FolderOpen size={16} className="me-1.5" /> {t('products.category')}
             </Button>
           )}
           {canCreate && (
             <Button size="md" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
-              <Plus size={16} className="mr-1.5" /> {t('products.addProduct')}
+              <Plus size={16} className="me-1.5" /> {t('products.addProduct')}
             </Button>
           )}
         </div>

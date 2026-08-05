@@ -32,7 +32,7 @@ Générez une facture directement depuis une commande de laboratoire une fois qu
 
 ## Rapports
 
-L'écran **Reports** inclut un rapport Lab Turnaround spécifique à ce secteur, montrant les commandes par étape (commandée, échantillon prélevé, en cours, rapportée) et le temps de traitement de la commande au rapport pour chacune — utile pour repérer où les échantillons s'accumulent.
+L'écran **Reports** inclut un rapport Lab Test Throughput spécifique à ce secteur, montrant les commandes par étape (commandée, échantillon prélevé, en cours, rapportée) et le temps de traitement de la commande au rapport pour chacune — utile pour repérer où les échantillons s'accumulent.
 
 ## Langue
 

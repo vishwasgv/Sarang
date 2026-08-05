@@ -32,7 +32,7 @@ Hasilkan sebuah faktur langsung dari sebuah order lab setelah setiap tes memilik
 
 ## Reports
 
-Layar **Reports** mencakup sebuah laporan Lab Turnaround khusus untuk vertikal ini, menunjukkan order berdasarkan tahap (ordered, sample collected, in process, reported) dan waktu turnaround dari order ke laporan untuk masing-masing — berguna untuk mengetahui di mana sampel menumpuk.
+Layar **Reports** mencakup sebuah laporan Lab Test Throughput khusus untuk vertikal ini, menunjukkan order berdasarkan tahap (ordered, sample collected, in process, reported) dan waktu turnaround dari order ke laporan untuk masing-masing — berguna untuk mengetahui di mana sampel menumpuk.
 
 ## Bahasa
 

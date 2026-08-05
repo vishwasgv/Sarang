@@ -281,12 +281,12 @@ export default function StudentsScreen() {
       {/* Filters */}
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, roll no, class..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+            className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
           />
         </div>
         <Select
@@ -307,14 +307,14 @@ export default function StudentsScreen() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Roll No</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Name</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Class / Grade</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">School</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Phone</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Parent Phone</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Enrolled</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Status</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Roll No</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Name</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Class / Grade</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">School</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Phone</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Parent Phone</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Enrolled</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Status</th>
               <th className="py-3 px-4" />
             </tr>
           </thead>

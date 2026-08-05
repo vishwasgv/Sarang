@@ -18,21 +18,21 @@ export function registerJobOrder(handle: HandleFn): void {
   })
 
   handle('jobOrder:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = CreateJobOrderSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createJobOrder(parsed.data)
   })
 
   handle('jobOrder:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = UpdateJobOrderSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateJobOrder(parsed.data)
   })
 
   handle('jobOrder:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = JobOrderIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteJobOrder(parsed.data)

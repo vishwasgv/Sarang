@@ -192,6 +192,7 @@ export interface TemplateConfig {
   businessType: string
   enabledModules: TemplateModule[]
   dashboardLayout: string
+  languageLock: 'en' | 'multi'
 }
 
 // All 24 Phase 22 service business template types — used for businessCategory detection
@@ -437,6 +438,7 @@ export async function getActiveTemplate(): Promise<{ success: boolean; data?: Te
         businessType,
         enabledModules,
         dashboardLayout: DASHBOARD_LAYOUTS[businessType] ?? 'general',
+        languageLock: getLanguageLockFor(businessType),
       }
     }
   } catch (err) {

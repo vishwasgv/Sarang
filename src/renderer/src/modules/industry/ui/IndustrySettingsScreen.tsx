@@ -426,7 +426,7 @@ export function IndustrySettingsScreen() {
             <button key={tmpl.type}
               onClick={() => setSelected(tmpl.type)}
               className={cn(
-                'w-full text-left rounded-xl border-2 p-5 flex items-start gap-4 transition-all',
+                'w-full text-start rounded-xl border-2 p-5 flex items-start gap-4 transition-all',
                 isSelected ? 'border-brand bg-brand/5' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-brand/40',
               )}>
               <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors',

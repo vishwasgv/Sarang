@@ -492,13 +492,13 @@ export default function ComplianceScreen(): React.JSX.Element {
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Search tasks, clients..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+            className="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
             style={{ minHeight: 48 }}
           />
         </div>
@@ -531,7 +531,7 @@ export default function ComplianceScreen(): React.JSX.Element {
             <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
               <tr>
                 {['Due Date', 'Client', 'Task', 'Category', 'Priority', 'Assigned To', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                  <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -544,10 +544,10 @@ export default function ComplianceScreen(): React.JSX.Element {
                   <td className={cn('px-4 py-3 whitespace-nowrap', urgencyClass(task.dueDate, task.status))}>
                     {fmtDate(task.dueDate)}
                     {isOpen && days < 0 && (
-                      <span className="ml-1 text-xs text-red-500">({Math.abs(days)}d overdue)</span>
+                      <span className="ms-1 text-xs text-red-500">({Math.abs(days)}d overdue)</span>
                     )}
                     {isOpen && days >= 0 && days <= 7 && (
-                      <span className="ml-1 text-xs text-amber-500">({days}d left)</span>
+                      <span className="ms-1 text-xs text-amber-500">({days}d left)</span>
                     )}
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-slate-100">{task.client.customerName}</td>
@@ -734,13 +734,13 @@ export default function ComplianceScreen(): React.JSX.Element {
             </div>
             <div className="px-6 py-3 border-b border-gray-200 dark:border-slate-700">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search clients..."
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  className="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   style={{ minHeight: 44 }}
                 />
               </div>
@@ -753,11 +753,11 @@ export default function ComplianceScreen(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={() => toggleClientExpanded(c)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-slate-800"
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-start hover:bg-gray-50 dark:hover:bg-slate-800"
                     >
                       <div>
                         <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{c.customerName}</span>
-                        {c.lastAgmDate && <span className="ml-2 text-xs text-gray-400 dark:text-slate-500">AGM: {fmtDate(c.lastAgmDate)}</span>}
+                        {c.lastAgmDate && <span className="ms-2 text-xs text-gray-400 dark:text-slate-500">AGM: {fmtDate(c.lastAgmDate)}</span>}
                       </div>
                       <span className="text-xs text-indigo-600">{expandedClientId === c.id ? 'Hide' : 'Manage'}</span>
                     </button>

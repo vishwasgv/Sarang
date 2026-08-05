@@ -21,21 +21,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('campaignPerformance:add', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = AddCampaignPerformanceEntrySchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addCampaignPerformanceEntry(parsed.data)
   })
 
   handle('campaignPerformance:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = UpdateCampaignPerformanceEntrySchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateCampaignPerformanceEntry(parsed.data)
   })
 
   handle('campaignPerformance:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteCampaignPerformanceEntry(parsed.data.id)
@@ -56,21 +56,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('contentCalendar:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = CreateContentCalendarItemSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createContentCalendarItem(parsed.data)
   })
 
   handle('contentCalendar:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = UpdateContentCalendarItemSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateContentCalendarItem(parsed.data)
   })
 
   handle('contentCalendar:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('marketingCampaigns.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteContentCalendarItem(parsed.data.id)

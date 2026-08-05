@@ -631,8 +631,8 @@ export default function ROCFilingsScreen(): React.JSX.Element {
           {/* Filters */}
           <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
             <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
-              <input type="text" placeholder="Search client, form, SRN..." value={filingsSearch} onChange={(e) => setFilingsSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+              <input type="text" placeholder="Search client, form, SRN..." value={filingsSearch} onChange={(e) => setFilingsSearch(e.target.value)} className="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
             </div>
             <Select value={filingsStatusFilter} onChange={(e) => setFilingsStatusFilter(e.target.value)}>
               <option value="">All Statuses</option>
@@ -658,7 +658,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                 <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
                   <tr>
                     {['Client', 'Form', 'FY', 'Purpose', 'Due Date', 'Filed On', 'SRN', 'Govt Fee', 'Assigned', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                      <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -705,8 +705,8 @@ export default function ROCFilingsScreen(): React.JSX.Element {
         <>
           <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
             <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
-              <input type="text" placeholder="Search client, type..." value={meetingsSearch} onChange={(e) => setMeetingsSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+              <input type="text" placeholder="Search client, type..." value={meetingsSearch} onChange={(e) => setMeetingsSearch(e.target.value)} className="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 48 }} />
             </div>
             <Select value={meetingsTypeFilter} onChange={(e) => setMeetingsTypeFilter(e.target.value)}>
               <option value="">All Types</option>
@@ -732,7 +732,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                 <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
                   <tr>
                     {['Date', 'Client', 'Type', 'Venue', 'Notices', 'Quorum', 'Minutes', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                      <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -816,7 +816,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                 <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
                   <tr>
                     {['Client', 'AGM Held', 'MGT-7', 'AOC-4', 'ADT-1'].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
+                      <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>

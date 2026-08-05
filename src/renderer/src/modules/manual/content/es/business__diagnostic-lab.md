@@ -32,7 +32,7 @@ Genere una factura directamente desde una orden de laboratorio una vez que cada 
 
 ## Informes
 
-La pantalla de **Reports** incluye un informe de Lab Turnaround específico de esta vertical, que muestra las órdenes por etapa (ordenada, muestra recolectada, en proceso, informada) y el tiempo de respuesta desde la orden hasta el informe para cada una — útil para detectar dónde se están acumulando las muestras.
+La pantalla de **Reports** incluye un informe de Lab Test Throughput específico de esta vertical, que muestra las órdenes por etapa (ordenada, muestra recolectada, en proceso, informada) y el tiempo de respuesta desde la orden hasta el informe para cada una — útil para detectar dónde se están acumulando las muestras.
 
 ## Idioma
 

@@ -25,21 +25,21 @@ export function registerShootBooking(handle: HandleFn): void {
   })
 
   handle('shootBooking:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootBookings.manage'); if (deny) return deny
     const parsed = CreateShootBookingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createShootBooking(parsed.data)
   })
 
   handle('shootBooking:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootBookings.manage'); if (deny) return deny
     const parsed = UpdateShootBookingSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateShootBooking(parsed.data)
   })
 
   handle('shootBooking:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootBookings.manage'); if (deny) return deny
     const parsed = ShootBookingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteShootBooking(parsed.data)

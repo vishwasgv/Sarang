@@ -4,7 +4,7 @@ Sarang incluye un recorrido guiado, paso a paso, de la aplicación — una copia
 
 ## Iniciar el tutorial por primera vez
 
-La primera vez que termines de configurar Sarang y llegues al Panel de control, se te preguntará: **"¿Quieres un recorrido guiado rápido por Sarang?"** Si eliges **Sí, muéstrame** podrás elegir entre explorar tu propio tipo de negocio u otro diferente, y luego comenzará el recorrido. Si eliges **Quizás más tarde**, este mensaje simplemente se cierra — no volverá a aparecer por sí solo, pero el tutorial siempre estará disponible más tarde desde los dos lugares indicados abajo.
+La primera vez que termines de configurar Sarang y llegues al Panel de control, se te preguntará: **"¿Quieres un recorrido guiado rápido por Sarang?"** Si eliges **Sí, muéstrame**, el recorrido comienza de inmediato para tu propio tipo de negocio — sin ninguna selección en este punto. Si eliges **Quizás más tarde**, este mensaje simplemente se cierra — no volverá a aparecer por sí solo, pero el tutorial (incluida la opción de explorar un tipo de negocio diferente, no solo el tuyo) siempre estará disponible más tarde desde los dos lugares indicados abajo.
 
 ## Volver a él más tarde
 

@@ -28,14 +28,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('notificationQueue:generateWhatsAppLink', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('notifications.manage'); if (deny) return deny
     const parsed = GenerateWhatsAppLinkSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return svc.generateWhatsAppLink(parsed.data)
   })
 
   handle('notificationQueue:createReminder', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('notifications.manage'); if (deny) return deny
     const parsed = CreateAppointmentReminderSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return svc.createAppointmentReminder(parsed.data.appointmentId)

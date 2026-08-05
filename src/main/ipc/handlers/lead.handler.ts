@@ -12,21 +12,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('lead:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('leads.manage'); if (deny) return deny
     const parsed = CreateLeadSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createLead(parsed.data)
   })
 
   handle('lead:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('leads.manage'); if (deny) return deny
     const parsed = UpdateLeadSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateLead(parsed.data)
   })
 
   handle('lead:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('leads.manage'); if (deny) return deny
     const payload = raw as { id: string }
     return deleteLead(payload.id)
   })

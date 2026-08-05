@@ -369,7 +369,7 @@ export function ProjectDetailScreen() {
                       {!l.billable && <span className="text-xs text-slate-400">{t('service.nonBillable')}</span>}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
+                  <div className="shrink-0 text-end">
                     <p className="text-sm font-bold text-text-primary">{l.hours}h</p>
                     <button onClick={() => setDeleteLogTarget({ id: l.id, hours: l.hours })} className="text-text-secondary hover:text-red-500 transition-colors mt-0.5">
                       <Trash2 size={13} />

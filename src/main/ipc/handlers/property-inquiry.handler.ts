@@ -16,21 +16,21 @@ export function registerPropertyInquiry(handle: HandleFn): void {
   })
 
   handle('propertyInquiry:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = CreatePropertyInquirySchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createPropertyInquiry(parsed.data)
   })
 
   handle('propertyInquiry:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = UpdatePropertyInquirySchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updatePropertyInquiry(parsed.data)
   })
 
   handle('propertyInquiry:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('properties.manage'); if (deny) return deny
     const parsed = PropertyInquiryIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deletePropertyInquiry(parsed.data)

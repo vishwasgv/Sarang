@@ -341,18 +341,18 @@ export function BillOfMaterialsScreen() {
                   </div>
                 ) : (
                   <div className="relative">
-                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                    <Search size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
                     <input
                       value={selectedProductId ? selectedProductName : productQuery}
                       onChange={e => { setSelectedProductId(''); setSelectedProductName(''); setProductQuery(e.target.value) }}
                       placeholder="Search product by name or SKU…"
-                      className="w-full h-12 pl-10 pr-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand" />
+                      className="w-full h-12 ps-10 pe-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand" />
                     {productResults.length > 0 && !selectedProductId && (
                       <div className="absolute z-10 mt-1 w-full border border-border rounded-xl overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                         {productResults.map(p => (
                           <button key={p.id} type="button"
                             onClick={() => { setSelectedProductId(p.id); setSelectedProductName(p.productName); setProductQuery(''); setProductResults([]) }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                            className="w-full px-4 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                             {p.productName}
                           </button>
                         ))}
@@ -396,10 +396,10 @@ export function BillOfMaterialsScreen() {
                   <table className="w-full text-sm">
                     <thead className="bg-surface-alt">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.componentType')}</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">{t('manufacturing.material')}</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-28">{t('manufacturing.qtyNeeded')}</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.wastagePercent')}</th>
+                        <th className="text-start px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.componentType')}</th>
+                        <th className="text-start px-3 py-2 text-xs font-semibold text-text-secondary">{t('manufacturing.material')}</th>
+                        <th className="text-start px-3 py-2 text-xs font-semibold text-text-secondary w-28">{t('manufacturing.qtyNeeded')}</th>
+                        <th className="text-start px-3 py-2 text-xs font-semibold text-text-secondary w-24">{t('manufacturing.wastagePercent')}</th>
                         <th className="w-10" />
                       </tr>
                     </thead>
@@ -431,7 +431,7 @@ export function BillOfMaterialsScreen() {
                                   <div className="absolute z-10 mt-1 w-full border border-border rounded-lg overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
                                     {row.materialResults.map(m => (
                                       <button key={m.id} type="button" onClick={() => pickMaterial(idx, m)}
-                                        className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                                        className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                                         {m.name} ({m.unit})
                                       </button>
                                     ))}
@@ -449,7 +449,7 @@ export function BillOfMaterialsScreen() {
                                   <div className="absolute z-10 mt-1 w-full border border-border rounded-lg overflow-hidden divide-y divide-border bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
                                     {row.componentResults.map(p => (
                                       <button key={p.id} type="button" onClick={() => pickComponent(idx, p)}
-                                        className="w-full px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors text-text-primary">
+                                        className="w-full px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors text-text-primary">
                                         {p.productName}
                                       </button>
                                     ))}
@@ -519,11 +519,11 @@ export function BillOfMaterialsScreen() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs font-semibold text-text-secondary uppercase">
-                    <th className="text-left pb-2">{t('manufacturing.material')}</th>
-                    <th className="text-right pb-2">{t('manufacturing.quantity')}</th>
-                    <th className="text-right pb-2">{t('manufacturing.wastagePercent')}</th>
-                    <th className="text-right pb-2">{t('manufacturing.effectiveQty')}</th>
-                    <th className="text-right pb-2">{t('common.cost')}</th>
+                    <th className="text-start pb-2">{t('manufacturing.material')}</th>
+                    <th className="text-end pb-2">{t('manufacturing.quantity')}</th>
+                    <th className="text-end pb-2">{t('manufacturing.wastagePercent')}</th>
+                    <th className="text-end pb-2">{t('manufacturing.effectiveQty')}</th>
+                    <th className="text-end pb-2">{t('common.cost')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -531,19 +531,19 @@ export function BillOfMaterialsScreen() {
                     <tr key={item.id}>
                       <td className="py-2 font-medium text-text-primary">
                         {item.materialName ?? item.componentProductName}
-                        {item.componentProductId && <span className="ml-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
+                        {item.componentProductId && <span className="ms-1.5 text-xs text-brand/70">{t('manufacturing.subAssemblyTag')}</span>}
                       </td>
-                      <td className="py-2 text-right text-text-secondary">{item.quantityNeeded} {item.materialUnit ?? ''}</td>
-                      <td className="py-2 text-right text-text-secondary">{item.wastagePercent > 0 ? `${item.wastagePercent}%` : '—'}</td>
-                      <td className="py-2 text-right text-text-primary">{item.effectiveQty.toFixed(3)} {item.materialUnit ?? ''}</td>
-                      <td className="py-2 text-right text-text-primary">{formatCurrency(item.lineCost)}</td>
+                      <td className="py-2 text-end text-text-secondary">{item.quantityNeeded} {item.materialUnit ?? ''}</td>
+                      <td className="py-2 text-end text-text-secondary">{item.wastagePercent > 0 ? `${item.wastagePercent}%` : '—'}</td>
+                      <td className="py-2 text-end text-text-primary">{item.effectiveQty.toFixed(3)} {item.materialUnit ?? ''}</td>
+                      <td className="py-2 text-end text-text-primary">{formatCurrency(item.lineCost)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="border-t-2 border-border">
                   <tr>
                     <td colSpan={4} className="pt-3 font-semibold text-text-primary">{t('manufacturing.totalMaterialCost')}</td>
-                    <td className="pt-3 text-right font-bold text-brand text-base">{formatCurrency(detailBom.totalMaterialCost)}</td>
+                    <td className="pt-3 text-end font-bold text-brand text-base">{formatCurrency(detailBom.totalMaterialCost)}</td>
                   </tr>
                 </tfoot>
               </table>

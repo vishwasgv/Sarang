@@ -568,8 +568,8 @@ export function LegalCasesScreen() {
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
               <div className="relative flex-1 max-w-xs">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search case, title, court..." className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-card text-sm text-foreground" />
+                <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search case, title, court..." className="w-full h-10 ps-9 pe-3 rounded-xl border border-border bg-card text-sm text-foreground" />
               </div>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 px-3 rounded-xl border border-border bg-card text-sm text-foreground">
                 <option value="">All Status</option>
@@ -596,9 +596,9 @@ export function LegalCasesScreen() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Case</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Client</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Next Hearing</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Case</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Client</th>
+                      <th className="text-start px-4 py-3 font-medium text-muted-foreground">Next Hearing</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                       <th className="text-center px-4 py-3 font-medium text-muted-foreground"></th>
                     </tr>
@@ -608,7 +608,7 @@ export function LegalCasesScreen() {
                       <tr
                         key={c.id}
                         onClick={() => { setSelectedCase(null); setShowHearingForm(false); setShowTimeForm(false); loadCaseDetail(c.id) }}
-                        className={cn('border-b border-border/50 cursor-pointer transition-colors', selectedCase?.id === c.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/20')}
+                        className={cn('border-b border-border/50 cursor-pointer transition-colors', selectedCase?.id === c.id ? 'bg-primary/5 border-s-2 border-s-primary' : 'hover:bg-muted/20')}
                       >
                         <td className="px-4 py-3">
                           <p className="font-semibold text-foreground">{c.caseNumber}</p>
@@ -863,7 +863,7 @@ export function LegalCasesScreen() {
                               <p className="text-xs font-medium text-foreground truncate">{e.description}</p>
                               <p className="text-xs text-muted-foreground">{formatDate(e.date)} · {Number(e.hours)}h{e.ratePerHour ? ` · ₹${Number(e.amount).toLocaleString('en-IN')}` : ''}</p>
                             </div>
-                            <div className="flex items-center gap-2 ml-2 shrink-0">
+                            <div className="flex items-center gap-2 ms-2 shrink-0">
                               <span className={cn('text-xs font-medium', e.isBilled ? 'text-muted-foreground' : 'text-warning')}>
                                 {e.isBilled ? 'Billed' : 'Unbilled'}
                               </span>
@@ -910,11 +910,11 @@ export function LegalCasesScreen() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Case</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Client</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Court</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Purpose</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Case</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Client</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Court</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Purpose</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -975,7 +975,7 @@ export function LegalCasesScreen() {
                 {markingBilled ? 'Marking...' : `Mark ${selectedTimeIds.size} as Billed`}
               </button>
             )}
-            <div className="ml-auto text-sm text-muted-foreground">
+            <div className="ms-auto text-sm text-muted-foreground">
               Total unbilled: <span className="text-warning font-semibold">
                 ₹{timeEntries.filter((e) => !e.isBilled).reduce((s, e) => s + Number(e.amount), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </span>
@@ -1006,12 +1006,12 @@ export function LegalCasesScreen() {
                         className="rounded"
                       />
                     </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Case</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Description</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Advocate</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Hours</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Date</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Case</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Description</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Advocate</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Hours</th>
+                    <th className="text-end px-4 py-3 font-medium text-muted-foreground">Amount</th>
                     <th className="text-center px-4 py-3 font-medium text-muted-foreground">Status</th>
                   </tr>
                 </thead>
@@ -1034,8 +1034,8 @@ export function LegalCasesScreen() {
                       </td>
                       <td className="px-4 py-3 text-foreground">{e.description}</td>
                       <td className="px-4 py-3 text-muted-foreground">{e.employee?.fullName ?? '—'}</td>
-                      <td className="px-4 py-3 text-right text-foreground">{Number(e.hours)}h</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">₹{Number(e.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 text-end text-foreground">{Number(e.hours)}h</td>
+                      <td className="px-4 py-3 text-end font-semibold text-foreground">₹{Number(e.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={cn('text-xs font-medium', e.isBilled ? 'text-muted-foreground' : 'text-warning')}>
                           {e.isBilled ? 'Billed' : 'Unbilled'}

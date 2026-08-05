@@ -101,7 +101,7 @@ export function InvoiceListScreen() {
           </div>
           {canCreate && (
             <Button size="md" onClick={() => navigate('/billing/new')}>
-              <Plus size={16} className="mr-1" /> {t('billing.newInvoice')}
+              <Plus size={16} className="me-1" /> {t('billing.newInvoice')}
             </Button>
           )}
         </div>
@@ -109,12 +109,12 @@ export function InvoiceListScreen() {
         {/* Search + Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[180px] max-w-sm">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
               placeholder={t('billing.searchInvoices')}
-              className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+              className="w-full h-11 ps-10 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
             />
           </div>
           <div className="flex items-center gap-1.5">
@@ -161,13 +161,13 @@ export function InvoiceListScreen() {
           <table className="w-full text-base">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.invoiceNumber')}</th>
-                <th className="text-left px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.customer')}</th>
-                <th className="text-left px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('purchaseOrders.items')}</th>
-                <th className="text-right px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.total')}</th>
-                <th className="text-right px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.balance')}</th>
+                <th className="text-start px-6 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.invoiceNumber')}</th>
+                <th className="text-start px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.customer')}</th>
+                <th className="text-start px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('purchaseOrders.items')}</th>
+                <th className="text-end px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.total')}</th>
+                <th className="text-end px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.balance')}</th>
                 <th className="text-center px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.status')}</th>
-                <th className="text-left px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.date')}</th>
+                <th className="text-start px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.date')}</th>
               </tr>
             </thead>
             <tbody>
@@ -176,14 +176,14 @@ export function InvoiceListScreen() {
                   className="border-b border-slate-50 dark:border-slate-800 hover:bg-brand/5 dark:hover:bg-brand/10 cursor-pointer transition-colors">
                   <td className="px-6 py-4">
                     <span className="font-semibold text-brand">{inv.invoiceNumber}</span>
-                    {inv.status === 'CANCELLED' && <span className="ml-2 text-sm text-danger">({t('billing.status.cancelled')})</span>}
+                    {inv.status === 'CANCELLED' && <span className="ms-2 text-sm text-danger">({t('billing.status.cancelled')})</span>}
                   </td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                     {inv.customer ? inv.customer.customerName : <span className="text-slate-400 italic">{t('billing.walkIn')}</span>}
                   </td>
                   <td className="px-4 py-4 text-slate-500 dark:text-slate-400">{inv.items.length} {t('purchaseOrders.items')}</td>
-                  <td className="px-4 py-4 text-right font-semibold text-dark dark:text-slate-100">{formatCurrency(inv.totalAmount)}</td>
-                  <td className="px-4 py-4 text-right">
+                  <td className="px-4 py-4 text-end font-semibold text-dark dark:text-slate-100">{formatCurrency(inv.totalAmount)}</td>
+                  <td className="px-4 py-4 text-end">
                     {inv.balanceAmount > 0 ? <span className="font-semibold text-danger">{formatCurrency(inv.balanceAmount)}</span> : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-4 text-center">

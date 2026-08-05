@@ -4,7 +4,7 @@ O Sarang inclui um tour guiado, passo a passo, pelo aplicativo — uma cópia re
 
 ## Iniciando o tutorial pela primeira vez
 
-Na primeira vez que você terminar de configurar o Sarang e chegar ao Painel, será perguntado: **"Quer um tour guiado rápido pelo Sarang?"** Escolher **Sim, me mostre** permite escolher entre explorar seu próprio tipo de negócio ou um tipo diferente, e então o tour começa. Escolher **Talvez depois** simplesmente fecha esse aviso — ele nunca mais aparece sozinho, mas o tutorial sempre fica disponível depois nos dois locais abaixo.
+Na primeira vez que você terminar de configurar o Sarang e chegar ao Painel, será perguntado: **"Quer um tour guiado rápido pelo Sarang?"** Escolher **Sim, me mostre** inicia o tour imediatamente para o seu próprio tipo de negócio — sem nenhuma seleção nesse momento. Escolher **Talvez depois** simplesmente fecha esse aviso — ele nunca mais aparece sozinho, mas o tutorial (incluindo a opção de explorar um tipo de negócio diferente, não só o seu) sempre fica disponível depois nos dois locais abaixo.
 
 ## Voltando a ele depois
 

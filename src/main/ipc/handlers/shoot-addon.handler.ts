@@ -13,14 +13,14 @@ export function registerShootAddOn(handle: HandleFn): void {
   })
 
   handle('shootAddOn:add', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootBookings.manage'); if (deny) return deny
     const parsed = AddShootAddOnSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addShootAddOn(parsed.data)
   })
 
   handle('shootAddOn:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('shootBookings.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteShootAddOn(parsed.data.id)

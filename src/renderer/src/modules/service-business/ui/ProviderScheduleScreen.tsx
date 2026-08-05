@@ -227,11 +227,11 @@ export function ProviderScheduleScreen() {
                         <input type="time" value={s.startTime} disabled={!canManage} onChange={(e) => updateDay(s.dayOfWeek, { startTime: e.target.value })} className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-dark dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
                         <span className="text-xs text-slate-400">to</span>
                         <input type="time" value={s.endTime} disabled={!canManage} onChange={(e) => updateDay(s.dayOfWeek, { endTime: e.target.value })} className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-dark dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
-                        <span className="text-xs text-slate-400 ml-2">Break:</span>
+                        <span className="text-xs text-slate-400 ms-2">Break:</span>
                         <input type="time" value={s.breakStart ?? ''} disabled={!canManage} onChange={(e) => updateDay(s.dayOfWeek, { breakStart: e.target.value || null })} className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-dark dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
                         <span className="text-xs text-slate-400">to</span>
                         <input type="time" value={s.breakEnd ?? ''} disabled={!canManage} onChange={(e) => updateDay(s.dayOfWeek, { breakEnd: e.target.value || null })} className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-dark dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
-                        <span className="text-xs text-slate-400 ml-2">Slot:</span>
+                        <span className="text-xs text-slate-400 ms-2">Slot:</span>
                         <Select
                           value={s.slotDuration}
                           disabled={!canManage}

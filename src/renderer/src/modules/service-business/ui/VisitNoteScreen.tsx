@@ -1427,21 +1427,21 @@ function PrescriptionPrint({ patientName, patientAge, appointment, items, profil
         <p className="text-3xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif' }}>℞</p>
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b-2 border-dark text-left">
-              <th className="py-1.5 pr-2 font-bold">Drug</th>
-              <th className="py-1.5 pr-2 font-bold">Dosage</th>
-              <th className="py-1.5 pr-2 font-bold">Frequency</th>
-              <th className="py-1.5 pr-2 font-bold">Duration</th>
+            <tr className="border-b-2 border-dark text-start">
+              <th className="py-1.5 pe-2 font-bold">Drug</th>
+              <th className="py-1.5 pe-2 font-bold">Dosage</th>
+              <th className="py-1.5 pe-2 font-bold">Frequency</th>
+              <th className="py-1.5 pe-2 font-bold">Duration</th>
               <th className="py-1.5 font-bold">Instructions</th>
             </tr>
           </thead>
           <tbody>
             {items.map((it) => (
               <tr key={it.id} className="border-b border-slate-100 dark:border-slate-800">
-                <td className="py-2 pr-2 font-semibold">{it.drugName}</td>
-                <td className="py-2 pr-2 text-slate-600 dark:text-slate-300">{it.dosage || '—'}</td>
-                <td className="py-2 pr-2 text-slate-600 dark:text-slate-300">{it.frequency || '—'}</td>
-                <td className="py-2 pr-2 text-slate-600 dark:text-slate-300">{it.duration || '—'}</td>
+                <td className="py-2 pe-2 font-semibold">{it.drugName}</td>
+                <td className="py-2 pe-2 text-slate-600 dark:text-slate-300">{it.dosage || '—'}</td>
+                <td className="py-2 pe-2 text-slate-600 dark:text-slate-300">{it.frequency || '—'}</td>
+                <td className="py-2 pe-2 text-slate-600 dark:text-slate-300">{it.duration || '—'}</td>
                 <td className="py-2 text-slate-600 dark:text-slate-300">{it.instructions || '—'}</td>
               </tr>
             ))}

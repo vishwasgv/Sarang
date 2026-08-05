@@ -23,14 +23,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('sessionPack:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('sessionPacks.manage'); if (deny) return deny
     const parsed = CreatePackSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createPack(parsed.data)
   })
 
   handle('sessionPack:deduct', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('sessionPacks.manage'); if (deny) return deny
     const parsed = DeductSessionSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deductSession(parsed.data)
@@ -50,7 +50,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('sessionPack:assignTrainer', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('sessionPacks.manage'); if (deny) return deny
     const parsed = AssignPackTrainerSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return assignPackTrainer(parsed.data.packId, parsed.data.trainerId)

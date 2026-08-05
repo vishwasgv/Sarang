@@ -212,6 +212,7 @@
     "card": "Tarjeta",
     "credit": "Crédito",
     "cheque": "Cheque",
+    "bankTransfer": "Transferencia bancaria",
     "finalize": "Finalizar",
     "saveDraft": "Guardar Borrador",
     "cancel": "Cancelar Factura",

@@ -18,21 +18,21 @@ export function registerCandidate(handle: HandleFn): void {
   })
 
   handle('candidate:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = CreateCandidateSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createCandidate(parsed.data)
   })
 
   handle('candidate:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = UpdateCandidateSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateCandidate(parsed.data)
   })
 
   handle('candidate:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = CandidateIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteCandidate(parsed.data)

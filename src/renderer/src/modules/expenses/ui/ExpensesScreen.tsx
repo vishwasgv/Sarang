@@ -175,7 +175,7 @@ export function ExpensesScreen() {
         </div>
         {canCreate && (
           <Button size="sm" onClick={openCreate} disabled={categories.length === 0}>
-            <Plus size={14} className="mr-1.5" /> {t('expenses.addExpense')}
+            <Plus size={14} className="me-1.5" /> {t('expenses.addExpense')}
           </Button>
         )}
       </div>
@@ -223,12 +223,12 @@ export function ExpensesScreen() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('common.date')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('expenses.expenseName')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('expenses.category')}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{t('expenses.paymentMethod')}</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">{t('expenses.amount')}</th>
-              {(canModify || canDelete) && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.date')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('expenses.expenseName')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('expenses.category')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('expenses.paymentMethod')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('expenses.amount')}</th>
+              {(canModify || canDelete) && <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -249,7 +249,7 @@ export function ExpensesScreen() {
                   <Badge variant="neutral" size="sm">{exp.category.categoryName}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">{exp.paymentMethod.replace('_', ' ')}</td>
-                <td className="px-4 py-3 text-right font-semibold text-dark dark:text-slate-100">
+                <td className="px-4 py-3 text-end font-semibold text-dark dark:text-slate-100">
                   {formatCurrency(exp.amount)}
                 </td>
                 {(canModify || canDelete) && (
@@ -277,7 +277,7 @@ export function ExpensesScreen() {
             <tfoot className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
               <tr>
                 <td colSpan={(canModify || canDelete) ? 4 : 4} className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">{t('common.total')}</td>
-                <td className="px-4 py-3 text-right font-bold text-dark dark:text-slate-100">
+                <td className="px-4 py-3 text-end font-bold text-dark dark:text-slate-100">
                   {formatCurrency(totalAmount)}
                 </td>
                 {(canModify || canDelete) && <td />}

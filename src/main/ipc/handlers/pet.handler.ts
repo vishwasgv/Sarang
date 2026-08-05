@@ -28,7 +28,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('pets:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('pets.manage')
     if (deny) return deny
     const parsed = CreatePetSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
@@ -36,7 +36,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('pets:update', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('pets.manage')
     if (deny) return deny
     const parsed = UpdatePetSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
@@ -52,7 +52,7 @@ export function register(handle: HandleFn): void {
   })
 
   handle('pets:addWeight', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice')
+    const deny = await requirePermission('pets.manage')
     if (deny) return deny
     const parsed = AddWeightEntrySchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }

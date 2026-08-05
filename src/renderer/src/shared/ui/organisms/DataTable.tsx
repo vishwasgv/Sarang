@@ -59,13 +59,13 @@ export function DataTable<T>({
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-72">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder={searchPlaceholder}
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-full h-11 pl-10 pr-3 text-base rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors placeholder:text-slate-400"
+            className="w-full h-11 ps-10 pe-3 text-base rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors placeholder:text-slate-400"
           />
         </div>
         {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
@@ -85,7 +85,7 @@ export function DataTable<T>({
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className={cn('px-4 py-4 text-left text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide select-none whitespace-nowrap',
+                      className={cn('px-4 py-4 text-start text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide select-none whitespace-nowrap',
                         header.column.getCanSort() ? 'cursor-pointer hover:text-slate-700 dark:hover:text-slate-200' : ''
                       )}
                       onClick={header.column.getToggleSortingHandler()}

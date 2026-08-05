@@ -220,7 +220,7 @@ export function DonorsScreen() {
               const eligible = isEligibleNow(d)
               return (
                 <button key={d.id} onClick={() => setDetail(d)}
-                  className="w-full text-left bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
+                  className="w-full text-start bg-white dark:bg-slate-900 rounded-xl border border-border p-4 hover:border-brand/40 hover:shadow-sm transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -232,7 +232,7 @@ export function DonorsScreen() {
                       <p className="mt-1 font-semibold text-text-primary">{d.fullName}</p>
                       <p className="text-sm text-text-secondary">{d.phone ?? 'No phone on file'}</p>
                     </div>
-                    <div className="text-right shrink-0 text-xs text-text-secondary">
+                    <div className="text-end shrink-0 text-xs text-text-secondary">
                       {d.lastDonationDate && <p>Last: {formatDate(d.lastDonationDate)}</p>}
                       {d.nextEligibleDate && <p>Next eligible: {formatDate(d.nextEligibleDate)}</p>}
                     </div>

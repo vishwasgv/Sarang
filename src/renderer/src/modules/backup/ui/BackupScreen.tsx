@@ -384,12 +384,12 @@ export function BackupScreen() {
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
           <HardDrive size={15} className="text-brand" />
           <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{t('backup.backupHistory')}</h3>
-          <span className="ml-auto text-xs text-slate-400">{t('backup.backupCount', { count: backups.length })}</span>
+          <span className="ms-auto text-xs text-slate-400">{t('backup.backupCount', { count: backups.length })}</span>
         </div>
 
         {loading ? (
           <div className="p-8 flex items-center justify-center">
-            <RefreshCw size={16} className="animate-spin text-slate-300 mr-2" />
+            <RefreshCw size={16} className="animate-spin text-slate-300 me-2" />
             <span className="text-sm text-slate-400">{t('backup.loadingBackups')}</span>
           </div>
         ) : backups.length === 0 ? (
@@ -561,9 +561,9 @@ export function BackupScreen() {
       {/* ─── Aszurex footer ──────────────────────────────────────────── */}
       <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <p className="text-xs font-medium text-brand inline-flex items-center gap-1.5">
-          Sarang Business OS Lite · Powered by Aszurex <AszurexMark width={12} />
+          {t('common.offlineFooterBrand')} <AszurexMark width={12} />
         </p>
-        <p className="text-xs text-slate-400">No cloud. No tracking. 100% offline.</p>
+        <p className="text-xs text-slate-400">{t('common.offlineFooterTagline')}</p>
       </div>
 
       {/* ─── Toast ───────────────────────────────────────────────────── */}
@@ -574,7 +574,7 @@ export function BackupScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             className={cn(
-              'fixed bottom-6 right-6 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50',
+              'fixed bottom-6 end-6 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50',
               toast.ok ? 'bg-success text-white' : 'bg-danger text-white'
             )}
           >

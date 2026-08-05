@@ -1106,7 +1106,7 @@ function CheckoutModal({ appt, currSym, onClose, onDone }: {
                 <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-auto">
                   {retailResults.map((p) => (
                     <button key={p.id} onClick={() => addProduct(p)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between">
+                      className="w-full text-start px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between">
                       <span className="text-dark dark:text-slate-100">{p.productName}</span>
                       <span className="text-xs text-slate-400">{currSym}{p.sellingPrice.toLocaleString('en-IN')}</span>
                     </button>
@@ -1124,7 +1124,7 @@ function CheckoutModal({ appt, currSym, onClose, onDone }: {
                   <input type="number" min={1} value={l.quantity}
                     onChange={(e) => updateQty(l.productId, Math.max(1, parseInt(e.target.value, 10) || 1))}
                     className="w-14 h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-900 text-center" />
-                  <span className="w-16 text-right text-xs text-slate-500 dark:text-slate-400">{currSym}{(l.quantity * l.unitPrice).toLocaleString('en-IN')}</span>
+                  <span className="w-16 text-end text-xs text-slate-500 dark:text-slate-400">{currSym}{(l.quantity * l.unitPrice).toLocaleString('en-IN')}</span>
                   <button onClick={() => removeLine(l.productId)} className="text-slate-400 hover:text-danger"><Trash2 size={13} /></button>
                 </div>
               ))}

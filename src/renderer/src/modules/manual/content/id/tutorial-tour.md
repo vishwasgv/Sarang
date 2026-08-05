@@ -4,7 +4,7 @@ Sarang menyertakan panduan langkah demi langkah tentang aplikasi ini — salinan
 
 ## Memulai tutorial untuk pertama kalinya
 
-Saat pertama kali Anda selesai menyiapkan Sarang dan mencapai Dasbor, Anda akan ditanya: **"Ingin tur berpandu singkat tentang Sarang?"** Memilih **Ya, tunjukkan padaku** memungkinkan Anda memilih antara menjelajahi jenis bisnis Anda sendiri atau jenis yang berbeda, lalu tur dimulai. Memilih **Mungkin nanti** hanya menutup permintaan ini — permintaan ini tidak akan muncul lagi dengan sendirinya, tetapi tutorial selalu tersedia nanti dari dua tempat di bawah ini.
+Saat pertama kali Anda selesai menyiapkan Sarang dan mencapai Dasbor, Anda akan ditanya: **"Ingin tur berpandu singkat tentang Sarang?"** Memilih **Ya, tunjukkan padaku** langsung memulai tur untuk jenis bisnis Anda sendiri — tanpa pilihan apa pun di titik ini. Memilih **Mungkin nanti** hanya menutup permintaan ini — permintaan ini tidak akan muncul lagi dengan sendirinya, tetapi tutorial (termasuk opsi untuk menjelajahi jenis bisnis yang berbeda, bukan hanya milik Anda) selalu tersedia nanti dari dua tempat di bawah ini.
 
 ## Kembali ke sini nanti
 

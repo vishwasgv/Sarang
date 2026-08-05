@@ -65,7 +65,7 @@ export function LicenseActivationGate({ onComplete }: { onComplete: () => void }
           Your business account is already set up. Activate your license key to continue — Sarang is free for your first 12 months, with a small annual license after that.
         </p>
 
-        <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-left">
+        <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-start">
           <p className="text-sm font-bold text-dark dark:text-slate-100 mb-2">Activate your license</p>
           <div className="flex items-center gap-2 mb-2">
             <Input

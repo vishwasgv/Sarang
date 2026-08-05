@@ -79,21 +79,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('membership:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('memberships.manage'); if (deny) return deny
     const parsed = CreateMembershipSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createMembership(parsed.data)
   })
 
   handle('membership:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('memberships.manage'); if (deny) return deny
     const parsed = UpdateMembershipSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateMembership(parsed.data)
   })
 
   handle('membership:checkIn', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('memberships.manage'); if (deny) return deny
     const parsed = CheckInMemberSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return checkInMember(parsed.data.clientId, parsed.data.membershipId)
@@ -118,14 +118,14 @@ export function register(handle: HandleFn): void {
   })
 
   handle('membership:freeze', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('memberships.manage'); if (deny) return deny
     const parsed = FreezeMembershipSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return freezeMembership(parsed.data)
   })
 
   handle('membership:resume', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('memberships.manage'); if (deny) return deny
     const parsed = ResumeMembershipSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return resumeMembership(parsed.data)

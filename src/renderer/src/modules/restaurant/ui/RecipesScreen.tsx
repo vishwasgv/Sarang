@@ -222,18 +222,18 @@ export function RecipesScreen() {
                   </div>
                 ) : (
                   <div className="relative">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       value={productId ? productName : productQuery}
                       onChange={e => { setProductId(''); setProductName(''); setProductQuery(e.target.value) }}
                       placeholder="Search product by name or SKU…"
-                      className="w-full pl-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
+                      className="w-full ps-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
                     {productResults.length > 0 && !productId && (
                       <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                         {productResults.map(p => (
                           <button key={p.id} type="button"
                             onClick={() => { setProductId(p.id); setProductName(p.productName); setProductQuery(''); setProductResults([]) }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors">
+                            className="w-full flex items-center justify-between px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors">
                             <span className="text-dark dark:text-slate-100">{p.productName}</span>
                             <span className="text-xs text-slate-400">{p.unit}</span>
                           </button>
@@ -271,7 +271,7 @@ export function RecipesScreen() {
                 return (
                   <div key={idx} className="flex gap-2 items-start">
                     <div className="relative flex-1">
-                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Search size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         value={ing.ingredientProductId ? ing.ingredientName : ing.query}
                         onChange={e => {
@@ -280,12 +280,12 @@ export function RecipesScreen() {
                             : item))
                         }}
                         placeholder="Search ingredient by name or SKU…"
-                        className="w-full pl-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
+                        className="w-full ps-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
                       {visibleResults.length > 0 && !ing.ingredientProductId && (
                         <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
                           {visibleResults.map(p => (
                             <button key={p.id} type="button" onClick={() => pickIngredient(idx, p)}
-                              className="w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-brand/5 transition-colors">
+                              className="w-full flex items-center justify-between px-3 py-2 text-start text-sm hover:bg-brand/5 transition-colors">
                               <span className="text-dark dark:text-slate-100">{p.productName}</span>
                               <span className="text-xs text-slate-400">{p.unit}</span>
                             </button>
@@ -339,7 +339,7 @@ export function RecipesScreen() {
             <Card key={recipe.id} padding="none" className="overflow-hidden">
               <button
                 onClick={() => setExpanded(expanded === recipe.id ? null : recipe.id)}
-                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                className="w-full flex items-center justify-between px-5 py-4 text-start hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <div>
                   <p className="text-sm font-semibold text-dark dark:text-slate-100">{recipe.recipeName}</p>
                   <p className="text-xs text-slate-400">For {recipe.product.productName} · {recipe.items.length} ingredient{recipe.items.length !== 1 ? 's' : ''}</p>

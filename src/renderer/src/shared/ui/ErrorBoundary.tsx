@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
             An unexpected error occurred in this section. Your data is safe.
           </p>
           {this.state.error && (
-            <details className="text-xs text-gray-400 mb-4 max-w-md text-left">
+            <details className="text-xs text-gray-400 mb-4 max-w-md text-start">
               <summary className="cursor-pointer hover:text-gray-600">Technical details</summary>
               <pre className="mt-2 p-2 bg-gray-50 rounded overflow-auto">{this.state.error.message}</pre>
             </details>

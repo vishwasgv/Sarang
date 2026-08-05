@@ -198,11 +198,11 @@ export default function PerformanceScreen() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Performance</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Date</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Venue</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Participants</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Performance</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Batch</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Date</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Venue</th>
+              <th className="text-start py-3 px-4 font-medium text-gray-600 dark:text-slate-400">Participants</th>
               <th className="py-3 px-4" />
             </tr>
           </thead>
@@ -233,7 +233,7 @@ export default function PerformanceScreen() {
                   <td className="py-3 px-4 text-gray-500 dark:text-slate-400">{p.venue ?? '—'}</td>
                   <td className="py-3 px-4">
                     <span className="text-gray-700 font-medium dark:text-slate-300">{ids.length}</span>
-                    <span className="text-gray-400 text-xs ml-1 dark:text-slate-500">students</span>
+                    <span className="text-gray-400 text-xs ms-1 dark:text-slate-500">students</span>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2 justify-end">

@@ -32,7 +32,7 @@ Gere uma nota fiscal diretamente de um pedido de laboratório assim que todo exa
 
 ## Relatórios
 
-A tela **Reports** inclui um relatório de Lab Turnaround específico deste setor, mostrando os pedidos por etapa (pedido, amostra coletada, em processo, laudado) e o tempo de processamento do pedido até o laudo para cada um — útil para identificar onde as amostras estão se acumulando.
+A tela **Reports** inclui um relatório de Lab Test Throughput específico deste setor, mostrando os pedidos por etapa (pedido, amostra coletada, em processo, laudado) e o tempo de processamento do pedido até o laudo para cada um — útil para identificar onde as amostras estão se acumulando.
 
 ## Idioma
 

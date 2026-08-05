@@ -550,13 +550,13 @@ export default function PestControlScreen() {
                 </button>
               ))}
             </div>
-            <div className="relative ml-auto">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <div className="relative ms-auto">
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input
                 value={contractSearch}
                 onChange={e => { setContractSearch(e.target.value); loadContracts(contractStatusFilter || undefined, e.target.value || undefined) }}
                 placeholder="Contract #, Address, Client…"
-                className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="ps-8 pe-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -647,13 +647,13 @@ export default function PestControlScreen() {
                 </button>
               ))}
             </div>
-            <div className="relative ml-auto">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <div className="relative ms-auto">
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
               <input
                 value={jobSearch}
                 onChange={e => { setJobSearch(e.target.value); loadJobs(jobStatusFilter || undefined, e.target.value || undefined) }}
                 placeholder="Job #, Client, Area, Pesticide…"
-                className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="ps-8 pe-3 py-1.5 border border-gray-300 rounded-lg text-xs w-52 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -671,7 +671,7 @@ export default function PestControlScreen() {
                   <thead className="bg-gray-50 border-b border-gray-200 dark:bg-slate-950 dark:border-slate-700">
                     <tr>
                       {['Job #', 'Client / Contract', 'Visit Date', 'Treatment', 'Amount', 'Status', 'Actions'].map(h => (
-                        <th key={h} className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 dark:text-slate-400">{h}</th>
+                        <th key={h} className="text-start text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 dark:text-slate-400">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -880,7 +880,7 @@ export default function PestControlScreen() {
                             <span className="font-medium text-gray-800 dark:text-slate-200">{line.pesticideName}</span>
                             <span className="text-gray-500 dark:text-slate-400"> — {line.quantityUsed} {line.unit}{line.targetPest ? ` for ${line.targetPest}` : ''}{line.dosageNote ? ` (${line.dosageNote})` : ''}{line.product ? ' · linked to inventory' : ''}</span>
                           </div>
-                          <button type="button" onClick={() => handleRemovePesticideLine(line.id)} className="text-gray-400 hover:text-red-600 shrink-0 ml-2"><X size={13} /></button>
+                          <button type="button" onClick={() => handleRemovePesticideLine(line.id)} className="text-gray-400 hover:text-red-600 shrink-0 ms-2"><X size={13} /></button>
                         </div>
                       ))}
                     </div>
@@ -904,12 +904,12 @@ export default function PestControlScreen() {
                       className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     />
                     {pesticideLineForm.pickedProduct && (
-                      <button type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: null }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600"><X size={12} /></button>
+                      <button type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: null }))} className="absolute end-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600"><X size={12} /></button>
                     )}
                     {!pesticideLineForm.pickedProduct && pesticideProductResults.length > 0 && (
                       <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-32 overflow-y-auto">
                         {pesticideProductResults.map(p => (
-                          <button key={p.id} type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: p, productSearch: '', pesticideName: f.pesticideName || p.productName }))} className="w-full text-left px-3 py-1.5 text-xs hover:bg-green-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
+                          <button key={p.id} type="button" onClick={() => setPesticideLineForm(f => ({ ...f, pickedProduct: p, productSearch: '', pesticideName: f.pesticideName || p.productName }))} className="w-full text-start px-3 py-1.5 text-xs hover:bg-green-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2">
                             <span className="text-gray-800 dark:text-slate-200">{p.productName}</span>
                             <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">stock {p.inventory?.quantity ?? 0}</span>
                           </button>

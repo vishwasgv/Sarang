@@ -30,21 +30,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('appointments:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
     const parsed = CreateAppointmentSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return svc.createAppointment(parsed.data)
   })
 
   handle('appointments:update', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
     const parsed = UpdateAppointmentSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return svc.updateAppointment(parsed.data)
   })
 
   handle('appointments:updateStatus', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
     const parsed = UpdateAppointmentStatusSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return svc.updateAppointmentStatus(parsed.data)

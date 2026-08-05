@@ -24,11 +24,11 @@ const MARKDOWN_OPTIONS = {
     p: { props: { className: 'text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3' } },
     ul: { props: { className: 'list-disc list-inside text-sm text-slate-600 dark:text-slate-300 space-y-1 mb-3' } },
     ol: { props: { className: 'list-decimal list-inside text-sm text-slate-600 dark:text-slate-300 space-y-1 mb-3' } },
-    li: { props: { className: 'ml-1' } },
+    li: { props: { className: 'ms-1' } },
     strong: { props: { className: 'font-semibold text-dark dark:text-slate-200' } },
     code: { props: { className: 'bg-slate-100 dark:bg-slate-800 rounded px-1 py-0.5 text-xs font-mono' } },
     table: { props: { className: 'w-full text-sm border-collapse mb-4' } },
-    th: { props: { className: 'border border-slate-200 dark:border-slate-700 px-2 py-1 text-left bg-slate-50 dark:bg-slate-800' } },
+    th: { props: { className: 'border border-slate-200 dark:border-slate-700 px-2 py-1 text-start bg-slate-50 dark:bg-slate-800' } },
     td: { props: { className: 'border border-slate-200 dark:border-slate-700 px-2 py-1' } }
   }
 }
@@ -104,7 +104,7 @@ export function ManualScreen() {
   return (
     <div className="flex h-full min-h-0">
       {/* Table of contents */}
-      <aside className="w-72 shrink-0 border-r border-slate-100 dark:border-slate-800 overflow-y-auto p-4 space-y-5">
+      <aside className="w-72 shrink-0 border-e border-slate-100 dark:border-slate-800 overflow-y-auto p-4 space-y-5">
         <div className="flex items-center gap-2 px-2">
           <HelpCircle size={18} className="text-brand" />
           <h1 className="text-base font-semibold text-dark dark:text-slate-100">{t('nav.manual', 'Manual')}</h1>
@@ -123,7 +123,7 @@ export function ManualScreen() {
                     key={chapter.slug}
                     onClick={() => navigate(`/manual/${chapter.slug}`)}
                     className={cn(
-                      'w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm text-left transition-colors',
+                      'w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm text-start transition-colors',
                       isActive
                         ? 'bg-brand-50 dark:bg-brand/10 text-brand font-medium'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'

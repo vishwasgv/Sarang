@@ -13,21 +13,21 @@ export function registerInterviewRound(handle: HandleFn): void {
   })
 
   handle('interviewRound:create', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = CreateInterviewRoundSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createInterviewRound(parsed.data)
   })
 
   handle('interviewRound:update', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = UpdateInterviewRoundSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateInterviewRound(parsed.data)
   })
 
   handle('interviewRound:delete', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('placements.manage'); if (deny) return deny
     const parsed = EntityIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteInterviewRound(parsed.data.id)

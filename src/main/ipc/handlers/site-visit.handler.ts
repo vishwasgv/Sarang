@@ -18,21 +18,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('siteVisit:create', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = CreateSiteVisitSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return createSiteVisit(parsed.data)
   })
 
   handle('siteVisit:update', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = UpdateSiteVisitSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateSiteVisit(parsed.data)
   })
 
   handle('siteVisit:delete', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = DeleteSiteVisitSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteSiteVisit(parsed.data.id)
@@ -46,21 +46,21 @@ export function register(handle: HandleFn): void {
   })
 
   handle('materialTestResult:add', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = AddMaterialTestResultSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return addMaterialTestResult(parsed.data)
   })
 
   handle('materialTestResult:update', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = UpdateMaterialTestResultSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateMaterialTestResult(parsed.data)
   })
 
   handle('materialTestResult:delete', async (payload) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
     const parsed = DeleteMaterialTestResultSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteMaterialTestResult(parsed.data.id)

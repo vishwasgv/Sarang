@@ -174,12 +174,12 @@ export function ProductionAnalyticsScreen() {
                 <table className="w-full text-sm">
                   <thead className="bg-surface-alt border-b border-border">
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('purchaseOrders.orderNumber')}</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('billing.product')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.producedCol')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.yieldCol')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.totalMaterialCost')}</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.costPerUnit')}</th>
+                      <th className="text-start px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('purchaseOrders.orderNumber')}</th>
+                      <th className="text-start px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('billing.product')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.producedCol')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.yieldCol')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.totalMaterialCost')}</th>
+                      <th className="text-end px-4 py-2 text-xs font-semibold uppercase text-text-secondary">{t('manufacturing.costPerUnit')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -190,12 +190,12 @@ export function ProductionAnalyticsScreen() {
                         <tr key={o.id} className="hover:bg-surface-hover/30 transition-colors">
                           <td className="px-4 py-2 font-mono text-xs text-brand">{o.orderNumber}</td>
                           <td className="px-4 py-2 text-text-primary">{o.productName}</td>
-                          <td className="px-4 py-2 text-right font-semibold text-text-primary">{o.producedQty}</td>
-                          <td className="px-4 py-2 text-right">
+                          <td className="px-4 py-2 text-end font-semibold text-text-primary">{o.producedQty}</td>
+                          <td className="px-4 py-2 text-end">
                             <span className={`text-xs font-semibold ${yield_ >= 90 ? 'text-success' : yield_ >= 70 ? 'text-warning' : 'text-danger'}`}>{yield_}%</span>
                           </td>
-                          <td className="px-4 py-2 text-right text-text-secondary text-xs">{formatCurrency(o.totalMaterialCost ?? 0)}</td>
-                          <td className="px-4 py-2 text-right text-xs font-semibold text-brand">{formatCurrency(costPerUnit)}</td>
+                          <td className="px-4 py-2 text-end text-text-secondary text-xs">{formatCurrency(o.totalMaterialCost ?? 0)}</td>
+                          <td className="px-4 py-2 text-end text-xs font-semibold text-brand">{formatCurrency(costPerUnit)}</td>
                         </tr>
                       )
                     })}

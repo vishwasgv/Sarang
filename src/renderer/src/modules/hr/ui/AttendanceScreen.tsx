@@ -245,8 +245,8 @@ export function AttendanceScreen() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.statusLabel')}</th>
+                    <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
+                    <th className="text-start px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{t('hr.statusLabel')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -298,7 +298,7 @@ export function AttendanceScreen() {
               <table className="text-xs border-collapse min-w-full">
                 <thead>
                   <tr>
-                    <th className="text-left px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 min-w-32 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
+                    <th className="text-start px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 min-w-32 font-medium text-slate-600 dark:text-slate-300">{t('hr.employee')}</th>
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
                       <th key={d} className="px-1 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center font-medium text-slate-500 dark:text-slate-400 w-8">{d}</th>
                     ))}

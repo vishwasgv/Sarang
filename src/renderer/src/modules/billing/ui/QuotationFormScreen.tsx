@@ -73,18 +73,18 @@ function ProductSearchCell({ value, placeholder, onSelect }: {
           placeholder={placeholder}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:border-brand"
         />
-        <Search size={12} className="absolute right-2 text-slate-300 pointer-events-none" />
+        <Search size={12} className="absolute end-2 text-slate-300 pointer-events-none" />
       </div>
       {open && results.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-50 top-full start-0 end-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
           {results.map(p => (
             <button key={p.id} onMouseDown={() => { onSelect(p, p.productName); setQuery(p.productName); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between">
+              className="w-full text-start px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between">
               <div>
                 <p className="font-medium text-dark dark:text-slate-100">{p.productName}</p>
                 {p.sku && <p className="text-xs text-slate-400">{p.sku}</p>}
               </div>
-              <span className="text-xs text-brand font-semibold shrink-0 ml-2">₹{p.sellingPrice.toFixed(2)}</span>
+              <span className="text-xs text-brand font-semibold shrink-0 ms-2">₹{p.sellingPrice.toFixed(2)}</span>
             </button>
           ))}
         </div>
@@ -241,7 +241,7 @@ export function QuotationFormScreen() {
             />
             <div className="relative">
               <input type="number" min="0" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)}
-                className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+                className="w-full px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-end focus:outline-none focus:border-brand" />
               {areaPricingEnabled && (
                 <div className="relative">
                   <button
@@ -255,7 +255,7 @@ export function QuotationFormScreen() {
                     <Ruler size={10} /> {t('billing.areaLabel')}
                   </button>
                   {areaCalc[i]?.open && (
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg p-3 w-40 space-y-2">
+                    <div className="absolute top-6 start-1/2 -translate-x-1/2 z-20 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg p-3 w-40 space-y-2">
                       <p className="text-xs font-semibold text-dark dark:text-slate-100 text-center">{t('billing.areaFormula')}</p>
                       <div className="flex gap-1 items-center">
                         <input
@@ -294,11 +294,11 @@ export function QuotationFormScreen() {
               )}
             </div>
             <input type="number" min="0" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)}
-              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-end focus:outline-none focus:border-brand" />
             <input type="number" min="0" max="100" value={item.discount} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)}
-              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-end focus:outline-none focus:border-brand" />
             <input type="number" min="0" max="100" value={item.taxRate} onChange={e => updateItem(i, 'taxRate', parseFloat(e.target.value) || 0)}
-              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-right focus:outline-none focus:border-brand" />
+              className="px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-end focus:outline-none focus:border-brand" />
             <button onClick={() => removeItem(i)} disabled={items.length === 1} className="text-slate-300 hover:text-danger disabled:opacity-30 transition-colors">
               <Trash2 size={14} />
             </button>
@@ -330,7 +330,7 @@ export function QuotationFormScreen() {
           </div>
         </div>
         <Button size="md" onClick={handleSave} loading={saving}>
-          <Save size={15} className="mr-1.5" /> {t('quotations.saveQuotation')}
+          <Save size={15} className="me-1.5" /> {t('quotations.saveQuotation')}
         </Button>
       </div>
     </div>

@@ -137,7 +137,7 @@ export function TokenQueueScreen() {
       {/* Stats + Current Token */}
       <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-6 shrink-0">
         {/* Big current token */}
-        <div className="flex items-center gap-4 pr-6 border-r border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-4 pe-6 border-e border-slate-200 dark:border-slate-700">
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Now Serving</p>
             {stats?.currentToken ? (
@@ -171,7 +171,7 @@ export function TokenQueueScreen() {
             size="sm"
             onClick={handleCallNext}
             disabled={waiting.length === 0}
-            className="ml-auto"
+            className="ms-auto"
           >
             Call Next (#{waiting[0]?.tokenNumber ?? '—'})
           </Button>
@@ -299,7 +299,7 @@ function TokenRow({ token, canManage, actioning, onAction }: {
       </div>
 
       {/* Time stamps */}
-      <div className="text-right shrink-0 text-[10px] text-slate-400 space-y-0.5">
+      <div className="text-end shrink-0 text-[10px] text-slate-400 space-y-0.5">
         {token.calledAt && <p>Called: {new Date(token.calledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>}
         {token.seenAt  && <p>Seen: {new Date(token.seenAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>}
       </div>

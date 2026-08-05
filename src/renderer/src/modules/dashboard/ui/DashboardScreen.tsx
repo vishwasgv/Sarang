@@ -351,7 +351,7 @@ export function DashboardScreen() {
                       {step.label}
                     </span>
                     {!step.done && (
-                      <button onClick={() => navigate(step.path)} className="ml-auto text-xs text-brand font-semibold hover:underline">
+                      <button onClick={() => navigate(step.path)} className="ms-auto text-xs text-brand font-semibold hover:underline">
                         Go →
                       </button>
                     )}
@@ -420,7 +420,7 @@ export function DashboardScreen() {
               <p className="text-xs text-slate-500 dark:text-slate-400">KOTs {t('dashboard.kotPending')}</p>
             </div>
             <button onClick={() => navigate('/restaurant/kot')}
-              className="ml-auto text-xs text-brand hover:underline">{t('common.view')}</button>
+              className="ms-auto text-xs text-brand hover:underline">{t('common.view')}</button>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="bg-brand/5 border border-brand/20 rounded-xl p-4 flex items-center gap-4">
@@ -432,7 +432,7 @@ export function DashboardScreen() {
               <p className="text-xs text-slate-500 dark:text-slate-400">KOTs {t('dashboard.kotInProgress')}</p>
             </div>
             <button onClick={() => navigate('/restaurant/kot')}
-              className="ml-auto text-xs text-brand hover:underline">{t('common.view')}</button>
+              className="ms-auto text-xs text-brand hover:underline">{t('common.view')}</button>
           </motion.div>
         </div>
       )}
@@ -846,8 +846,8 @@ const KpiCard = memo(function KpiCard({ card, index }: { card: KpiCardData; inde
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
       className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start justify-between mb-2.5">
-        <p className="text-sm font-medium text-slate-500 leading-tight pr-1" title={card.tooltip}>
-          {card.label}{card.tooltip && <span className="text-slate-300 ml-1" aria-hidden="true">ⓘ</span>}
+        <p className="text-sm font-medium text-slate-500 leading-tight pe-1" title={card.tooltip}>
+          {card.label}{card.tooltip && <span className="text-slate-300 ms-1" aria-hidden="true">ⓘ</span>}
         </p>
         <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', card.colorClass)}>
           {card.icon}

@@ -378,7 +378,7 @@ export function InvoiceDetailScreen() {
           {/* Send to Kitchen — Restaurant template only, RETAIL invoices only, no existing KOT */}
           {kotEnabled && !isCancelled && invoice.invoiceType !== 'RETURN' && !invoice.kot && (
             <Button size="sm" variant="outline" onClick={handleSendToKitchen} loading={sendingToKitchen}>
-              <UtensilsCrossed size={14} className="mr-1" /> {t('billing.sendToKitchen')}
+              <UtensilsCrossed size={14} className="me-1" /> {t('billing.sendToKitchen')}
             </Button>
           )}
           {kotEnabled && invoice.kot && (
@@ -392,7 +392,7 @@ export function InvoiceDetailScreen() {
               billing.service.ts's splitInvoice guard). */}
           {invoice.status === 'ACTIVE' && invoice.paidAmount === 0 && invoice.invoiceType !== 'RETURN' && canCancel && (
             <Button size="sm" variant="outline" onClick={openSplitModal}>
-              <Scissors size={14} className="mr-1" /> {t('billing.splitBill')}
+              <Scissors size={14} className="me-1" /> {t('billing.splitBill')}
             </Button>
           )}
           {invoice.status === 'SPLIT' && (
@@ -402,16 +402,16 @@ export function InvoiceDetailScreen() {
           )}
           {!isCancelled && invoice.balanceAmount > 0.01 && canRecordPayment && (
             <Button size="sm" variant="outline" onClick={() => setShowPaymentModal(true)}>
-              <PlusCircle size={14} className="mr-1" /> {t('billing.recordPayment')}
+              <PlusCircle size={14} className="me-1" /> {t('billing.recordPayment')}
             </Button>
           )}
           {canPrint && (
             <>
               <Button size="sm" variant="outline" onClick={() => handleOpenPreview(false)} loading={previewLoading && !previewIsReceipt}>
-                <Printer size={14} className="mr-1" /> {t('billing.print')}
+                <Printer size={14} className="me-1" /> {t('billing.print')}
               </Button>
               <Button size="sm" variant="outline" onClick={() => handleOpenPreview(true)} loading={previewLoading && previewIsReceipt}>
-                <Receipt size={14} className="mr-1" /> {t('billing.printReceipt')}
+                <Receipt size={14} className="me-1" /> {t('billing.printReceipt')}
               </Button>
               <ShareMenu
                 variant="button"
@@ -424,9 +424,9 @@ export function InvoiceDetailScreen() {
               />
             </>
           )}
-          {!isCancelled && canCancel && (
+          {!isCancelled && invoice.status !== 'SPLIT' && canCancel && (
             <Button size="sm" variant="danger" onClick={() => setShowCancelModal(true)}>
-              <XCircle size={14} className="mr-1" /> {t('billing.cancelInvoice')}
+              <XCircle size={14} className="me-1" /> {t('billing.cancelInvoice')}
             </Button>
           )}
         </div>
@@ -470,12 +470,12 @@ export function InvoiceDetailScreen() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700">
-              <th className="text-left px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.product')}</th>
-              <th className="text-right px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.qty')}</th>
-              <th className="text-right px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.unitPrice')}</th>
-              <th className="text-right px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.discount')}</th>
-              <th className="text-right px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.tax')}</th>
-              <th className="text-right px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.lineTotal')}</th>
+              <th className="text-start px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.product')}</th>
+              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.qty')}</th>
+              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.unitPrice')}</th>
+              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.discount')}</th>
+              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.tax')}</th>
+              <th className="text-end px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.lineTotal')}</th>
             </tr>
           </thead>
           <tbody>
@@ -485,11 +485,11 @@ export function InvoiceDetailScreen() {
                   <p className="font-medium text-dark">{item.product.productName}</p>
                   {item.product.sku && <p className="text-xs text-slate-400">{item.product.sku}</p>}
                 </td>
-                <td className="px-4 py-3 text-right text-slate-600">{item.quantity} {item.product.unit}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(item.unitPrice)}</td>
-                <td className="px-4 py-3 text-right text-slate-500">{item.discountAmount > 0 ? `– ${formatCurrency(item.discountAmount)}` : '—'}</td>
-                <td className="px-4 py-3 text-right text-slate-500">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
-                <td className="px-5 py-3 text-right font-semibold text-dark">{formatCurrency(item.lineTotal)}</td>
+                <td className="px-4 py-3 text-end text-slate-600">{item.quantity} {item.product.unit}</td>
+                <td className="px-4 py-3 text-end text-slate-600">{formatCurrency(item.unitPrice)}</td>
+                <td className="px-4 py-3 text-end text-slate-500">{item.discountAmount > 0 ? `– ${formatCurrency(item.discountAmount)}` : '—'}</td>
+                <td className="px-4 py-3 text-end text-slate-500">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
+                <td className="px-5 py-3 text-end font-semibold text-dark">{formatCurrency(item.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
@@ -643,8 +643,8 @@ export function InvoiceDetailScreen() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700">
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableItem')}</th>
-                      <th className="text-right px-3 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableBilled')}</th>
+                      <th className="text-start px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableItem')}</th>
+                      <th className="text-end px-3 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableBilled')}</th>
                       {Array.from({ length: splitCheckCount }, (_, i) => (
                         <th key={i} className="text-center px-2 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.splitTableCheck', { number: i + 1 })}</th>
                       ))}
@@ -660,7 +660,7 @@ export function InvoiceDetailScreen() {
                             <p className="font-medium text-dark dark:text-slate-100">{item.product.productName}</p>
                             {mismatch && <p className="text-xs text-danger">{t('billing.splitMismatch', { allocated, billed: item.quantity })}</p>}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-slate-500">{item.quantity}</td>
+                          <td className="px-3 py-2.5 text-end text-slate-500">{item.quantity}</td>
                           {Array.from({ length: splitCheckCount }, (_, i) => (
                             <td key={i} className="px-2 py-2.5 text-center">
                               <input type="number" min="0" step="1" value={splitAllocations[item.id]?.[i] ?? 0}
@@ -678,7 +678,7 @@ export function InvoiceDetailScreen() {
             <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
               <Button variant="outline" className="flex-1" onClick={() => setShowSplitModal(false)}>{t('common.cancel')}</Button>
               <Button className="flex-1" onClick={handleSplitInvoice} loading={splitting}>
-                <Scissors size={14} className="mr-1" /> {t('billing.splitSubmit', { count: splitCheckCount })}
+                <Scissors size={14} className="me-1" /> {t('billing.splitSubmit', { count: splitCheckCount })}
               </Button>
             </div>
           </div>
@@ -721,7 +721,7 @@ export function InvoiceDetailScreen() {
             <div className="flex justify-end gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
               <Button variant="outline" onClick={() => setPreviewHtml(null)}>{t('common.cancel')}</Button>
               <Button onClick={handlePrintNow} loading={printing}>
-                <Printer size={14} className="mr-1" /> {t('billing.print')}
+                <Printer size={14} className="me-1" /> {t('billing.print')}
               </Button>
             </div>
           </div>

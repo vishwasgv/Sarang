@@ -30,7 +30,7 @@ type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown
 // calculated for any appointment a Cashier completes.
 export function register(handle: HandleFn): void {
   handle('staffCommission:calculate', async (raw) => {
-    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const deny = await requirePermission('staffCommission.record'); if (deny) return deny
     const parsed = CalculateCommissionSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return calculateCommission(parsed.data)

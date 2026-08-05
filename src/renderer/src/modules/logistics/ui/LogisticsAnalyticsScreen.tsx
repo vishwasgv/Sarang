@@ -160,17 +160,17 @@ export default function LogisticsAnalyticsScreen() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left px-3 py-2">{t('logistics.analytics.month')}</th>
-                <th className="text-right px-3 py-2">{t('logistics.analytics.shipmentsCol')}</th>
-                <th className="text-right px-3 py-2">{t('logistics.analytics.freightCol')}</th>
+                <th className="text-start px-3 py-2">{t('logistics.analytics.month')}</th>
+                <th className="text-end px-3 py-2">{t('logistics.analytics.shipmentsCol')}</th>
+                <th className="text-end px-3 py-2">{t('logistics.analytics.freightCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data.monthlyShipments.map(m => (
                 <tr key={m.month} className="hover:bg-gray-50">
                   <td className="px-3 py-2">{m.month}</td>
-                  <td className="px-3 py-2 text-right">{m.count}</td>
-                  <td className="px-3 py-2 text-right">{formatCurrency(m.freight)}</td>
+                  <td className="px-3 py-2 text-end">{m.count}</td>
+                  <td className="px-3 py-2 text-end">{formatCurrency(m.freight)}</td>
                 </tr>
               ))}
             </tbody>
