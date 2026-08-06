@@ -2,17 +2,17 @@
 
 ## Apa yang termasuk
 
-Real Estate adalah jenis bisnis layanan yang dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments (untuk kunjungan lokasi), sebuah service catalog, provider schedules, dan notification queue semuanya ada — plus dua modul yang dibangun khusus untuk broker: **Leads** dan **Properties**.
+Real Estate adalah jenis bisnis layanan yang dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments (untuk kunjungan lokasi), sebuah service catalog, provider schedules, dan notification queue semuanya ada — plus dua modul yang dibangun khusus untuk broker: **Prospek** dan **Properti**.
 
-Dalam penggunaan sehari-hari, broker sebagian besar hidup di **Leads** dan **Properties** alih-alih layar appointments generik — kunjungan lokasi dicatat sebagai inquiry terhadap sebuah properti alih-alih sebagai pemesanan mandiri.
+Dalam penggunaan sehari-hari, broker sebagian besar hidup di **Prospek** dan **Properti** alih-alih layar appointments generik — kunjungan lokasi dicatat sebagai inquiry terhadap sebuah properti alih-alih sebagai pemesanan mandiri.
 
 ## Leads
 
-**Leads** adalah papan pipeline drag-and-drop dengan lima kolom: Open, Contacted, Proposal, Won, Lost. Setiap kartu lead membawa nama, telepon/email, perusahaan, sumber (Referral, Website, Walk-In, Social, Cold Call, Other), nilai estimasi, dan agen yang ditugaskan. Seret sebuah kartu antar kolom untuk memindahkannya melalui pipeline, atau gunakan "+" kolom itu sendiri untuk menambahkan sebuah lead langsung ke tahap tersebut. Bar KPI menampilkan total lead, lead terbuka, lead menang, dan total nilai pipeline.
+**Prospek** adalah papan pipeline drag-and-drop dengan lima kolom: Open, Contacted, Proposal, Won, Lost. Setiap kartu lead membawa nama, telepon/email, perusahaan, sumber (Referral, Website, Walk-In, Social, Cold Call, Other), nilai estimasi, dan agen yang ditugaskan. Seret sebuah kartu antar kolom untuk memindahkannya melalui pipeline, atau gunakan "+" kolom itu sendiri untuk menambahkan sebuah lead langsung ke tahap tersebut. Bar KPI menampilkan total lead, lead terbuka, lead menang, dan total nilai pipeline.
 
 ## Properties
 
-**Properties** adalah buku listing Anda. Setiap listing mencatat:
+**Properti** adalah buku listing Anda. Setiap listing mencatat:
 
 - **Property type** — Residential Flat, Independent House, Plot, Commercial Office, Commercial Shop, Warehouse, atau Agricultural.
 - **Listing type** — Sale, Rent, atau Lease — yang mengubah field harga yang ditampilkan (harga penawaran untuk sebuah penjualan; sewa bulanan dan deposit keamanan untuk sebuah sewaan).

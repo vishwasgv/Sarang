@@ -2,15 +2,15 @@
 
 ## O que está incluído
 
-Agência de Marketing é construída sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais **Leads**, **Service Projects**, **Retainers**, e um conjunto de campos específicos de campanha em Projects (**Marketing Campaigns**) que outros setores de estilo consultoria não têm.
+Agência de Marketing é construída sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais **Leads**, **Service Projects**, **Contratos de retenção**, e um conjunto de campos específicos de campanha em Projects (**Marketing Campaigns**) que outros setores de estilo consultoria não têm.
 
 ## Leads e Retenções
 
-**Leads** é o mesmo funil de arrastar e soltar (Aberto → Contatado → Proposta → Ganho → Perdido) usado em todos os setores de estilo consultoria do Sarang, e **Retainers** gerencia acordos mensais recorrentes com clientes (Honorário Fixo, Bolsa de Horas, ou Baseado em Entregáveis) com geração de nota fiscal mensal em um clique — veja o capítulo *Consultor Independente* para o passo a passo completo de ambos, já que as telas são idênticas.
+**Leads** é o mesmo funil de arrastar e soltar (Aberto → Contatado → Proposta → Ganho → Perdido) usado em todos os setores de estilo consultoria do Sarang, e **Contratos de retenção** gerencia acordos mensais recorrentes com clientes (Honorário Fixo, Bolsa de Horas, ou Baseado em Entregáveis) com geração de nota fiscal mensal em um clique — veja o capítulo *Consultor Independente* para o passo a passo completo de ambos, já que as telas são idênticas.
 
 ## Campanhas (Projetos com campos de marketing)
 
-**Projects** é onde Agência de Marketing ganha sua própria profundidade. Todo projeto tem o nome, tipo (incluindo um tipo dedicado Campanha de Marketing), status, e valor total do contrato habituais — mas o formulário de projeto de uma agência de marketing também mostra três campos extras que nenhum outro setor de consultoria tem:
+**Projetos** é onde Agência de Marketing ganha sua própria profundidade. Todo projeto tem o nome, tipo (incluindo um tipo dedicado Campanha de Marketing), status, e valor total do contrato habituais — mas o formulário de projeto de uma agência de marketing também mostra três campos extras que nenhum outro setor de consultoria tem:
 
 - **Target Channel** — por exemplo, Google Ads, Meta Ads, SEO, E-mail, Redes Sociais, Conteúdo, Influenciador (texto livre com sugestões, para que você possa digitar o seu próprio).
 - **Deliverable Type** — por exemplo, Lançamento de Campanha, Conjunto de Recursos Criativos, Relatório Mensal, Site, Calendário de Conteúdo.

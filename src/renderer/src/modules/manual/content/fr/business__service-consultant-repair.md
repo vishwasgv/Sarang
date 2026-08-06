@@ -4,7 +4,7 @@ Ce sont trois des types d'entreprise originaux et généralistes de Sarang — p
 
 Ils partagent un modèle générique sous-jacent — Projets, Fiches de travail, Tickets de service, Suivi du travail, et Historique client — mais chaque type d'entreprise active une combinaison différente de celui-ci :
 
-- **Service** obtient Projets, Tickets de service, et Suivi du travail — une entreprise qui fait à la fois du travail de type projet et des demandes de support ponctuelles.
+- **Entretien** obtient Projets, Tickets de service, et Suivi du travail — une entreprise qui fait à la fois du travail de type projet et des demandes de support ponctuelles.
 - **Consultant** obtient uniquement Projets et Suivi du travail, sans Fiches de travail ni Tickets de service — une pratique pure de projet/heures facturables.
 - **Réparation** obtient Fiches de travail et Tickets de service, sans Projets — une entreprise construite autour d'articles individuels que les clients apportent, pas d'engagements multi-tâches.
 

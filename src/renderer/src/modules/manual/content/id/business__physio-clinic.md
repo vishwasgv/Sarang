@@ -4,7 +4,7 @@ Layar jenis bisnis ini hanya dalam bahasa Inggris, terlepas dari pengaturan baha
 
 ## Fondasi layanan bersama
 
-Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Fisioterapi — dimulai dari empat blok bangunan yang sama: **Appointments** (memesan dan menjadwalkan kunjungan), sebuah **Service Catalog** (daftar sesi terapi dan harganya), **Provider Schedules** (fisioterapis mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk fisioterapi: catatan konsultasi dengan penilaian nyeri, fase perawatan, program latihan rumah, dan paket sesi.
+Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Fisioterapi — dimulai dari empat blok bangunan yang sama: **Janji Temu** (memesan dan menjadwalkan kunjungan), sebuah **Katalog Layanan** (daftar sesi terapi dan harganya), **Provider Schedules** (fisioterapis mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk fisioterapi: catatan konsultasi dengan penilaian nyeri, fase perawatan, program latihan rumah, dan paket sesi.
 
 ## Consultation Notes
 
@@ -26,4 +26,4 @@ Tab **Exercise Program** memungkinkan Anda membangun Home Exercise Program yang 
 
 ## Session Packs
 
-Tab **Session Packs** melacak bundel sesi yang dibayar di muka (misalnya "Paket Fisio 10-sesi"): nama paket, total sesi, harga, tarif GST, tanggal pembelian dan kedaluwarsa. Sebuah paket aktif menampilkan progress bar sesi yang tersisa, dan setiap janji temu selesai terhadap paket tersebut mengurangi satu sesi secara otomatis. Setelah sebuah paket memiliki harga, Anda dapat **Generate Invoice** untuknya langsung dari layar ini — ini hanya menawarkan sekali, dan menandai paket "Invoiced" sesudahnya sehingga tidak pernah ditagih dua kali.
+Tab **Paket Sesi** melacak bundel sesi yang dibayar di muka (misalnya "Paket Fisio 10-sesi"): nama paket, total sesi, harga, tarif GST, tanggal pembelian dan kedaluwarsa. Sebuah paket aktif menampilkan progress bar sesi yang tersisa, dan setiap janji temu selesai terhadap paket tersebut mengurangi satu sesi secara otomatis. Setelah sebuah paket memiliki harga, Anda dapat **Buat Faktur** untuknya langsung dari layar ini — ini hanya menawarkan sekali, dan menandai paket "Invoiced" sesudahnya sehingga tidak pernah ditagih dua kali.

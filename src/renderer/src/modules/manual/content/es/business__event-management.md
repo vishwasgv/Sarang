@@ -2,11 +2,11 @@
 
 ## Qué incluye
 
-Gestión de Eventos está construida sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más **Leads** y un módulo dedicado de **Events** para la reserva en sí y sus proveedores.
+Gestión de Eventos está construida sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más **Prospectos** y un módulo dedicado de **Eventos** para la reserva en sí y sus proveedores.
 
 ## Prospectos
 
-**Leads** es el mismo embudo de arrastrar y soltar (Abierto → Contactado → Propuesta → Ganado → Perdido) usado en todas las verticales de estilo consultoría de Sarang — capture una consulta aquí antes de que se convierta en un evento confirmado.
+**Prospectos** es el mismo embudo de arrastrar y soltar (Abierto → Contactado → Propuesta → Ganado → Perdido) usado en todas las verticales de estilo consultoría de Sarang — capture una consulta aquí antes de que se convierta en un evento confirmado.
 
 ## Eventos
 
@@ -24,7 +24,7 @@ Cada evento también tiene un **Run of Show** — la línea de tiempo de ejecuci
 
 ## Facturación
 
-Una vez que se establece un monto final en el evento, un botón de **Generate Invoice** lo convierte en una factura real para el cliente — separada de lo que le debe a sus proveedores. La barra de KPI muestra eventos este mes, proveedores todavía pendientes, próximos eventos, y nuevas consultas en los últimos 7 días.
+Una vez que se establece un monto final en el evento, un botón de **Generar Factura** lo convierte en una factura real para el cliente — separada de lo que le debe a sus proveedores. La barra de KPI muestra eventos este mes, proveedores todavía pendientes, próximos eventos, y nuevas consultas en los últimos 7 días.
 
 ## Idioma
 

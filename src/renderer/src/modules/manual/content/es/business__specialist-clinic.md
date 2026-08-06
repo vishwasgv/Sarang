@@ -4,7 +4,7 @@ Las pantallas de este tipo de negocio están solo en inglés, sin importar el id
 
 ## La base de servicio compartida
 
-Cada tipo de negocio basado en servicios en Sarang — incluida Clínica de Especialista — parte de los mismos cuatro bloques de construcción: **Appointments** (reservar y programar visitas), un **Service Catalog** (la lista de consultas y procedimientos que ofrece su consultorio), **Provider Schedules** (qué especialista está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre lo específico de un consultorio de especialista.
+Cada tipo de negocio basado en servicios en Sarang — incluida Clínica de Especialista — parte de los mismos cuatro bloques de construcción: **Citas** (reservar y programar visitas), un **Catálogo de servicios** (la lista de consultas y procedimientos que ofrece su consultorio), **Provider Schedules** (qué especialista está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre lo específico de un consultorio de especialista.
 
 Sarang deliberadamente no tiene un tipo de negocio separado por cada especialidad médica (ORL, oftalmología, dermatología, cardiología, etcétera). En cambio, "Clínica de Especialista" está construida para cubrir **cualquier especialidad** a través del mismo Service Catalog genérico — usted define sus propios tipos de consulta y procedimiento con sus propios precios, y la nota clínica de abajo se adapta para llevar campos específicos de especialista sin importar cuál sea su especialidad.
 
@@ -21,7 +21,7 @@ La nota también lleva la misma tabla de **Prescription** detallada y el gráfic
 
 ## Cola de Turnos
 
-Clínica de Especialista también incluye la pantalla de **Token Queue** para pacientes sin cita previa del mismo día, exactamente como se describe en el capítulo de *Clínica Médica General* — emita turnos para pacientes sin cita, llame al próximo paciente, y siga los conteos de Esperando / Llamado / Atendido / Omitido. Las colas sin cita previa son tan comunes en consultorios ambulatorios de especialista (campañas de ORL, campañas de oftalmología, clínicas de dermatología) como en la medicina general.
+Clínica de Especialista también incluye la pantalla de **Cola de turnos** para pacientes sin cita previa del mismo día, exactamente como se describe en el capítulo de *Clínica Médica General* — emita turnos para pacientes sin cita, llame al próximo paciente, y siga los conteos de Esperando / Llamado / Atendido / Omitido. Las colas sin cita previa son tan comunes en consultorios ambulatorios de especialista (campañas de ORL, campañas de oftalmología, clínicas de dermatología) como en la medicina general.
 
 ## Impresión
 

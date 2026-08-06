@@ -16,7 +16,7 @@ Luego elija cómo se calcula el cargo por elaboración:
 
 ## Tasas de Metal
 
-Abra **Metal Rates** en la barra lateral para establecer la tarifa de hoy por gramo para cada combinación de tipo de metal y pureza que tiene en stock (el oro de 22K y el oro de 18K genuinamente se cotizan a tarifas diferentes, así que cada combinación obtiene su propia fila). No hay una fuente automática de tarifas por internet — coherente con el diseño de Sarang centrado en lo sin conexión, usted consulta la tarifa de hoy donde normalmente lo hace y la escribe. Actualice esto cada vez que la tarifa cambie; cada venta a partir de ese momento usa el valor actual.
+Abra **Tasas de Metal** en la barra lateral para establecer la tarifa de hoy por gramo para cada combinación de tipo de metal y pureza que tiene en stock (el oro de 22K y el oro de 18K genuinamente se cotizan a tarifas diferentes, así que cada combinación obtiene su propia fila). No hay una fuente automática de tarifas por internet — coherente con el diseño de Sarang centrado en lo sin conexión, usted consulta la tarifa de hoy donde normalmente lo hace y la escribe. Actualice esto cada vez que la tarifa cambie; cada venta a partir de ese momento usa el valor actual.
 
 ## Cómo se fija el precio de una venta
 
@@ -28,7 +28,7 @@ Si el artículo tiene un **número de sello/HUID** registrado en el producto, se
 
 ## Cambio de metal usado
 
-Abra **Old-Metal Exchange** para registrar a un cliente que entrega oro o plata usados a cambio de una nueva compra. Ingrese el peso bruto, un peso de deducción (por cualquier contenido que no sea metal), tipo de metal y pureza — Sarang busca la tarifa de hoy para esa combinación y calcula el valor a entregar al cliente (peso neto × tarifa).
+Abra **Cambio de Metal Usado** para registrar a un cliente que entrega oro o plata usados a cambio de una nueva compra. Ingrese el peso bruto, un peso de deducción (por cualquier contenido que no sea metal), tipo de metal y pureza — Sarang busca la tarifa de hoy para esa combinación y calcula el valor a entregar al cliente (peso neto × tarifa).
 
 Para usarlo, haga clic en **Aplicar Cambio de Metal Usado** mientras factura a ese cliente — Sarang muestra el crédito y lo incorpora directamente al descuento de la factura a medida que se crea la venta, y marca el cambio como usado para que nunca pueda aplicarse accidentalmente por segunda vez a otra factura.
 

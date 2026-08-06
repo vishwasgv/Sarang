@@ -2,17 +2,17 @@
 
 ## Apa yang termasuk
 
-Coaching Institute dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus modul-modul yang bersama-sama mencakup alur kerja bimbingan belajar lengkap: **Students**, **Batches** (dengan waitlist dan pelacak silabus), **Attendance**, **Fees**, **Test Scores**, **Performances & Recitals**, dan sebuah **Progress Report** yang menghadap-orang tua. Ini adalah salah satu template bisnis paling dalam di Sarang, jadi layak untuk membahas setiap bagiannya.
+Coaching Institute dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus modul-modul yang bersama-sama mencakup alur kerja bimbingan belajar lengkap: **Siswa**, **Kelompok** (dengan waitlist dan pelacak silabus), **Kehadiran**, **Fees**, **Nilai Tes**, **Performances & Recitals**, dan sebuah **Progress Report** yang menghadap-orang tua. Ini adalah salah satu template bisnis paling dalam di Sarang, jadi layak untuk membahas setiap bagiannya.
 
 ## Students
 
-**Students** adalah buku absen Anda — setiap profil siswa membawa nomor roll, kelas/tingkat, nama sekolah, telepon orang tua, tanggal pendaftaran, dan status aktif/tidak aktif, dilapisi di atas catatan pelanggan yang sama yang digunakan di tempat lain di Sarang (sehingga seorang siswa yang sudah menjadi pelanggan ditemukan melalui pencarian telepon, bukan diduplikasi). Menonaktifkan seorang siswa mempertahankan riwayatnya; tidak menghapus apa pun.
+**Siswa** adalah buku absen Anda — setiap profil siswa membawa nomor roll, kelas/tingkat, nama sekolah, telepon orang tua, tanggal pendaftaran, dan status aktif/tidak aktif, dilapisi di atas catatan pelanggan yang sama yang digunakan di tempat lain di Sarang (sehingga seorang siswa yang sudah menjadi pelanggan ditemukan melalui pencarian telepon, bukan diduplikasi). Menonaktifkan seorang siswa mempertahankan riwayatnya; tidak menghapus apa pun.
 
 Setiap baris siswa memiliki **ikon printer** — klik untuk menghasilkan Progress Report yang dapat dicetak untuk siswa tersebut. Dibuat untuk diberikan kepada orang tua: mendaftar setiap batch yang diikuti siswa dengan persentase kehadiran mereka, semua nilai tes tercatat, dan status biaya untuk setiap bulan, semua dalam satu halaman.
 
 ## Batches
 
-**Batches** mengelola kelompok kelas Anda — nama batch, subjek/kursus, instruktur, jadwal (hari dalam seminggu dan waktu), ruang, kapasitas maksimum, dan biaya bulanan. Mendaftarkan seorang siswa ke dalam sebuah batch dapat menerapkan diskon (jenis dan jumlah), yang menghasilkan biaya bulanan efektif siswa tersebut untuk batch tersebut, berbeda dari harga daftar batch.
+**Kelompok** mengelola kelompok kelas Anda — nama batch, subjek/kursus, instruktur, jadwal (hari dalam seminggu dan waktu), ruang, kapasitas maksimum, dan biaya bulanan. Mendaftarkan seorang siswa ke dalam sebuah batch dapat menerapkan diskon (jenis dan jumlah), yang menghasilkan biaya bulanan efektif siswa tersebut untuk batch tersebut, berbeda dari harga daftar batch.
 
 **Waitlist.** Setelah sebuah batch mencapai kapasitas maksimumnya, tombol "Enroll Student" beralih ke "Join Waitlist" — siswa masih ditambahkan ke batch, hanya dengan status Waitlisted alih-alih Active, dan tidak ditagih sampai dipromosikan. Saat sebuah tempat terbuka (seorang siswa saat ini dikeluarkan, atau Anda menaikkan kapasitas batch), sebuah ikon promosi hijau muncul di samping setiap siswa waitlisted sehingga Anda dapat memindahkan mereka ke Active dengan satu klik.
 
@@ -20,7 +20,7 @@ Setiap baris siswa memiliki **ikon printer** — klik untuk menghasilkan Progres
 
 ## Attendance
 
-**Attendance** memungkinkan Anda memilih sebuah batch dan tanggal, lalu menandai setiap siswa terdaftar hadir atau absen dengan satu klik (semua default ke hadir; matikan yang absen, atau gunakan Mark All Present/Absent). Membuka kembali tanggal yang sudah Anda catat memuat catatan yang ada sehingga Anda dapat mengoreksinya. Sebuah lembar absensi yang dapat dicetak tersedia untuk batch dan tanggal yang dipilih.
+**Kehadiran** memungkinkan Anda memilih sebuah batch dan tanggal, lalu menandai setiap siswa terdaftar hadir atau absen dengan satu klik (semua default ke hadir; matikan yang absen, atau gunakan Mark All Present/Absent). Membuka kembali tanggal yang sudah Anda catat memuat catatan yang ada sehingga Anda dapat mengoreksinya. Sebuah lembar absensi yang dapat dicetak tersedia untuk batch dan tanggal yang dipilih.
 
 ## Fees
 
@@ -28,7 +28,7 @@ Setiap baris siswa memiliki **ikon printer** — klik untuk menghasilkan Progres
 
 ## Test Scores
 
-**Test Scores** (di bawah Performance) mencatat nama tes, subjek, nilai diperoleh dari maksimum, tanggal tes, dan grade untuk siswa tertentu dalam batch tertentu. Memasukkan nilai menyarankan grade secara otomatis pada skala umum India A+–F, tetapi field grade tetap teks bebas — timpa atau kosongkan jika lembaga Anda menilai secara berbeda. Bar KPI menampilkan tes tercatat, rata-rata skor di semua tes tercatat, dan berapa banyak hasil yang di bawah 50%.
+**Nilai Tes** (di bawah Performance) mencatat nama tes, subjek, nilai diperoleh dari maksimum, tanggal tes, dan grade untuk siswa tertentu dalam batch tertentu. Memasukkan nilai menyarankan grade secara otomatis pada skala umum India A+–F, tetapi field grade tetap teks bebas — timpa atau kosongkan jika lembaga Anda menilai secara berbeda. Bar KPI menampilkan tes tercatat, rata-rata skor di semua tes tercatat, dan berapa banyak hasil yang di bawah 50%.
 
 ## Performances & Recitals
 

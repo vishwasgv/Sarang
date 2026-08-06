@@ -2,7 +2,7 @@
 
 ## Apa yang tercakup
 
-Tailor / Boutique dibangun di atas fondasi bisnis-layanan bersama Sarang — janji temu, katalog layanan, jadwal penyedia, dan antrean notifikasi — ditambah satu modul khusus: **Tailoring Orders** (Penjahitan), yang mencakup baik pesanan itu sendiri maupun ukuran tubuh tersimpan setiap klien.
+Tailor / Boutique dibangun di atas fondasi bisnis-layanan bersama Sarang — janji temu, katalog layanan, jadwal penyedia, dan antrean notifikasi — ditambah satu modul khusus: **Pesanan Jahit** (Penjahitan), yang mencakup baik pesanan itu sendiri maupun ukuran tubuh tersimpan setiap klien.
 
 ## Pesanan
 

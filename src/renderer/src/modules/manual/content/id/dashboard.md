@@ -2,11 +2,11 @@
 
 ## Apa yang Anda lihat saat masuk
 
-**Dasbor** adalah layar utama Sarang. Di bagian atas terdapat nama bisnis Anda, tanggal hari ini, dan tombol **Refresh** yang memaksa pembacaan ulang setiap angka di halaman (angka-angka tersebut biasanya di-cache sebentar demi kecepatan).
+**Dasbor** adalah layar utama Sarang. Di bagian atas terdapat nama bisnis Anda, tanggal hari ini, dan tombol **Segarkan** yang memaksa pembacaan ulang setiap angka di halaman (angka-angka tersebut biasanya di-cache sebentar demi kecepatan).
 
 Jika **Ask Sarang** (AI Assistant) telah diaktifkan di **Settings → Additional Business Features**, sebuah kotak tanya-cepat muncul tepat di bawah header — ketik pertanyaan berbahasa Inggris sederhana tentang penjualan, stok, pelanggan, atau laba Anda dan itu akan membuka layar **Ask Sarang** dengan jawabannya.
 
-Bisnis baru melihat daftar periksa singkat **Getting Started** di sini (tambahkan produk pertama Anda, tambahkan pelanggan, buat faktur pertama Anda) sampai ketiganya selesai atau Anda menutupnya.
+Bisnis baru melihat daftar periksa singkat **Memulai** di sini (tambahkan produk pertama Anda, tambahkan pelanggan, buat faktur pertama Anda) sampai ketiganya selesai atau Anda menutupnya.
 
 ## Peringatan
 
@@ -21,7 +21,7 @@ Di atas ubin KPI, Sarang menampilkan sejumlah kecil peringatan yang dapat ditind
 
 ## Ubin KPI
 
-Grid utama ubin mencakup: **Penjualan Hari Ini**, **This Week's Sales**, **This Month's Sales** (masing-masing dengan persentase tren terhadap periode sebelumnya), **Saldo Tertunggak**, **Inventaris** (nilai stok), **Total Pengeluaran** bulan ini, **Estimasi Laba** bulan ini, **Stok Rendah** (sebuah hitungan), **Pelanggan** (sebuah hitungan), dan **Pemasok** (sebuah hitungan). Ubin untuk pendapatan, nilai inventaris, pengeluaran, dan laba disembunyikan di balik tingkat izin Anda — jika Anda tidak memiliki izin analitik yang relevan, ubin menampilkan "—" alih-alih angka daripada dihilangkan sepenuhnya.
+Grid utama ubin mencakup: **Penjualan Hari Ini**, **Penjualan Minggu Ini**, **Penjualan Bulan Ini** (masing-masing dengan persentase tren terhadap periode sebelumnya), **Saldo Tertunggak**, **Inventaris** (nilai stok), **Total Pengeluaran** bulan ini, **Estimasi Laba** bulan ini, **Stok Rendah** (sebuah hitungan), **Pelanggan** (sebuah hitungan), dan **Pemasok** (sebuah hitungan). Ubin untuk pendapatan, nilai inventaris, pengeluaran, dan laba disembunyikan di balik tingkat izin Anda — jika Anda tidak memiliki izin analitik yang relevan, ubin menampilkan "—" alih-alih angka daripada dihilangkan sepenuhnya.
 
 Bisnis bertipe Restaurant dengan KOT aktif juga melihat dua ubin tambahan di atas grid untuk KOT yang menunggu dan KOT yang sedang diproses, masing-masing tertaut langsung ke layar pesanan dapur.
 

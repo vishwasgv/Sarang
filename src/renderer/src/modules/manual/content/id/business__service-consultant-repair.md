@@ -4,11 +4,11 @@ Ini adalah tiga jenis bisnis asli Sarang yang bersifat serba-guna — untuk bisn
 
 Mereka berbagi satu model dasar generik yang sama — Projects, Job Cards, Service Tickets, Work Tracking, dan Customer History — tetapi setiap jenis bisnis mengaktifkan kombinasi berbeda darinya:
 
-- **Service** mendapatkan Projects, Service Tickets, dan Work Tracking — bisnis yang melakukan baik pekerjaan bergaya proyek maupun permintaan dukungan ad-hoc.
+- **Servis** mendapatkan Projects, Service Tickets, dan Work Tracking — bisnis yang melakukan baik pekerjaan bergaya proyek maupun permintaan dukungan ad-hoc.
 - **Consultant** hanya mendapatkan Projects dan Work Tracking, tanpa Job Cards atau Service Tickets — praktik proyek/jam-tagihan murni.
-- **Repair** mendapatkan Job Cards dan Service Tickets, tanpa Projects — bisnis yang dibangun di sekitar barang individual yang dibawa pelanggan, bukan keterlibatan multi-tugas.
+- **Perbaikan** mendapatkan Job Cards dan Service Tickets, tanpa Projects — bisnis yang dibangun di sekitar barang individual yang dibawa pelanggan, bukan keterlibatan multi-tugas.
 
-Ketiganya juga mendapatkan **Customer History**, tampilan terpadu dari segala sesuatu yang terkait dengan seorang pelanggan terlepas dari model mana yang menghasilkannya.
+Ketiganya juga mendapatkan **Riwayat Pelanggan**, tampilan terpadu dari segala sesuatu yang terkait dengan seorang pelanggan terlepas dari model mana yang menghasilkannya.
 
 ## Projects (Service, Consultant)
 
@@ -16,22 +16,22 @@ Sebuah proyek memiliki judul, prioritas (Low/Medium/High/Urgent), pelanggan dan 
 
 Membuka layar detail sebuah proyek memberi Anda dua hal lagi:
 
-- **Tasks** — daftar periksa sederhana yang Anda centang; daftar proyek menampilkan progress bar "selesai / total" yang dihitung dari ini.
+- **Tugas** — daftar periksa sederhana yang Anda centang; daftar proyek menampilkan progress bar "selesai / total" yang dihitung dari ini.
 - **Work Logs** — jam yang dicatat terhadap proyek, masing-masing ditandai billable atau non-billable, dengan total berjalan yang ditampilkan baik di tampilan daftar maupun detail.
 
 ## Job Cards (Repair, Service lewat model generik)
 
-Sebuah job card dibuat untuk barang fisik yang dibawa pelanggan: judul, deskripsi barang, prioritas, estimasi biaya, dan tanggal diterima/diharapkan/diserahkan. Ia memiliki siklus hidup tujuh-tahap sendiri — **Received → Diagnosing → In Repair → (opsional Pending Parts) → Ready → Delivered**, atau **Cancelled** pada titik mana pun sebelum diserahkan. Tampilan detail menunjukkan ini sebagai pelacak tahap visual dan selalu menampilkan satu tombol tindakan-berikutnya (misalnya "Mark In Repair"), plus tindakan "Waiting for Parts" khusus saat sebuah kartu sedang dalam perbaikan. Menyerahkan sebuah job card adalah tempat Anda memasukkan biaya akhir sebenarnya, terpisah dari estimasi aslinya — **Generate Invoice** mengubah biaya akhir tersebut menjadi faktur sungguhan begitu pekerjaan telah diserahkan.
+Sebuah job card dibuat untuk barang fisik yang dibawa pelanggan: judul, deskripsi barang, prioritas, estimasi biaya, dan tanggal diterima/diharapkan/diserahkan. Ia memiliki siklus hidup tujuh-tahap sendiri — **Received → Diagnosing → In Repair → (opsional Pending Parts) → Ready → Delivered**, atau **Dibatalkan** pada titik mana pun sebelum diserahkan. Tampilan detail menunjukkan ini sebagai pelacak tahap visual dan selalu menampilkan satu tombol tindakan-berikutnya (misalnya "Mark In Repair"), plus tindakan "Waiting for Parts" khusus saat sebuah kartu sedang dalam perbaikan. Menyerahkan sebuah job card adalah tempat Anda memasukkan biaya akhir sebenarnya, terpisah dari estimasi aslinya — **Buat Faktur** mengubah biaya akhir tersebut menjadi faktur sungguhan begitu pekerjaan telah diserahkan.
 
 Tambahkan **suku cadang terpakai** yang sungguhan ke sebuah job card dari tampilan detailnya — cari sebuah produk, atur kuantitasnya, dan Sarang menguranginya dari inventaris Anda yang sebenarnya (bukan sekadar catatan teks bebas); menghapus sebuah suku cadang mengembalikan stoknya. Atur **periode garansi** dalam hari saat penyerahan, dan sebuah lencana Under Warranty / Expired yang sungguhan otomatis muncul sejak titik itu. Jika barang yang sama kembali karena masalah garansi, mulai sebuah job card baru dan tautkan sebagai sebuah **klaim garansi** terhadap yang asli — status garansi langsung dari job card asli ditampilkan tepat di formulir job card baru tersebut.
 
 ## Service Tickets (Service, Repair)
 
-Sebuah tiket adalah permintaan dukungan yang lebih ringan: judul, deskripsi, prioritas, tag kategori opsional, dan pelanggan/penerima tugas opsional. Ia bergerak melalui **Open → In Progress → Resolved → Closed**, dan menyelesaikan satu memungkinkan Anda melampirkan catatan resolusi. Tiket urgent yang belum terselesaikan ditandai dengan indikator bendera-merah pada daftar sehingga tidak terkubur. Masukkan sebuah jumlah dan **Generate Invoice** untuk menagih sebuah tiket yang telah diselesaikan.
+Sebuah tiket adalah permintaan dukungan yang lebih ringan: judul, deskripsi, prioritas, tag kategori opsional, dan pelanggan/penerima tugas opsional. Ia bergerak melalui **Open → In Progress → Resolved → Closed**, dan menyelesaikan satu memungkinkan Anda melampirkan catatan resolusi. Tiket urgent yang belum terselesaikan ditandai dengan indikator bendera-merah pada daftar sehingga tidak terkubur. Masukkan sebuah jumlah dan **Buat Faktur** untuk menagih sebuah tiket yang telah diselesaikan.
 
 ## Appointments dan penagihan Projects
 
-Ketiga jenis bisnis ini juga mendapatkan **Appointments** (pemesanan, jadwal penyedia, dan pengingat — lihat bab *Billing* dan bab-bab universal) untuk menjadwalkan pertemuan klien atau slot drop-off, dan sebuah Project dapat ditagih langsung dengan **Generate Invoice** begitu sudah siap, dengan cara yang sama seperti sebuah Job Card atau Ticket.
+Ketiga jenis bisnis ini juga mendapatkan **Janji Temu** (pemesanan, jadwal penyedia, dan pengingat — lihat bab *Billing* dan bab-bab universal) untuk menjadwalkan pertemuan klien atau slot drop-off, dan sebuah Project dapat ditagih langsung dengan **Buat Faktur** begitu sudah siap, dengan cara yang sama seperti sebuah Job Card atau Ticket.
 
 ## Work Tracking
 

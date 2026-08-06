@@ -12,7 +12,7 @@ Buka **Produk** dari sidebar untuk melihat daftar produk lengkap Anda, yang dapa
 - **Kuantitas Awal** — jumlah stok untuk memulai saat produk pertama kali dibuat.
 - **Gambar produk** opsional.
 
-**Kategori** dikelola dari tombol **Category** pada layar Produk, memungkinkan Anda mengelompokkan produk untuk difilter dan dilaporkan.
+**Kategori** dikelola dari tombol **Kategori** pada layar Produk, memungkinkan Anda mengelompokkan produk untuk difilter dan dilaporkan.
 
 Beberapa jenis produk bersifat opt-in dan hanya ditampilkan ketika fitur yang sesuai diaktifkan untuk bisnis Anda (dari **Settings → Additional Business Features** atau template jenis bisnis Anda sendiri): penjualan-per-berat/penagihan lepas, varian ukuran/warna, barang yang dapat disewakan, dan penetapan harga logam perhiasan. Ini bersifat opt-in per produk — mengaktifkan sebuah fitur tidak memaksa setiap produk masuk ke mode itu. Pelacakan batch/kedaluwarsa, pelacakan serial/IMEI, dan perilaku stok khusus jenis-bisnis lainnya dibahas di bab jenis-bisnis yang relevan, bukan di sini.
 
@@ -22,18 +22,18 @@ Beberapa jenis produk bersifat opt-in dan hanya ditampilkan ketika fitur yang se
 
 Untuk mengoreksi jumlah stok secara manual — setelah penghitungan fisik, kerusakan, atau saldo awal — klik ikon sesuaikan-stok pada sebuah baris. Masukkan kuantitas baru (bukan selisihnya); layar akan menampilkan berapa banyak yang akan ditambahkan atau dikurangi sebelum Anda menyimpan, dan mewajibkan sebuah alasan. Jika Anda menambah stok, Anda dapat secara opsional mencatat biaya per unit untuk penambahan tersebut, yang akan masuk ke biaya rata-rata produk yang digunakan untuk penilaian (valuasi).
 
-Setiap perubahan pada stok — penjualan, penyesuaian manual, pesanan pembelian yang diterima, retur, atau proses produksi — dicatat sebagai **pergerakan** (movement) yang tidak dapat diubah. **Inventory Movements** (`/inventory/movements`, dibuka melalui tombol **Pergerakan**) adalah buku besar hanya-baca dari setiap pergerakan ini, dapat difilter berdasarkan jenis (Stock Added, Sale, PO Received, Adjustment, Sale Return, Return Received, Dispatched, Produced) dan dapat dicari, sehingga Anda selalu bisa melacak persis mengapa stok sebuah produk seperti sekarang.
+Setiap perubahan pada stok — penjualan, penyesuaian manual, pesanan pembelian yang diterima, retur, atau proses produksi — dicatat sebagai **pergerakan** (movement) yang tidak dapat diubah. **Pergerakan Inventaris** (`/inventory/movements`, dibuka melalui tombol **Pergerakan**) adalah buku besar hanya-baca dari setiap pergerakan ini, dapat difilter berdasarkan jenis (Stock Added, Sale, PO Received, Adjustment, Sale Return, Return Received, Dispatched, Produced) dan dapat dicari, sehingga Anda selalu bisa melacak persis mengapa stok sebuah produk seperti sekarang.
 
 ## Pesanan Pembelian
 
-**Pesanan Pembelian** (`/purchase-orders`) melacak apa yang telah Anda pesan dari pemasok. Buat satu dengan **New PO**: pilih pemasok, tambahkan baris item (dicari berdasarkan nama produk atau SKU) dengan kuantitas, biaya satuan, dan tarif pajak, serta tanggal pengiriman yang diharapkan (opsional).
+**Pesanan Pembelian** (`/purchase-orders`) melacak apa yang telah Anda pesan dari pemasok. Buat satu dengan **PO Baru**: pilih pemasok, tambahkan baris item (dicari berdasarkan nama produk atau SKU) dengan kuantitas, biaya satuan, dan tarif pajak, serta tanggal pengiriman yang diharapkan (opsional).
 
 Sebuah pesanan pembelian melalui siklus hidup yang tetap:
 
-1. **Draft** — masih bisa diedit.
-2. **Approve** untuk menguncinya dari perubahan lebih lanjut.
-3. **Receive Stock** — ini adalah langkah yang benar-benar menambahkan kuantitas yang dipesan ke inventaris Anda dan mencatat pergerakan PURCHASE untuk setiap item. Setelah diterima, PO menampilkan tingkat stok hasil setiap item di samping baris pesanan.
-4. PO berstatus Draft atau Approved dapat dibatalkan (**Cancel PO**) dengan alasan.
+1. **Draf** — masih bisa diedit.
+2. **Setujui** untuk menguncinya dari perubahan lebih lanjut.
+3. **Terima Stok** — ini adalah langkah yang benar-benar menambahkan kuantitas yang dipesan ke inventaris Anda dan mencatat pergerakan PURCHASE untuk setiap item. Setelah diterima, PO menampilkan tingkat stok hasil setiap item di samping baris pesanan.
+4. PO berstatus Draft atau Approved dapat dibatalkan (**Batalkan PO**) dengan alasan.
 
 Sebuah PO dapat **dicetak** atau diekspor/dibagikan sebagai PDF di tahap mana pun, ditata dengan detail bisnis Anda, detail pemasok, dan daftar item lengkap — tombol berbagi **WhatsApp** dan **Email** yang sama seperti dijelaskan pada bagian "Membagikan dokumen via WhatsApp dan Email" di bab *Penagihan & Dokumen* juga berfungsi di sini, mengirim PO langsung ke pemasok Anda.
 

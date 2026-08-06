@@ -8,7 +8,7 @@ Rental Business dengan sengaja bersifat generik — dibangun untuk mencakup peny
 
 Setiap produk yang dapat disewa dilacak dengan salah satu dari dua cara:
 
-- **UNIT** — untuk aset yang berbeda secara individual, seperti satu mobil tertentu, satu gaun pengantin tertentu, atau konsol gaming bernomor. Setiap barang fisik mendapatkan entrinya sendiri di **Rental Units** dengan label unit dan catatan kondisi, dan sebuah booking mengklaim satu unit tertentu untuk rentang tanggalnya.
+- **UNIT** — untuk aset yang berbeda secara individual, seperti satu mobil tertentu, satu gaun pengantin tertentu, atau konsol gaming bernomor. Setiap barang fisik mendapatkan entrinya sendiri di **Unit Sewa** dengan label unit dan catatan kondisi, dan sebuah booking mengklaim satu unit tertentu untuk rentang tanggalnya.
 - **BULK** — untuk kuantitas yang dipooling dan dapat dipertukarkan, seperti "50 kursi plastik" atau "20 piring makan." Tidak ada identitas per-item, hanya total kuantitas yang dimiliki dan berapa banyak yang sudah dikomit ke booking yang tumpang tindih.
 
 ## Menetapkan tarif sewa
@@ -17,11 +17,11 @@ Sebuah produk yang bisa disewa dapat memiliki tarif untuk kombinasi apa pun dari
 
 ## Siklus hidup booking
 
-Buka **Rental Bookings** di sidebar. Sebuah booking bergerak melalui:
+Buka **Pemesanan Sewa** di sidebar. Sebuah booking bergerak melalui:
 
-1. **Reserved** — dibuat untuk seorang pelanggan, rentang tanggal/waktu, dan satu atau lebih barang, dengan deposit jaminan opsional yang dikumpulkan di muka.
-2. **Checked Out** — barang secara fisik pergi bersama pelanggan. Untuk barang UNIT, status unit tertentu menjadi Rented.
-3. **Returned** — barang kembali. Anda mencatat biaya kerusakan apa pun dan berapa banyak deposit jaminan yang dikembalikan (secara default, deposit dikurangi biaya kerusakan apa pun). Jika pengembalian terlambat, biaya keterlambatan dihitung otomatis dari tarif masing-masing barang, dinormalisasi ke angka per-hari, dikali pengali biaya-keterlambatan yang dapat dikonfigurasi (1,5× secara default).
+1. **Dipesan** — dibuat untuk seorang pelanggan, rentang tanggal/waktu, dan satu atau lebih barang, dengan deposit jaminan opsional yang dikumpulkan di muka.
+2. **Dikeluarkan** — barang secara fisik pergi bersama pelanggan. Untuk barang UNIT, status unit tertentu menjadi Rented.
+3. **Dikembalikan** — barang kembali. Anda mencatat biaya kerusakan apa pun dan berapa banyak deposit jaminan yang dikembalikan (secara default, deposit dikurangi biaya kerusakan apa pun). Jika pengembalian terlambat, biaya keterlambatan dihitung otomatis dari tarif masing-masing barang, dinormalisasi ke angka per-hari, dikali pengali biaya-keterlambatan yang dapat dikonfigurasi (1,5× secara default).
 
 Sebuah booking Reserved juga dapat **Dibatalkan** (sebelum checkout) atau **Diperpanjang** ke tanggal/waktu akhir yang lebih lambat (selama barang tetap tersedia sepanjang rentang baru).
 
@@ -29,9 +29,9 @@ Sebuah booking dapat mencakup beberapa barang sekaligus — masing-masing mendap
 
 ## Pemeliharaan dan sewa berkala tetap
 
-Atur **interval servis** pada sebuah barang yang dilacak-UNIT — baik berupa jumlah penyewaan maupun jumlah hari — dan Sarang otomatis mengalihkannya ke status Maintenance saat pengembalian begitu interval tersebut tercapai, memblokirnya untuk disewakan lagi sampai Anda menandainya sudah diservis. Buka **Rental Units** untuk melihat barang mana yang jatuh tempo dan untuk mencatat sebuah servis yang telah selesai.
+Atur **interval servis** pada sebuah barang yang dilacak-UNIT — baik berupa jumlah penyewaan maupun jumlah hari — dan Sarang otomatis mengalihkannya ke status Maintenance saat pengembalian begitu interval tersebut tercapai, memblokirnya untuk disewakan lagi sampai Anda menandainya sudah diservis. Buka **Unit Sewa** untuk melihat barang mana yang jatuh tempo dan untuk mencatat sebuah servis yang telah selesai.
 
-Untuk pelanggan yang menyewa barang yang sama secara berkala, atur **interval pengulangan** pada booking tersebut dan gunakan **Create Next Cycle** setelah periode saat ini berakhir untuk membuat booking berikutnya dengan satu klik alih-alih memasukkan ulang semuanya dari awal.
+Untuk pelanggan yang menyewa barang yang sama secara berkala, atur **interval pengulangan** pada booking tersebut dan gunakan **Buat Siklus Berikutnya** setelah periode saat ini berakhir untuk membuat booking berikutnya dengan satu klik alih-alih memasukkan ulang semuanya dari awal.
 
 ## Ketersediaan selalu langsung, tidak pernah pengurangan stok
 
@@ -43,7 +43,7 @@ Membuat sebuah faktur dari booking yang selesai membuat baris item untuk biaya s
 
 ## Reports
 
-**Reports** mencakup laporan Rental Status (apa yang saat ini sedang dikeluarkan, dan apa yang terlambat) dan laporan Rental Revenue per produk, termasuk persentase pemanfaatan untuk aset yang dilacak-UNIT.
+**Laporan** mencakup laporan Rental Status (apa yang saat ini sedang dikeluarkan, dan apa yang terlambat) dan laporan Rental Revenue per produk, termasuk persentase pemanfaatan untuk aset yang dilacak-UNIT.
 
 ## Bahasa
 

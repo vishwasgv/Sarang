@@ -8,7 +8,7 @@ Sarang mencatat entri audit untuk tindakan di seluruh aplikasi, termasuk (di ant
 
 ## Melihat dan memfilter log
 
-Layar Log Audit mendaftar entri dari yang terbaru, 50 per halaman, dengan kontrol halaman **Previous/Next**. Gunakan dropdown jenis-entitas di bagian atas untuk memfilter ke jenis catatan tertentu (User, Invoice, Payment, Inventory, Product, Customer, Backup, dan banyak jenis entitas khusus bisnis lainnya). Klik **View** pada baris mana pun yang memiliki detail tercatat untuk memperluasnya dan melihat nilai lama dan baru yang terlibat dalam tindakan tersebut (ditampilkan sebagai data yang dapat dibaca, bukan kode mentah).
+Layar Log Audit mendaftar entri dari yang terbaru, 50 per halaman, dengan kontrol halaman **Previous/Next**. Gunakan dropdown jenis-entitas di bagian atas untuk memfilter ke jenis catatan tertentu (User, Invoice, Payment, Inventory, Product, Customer, Backup, dan banyak jenis entitas khusus bisnis lainnya). Klik **Lihat** pada baris mana pun yang memiliki detail tercatat untuk memperluasnya dan melihat nilai lama dan baru yang terlibat dalam tindakan tersebut (ditampilkan sebagai data yang dapat dibaca, bukan kode mentah).
 
 Entri yang sangat lama secara otomatis dibersihkan setelah periode retensi yang dapat dikonfigurasi (2 tahun secara default) sehingga log tidak tumbuh selamanya — ini hanya menghapus riwayat lama yang benar-benar lama, bukan apa pun yang baru-baru ini.
 

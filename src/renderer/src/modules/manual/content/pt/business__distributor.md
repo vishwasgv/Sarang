@@ -26,7 +26,7 @@ Ative **Captura de Pedido de Campo** para permitir que seus representantes de ve
 
 ## Análise de Saldos Pendentes
 
-Abra **Outstanding Analytics** para ver sua exposição total de crédito entre todos os clientes atacadistas com saldo em aberto: total pendente, quantos clientes estão atualmente acima do limite de crédito e o saldo pendente médio por cliente. Uma divisão por **antiguidade** mostra há quanto tempo cada valor está pendente — Atual, 1–30 dias, 31–60 dias, 61–90 dias, 90+ dias — para que você veja não apenas quanto é devido, mas o quanto está atrasado. A lista de clientes abaixo mostra o limite de crédito de cada um, o saldo pendente atual (com uma barra de progresso em relação ao limite) e seu valor de 90+ dias, e é ordenada para que quem estiver acima do limite se destaque em vermelho. Toque em qualquer cliente para ir direto ao registro completo dele.
+Abra **Análise de pendências** para ver sua exposição total de crédito entre todos os clientes atacadistas com saldo em aberto: total pendente, quantos clientes estão atualmente acima do limite de crédito e o saldo pendente médio por cliente. Uma divisão por **antiguidade** mostra há quanto tempo cada valor está pendente — Atual, 1–30 dias, 31–60 dias, 61–90 dias, 90+ dias — para que você veja não apenas quanto é devido, mas o quanto está atrasado. A lista de clientes abaixo mostra o limite de crédito de cada um, o saldo pendente atual (com uma barra de progresso em relação ao limite) e seu valor de 90+ dias, e é ordenada para que quem estiver acima do limite se destaque em vermelho. Toque em qualquer cliente para ir direto ao registro completo dele.
 
 ## Imposição de limite de crédito
 

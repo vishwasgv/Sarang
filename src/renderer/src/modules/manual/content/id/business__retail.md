@@ -1,6 +1,6 @@
 # Retail
 
-Memilih **Retail** sebagai jenis bisnis Anda mengaktifkan **Returns** ditambah set modul **Logistics** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah toko retail.
+Memilih **Retail** sebagai jenis bisnis Anda mengaktifkan **Retur** ditambah set modul **Logistik** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah toko retail.
 
 ## Returns
 
@@ -10,7 +10,7 @@ Pilih kuantitas untuk diretur untuk setiap item menggunakan stepper +/−, masuk
 
 ## Logistics & Supply Chain
 
-Karena template default Retail mencakup modul Logistics, Anda juga mendapatkan **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, dan **Logistics Analytics** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
+Karena template default Retail mencakup modul Logistics, Anda juga mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
 
 ## Yang dibagikan dengan setiap bisnis
 

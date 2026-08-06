@@ -33,7 +33,7 @@ Cambiar de plantilla cambia de inmediato su navegación de barra lateral y su co
 - **Análisis de Saldos Pendientes** — informes adicionales sobre los saldos pendientes de clientes y su antigüedad.
 - **Logística y Cadena de Suministro** — un paquete que cubre flota, transportistas, envíos, recepción de mercancía (GRN), albaranes de entrega y seguimiento de fletes, para cualquier negocio que mueva mercancía con sus propios vehículos o quiera rastrear formalmente las entregas de proveedores.
 
-Dos funciones transversales más tienen sus propias secciones dedicadas de Configuración en lugar de vivir en esta lista: **Código de Barras y Facturación Suelta** y **AI Assistant** (vea más abajo, y sus propios capítulos del manual). Desactivar cualquiera de estas funciones no elimina los datos existentes — solo oculta las pantallas y flujos de trabajo relacionados.
+Dos funciones transversales más tienen sus propias secciones dedicadas de Configuración en lugar de vivir en esta lista: **Código de Barras y Facturación Suelta** y **Asistente de IA** (vea más abajo, y sus propios capítulos del manual). Desactivar cualquiera de estas funciones no elimina los datos existentes — solo oculta las pantallas y flujos de trabajo relacionados.
 
 ## Código de Barras y Facturación Suelta
 

@@ -4,9 +4,9 @@ Estes são três dos tipos de negócio originais e de uso geral do Sarang — pa
 
 Eles compartilham um modelo genérico subjacente — Projetos, Ordens de Serviço, Tickets de Serviço, Controle de Trabalho e Histórico do Cliente — mas cada tipo de negócio ativa uma combinação diferente dele:
 
-- **Service** recebe Projetos, Tickets de Serviço e Controle de Trabalho — um negócio que faz tanto trabalho no estilo de projeto quanto solicitações de suporte pontuais.
+- **Serviço** recebe Projetos, Tickets de Serviço e Controle de Trabalho — um negócio que faz tanto trabalho no estilo de projeto quanto solicitações de suporte pontuais.
 - **Consultant** recebe apenas Projetos e Controle de Trabalho, sem Ordens de Serviço nem Tickets de Serviço — uma prática pura de projetos/horas faturáveis.
-- **Repair** recebe Ordens de Serviço e Tickets de Serviço, sem Projetos — um negócio construído em torno de itens individuais que os clientes trazem, não engajamentos com múltiplas tarefas.
+- **Reparo** recebe Ordens de Serviço e Tickets de Serviço, sem Projetos — um negócio construído em torno de itens individuais que os clientes trazem, não engajamentos com múltiplas tarefas.
 
 Todos os três também recebem **Histórico do Cliente**, uma visão unificada de tudo o que está vinculado a um cliente, independentemente de qual desses modelos o produziu.
 

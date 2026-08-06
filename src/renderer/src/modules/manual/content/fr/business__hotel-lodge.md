@@ -2,15 +2,15 @@
 
 ## Ce qui est différent dans ce type d'entreprise
 
-Hôtel/Auberge est délibérément son propre secteur plutôt qu'une extension du modèle générique d'Entreprise de Location ou du modèle standard de rendez-vous à visite unique que chaque autre entreprise de service dans Sarang utilise. Un séjour à l'hôtel nécessite trois choses qu'aucun des deux ne couvre : la capture d'identité du client légalement requise à l'enregistrement, la facturation par nuit sur un séjour de plusieurs nuits, et les frais supplémentaires en cours de séjour ajoutés à un folio courant avant le départ final. Ainsi, Hôtel/Auberge obtient un module dédié, **Hotel Bookings**, couvrant l'ensemble du cycle de vie de la réservation de manière autonome.
+Hôtel/Auberge est délibérément son propre secteur plutôt qu'une extension du modèle générique d'Entreprise de Location ou du modèle standard de rendez-vous à visite unique que chaque autre entreprise de service dans Sarang utilise. Un séjour à l'hôtel nécessite trois choses qu'aucun des deux ne couvre : la capture d'identité du client légalement requise à l'enregistrement, la facturation par nuit sur un séjour de plusieurs nuits, et les frais supplémentaires en cours de séjour ajoutés à un folio courant avant le départ final. Ainsi, Hôtel/Auberge obtient un module dédié, **Réservations d'hôtel**, couvrant l'ensemble du cycle de vie de la réservation de manière autonome.
 
 ## Registre des chambres
 
-Ouvrez **Rooms** dans la barre latérale pour maintenir votre liste de chambres — numéro de chambre, type de chambre, étage, occupation maximale, et un tarif de base par nuit. Le statut d'une chambre (Disponible, Occupée, Nettoyage, Maintenance, ou Hors service) change principalement de lui-même à mesure que les réservations progressent à travers l'enregistrement et le départ ; vous ne pouvez pas changer manuellement le statut d'une chambre qui a actuellement un client à l'intérieur.
+Ouvrez **Chambres** dans la barre latérale pour maintenir votre liste de chambres — numéro de chambre, type de chambre, étage, occupation maximale, et un tarif de base par nuit. Le statut d'une chambre (Disponible, Occupée, Nettoyage, Maintenance, ou Hors service) change principalement de lui-même à mesure que les réservations progressent à travers l'enregistrement et le départ ; vous ne pouvez pas changer manuellement le statut d'une chambre qui a actuellement un client à l'intérieur.
 
 ## Réserver un séjour
 
-Ouvrez **Hotel Bookings** pour créer une nouvelle réservation — choisissez une chambre, les dates d'arrivée et de départ, le nom du client et ses coordonnées, le nombre de clients (plafonné à l'occupation maximale de la chambre), un acompte optionnel, et d'où vient la réservation (**source/canal de réservation** — Visite Spontanée, Téléphone, MakeMyTrip, Booking.com, ou tout autre canal que vous saisissez). Sarang vérifie que la chambre est véritablement libre pour cette plage de dates exacte avant de confirmer — la même vérification de disponibilité en temps réel utilisée ailleurs dans Sarang, afin que deux membres du personnel ne puissent jamais réserver deux fois la même chambre pour des dates qui se chevauchent. Les nuits sont facturées sur des dates calendaires, pas des heures écoulées — un séjour d'un enregistrement en soirée à un départ le lendemain matin est toujours une nuit, comme dans la pratique hôtelière normale.
+Ouvrez **Réservations d'hôtel** pour créer une nouvelle réservation — choisissez une chambre, les dates d'arrivée et de départ, le nom du client et ses coordonnées, le nombre de clients (plafonné à l'occupation maximale de la chambre), un acompte optionnel, et d'où vient la réservation (**source/canal de réservation** — Visite Spontanée, Téléphone, MakeMyTrip, Booking.com, ou tout autre canal que vous saisissez). Sarang vérifie que la chambre est véritablement libre pour cette plage de dates exacte avant de confirmer — la même vérification de disponibilité en temps réel utilisée ailleurs dans Sarang, afin que deux membres du personnel ne puissent jamais réserver deux fois la même chambre pour des dates qui se chevauchent. Les nuits sont facturées sur des dates calendaires, pas des heures écoulées — un séjour d'un enregistrement en soirée à un départ le lendemain matin est toujours une nuit, comme dans la pratique hôtelière normale.
 
 Si le client a déjà séjourné auparavant, le choisir dans la recherche de clients affiche son **nombre de séjours précédents** directement dans le formulaire New Booking, afin que le personnel de la réception puisse reconnaître et accueillir un client fidèle.
 
@@ -38,7 +38,7 @@ Le départ met fin au séjour et libère la chambre pour le nettoyage. Générer
 
 ## Ménage
 
-Chaque départ met automatiquement en file d'attente une **tâche de ménage** pour cette chambre. Ouvrez **Housekeeping** pour voir chaque tâche en attente, l'assigner à un membre du personnel, et la marquer comme faite — une fois que chaque tâche ouverte pour une chambre est terminée, la chambre repasse à Disponible d'elle-même, plutôt que de dépendre de quelqu'un qui se souvient de changer manuellement son statut.
+Chaque départ met automatiquement en file d'attente une **tâche de ménage** pour cette chambre. Ouvrez **Ménage** pour voir chaque tâche en attente, l'assigner à un membre du personnel, et la marquer comme faite — une fois que chaque tâche ouverte pour une chambre est terminée, la chambre repasse à Disponible d'elle-même, plutôt que de dépendre de quelqu'un qui se souvient de changer manuellement son statut.
 
 ## Annulation ou non-présentation
 
@@ -46,7 +46,7 @@ Une réservation Confirmed qui n'a pas encore été enregistrée peut être annu
 
 ## Rapports
 
-**Reports** inclut un rapport Occupancy (chambres occupées/disponibles/en nettoyage/en maintenance en ce moment, avec un pourcentage d'occupation) et un rapport Guest Register — le registre de conformité que ce secteur existe pour soutenir, listant les détails d'identité de chaque client pour les séjours chevauchant une plage de dates que vous choisissez, prêt à être produit à la demande.
+**Rapports** inclut un rapport Occupancy (chambres occupées/disponibles/en nettoyage/en maintenance en ce moment, avec un pourcentage d'occupation) et un rapport Guest Register — le registre de conformité que ce secteur existe pour soutenir, listant les détails d'identité de chaque client pour les séjours chevauchant une plage de dates que vous choisissez, prêt à être produit à la demande.
 
 ## Langue
 

@@ -4,7 +4,7 @@ Layar jenis bisnis ini hanya dalam bahasa Inggris, terlepas dari pengaturan baha
 
 ## Fondasi layanan bersama
 
-Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Spesialis — dimulai dari empat blok bangunan yang sama: **Appointments** (memesan dan menjadwalkan kunjungan), sebuah **Service Catalog** (daftar konsultasi dan prosedur yang ditawarkan praktik Anda), **Provider Schedules** (spesialis mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk praktik spesialis.
+Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Spesialis — dimulai dari empat blok bangunan yang sama: **Janji Temu** (memesan dan menjadwalkan kunjungan), sebuah **Katalog Layanan** (daftar konsultasi dan prosedur yang ditawarkan praktik Anda), **Provider Schedules** (spesialis mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk praktik spesialis.
 
 Sarang secara sengaja tidak memiliki jenis bisnis terpisah per spesialisasi medis (THT, mata, dermatologi, kardiologi, dan seterusnya). Sebaliknya, "Specialist Clinic" dibuat untuk mencakup **spesialisasi apa pun** melalui Service Catalog generik yang sama — Anda mendefinisikan jenis konsultasi dan prosedur Anda sendiri dengan harga Anda sendiri, dan catatan klinis di bawah beradaptasi untuk membawa field khusus-spesialis terlepas dari spesialisasi Anda.
 
@@ -21,7 +21,7 @@ Catatan tersebut juga membawa tabel **Prescription** berbutir yang sama dan graf
 
 ## Token Queue
 
-Klinik Spesialis juga mencakup layar **Token Queue** untuk walk-in hari yang sama, persis seperti yang dijelaskan di bab *Klinik Dokter Umum* — menerbitkan token walk-in, memanggil pasien berikutnya, dan melacak jumlah Waiting / Called / Seen / Skipped. Antrean walk-in sama umumnya di praktik rawat jalan spesialis (kamp THT, kamp mata, klinik dermatologi) seperti halnya di praktik umum.
+Klinik Spesialis juga mencakup layar **Antrean Token** untuk walk-in hari yang sama, persis seperti yang dijelaskan di bab *Klinik Dokter Umum* — menerbitkan token walk-in, memanggil pasien berikutnya, dan melacak jumlah Waiting / Called / Seen / Skipped. Antrean walk-in sama umumnya di praktik rawat jalan spesialis (kamp THT, kamp mata, klinik dermatologi) seperti halnya di praktik umum.
 
 ## Printing
 

@@ -18,10 +18,10 @@ Salve, e a nova conta pode fazer login imediatamente com o usuário e a senha de
 
 Todo usuário recebe um perfil, e todo perfil vem com um conjunto fixo de permissões já incorporado ao Sarang — não existe uma tela para criar perfis personalizados ou escolher permissões individuais manualmente. Os perfis internos são:
 
-- **Admin** — acesso total ao sistema, incluindo todas as configurações, todos os relatórios e a própria gestão de usuários.
+- **Administração** — acesso total ao sistema, incluindo todas as configurações, todos os relatórios e a própria gestão de usuários.
 - **Manager** — controle operacional amplo (faturamento, estoque, compras, relatórios, a maioria das configurações) sem acesso total de administrador.
 - **Cashier** — focado em faturamento: criação de notas fiscais, registro de pagamentos e as operações do dia a dia do balcão relevantes para o seu tipo de negócio.
-- **Staff** — suporte operacional geral, com acesso mais restrito do que Cashier/Manager.
+- **Equipe** — suporte operacional geral, com acesso mais restrito do que Cashier/Manager.
 - **Kitchen Staff** — limitado às operações de cozinha do restaurante (visualização/atualização de KOT), para negócios que usam o modelo Restaurante.
 
 Cada tela e ação no Sarang verifica as permissões do perfil do usuário atual antes de permiti-la — por exemplo, a própria seção Users & Roles só é visível para um usuário cujo perfil inclua a permissão `users.view`, e criar, editar ou desativar outros usuários exigem, cada um, sua própria permissão separada. Se o seu perfil não tiver acesso a algo, a opção fica oculta ou aparece desabilitada.

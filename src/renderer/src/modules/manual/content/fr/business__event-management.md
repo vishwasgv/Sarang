@@ -2,11 +2,11 @@
 
 ## Ce qui est inclus
 
-Gestion d'Événements est construite sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus **Leads** et un module dédié **Events** pour la réservation elle-même et ses fournisseurs.
+Gestion d'Événements est construite sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus **Prospects** et un module dédié **Événements** pour la réservation elle-même et ses fournisseurs.
 
 ## Prospects
 
-**Leads** est le même pipeline en glisser-déposer (Ouvert → Contacté → Proposition → Gagné → Perdu) utilisé dans tous les secteurs de type conseil de Sarang — capturez une demande ici avant qu'elle ne devienne un événement confirmé.
+**Prospects** est le même pipeline en glisser-déposer (Ouvert → Contacté → Proposition → Gagné → Perdu) utilisé dans tous les secteurs de type conseil de Sarang — capturez une demande ici avant qu'elle ne devienne un événement confirmé.
 
 ## Événements
 
@@ -24,7 +24,7 @@ Chaque événement a aussi un **Run of Show** — la chronologie d'exécution du
 
 ## Facturation
 
-Une fois qu'un montant final est défini sur l'événement, un bouton **Generate Invoice** le transforme en une véritable facture pour le client — distincte de ce que vous devez à vos fournisseurs. La barre KPI affiche les événements ce mois-ci, les fournisseurs encore en attente, les prochains événements, et les nouvelles demandes des 7 derniers jours.
+Une fois qu'un montant final est défini sur l'événement, un bouton **Générer une Facture** le transforme en une véritable facture pour le client — distincte de ce que vous devez à vos fournisseurs. La barre KPI affiche les événements ce mois-ci, les fournisseurs encore en attente, les prochains événements, et les nouvelles demandes des 7 derniers jours.
 
 ## Langue
 

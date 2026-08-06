@@ -1,10 +1,10 @@
 # General Store
 
-Memilih **General** sebagai jenis bisnis Anda tidak mengaktifkan modul fitur khusus apa pun — ini adalah versi dasar Sarang yang polos, dengan hanya set modul **Logistics** bersama yang aktif secara default. Semua yang Anda butuhkan untuk perdagangan sehari-hari sudah ada di sana: Billing, Products, Inventory, Customers, Suppliers, Reports, Backup, dan Users & Permissions, semuanya dibahas di bab masing-masing.
+Memilih **General** sebagai jenis bisnis Anda tidak mengaktifkan modul fitur khusus apa pun — ini adalah versi dasar Sarang yang polos, dengan hanya set modul **Logistik** bersama yang aktif secara default. Semua yang Anda butuhkan untuk perdagangan sehari-hari sudah ada di sana: Billing, Products, Inventory, Customers, Suppliers, Reports, Backup, dan Users & Permissions, semuanya dibahas di bab masing-masing.
 
 ## Logistics & Supply Chain
 
-Karena template default General mencakup modul Logistics, Anda mendapatkan **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, dan **Logistics Analytics** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
+Karena template default General mencakup modul Logistics, Anda mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
 
 ## Berkembang menjadi spesialisasi
 

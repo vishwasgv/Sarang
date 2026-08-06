@@ -16,7 +16,7 @@ Sebuah job order adalah kebutuhan terbuka dari perusahaan perekrut (salah satu p
 
 ## Placements
 
-Sebuah penempatan menautkan satu kandidat ke satu job order di satu perusahaan perekrut, dengan tanggal bergabung dan gaji yang ditawarkan. Jumlah komisi dihitung otomatis dari aturan komisi job order (sebuah job order jenis persentase menghitung 12 bulan dari gaji bulanan yang ditawarkan × persentase; sebuah job order jenis tetap hanya menggunakan nilai tetapnya), meskipun Anda dapat menimpa jumlah tersebut sebelum menyimpan. Sebuah penempatan bergerak melalui **Offered → Joined → Invoiced** (dengan Cancelled sebagai hasil terpisah); **Generate Invoice** menagih komisi Anda (SAC 999132, GST 18%) setelah kandidat bergabung, dan sebuah **Placement Confirmation Letter** yang dapat dicetak tersedia untuk diberikan kepada kandidat.
+Sebuah penempatan menautkan satu kandidat ke satu job order di satu perusahaan perekrut, dengan tanggal bergabung dan gaji yang ditawarkan. Jumlah komisi dihitung otomatis dari aturan komisi job order (sebuah job order jenis persentase menghitung 12 bulan dari gaji bulanan yang ditawarkan × persentase; sebuah job order jenis tetap hanya menggunakan nilai tetapnya), meskipun Anda dapat menimpa jumlah tersebut sebelum menyimpan. Sebuah penempatan bergerak melalui **Offered → Joined → Invoiced** (dengan Cancelled sebagai hasil terpisah); **Buat Faktur** menagih komisi Anda (SAC 999132, GST 18%) setelah kandidat bergabung, dan sebuah **Placement Confirmation Letter** yang dapat dicetak tersedia untuk diberikan kepada kandidat.
 
 Bar KPI menampilkan kandidat aktif, job order terbuka, penempatan bulan ini, dan pendapatan bulan ini.
 

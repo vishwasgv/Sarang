@@ -6,7 +6,7 @@ Fabricación transforma a Sarang de un sistema de comprar-y-vender a uno de fabr
 
 **Materias Primas** es su inventario de ingredientes/componentes, separado de su stock de productos regular. Cada material tiene un nombre, una unidad (kg, litro, pieza, caja y similares), un nivel de reabastecimiento y un costo unitario. La lista señala cualquier cosa por debajo de su nivel de reabastecimiento y totaliza el valor de su stock actual.
 
-El stock solo se mueve a través de **Adjust Stock**, que registra uno de tres tipos de movimiento — Compra (entrada de stock), Devolución (entrada de stock), o Ajustar A (una corrección manual) — más un cuarto tipo, Consumido, que el sistema crea automáticamente cada vez que se inicia una orden de producción (vea más abajo). Cada movimiento se registra con un saldo corriente en **Movement History**, para que pueda ver exactamente por qué el stock de un material es el que es.
+El stock solo se mueve a través de **Ajustar Stock**, que registra uno de tres tipos de movimiento — Compra (entrada de stock), Devolución (entrada de stock), o Ajustar A (una corrección manual) — más un cuarto tipo, Consumido, que el sistema crea automáticamente cada vez que se inicia una orden de producción (vea más abajo). Cada movimiento se registra con un saldo corriente en **Historial de Movimientos**, para que pueda ver exactamente por qué el stock de un material es el que es.
 
 ## 2. Lista de Materiales (LDM)
 
@@ -20,20 +20,20 @@ Las materias primas recibidas en lotes distintos (una entrega de hoy puede costa
 
 Este es el flujo de trabajo central de fabricación, y pasa por cuatro estados:
 
-- **Draft** (Borrador) — elige un producto con una LDM y una cantidad planificada; Sarang calcula exactamente cuánto de cada materia prima necesita ese plan.
-- **In Progress** (En Proceso) — iniciar una orden verifica que cada materia prima requerida tenga suficiente stock; si algo falta, le indica exactamente qué y cuánto, y se niega a iniciar. Una vez iniciada, las materias primas se deducen de inmediato (registradas como un movimiento "Consumido" contra cada material) — esto sucede al inicio, no al completarse.
-- **Completed** (Completada) — ingresa la cantidad realmente producida, una **cantidad de desecho/rechazo** (unidades que consumieron material y mano de obra pero no produjeron nada vendible), y el **costo de mano de obra** de la corrida. Sarang agrega la cantidad producida al stock del producto terminado y recalcula su costo promedio a partir del costo de material más el costo de mano de obra, dividido solo entre las unidades producidas buenas — el costo de las unidades desechadas se absorbe en el costo de las unidades buenas, ya que igualmente consumieron recursos reales.
-- **Cancelled** (Cancelada) — disponible desde Draft o In Progress, con un motivo opcional. Cancelar una orden que ya consumió materias primas las devuelve al stock.
+- **Borrador** (Borrador) — elige un producto con una LDM y una cantidad planificada; Sarang calcula exactamente cuánto de cada materia prima necesita ese plan.
+- **En Proceso** (En Proceso) — iniciar una orden verifica que cada materia prima requerida tenga suficiente stock; si algo falta, le indica exactamente qué y cuánto, y se niega a iniciar. Una vez iniciada, las materias primas se deducen de inmediato (registradas como un movimiento "Consumido" contra cada material) — esto sucede al inicio, no al completarse.
+- **Completado** (Completada) — ingresa la cantidad realmente producida, una **cantidad de desecho/rechazo** (unidades que consumieron material y mano de obra pero no produjeron nada vendible), y el **costo de mano de obra** de la corrida. Sarang agrega la cantidad producida al stock del producto terminado y recalcula su costo promedio a partir del costo de material más el costo de mano de obra, dividido solo entre las unidades producidas buenas — el costo de las unidades desechadas se absorbe en el costo de las unidades buenas, ya que igualmente consumieron recursos reales.
+- **Cancelado** (Cancelada) — disponible desde Draft o In Progress, con un motivo opcional. Cancelar una orden que ya consumió materias primas las devuelve al stock.
 
 Cada orden de producción también puede llevar una lista de verificación opcional de **pasos de orden de trabajo** (p. ej. "Mezclado", "Horneado", "Empaquetado") que usted marca uno por uno a medida que la producción realmente sucede en la planta. Marque un paso como **punto de control de calidad** y Sarang exigirá un resultado real de Aprobado/Rechazado antes de poder marcarlo — un control de calidad no puede omitirse silenciosamente con una simple marca.
 
 ## 4. Seguimiento de Despacho
 
-Una vez que un producto está terminado y en stock, **Dispatch** registra su salida: elija el producto, una cantidad y opcionalmente un cliente y destino. Un registro de despacho comienza como **Ready** (Listo), pasa a **Dispatched** (Despachado) (este es el punto en que Sarang realmente deduce la cantidad del inventario de productos terminados — no al crearse), y finalmente **Delivered** (Entregado). Crear un registro de despacho verifica que exista suficiente stock terminado antes de dejarlo continuar.
+Una vez que un producto está terminado y en stock, **Despachar** registra su salida: elija el producto, una cantidad y opcionalmente un cliente y destino. Un registro de despacho comienza como **Listo** (Listo), pasa a **Despachado** (Despachado) (este es el punto en que Sarang realmente deduce la cantidad del inventario de productos terminados — no al crearse), y finalmente **Entregado** (Entregado). Crear un registro de despacho verifica que exista suficiente stock terminado antes de dejarlo continuar.
 
 ## 5. Productos Terminados
 
-**Finished Goods** lista cada producto que tiene una LDM definida para él — en otras palabras, todo lo que usted realmente fabrica en lugar de simplemente revender. Para cada uno puede ver el stock actual, el precio de venta, y consultar su **historial de producción** completo (cada orden de producción que alguna vez lo produjo, cantidad planificada vs. producida, y estado).
+**Productos Terminados** lista cada producto que tiene una LDM definida para él — en otras palabras, todo lo que usted realmente fabrica en lugar de simplemente revender. Para cada uno puede ver el stock actual, el precio de venta, y consultar su **historial de producción** completo (cada orden de producción que alguna vez lo produjo, cantidad planificada vs. producida, y estado).
 
 ## 6. Gestión de Proveedores
 

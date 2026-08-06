@@ -10,11 +10,11 @@ Cada producto de fertilizante, pesticida o semilla que ingresa como lote recibe 
 
 ## Equipo Agrícola — números de serie y garantía
 
-Los tractores, pulverizadores motorizados, bombas de agua y otros equipos duraderos se rastrean individualmente por número de serie en lugar de como una cantidad indiferenciada, con un período de garantía registrado contra cada unidad. Abra **Serial Tracking** en la barra lateral para esto. A diferencia de Electrónica (que también rastrea el IMEI para teléfonos móviles), Insumos Agrícolas deliberadamente no activa el seguimiento de IMEI — es un identificador específico de teléfonos que no tiene significado para un tractor o pulverizador, así que ese campo simplemente no aplica aquí.
+Los tractores, pulverizadores motorizados, bombas de agua y otros equipos duraderos se rastrean individualmente por número de serie en lugar de como una cantidad indiferenciada, con un período de garantía registrado contra cada unidad. Abra **Seguimiento de Números de Serie** en la barra lateral para esto. A diferencia de Electrónica (que también rastrea el IMEI para teléfonos móviles), Insumos Agrícolas deliberadamente no activa el seguimiento de IMEI — es un identificador específico de teléfonos que no tiene significado para un tractor o pulverizador, así que ese campo simplemente no aplica aquí.
 
 ## Servicio de Equipos — Órdenes de Trabajo
 
-Cuando un cliente trae un equipo para reparación o mantenimiento programado, abra una orden de trabajo desde **Job Cards** en la barra lateral — el mismo flujo de trabajo genérico de órdenes de trabajo que usa el tipo de negocio Reparación de Sarang. Registre qué se trajo, el trabajo a realizar, los repuestos usados y los cargos de mano de obra, y la orden de trabajo se puede facturar una vez que el trabajo esté completo.
+Cuando un cliente trae un equipo para reparación o mantenimiento programado, abra una orden de trabajo desde **Órdenes de Trabajo** en la barra lateral — el mismo flujo de trabajo genérico de órdenes de trabajo que usa el tipo de negocio Reparación de Sarang. Registre qué se trajo, el trabajo a realizar, los repuestos usados y los cargos de mano de obra, y la orden de trabajo se puede facturar una vez que el trabajo esté completo.
 
 ## Condiciones de crédito ligadas a la cosecha
 

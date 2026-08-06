@@ -4,23 +4,23 @@ Escolher **Restaurante** como seu tipo de negócio durante a configuração ativ
 
 ## Mesas
 
-Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Rsv** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo manualmente — ou deixe o status de uma mesa seguir um pedido real automaticamente, veja abaixo. Uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa. Atribua um **garçom** a uma mesa a partir do seu cartão para sempre saber quem está atendendo; remova a atribuição a qualquer momento.
+Abra **Mesas do Restaurante** na barra lateral para ver todas as mesas configuradas, cada uma exibida como um cartão com seu status atual: **Livre**, **Ocupada** ou **Res** (Reservada). Adicione uma mesa com um número de mesa (por exemplo, "T1") e um nome de exibição opcional. Toque em um botão de status no cartão de uma mesa para alterá-lo manualmente — ou deixe o status de uma mesa seguir um pedido real automaticamente, veja abaixo. Uma mesa não pode ser excluída enquanto tiver uma comanda de cozinha ativa. Atribua um **garçom** a uma mesa a partir do seu cartão para sempre saber quem está atendendo; remova a atribuição a qualquer momento.
 
-**Start Order** no cartão de uma mesa livre abre o Faturamento com essa mesa já anexada — monte o carrinho normalmente e confirme a venda. A mesa agora está realmente vinculada a essa conta: seu cartão mostra **View Bill** (vai direto para a fatura) e **Merge In** no lugar de Start Order, e a mesa se libera automaticamente assim que a conta é totalmente paga ou cancelada — sem precisar lembrar de mudar seu status manualmente.
+**Iniciar Pedido** no cartão de uma mesa livre abre o Faturamento com essa mesa já anexada — monte o carrinho normalmente e confirme a venda. A mesa agora está realmente vinculada a essa conta: seu cartão mostra **Ver Conta** (vai direto para a fatura) e **Mesclar** no lugar de Start Order, e a mesa se libera automaticamente assim que a conta é totalmente paga ou cancelada — sem precisar lembrar de mudar seu status manualmente.
 
-**Merge In** junta uma segunda mesa à mesma conta em andamento — para um grupo grande sentado em duas ou mais mesas que quer uma única conta no final. Toque nele na mesa que já tem o pedido em andamento, escolha qualquer mesa livre na lista, e essa mesa agora mostra o mesmo par **View Bill**/**Merge In**, apontando para a mesma fatura. Adicione quantas mesas o grupo realmente ocupar.
+**Mesclar** junta uma segunda mesa à mesma conta em andamento — para um grupo grande sentado em duas ou mais mesas que quer uma única conta no final. Toque nele na mesa que já tem o pedido em andamento, escolha qualquer mesa livre na lista, e essa mesa agora mostra o mesmo par **Ver Conta**/**Mesclar**, apontando para a mesma fatura. Adicione quantas mesas o grupo realmente ocupar.
 
-**End of Day** é um botão nesta tela: ele marca toda mesa ocupada como disponível novamente e mostra um resumo de fechamento em uma linha (KOTs atendidos e a receita do dia), para que você possa encerrar o salão ao final de um turno.
+**Fim do Dia** é um botão nesta tela: ele marca toda mesa ocupada como disponível novamente e mostra um resumo de fechamento em uma linha (KOTs atendidos e a receita do dia), para que você possa encerrar o salão ao final de um turno.
 
 ## Reservas
 
-Toque em **Reservations** no topo de Mesas do Restaurante para ver as reservas futuras e adicionar novas — nome do cliente, telefone, tamanho do grupo, data/hora, uma mesa opcional e uma observação em texto livre (necessidades alimentares, uma ocasião especial, qualquer coisa que valha a pena saber na hora de acomodá-los). Uma mesa com uma reserva chegando nas próximas horas mostra um pequeno selo "Reserved 7:30 PM" direto no seu cartão, para você ver de relance no salão.
+Toque em **Reservas** no topo de Mesas do Restaurante para ver as reservas futuras e adicionar novas — nome do cliente, telefone, tamanho do grupo, data/hora, uma mesa opcional e uma observação em texto livre (necessidades alimentares, uma ocasião especial, qualquer coisa que valha a pena saber na hora de acomodá-los). Uma mesa com uma reserva chegando nas próximas horas mostra um pequeno selo "Reserved 7:30 PM" direto no seu cartão, para você ver de relance no salão.
 
-Quando o grupo chega, toque em **Seat** — isso marca a mesa como Ocupada e a reserva como Seated; a reserva em si não cria uma conta, então use **Start Order** na mesa normalmente quando estiverem prontos para pedir. **No-show** e **Cancel** encerram uma reserva que não aconteceu, sem tocar na mesa.
+Quando o grupo chega, toque em **Sentar** — isso marca a mesa como Ocupada e a reserva como Seated; a reserva em si não cria uma conta, então use **Iniciar Pedido** na mesa normalmente quando estiverem prontos para pedir. **Não compareceu** e **Cancelar** encerram uma reserva que não aconteceu, sem tocar na mesa.
 
 ## Dividindo uma conta
 
-Depois que um pedido está registrado mas antes de qualquer pagamento, **Split Bill** na tela da fatura a divide em duas ou mais contas separadas — escolha quantas contas, depois defina quanto de cada item vai em cada uma (um item compartilhado, como uma sobremesa que duas pessoas estão dividindo, pode ser dividido até a unidade). Cada conta se torna sua própria fatura real, faturada e paga separadamente a partir daí. A mesa permanece Ocupada, agora apontando para a primeira conta, até que cada conta dividida seja realmente quitada. Dividir só muda como a conta é paga — a comanda de cozinha original e o estoque já deduzido permanecem intocados.
+Depois que um pedido está registrado mas antes de qualquer pagamento, **Dividir Conta** na tela da fatura a divide em duas ou mais contas separadas — escolha quantas contas, depois defina quanto de cada item vai em cada uma (um item compartilhado, como uma sobremesa que duas pessoas estão dividindo, pode ser dividido até a unidade). Cada conta se torna sua própria fatura real, faturada e paga separadamente a partir daí. A mesa permanece Ocupada, agora apontando para a primeira conta, até que cada conta dividida seja realmente quitada. Dividir só muda como a conta é paga — a comanda de cozinha original e o estoque já deduzido permanecem intocados.
 
 ## Gorjeta / taxa de serviço e itens "86"
 
@@ -30,7 +30,7 @@ Na tela de Produtos, marque qualquer item do cardápio como **86** (gíria de co
 
 ## Comandas de Cozinha (KOT)
 
-Uma KOT é a cópia do pedido que fica com a cozinha. Depois de lançar um pedido em **Faturamento**, abra a nota e toque em **Send to Kitchen** para criar uma KOT para ela. Em **Comandas de Cozinha** na barra lateral, a equipe da cozinha vê todas as comandas agrupadas por status — Pendente, Em Andamento, Pronta, Cancelada — com seus itens e quantidades, e avança cada uma com um único toque (**Iniciar Preparo** → **Marcar como Pronta**), ou **Cancela** a comanda. Cada comanda também pode ser impressa diretamente na impressora da cozinha.
+Uma KOT é a cópia do pedido que fica com a cozinha. Depois de lançar um pedido em **Faturamento**, abra a nota e toque em **Enviar para a Cozinha** para criar uma KOT para ela. Em **Comandas de Cozinha** na barra lateral, a equipe da cozinha vê todas as comandas agrupadas por status — Pendente, Em Andamento, Pronta, Cancelada — com seus itens e quantidades, e avança cada uma com um único toque (**Iniciar Preparo** → **Marcar como Pronta**), ou **Cancela** a comanda. Cada comanda também pode ser impressa diretamente na impressora da cozinha.
 
 Marcar uma KOT como **Pronta** é o que dispara a dedução do estoque de ingredientes (veja abaixo) e libera a mesa à qual ela pertencia, uma vez que nenhuma outra comanda ativa esteja usando aquela mesa.
 
@@ -58,7 +58,13 @@ Itens do cardápio sem receita configurada simplesmente não deduzem nenhum esto
 
 ## Pedidos por QR code na mesa (opcional)
 
-Mesas do Restaurante também tem um alternador **QR Table Ordering**, desativado por padrão. Ative-o e o Sarang inicia um pequeno servidor local na sua própria rede WiFi (sem necessidade de internet), para que os clientes possam escanear o QR code impresso de uma mesa, navegar pelo cardápio e enviar um pedido pelo celular. Nada se torna uma nota real automaticamente — todo pedido recebido aparece em **Incoming Orders** na tela de Comandas de Cozinha, onde a equipe explicitamente **Aceita** (escolhendo uma forma de pagamento, o que cria a nota e a KOT juntas) ou **Rejeita** o pedido. O QR code de cada mesa pode ser gerado e impresso a partir do seu cartão na tela Mesas do Restaurante.
+Mesas do Restaurante também tem um alternador **Pedido por QR Code na Mesa**, desativado por padrão. Ative-o e o Sarang inicia um pequeno servidor local na sua própria rede WiFi (sem necessidade de internet), para que os clientes possam escanear o QR code impresso de uma mesa, navegar pelo cardápio e enviar um pedido pelo celular. Nada se torna uma nota real automaticamente — todo pedido recebido aparece em **Incoming Orders** na tela de Comandas de Cozinha, onde a equipe explicitamente **Aceita** (escolhendo uma forma de pagamento, o que cria a nota e a KOT juntas) ou **Rejeita** o pedido. O QR code de cada mesa pode ser gerado e impresso a partir do seu cartão na tela Mesas do Restaurante.
+
+### QR de conexão ao WiFi (combinado com o QR de pedidos)
+
+Como o celular do cliente precisa estar na WiFi do seu restaurante para sequer chegar à página de pedidos, o cartão de **Rede WiFi** (exibido assim que Pedido por QR Code na Mesa está ativado) permite salvar o nome e a senha da sua rede de convidados uma única vez. Depois disso, o QR code de cada mesa mostra — e imprime — um segundo QR code acima do QR code de pedidos: escaneie-o para se conectar à WiFi automaticamente, depois escaneie o QR code de pedidos logo abaixo para navegar pelo cardápio e pedir. Sem digitar senha, sem placa de WiFi separada perto da mesa.
+
+Isso é totalmente opcional — deixe o cartão de Rede WiFi sem configurar e os QR codes das mesas funcionam exatamente como antes (apenas o QR code de pedidos). Editar a rede depois (por exemplo, após trocar a senha do seu roteador) é tão simples quanto salvar novamente; deixar o campo de senha em branco enquanto atualiza apenas o nome da rede mantém a senha existente em vez de apagá-la. Marcar a rede como **aberta** (sem senha) pula completamente o campo de senha — útil se a sua WiFi de convidados não tiver senha própria.
 
 ## O que é compartilhado com todo negócio
 

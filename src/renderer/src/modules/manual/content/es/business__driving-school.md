@@ -2,7 +2,7 @@
 
 Autoescuela es una de las 24 plantillas de negocio de servicio específicas de Sarang. Como cada tipo de negocio de ese grupo, las pantallas de este tipo de negocio están solo en inglés, sin importar el idioma que tenga configurado en el resto de Sarang.
 
-Cada plantilla de negocio de servicio comparte la misma base: **Appointments** para reservar, un **Service Catalog**, **Provider Schedule** para los horarios laborales del personal, y una **Notification Queue** en segundo plano para recordatorios. Autoescuela agrega su propia pantalla dedicada — con cinco pestañas — para las partes de manejar una autoescuela que no encajan en una cita genérica: perfiles de alumnos, sesiones de manejo, vehículos, exámenes, y paquetes.
+Cada plantilla de negocio de servicio comparte la misma base: **Citas** para reservar, un **Catálogo de servicios**, **Horario del proveedor** para los horarios laborales del personal, y una **Notification Queue** en segundo plano para recordatorios. Autoescuela agrega su propia pantalla dedicada — con cinco pestañas — para las partes de manejar una autoescuela que no encajan en una cita genérica: perfiles de alumnos, sesiones de manejo, vehículos, exámenes, y paquetes.
 
 ## Alumnos
 
@@ -21,7 +21,7 @@ La pestaña de Sessions filtra por Hoy, Todas, Programadas, o Completadas.
 
 La propia flota de vehículos de instrucción de la escuela: número de matrícula, marca/modelo, clase de vehículo (LMV, dos ruedas, HMV), un instructor asignado, y un estado (Activo, Mantenimiento, Retirado). Solo los vehículos marcados como Activos se pueden elegir al programar una nueva sesión.
 
-Configure un **intervalo de servicio** en un vehículo — por número de sesiones o por distancia de odómetro — y Sarang lo marca como Due for Service una vez que se cruza cualquiera de los dos umbrales, con base en sesiones completadas reales y la lectura de odómetro que registra. Abra **Maintenance** en un vehículo para registrar un servicio completado (odómetro, tipo de servicio, costo) y ver su historial completo de servicio.
+Configure un **intervalo de servicio** en un vehículo — por número de sesiones o por distancia de odómetro — y Sarang lo marca como Due for Service una vez que se cruza cualquiera de los dos umbrales, con base en sesiones completadas reales y la lectura de odómetro que registra. Abra **Mantenimiento** en un vehículo para registrar un servicio completado (odómetro, tipo de servicio, costo) y ver su historial completo de servicio.
 
 ## Exámenes
 
@@ -29,7 +29,7 @@ Sigue las reservas de examen reales de un alumno — examen de licencia de apren
 
 ## Paquetes
 
-El patrón de facturación más común de una autoescuela es vender un paquete de N lecciones por adelantado en lugar de facturar lección por lección. **Packages** tiene dos partes:
+El patrón de facturación más común de una autoescuela es vender un paquete de N lecciones por adelantado en lugar de facturar lección por lección. **Paquetes** tiene dos partes:
 
 - **Package Catalog** — defina el nombre de un paquete, el número total de sesiones, precio, y a qué clase de vehículo aplica.
 - **Learner Enrollments** — inscriba a un alumno en un paquete, siga las sesiones usadas contra el total, y genere la factura del paquete una sola vez (un paquete se factura como un todo, no por sesión). Cada sesión programada contra esa inscripción se descuenta de su conteo restante automáticamente en lugar de necesitar su propia tarifa o factura.

@@ -2,7 +2,7 @@
 
 ## Ce qui est inclus
 
-Studio Photo est construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus un module dédié unique : **Shoot Bookings**. Contrairement à plusieurs autres modèles de secteur créatif, Studio Photo n'ajoute pas de pipeline Leads séparé ; le propre statut Inquiry d'une réservation couvre cela à la place.
+Studio Photo est construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus un module dédié unique : **Réservations de séances photo**. Contrairement à plusieurs autres modèles de secteur créatif, Studio Photo n'ajoute pas de pipeline Leads séparé ; le propre statut Inquiry d'une réservation couvre cela à la place.
 
 ## Réservations de Séance
 
@@ -22,7 +22,7 @@ Ajoutez des **Add-on Items** pour tout ce qui dépasse le forfait de base — ti
 
 ## Facturation
 
-Une fois qu'un montant final est saisi sur une réservation, un bouton **Generate Invoice** le transforme en une véritable facture incluant les frais du forfait de base plus chaque élément supplémentaire comme sa propre ligne — Sarang ne vous laisse pas générer une deuxième facture pour la même réservation, ni modifier les suppléments une fois facturés. La barre KPI affiche les séances ce mois-ci, les livraisons en attente, et les prochaines séances.
+Une fois qu'un montant final est saisi sur une réservation, un bouton **Générer une Facture** le transforme en une véritable facture incluant les frais du forfait de base plus chaque élément supplémentaire comme sa propre ligne — Sarang ne vous laisse pas générer une deuxième facture pour la même réservation, ni modifier les suppléments une fois facturés. La barre KPI affiche les séances ce mois-ci, les livraisons en attente, et les prochaines séances.
 
 ## Langue
 

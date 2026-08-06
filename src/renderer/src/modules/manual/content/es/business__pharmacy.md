@@ -4,7 +4,7 @@ Elegir **Farmacia** como su tipo de negocio activa el **seguimiento de lotes**, 
 
 ## Gestión de Lotes
 
-Abra **Batch Management** desde la barra lateral para registrar cada lote de stock que recibe: producto, número de lote, cantidad recibida, fecha de caducidad, una fecha de fabricación opcional, costo unitario y de qué proveedor proviene. Cada lote rastrea su propia **cantidad restante** por separado de lo que se recibió originalmente, y la lista se puede filtrar a **Todos**, **Por Vencer Pronto** o **Vencidos**. Las insignias de alerta en la parte superior de la pantalla señalan cuántos lotes vencen dentro de 30 días o ya están vencidos, de modo que una revisión de stock nunca sea una sorpresa. Puede editar la fecha de caducidad, la fecha de fabricación, la cantidad restante o el costo de un lote más tarde, o desactivar un lote una vez que esté totalmente agotado o dado de baja.
+Abra **Gestión de Lotes** desde la barra lateral para registrar cada lote de stock que recibe: producto, número de lote, cantidad recibida, fecha de caducidad, una fecha de fabricación opcional, costo unitario y de qué proveedor proviene. Cada lote rastrea su propia **cantidad restante** por separado de lo que se recibió originalmente, y la lista se puede filtrar a **Todos**, **Por Vencer Pronto** o **Vencidos**. Las insignias de alerta en la parte superior de la pantalla señalan cuántos lotes vencen dentro de 30 días o ya están vencidos, de modo que una revisión de stock nunca sea una sorpresa. Puede editar la fecha de caducidad, la fecha de fabricación, la cantidad restante o el costo de un lote más tarde, o desactivar un lote una vez que esté totalmente agotado o dado de baja.
 
 ## Cómo la venta extrae de los lotes
 
@@ -24,7 +24,7 @@ Establezca un **Default Supplier** en un producto (junto a su Nivel/Cantidad de 
 
 ## Logística y Cadena de Suministro
 
-Debido a que la plantilla predeterminada de Farmacia incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
+Debido a que la plantilla predeterminada de Farmacia incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
 
 ## Lo que se comparte con todo negocio
 

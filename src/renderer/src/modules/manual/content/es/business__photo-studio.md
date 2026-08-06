@@ -2,7 +2,7 @@
 
 ## Qué incluye
 
-Estudio Fotográfico está construido sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más un único módulo dedicado: **Shoot Bookings**. A diferencia de varias otras plantillas de vertical creativa, Estudio Fotográfico no agrega un embudo de Leads separado; el propio estado de Inquiry de una reserva cubre eso en su lugar.
+Estudio Fotográfico está construido sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más un único módulo dedicado: **Reservas de sesiones fotográficas**. A diferencia de varias otras plantillas de vertical creativa, Estudio Fotográfico no agrega un embudo de Leads separado; el propio estado de Inquiry de una reserva cubre eso en su lugar.
 
 ## Reservas de Sesión
 
@@ -22,7 +22,7 @@ Agregue **Add-on Items** para cualquier cosa más allá del paquete base — imp
 
 ## Facturación
 
-Una vez que se ingresa un monto final en una reserva, un botón de **Generate Invoice** lo convierte en una factura real que incluye el honorario del paquete base más cada elemento complementario como su propia línea — Sarang no le permite generar una segunda factura para la misma reserva, ni cambiar los complementos una vez facturados. La barra de KPI muestra sesiones este mes, entregas pendientes, y próximas sesiones.
+Una vez que se ingresa un monto final en una reserva, un botón de **Generar Factura** lo convierte en una factura real que incluye el honorario del paquete base más cada elemento complementario como su propia línea — Sarang no le permite generar una segunda factura para la misma reserva, ni cambiar los complementos una vez facturados. La barra de KPI muestra sesiones este mes, entregas pendientes, y próximas sesiones.
 
 ## Idioma
 

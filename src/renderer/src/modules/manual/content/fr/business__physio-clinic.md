@@ -4,7 +4,7 @@ Les écrans de ce type d'entreprise sont uniquement en anglais, quelle que soit 
 
 ## La fondation de service partagée
 
-Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique de Physiothérapie — part des quatre mêmes blocs de construction : **Appointments** (réserver et planifier des visites), un **Service Catalog** (la liste des séances de thérapie et leurs prix), **Provider Schedules** (quel physiothérapeute est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre ce qui est spécifique à la physiothérapie : notes de consultation avec évaluation de la douleur, phases de traitement, programmes d'exercices à domicile, et forfaits de séances.
+Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique de Physiothérapie — part des quatre mêmes blocs de construction : **Rendez-vous** (réserver et planifier des visites), un **Catalogue de services** (la liste des séances de thérapie et leurs prix), **Provider Schedules** (quel physiothérapeute est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre ce qui est spécifique à la physiothérapie : notes de consultation avec évaluation de la douleur, phases de traitement, programmes d'exercices à domicile, et forfaits de séances.
 
 ## Notes de Consultation
 
@@ -26,4 +26,4 @@ L'onglet **Exercise Program** vous permet de construire un Programme d'Exercices
 
 ## Forfaits de Séances
 
-L'onglet **Session Packs** suit les forfaits prépayés de séances (par ex. « Forfait Physio 10 séances ») : nom du forfait, séances totales, prix, taux de GST, dates d'achat et d'expiration. Un forfait actif affiche une barre de progression des séances restantes, et chaque rendez-vous terminé sur ce forfait déduit automatiquement une séance. Une fois qu'un forfait a un prix, vous pouvez **Generate Invoice** pour lui directement depuis cet écran — il ne le propose qu'une seule fois, et marque le forfait « Invoiced » ensuite, afin qu'il ne soit jamais facturé deux fois.
+L'onglet **Forfaits de séances** suit les forfaits prépayés de séances (par ex. « Forfait Physio 10 séances ») : nom du forfait, séances totales, prix, taux de GST, dates d'achat et d'expiration. Un forfait actif affiche une barre de progression des séances restantes, et chaque rendez-vous terminé sur ce forfait déduit automatiquement une séance. Une fois qu'un forfait a un prix, vous pouvez **Générer une Facture** pour lui directement depuis cet écran — il ne le propose qu'une seule fois, et marque le forfait « Invoiced » ensuite, afin qu'il ne soit jamais facturé deux fois.

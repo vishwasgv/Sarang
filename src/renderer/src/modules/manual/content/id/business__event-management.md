@@ -2,11 +2,11 @@
 
 ## Apa yang termasuk
 
-Event Management dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus **Leads** dan sebuah modul **Events** khusus untuk booking itu sendiri dan vendornya.
+Event Management dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus **Prospek** dan sebuah modul **Acara** khusus untuk booking itu sendiri dan vendornya.
 
 ## Leads
 
-**Leads** adalah pipeline drag-and-drop yang sama (Open → Contacted → Proposal → Won → Lost) yang digunakan di seluruh vertikal bergaya-konsultasi Sarang — tangkap sebuah inquiry di sini sebelum menjadi acara yang dikonfirmasi.
+**Prospek** adalah pipeline drag-and-drop yang sama (Open → Contacted → Proposal → Won → Lost) yang digunakan di seluruh vertikal bergaya-konsultasi Sarang — tangkap sebuah inquiry di sini sebelum menjadi acara yang dikonfirmasi.
 
 ## Events
 
@@ -24,7 +24,7 @@ Setiap acara juga memiliki **Run of Show** — timeline eksekusi hari-acara, ter
 
 ## Billing
 
-Setelah jumlah akhir ditetapkan pada acara, sebuah tombol **Generate Invoice** mengubahnya menjadi faktur sungguhan untuk klien — terpisah dari apa pun yang Anda hutangkan pada vendor Anda. Bar KPI menampilkan acara bulan ini, vendor masih tertunda, acara yang akan datang, dan inquiry baru dalam 7 hari terakhir.
+Setelah jumlah akhir ditetapkan pada acara, sebuah tombol **Buat Faktur** mengubahnya menjadi faktur sungguhan untuk klien — terpisah dari apa pun yang Anda hutangkan pada vendor Anda. Bar KPI menampilkan acara bulan ini, vendor masih tertunda, acara yang akan datang, dan inquiry baru dalam 7 hari terakhir.
 
 ## Bahasa
 

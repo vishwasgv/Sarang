@@ -11,7 +11,7 @@ Ambos podem ser **arquivados** em vez de excluídos, o que os oculta das listas 
 Clicar em um cliente ou fornecedor abre a tela de detalhes dele, que mostra as informações de contato junto com a conta corrente:
 
 - A tela de detalhes de um **cliente** mostra o limite de crédito e o **saldo pendente** — quanto ele deve a você atualmente — além de um razão de transações com todo débito (uma nota de venda a crédito) e crédito (um pagamento ou nota de crédito) que afeta esse saldo, cada um com um total corrente.
-- A tela de detalhes de um **fornecedor** mostra o **Balance Payable** — quanto você deve a ele atualmente — com o mesmo tipo de razão (uma compra aumenta o que você deve; um pagamento ou nota de débito o reduz). Se você deve dinheiro a um fornecedor, um botão **Record Payment** permite registrar um pagamento diretamente para ele (Dinheiro, Transferência Bancária, Cheque, UPI, Cartão ou Outro), com um número de referência e observações opcionais.
+- A tela de detalhes de um **fornecedor** mostra o **Saldo a Pagar** — quanto você deve a ele atualmente — com o mesmo tipo de razão (uma compra aumenta o que você deve; um pagamento ou nota de débito o reduz). Se você deve dinheiro a um fornecedor, um botão **Registrar Pagamento** permite registrar um pagamento diretamente para ele (Dinheiro, Transferência Bancária, Cheque, UPI, Cartão ou Outro), com um número de referência e observações opcionais.
 
 Ambos os razões mostram os últimos 100 lançamentos. O saldo exibido é sempre calculado a partir do histórico completo de transações, não de um número corrente em cache, então ele nunca pode ficar dessincronizado do que realmente aconteceu.
 

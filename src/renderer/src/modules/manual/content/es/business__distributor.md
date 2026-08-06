@@ -26,7 +26,7 @@ Active **Captura de Pedidos de Campo** para que sus representantes de ventas env
 
 ## Análisis de Saldos Pendientes
 
-Abra **Outstanding Analytics** para ver su exposición total de crédito en todos los clientes mayoristas con un saldo pendiente: total pendiente, cuántos clientes están actualmente por encima de su límite de crédito, y el saldo pendiente promedio por cliente. Un desglose de **antigüedad** muestra cuánto tiempo lleva pendiente cada monto — Actual, 1-30 días, 31-60 días, 61-90 días, más de 90 días — para que pueda ver no solo cuánto se debe sino qué tan atrasado está. La lista de clientes debajo muestra el límite de crédito de cada uno, su saldo pendiente actual (con una barra de progreso hacia su límite) y su cifra de más de 90 días, y está ordenada para que cualquiera por encima de su límite resalte en rojo. Toque cualquier cliente para ir directamente a su registro completo.
+Abra **Análisis de saldos pendientes** para ver su exposición total de crédito en todos los clientes mayoristas con un saldo pendiente: total pendiente, cuántos clientes están actualmente por encima de su límite de crédito, y el saldo pendiente promedio por cliente. Un desglose de **antigüedad** muestra cuánto tiempo lleva pendiente cada monto — Actual, 1-30 días, 31-60 días, 61-90 días, más de 90 días — para que pueda ver no solo cuánto se debe sino qué tan atrasado está. La lista de clientes debajo muestra el límite de crédito de cada uno, su saldo pendiente actual (con una barra de progreso hacia su límite) y su cifra de más de 90 días, y está ordenada para que cualquiera por encima de su límite resalte en rojo. Toque cualquier cliente para ir directamente a su registro completo.
 
 ## Aplicación de límite de crédito
 
@@ -34,7 +34,7 @@ Asigne a un cliente un **límite de crédito** desde su registro en **Clientes**
 
 ## Logística y Cadena de Suministro
 
-Debido a que la plantilla predeterminada de Distribuidor incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
+Debido a que la plantilla predeterminada de Distribuidor incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
 
 ## Lo que se comparte con todo negocio
 

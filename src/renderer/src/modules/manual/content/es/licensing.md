@@ -1,21 +1,21 @@
 # Licencia y renovación
 
-Sarang es gratis durante tus **primeros 12 meses** desde el día que lo configuras por primera vez. Después, una pequeña licencia **anual** lo mantiene funcionando — y esto se repite cada año, no solo una vez: tu primer año pagado funciona exactamente igual que tu año gratuito, con la misma cuenta regresiva y el mismo paso de renovación cuando está por terminar. La pantalla **License** (**Settings → License**) es donde ves tu estado y renuevas.
+Sarang es gratis durante tus **primeros 12 meses** desde el día que lo configuras por primera vez. Después, una pequeña licencia **anual** lo mantiene funcionando — y esto se repite cada año, no solo una vez: tu primer año pagado funciona exactamente igual que tu año gratuito, con la misma cuenta regresiva y el mismo paso de renovación cuando está por terminar. La pantalla **Licencia** (**Settings → License**) es donde ves tu estado y renuevas.
 
 ## Qué verás en esta pantalla
 
-- Una insignia de estado: **Not Activated**, **Active** (todavía en tu año gratuito), **Active — Paid** (una licencia pagada vigente), **Warning** (tu año actual — gratuito o pagado — está por terminar) o **Expired**.
+- Una insignia de estado: **Not Activated**, **Activo** (todavía en tu año gratuito), **Activa — Pagada** (una licencia pagada vigente), **Advertencia** (tu año actual — gratuito o pagado — está por terminar) o **Vencida**.
 - Mientras estés en tu año actual (gratuito o pagado), aquí se muestra el número de días restantes.
 - Si tu licencia ha vencido, un aviso explica qué ocurrió y que solo se ven afectados los nuevos documentos facturables.
 - Una nota que confirma que tu licencia está vinculada a este dispositivo.
 
 ## Activar una clave de licencia
 
-Cuando descargaste Sarang por primera vez desde aszurex.com, se te envió por correo una clave de licencia junto con tu enlace de descarga. Introdúcela en el campo **License Key** de esta pantalla y haz clic en **Activate**. Si la clave no es válida o está mal escrita, verás un error claro — revísala e inténtalo de nuevo.
+Cuando descargaste Sarang por primera vez desde aszurex.com, se te envió por correo una clave de licencia junto con tu enlace de descarga. Introdúcela en el campo **License Key** de esta pantalla y haz clic en **Activar**. Si la clave no es válida o está mal escrita, verás un error claro — revísala e inténtalo de nuevo.
 
 ## Renovar — cada año, gratis o pagado
 
-Cuando tu año actual esté por terminar (o ya haya terminado) — ya sea tu primer año gratuito o cualquier año pagado posterior — esta pantalla muestra una sección **Renew** con tu precio — en ₹ si tu negocio está registrado en India, o en $ en caso contrario — y un botón **Renew**. Esto abre la página de precios en aszurex.com en tu navegador, donde puedes completar el pago y recibir una nueva clave de licencia por correo electrónico. Introduce esa nueva clave de la misma forma en que activaste la primera. Este es un paso anual genuino: pagar una vez no hace que Sarang sea gratis para siempre — cada clave nueva es válida durante un año desde el día en que se emite, y la misma sección Renew vuelve a aparecer a medida que ese año se acerca a su fin, cada año, mientras sigas usando Sarang.
+Cuando tu año actual esté por terminar (o ya haya terminado) — ya sea tu primer año gratuito o cualquier año pagado posterior — esta pantalla muestra una sección **Renovar** con tu precio — en ₹ si tu negocio está registrado en India, o en $ en caso contrario — y un botón **Renovar**. Esto abre la página de precios en aszurex.com en tu navegador, donde puedes completar el pago y recibir una nueva clave de licencia por correo electrónico. Introduce esa nueva clave de la misma forma en que activaste la primera. Este es un paso anual genuino: pagar una vez no hace que Sarang sea gratis para siempre — cada clave nueva es válida durante un año desde el día en que se emite, y la misma sección Renew vuelve a aparecer a medida que ese año se acerca a su fin, cada año, mientras sigas usando Sarang.
 
 **Qué ocurre si tu licencia vence y aún no has renovado:** Sarang no te bloquea ni impide el acceso a tus datos existentes — esto es así tanto si es tu primer año gratuito como si es un año pagado que venció. Puedes seguir viendo, imprimiendo y exportando todo lo que ya has creado, y hacer copias de seguridad/restaurar con normalidad. Lo único que pausa una licencia vencida es la creación de **nuevas** facturas y otros documentos facturables, hasta que renueves.
 

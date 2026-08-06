@@ -26,13 +26,13 @@ Toda alteração no estoque — uma venda, um ajuste manual, um pedido de compra
 
 ## Pedidos de Compra
 
-**Pedidos de Compra** (`/purchase-orders`) acompanham o que você encomendou dos fornecedores. Crie um com **New PO**: escolha um fornecedor, adicione itens (buscados por nome do produto ou SKU) com quantidade, custo unitário e alíquota, e uma data de entrega prevista opcional.
+**Pedidos de Compra** (`/purchase-orders`) acompanham o que você encomendou dos fornecedores. Crie um com **Novo Pedido**: escolha um fornecedor, adicione itens (buscados por nome do produto ou SKU) com quantidade, custo unitário e alíquota, e uma data de entrega prevista opcional.
 
 Um pedido de compra passa por um ciclo de vida fixo:
 
-1. **Draft** — ainda editável.
-2. **Approve** para travá-lo contra novas alterações.
-3. **Receive Stock** — esta é a etapa que efetivamente adiciona as quantidades pedidas ao seu estoque e registra um movimento de compra para cada item. Uma vez recebido, o pedido mostra o nível de estoque resultante de cada item ao lado da linha do pedido.
+1. **Rascunho** — ainda editável.
+2. **Aprovar** para travá-lo contra novas alterações.
+3. **Receber Estoque** — esta é a etapa que efetivamente adiciona as quantidades pedidas ao seu estoque e registra um movimento de compra para cada item. Uma vez recebido, o pedido mostra o nível de estoque resultante de cada item ao lado da linha do pedido.
 4. Um pedido em Draft ou Approve pode, em vez disso, ser **cancelado**, com um motivo.
 
 Um pedido de compra pode ser **impresso** ou exportado/compartilhado como PDF em qualquer etapa, formatado com os dados do seu negócio, os dados do fornecedor e a lista completa de itens — os mesmos botões de compartilhamento **WhatsApp** e **E-mail** descritos na seção "Compartilhando documentos por WhatsApp e E-mail" do capítulo *Faturamento e Documentos* também funcionam aqui, enviando o pedido de compra diretamente ao seu fornecedor.

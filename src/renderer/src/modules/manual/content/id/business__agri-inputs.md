@@ -10,11 +10,11 @@ Setiap produk pupuk, pestisida, atau benih yang Anda stok sebagai sebuah batch m
 
 ## Peralatan Pertanian — nomor serial dan garansi
 
-Traktor, sprayer bertenaga, pompa air, dan peralatan tahan lama lainnya dilacak satu per satu berdasarkan nomor serial alih-alih sebagai kuantitas yang tidak dibedakan, dengan periode garansi tercatat untuk setiap unit. Buka **Serial Tracking** di sidebar untuk ini. Berbeda dengan Electronics (yang juga melacak IMEI untuk ponsel), Agricultural Inputs dengan sengaja tidak mengaktifkan pelacakan IMEI — itu adalah pengidentifikasi khusus-ponsel yang tidak memiliki arti untuk traktor atau sprayer, sehingga kolom itu cukup tidak berlaku di sini.
+Traktor, sprayer bertenaga, pompa air, dan peralatan tahan lama lainnya dilacak satu per satu berdasarkan nomor serial alih-alih sebagai kuantitas yang tidak dibedakan, dengan periode garansi tercatat untuk setiap unit. Buka **Pelacakan Nomor Seri** di sidebar untuk ini. Berbeda dengan Electronics (yang juga melacak IMEI untuk ponsel), Agricultural Inputs dengan sengaja tidak mengaktifkan pelacakan IMEI — itu adalah pengidentifikasi khusus-ponsel yang tidak memiliki arti untuk traktor atau sprayer, sehingga kolom itu cukup tidak berlaku di sini.
 
 ## Servis Peralatan — Job Cards
 
-Ketika seorang pelanggan membawa sepotong peralatan untuk perbaikan atau servis terjadwal, buka sebuah job card dari **Job Cards** di sidebar — alur kerja job-card generik yang sama yang digunakan jenis bisnis Repair Sarang. Catat apa yang dibawa, pekerjaan yang harus dilakukan, suku cadang yang digunakan, dan biaya tenaga kerja, dan job card tersebut dapat ditagih setelah pekerjaan selesai.
+Ketika seorang pelanggan membawa sepotong peralatan untuk perbaikan atau servis terjadwal, buka sebuah job card dari **Kartu Kerja** di sidebar — alur kerja job-card generik yang sama yang digunakan jenis bisnis Repair Sarang. Catat apa yang dibawa, pekerjaan yang harus dilakukan, suku cadang yang digunakan, dan biaya tenaga kerja, dan job card tersebut dapat ditagih setelah pekerjaan selesai.
 
 ## Persyaratan kredit terkait musim panen
 

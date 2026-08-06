@@ -6,17 +6,17 @@ Harga jual sebenarnya dari sebuah barang perhiasan bukanlah angka tetap yang And
 
 ## Menyiapkan sebuah produk perhiasan
 
-Saat membuat atau mengedit sebuah produk, tetapkan **Metal Type**-nya (Gold, Silver, atau Platinum) dan **Purity**-nya (misalnya "22K", "18K", "999"). Masukkan berat kotornya dan, jika ia memiliki batu atau material non-logam lainnya, sebuah berat batu untuk dikurangkan — Sarang selalu menghitung berat bersih sebagai kotor dikurangi berat batu itu sendiri; ini tidak pernah dipercayakan sebagai nilai yang diketik langsung pada produk, dengan cara yang sama harga label barcode tidak pernah dipercaya dari input luar.
+Saat membuat atau mengedit sebuah produk, tetapkan **Jenis Logam**-nya (Gold, Silver, atau Platinum) dan **Kadar**-nya (misalnya "22K", "18K", "999"). Masukkan berat kotornya dan, jika ia memiliki batu atau material non-logam lainnya, sebuah berat batu untuk dikurangkan — Sarang selalu menghitung berat bersih sebagai kotor dikurangi berat batu itu sendiri; ini tidak pernah dipercayakan sebagai nilai yang diketik langsung pada produk, dengan cara yang sama harga label barcode tidak pernah dipercaya dari input luar.
 
 Kemudian pilih bagaimana biaya pembuatan dihitung:
 
-- **Fixed amount** — biaya pembuatan tetap terlepas dari berat.
-- **Per gram (of net weight)** — sebuah tarif dikalikan berat bersih barang tersebut.
-- **Percentage of metal value** — persentase dari (berat bersih × tarif hari ini).
+- **Jumlah tetap** — biaya pembuatan tetap terlepas dari berat.
+- **Per gram (dari berat bersih)** — sebuah tarif dikalikan berat bersih barang tersebut.
+- **Persentase dari nilai logam** — persentase dari (berat bersih × tarif hari ini).
 
 ## Metal Rates
 
-Buka **Metal Rates** di sidebar untuk menetapkan tarif per gram hari ini untuk setiap kombinasi jenis-logam-dan-kadar yang Anda stok (emas 22K dan emas 18K benar-benar diperdagangkan pada tarif berbeda, sehingga setiap kombinasi mendapatkan barisnya sendiri). Tidak ada feed tarif internet otomatis — konsisten dengan desain offline-first Sarang, Anda mencari tarif hari ini di mana pun Anda biasa melakukannya dan mengetiknya. Perbarui ini setiap kali tarif berubah; setiap penjualan sejak saat itu menggunakan nilai saat ini.
+Buka **Harga Logam** di sidebar untuk menetapkan tarif per gram hari ini untuk setiap kombinasi jenis-logam-dan-kadar yang Anda stok (emas 22K dan emas 18K benar-benar diperdagangkan pada tarif berbeda, sehingga setiap kombinasi mendapatkan barisnya sendiri). Tidak ada feed tarif internet otomatis — konsisten dengan desain offline-first Sarang, Anda mencari tarif hari ini di mana pun Anda biasa melakukannya dan mengetiknya. Perbarui ini setiap kali tarif berubah; setiap penjualan sejak saat itu menggunakan nilai saat ini.
 
 ## Bagaimana sebuah penjualan dihargai
 
@@ -28,9 +28,9 @@ Jika barang tersebut memiliki **nomor cap/HUID** yang tercatat pada produk, nomo
 
 ## Tukar tambah logam lama
 
-Buka **Old-Metal Exchange** untuk mencatat seorang pelanggan yang menukar emas atau perak lama terhadap pembelian baru. Masukkan berat kotor, berat pengurangan (untuk konten non-logam apa pun), jenis logam, dan kadar — Sarang mencari tarif hari ini untuk kombinasi tersebut dan menghitung nilai yang diberikan kepada pelanggan (berat bersih × tarif).
+Buka **Tukar Tambah Logam Lama** untuk mencatat seorang pelanggan yang menukar emas atau perak lama terhadap pembelian baru. Masukkan berat kotor, berat pengurangan (untuk konten non-logam apa pun), jenis logam, dan kadar — Sarang mencari tarif hari ini untuk kombinasi tersebut dan menghitung nilai yang diberikan kepada pelanggan (berat bersih × tarif).
 
-Untuk menggunakannya, klik **Apply Old-Metal Exchange** saat menagih pelanggan tersebut — Sarang menampilkan kredit itu dan langsung memasukkannya ke dalam diskon faktur saat penjualan dibuat, serta menandai pertukaran tersebut sebagai sudah terpakai sehingga tidak bisa secara tidak sengaja diterapkan kedua kalinya ke faktur yang berbeda.
+Untuk menggunakannya, klik **Terapkan Tukar Tambah Logam Lama** saat menagih pelanggan tersebut — Sarang menampilkan kredit itu dan langsung memasukkannya ke dalam diskon faktur saat penjualan dibuat, serta menandai pertukaran tersebut sebagai sudah terpakai sehingga tidak bisa secara tidak sengaja diterapkan kedua kalinya ke faktur yang berbeda.
 
 ## Returns
 
@@ -38,7 +38,7 @@ Jewellery memiliki modul Returns yang diaktifkan, alur kerja pemrosesan-retur ya
 
 ## Reports
 
-**Reports** mencakup laporan stok perhiasan yang menunjukkan berat bersih, tarif saat ini, dan total penilaian dikelompokkan berdasarkan jenis logam dan kadar.
+**Laporan** mencakup laporan stok perhiasan yang menunjukkan berat bersih, tarif saat ini, dan total penilaian dikelompokkan berdasarkan jenis logam dan kadar.
 
 ## Bahasa
 

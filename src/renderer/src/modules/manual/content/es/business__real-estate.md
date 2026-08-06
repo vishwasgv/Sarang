@@ -2,17 +2,17 @@
 
 ## Qué incluye
 
-Bienes Raíces es un tipo de negocio de servicio construido sobre la base compartida de negocio de servicio de Sarang — citas (para visitas al sitio), un catálogo de servicios, horarios de proveedores, y la cola de notificaciones están todos presentes — más dos módulos construidos específicamente para corredores: **Leads** y **Properties**.
+Bienes Raíces es un tipo de negocio de servicio construido sobre la base compartida de negocio de servicio de Sarang — citas (para visitas al sitio), un catálogo de servicios, horarios de proveedores, y la cola de notificaciones están todos presentes — más dos módulos construidos específicamente para corredores: **Prospectos** y **Propiedades**.
 
-En el uso cotidiano, los corredores viven principalmente en **Leads** y **Properties** en lugar de la pantalla genérica de citas — las visitas al sitio se registran como consultas contra una propiedad en lugar de como reservas independientes.
+En el uso cotidiano, los corredores viven principalmente en **Prospectos** y **Propiedades** en lugar de la pantalla genérica de citas — las visitas al sitio se registran como consultas contra una propiedad en lugar de como reservas independientes.
 
 ## Prospectos
 
-**Leads** es un tablero de embudo de arrastrar y soltar con cinco columnas: Abierto, Contactado, Propuesta, Ganado, Perdido. Cada tarjeta de prospecto lleva un nombre, teléfono/correo, empresa, origen (Referencia, Sitio Web, Visita Espontánea, Redes Sociales, Llamada en Frío, Otro), un valor estimado, y un agente asignado. Arrastre una tarjeta entre columnas para moverla a través del embudo, o use el "+" propio de la columna para agregar un prospecto directamente en esa etapa. La barra de KPI muestra el total de prospectos, prospectos abiertos, prospectos ganados, y el valor total del embudo.
+**Prospectos** es un tablero de embudo de arrastrar y soltar con cinco columnas: Abierto, Contactado, Propuesta, Ganado, Perdido. Cada tarjeta de prospecto lleva un nombre, teléfono/correo, empresa, origen (Referencia, Sitio Web, Visita Espontánea, Redes Sociales, Llamada en Frío, Otro), un valor estimado, y un agente asignado. Arrastre una tarjeta entre columnas para moverla a través del embudo, o use el "+" propio de la columna para agregar un prospecto directamente en esa etapa. La barra de KPI muestra el total de prospectos, prospectos abiertos, prospectos ganados, y el valor total del embudo.
 
 ## Propiedades
 
-**Properties** es su libro de anuncios. Cada anuncio registra:
+**Propiedades** es su libro de anuncios. Cada anuncio registra:
 
 - **Property type** — Departamento Residencial, Casa Independiente, Terreno, Oficina Comercial, Local Comercial, Almacén, o Agrícola.
 - **Listing type** — Venta, Alquiler, o Arrendamiento — lo cual cambia los campos de precio mostrados (precio de venta pedido para una venta; alquiler mensual y depósito de seguridad para un alquiler).

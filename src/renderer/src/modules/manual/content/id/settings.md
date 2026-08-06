@@ -1,12 +1,12 @@
 # Settings & Profil Bisnis
 
-Segala sesuatu yang membentuk cara Sarang berperilaku untuk bisnis Anda berada di bawah **Settings**, yang dapat diakses dari sidebar. Layar Settings memiliki menu sisi kiri sendiri berisi bagian-bagian — klik salah satu untuk membukanya.
+Segala sesuatu yang membentuk cara Sarang berperilaku untuk bisnis Anda berada di bawah **Pengaturan**, yang dapat diakses dari sidebar. Layar Settings memiliki menu sisi kiri sendiri berisi bagian-bagian — klik salah satu untuk membukanya.
 
 ## Business Profile
 
 **Settings → Business Profile** menyimpan detail yang tercetak pada setiap faktur dan struk: nama bisnis, nama pemilik, telepon, email, nomor GST/PPN, ID UPI, situs web, dan alamat lengkap (alamat, kota, provinsi, kode pos). Anda juga dapat mengunggah logo bisnis (JPG, PNG, atau WebP, di bawah 2MB) dan memilih apakah logo tersebut ditampilkan di Dasbor dan/atau sebagai watermark tipis pada dokumen yang dicetak.
 
-Jika jenis bisnis Anda adalah **Specialist Clinic**, muncul kolom tambahan **Specialty** (misalnya Pediatri, Ortopedi, THT). Klik **Edit** untuk mengubah salah satu kolom ini, lalu **Save Changes**. Negara, mata uang, dan model pajak ditampilkan di sini hanya sebagai referensi tetapi diubah masing-masing dari bagian **Currency & Locale** dan **Tax Configuration**.
+Jika jenis bisnis Anda adalah **Specialist Clinic**, muncul kolom tambahan **Specialty** (misalnya Pediatri, Ortopedi, THT). Klik **Edit** untuk mengubah salah satu kolom ini, lalu **Simpan Perubahan**. Negara, mata uang, dan model pajak ditampilkan di sini hanya sebagai referensi tetapi diubah masing-masing dari bagian **Mata Uang & Wilayah** dan **Tax Configuration**.
 
 ## Tax Configuration
 
@@ -30,10 +30,10 @@ Beralih template langsung mengubah navigasi sidebar dan set fitur Anda — tanpa
 - **Area Pricing Calculator** — harga berdasarkan area (sq ft / sq m), berguna untuk kaca, tripleks, atau ubin.
 - **Credit Limit Enforcement** — memblokir penjualan kredit baru begitu saldo tertunggak pelanggan akan melebihi batas kredit yang ditetapkan. Hanya memengaruhi pelanggan yang benar-benar memiliki batas kredit yang ditetapkan; pelanggan walk-in secara default tidak memiliki batas dan tidak pernah diblokir.
 - **Bulk Order Workflow** — layar pesanan grosir terpisah dengan tingkatan diskon berbasis volume untuk pelanggan grosir/dealer.
-- **Outstanding Analytics** — pelaporan tambahan tentang saldo tertunggak pelanggan dan usianya (aging).
+- **Analisis Piutang** — pelaporan tambahan tentang saldo tertunggak pelanggan dan usianya (aging).
 - **Logistics & Supply Chain** — sebuah paket yang mencakup fleet, ekspedisi, pengiriman, penerimaan barang (GRN), surat jalan, dan pelacakan ongkos angkut, untuk bisnis mana pun yang memindahkan barang dengan kendaraannya sendiri atau ingin melacak secara formal pengiriman dari pemasok.
 
-Dua fitur lintas-sektor lainnya memiliki bagian Settings khusus sendiri alih-alih berada dalam daftar ini: **Barcode & Loose Billing** dan **AI Assistant** (lihat di bawah, dan bab manualnya masing-masing). Menonaktifkan fitur-fitur ini tidak menghapus data yang ada — hanya menyembunyikan layar dan alur kerja terkait.
+Dua fitur lintas-sektor lainnya memiliki bagian Settings khusus sendiri alih-alih berada dalam daftar ini: **Barcode & Loose Billing** dan **Asisten AI** (lihat di bawah, dan bab manualnya masing-masing). Menonaktifkan fitur-fitur ini tidak menghapus data yang ada — hanya menyembunyikan layar dan alur kerja terkait.
 
 ## Barcode & Loose Billing
 
@@ -51,7 +51,7 @@ Dua fitur lintas-sektor lainnya memiliki bagian Settings khusus sendiri alih-ali
 
 **Settings → Appearance** memiliki dua kontrol:
 
-- **Dark Mode** — sakelar untuk skema warna gelap.
+- **Mode Gelap** — sakelar untuk skema warna gelap.
 - **Print Type** — pilih antara **A4 Invoice** (halaman penuh, berwarna), **Thermal 80mm** (lebar struk POS standar), atau **Thermal 58mm** (lebar struk POS sempit). Ini menentukan format yang digunakan setiap kali Anda mencetak faktur atau struk.
 
 Kedua preferensi disimpan secara otomatis dan diingat pada saat berikutnya Anda membuka Sarang.

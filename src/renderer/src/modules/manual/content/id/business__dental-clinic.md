@@ -4,7 +4,7 @@ Layar jenis bisnis ini hanya dalam bahasa Inggris, terlepas dari pengaturan baha
 
 ## Fondasi layanan bersama
 
-Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Gigi — dimulai dari empat blok bangunan yang sama: **Appointments** (memesan dan menjadwalkan kunjungan), sebuah **Service Catalog** (daftar prosedur gigi dan harganya), **Provider Schedules** (dokter gigi mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas dua alat khusus-gigi Sarang: bagan gigi dan jadwal recall.
+Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Gigi — dimulai dari empat blok bangunan yang sama: **Janji Temu** (memesan dan menjadwalkan kunjungan), sebuah **Katalog Layanan** (daftar prosedur gigi dan harganya), **Provider Schedules** (dokter gigi mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas dua alat khusus-gigi Sarang: bagan gigi dan jadwal recall.
 
 ## Tooth Chart
 
@@ -24,10 +24,10 @@ Tab **Treatment Plans** pada layar pasien yang sama memungkinkan Anda membangun 
 
 ## Recall Schedule
 
-Tab **Recall** (dan layar **Recall Schedule** mandiri, yang mendaftar recall setiap pasien di seluruh klinik) adalah sistem pengingat recall gigi Sarang — alur kerja "kembali untuk pembersihan 6-bulanan Anda" sehari-hari. Untuk setiap pasien Anda menetapkan:
+Tab **Recall** (dan layar **Jadwal Panggilan Ulang** mandiri, yang mendaftar recall setiap pasien di seluruh klinik) adalah sistem pengingat recall gigi Sarang — alur kerja "kembali untuk pembersihan 6-bulanan Anda" sehari-hari. Untuk setiap pasien Anda menetapkan:
 
 - **Recall Type** — 6-Month Hygiene, 12-Month Hygiene, Crown Review, atau Custom.
 - **Last Visit Date** dan **Next Recall Date**.
 - Catatan opsional.
 
-Layar Recall Schedule mengelompokkan setiap pasien ke dalam **Overdue**, **Due Soon** (dalam 7 hari), **This Month** (dalam 30 hari), atau **Upcoming**, dengan jumlah dan lencana berwarna-kode untuk setiap kelompok, sehingga Anda selalu tahu siapa yang harus dihubungi berikutnya. Sebuah lencana "Reminded" muncul setelah pengingat dikirim untuk recall pasien tersebut.
+Layar Recall Schedule mengelompokkan setiap pasien ke dalam **Terlambat**, **Due Soon** (dalam 7 hari), **Bulan Ini** (dalam 30 hari), atau **Upcoming**, dengan jumlah dan lencana berwarna-kode untuk setiap kelompok, sehingga Anda selalu tahu siapa yang harus dihubungi berikutnya. Sebuah lencana "Reminded" muncul setelah pengingat dikirim untuk recall pasien tersebut.

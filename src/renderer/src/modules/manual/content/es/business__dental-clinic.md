@@ -4,7 +4,7 @@ Las pantallas de este tipo de negocio están solo en inglés, sin importar el id
 
 ## La base de servicio compartida
 
-Cada tipo de negocio basado en servicios en Sarang — incluida Clínica Dental — parte de los mismos cuatro bloques de construcción: **Appointments** (reservar y programar visitas), un **Service Catalog** (la lista de procedimientos dentales y sus precios), **Provider Schedules** (qué dentista está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre las dos herramientas específicas para odontología de Sarang: el odontograma y el calendario de recitación.
+Cada tipo de negocio basado en servicios en Sarang — incluida Clínica Dental — parte de los mismos cuatro bloques de construcción: **Citas** (reservar y programar visitas), un **Catálogo de servicios** (la lista de procedimientos dentales y sus precios), **Provider Schedules** (qué dentista está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre las dos herramientas específicas para odontología de Sarang: el odontograma y el calendario de recitación.
 
 ## Odontograma
 
@@ -24,10 +24,10 @@ La pestaña de **Treatment Plans** en la misma pantalla del paciente le permite 
 
 ## Calendario de Recitación
 
-La pestaña de **Recall** (y la pantalla independiente de **Recall Schedule**, que lista la recitación de cada paciente en toda la clínica) es el sistema de recordatorios de recitación dental de Sarang — el flujo cotidiano de "vuelva para su limpieza de los 6 meses." Para cada paciente usted configura:
+La pestaña de **Recall** (y la pantalla independiente de **Calendario de recordatorios**, que lista la recitación de cada paciente en toda la clínica) es el sistema de recordatorios de recitación dental de Sarang — el flujo cotidiano de "vuelva para su limpieza de los 6 meses." Para cada paciente usted configura:
 
 - **Recall Type** — Higiene a 6 Meses, Higiene a 12 Meses, Revisión de Corona, o Personalizado.
 - **Last Visit Date** y **Next Recall Date**.
 - Notas opcionales.
 
-La pantalla de Recall Schedule clasifica a cada paciente en **Overdue**, **Due Soon** (dentro de 7 días), **This Month** (dentro de 30 días), o **Upcoming**, con conteos e insignias codificadas por color para cada banda, así siempre sabe a quién llamar a continuación. Aparece una insignia de "Reminded" una vez que se ha enviado un recordatorio para la recitación de ese paciente.
+La pantalla de Recall Schedule clasifica a cada paciente en **Atrasado**, **Due Soon** (dentro de 7 días), **Este Mes** (dentro de 30 días), o **Upcoming**, con conteos e insignias codificadas por color para cada banda, así siempre sabe a quién llamar a continuación. Aparece una insignia de "Reminded" una vez que se ha enviado un recordatorio para la recitación de ese paciente.

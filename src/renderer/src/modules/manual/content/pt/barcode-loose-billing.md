@@ -24,7 +24,7 @@ Se você ativou a geração de código de barras depois de já ter produtos no s
 
 ## Imprimindo etiquetas
 
-Abra **Print Labels** (acessível assim que a impressão de etiquetas de código de barras estiver ativada). Busque ou escaneie um produto para adicioná-lo ao lote de etiquetas, defina quantas cópias de cada etiqueta você precisa (até 500 por linha), escolha **A4 / Letter Sheet** ou **Thermal Label Printer** como saída, depois **Preview** ou **Print** diretamente. Se algum produto do lote ainda não tiver código de barras, o Sarang informa quais são e interrompe — gere um código de barras para eles primeiro (na tela de Produtos ou no preenchimento em massa acima).
+Abra **Print Labels** (acessível assim que a impressão de etiquetas de código de barras estiver ativada). Busque ou escaneie um produto para adicioná-lo ao lote de etiquetas, defina quantas cópias de cada etiqueta você precisa (até 500 por linha), escolha **A4 / Letter Sheet** ou **Thermal Label Printer** como saída, depois **Pré-visualizar** ou **Imprimir** diretamente. Se algum produto do lote ainda não tiver código de barras, o Sarang informa quais são e interrompe — gere um código de barras para eles primeiro (na tela de Produtos ou no preenchimento em massa acima).
 
 O tamanho físico da etiqueta térmica (largura e altura em milímetros) é configurado uma vez em **Configurações → Barcode & Loose Billing → Thermal Label Size**, para corresponder aos adesivos da sua impressora; isso não afeta a impressão em folha A4.
 

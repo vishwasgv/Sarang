@@ -18,10 +18,10 @@ Simpan, dan akun baru tersebut dapat langsung masuk dengan nama pengguna dan kat
 
 Setiap pengguna diberi satu peran, dan setiap peran hadir dengan seperangkat izin tetap yang sudah dibangun ke dalam Sarang — tidak ada layar untuk membuat peran khusus atau memilih izin satu per satu secara manual. Peran bawaan adalah:
 
-- **Admin** — akses sistem penuh, termasuk setiap pengaturan, setiap laporan, dan manajemen pengguna itu sendiri.
+- **Administrasi** — akses sistem penuh, termasuk setiap pengaturan, setiap laporan, dan manajemen pengguna itu sendiri.
 - **Manager** — kontrol operasional luas (penagihan, inventaris, pembelian, laporan, sebagian besar pengaturan) tanpa akses tingkat admin penuh.
 - **Cashier** — berfokus pada penagihan: membuat faktur, mencatat pembayaran, dan operasi konter sehari-hari yang relevan dengan jenis bisnis Anda.
-- **Staff** — dukungan operasional umum dengan akses yang lebih sempit daripada Cashier/Manager.
+- **Staf** — dukungan operasional umum dengan akses yang lebih sempit daripada Cashier/Manager.
 - **Kitchen Staff** — dibatasi untuk operasi dapur restoran (melihat/memperbarui KOT), untuk bisnis yang menggunakan template Restaurant.
 
 Setiap layar dan tindakan di Sarang memeriksa izin peran pengguna saat ini sebelum mengizinkannya — misalnya, bagian Users & Roles itu sendiri hanya terlihat oleh pengguna yang perannya memiliki izin `users.view`, dan membuat, mengedit, atau menonaktifkan pengguna lain masing-masing memerlukan izin terpisahnya sendiri. Jika peran Anda tidak memiliki akses ke sesuatu, opsi tersebut disembunyikan atau ditampilkan nonaktif.

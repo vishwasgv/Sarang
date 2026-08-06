@@ -2,17 +2,17 @@
 
 ## Ce qui est inclus
 
-Immobilier est un type d'entreprise de service construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous (pour les visites de biens), un catalogue de services, plannings des prestataires, et la file d'attente de notifications sont tous présents — plus deux modules construits spécifiquement pour les courtiers : **Leads** et **Properties**.
+Immobilier est un type d'entreprise de service construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous (pour les visites de biens), un catalogue de services, plannings des prestataires, et la file d'attente de notifications sont tous présents — plus deux modules construits spécifiquement pour les courtiers : **Prospects** et **Biens immobiliers**.
 
-Dans l'usage quotidien, les courtiers vivent principalement dans **Leads** et **Properties** plutôt que dans l'écran générique de rendez-vous — les visites de biens sont enregistrées comme des demandes contre un bien plutôt que comme des réservations autonomes.
+Dans l'usage quotidien, les courtiers vivent principalement dans **Prospects** et **Biens immobiliers** plutôt que dans l'écran générique de rendez-vous — les visites de biens sont enregistrées comme des demandes contre un bien plutôt que comme des réservations autonomes.
 
 ## Prospects
 
-**Leads** est un tableau pipeline en glisser-déposer avec cinq colonnes : Ouvert, Contacté, Proposition, Gagné, Perdu. Chaque carte de prospect porte un nom, téléphone/e-mail, entreprise, source (Recommandation, Site Web, Visite Spontanée, Réseaux Sociaux, Appel à Froid, Autre), une valeur estimée, et un agent assigné. Faites glisser une carte entre les colonnes pour la faire progresser dans le pipeline, ou utilisez le « + » propre à la colonne pour ajouter un prospect directement à cette étape. La barre KPI affiche le total des prospects, prospects ouverts, prospects gagnés, et la valeur totale du pipeline.
+**Prospects** est un tableau pipeline en glisser-déposer avec cinq colonnes : Ouvert, Contacté, Proposition, Gagné, Perdu. Chaque carte de prospect porte un nom, téléphone/e-mail, entreprise, source (Recommandation, Site Web, Visite Spontanée, Réseaux Sociaux, Appel à Froid, Autre), une valeur estimée, et un agent assigné. Faites glisser une carte entre les colonnes pour la faire progresser dans le pipeline, ou utilisez le « + » propre à la colonne pour ajouter un prospect directement à cette étape. La barre KPI affiche le total des prospects, prospects ouverts, prospects gagnés, et la valeur totale du pipeline.
 
 ## Biens
 
-**Properties** est votre carnet d'annonces. Chaque annonce enregistre :
+**Biens immobiliers** est votre carnet d'annonces. Chaque annonce enregistre :
 
 - **Property type** — Appartement Résidentiel, Maison Individuelle, Terrain, Bureau Commercial, Local Commercial, Entrepôt, ou Agricole.
 - **Listing type** — Vente, Location, ou Bail — ce qui change les champs de prix affichés (prix demandé pour une vente ; loyer mensuel et dépôt de garantie pour une location).

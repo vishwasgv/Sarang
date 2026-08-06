@@ -1,38 +1,38 @@
 # Restaurant
 
-Memilih **Restaurant** sebagai jenis bisnis Anda saat setup mengaktifkan empat hal di luar fitur universal yang didapat setiap bisnis: **Tables**, **Kitchen Order Tickets (KOT)**, **Recipes**, dan pelacakan stok bahan. Billing, Customers, Inventory, dan Reports semuanya bekerja dengan cara yang sama seperti dijelaskan di bab masing-masing — bab ini hanya membahas apa yang khusus untuk menjalankan sebuah restoran.
+Memilih **Restoran** sebagai jenis bisnis Anda saat setup mengaktifkan empat hal di luar fitur universal yang didapat setiap bisnis: **Meja**, **Tiket Pesanan Dapur (KOT)**, **Resep**, dan pelacakan stok bahan. Billing, Customers, Inventory, dan Reports semuanya bekerja dengan cara yang sama seperti dijelaskan di bab masing-masing — bab ini hanya membahas apa yang khusus untuk menjalankan sebuah restoran.
 
 ## Tables
 
-Buka **Restaurant Tables** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Free**, **Busy**, atau **Rsv** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya secara manual — atau biarkan status meja mengikuti pesanan sungguhan secara otomatis, lihat di bawah. Sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif. Tetapkan seorang **pelayan** ke sebuah meja dari kartunya sehingga Anda selalu tahu siapa yang melayaninya; hapus penugasan tersebut kapan saja.
+Buka **Meja Restoran** dari sidebar untuk melihat setiap meja yang telah Anda konfigurasi, masing-masing ditampilkan sebagai kartu dengan status saat ini: **Kosong**, **Terisi**, atau **Psn** (Reserved). Tambahkan sebuah meja dengan nomor meja (misalnya "T1") dan nama tampilan opsional. Ketuk tombol status pada kartu sebuah meja untuk mengubahnya secara manual — atau biarkan status meja mengikuti pesanan sungguhan secara otomatis, lihat di bawah. Sebuah meja tidak dapat dihapus selama memiliki tiket dapur yang aktif. Tetapkan seorang **pelayan** ke sebuah meja dari kartunya sehingga Anda selalu tahu siapa yang melayaninya; hapus penugasan tersebut kapan saja.
 
-**Start Order** pada kartu meja kosong membuka Billing dengan meja itu sudah terpasang — susun keranjang seperti biasa dan konfirmasi penjualan. Meja sekarang benar-benar terhubung ke tagihan itu: kartunya menampilkan **View Bill** (langsung ke invoice) dan **Merge In** menggantikan Start Order, dan meja otomatis bebas kembali ke Free begitu tagihan lunas sepenuhnya atau dibatalkan — tidak perlu mengingat untuk mengubah statusnya secara manual.
+**Mulai Pesanan** pada kartu meja kosong membuka Billing dengan meja itu sudah terpasang — susun keranjang seperti biasa dan konfirmasi penjualan. Meja sekarang benar-benar terhubung ke tagihan itu: kartunya menampilkan **Lihat Tagihan** (langsung ke invoice) dan **Gabungkan** menggantikan Start Order, dan meja otomatis bebas kembali ke Free begitu tagihan lunas sepenuhnya atau dibatalkan — tidak perlu mengingat untuk mengubah statusnya secara manual.
 
-**Merge In** menggabungkan meja kedua ke tagihan yang sama yang sedang berjalan — untuk rombongan besar yang duduk di dua meja atau lebih dan ingin satu tagihan di akhir. Ketuk pada meja yang sudah menjalankan pesanan, pilih meja kosong mana pun dari daftar, dan meja itu sekarang menampilkan pasangan **View Bill**/**Merge In** yang sama, mengarah ke invoice yang sama. Tambahkan sebanyak mungkin meja sesuai luas rombongan itu.
+**Gabungkan** menggabungkan meja kedua ke tagihan yang sama yang sedang berjalan — untuk rombongan besar yang duduk di dua meja atau lebih dan ingin satu tagihan di akhir. Ketuk pada meja yang sudah menjalankan pesanan, pilih meja kosong mana pun dari daftar, dan meja itu sekarang menampilkan pasangan **Lihat Tagihan**/**Gabungkan** yang sama, mengarah ke invoice yang sama. Tambahkan sebanyak mungkin meja sesuai luas rombongan itu.
 
-**End of Day** adalah tombol pada layar ini: ia menandai setiap meja yang terisi menjadi tersedia kembali dan menampilkan ringkasan penutupan satu baris (KOT yang dilayani dan pendapatan hari ini) sehingga Anda dapat menutup ruang makan di akhir shift.
+**Tutup Harian** adalah tombol pada layar ini: ia menandai setiap meja yang terisi menjadi tersedia kembali dan menampilkan ringkasan penutupan satu baris (KOT yang dilayani dan pendapatan hari ini) sehingga Anda dapat menutup ruang makan di akhir shift.
 
 ## Reservasi
 
-Ketuk **Reservations** di bagian atas Restaurant Tables untuk melihat pemesanan mendatang dan menambah yang baru — nama pelanggan, telepon, jumlah rombongan, tanggal/waktu, meja opsional, dan catatan bebas (kebutuhan makanan khusus, acara spesial, apa pun yang perlu diketahui saat mendudukkan mereka). Meja dengan reservasi yang akan datang dalam beberapa jam ke depan menampilkan lencana kecil "Reserved 7:30 PM" langsung di kartunya, jadi Anda bisa melihatnya sekilas di lantai.
+Ketuk **Reservasi** di bagian atas Restaurant Tables untuk melihat pemesanan mendatang dan menambah yang baru — nama pelanggan, telepon, jumlah rombongan, tanggal/waktu, meja opsional, dan catatan bebas (kebutuhan makanan khusus, acara spesial, apa pun yang perlu diketahui saat mendudukkan mereka). Meja dengan reservasi yang akan datang dalam beberapa jam ke depan menampilkan lencana kecil "Reserved 7:30 PM" langsung di kartunya, jadi Anda bisa melihatnya sekilas di lantai.
 
-Saat rombongan tiba, ketuk **Seat** — ini menandai meja sebagai Busy dan reservasi sebagai Seated; reservasi itu sendiri tidak membuat tagihan, jadi gunakan **Start Order** pada meja seperti biasa begitu mereka siap memesan. **No-show** dan **Cancel** menutup reservasi yang tidak terjadi, tanpa menyentuh meja.
+Saat rombongan tiba, ketuk **Dudukkan** — ini menandai meja sebagai Busy dan reservasi sebagai Seated; reservasi itu sendiri tidak membuat tagihan, jadi gunakan **Mulai Pesanan** pada meja seperti biasa begitu mereka siap memesan. **Tidak Hadir** dan **Batal** menutup reservasi yang tidak terjadi, tanpa menyentuh meja.
 
 ## Memisah tagihan
 
-Setelah pesanan tercatat tapi sebelum ada pembayaran, **Split Bill** pada layar invoice membaginya menjadi dua tagihan terpisah atau lebih — pilih berapa banyak tagihan, lalu tentukan berapa banyak dari setiap item masuk ke masing-masing tagihan (item yang dibagi bersama, seperti satu makanan penutup yang dibagi dua orang, bisa dipecah hingga per unit). Setiap tagihan menjadi invoice sungguhan sendiri, ditagih dan dibayar terpisah dari situ. Meja tetap Busy, sekarang mengarah ke tagihan pertama, hingga setiap tagihan yang terpisah benar-benar lunas. Memisah hanya mengubah cara tagihan dibayar — tiket dapur asli dan stok yang sudah dikurangi tidak tersentuh.
+Setelah pesanan tercatat tapi sebelum ada pembayaran, **Pisah Tagihan** pada layar invoice membaginya menjadi dua tagihan terpisah atau lebih — pilih berapa banyak tagihan, lalu tentukan berapa banyak dari setiap item masuk ke masing-masing tagihan (item yang dibagi bersama, seperti satu makanan penutup yang dibagi dua orang, bisa dipecah hingga per unit). Setiap tagihan menjadi invoice sungguhan sendiri, ditagih dan dibayar terpisah dari situ. Meja tetap Busy, sekarang mengarah ke tagihan pertama, hingga setiap tagihan yang terpisah benar-benar lunas. Memisah hanya mengubah cara tagihan dibayar — tiket dapur asli dan stok yang sudah dikurangi tidak tersentuh.
 
 ## Tip / biaya layanan dan item "86"
 
-Pada layar Billing, gunakan **Add Tip / Service Charge** untuk menambahkan baris tip ke sebuah bill tanpa itu terikat pada item menu tertentu atau dikenai pajak sebagai sebuah produk.
+Pada layar Billing, gunakan **Tambah Tip / Biaya Layanan** untuk menambahkan baris tip ke sebuah bill tanpa itu terikat pada item menu tertentu atau dikenai pajak sebagai sebuah produk.
 
 Pada layar Products, alihkan sebuah item menu mana pun menjadi **86** (istilah slang dapur untuk "stok habis untuk hari ini") untuk langsung menyembunyikannya dari keranjang billing dan menu QR yang menghadap pelanggan, tanpa menonaktifkan produk itu sendiri — cocok untuk sebuah hidangan yang habis terjual untuk hari itu tetapi akan kembali ke menu besok.
 
 ## Kitchen Order Tickets (KOT)
 
-Sebuah KOT adalah salinan dapur dari sebuah pesanan. Setelah membuat pesanan di **Billing**, buka faktur tersebut dan ketuk **Send to Kitchen** untuk membuat KOT untuknya. Dari **Kitchen Order Tickets** di sidebar, staf dapur melihat setiap tiket dikelompokkan berdasarkan status — Pending, In Progress, Done, Cancelled — beserta item dan kuantitasnya, dan memajukan masing-masing dengan satu ketukan (**Start Cooking** → **Mark Done**), atau **Cancel**. Setiap tiket juga bisa langsung dicetak ke printer dapur Anda.
+Sebuah KOT adalah salinan dapur dari sebuah pesanan. Setelah membuat pesanan di **Penagihan**, buka faktur tersebut dan ketuk **Kirim ke Dapur** untuk membuat KOT untuknya. Dari **Kitchen Order Tickets** di sidebar, staf dapur melihat setiap tiket dikelompokkan berdasarkan status — Pending, In Progress, Done, Cancelled — beserta item dan kuantitasnya, dan memajukan masing-masing dengan satu ketukan (**Start Cooking** → **Mark Done**), atau **Batal**. Setiap tiket juga bisa langsung dicetak ke printer dapur Anda.
 
-Menandai sebuah KOT **Done** adalah yang memicu pengurangan stok bahan (lihat di bawah) dan membebaskan meja yang dimilikinya, begitu tidak ada tiket aktif lain yang menggunakan meja tersebut.
+Menandai sebuah KOT **Selesai** adalah yang memicu pengurangan stok bahan (lihat di bawah) dan membebaskan meja yang dimilikinya, begitu tidak ada tiket aktif lain yang menggunakan meja tersebut.
 
 ## Opsi perangkat keras dapur
 
@@ -50,7 +50,7 @@ Selain layar Kitchen Order Tickets di dalam aplikasi, Sarang menawarkan tiga car
 
 ## Recipes dan pelacakan bahan
 
-Buka **Recipes** untuk menautkan sebuah item menu (misalnya "Masala Chai") ke bahan mentah yang dikonsumsinya dan berapa banyak masing-masing — cari produk menu, beri nama resep, lalu tambahkan baris bahan (setiap bahan hanya bisa muncul satu kali per resep; gabungkan kuantitas alih-alih menambahkan baris duplikat). Daftar bahan setiap resep ditampilkan terbuka dalam tampilan daftar.
+Buka **Resep** untuk menautkan sebuah item menu (misalnya "Masala Chai") ke bahan mentah yang dikonsumsinya dan berapa banyak masing-masing — cari produk menu, beri nama resep, lalu tambahkan baris bahan (setiap bahan hanya bisa muncul satu kali per resep; gabungkan kuantitas alih-alih menambahkan baris duplikat). Daftar bahan setiap resep ditampilkan terbuka dalam tampilan daftar.
 
 Setelah sebuah resep ada untuk item menu, menyelesaikan KOT-nya (menandainya Done) secara otomatis mengurangi kuantitas bahan resep × kuantitas yang dipesan dari stok produk reguler Anda — tidak ada inventaris bahan terpisah untuk dikelola. Jika stok sebuah bahan tidak bisa disesuaikan karena alasan tertentu, Sarang tidak diam-diam kehilangan selisihnya: ia memunculkan notifikasi yang memberi tahu bahan mana yang perlu dihitung ulang secara manual, sehingga angka stok Anda tidak pernah diam-diam melenceng.
 
@@ -58,7 +58,13 @@ Item menu tanpa resep yang dikonfigurasi cukup tidak mengurangi stok bahan apa p
 
 ## Pemesanan meja lewat QR-code (opt-in)
 
-Restaurant Tables juga memiliki toggle **QR Table Ordering**, nonaktif secara default. Aktifkan dan Sarang memulai server lokal kecil di jaringan WiFi Anda sendiri (tanpa perlu internet) sehingga pelanggan dapat memindai kode QR meja yang tercetak, menjelajahi menu, dan mengajukan permintaan pesanan dari ponsel mereka. Tidak ada yang otomatis menjadi tagihan sungguhan — setiap pesanan masuk muncul di bawah **Incoming Orders** pada layar Kitchen Order Tickets, tempat staf secara eksplisit **Accept** (memilih metode pembayaran, yang membuat faktur dan KOT bersamaan) atau **Reject** pesanan tersebut. Kode QR setiap meja bisa dibuat dan dicetak dari kartunya pada layar Restaurant Tables.
+Restaurant Tables juga memiliki toggle **Pemesanan Meja via QR**, nonaktif secara default. Aktifkan dan Sarang memulai server lokal kecil di jaringan WiFi Anda sendiri (tanpa perlu internet) sehingga pelanggan dapat memindai kode QR meja yang tercetak, menjelajahi menu, dan mengajukan permintaan pesanan dari ponsel mereka. Tidak ada yang otomatis menjadi tagihan sungguhan — setiap pesanan masuk muncul di bawah **Incoming Orders** pada layar Kitchen Order Tickets, tempat staf secara eksplisit **Terima** (memilih metode pembayaran, yang membuat faktur dan KOT bersamaan) atau **Tolak** pesanan tersebut. Kode QR setiap meja bisa dibuat dan dicetak dari kartunya pada layar Restaurant Tables.
+
+### QR gabung WiFi (kombo dengan QR pemesanan)
+
+Karena ponsel pelanggan perlu berada di WiFi restoran Anda agar bisa mencapai halaman pemesanan sama sekali, kartu **Jaringan WiFi** (muncul begitu Pemesanan Meja via QR aktif) memungkinkan Anda menyimpan nama dan kata sandi jaringan tamu Anda satu kali. Setelah itu, kode QR setiap meja menampilkan — dan mencetak — kode QR kedua di atas kode QR pemesanan: pindai untuk bergabung ke WiFi secara otomatis, lalu pindai kode QR pemesanan tepat di bawahnya untuk menjelajahi menu dan memesan. Tidak perlu mengetik kata sandi, tidak perlu papan WiFi terpisah di dekat meja.
+
+Ini sepenuhnya opsional — biarkan kartu Jaringan WiFi tidak dikonfigurasi dan kode QR meja tetap bekerja persis seperti sebelumnya (hanya kode QR pemesanan). Mengedit jaringan di kemudian hari (misalnya setelah mengganti kata sandi router Anda) hanyalah menyimpan ulang yang sederhana; membiarkan kolom kata sandi kosong saat hanya memperbarui nama jaringan akan mempertahankan kata sandi yang ada, bukan menghapusnya. Menandai jaringan sebagai **terbuka** (tanpa kata sandi) akan melewati kolom kata sandi sepenuhnya — berguna jika WiFi tamu Anda tidak memiliki kata sandi sendiri.
 
 ## Yang dibagikan dengan setiap bisnis
 

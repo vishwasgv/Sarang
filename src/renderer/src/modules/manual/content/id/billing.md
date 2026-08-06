@@ -10,7 +10,7 @@ Buka **Penagihan** dari sidebar (`/billing`) untuk masuk ke layar point-of-sale.
 4. **Pilih metode pembayaran**: Tunai, UPI, Kartu, Wallet, Kredit (Bayar Nanti), atau Split. **Kredit** memerlukan pelanggan yang dipilih — faktur dibuat BELUM LUNAS dan jumlahnya ditambahkan ke buku besar pelanggan tersebut. **Split** memungkinkan Anda memasukkan jumlah Tunai dan UPI terpisah yang harus totalnya sama dengan total faktur.
 5. **Terapkan diskon global** (selain diskon per-baris jika ada) bila diperlukan, menggunakan kotak diskon di panel ringkasan.
 6. Jika model pajak Anda adalah GST, centang **Inter-State Sale (IGST)** ketika penjualan melintasi batas negara bagian — ini mengubah baris pajak yang tercetak dari CGST+SGST menjadi satu baris IGST.
-7. Klik **Confirm Sale** (atau tekan **F10** / **Ctrl+Enter**) untuk membuat faktur. Anda akan langsung dibawa ke layar detail faktur baru tersebut.
+7. Klik **Konfirmasi Penjualan** (atau tekan **F10** / **Ctrl+Enter**) untuk membuat faktur. Anda akan langsung dibawa ke layar detail faktur baru tersebut.
 
 Keranjang menampilkan subtotal berjalan, diskon, pajak, penyesuaian pembulatan, dan total saat Anda menyusunnya. **Clear Cart** di bagian bawah mengatur ulang semuanya tanpa menyimpan.
 
@@ -18,7 +18,7 @@ Sebuah kisi ubin berisi **produk yang sering terjual** muncul di atas kotak penc
 
 Lebih suka mengklik daripada mengetik sepenuhnya? Klik ikon kisi di sebelah kotak pencarian untuk beralih ke **Jelajahi Produk** — setiap produk aktif ditampilkan sebagai ubin, diorganisir dalam chip kategori (Semua, ditambah satu per kategori) sehingga Anda bisa mencapai yang dibutuhkan hanya dengan mengetuk, tanpa menyentuh keyboard. Sarang memilih mode awal yang masuk akal untuk Anda: Jelajahi sebagai default untuk katalog kecil (kurang lebih di bawah 100 produk aktif — menu restoran biasa atau toko kecil), Pencarian sebagai default untuk katalog besar (agar katalog Distributor atau Elektronik dengan ratusan item tidak berubah menjadi gulir tanpa akhir) — tetapi tombol beralih selalu memungkinkan Anda beralih ke salah satu, terlepas dari ukuran katalog. Jika katalog Anda cukup besar sehingga Jelajahi hanya menampilkan batch pertama produk, sebuah catatan di atas kisi memberi tahu hal ini dan mengarahkan Anda kembali ke pencarian untuk sisanya.
 
-Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang saat ini? Klik **Hold Sale** untuk menahannya sementara dan mulai dari awal; **Resume Sale** menampilkan keranjang-keranjang yang ditahan untuk dilanjutkan persis dari titik terakhir. **MRP** sebuah produk, ketika diatur lebih tinggi daripada harga jualnya, ditampilkan sebagai harga referensi yang dicoret di samping harga sebenarnya dalam hasil pencarian.
+Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang saat ini? Klik **Tahan Penjualan** untuk menahannya sementara dan mulai dari awal; **Lanjutkan Penjualan** menampilkan keranjang-keranjang yang ditahan untuk dilanjutkan persis dari titik terakhir. **MRP** sebuah produk, ketika diatur lebih tinggi daripada harga jualnya, ditampilkan sebagai harga referensi yang dicoret di samping harga sebenarnya dalam hasil pencarian.
 
 ## Riwayat dan detail faktur
 
@@ -26,25 +26,25 @@ Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang sa
 
 Membuka sebuah faktur menampilkan seluruh baris item, rincian pajak, dan riwayat pembayarannya. Dari sini Anda bisa:
 
-- **Record Payment** — masukkan jumlah (penuh atau sebagian), pilih metode (Tunai, UPI, Kartu, atau Wallet — Kredit tidak ditawarkan di sini karena mencatat pembayaran berarti uang sungguhan telah diterima), dan nomor referensi serta keterangan opsional. Mencatat pembayaran langsung memperbarui saldo dan status pembayaran; mencatat kurang dari saldo penuh membuat faktur tetap berstatus SEBAGIAN.
-- **Reverse Payment** — jika sebuah pembayaran tercatat keliru, batalkan (reverse) dengan menyertakan alasan. Pembayaran yang dibatalkan tetap terlihat (dengan garis coret) untuk keperluan jejak audit.
-- **Print** atau **Print Receipt** — pratinjau tata letak faktur A4 atau struk thermal sebelum mengirimnya ke printer.
-- **Cancel Invoice** — memerlukan alasan dan tidak dapat dibatalkan kembali.
-- **Send to Kitchen** — hanya muncul untuk bisnis bertipe Restoran dengan KOT aktif, dan hanya sebelum sebuah KOT sudah ada untuk faktur tersebut.
+- **Catat Pembayaran** — masukkan jumlah (penuh atau sebagian), pilih metode (Tunai, UPI, Kartu, atau Wallet — Kredit tidak ditawarkan di sini karena mencatat pembayaran berarti uang sungguhan telah diterima), dan nomor referensi serta keterangan opsional. Mencatat pembayaran langsung memperbarui saldo dan status pembayaran; mencatat kurang dari saldo penuh membuat faktur tetap berstatus SEBAGIAN.
+- **Batalkan Pembayaran** — jika sebuah pembayaran tercatat keliru, batalkan (reverse) dengan menyertakan alasan. Pembayaran yang dibatalkan tetap terlihat (dengan garis coret) untuk keperluan jejak audit.
+- **Cetak** atau **Cetak Struk** — pratinjau tata letak faktur A4 atau struk thermal sebelum mengirimnya ke printer.
+- **Batalkan Faktur** — memerlukan alasan dan tidak dapat dibatalkan kembali.
+- **Kirim ke Dapur** — hanya muncul untuk bisnis bertipe Restoran dengan KOT aktif, dan hanya sebelum sebuah KOT sudah ada untuk faktur tersebut.
 
-**Payment History** adalah layar terpisah yang mendaftar setiap pembayaran yang pernah tercatat, di seluruh faktur — dapat dicari berdasarkan faktur, pelanggan, atau nomor referensi, dan difilter berdasarkan metode pembayaran atau rentang tanggal. Membatalkan (reverse) pembayaran juga bisa dilakukan dari sini.
+**Riwayat Pembayaran** adalah layar terpisah yang mendaftar setiap pembayaran yang pernah tercatat, di seluruh faktur — dapat dicari berdasarkan faktur, pelanggan, atau nomor referensi, dan difilter berdasarkan metode pembayaran atau rentang tanggal. Membatalkan (reverse) pembayaran juga bisa dilakukan dari sini.
 
 ## Quotations
 
-**Quotations** (`/billing/quotations`) adalah perkiraan harga yang tidak mengikat, yang bisa Anda berikan kepada pelanggan sebelum mereka memutuskan. Buat satu dengan **New Quotation**: pilih atau ketik nama pelanggan, tambahkan baris item (dicari dengan cara yang sama seperti Penagihan), tanggal masa berlaku opsional, dan catatan.
+**Penawaran** (`/billing/quotations`) adalah perkiraan harga yang tidak mengikat, yang bisa Anda berikan kepada pelanggan sebelum mereka memutuskan. Buat satu dengan **Penawaran Baru**: pilih atau ketik nama pelanggan, tambahkan baris item (dicari dengan cara yang sama seperti Penagihan), tanggal masa berlaku opsional, dan catatan.
 
-Sebuah quotation dimulai sebagai **Draft** dan bisa menjadi **Sent**, **Accepted**, atau **Expired**. Setelah pelanggan menyetujuinya, klik **Convert to Invoice** — ini membuat faktur sungguhan dari item-item quotation tersebut dan menandai quotation sebagai Accepted. Quotation yang sudah dikonversi menampilkan tautan ke faktur hasilnya, bukan tombol konversi. Quotation bisa dicetak dalam lebar A4 atau struk, dan dihapus selama belum dikonversi.
+Sebuah quotation dimulai sebagai **Draf** dan bisa menjadi **Sent**, **Diterima**, atau **Kedaluwarsa**. Setelah pelanggan menyetujuinya, klik **Ubah menjadi Faktur** — ini membuat faktur sungguhan dari item-item quotation tersebut dan menandai quotation sebagai Accepted. Quotation yang sudah dikonversi menampilkan tautan ke faktur hasilnya, bukan tombol konversi. Quotation bisa dicetak dalam lebar A4 atau struk, dan dihapus selama belum dikonversi.
 
 ## Credit Notes dan Debit Notes
 
-**Credit Notes** (`/billing/credit-notes`) mencatat uang yang harus dikembalikan *kepada* pelanggan — biasanya untuk retur, kelebihan tagih, atau penyesuaian goodwill. Buat satu dengan alasan dan jumlah, opsional dikaitkan dengan pelanggan dan/atau faktur asli. Mengaitkannya dengan pelanggan otomatis mengkredit buku besar mereka, mengurangi jumlah yang mereka utang kepada Anda.
+**Nota Kredit** (`/billing/credit-notes`) mencatat uang yang harus dikembalikan *kepada* pelanggan — biasanya untuk retur, kelebihan tagih, atau penyesuaian goodwill. Buat satu dengan alasan dan jumlah, opsional dikaitkan dengan pelanggan dan/atau faktur asli. Mengaitkannya dengan pelanggan otomatis mengkredit buku besar mereka, mengurangi jumlah yang mereka utang kepada Anda.
 
-**Debit Notes** (`/billing/debit-notes`) adalah padanannya dari sisi pemasok — uang yang harus dikembalikan pemasok kepada Anda, misalnya retur stok yang dibeli atau koreksi tagihan. Mengaitkan debit note dengan pemasok mendebit buku besar mereka, mengurangi jumlah yang Anda utang kepada mereka. Baik credit note maupun debit note bisa opsional merujuk ke faktur atau pesanan pembelian yang terkait, bisa diedit atau dihapus, dan dicetak dalam lebar A4 atau struk.
+**Nota Debit** (`/billing/debit-notes`) adalah padanannya dari sisi pemasok — uang yang harus dikembalikan pemasok kepada Anda, misalnya retur stok yang dibeli atau koreksi tagihan. Mengaitkan debit note dengan pemasok mendebit buku besar mereka, mengurangi jumlah yang Anda utang kepada mereka. Baik credit note maupun debit note bisa opsional merujuk ke faktur atau pesanan pembelian yang terkait, bisa diedit atau dihapus, dan dicetak dalam lebar A4 atau struk.
 
 ## Membagikan dokumen via WhatsApp dan Email
 

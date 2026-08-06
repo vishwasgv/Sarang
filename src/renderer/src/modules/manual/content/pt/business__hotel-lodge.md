@@ -2,15 +2,15 @@
 
 ## O que é diferente neste tipo de negócio
 
-Hotel/Pousada é deliberadamente seu próprio setor, em vez de uma extensão do modelo genérico de Negócio de Aluguel ou do modelo padrão de agendamento de visita única que todo outro negócio de serviço no Sarang usa. Uma estadia em hotel precisa de três coisas que nenhum dos dois cobre: captura de identificação do hóspede legalmente exigida no check-in, faturamento por diária ao longo de uma estadia de várias noites, e cobranças extras durante a estadia adicionadas a um folio corrente antes do check-out final. Assim, Hotel/Pousada recebe um módulo dedicado, **Hotel Bookings**, cobrindo todo o ciclo de vida da reserva de forma independente.
+Hotel/Pousada é deliberadamente seu próprio setor, em vez de uma extensão do modelo genérico de Negócio de Aluguel ou do modelo padrão de agendamento de visita única que todo outro negócio de serviço no Sarang usa. Uma estadia em hotel precisa de três coisas que nenhum dos dois cobre: captura de identificação do hóspede legalmente exigida no check-in, faturamento por diária ao longo de uma estadia de várias noites, e cobranças extras durante a estadia adicionadas a um folio corrente antes do check-out final. Assim, Hotel/Pousada recebe um módulo dedicado, **Reservas de hotel**, cobrindo todo o ciclo de vida da reserva de forma independente.
 
 ## Cadastro de quartos
 
-Abra **Rooms** na barra lateral para manter sua lista de quartos — número do quarto, tipo de quarto, andar, ocupação máxima, e uma diária base. O status de um quarto (Disponível, Ocupado, Limpeza, Manutenção, ou Fora de Serviço) muda principalmente sozinho conforme as reservas avançam pelo check-in e check-out; você não pode alterar manualmente o status de um quarto que atualmente tem um hóspede dentro.
+Abra **Quartos** na barra lateral para manter sua lista de quartos — número do quarto, tipo de quarto, andar, ocupação máxima, e uma diária base. O status de um quarto (Disponível, Ocupado, Limpeza, Manutenção, ou Fora de Serviço) muda principalmente sozinho conforme as reservas avançam pelo check-in e check-out; você não pode alterar manualmente o status de um quarto que atualmente tem um hóspede dentro.
 
 ## Reservando uma estadia
 
-Abra **Hotel Bookings** para criar uma nova reserva — escolha um quarto, datas de check-in e check-out, nome do hóspede e dados de contato, número de hóspedes (limitado à ocupação máxima do quarto), um adiantamento opcional, e de onde veio a reserva (**origem/canal de reserva** — Visita Espontânea, Telefone, MakeMyTrip, Booking.com, ou qualquer outro canal que você digitar). O Sarang verifica se o quarto está genuinamente livre para aquele intervalo exato de datas antes de confirmar — a mesma verificação de disponibilidade em tempo real usada em outras partes do Sarang, para que dois membros da equipe nunca possam reservar duas vezes o mesmo quarto para datas sobrepostas. As noites são cobradas por datas do calendário, não por horas decorridas — uma estadia de check-in à noite até check-out na manhã seguinte é sempre uma diária, como na prática hoteleira normal.
+Abra **Reservas de hotel** para criar uma nova reserva — escolha um quarto, datas de check-in e check-out, nome do hóspede e dados de contato, número de hóspedes (limitado à ocupação máxima do quarto), um adiantamento opcional, e de onde veio a reserva (**origem/canal de reserva** — Visita Espontânea, Telefone, MakeMyTrip, Booking.com, ou qualquer outro canal que você digitar). O Sarang verifica se o quarto está genuinamente livre para aquele intervalo exato de datas antes de confirmar — a mesma verificação de disponibilidade em tempo real usada em outras partes do Sarang, para que dois membros da equipe nunca possam reservar duas vezes o mesmo quarto para datas sobrepostas. As noites são cobradas por datas do calendário, não por horas decorridas — uma estadia de check-in à noite até check-out na manhã seguinte é sempre uma diária, como na prática hoteleira normal.
 
 Se o hóspede já se hospedou antes, escolhê-lo na busca de clientes mostra sua **contagem de estadias anteriores** diretamente no formulário de New Booking, para que a recepção possa reconhecer e receber de volta um hóspede recorrente.
 
@@ -38,7 +38,7 @@ O check-out encerra a estadia e libera o quarto para limpeza. Gerar a nota fisca
 
 ## Governança
 
-Todo check-out coloca automaticamente em fila uma **tarefa de governança** para aquele quarto. Abra **Housekeeping** para ver todas as tarefas pendentes, atribuí-las a um membro da equipe, e marcá-las como concluídas — assim que toda tarefa aberta para um quarto está concluída, o quarto volta para Disponível por conta própria, em vez de depender de alguém se lembrar de mudar seu status manualmente.
+Todo check-out coloca automaticamente em fila uma **tarefa de governança** para aquele quarto. Abra **Governança** para ver todas as tarefas pendentes, atribuí-las a um membro da equipe, e marcá-las como concluídas — assim que toda tarefa aberta para um quarto está concluída, o quarto volta para Disponível por conta própria, em vez de depender de alguém se lembrar de mudar seu status manualmente.
 
 ## Cancelamento ou não comparecimento
 
@@ -46,7 +46,7 @@ Uma reserva Confirmed que ainda não fez check-in pode ser cancelada (com um mot
 
 ## Relatórios
 
-**Reports** inclui um relatório de Occupancy (quartos ocupados/disponíveis/em limpeza/em manutenção neste momento, com uma porcentagem de ocupação) e um relatório de Guest Register — o registro de conformidade que este setor existe para sustentar, listando os detalhes de identificação de cada hóspede para estadias que se sobrepõem a um intervalo de datas que você escolhe, pronto para ser produzido sob demanda.
+**Relatórios** inclui um relatório de Occupancy (quartos ocupados/disponíveis/em limpeza/em manutenção neste momento, com uma porcentagem de ocupação) e um relatório de Guest Register — o registro de conformidade que este setor existe para sustentar, listando os detalhes de identificação de cada hóspede para estadias que se sobrepõem a um intervalo de datas que você escolhe, pronto para ser produzido sob demanda.
 
 ## Idioma
 

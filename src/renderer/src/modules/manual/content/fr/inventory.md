@@ -22,11 +22,11 @@ Certains types de produits sont optionnels et ne s'affichent que lorsque la fonc
 
 Pour corriger manuellement un niveau de stock — après un inventaire physique, un dommage, ou un solde d'ouverture — cliquez sur l'icône d'ajustement de stock d'une ligne. Saisissez la nouvelle quantité (pas la différence) ; l'écran vous montre combien sera ajouté ou retiré avant l'enregistrement, et exige un motif. Si vous augmentez le stock, vous pouvez facultativement enregistrer le coût unitaire de cet ajout, qui alimente le coût moyen du produit utilisé pour la valorisation.
 
-Chaque modification du stock — une vente, un ajustement manuel, un bon de commande reçu, un retour, ou une production — est enregistrée comme un **mouvement** immuable. **Inventory Movements** (`/inventory/movements`, accessible via le bouton **Movements**) est un registre en lecture seule de chacun d'eux, filtrable par type (Stock Added, Sale, PO Received, Adjustment, Sale Return, Return Received, Dispatched, Produced) et consultable par recherche, afin que vous puissiez toujours retracer précisément pourquoi le stock d'un produit est ce qu'il est.
+Chaque modification du stock — une vente, un ajustement manuel, un bon de commande reçu, un retour, ou une production — est enregistrée comme un **mouvement** immuable. **Mouvements de Stock** (`/inventory/movements`, accessible via le bouton **Mouvements**) est un registre en lecture seule de chacun d'eux, filtrable par type (Stock Added, Sale, PO Received, Adjustment, Sale Return, Return Received, Dispatched, Produced) et consultable par recherche, afin que vous puissiez toujours retracer précisément pourquoi le stock d'un produit est ce qu'il est.
 
 ## Bons de commande
 
-**Bons de commande** (`/purchase-orders`) permettent de suivre ce que vous avez commandé auprès de vos fournisseurs. Créez-en un avec **New PO** : choisissez un fournisseur, ajoutez des lignes d'articles (recherchés par nom de produit ou SKU) avec quantité, coût unitaire et taux de taxe, et une date de livraison prévue facultative.
+**Bons de commande** (`/purchase-orders`) permettent de suivre ce que vous avez commandé auprès de vos fournisseurs. Créez-en un avec **Nouveau BC** : choisissez un fournisseur, ajoutez des lignes d'articles (recherchés par nom de produit ou SKU) avec quantité, coût unitaire et taux de taxe, et une date de livraison prévue facultative.
 
 Un bon de commande suit un cycle de vie fixe :
 

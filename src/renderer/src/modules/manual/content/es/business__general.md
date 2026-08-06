@@ -4,7 +4,7 @@ Elegir **General** como su tipo de negocio no activa ningún módulo de función
 
 ## Logística y Cadena de Suministro
 
-Debido a que la plantilla predeterminada de General incluye los módulos de Logística, obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
+Debido a que la plantilla predeterminada de General incluye los módulos de Logística, obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
 
 ## Crecer hacia una especialidad
 

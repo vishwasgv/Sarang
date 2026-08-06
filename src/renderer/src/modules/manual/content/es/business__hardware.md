@@ -4,7 +4,7 @@ Elegir **Ferretería** como su tipo de negocio activa el **precio por área**, l
 
 ## Precio por área (calculadora L × A)
 
-Las ferreterías a menudo venden productos con precio por pie/metro cuadrado — baldosas, láminas, vidrio, madera contrachapada — donde el cliente no sabe el área de memoria. En **Facturación**, cualquier línea del carrito para un negocio de Ferretería muestra un pequeño botón de **Área** junto a su selector de cantidad. Al tocarlo se abre una calculadora de largo × ancho: ingrese ambas dimensiones, y Sarang calcula el área y la establece directamente como la cantidad de la línea, en la unidad en que se vende el producto. Esto no cambia cómo se fija el precio del producto — es una calculadora de conveniencia que completa la cantidad correcta para que no necesite una aplicación de calculadora separada en el mostrador. La misma calculadora está disponible al construir una **Quotation**, así que un presupuesto con precio por área es igual de fácil de armar que una venta en vivo.
+Las ferreterías a menudo venden productos con precio por pie/metro cuadrado — baldosas, láminas, vidrio, madera contrachapada — donde el cliente no sabe el área de memoria. En **Facturación**, cualquier línea del carrito para un negocio de Ferretería muestra un pequeño botón de **Área** junto a su selector de cantidad. Al tocarlo se abre una calculadora de largo × ancho: ingrese ambas dimensiones, y Sarang calcula el área y la establece directamente como la cantidad de la línea, en la unidad en que se vende el producto. Esto no cambia cómo se fija el precio del producto — es una calculadora de conveniencia que completa la cantidad correcta para que no necesite una aplicación de calculadora separada en el mostrador. La misma calculadora está disponible al construir una **Cotización**, así que un presupuesto con precio por área es igual de fácil de armar que una venta en vivo.
 
 ## Conversión de unidades de cartón/caja
 
@@ -20,7 +20,7 @@ Las ferreterías frecuentemente venden a contratistas y negocios habituales en c
 
 ## Logística y Cadena de Suministro
 
-Debido a que la plantilla predeterminada de Ferretería incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
+Debido a que la plantilla predeterminada de Ferretería incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
 
 ## Lo que se comparte con todo negocio
 

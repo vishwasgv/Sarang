@@ -6,7 +6,7 @@ Tudo o que molda o funcionamento do Sarang para o seu negócio fica em **Configu
 
 **Configurações → Business Profile** guarda os detalhes impressos em toda nota fiscal e recibo: nome da empresa, nome do proprietário, telefone, e-mail, número de GST/IVA, ID UPI, site e endereço completo (endereço, cidade, estado, CEP). Você também pode enviar um logotipo da empresa (JPG, PNG ou WebP, até 2MB) e escolher se ele aparece no Painel e/ou como uma marca d'água discreta nos documentos impressos.
 
-Se o seu tipo de negócio for **Specialist Clinic**, um campo extra de **Especialidade** aparece (por exemplo, Pediatria, Ortopedia, Otorrino). Clique em **Editar** para alterar qualquer um desses campos, depois em **Salvar Alterações**. País, moeda e modelo de imposto são mostrados aqui apenas como referência, mas são alterados nas seções **Currency & Locale** e **Tax Configuration**, respectivamente.
+Se o seu tipo de negócio for **Specialist Clinic**, um campo extra de **Especialidade** aparece (por exemplo, Pediatria, Ortopedia, Otorrino). Clique em **Editar** para alterar qualquer um desses campos, depois em **Salvar Alterações**. País, moeda e modelo de imposto são mostrados aqui apenas como referência, mas são alterados nas seções **Moeda e Região** e **Tax Configuration**, respectivamente.
 
 ## Tax Configuration
 
@@ -30,10 +30,10 @@ Trocar de modelo muda a navegação da barra lateral e o conjunto de recursos im
 - **Area Pricing Calculator** — precifique por área (m²/pés²), útil para vidro, compensado ou azulejos.
 - **Credit Limit Enforcement** — bloqueia uma venda a crédito assim que o saldo pendente de um cliente ultrapassaria o limite de crédito definido para ele. Afeta apenas clientes que realmente têm um limite de crédito definido; clientes avulsos, por padrão, não têm limite e nunca são bloqueados.
 - **Bulk Order Workflow** — uma tela separada de pedido em atacado com faixas de desconto por volume para clientes atacadistas/revendedores.
-- **Outstanding Analytics** — relatórios extras sobre saldos pendentes de clientes e sua antiguidade.
+- **Análise de pendências** — relatórios extras sobre saldos pendentes de clientes e sua antiguidade.
 - **Logistics & Supply Chain** — um pacote que cobre frota, transportadoras, remessas, recebimento de mercadorias (GRN), guias de remessa e controle de frete, para qualquer negócio que transporte mercadorias com veículos próprios ou queira rastrear formalmente as entregas de fornecedores.
 
-Mais dois recursos transversais têm suas próprias seções dedicadas em Configurações, em vez de ficarem nesta lista: **Barcode & Loose Billing** e **AI Assistant** (veja abaixo, e seus próprios capítulos do manual). Desativar qualquer um desses recursos não exclui dados existentes — apenas oculta as telas e fluxos de trabalho relacionados.
+Mais dois recursos transversais têm suas próprias seções dedicadas em Configurações, em vez de ficarem nesta lista: **Barcode & Loose Billing** e **Assistente de IA** (veja abaixo, e seus próprios capítulos do manual). Desativar qualquer um desses recursos não exclui dados existentes — apenas oculta as telas e fluxos de trabalho relacionados.
 
 ## Barcode & Loose Billing
 
@@ -51,7 +51,7 @@ Mais dois recursos transversais têm suas próprias seções dedicadas em Config
 
 **Configurações → Appearance** tem dois controles:
 
-- **Dark Mode** — um alternador para um esquema de cores escuro.
+- **Modo Escuro** — um alternador para um esquema de cores escuro.
 - **Print Type** — escolha entre **A4 Invoice** (página inteira, colorido), **Thermal 80mm** (largura padrão de recibo de PDV) ou **Thermal 58mm** (largura estreita de recibo de PDV). Isso determina o formato usado sempre que você imprime uma nota ou recibo.
 
 Ambas as preferências são salvas automaticamente e lembradas na próxima vez que você abrir o Sarang.

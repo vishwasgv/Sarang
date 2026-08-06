@@ -4,7 +4,7 @@ Las pantallas de este tipo de negocio están solo en inglés, sin importar el id
 
 ## La base de servicio compartida
 
-Cada tipo de negocio basado en servicios en Sarang — incluida Clínica de Fisioterapia — parte de los mismos cuatro bloques de construcción: **Appointments** (reservar y programar visitas), un **Service Catalog** (la lista de sesiones de terapia y sus precios), **Provider Schedules** (qué fisioterapeuta está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre lo específico de la fisioterapia: notas de consulta con puntuación de dolor, fases de tratamiento, programas de ejercicio en casa, y paquetes de sesiones.
+Cada tipo de negocio basado en servicios en Sarang — incluida Clínica de Fisioterapia — parte de los mismos cuatro bloques de construcción: **Citas** (reservar y programar visitas), un **Catálogo de servicios** (la lista de sesiones de terapia y sus precios), **Provider Schedules** (qué fisioterapeuta está disponible cuándo), y una **Notification Queue** automática que se encarga de los recordatorios sin que usted tenga que enviarlos a mano. El resto de este capítulo cubre lo específico de la fisioterapia: notas de consulta con puntuación de dolor, fases de tratamiento, programas de ejercicio en casa, y paquetes de sesiones.
 
 ## Notas de Consulta
 
@@ -26,4 +26,4 @@ La pestaña de **Exercise Program** le permite construir un Programa de Ejercici
 
 ## Paquetes de Sesiones
 
-La pestaña de **Session Packs** sigue paquetes prepagados de sesiones (p. ej. "Paquete de Fisioterapia de 10 sesiones"): nombre del paquete, sesiones totales, precio, tasa de GST, fechas de compra y vencimiento. Un paquete activo muestra una barra de progreso de sesiones restantes, y cada cita completada contra ese paquete descuenta una sesión automáticamente. Una vez que un paquete tiene un precio, puede **Generate Invoice** para él directamente desde esta pantalla — solo lo ofrece una vez, y marca el paquete como "Invoiced" después, para que nunca se facture dos veces.
+La pestaña de **Paquetes de sesiones** sigue paquetes prepagados de sesiones (p. ej. "Paquete de Fisioterapia de 10 sesiones"): nombre del paquete, sesiones totales, precio, tasa de GST, fechas de compra y vencimiento. Un paquete activo muestra una barra de progreso de sesiones restantes, y cada cita completada contra ese paquete descuenta una sesión automáticamente. Una vez que un paquete tiene un precio, puede **Generar Factura** para él directamente desde esta pantalla — solo lo ofrece una vez, y marca el paquete como "Invoiced" después, para que nunca se facture dos veces.

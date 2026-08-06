@@ -2,7 +2,7 @@
 
 ## Apa yang termasuk
 
-Photo Studio dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus satu modul khusus: **Shoot Bookings**. Tidak seperti beberapa template vertikal-kreatif lainnya, Photo Studio tidak menambahkan pipeline Leads terpisah; status Inquiry sebuah booking sendiri mencakup itu sebagai gantinya.
+Photo Studio dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus satu modul khusus: **Pemesanan Sesi Foto**. Tidak seperti beberapa template vertikal-kreatif lainnya, Photo Studio tidak menambahkan pipeline Leads terpisah; status Inquiry sebuah booking sendiri mencakup itu sebagai gantinya.
 
 ## Shoot Bookings
 
@@ -22,7 +22,7 @@ Tambahkan **Add-on Items** untuk apa pun di luar paket dasar — cetak ekstra, s
 
 ## Billing
 
-Setelah jumlah akhir dimasukkan pada sebuah booking, sebuah tombol **Generate Invoice** mengubahnya menjadi faktur sungguhan yang mencakup biaya paket dasar plus setiap item add-on sebagai barisnya sendiri — Sarang tidak akan membiarkan Anda menghasilkan faktur kedua untuk booking yang sama, atau mengubah add-on setelah ditagih. Bar KPI menampilkan shoot bulan ini, pengiriman tertunda, dan shoot yang akan datang.
+Setelah jumlah akhir dimasukkan pada sebuah booking, sebuah tombol **Buat Faktur** mengubahnya menjadi faktur sungguhan yang mencakup biaya paket dasar plus setiap item add-on sebagai barisnya sendiri — Sarang tidak akan membiarkan Anda menghasilkan faktur kedua untuk booking yang sama, atau mengubah add-on setelah ditagih. Bar KPI menampilkan shoot bulan ini, pengiriman tertunda, dan shoot yang akan datang.
 
 ## Bahasa
 

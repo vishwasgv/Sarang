@@ -24,7 +24,7 @@ Jika Anda mengaktifkan barcode setelah sudah memiliki produk dalam sistem, buka 
 
 ## Mencetak label
 
-Buka **Print Labels** (dapat diakses setelah Barcode Label Printing aktif). Cari atau pindai sebuah produk untuk menambahkannya ke batch label, tetapkan berapa banyak salinan setiap label yang Anda butuhkan (hingga 500 per baris), pilih **A4 / Letter Sheet** atau **Thermal Label Printer** sebagai keluaran, lalu **Preview** atau **Print** langsung. Jika ada produk dalam batch yang belum memiliki barcode, Sarang memberi tahu Anda yang mana dan berhenti — buat barcode untuk mereka terlebih dahulu (dari layar Produk atau backfill massal di atas).
+Buka **Print Labels** (dapat diakses setelah Barcode Label Printing aktif). Cari atau pindai sebuah produk untuk menambahkannya ke batch label, tetapkan berapa banyak salinan setiap label yang Anda butuhkan (hingga 500 per baris), pilih **A4 / Letter Sheet** atau **Thermal Label Printer** sebagai keluaran, lalu **Pratinjau** atau **Cetak** langsung. Jika ada produk dalam batch yang belum memiliki barcode, Sarang memberi tahu Anda yang mana dan berhenti — buat barcode untuk mereka terlebih dahulu (dari layar Produk atau backfill massal di atas).
 
 Ukuran fisik label thermal (lebar dan tinggi dalam milimeter) dikonfigurasi sekali di bawah **Settings → Barcode & Loose Billing → Thermal Label Size** agar sesuai dengan stiker printer Anda; ini tidak memengaruhi pencetakan A4/sheet.
 

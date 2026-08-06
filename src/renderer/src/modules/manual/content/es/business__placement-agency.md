@@ -16,7 +16,7 @@ Una orden de trabajo es un requisito abierto de una empresa contratante (uno de 
 
 ## Colocaciones
 
-Una colocación vincula un candidato a una orden de trabajo en una empresa contratante, con una fecha de incorporación y salario ofrecido. El monto de la comisión se calcula automáticamente a partir de la regla de comisión de la orden de trabajo (una orden de trabajo tipo porcentaje calcula 12 meses del salario mensual ofrecido × el porcentaje; una orden de trabajo tipo fijo solo usa su valor fijo), aunque puede anular el monto antes de guardar. Una colocación avanza a través de **Offered → Joined → Invoiced** (con Cancelled como resultado separado); **Generate Invoice** factura su comisión (SAC 999132, 18% de GST) una vez que el candidato se ha incorporado, y una **Placement Confirmation Letter** imprimible está disponible para entregar al candidato.
+Una colocación vincula un candidato a una orden de trabajo en una empresa contratante, con una fecha de incorporación y salario ofrecido. El monto de la comisión se calcula automáticamente a partir de la regla de comisión de la orden de trabajo (una orden de trabajo tipo porcentaje calcula 12 meses del salario mensual ofrecido × el porcentaje; una orden de trabajo tipo fijo solo usa su valor fijo), aunque puede anular el monto antes de guardar. Una colocación avanza a través de **Offered → Joined → Invoiced** (con Cancelled como resultado separado); **Generar Factura** factura su comisión (SAC 999132, 18% de GST) una vez que el candidato se ha incorporado, y una **Placement Confirmation Letter** imprimible está disponible para entregar al candidato.
 
 La barra de KPI muestra candidatos activos, órdenes de trabajo abiertas, colocaciones este mes, e ingresos este mes.
 

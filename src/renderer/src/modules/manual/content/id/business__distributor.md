@@ -1,6 +1,6 @@
 # Distributor / Wholesale
 
-Memilih **Distributor** sebagai jenis bisnis Anda mengaktifkan **penerapan batas kredit**, **entri pesanan grosir**, **analitik tertunggak**, dan set modul **Logistics** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk bisnis distributor/grosir.
+Memilih **Distributor** sebagai jenis bisnis Anda mengaktifkan **penerapan batas kredit**, **entri pesanan grosir**, **analitik tertunggak**, dan set modul **Logistik** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk bisnis distributor/grosir.
 
 ## Bulk Order Entry
 
@@ -14,7 +14,7 @@ Tingkatan tertinggi yang memenuhi syarat baris tersebut yang berlaku; kuantitas 
 
 ## Harga negosiasi pelanggan
 
-Kelompokkan pelanggan ke dalam sebuah **kelas pelanggan** (dari catatan mereka di Pelanggan — mis. "Grosir", "Pengecer") dan atur harga khusus-kelas per produk dari layar **Customer Pricing** yang baru. Setelah diatur, Bulk Order Entry (dan pesanan sales lapangan di bawah) otomatis memberi harga keranjang pelanggan tersebut pada tarif negosiasi mereka alih-alih harga jual biasa — pelanggan tanpa harga kelas yang tercatat cukup ditagih pada harga daftar seperti biasa.
+Kelompokkan pelanggan ke dalam sebuah **kelas pelanggan** (dari catatan mereka di Pelanggan — mis. "Grosir", "Pengecer") dan atur harga khusus-kelas per produk dari layar **Harga per Pelanggan** yang baru. Setelah diatur, Bulk Order Entry (dan pesanan sales lapangan di bawah) otomatis memberi harga keranjang pelanggan tersebut pada tarif negosiasi mereka alih-alih harga jual biasa — pelanggan tanpa harga kelas yang tercatat cukup ditagih pada harga daftar seperti biasa.
 
 ## Perencanaan rute / beat
 
@@ -22,11 +22,11 @@ Sebuah pengiriman (shipment) dapat membawa beberapa **pemberhentian (stops)** al
 
 ## Penangkapan pesanan sales lapangan
 
-Aktifkan **Field Order Capture** untuk membiarkan sales lapangan Anda mengirim pesanan dari ponsel mereka sendiri saat mengunjungi pelanggan, lewat WiFi toko Anda — tanpa perlu instal aplikasi. Buka **Field Orders** untuk melihat tautan LAN/kode QR yang dibagikan ke sales, serta untuk **Accept** atau **Reject** permintaan yang masuk. Seorang sales hanya memilih produk dan kuantitas — Sarang selalu memeriksa ulang harga negosiasi pelanggan yang sebenarnya (dan batas kredit Anda) pada saat Anda menerima (accept), bukan apa pun yang diperkirakan ponsel sales tersebut, sehingga faktur yang benar-benar dibuat selalu diberi harga dengan benar.
+Aktifkan **Field Order Capture** untuk membiarkan sales lapangan Anda mengirim pesanan dari ponsel mereka sendiri saat mengunjungi pelanggan, lewat WiFi toko Anda — tanpa perlu instal aplikasi. Buka **Pesanan Lapangan** untuk melihat tautan LAN/kode QR yang dibagikan ke sales, serta untuk **Terima** atau **Tolak** permintaan yang masuk. Seorang sales hanya memilih produk dan kuantitas — Sarang selalu memeriksa ulang harga negosiasi pelanggan yang sebenarnya (dan batas kredit Anda) pada saat Anda menerima (accept), bukan apa pun yang diperkirakan ponsel sales tersebut, sehingga faktur yang benar-benar dibuat selalu diberi harga dengan benar.
 
 ## Outstanding Analytics
 
-Buka **Outstanding Analytics** untuk melihat total eksposur kredit Anda di seluruh pelanggan grosir dengan saldo belum lunas: total tertunggak, berapa banyak pelanggan yang saat ini melebihi batas kredit mereka, dan rata-rata saldo tertunggak per pelanggan. Rincian **aging** menunjukkan berapa lama setiap rupiah telah tertunggak — Current, 1–30 hari, 31–60 hari, 61–90 hari, 90+ hari — sehingga Anda bisa melihat bukan hanya berapa yang terutang tetapi seberapa terlambat itu. Daftar pelanggan di bawah menunjukkan batas kredit masing-masing, saldo tertunggak saat ini (dengan progress bar menuju batas mereka), dan angka 90+ hari mereka, dan diurutkan sehingga siapa pun yang melebihi batasnya menonjol dengan warna merah. Ketuk pelanggan mana pun untuk melompat ke catatan lengkap mereka.
+Buka **Analisis Piutang** untuk melihat total eksposur kredit Anda di seluruh pelanggan grosir dengan saldo belum lunas: total tertunggak, berapa banyak pelanggan yang saat ini melebihi batas kredit mereka, dan rata-rata saldo tertunggak per pelanggan. Rincian **aging** menunjukkan berapa lama setiap rupiah telah tertunggak — Current, 1–30 hari, 31–60 hari, 61–90 hari, 90+ hari — sehingga Anda bisa melihat bukan hanya berapa yang terutang tetapi seberapa terlambat itu. Daftar pelanggan di bawah menunjukkan batas kredit masing-masing, saldo tertunggak saat ini (dengan progress bar menuju batas mereka), dan angka 90+ hari mereka, dan diurutkan sehingga siapa pun yang melebihi batasnya menonjol dengan warna merah. Ketuk pelanggan mana pun untuk melompat ke catatan lengkap mereka.
 
 ## Penerapan batas kredit
 
@@ -34,7 +34,7 @@ Berikan seorang pelanggan **batas kredit** dari catatannya di **Pelanggan**, dan
 
 ## Logistics & Supply Chain
 
-Karena template default Distributor mencakup modul Logistics, Anda juga mendapatkan **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, dan **Logistics Analytics** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
+Karena template default Distributor mencakup modul Logistics, Anda juga mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
 
 ## Yang dibagikan dengan setiap bisnis
 

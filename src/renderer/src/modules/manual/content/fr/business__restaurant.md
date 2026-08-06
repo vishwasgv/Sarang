@@ -4,7 +4,7 @@ Choisir **Restaurant** comme type d'entreprise lors de la configuration active q
 
 ## Tables
 
-Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rsv** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier manuellement — ou laissez le statut d'une table suivre automatiquement une vraie commande, voir ci-dessous. Une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif. Attribuez un **serveur** à une table depuis sa carte afin de toujours savoir qui la sert ; retirez l'attribution à tout moment.
+Ouvrez **Tables du restaurant** depuis la barre latérale pour voir chaque table configurée, chacune affichée sous forme de carte avec son statut actuel : **Libre**, **Occupée**, ou **Rés** (Réservée). Ajoutez une table avec un numéro de table (par ex. « T1 ») et un nom d'affichage facultatif. Appuyez sur un bouton de statut sur la carte d'une table pour le modifier manuellement — ou laissez le statut d'une table suivre automatiquement une vraie commande, voir ci-dessous. Une table ne peut pas être supprimée tant qu'elle a un ticket de cuisine actif. Attribuez un **serveur** à une table depuis sa carte afin de toujours savoir qui la sert ; retirez l'attribution à tout moment.
 
 **Démarrer la commande** sur la carte d'une table libre ouvre la Facturation avec cette table déjà attachée — construisez le panier normalement et confirmez la vente. La table est maintenant réellement liée à cette addition : sa carte affiche **Voir l'addition** (accède directement à la facture) et **Fusionner** à la place de Démarrer la commande, et la table redevient Libre automatiquement dès que l'addition est entièrement payée ou annulée — pas besoin de penser à changer son statut manuellement.
 
@@ -59,6 +59,12 @@ Les articles du menu sans recette configurée ne déduisent tout simplement aucu
 ## Commande par table via QR code (facultatif)
 
 Tables du restaurant dispose aussi d'un bouton **Commande par table via QR**, désactivé par défaut. Activez-le et Sarang démarre un petit serveur local sur votre propre réseau WiFi (aucun internet nécessaire) afin que les clients puissent scanner le code QR imprimé d'une table, parcourir le menu, et soumettre une demande de commande depuis leur téléphone. Rien ne devient automatiquement une véritable facture — chaque commande entrante apparaît sous **Commandes entrantes** sur l'écran des Tickets de commande de cuisine, où le personnel doit explicitement **Accepter** (en choisissant un mode de paiement, ce qui crée la facture et le KOT ensemble) ou **Rejeter**. Le code QR de chaque table peut être généré et imprimé depuis sa carte sur l'écran Tables du restaurant.
+
+### QR pour rejoindre le WiFi (combiné avec le QR de commande)
+
+Puisque le téléphone d'un client doit être sur le WiFi de votre restaurant pour ne serait-ce qu'accéder à la page de commande, la carte **Réseau WiFi** (affichée dès que Commande par table via QR est activé) vous permet d'enregistrer une seule fois le nom et le mot de passe de votre réseau invité. Ensuite, le code QR de chaque table affiche — et imprime — un second code QR au-dessus du code QR de commande : scannez-le pour rejoindre le WiFi automatiquement, puis scannez le code QR de commande juste en dessous pour parcourir le menu et commander. Pas besoin de taper un mot de passe, pas de panneau WiFi séparé à côté de la table.
+
+Ceci est entièrement facultatif — laissez la carte Réseau WiFi non configurée et les codes QR des tables fonctionnent exactement comme avant (code QR de commande uniquement). Modifier le réseau plus tard (par ex. après avoir changé le mot de passe de votre routeur) revient à un simple nouvel enregistrement ; laisser le champ du mot de passe vide en ne mettant à jour que le nom du réseau conserve le mot de passe existant plutôt que de l'effacer. Marquer le réseau comme **ouvert** (sans mot de passe) supprime entièrement le champ du mot de passe — utile si votre WiFi invité n'a pas de mot de passe propre.
 
 ## Ce qui est partagé avec toute entreprise
 

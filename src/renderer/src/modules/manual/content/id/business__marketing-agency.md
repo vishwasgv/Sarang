@@ -2,15 +2,15 @@
 
 ## Apa yang termasuk
 
-Marketing Agency dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus **Leads**, **Service Projects**, **Retainers**, dan seperangkat field khusus-kampanye pada Projects (**Marketing Campaigns**) yang tidak didapat vertikal bergaya-konsultasi lainnya.
+Marketing Agency dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus **Prospek**, **Service Projects**, **Retainer**, dan seperangkat field khusus-kampanye pada Projects (**Marketing Campaigns**) yang tidak didapat vertikal bergaya-konsultasi lainnya.
 
 ## Leads dan Retainers
 
-**Leads** adalah pipeline drag-and-drop yang sama (Open → Contacted → Proposal → Won → Lost) yang digunakan di seluruh vertikal bergaya-konsultasi Sarang, dan **Retainers** mengelola perjanjian klien bulanan berulang (Fixed Fee, Hourly Bucket, atau Deliverable-Based) dengan pembuatan faktur bulanan satu-klik — lihat bab *Independent Consultant* untuk penjelasan lengkap keduanya, karena layarnya identik.
+**Prospek** adalah pipeline drag-and-drop yang sama (Open → Contacted → Proposal → Won → Lost) yang digunakan di seluruh vertikal bergaya-konsultasi Sarang, dan **Retainer** mengelola perjanjian klien bulanan berulang (Fixed Fee, Hourly Bucket, atau Deliverable-Based) dengan pembuatan faktur bulanan satu-klik — lihat bab *Independent Consultant* untuk penjelasan lengkap keduanya, karena layarnya identik.
 
 ## Campaigns (Projects dengan field pemasaran)
 
-**Projects** adalah tempat Marketing Agency mendapatkan kedalamannya sendiri. Setiap proyek memiliki nama, jenis (termasuk jenis Marketing Campaign khusus), status, dan total nilai kontrak yang biasa — tetapi formulir proyek agensi pemasaran juga menampilkan tiga field ekstra yang tidak didapat vertikal konsultasi lainnya:
+**Proyek** adalah tempat Marketing Agency mendapatkan kedalamannya sendiri. Setiap proyek memiliki nama, jenis (termasuk jenis Marketing Campaign khusus), status, dan total nilai kontrak yang biasa — tetapi formulir proyek agensi pemasaran juga menampilkan tiga field ekstra yang tidak didapat vertikal konsultasi lainnya:
 
 - **Target Channel** — misalnya Google Ads, Meta Ads, SEO, Email, Social Media, Content, Influencer (teks bebas dengan saran, sehingga Anda dapat mengetik saluran Anda sendiri).
 - **Deliverable Type** — misalnya Campaign Launch, Creative Asset Set, Monthly Report, Website, Content Calendar.

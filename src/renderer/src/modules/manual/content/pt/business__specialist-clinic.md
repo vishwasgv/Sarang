@@ -4,7 +4,7 @@ As telas deste tipo de negócio estão apenas em inglês, independentemente do i
 
 ## A base de serviço compartilhada
 
-Todo tipo de negócio baseado em serviço no Sarang — incluindo Clínica de Especialista — parte dos mesmos quatro blocos de construção: **Appointments** (agendar e programar visitas), um **Service Catalog** (a lista de consultas e procedimentos que seu consultório oferece), **Provider Schedules** (qual especialista está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre o que é específico de um consultório de especialista.
+Todo tipo de negócio baseado em serviço no Sarang — incluindo Clínica de Especialista — parte dos mesmos quatro blocos de construção: **Agendamentos** (agendar e programar visitas), um **Catálogo de serviços** (a lista de consultas e procedimentos que seu consultório oferece), **Provider Schedules** (qual especialista está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre o que é específico de um consultório de especialista.
 
 O Sarang deliberadamente não tem um tipo de negócio separado por especialidade médica (ORL, oftalmologia, dermatologia, cardiologia, e assim por diante). Em vez disso, "Clínica de Especialista" é construída para cobrir **qualquer especialidade** através do mesmo Service Catalog genérico — você define seus próprios tipos de consulta e procedimento com seus próprios preços, e a nota clínica abaixo se adapta para trazer campos específicos de especialista independentemente de qual seja sua especialidade.
 
@@ -21,7 +21,7 @@ A nota também traz a mesma tabela detalhada de **Prescription** e o gráfico **
 
 ## Fila de Senhas
 
-Clínica de Especialista também inclui a tela **Token Queue** para pacientes sem hora marcada do mesmo dia, exatamente como descrito no capítulo *Clínica de Clínico Geral* — emita senhas para pacientes sem hora marcada, chame o próximo paciente, e acompanhe as contagens de Aguardando / Chamado / Atendido / Pulado. Filas sem hora marcada são tão comuns em consultórios ambulatoriais de especialista (mutirões de ORL, mutirões de oftalmologia, clínicas de dermatologia) quanto na clínica geral.
+Clínica de Especialista também inclui a tela **Fila de senhas** para pacientes sem hora marcada do mesmo dia, exatamente como descrito no capítulo *Clínica de Clínico Geral* — emita senhas para pacientes sem hora marcada, chame o próximo paciente, e acompanhe as contagens de Aguardando / Chamado / Atendido / Pulado. Filas sem hora marcada são tão comuns em consultórios ambulatoriais de especialista (mutirões de ORL, mutirões de oftalmologia, clínicas de dermatologia) quanto na clínica geral.
 
 ## Impressão
 

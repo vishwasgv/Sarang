@@ -2,9 +2,9 @@
 
 ## O que está incluído
 
-Imobiliária é um tipo de negócio de serviço construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos (para visitas a imóveis), um catálogo de serviços, horários de prestadores, e a fila de notificações estão todos presentes — mais dois módulos construídos especificamente para corretores: **Leads** e **Properties**.
+Imobiliária é um tipo de negócio de serviço construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos (para visitas a imóveis), um catálogo de serviços, horários de prestadores, e a fila de notificações estão todos presentes — mais dois módulos construídos especificamente para corretores: **Leads** e **Imóveis**.
 
-No uso do dia a dia, os corretores vivem principalmente em **Leads** e **Properties** em vez da tela genérica de agendamentos — visitas a imóveis são registradas como consultas contra um imóvel em vez de reservas independentes.
+No uso do dia a dia, os corretores vivem principalmente em **Leads** e **Imóveis** em vez da tela genérica de agendamentos — visitas a imóveis são registradas como consultas contra um imóvel em vez de reservas independentes.
 
 ## Leads
 
@@ -12,7 +12,7 @@ No uso do dia a dia, os corretores vivem principalmente em **Leads** e **Propert
 
 ## Imóveis
 
-**Properties** é seu catálogo de anúncios. Cada anúncio registra:
+**Imóveis** é seu catálogo de anúncios. Cada anúncio registra:
 
 - **Property type** — Apartamento Residencial, Casa Independente, Terreno, Sala Comercial, Loja Comercial, Depósito, ou Agrícola.
 - **Listing type** — Venda, Aluguel, ou Locação — o que muda os campos de preço exibidos (preço pedido para uma venda; aluguel mensal e caução para um aluguel).

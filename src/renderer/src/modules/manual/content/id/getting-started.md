@@ -27,7 +27,7 @@ Itulah keseluruhan alurnya — kebanyakan pemilik usaha bisa berjalan dari insta
 ## 5. Langkah berikutnya
 
 - **Laporan** — Laba Rugi, Buku Kas, Neraca Saldo, laporan PPN, dan laporan khusus jenis bisnis semuanya tersedia sejak hari pertama, dapat diekspor ke PDF atau Excel.
-- **Cadangan** — atur cadangan manual atau terjadwal dari **Backup** agar data Anda terlindungi. Lihat bab *Cadangan & Pemulihan*.
+- **Cadangan** — atur cadangan manual atau terjadwal dari **Cadangan** agar data Anda terlindungi. Lihat bab *Cadangan & Pemulihan*.
 - **Pengguna & Hak Akses** — jika lebih dari satu orang akan menggunakan Sarang, tambahkan mereka sebagai Pengguna dengan peran yang mengontrol persis apa yang bisa mereka lihat dan lakukan. Lihat bab *Pengguna & Hak Akses*.
 - **Ask Sarang** — setelah Anda terbiasa dengan dasar-dasarnya, aktifkan AI Assistant dari **Settings → Additional Business Features** untuk mengajukan pertanyaan berbahasa Inggris sederhana tentang data bisnis Anda sendiri. Lihat bab *Ask Sarang (AI Assistant)*.
 

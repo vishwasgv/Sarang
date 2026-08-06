@@ -2,7 +2,7 @@
 
 ## Apa yang termasuk
 
-Car Service Center dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus satu modul khusus: **Job Cards**.
+Car Service Center dibangun di atas fondasi bisnis-layanan bersama Sarang — appointments, sebuah service catalog, provider schedules, dan notification queue — plus satu modul khusus: **Kartu Kerja**.
 
 ## Job Cards
 
@@ -13,7 +13,7 @@ Sebuah job card membawa dua daftar item baris:
 - **Service items** — biaya tenaga kerja: nama, kuantitas, dan tarif, dijumlahkan sebagai total tenaga kerja.
 - **Parts** — baik diketik sebagai teks bebas (suku cadang sourced sekali-pakai, tidak dilacak terhadap stok), atau ditambahkan dengan **mencari inventaris Anda yang sebenarnya**, yang menautkan baris ke sebuah Product sungguhan. Sebuah suku cadang yang tertaut adalah yang membuat penagihan benar-benar menguranginya dari stok saat job card difaktur; suku cadang teks bebas tidak pernah menyentuh inventaris.
 
-Sebuah job card bergerak melalui pipeline status: **Received → Inspection → In Progress → (Waiting Parts, jika perlu) → Ready → Delivered**, dengan Cancelled sebagai hasil terpisah. Setelah Ready, sebuah tombol **Generate Invoice** menagih tenaga kerja dan suku cadang bersama sebagai faktur sungguhan.
+Sebuah job card bergerak melalui pipeline status: **Received → Inspection → In Progress → (Waiting Parts, jika perlu) → Ready → Delivered**, dengan Cancelled sebagai hasil terpisah. Setelah Ready, sebuah tombol **Buat Faktur** menagih tenaga kerja dan suku cadang bersama sebagai faktur sungguhan.
 
 Tetapkan tanggal **next service due** dan/atau pembacaan odometer pada sebuah job card, dan klik **Remind** untuk menjadwalkan pengingat WhatsApp sungguhan ke klien menjelang itu. Buka tab **Vehicles** untuk melihat setiap kendaraan berbeda yang pernah Anda servis, dikelompokkan berdasarkan nomor registrasi dengan lencana Due Soon/Overdue — klik **History** pada kendaraan mana pun untuk riwayat servis lengkapnya yang dikelompokkan, terbaru dulu.
 

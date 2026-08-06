@@ -2,15 +2,15 @@
 
 ## Apa yang berbeda dari jenis bisnis ini
 
-Hotel/Lodge secara sengaja adalah vertikalnya sendiri alih-alih perpanjangan dari model Rental Business generik ataupun model appointment kunjungan-tunggal standar yang digunakan setiap bisnis layanan lain di Sarang. Sebuah menginap hotel membutuhkan tiga hal yang tidak dicakup keduanya: penangkapan ID tamu yang diwajibkan secara hukum saat check-in, penagihan per-malam di seluruh menginap multi-malam, dan biaya ekstra dalam-menginap ditambahkan ke sebuah folio berjalan sebelum checkout akhir. Jadi Hotel/Lodge mendapat satu modul khusus, **Hotel Bookings**, mencakup seluruh siklus hidup booking secara mandiri.
+Hotel/Lodge secara sengaja adalah vertikalnya sendiri alih-alih perpanjangan dari model Rental Business generik ataupun model appointment kunjungan-tunggal standar yang digunakan setiap bisnis layanan lain di Sarang. Sebuah menginap hotel membutuhkan tiga hal yang tidak dicakup keduanya: penangkapan ID tamu yang diwajibkan secara hukum saat check-in, penagihan per-malam di seluruh menginap multi-malam, dan biaya ekstra dalam-menginap ditambahkan ke sebuah folio berjalan sebelum checkout akhir. Jadi Hotel/Lodge mendapat satu modul khusus, **Pemesanan Hotel**, mencakup seluruh siklus hidup booking secara mandiri.
 
 ## Daftar kamar
 
-Buka **Rooms** di sidebar untuk memelihara daftar kamar Anda — nomor kamar, jenis kamar, lantai, okupansi maksimum, dan tarif dasar per malam. Status sebuah kamar (Available, Occupied, Cleaning, Maintenance, atau Out of Order) sebagian besar berubah dengan sendirinya saat booking bergerak melalui check-in dan check-out; Anda tidak dapat mengubah status sebuah kamar yang saat ini memiliki tamu secara manual.
+Buka **Kamar** di sidebar untuk memelihara daftar kamar Anda — nomor kamar, jenis kamar, lantai, okupansi maksimum, dan tarif dasar per malam. Status sebuah kamar (Available, Occupied, Cleaning, Maintenance, atau Out of Order) sebagian besar berubah dengan sendirinya saat booking bergerak melalui check-in dan check-out; Anda tidak dapat mengubah status sebuah kamar yang saat ini memiliki tamu secara manual.
 
 ## Memesan sebuah menginap
 
-Buka **Hotel Bookings** untuk membuat sebuah booking baru — pilih sebuah kamar, tanggal check-in dan check-out, nama tamu dan detail kontak, jumlah tamu (dibatasi pada okupansi maksimum kamar), pembayaran uang muka opsional, dan dari mana booking berasal (**booking source/channel** — Walk-In, Phone, MakeMyTrip, Booking.com, atau saluran lain apa pun yang Anda ketik). Sarang memeriksa bahwa kamar tersebut benar-benar bebas untuk rentang tanggal yang persis itu sebelum mengonfirmasi — pemeriksaan ketersediaan langsung yang sama yang digunakan di tempat lain di Sarang, sehingga dua staf tidak pernah dapat memesan ganda kamar yang sama untuk tanggal yang tumpang tindih. Malam ditagih berdasarkan tanggal kalender, bukan jam yang berlalu — sebuah menginap dari check-in malam hingga check-out pagi keesokan harinya selalu satu malam, seperti dalam praktik perhotelan normal.
+Buka **Pemesanan Hotel** untuk membuat sebuah booking baru — pilih sebuah kamar, tanggal check-in dan check-out, nama tamu dan detail kontak, jumlah tamu (dibatasi pada okupansi maksimum kamar), pembayaran uang muka opsional, dan dari mana booking berasal (**booking source/channel** — Walk-In, Phone, MakeMyTrip, Booking.com, atau saluran lain apa pun yang Anda ketik). Sarang memeriksa bahwa kamar tersebut benar-benar bebas untuk rentang tanggal yang persis itu sebelum mengonfirmasi — pemeriksaan ketersediaan langsung yang sama yang digunakan di tempat lain di Sarang, sehingga dua staf tidak pernah dapat memesan ganda kamar yang sama untuk tanggal yang tumpang tindih. Malam ditagih berdasarkan tanggal kalender, bukan jam yang berlalu — sebuah menginap dari check-in malam hingga check-out pagi keesokan harinya selalu satu malam, seperti dalam praktik perhotelan normal.
 
 Jika tamu pernah menginap sebelumnya, memilih mereka dari pencarian pelanggan menunjukkan **jumlah menginap sebelumnya** mereka tepat di formulir New Booking, sehingga staf front desk dapat mengenali dan menyambut kembali seorang tamu yang kembali.
 
@@ -38,7 +38,7 @@ Check-out mengakhiri menginap dan membebaskan kamar untuk pembersihan. Menghasil
 
 ## Housekeeping
 
-Setiap check-out secara otomatis mengantrekan sebuah **tugas housekeeping** untuk kamar tersebut. Buka **Housekeeping** untuk melihat setiap tugas tertunda, menugaskannya ke seorang staf, dan menandainya selesai — setelah setiap tugas terbuka untuk sebuah kamar selesai, kamar tersebut kembali ke Available dengan sendirinya, alih-alih mengandalkan seseorang mengingat untuk mengubah statusnya secara manual.
+Setiap check-out secara otomatis mengantrekan sebuah **tugas housekeeping** untuk kamar tersebut. Buka **Tata Graha** untuk melihat setiap tugas tertunda, menugaskannya ke seorang staf, dan menandainya selesai — setelah setiap tugas terbuka untuk sebuah kamar selesai, kamar tersebut kembali ke Available dengan sendirinya, alih-alih mengandalkan seseorang mengingat untuk mengubah statusnya secara manual.
 
 ## Membatalkan atau no-show
 
@@ -46,7 +46,7 @@ Sebuah booking Confirmed yang belum check-in dapat dibatalkan (dengan alasan ops
 
 ## Reports
 
-**Reports** mencakup laporan Occupancy (kamar occupied/available/cleaning/maintenance saat ini, dengan persentase okupansi) dan laporan Guest Register — catatan kepatuhan yang menjadi alasan keberadaan vertikal ini, mendaftar detail ID setiap tamu untuk menginap yang tumpang tindih dengan rentang tanggal yang Anda pilih, siap diproduksi sesuai permintaan.
+**Laporan** mencakup laporan Occupancy (kamar occupied/available/cleaning/maintenance saat ini, dengan persentase okupansi) dan laporan Guest Register — catatan kepatuhan yang menjadi alasan keberadaan vertikal ini, mendaftar detail ID setiap tamu untuk menginap yang tumpang tindih dengan rentang tanggal yang Anda pilih, siap diproduksi sesuai permintaan.
 
 ## Bahasa
 

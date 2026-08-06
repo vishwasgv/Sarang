@@ -4,7 +4,7 @@ As telas deste tipo de negócio estão apenas em inglês, independentemente do i
 
 ## A base de serviço compartilhada
 
-Todo tipo de negócio baseado em serviço no Sarang — incluindo Clínica Odontológica — parte dos mesmos quatro blocos de construção: **Appointments** (agendar e programar visitas), um **Service Catalog** (a lista de procedimentos odontológicos e seus preços), **Provider Schedules** (qual dentista está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre as duas ferramentas específicas de odontologia do Sarang: o odontograma e a agenda de retorno.
+Todo tipo de negócio baseado em serviço no Sarang — incluindo Clínica Odontológica — parte dos mesmos quatro blocos de construção: **Agendamentos** (agendar e programar visitas), um **Catálogo de serviços** (a lista de procedimentos odontológicos e seus preços), **Provider Schedules** (qual dentista está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre as duas ferramentas específicas de odontologia do Sarang: o odontograma e a agenda de retorno.
 
 ## Odontograma
 
@@ -24,10 +24,10 @@ A aba **Treatment Plans** da mesma tela do paciente permite construir planos de 
 
 ## Agenda de Retorno
 
-A aba **Recall** (e a tela independente **Recall Schedule**, listando o retorno de cada paciente em toda a clínica) é o sistema de lembretes de retorno odontológico do Sarang — o fluxo cotidiano de "volte para sua limpeza de 6 meses". Para cada paciente, você define:
+A aba **Recall** (e a tela independente **Agenda de retorno**, listando o retorno de cada paciente em toda a clínica) é o sistema de lembretes de retorno odontológico do Sarang — o fluxo cotidiano de "volte para sua limpeza de 6 meses". Para cada paciente, você define:
 
 - **Recall Type** — Higiene 6 Meses, Higiene 12 Meses, Revisão de Coroa, ou Personalizado.
 - **Last Visit Date** e **Next Recall Date**.
 - Notas opcionais.
 
-A tela Recall Schedule classifica cada paciente em **Overdue**, **Due Soon** (dentro de 7 dias), **This Month** (dentro de 30 dias), ou **Upcoming**, com contagens e selos codificados por cor para cada faixa, para que você sempre saiba a quem ligar em seguida. Um selo "Reminded" aparece assim que um lembrete foi enviado para o retorno daquele paciente.
+A tela Recall Schedule classifica cada paciente em **Atrasado**, **Due Soon** (dentro de 7 dias), **Este Mês** (dentro de 30 dias), ou **Upcoming**, com contagens e selos codificados por cor para cada faixa, para que você sempre saiba a quem ligar em seguida. Um selo "Reminded" aparece assim que um lembrete foi enviado para o retorno daquele paciente.

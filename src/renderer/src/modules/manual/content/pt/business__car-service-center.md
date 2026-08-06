@@ -2,7 +2,7 @@
 
 ## O que está incluído
 
-Centro Automotivo é construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais um único módulo dedicado: **Job Cards**.
+Centro Automotivo é construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais um único módulo dedicado: **Ordens de Serviço**.
 
 ## Ordens de Serviço
 
@@ -13,7 +13,7 @@ Uma ordem de serviço traz duas listas de itens:
 - **Service items** — encargos de mão de obra: um nome, quantidade, e taxa, totalizados como o total de mão de obra.
 - **Parts** — digitadas em texto livre (uma peça obtida pontualmente, não rastreada contra o estoque), ou adicionadas **buscando no seu estoque real**, o que vincula a linha a um Product real. Uma peça vinculada é o que faz o faturamento realmente deduzi-la do estoque quando a ordem de serviço é faturada; uma peça em texto livre nunca toca o estoque.
 
-Uma ordem de serviço avança através de um funil de status: **Received → Inspection → In Progress → (Waiting Parts, se necessário) → Ready → Delivered**, com Cancelled como um resultado separado. Assim que Ready, um botão **Generate Invoice** fatura a mão de obra e as peças juntas como uma nota fiscal real.
+Uma ordem de serviço avança através de um funil de status: **Received → Inspection → In Progress → (Waiting Parts, se necessário) → Ready → Delivered**, com Cancelled como um resultado separado. Assim que Ready, um botão **Gerar Fatura** fatura a mão de obra e as peças juntas como uma nota fiscal real.
 
 Defina uma data de **próxima manutenção prevista** e/ou uma leitura de odômetro em uma ordem de serviço, e clique em **Remind** para agendar um lembrete real por WhatsApp ao cliente antes dela. Abra a aba **Vehicles** para ver cada veículo distinto que você já atendeu, agrupado por placa com um selo Due Soon/Overdue — clique em **History** em qualquer veículo para seu histórico completo de manutenção agrupado, do mais recente ao mais antigo.
 

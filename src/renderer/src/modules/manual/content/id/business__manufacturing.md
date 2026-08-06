@@ -4,9 +4,9 @@ Manufacturing mengubah Sarang dari sistem beli-dan-jual menjadi sistem buat-dan-
 
 ## 1. Raw Materials
 
-**Raw Materials** adalah inventaris bahan/komponen Anda, terpisah dari stok produk reguler Anda. Setiap bahan memiliki nama, satuan (kg, liter, piece, box, dan sejenisnya), tingkat reorder, dan biaya satuan. Daftar menandai apa pun di bawah tingkat reorder-nya dan menjumlahkan nilai stok Anda saat ini.
+**Bahan Baku** adalah inventaris bahan/komponen Anda, terpisah dari stok produk reguler Anda. Setiap bahan memiliki nama, satuan (kg, liter, piece, box, dan sejenisnya), tingkat reorder, dan biaya satuan. Daftar menandai apa pun di bawah tingkat reorder-nya dan menjumlahkan nilai stok Anda saat ini.
 
-Stok hanya bergerak melalui **Adjust Stock**, yang mencatat salah satu dari tiga jenis pergerakan — Purchase (stok masuk), Return (stok masuk), atau Adjust To (koreksi manual) — ditambah jenis keempat, Consumed, yang dibuat sistem secara otomatis setiap kali sebuah perintah produksi dimulai (lihat di bawah). Setiap pergerakan dicatat dengan saldo berjalan di **Movement History**, sehingga Anda bisa melihat persis mengapa stok sebuah bahan seperti sekarang.
+Stok hanya bergerak melalui **Sesuaikan Stok**, yang mencatat salah satu dari tiga jenis pergerakan — Purchase (stok masuk), Return (stok masuk), atau Adjust To (koreksi manual) — ditambah jenis keempat, Consumed, yang dibuat sistem secara otomatis setiap kali sebuah perintah produksi dimulai (lihat di bawah). Setiap pergerakan dicatat dengan saldo berjalan di **Riwayat Pergerakan**, sehingga Anda bisa melihat persis mengapa stok sebuah bahan seperti sekarang.
 
 ## 2. Bill of Materials (BOM)
 
@@ -20,20 +20,20 @@ Bahan baku yang diterima dalam lot yang berbeda (sebuah pengiriman hari ini mung
 
 Ini adalah alur kerja inti manufacturing, dan bergerak melalui empat status:
 
-- **Draft** — Anda memilih produk dengan sebuah BOM dan kuantitas yang direncanakan; Sarang menghitung persis berapa banyak setiap bahan baku yang dibutuhkan rencana tersebut.
-- **In Progress** — memulai sebuah perintah memeriksa apakah setiap bahan baku yang dibutuhkan memiliki stok yang cukup; jika ada yang kurang, ia memberi tahu Anda persis apa dan seberapa banyak, dan menolak untuk memulai. Setelah dimulai, bahan baku langsung dikurangi (dicatat sebagai pergerakan "Consumed" terhadap setiap bahan) — ini terjadi saat mulai, bukan saat selesai.
-- **Completed** — Anda memasukkan kuantitas yang benar-benar diproduksi, sebuah **kuantitas scrap/reject** (unit yang mengonsumsi bahan dan tenaga kerja tetapi tidak menghasilkan apa pun yang bisa dijual), dan **biaya tenaga kerja** untuk perintah tersebut. Sarang menambahkan kuantitas yang diproduksi ke stok produk jadi dan menghitung ulang biaya rata-ratanya dari biaya bahan ditambah biaya tenaga kerja, dibagi hanya di antara unit yang diproduksi baik — biaya unit yang di-scrap diserap ke dalam biaya unit yang baik, karena unit-unit tersebut tetap mengonsumsi sumber daya nyata.
-- **Cancelled** — tersedia dari Draft atau In Progress, dengan alasan opsional. Membatalkan sebuah perintah yang sudah mengonsumsi bahan baku mengembalikannya ke stok.
+- **Draf** — Anda memilih produk dengan sebuah BOM dan kuantitas yang direncanakan; Sarang menghitung persis berapa banyak setiap bahan baku yang dibutuhkan rencana tersebut.
+- **Sedang Berjalan** — memulai sebuah perintah memeriksa apakah setiap bahan baku yang dibutuhkan memiliki stok yang cukup; jika ada yang kurang, ia memberi tahu Anda persis apa dan seberapa banyak, dan menolak untuk memulai. Setelah dimulai, bahan baku langsung dikurangi (dicatat sebagai pergerakan "Consumed" terhadap setiap bahan) — ini terjadi saat mulai, bukan saat selesai.
+- **Selesai** — Anda memasukkan kuantitas yang benar-benar diproduksi, sebuah **kuantitas scrap/reject** (unit yang mengonsumsi bahan dan tenaga kerja tetapi tidak menghasilkan apa pun yang bisa dijual), dan **biaya tenaga kerja** untuk perintah tersebut. Sarang menambahkan kuantitas yang diproduksi ke stok produk jadi dan menghitung ulang biaya rata-ratanya dari biaya bahan ditambah biaya tenaga kerja, dibagi hanya di antara unit yang diproduksi baik — biaya unit yang di-scrap diserap ke dalam biaya unit yang baik, karena unit-unit tersebut tetap mengonsumsi sumber daya nyata.
+- **Dibatalkan** — tersedia dari Draft atau In Progress, dengan alasan opsional. Membatalkan sebuah perintah yang sudah mengonsumsi bahan baku mengembalikannya ke stok.
 
-Setiap perintah produksi juga bisa membawa daftar periksa opsional dari **langkah perintah kerja** (misalnya "Mixing", "Baking", "Packing") yang Anda centang satu per satu saat produksi benar-benar terjadi di lantai pabrik. Tandai sebuah langkah sebagai **QC checkpoint** dan Sarang mewajibkan hasil Pass/Fail yang sungguhan sebelum langkah itu bisa dicentang — sebuah gerbang kualitas tidak bisa dilewati diam-diam hanya dengan centang biasa.
+Setiap perintah produksi juga bisa membawa daftar periksa opsional dari **langkah perintah kerja** (misalnya "Mixing", "Baking", "Packing") yang Anda centang satu per satu saat produksi benar-benar terjadi di lantai pabrik. Tandai sebuah langkah sebagai **Titik pemeriksaan QC** dan Sarang mewajibkan hasil Pass/Fail yang sungguhan sebelum langkah itu bisa dicentang — sebuah gerbang kualitas tidak bisa dilewati diam-diam hanya dengan centang biasa.
 
 ## 4. Dispatch Tracking
 
-Setelah sebuah produk selesai dan masuk stok, **Dispatch** mencatatnya keluar pintu: pilih produk, sebuah kuantitas, dan secara opsional seorang pelanggan dan tujuan. Sebuah catatan dispatch dimulai sebagai **Ready**, bergerak ke **Dispatched** (ini adalah titik Sarang benar-benar mengurangi kuantitas dari inventaris barang-jadi — bukan saat dibuat), dan akhirnya **Delivered**. Membuat sebuah catatan dispatch memeriksa apakah cukup stok jadi ada sebelum membiarkan Anda melanjutkan.
+Setelah sebuah produk selesai dan masuk stok, **Kirim** mencatatnya keluar pintu: pilih produk, sebuah kuantitas, dan secara opsional seorang pelanggan dan tujuan. Sebuah catatan dispatch dimulai sebagai **Siap**, bergerak ke **Dikirim** (ini adalah titik Sarang benar-benar mengurangi kuantitas dari inventaris barang-jadi — bukan saat dibuat), dan akhirnya **Terkirim**. Membuat sebuah catatan dispatch memeriksa apakah cukup stok jadi ada sebelum membiarkan Anda melanjutkan.
 
 ## 5. Finished Goods
 
-**Finished Goods** mendaftar setiap produk yang memiliki BOM yang didefinisikan untuknya — dengan kata lain, semua yang benar-benar Anda buat alih-alih hanya menjual kembali. Untuk masing-masing Anda bisa melihat stok saat ini, harga jual, dan menampilkan **riwayat produksi** lengkapnya (setiap perintah produksi yang pernah menghasilkannya, kuantitas rencana vs diproduksi, dan status).
+**Barang Jadi** mendaftar setiap produk yang memiliki BOM yang didefinisikan untuknya — dengan kata lain, semua yang benar-benar Anda buat alih-alih hanya menjual kembali. Untuk masing-masing Anda bisa melihat stok saat ini, harga jual, dan menampilkan **riwayat produksi** lengkapnya (setiap perintah produksi yang pernah menghasilkannya, kuantitas rencana vs diproduksi, dan status).
 
 ## 6. Vendor Management
 

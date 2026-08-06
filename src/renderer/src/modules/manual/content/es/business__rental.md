@@ -8,7 +8,7 @@ Negocio de Alquiler es deliberadamente genérico — está construido para cubri
 
 Cada producto alquilable se rastrea de una de dos maneras:
 
-- **UNIT (Unidad)** — para activos individualmente distintos, como un auto específico, un vestido de novia en particular, o una consola de juegos numerada. Cada artículo físico obtiene su propia entrada en **Rental Units** con una etiqueta de unidad y notas de condición, y una reserva reclama una unidad específica para su rango de fechas.
+- **UNIT (Unidad)** — para activos individualmente distintos, como un auto específico, un vestido de novia en particular, o una consola de juegos numerada. Cada artículo físico obtiene su propia entrada en **Unidades de Alquiler** con una etiqueta de unidad y notas de condición, y una reserva reclama una unidad específica para su rango de fechas.
 - **BULK (Granel)** — para cantidad agrupada e intercambiable, como "50 sillas de plástico" o "20 platos de cena." No hay identidad por artículo, solo una cantidad total en propiedad y cuánto de ella ya está comprometido en reservas superpuestas.
 
 ## Establecer tarifas de alquiler
@@ -17,7 +17,7 @@ Un producto alquilable puede tener una tarifa para cualquier combinación de **H
 
 ## El ciclo de vida de la reserva
 
-Abra **Rental Bookings** en la barra lateral. Una reserva pasa por:
+Abra **Reservas de Alquiler** en la barra lateral. Una reserva pasa por:
 
 1. **Reserved (Reservado)** — creada para un cliente, un rango de fecha/hora y uno o más artículos, con un depósito de garantía opcional cobrado por adelantado.
 2. **Checked Out (Entregado)** — el/los artículo(s) salen físicamente con el cliente. Para artículos UNIT, el estado de la unidad específica pasa a Alquilado.
@@ -29,7 +29,7 @@ Una reserva puede incluir varios artículos a la vez — cada uno obtiene su pro
 
 ## Mantenimiento y alquileres recurrentes
 
-Establezca un **intervalo de servicio** en un artículo con seguimiento UNIT — ya sea un número de alquileres o un número de días — y Sarang lo enruta automáticamente al estado Maintenance (Mantenimiento) al devolverse una vez alcanzado el intervalo, bloqueándolo de volver a alquilarse hasta que lo marque como reparado. Abra **Rental Units** para ver qué artículos están pendientes y registrar un servicio completado.
+Establezca un **intervalo de servicio** en un artículo con seguimiento UNIT — ya sea un número de alquileres o un número de días — y Sarang lo enruta automáticamente al estado Maintenance (Mantenimiento) al devolverse una vez alcanzado el intervalo, bloqueándolo de volver a alquilarse hasta que lo marque como reparado. Abra **Unidades de Alquiler** para ver qué artículos están pendientes y registrar un servicio completado.
 
 Para un cliente que alquila lo mismo en un horario regular, establezca un **intervalo de recurrencia** en la reserva y use **Crear siguiente ciclo** una vez que termine el período actual para generar la siguiente reserva con un clic en lugar de volver a ingresar todo desde cero.
 

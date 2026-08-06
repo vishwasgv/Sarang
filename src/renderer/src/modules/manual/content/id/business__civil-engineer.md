@@ -4,11 +4,11 @@ Layar jenis bisnis ini hanya dalam bahasa Inggris, terlepas dari pengaturan baha
 
 ## Fondasi layanan bersama
 
-Setiap jenis bisnis berbasis layanan di Sarang — termasuk Civil Engineer — dimulai dari empat blok bangunan yang sama: **Appointments** (memesan pertemuan klien), sebuah **Service Catalog** (daftar layanan dan harganya), **Provider Schedules** (anggota tim mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk praktik teknik sipil: pipeline lead, manajemen proyek, pelacakan waktu, dan log kunjungan lokasi.
+Setiap jenis bisnis berbasis layanan di Sarang — termasuk Civil Engineer — dimulai dari empat blok bangunan yang sama: **Janji Temu** (memesan pertemuan klien), sebuah **Katalog Layanan** (daftar layanan dan harganya), **Provider Schedules** (anggota tim mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk praktik teknik sipil: pipeline lead, manajemen proyek, pelacakan waktu, dan log kunjungan lokasi.
 
 ## Leads
 
-**Leads** adalah pipeline bergaya Kanban dari calon klien: Open → Contacted → Proposal → Won → Lost. Seret sebuah kartu lead antar kolom untuk memperbarui statusnya, atau tambahkan lead baru dengan nama, detail kontak, perusahaan, sumber (Referral, Website, Walk-In, Social, Cold Call, Other), nilai estimasi, dan anggota tim yang ditugaskan.
+**Prospek** adalah pipeline bergaya Kanban dari calon klien: Open → Contacted → Proposal → Won → Lost. Seret sebuah kartu lead antar kolom untuk memperbarui statusnya, atau tambahkan lead baru dengan nama, detail kontak, perusahaan, sumber (Referral, Website, Walk-In, Social, Cold Call, Other), nilai estimasi, dan anggota tim yang ditugaskan.
 
 ## Projects
 
@@ -16,11 +16,11 @@ Setiap jenis bisnis berbasis layanan di Sarang — termasuk Civil Engineer — d
 
 ## Time Entries
 
-Catat jam yang dapat ditagih terhadap sebuah proyek dari layar **Time Tracking** mandiri — tanggal, staf, deskripsi, jam, tarif, dan jumlah yang dihitung — dapat difilter berdasarkan staf, proyek, rentang tanggal, dan status ditagih. Pilih entri yang belum ditagih dan **Generate Invoice** untuk menagih klien langsung.
+Catat jam yang dapat ditagih terhadap sebuah proyek dari layar **Pelacakan Waktu** mandiri — tanggal, staf, deskripsi, jam, tarif, dan jumlah yang dihitung — dapat difilter berdasarkan staf, proyek, rentang tanggal, dan status ditagih. Pilih entri yang belum ditagih dan **Buat Faktur** untuk menagih klien langsung.
 
 ## Site Visit Log
 
-**Site Visit Log** adalah pembeda sungguhan sehari-hari untuk praktik teknik sipil: untuk setiap proyek, catat setiap kunjungan ke lokasi — tanggal kunjungan, jenis kunjungan (Survey, Inspection, Progress Check, Handover), kondisi cuaca, dan temuan Anda sebagai teks bebas. Setiap kunjungan mencatat siapa yang mencatatnya, dan Anda dapat melampirkan file (foto, dokumen survei, laporan inspeksi) ke setiap kunjungan. Ini membangun catatan berjalan, proyek-demi-proyek tentang apa yang diamati di lokasi dan kapan — berbeda dari alur kerja penerbitan-gambar seorang arsitek, dan dibangun di sekitar realitas survei/inspeksi/pemeriksaan-kemajuan pekerjaan teknik sipil.
+**Log Kunjungan Lokasi** adalah pembeda sungguhan sehari-hari untuk praktik teknik sipil: untuk setiap proyek, catat setiap kunjungan ke lokasi — tanggal kunjungan, jenis kunjungan (Survey, Inspection, Progress Check, Handover), kondisi cuaca, dan temuan Anda sebagai teks bebas. Setiap kunjungan mencatat siapa yang mencatatnya, dan Anda dapat melampirkan file (foto, dokumen survei, laporan inspeksi) ke setiap kunjungan. Ini membangun catatan berjalan, proyek-demi-proyek tentang apa yang diamati di lokasi dan kapan — berbeda dari alur kerja penerbitan-gambar seorang arsitek, dan dibangun di sekitar realitas survei/inspeksi/pemeriksaan-kemajuan pekerjaan teknik sipil.
 
 Klik **Use Current Location** pada sebuah kunjungan untuk menangkap koordinat GPS sebenarnya (dengan pembacaan akurasi yang ditampilkan di sampingnya), atau masukkan lintang/bujur secara manual jika Anda mencatat kunjungan setelah fakta.
 

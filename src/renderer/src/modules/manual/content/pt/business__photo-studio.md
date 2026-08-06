@@ -2,7 +2,7 @@
 
 ## O que está incluído
 
-Estúdio Fotográfico é construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais um único módulo dedicado: **Shoot Bookings**. Diferente de vários outros modelos de setor criativo, Estúdio Fotográfico não adiciona um funil de Leads separado; o próprio status de Inquiry de um agendamento cobre isso em vez disso.
+Estúdio Fotográfico é construído sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais um único módulo dedicado: **Reservas de ensaios fotográficos**. Diferente de vários outros modelos de setor criativo, Estúdio Fotográfico não adiciona um funil de Leads separado; o próprio status de Inquiry de um agendamento cobre isso em vez disso.
 
 ## Agendamentos de Ensaio
 
@@ -22,7 +22,7 @@ Adicione **Add-on Items** para qualquer coisa além do pacote base — cópias e
 
 ## Faturamento
 
-Assim que um valor final é informado em um agendamento, um botão **Generate Invoice** o transforma em uma nota fiscal real que inclui a taxa do pacote base mais cada item adicional como sua própria linha — o Sarang não permite gerar uma segunda nota fiscal para o mesmo agendamento, nem alterar os adicionais depois de faturados. A barra de KPI mostra ensaios neste mês, entregas pendentes, e próximos ensaios.
+Assim que um valor final é informado em um agendamento, um botão **Gerar Fatura** o transforma em uma nota fiscal real que inclui a taxa do pacote base mais cada item adicional como sua própria linha — o Sarang não permite gerar uma segunda nota fiscal para o mesmo agendamento, nem alterar os adicionais depois de faturados. A barra de KPI mostra ensaios neste mês, entregas pendentes, e próximos ensaios.
 
 ## Idioma
 

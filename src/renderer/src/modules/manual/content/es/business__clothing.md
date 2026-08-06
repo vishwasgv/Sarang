@@ -4,7 +4,7 @@ Elegir **Ropa** como su tipo de negocio activa el **seguimiento de variantes de 
 
 ## Seguimiento de variantes (talla y color)
 
-Un artículo de ropa por lo general no es un único número de stock — "Camiseta de Hombre" podría existir en cinco tallas y cuatro colores, cada uno con su propio conteo de stock. Desde **Productos**, toque el ícono de capas en cualquier producto para abrir **Manage Variants**. Agregue una fila por cada combinación de talla/color que realmente tiene en stock (los campos de talla y color sugieren tallas de ropa comunes mientras escribe — de XS a 3XL — pero puede escribir cualquier cosa), cada una con su propio SKU opcional, un precio adicional sobre el precio base del producto si esa variante cuesta más (p. ej. una talla grande), y su propia cantidad de stock. La pantalla muestra un total corriente de variantes y el stock combinado de todas ellas.
+Un artículo de ropa por lo general no es un único número de stock — "Camiseta de Hombre" podría existir en cinco tallas y cuatro colores, cada uno con su propio conteo de stock. Desde **Productos**, toque el ícono de capas en cualquier producto para abrir **Gestionar Variantes**. Agregue una fila por cada combinación de talla/color que realmente tiene en stock (los campos de talla y color sugieren tallas de ropa comunes mientras escribe — de XS a 3XL — pero puede escribir cualquier cosa), cada una con su propio SKU opcional, un precio adicional sobre el precio base del producto si esa variante cuesta más (p. ej. una talla grande), y su propia cantidad de stock. La pantalla muestra un total corriente de variantes y el stock combinado de todas ellas.
 
 Los registros de producto para un negocio de Ropa también obtienen un campo opcional de **Género** (Hombre/Mujer/Unisex) para ayudarlo a organizar su catálogo.
 
@@ -22,7 +22,7 @@ Ropa también obtiene la pantalla estándar de **Devoluciones** — busque una f
 
 ## Logística y Cadena de Suministro
 
-Debido a que la plantilla predeterminada de Ropa incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **GRN**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
+Debido a que la plantilla predeterminada de Ropa incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.
 
 ## Lo que se comparte con todo negocio
 

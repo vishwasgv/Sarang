@@ -4,7 +4,7 @@ Les écrans de ce type d'entreprise sont uniquement en anglais, quelle que soit 
 
 ## La fondation de service partagée
 
-Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique de Spécialiste — part des quatre mêmes blocs de construction : **Appointments** (réserver et planifier des visites), un **Service Catalog** (la liste des consultations et procédures que propose votre cabinet), **Provider Schedules** (quel spécialiste est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre ce qui est spécifique à un cabinet de spécialiste.
+Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique de Spécialiste — part des quatre mêmes blocs de construction : **Rendez-vous** (réserver et planifier des visites), un **Catalogue de services** (la liste des consultations et procédures que propose votre cabinet), **Provider Schedules** (quel spécialiste est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre ce qui est spécifique à un cabinet de spécialiste.
 
 Sarang n'a délibérément pas de type d'entreprise séparé par spécialité médicale (ORL, ophtalmologie, dermatologie, cardiologie, etc.). À la place, « Clinique de Spécialiste » est construit pour couvrir **n'importe quelle spécialité** via le même Service Catalog générique — vous définissez vos propres types de consultation et de procédure avec vos propres tarifs, et la note clinique ci-dessous s'adapte pour porter des champs spécifiques au spécialiste quelle que soit votre spécialité.
 
@@ -21,7 +21,7 @@ La note porte également le même tableau **Prescription** détaillé et le grap
 
 ## File d'Attente de Tickets
 
-Clinique de Spécialiste inclut également l'écran **Token Queue** pour les patients sans rendez-vous du jour même, exactement comme décrit dans le chapitre *Clinique de Médecine Générale* — émettez des tickets pour les patients sans rendez-vous, appelez le prochain patient, et suivez les comptes En attente / Appelé / Vu / Ignoré. Les files d'attente sans rendez-vous sont tout aussi courantes dans les cabinets de spécialistes en consultation externe (campagnes ORL, campagnes ophtalmologiques, cliniques dermatologiques) que dans la médecine générale.
+Clinique de Spécialiste inclut également l'écran **File de tickets** pour les patients sans rendez-vous du jour même, exactement comme décrit dans le chapitre *Clinique de Médecine Générale* — émettez des tickets pour les patients sans rendez-vous, appelez le prochain patient, et suivez les comptes En attente / Appelé / Vu / Ignoré. Les files d'attente sans rendez-vous sont tout aussi courantes dans les cabinets de spécialistes en consultation externe (campagnes ORL, campagnes ophtalmologiques, cliniques dermatologiques) que dans la médecine générale.
 
 ## Impression
 

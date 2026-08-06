@@ -1,10 +1,10 @@
 # Hardware Store
 
-Memilih **Hardware Store** sebagai jenis bisnis Anda mengaktifkan **penetapan harga berbasis area**, **penerapan batas kredit**, dan set modul **Logistics** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah toko hardware.
+Memilih **Hardware Store** sebagai jenis bisnis Anda mengaktifkan **penetapan harga berbasis area**, **penerapan batas kredit**, dan set modul **Logistik** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah toko hardware.
 
 ## Harga area (kalkulator P × L)
 
-Toko hardware sering menjual produk yang dihargai per kaki/meter persegi — ubin, lembaran, kaca, tripleks — di mana pelanggan tidak tahu luasnya secara langsung. Di **Billing**, setiap baris keranjang untuk bisnis Hardware menampilkan tombol kecil **Area** di samping stepper kuantitasnya. Mengetuknya membuka kalkulator panjang × lebar: masukkan kedua dimensi, dan Sarang menghitung luasnya serta menetapkannya langsung sebagai kuantitas baris tersebut, dalam satuan apa pun produk itu dijual. Ini tidak mengubah cara produk dihargai — ini adalah kalkulator praktis yang mengisi kuantitas yang benar sehingga Anda tidak perlu aplikasi kalkulator terpisah di konter. Kalkulator yang sama juga tersedia saat menyusun sebuah **Quotation**, sehingga perkiraan harga berbasis-area sama mudahnya disusun seperti penjualan langsung.
+Toko hardware sering menjual produk yang dihargai per kaki/meter persegi — ubin, lembaran, kaca, tripleks — di mana pelanggan tidak tahu luasnya secara langsung. Di **Penagihan**, setiap baris keranjang untuk bisnis Hardware menampilkan tombol kecil **Luas** di samping stepper kuantitasnya. Mengetuknya membuka kalkulator panjang × lebar: masukkan kedua dimensi, dan Sarang menghitung luasnya serta menetapkannya langsung sebagai kuantitas baris tersebut, dalam satuan apa pun produk itu dijual. Ini tidak mengubah cara produk dihargai — ini adalah kalkulator praktis yang mengisi kuantitas yang benar sehingga Anda tidak perlu aplikasi kalkulator terpisah di konter. Kalkulator yang sama juga tersedia saat menyusun sebuah **Penawaran**, sehingga perkiraan harga berbasis-area sama mudahnya disusun seperti penjualan langsung.
 
 ## Konversi satuan karton/boks
 
@@ -20,7 +20,7 @@ Toko hardware sering menjual kepada kontraktor dan bisnis reguler dengan syarat 
 
 ## Logistics & Supply Chain
 
-Karena template default Hardware mencakup modul Logistics, Anda juga mendapatkan **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, dan **Logistics Analytics** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
+Karena template default Hardware mencakup modul Logistics, Anda juga mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
 
 ## Yang dibagikan dengan setiap bisnis
 

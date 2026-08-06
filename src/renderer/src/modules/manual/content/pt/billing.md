@@ -27,10 +27,10 @@ A **lista de notas** (`/billing`, na visualização de lista) mostra todas as no
 Ao abrir uma nota, você vê seus itens completos, o detalhamento de impostos e o histórico de pagamentos. A partir daqui você pode:
 
 - **Registrar Pagamento** — informe um valor (total ou parcial), escolha uma forma (Dinheiro, UPI, Cartão ou Wallet — Crédito não é oferecido aqui, já que registrar um pagamento significa que dinheiro de verdade foi recebido), e um número de referência e observações opcionais. Registrar um pagamento atualiza o saldo e o status de pagamento imediatamente; registrar menos do que o saldo total deixa a nota como PARCIAL.
-- **Reverse Payment** — se um pagamento foi registrado por engano, reverta-o informando um motivo. O pagamento revertido continua visível (com um traço sobre ele) para fins de auditoria.
+- **Estornar Pagamento** — se um pagamento foi registrado por engano, reverta-o informando um motivo. O pagamento revertido continua visível (com um traço sobre ele) para fins de auditoria.
 - **Imprimir Nota** ou **Imprimir Recibo** — visualize o layout da nota em A4 ou do recibo térmico antes de enviar para a impressora.
-- **Cancel Invoice** — exige um motivo e não pode ser desfeita.
-- **Send to Kitchen** — só aparece para negócios do tipo Restaurante com KOT ativado, e apenas antes de já existir um KOT para aquela nota.
+- **Cancelar Nota** — exige um motivo e não pode ser desfeita.
+- **Enviar para a Cozinha** — só aparece para negócios do tipo Restaurante com KOT ativado, e apenas antes de já existir um KOT para aquela nota.
 
 O **Histórico de Pagamentos** é uma tela separada que lista todo pagamento já registrado, em todas as notas — pesquisável por nota, cliente ou número de referência, e filtrável por forma de pagamento ou período. Reverter um pagamento também pode ser feito a partir daqui.
 

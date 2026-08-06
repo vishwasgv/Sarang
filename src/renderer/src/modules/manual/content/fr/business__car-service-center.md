@@ -2,7 +2,7 @@
 
 ## Ce qui est inclus
 
-Centre de Service Automobile est construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus un module dédié unique : **Job Cards**.
+Centre de Service Automobile est construit sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus un module dédié unique : **Fiches d'Intervention**.
 
 ## Ordres de Réparation
 
@@ -13,7 +13,7 @@ Un ordre de réparation porte deux listes de lignes :
 - **Service items** — frais de main-d'œuvre : un nom, une quantité, et un tarif, totalisés comme le total de main-d'œuvre.
 - **Parts** — soit saisies en texte libre (une pièce obtenue ponctuellement, non suivie contre le stock), soit ajoutées en **recherchant dans votre inventaire réel**, ce qui lie la ligne à un Product réel. Une pièce liée est ce qui fait que la facturation la déduit réellement du stock lorsque l'ordre de réparation est facturé ; une pièce en texte libre ne touche jamais l'inventaire.
 
-Un ordre de réparation progresse à travers un pipeline de statuts : **Received → Inspection → In Progress → (Waiting Parts, si nécessaire) → Ready → Delivered**, avec Cancelled comme résultat séparé. Une fois Ready, un bouton **Generate Invoice** facture ensemble la main-d'œuvre et les pièces comme une véritable facture.
+Un ordre de réparation progresse à travers un pipeline de statuts : **Received → Inspection → In Progress → (Waiting Parts, si nécessaire) → Ready → Delivered**, avec Cancelled comme résultat séparé. Une fois Ready, un bouton **Générer une Facture** facture ensemble la main-d'œuvre et les pièces comme une véritable facture.
 
 Définissez une date de **prochain service dû** et/ou un relevé de kilométrage sur un ordre de réparation, et cliquez sur **Remind** pour programmer un véritable rappel WhatsApp au client avant celle-ci. Ouvrez l'onglet **Vehicles** pour voir chaque véhicule distinct que vous avez entretenu, groupé par numéro d'immatriculation avec un badge Due Soon/Overdue — cliquez sur **History** sur n'importe quel véhicule pour son historique de service complet groupé, du plus récent au plus ancien.
 

@@ -4,7 +4,7 @@ As telas deste tipo de negócio estão apenas em inglês, independentemente do i
 
 ## A base de serviço compartilhada
 
-Todo tipo de negócio baseado em serviço no Sarang — incluindo Engenheiro Civil — parte dos mesmos quatro blocos de construção: **Appointments** (agendar reuniões com clientes), um **Service Catalog** (a lista de serviços e seus preços), **Provider Schedules** (qual membro da equipe está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre o que é específico de um escritório de engenharia civil: um funil de leads, gestão de projetos, controle de horas, e o registro de visitas técnicas.
+Todo tipo de negócio baseado em serviço no Sarang — incluindo Engenheiro Civil — parte dos mesmos quatro blocos de construção: **Agendamentos** (agendar reuniões com clientes), um **Catálogo de serviços** (a lista de serviços e seus preços), **Provider Schedules** (qual membro da equipe está disponível quando), e uma **Notification Queue** automática que cuida dos lembretes sem que você precise enviá-los manualmente. O restante deste capítulo cobre o que é específico de um escritório de engenharia civil: um funil de leads, gestão de projetos, controle de horas, e o registro de visitas técnicas.
 
 ## Leads
 
@@ -16,11 +16,11 @@ Todo tipo de negócio baseado em serviço no Sarang — incluindo Engenheiro Civ
 
 ## Entradas de Tempo
 
-Registre horas faturáveis contra um projeto na tela independente **Time Tracking** — data, equipe, descrição, horas, taxa, e valor calculado — filtrável por equipe, projeto, período, e status de faturamento. Selecione entradas não faturadas e **Generate Invoice** para faturar diretamente o cliente.
+Registre horas faturáveis contra um projeto na tela independente **Controle de horas** — data, equipe, descrição, horas, taxa, e valor calculado — filtrável por equipe, projeto, período, e status de faturamento. Selecione entradas não faturadas e **Gerar Fatura** para faturar diretamente o cliente.
 
 ## Registro de Visitas Técnicas
 
-O **Site Visit Log** é o verdadeiro diferencial cotidiano de um escritório de engenharia civil: para cada projeto, registre cada visita ao local — data da visita, tipo de visita (Levantamento, Inspeção, Verificação de Progresso, Entrega), condições climáticas, e suas constatações em texto livre. Cada visita registra quem a registrou, e você pode anexar arquivos (fotos, documentos de levantamento, relatórios de inspeção) a cada visita. Isso constrói um registro corrente, projeto por projeto, do que exatamente foi observado no local e quando — distinto do fluxo de emissão de pranchas de um arquiteto, e construído em torno da realidade de levantamento/inspeção/verificação de progresso do trabalho de engenharia civil.
+O **Registro de visitas ao local** é o verdadeiro diferencial cotidiano de um escritório de engenharia civil: para cada projeto, registre cada visita ao local — data da visita, tipo de visita (Levantamento, Inspeção, Verificação de Progresso, Entrega), condições climáticas, e suas constatações em texto livre. Cada visita registra quem a registrou, e você pode anexar arquivos (fotos, documentos de levantamento, relatórios de inspeção) a cada visita. Isso constrói um registro corrente, projeto por projeto, do que exatamente foi observado no local e quando — distinto do fluxo de emissão de pranchas de um arquiteto, e construído em torno da realidade de levantamento/inspeção/verificação de progresso do trabalho de engenharia civil.
 
 Clique em **Use Current Location** em uma visita para capturar suas coordenadas GPS reais (com uma leitura de precisão exibida ao lado), ou informe latitude/longitude manualmente se estiver registrando uma visita retroativamente.
 

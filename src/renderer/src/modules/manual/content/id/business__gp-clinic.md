@@ -4,7 +4,7 @@ Layar jenis bisnis ini hanya dalam bahasa Inggris, terlepas dari pengaturan baha
 
 ## Fondasi layanan bersama
 
-Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Dokter Umum — dimulai dari empat blok bangunan yang sama: **Appointments** (memesan dan menjadwalkan kunjungan), sebuah **Service Catalog** (daftar konsultasi dan harganya), **Provider Schedules** (dokter mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk klinik dokter umum: catatan konsultasi dan antrean token walk-in.
+Setiap jenis bisnis berbasis layanan di Sarang — termasuk Klinik Dokter Umum — dimulai dari empat blok bangunan yang sama: **Janji Temu** (memesan dan menjadwalkan kunjungan), sebuah **Katalog Layanan** (daftar konsultasi dan harganya), **Provider Schedules** (dokter mana yang tersedia kapan), dan sebuah **Notification Queue** otomatis yang menangani pengingat tanpa Anda harus mengirimnya secara manual. Sisa bab ini membahas apa yang spesifik untuk klinik dokter umum: catatan konsultasi dan antrean token walk-in.
 
 ## Consultation Notes (Visit Notes)
 
@@ -18,7 +18,7 @@ Membuka **Consultation Note** sebuah janji temu memberi Anda catatan klinis ters
 - **P — Plan**: rencana pengobatan, obat-obatan, pemeriksaan yang dipesan.
 - **Follow-up**: tanggal follow-up opsional dan instruksi.
 
-Klik **Save Note** sambil berjalan, lalu **Finalize** saat konsultasi selesai. Sebuah catatan yang di-finalize menjadi read-only (ditampilkan dengan lencana kunci) — ini melindungi catatan klinis dari perubahan setelah fakta. Anda dapat **Print Summary** kapan saja untuk memberikan pasien (atau menyimpan untuk arsip Anda) sebuah ringkasan kunjungan terformat, yang membawa disclaimer jelas bahwa ini adalah dokumen kenyamanan yang dihasilkan oleh Sarang, bukan catatan medis tervalidasi — selalu verifikasi sebelum penggunaan klinis.
+Klik **Save Note** sambil berjalan, lalu **Selesaikan** saat konsultasi selesai. Sebuah catatan yang di-finalize menjadi read-only (ditampilkan dengan lencana kunci) — ini melindungi catatan klinis dari perubahan setelah fakta. Anda dapat **Print Summary** kapan saja untuk memberikan pasien (atau menyimpan untuk arsip Anda) sebuah ringkasan kunjungan terformat, yang membawa disclaimer jelas bahwa ini adalah dokumen kenyamanan yang dihasilkan oleh Sarang, bukan catatan medis tervalidasi — selalu verifikasi sebelum penggunaan klinis.
 
 **Prescription.** Tambahkan sebuah resep sungguhan sebagai daftar berbutir tersendiri — nama obat, dosis, frekuensi, durasi, dan instruksi, satu baris per obat — terpisah dari field Plan teks bebas di atas. **Print Prescription** menghasilkan dokumen ℞ yang layak dengan tabel obat berbutir (tidak seperti ringkasan kunjungan umum, yang ini dimaksudkan untuk berfungsi sebagai resep sungguhan, jadi tidak membawa disclaimer "bukan catatan tervalidasi" — hanya perlu tanda tangan/stempel Anda agar valid).
 
@@ -28,7 +28,7 @@ Klik **Save Note** sambil berjalan, lalu **Finalize** saat konsultasi selesai. S
 
 ## Token Queue
 
-Layar **Token Queue** mengelola pasien walk-in hari yang sama tanpa memerlukan janji temu yang dipesan sebelumnya. Ini menampilkan:
+Layar **Antrean Token** mengelola pasien walk-in hari yang sama tanpa memerlukan janji temu yang dipesan sebelumnya. Ini menampilkan:
 
 - Tampilan **Now Serving** besar dari nomor token saat ini dan nama pasien.
 - Chip hitungan untuk Waiting / Called / Seen / Skipped.

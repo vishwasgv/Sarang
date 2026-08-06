@@ -2,7 +2,7 @@
 
 Salon de Beauté est l'un des 24 modèles d'entreprise de service spécifiques de Sarang. Comme chaque type d'entreprise de ce groupe, les écrans de ce type d'entreprise sont uniquement en anglais, quelle que soit la langue que vous avez définie ailleurs dans Sarang.
 
-Chaque modèle d'entreprise de service partage la même fondation : **Appointments** pour la réservation, un **Service Catalog** de ce que vous proposez et à quel prix, **Provider Schedule** pour définir les heures de travail de chaque membre du personnel et générer de véritables créneaux réservables, et une **Notification Queue** en arrière-plan qui envoie des rappels de rendez-vous. Salon de Beauté ajoute trois choses par-dessus cette base : forfaits de séances, commission du personnel, et réservation multi-service.
+Chaque modèle d'entreprise de service partage la même fondation : **Rendez-vous** pour la réservation, un **Catalogue de services** de ce que vous proposez et à quel prix, **Emploi du temps du praticien** pour définir les heures de travail de chaque membre du personnel et générer de véritables créneaux réservables, et une **Notification Queue** en arrière-plan qui envoie des rappels de rendez-vous. Salon de Beauté ajoute trois choses par-dessus cette base : forfaits de séances, commission du personnel, et réservation multi-service.
 
 ## Réservation Multi-Service
 
@@ -16,7 +16,7 @@ Terminer un rendez-vous ouvre un véritable **Checkout** — le total du service
 
 ## Forfaits de Séances
 
-Une cliente peut acheter un forfait de séances prépayées d'avance (par ex. « forfait spa capillaire 10 séances ») au lieu de payer par visite. **Session Packs** liste les forfaits de chaque cliente avec le nombre de séances restantes, signale les forfaits qui s'épuisent (2 ou moins restantes) ou déjà expirés, et vous permet de rechercher par cliente. Lorsqu'un rendez-vous lié à une cliente avec un forfait actif est marqué **Completed**, Sarang déduit automatiquement une séance de ce forfait au lieu de nécessiter une facture séparée — la liste des rendez-vous marque ceux-ci comme « Paid via pack » plutôt que d'afficher une action de facture.
+Une cliente peut acheter un forfait de séances prépayées d'avance (par ex. « forfait spa capillaire 10 séances ») au lieu de payer par visite. **Forfaits de séances** liste les forfaits de chaque cliente avec le nombre de séances restantes, signale les forfaits qui s'épuisent (2 ou moins restantes) ou déjà expirés, et vous permet de rechercher par cliente. Lorsqu'un rendez-vous lié à une cliente avec un forfait actif est marqué **Terminé**, Sarang déduit automatiquement une séance de ce forfait au lieu de nécessiter une facture séparée — la liste des rendez-vous marque ceux-ci comme « Paid via pack » plutôt que d'afficher une action de facture.
 
 ## Commission du Personnel
 

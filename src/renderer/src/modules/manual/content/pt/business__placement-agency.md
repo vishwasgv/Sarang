@@ -16,7 +16,7 @@ Uma vaga é uma necessidade em aberto de uma empresa contratante (um dos seus cl
 
 ## Contratações
 
-Uma contratação vincula um candidato a uma vaga em uma empresa contratante, com uma data de admissão e salário oferecido. O valor da comissão é calculado automaticamente a partir da regra de comissão da vaga (uma vaga do tipo porcentagem calcula 12 meses do salário mensal oferecido × a porcentagem; uma vaga do tipo fixo apenas usa seu valor fixo), embora você possa substituir o valor antes de salvar. Uma contratação avança através de **Offered → Joined → Invoiced** (com Cancelled como um resultado separado); **Generate Invoice** fatura sua comissão (SAC 999132, 18% de GST) assim que o candidato é admitido, e uma **Placement Confirmation Letter** imprimível fica disponível para entregar ao candidato.
+Uma contratação vincula um candidato a uma vaga em uma empresa contratante, com uma data de admissão e salário oferecido. O valor da comissão é calculado automaticamente a partir da regra de comissão da vaga (uma vaga do tipo porcentagem calcula 12 meses do salário mensal oferecido × a porcentagem; uma vaga do tipo fixo apenas usa seu valor fixo), embora você possa substituir o valor antes de salvar. Uma contratação avança através de **Offered → Joined → Invoiced** (com Cancelled como um resultado separado); **Gerar Fatura** fatura sua comissão (SAC 999132, 18% de GST) assim que o candidato é admitido, e uma **Placement Confirmation Letter** imprimível fica disponível para entregar ao candidato.
 
 A barra de KPI mostra candidatos ativos, vagas abertas, contratações neste mês, e receita neste mês.
 

@@ -24,8 +24,8 @@ Esta es la categoría más completa:
 
 - **Gastos** — gastos agrupados por categoría con totales.
 - **Estado de Pérdidas y Ganancias** — ingresos, costo de bienes vendidos, ganancia bruta, gastos por categoría y ganancia neta, formateado para entregar directamente a un contador.
-- **Cash Book** — un registro día por día de cada pago recibido y cada gasto o pago a proveedor realizado, con un saldo corriente.
-- **Trial Balance** — totales de débito y crédito entre Caja, Cuentas por Cobrar, Cuentas por Pagar, Ingresos, Impuestos, Costo de Bienes Vendidos y Gastos, también listo para el contador.
+- **Libro de Caja** — un registro día por día de cada pago recibido y cada gasto o pago a proveedor realizado, con un saldo corriente.
+- **Balance de Comprobación** — totales de débito y crédito entre Caja, Cuentas por Cobrar, Cuentas por Pagar, Ingresos, Impuestos, Costo de Bienes Vendidos y Gastos, también listo para el contador.
 - **Impuestos** — impuesto recaudado agrupado por tasa/tipo, para la declaración de GST o IVA.
 
 ## Entradas de GST / Impuestos

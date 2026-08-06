@@ -4,7 +4,7 @@ Les écrans de ce type d'entreprise sont uniquement en anglais, quelle que soit 
 
 ## La fondation de service partagée
 
-Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique Dentaire — part des quatre mêmes blocs de construction : **Appointments** (réserver et planifier des visites), un **Service Catalog** (la liste des procédures dentaires et leurs prix), **Provider Schedules** (quel dentiste est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre les deux outils spécifiques à la dentisterie de Sarang : le schéma dentaire et le calendrier de rappel.
+Chaque type d'entreprise basé sur le service dans Sarang — y compris Clinique Dentaire — part des quatre mêmes blocs de construction : **Rendez-vous** (réserver et planifier des visites), un **Catalogue de services** (la liste des procédures dentaires et leurs prix), **Provider Schedules** (quel dentiste est disponible quand), et une **Notification Queue** automatique qui gère les rappels sans que vous ayez à les envoyer à la main. Le reste de ce chapitre couvre les deux outils spécifiques à la dentisterie de Sarang : le schéma dentaire et le calendrier de rappel.
 
 ## Schéma Dentaire
 
@@ -24,10 +24,10 @@ L'onglet **Treatment Plans** du même écran patient vous permet de construire d
 
 ## Calendrier de Rappel
 
-L'onglet **Recall** (et l'écran autonome **Recall Schedule**, listant le rappel de chaque patient dans toute la clinique) est le système de rappels de recall dentaire de Sarang — le flux quotidien « revenez pour votre nettoyage de 6 mois ». Pour chaque patient, vous définissez :
+L'onglet **Recall** (et l'écran autonome **Calendrier de rappel**, listant le rappel de chaque patient dans toute la clinique) est le système de rappels de recall dentaire de Sarang — le flux quotidien « revenez pour votre nettoyage de 6 mois ». Pour chaque patient, vous définissez :
 
 - **Recall Type** — Hygiène 6 mois, Hygiène 12 mois, Révision de couronne, ou Personnalisé.
 - **Last Visit Date** et **Next Recall Date**.
 - Notes optionnelles.
 
-L'écran Recall Schedule classe chaque patient en **Overdue**, **Due Soon** (dans les 7 jours), **This Month** (dans les 30 jours), ou **Upcoming**, avec des comptes et des badges codés par couleur pour chaque catégorie, afin que vous sachiez toujours qui appeler ensuite. Un badge « Reminded » apparaît une fois qu'un rappel a été envoyé pour le recall de ce patient.
+L'écran Recall Schedule classe chaque patient en **En Retard**, **Due Soon** (dans les 7 jours), **Ce mois** (dans les 30 jours), ou **Upcoming**, avec des comptes et des badges codés par couleur pour chaque catégorie, afin que vous sachiez toujours qui appeler ensuite. Un badge « Reminded » apparaît une fois qu'un rappel a été envoyé pour le recall de ce patient.

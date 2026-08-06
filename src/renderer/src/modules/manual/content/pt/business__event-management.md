@@ -2,7 +2,7 @@
 
 ## O que está incluído
 
-Gestão de Eventos é construída sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais **Leads** e um módulo dedicado **Events** para o agendamento em si e seus fornecedores.
+Gestão de Eventos é construída sobre a base compartilhada de negócios de serviço do Sarang — agendamentos, um catálogo de serviços, horários de prestadores, e a fila de notificações — mais **Leads** e um módulo dedicado **Eventos** para o agendamento em si e seus fornecedores.
 
 ## Leads
 
@@ -24,7 +24,7 @@ Cada evento também tem um **Run of Show** — a linha do tempo de execução do
 
 ## Faturamento
 
-Assim que um valor final é definido no evento, um botão **Generate Invoice** o transforma em uma nota fiscal real para o cliente — separada do que você deve aos seus fornecedores. A barra de KPI mostra eventos neste mês, fornecedores ainda pendentes, próximos eventos, e novas consultas nos últimos 7 dias.
+Assim que um valor final é definido no evento, um botão **Gerar Fatura** o transforma em uma nota fiscal real para o cliente — separada do que você deve aos seus fornecedores. A barra de KPI mostra eventos neste mês, fornecedores ainda pendentes, próximos eventos, e novas consultas nos últimos 7 dias.
 
 ## Idioma
 

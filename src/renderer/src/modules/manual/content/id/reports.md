@@ -2,7 +2,7 @@
 
 ## Menemukan sebuah laporan
 
-Buka **Laporan** dari sidebar. Panel kiri mendaftar setiap laporan yang dapat Anda akses, dikelompokkan ke dalam kategori — sebuah kategori hanya muncul jika ada setidaknya satu laporan yang Anda diizinkan untuk melihatnya dan yang berlaku untuk pengaturan Anda. Kategori universal yang ada untuk setiap bisnis adalah **Sales**, **Inventory**, **Finance**, **Customers**, **Suppliers**, dan **Admin**. Laporan GST hanya muncul jika bisnis Anda menggunakan model pajak GST; kategori jenis-bisnis (Restaurant, Blood Bank, Jewellery, Logistics, Rental, Hotel, Service) hanya muncul setelah fitur atau jenis bisnis yang sesuai aktif untuk Anda.
+Buka **Laporan** dari sidebar. Panel kiri mendaftar setiap laporan yang dapat Anda akses, dikelompokkan ke dalam kategori — sebuah kategori hanya muncul jika ada setidaknya satu laporan yang Anda diizinkan untuk melihatnya dan yang berlaku untuk pengaturan Anda. Kategori universal yang ada untuk setiap bisnis adalah **Penjualan**, **Inventaris**, **Keuangan**, **Pelanggan**, **Pemasok**, dan **Administrasi**. Laporan GST hanya muncul jika bisnis Anda menggunakan model pajak GST; kategori jenis-bisnis (Restaurant, Blood Bank, Jewellery, Logistics, Rental, Hotel, Service) hanya muncul setelah fitur atau jenis bisnis yang sesuai aktif untuk Anda.
 
 Klik sebuah laporan untuk memilihnya, atur filternya (kebanyakan menggunakan rentang tanggal; beberapa menggunakan pelanggan/pemasok tertentu, staf/penyedia, atau bulan alih-alih rentang hari), dan laporan akan dimuat secara otomatis. Setelah dimuat, tiga tombol ekspor muncul: **CSV**, **Excel**, dan **PDF**.
 
@@ -22,11 +22,11 @@ Customer Ledger dan Supplier Statement masing-masing menghasilkan laporan transa
 
 Ini adalah kategori paling mendalam:
 
-- **Expenses** — pengeluaran dikelompokkan berdasarkan kategori dengan total.
-- **Profit & Loss Statement** — pendapatan, harga pokok penjualan, laba kotor, pengeluaran per kategori, dan laba bersih, diformat untuk langsung diserahkan kepada akuntan.
-- **Cash Book** — daftar harian dari setiap pembayaran yang diterima dan setiap pengeluaran atau pembayaran pemasok yang dilakukan, dengan saldo berjalan.
-- **Trial Balance** — total debit dan kredit di seluruh Kas, Piutang, Utang, Pendapatan, Pajak, HPP, dan Pengeluaran, juga siap diserahkan ke akuntan.
-- **Tax** — pajak yang terkumpul dikelompokkan berdasarkan tarif/jenis, untuk pengajuan GST atau PPN.
+- **Pengeluaran** — pengeluaran dikelompokkan berdasarkan kategori dengan total.
+- **Laporan Laba Rugi** — pendapatan, harga pokok penjualan, laba kotor, pengeluaran per kategori, dan laba bersih, diformat untuk langsung diserahkan kepada akuntan.
+- **Buku Kas** — daftar harian dari setiap pembayaran yang diterima dan setiap pengeluaran atau pembayaran pemasok yang dilakukan, dengan saldo berjalan.
+- **Neraca Saldo** — total debit dan kredit di seluruh Kas, Piutang, Utang, Pendapatan, Pajak, HPP, dan Pengeluaran, juga siap diserahkan ke akuntan.
+- **Pajak** — pajak yang terkumpul dikelompokkan berdasarkan tarif/jenis, untuk pengajuan GST atau PPN.
 
 ## Entri GST / Pajak
 

@@ -1,10 +1,10 @@
 # Pharmacy
 
-Memilih **Pharmacy** sebagai jenis bisnis Anda mengaktifkan **pelacakan batch**, **pelacakan kedaluwarsa**, dan set modul **Logistics** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah apotek.
+Memilih **Pharmacy** sebagai jenis bisnis Anda mengaktifkan **pelacakan batch**, **pelacakan kedaluwarsa**, dan set modul **Logistik** bersama. Semua yang lain — Billing, Products, Customers, Inventory, Reports — bekerja persis seperti dijelaskan di bab-bab tersebut; bab ini membahas apa yang khusus untuk sebuah apotek.
 
 ## Batch Management
 
-Buka **Batch Management** dari sidebar untuk mencatat setiap batch stok yang Anda terima: produk, nomor batch/lot, kuantitas diterima, tanggal kedaluwarsa, tanggal produksi opsional, biaya satuan, dan dari pemasok mana asalnya. Setiap batch melacak **kuantitas tersisa**-nya sendiri secara terpisah dari apa yang awalnya diterima, dan daftar dapat difilter menjadi **All**, **Expiring Soon**, atau **Expired**. Pil peringatan di bagian atas layar menandai berapa banyak batch yang akan kedaluwarsa dalam 30 hari atau sudah kedaluwarsa, sehingga pemeriksaan stok tidak pernah menjadi kejutan. Anda dapat mengedit tanggal kedaluwarsa, tanggal produksi, kuantitas tersisa, atau biaya sebuah batch nanti, atau menonaktifkan sebuah batch setelah sepenuhnya terpakai atau dihapuskan.
+Buka **Manajemen Batch** dari sidebar untuk mencatat setiap batch stok yang Anda terima: produk, nomor batch/lot, kuantitas diterima, tanggal kedaluwarsa, tanggal produksi opsional, biaya satuan, dan dari pemasok mana asalnya. Setiap batch melacak **kuantitas tersisa**-nya sendiri secara terpisah dari apa yang awalnya diterima, dan daftar dapat difilter menjadi **Semua**, **Akan Kedaluwarsa**, atau **Kedaluwarsa**. Pil peringatan di bagian atas layar menandai berapa banyak batch yang akan kedaluwarsa dalam 30 hari atau sudah kedaluwarsa, sehingga pemeriksaan stok tidak pernah menjadi kejutan. Anda dapat mengedit tanggal kedaluwarsa, tanggal produksi, kuantitas tersisa, atau biaya sebuah batch nanti, atau menonaktifkan sebuah batch setelah sepenuhnya terpakai atau dihapuskan.
 
 ## Bagaimana penjualan menarik dari batch
 
@@ -20,11 +20,11 @@ Masukkan **Drug License Number** apotek Anda di bawah Settings → Business Prof
 
 ## Pemesanan ulang otomatis dari stok rendah
 
-Atur **Default Supplier** pada sebuah produk (di samping Reorder Level/Quantity-nya pada formulir Produk), dan ketika produk itu menipis, gunakan **Generate Reorder POs** pada bilah peringatan stok-rendah di Inventory. Sarang menyusun draf satu pesanan pembelian per pemasok, mengelompokkan setiap produk yang jatuh tempo dan memiliki pemasok default terkonfigurasi, dan melewati apa pun yang sudah ada di sebuah PO terbuka sehingga menjalankannya lagi tidak pernah membuat duplikat — produk tanpa pemasok default yang diatur juga dilewati, dengan sebuah hitungan ditampilkan sehingga Anda tahu apa yang masih perlu perhatian manual.
+Atur **Default Supplier** pada sebuah produk (di samping Reorder Level/Quantity-nya pada formulir Produk), dan ketika produk itu menipis, gunakan **Buat PO Pemesanan Ulang** pada bilah peringatan stok-rendah di Inventory. Sarang menyusun draf satu pesanan pembelian per pemasok, mengelompokkan setiap produk yang jatuh tempo dan memiliki pemasok default terkonfigurasi, dan melewati apa pun yang sudah ada di sebuah PO terbuka sehingga menjalankannya lagi tidak pernah membuat duplikat — produk tanpa pemasok default yang diatur juga dilewati, dengan sebuah hitungan ditampilkan sehingga Anda tahu apa yang masih perlu perhatian manual.
 
 ## Logistics & Supply Chain
 
-Karena template default Pharmacy mencakup modul Logistics, Anda juga mendapatkan **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, dan **Logistics Analytics** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
+Karena template default Pharmacy mencakup modul Logistics, Anda juga mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.
 
 ## Yang dibagikan dengan setiap bisnis
 

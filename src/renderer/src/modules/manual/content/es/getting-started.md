@@ -27,7 +27,7 @@ Ese es todo el ciclo — la mayoría de los propietarios pueden pasar de una ins
 ## 5. Qué sigue
 
 - **Informes** — Pérdidas y Ganancias, Libro de Caja, Balance de Comprobación, informes de GST, e informes específicos del negocio están todos disponibles desde el primer día, exportables a PDF o Excel.
-- **Copia de Seguridad** — configure una copia de seguridad manual o programada desde **Backup** para que sus datos estén protegidos. Vea el capítulo *Copia de Seguridad y Restauración*.
+- **Copia de Seguridad** — configure una copia de seguridad manual o programada desde **Copia de Seguridad** para que sus datos estén protegidos. Vea el capítulo *Copia de Seguridad y Restauración*.
 - **Usuarios y Permisos** — si más de una persona usará Sarang, agréguelas como Usuarios con un rol que controle exactamente qué pueden ver y hacer. Vea el capítulo *Usuarios y Permisos*.
 - **Ask Sarang** — una vez que se sienta cómodo con lo básico, active el Asistente de IA desde **Settings → Additional Business Features** para hacer preguntas en lenguaje sencillo sobre los datos de su propio negocio. Vea el capítulo *Ask Sarang (Asistente de IA)*.
 

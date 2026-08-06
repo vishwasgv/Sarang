@@ -2,7 +2,7 @@
 
 Auto-école est l'un des 24 modèles d'entreprise de service spécifiques de Sarang. Comme chaque type d'entreprise de ce groupe, les écrans de ce type d'entreprise sont uniquement en anglais, quelle que soit la langue que vous avez définie ailleurs dans Sarang.
 
-Chaque modèle d'entreprise de service partage la même fondation : **Appointments** pour la réservation, un **Service Catalog**, **Provider Schedule** pour les heures de travail du personnel, et une **Notification Queue** en arrière-plan pour les rappels. Auto-école ajoute son propre écran dédié — avec cinq onglets — pour les aspects de la gestion d'une auto-école qui ne rentrent pas dans un rendez-vous générique : profils d'élèves, séances de conduite, véhicules, examens, et forfaits.
+Chaque modèle d'entreprise de service partage la même fondation : **Rendez-vous** pour la réservation, un **Catalogue de services**, **Emploi du temps du praticien** pour les heures de travail du personnel, et une **Notification Queue** en arrière-plan pour les rappels. Auto-école ajoute son propre écran dédié — avec cinq onglets — pour les aspects de la gestion d'une auto-école qui ne rentrent pas dans un rendez-vous générique : profils d'élèves, séances de conduite, véhicules, examens, et forfaits.
 
 ## Élèves
 
@@ -29,7 +29,7 @@ Suit les réservations d'examen réelles d'un élève — examen du permis d'app
 
 ## Forfaits
 
-Le schéma de facturation le plus courant d'une auto-école est de vendre un forfait de N leçons d'avance plutôt que de facturer leçon par leçon. **Packages** comporte deux parties :
+Le schéma de facturation le plus courant d'une auto-école est de vendre un forfait de N leçons d'avance plutôt que de facturer leçon par leçon. **Colis** comporte deux parties :
 
 - **Package Catalog** — définissez le nom d'un forfait, le nombre total de séances, le prix, et à quelle catégorie de véhicule il s'applique.
 - **Learner Enrollments** — inscrivez un élève à un forfait, suivez les séances utilisées par rapport au total, et générez la facture du forfait une seule fois (un forfait est facturé comme un tout, pas par séance). Chaque séance programmée sur cette inscription est déduite automatiquement de son compte restant au lieu de nécessiter ses propres frais ou facture.

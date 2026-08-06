@@ -30,21 +30,21 @@ Ouvrir une facture affiche ses lignes complètes, la répartition des taxes et l
 - **Annuler un paiement** — si un paiement a été enregistré par erreur, annulez-le avec un motif. Le paiement annulé reste visible (barré) pour la piste d'audit.
 - **Imprimer** ou **Imprimer le reçu** — prévisualisez la mise en page de la facture A4 ou du reçu thermique avant l'envoi à l'imprimante.
 - **Annuler la facture** — nécessite un motif et ne peut pas être annulé (irréversible).
-- **Send to Kitchen** — apparaît uniquement pour les entreprises de type Restaurant avec le KOT activé, et seulement avant qu'un KOT n'existe déjà pour cette facture.
+- **Envoyer en Cuisine** — apparaît uniquement pour les entreprises de type Restaurant avec le KOT activé, et seulement avant qu'un KOT n'existe déjà pour cette facture.
 
 L'**historique des paiements** est un écran séparé qui liste tous les paiements jamais enregistrés, toutes factures confondues — consultable par facture, client ou numéro de référence, et filtrable par mode de paiement ou plage de dates. L'annulation d'un paiement peut également se faire depuis cet écran.
 
 ## Quotations
 
-Les **Quotations** (`/billing/quotations`) sont des estimations de prix non contractuelles que vous pouvez remettre à un client avant qu'il ne s'engage. Créez-en une avec **New Quotation** : choisissez ou tapez un nom de client, ajoutez des lignes d'articles (recherchés de la même façon que dans Facturation), une date de validité facultative, et des notes.
+Les **Devis** (`/billing/quotations`) sont des estimations de prix non contractuelles que vous pouvez remettre à un client avant qu'il ne s'engage. Créez-en une avec **Nouveau Devis** : choisissez ou tapez un nom de client, ajoutez des lignes d'articles (recherchés de la même façon que dans Facturation), une date de validité facultative, et des notes.
 
-Une Quotation démarre au statut **Brouillon** et peut passer à **Envoyée**, **Acceptée**, ou **Expirée**. Une fois que le client l'accepte, cliquez sur **Convert to Invoice** — cela crée une véritable facture à partir des articles de la Quotation et marque la Quotation comme Acceptée. Une Quotation déjà convertie affiche un lien vers la facture résultante à la place du bouton de conversion. Les Quotations peuvent être imprimées au format A4 ou largeur reçu, et supprimées tant qu'elles n'ont pas été converties.
+Une Quotation démarre au statut **Brouillon** et peut passer à **Envoyée**, **Acceptée**, ou **Expirée**. Une fois que le client l'accepte, cliquez sur **Convertir en Facture** — cela crée une véritable facture à partir des articles de la Quotation et marque la Quotation comme Acceptée. Une Quotation déjà convertie affiche un lien vers la facture résultante à la place du bouton de conversion. Les Quotations peuvent être imprimées au format A4 ou largeur reçu, et supprimées tant qu'elles n'ont pas été converties.
 
 ## Credit Notes et Debit Notes
 
-Les **Credit Notes** (`/billing/credit-notes`) enregistrent une somme due *en retour* à un client — typiquement pour un retour, un trop-perçu, ou un geste commercial. Créez-en une avec un motif et un montant, optionnellement liée à un client et/ou à la facture d'origine. La lier à un client crédite automatiquement son grand livre, réduisant ce qu'il vous doit.
+Les **Avoirs** (`/billing/credit-notes`) enregistrent une somme due *en retour* à un client — typiquement pour un retour, un trop-perçu, ou un geste commercial. Créez-en une avec un motif et un montant, optionnellement liée à un client et/ou à la facture d'origine. La lier à un client crédite automatiquement son grand livre, réduisant ce qu'il vous doit.
 
-Les **Debit Notes** (`/billing/debit-notes`) sont l'équivalent côté fournisseur : une somme qu'un fournisseur vous doit en retour, par exemple un retour de stock acheté ou une correction de facturation. Lier une Debit Note à un fournisseur débite son grand livre, réduisant ce que vous lui devez. Les Credit Notes et Debit Notes peuvent toutes deux référencer facultativement la facture ou le bon de commande auquel elles se rapportent, peuvent être modifiées ou supprimées, et s'impriment au format A4 ou largeur reçu.
+Les **Notes de Débit** (`/billing/debit-notes`) sont l'équivalent côté fournisseur : une somme qu'un fournisseur vous doit en retour, par exemple un retour de stock acheté ou une correction de facturation. Lier une Debit Note à un fournisseur débite son grand livre, réduisant ce que vous lui devez. Les Credit Notes et Debit Notes peuvent toutes deux référencer facultativement la facture ou le bon de commande auquel elles se rapportent, peuvent être modifiées ou supprimées, et s'impriment au format A4 ou largeur reçu.
 
 ## Partager des documents par WhatsApp et E-mail
 

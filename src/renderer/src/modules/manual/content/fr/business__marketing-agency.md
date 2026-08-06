@@ -2,15 +2,15 @@
 
 ## Ce qui est inclus
 
-Agence de Marketing est construite sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus **Leads**, **Service Projects**, **Retainers**, et un ensemble de champs spécifiques aux campagnes sur Projects (**Marketing Campaigns**) que les autres secteurs de type conseil n'ont pas.
+Agence de Marketing est construite sur la fondation partagée des entreprises de service de Sarang — rendez-vous, un catalogue de services, plannings des prestataires, et la file d'attente de notifications — plus **Prospects**, **Service Projects**, **Forfaits de retenue**, et un ensemble de champs spécifiques aux campagnes sur Projects (**Marketing Campaigns**) que les autres secteurs de type conseil n'ont pas.
 
 ## Prospects et Mandats
 
-**Leads** est le même pipeline en glisser-déposer (Ouvert → Contacté → Proposition → Gagné → Perdu) utilisé dans tous les secteurs de type conseil de Sarang, et **Retainers** gère les accords mensuels récurrents avec les clients (Honoraire Fixe, Forfait d'Heures, ou Basé sur les Livrables) avec génération de facture mensuelle en un clic — voir le chapitre *Consultant Indépendant* pour le parcours complet des deux, les écrans étant identiques.
+**Prospects** est le même pipeline en glisser-déposer (Ouvert → Contacté → Proposition → Gagné → Perdu) utilisé dans tous les secteurs de type conseil de Sarang, et **Forfaits de retenue** gère les accords mensuels récurrents avec les clients (Honoraire Fixe, Forfait d'Heures, ou Basé sur les Livrables) avec génération de facture mensuelle en un clic — voir le chapitre *Consultant Indépendant* pour le parcours complet des deux, les écrans étant identiques.
 
 ## Campagnes (Projets avec champs marketing)
 
-**Projects** est là où Agence de Marketing gagne sa propre profondeur. Chaque projet a le nom, type (y compris un type dédié Campagne Marketing), statut, et valeur totale du contrat habituels — mais le formulaire de projet d'une agence de marketing affiche aussi trois champs supplémentaires qu'aucun autre secteur de conseil n'a :
+**Projets** est là où Agence de Marketing gagne sa propre profondeur. Chaque projet a le nom, type (y compris un type dédié Campagne Marketing), statut, et valeur totale du contrat habituels — mais le formulaire de projet d'une agence de marketing affiche aussi trois champs supplémentaires qu'aucun autre secteur de conseil n'a :
 
 - **Target Channel** — par ex. Google Ads, Meta Ads, SEO, E-mail, Réseaux Sociaux, Contenu, Influenceur (texte libre avec suggestions, afin que vous puissiez saisir le vôtre).
 - **Deliverable Type** — par ex. Lancement de Campagne, Ensemble d'Actifs Créatifs, Rapport Mensuel, Site Web, Calendrier de Contenu.

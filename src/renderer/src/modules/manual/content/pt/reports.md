@@ -24,8 +24,8 @@ Esta é a categoria mais completa:
 
 - **Despesas** — despesas agrupadas por categoria com totais.
 - **Demonstração de Resultados** — receita, custo das mercadorias vendidas, lucro bruto, despesas por categoria e lucro líquido, formatado para entregar diretamente a um contador.
-- **Cash Book** — um registro dia a dia de todo pagamento recebido e de toda despesa ou pagamento a fornecedor realizado, com um saldo corrente.
-- **Trial Balance** — totais de débito e crédito entre Caixa, Contas a Receber, Contas a Pagar, Receita, Imposto e Despesas, também pronto para o contador.
+- **Livro Caixa** — um registro dia a dia de todo pagamento recebido e de toda despesa ou pagamento a fornecedor realizado, com um saldo corrente.
+- **Balancete de Verificação** — totais de débito e crédito entre Caixa, Contas a Receber, Contas a Pagar, Receita, Imposto e Despesas, também pronto para o contador.
 - **Impostos** — impostos coletados agrupados por alíquota/tipo, para declaração de GST ou IVA.
 
 ## Lançamentos de GST / Impostos

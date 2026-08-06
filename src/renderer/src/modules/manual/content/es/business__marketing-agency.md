@@ -2,15 +2,15 @@
 
 ## Qué incluye
 
-Agencia de Marketing está construida sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más **Leads**, **Service Projects**, **Retainers**, y un conjunto de campos específicos de campaña en Projects (**Marketing Campaigns**) que otras verticales de estilo consultoría no tienen.
+Agencia de Marketing está construida sobre la base compartida de negocio de servicio de Sarang — citas, un catálogo de servicios, horarios de proveedores, y la cola de notificaciones — más **Prospectos**, **Service Projects**, **Contratos de retención**, y un conjunto de campos específicos de campaña en Projects (**Marketing Campaigns**) que otras verticales de estilo consultoría no tienen.
 
 ## Prospectos y Retenedores
 
-**Leads** es el mismo embudo de arrastrar y soltar (Abierto → Contactado → Propuesta → Ganado → Perdido) usado en todas las verticales de estilo consultoría de Sarang, y **Retainers** gestiona acuerdos mensuales recurrentes con clientes (Honorario Fijo, Bolsa por Horas, o Basado en Entregables) con generación de factura mensual con un clic — vea el capítulo de *Consultor Independiente* para el recorrido completo de ambos, ya que las pantallas son idénticas.
+**Prospectos** es el mismo embudo de arrastrar y soltar (Abierto → Contactado → Propuesta → Ganado → Perdido) usado en todas las verticales de estilo consultoría de Sarang, y **Contratos de retención** gestiona acuerdos mensuales recurrentes con clientes (Honorario Fijo, Bolsa por Horas, o Basado en Entregables) con generación de factura mensual con un clic — vea el capítulo de *Consultor Independiente* para el recorrido completo de ambos, ya que las pantallas son idénticas.
 
 ## Campañas (Proyectos con campos de marketing)
 
-**Projects** es donde Agencia de Marketing gana su propia profundidad. Cada proyecto tiene el nombre, tipo (incluyendo un tipo dedicado de Campaña de Marketing), estado, y valor total del contrato habituales — pero el formulario de proyecto de una agencia de marketing también muestra tres campos adicionales que ninguna otra vertical de consultoría tiene:
+**Proyectos** es donde Agencia de Marketing gana su propia profundidad. Cada proyecto tiene el nombre, tipo (incluyendo un tipo dedicado de Campaña de Marketing), estado, y valor total del contrato habituales — pero el formulario de proyecto de una agencia de marketing también muestra tres campos adicionales que ninguna otra vertical de consultoría tiene:
 
 - **Target Channel** — p. ej. Google Ads, Meta Ads, SEO, Correo Electrónico, Redes Sociales, Contenido, Influencer (texto libre con sugerencias, así puede escribir el suyo propio).
 - **Deliverable Type** — p. ej. Lanzamiento de Campaña, Conjunto de Activos Creativos, Informe Mensual, Sitio Web, Calendario de Contenido.

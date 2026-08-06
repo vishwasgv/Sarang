@@ -11,7 +11,7 @@ Keduanya dapat **diarsipkan** alih-alih dihapus, yang menyembunyikannya dari daf
 Mengklik pelanggan atau pemasok membuka layar detailnya, yang menampilkan info kontak beserta akun berjalan mereka:
 
 - Layar detail **pelanggan** menampilkan batas kredit dan **saldo tertunggak** mereka — berapa banyak yang mereka utang kepada Anda saat ini — ditambah buku besar transaksi dari setiap debit (faktur penjualan-kredit) dan kredit (pembayaran atau nota kredit) yang memengaruhi saldo tersebut, masing-masing dengan total berjalan.
-- Layar detail **pemasok** menampilkan **saldo terutang** — berapa banyak yang Anda utang kepada mereka saat ini — dengan jenis buku besar yang sama (pembelian menambah apa yang Anda utang; pembayaran atau nota debit menguranginya). Jika Anda berutang uang kepada pemasok, tombol **Record Payment** memungkinkan Anda mencatat pembayaran langsung kepada mereka (Tunai, Transfer Bank, Cek, UPI, Kartu, atau Lainnya), dengan nomor referensi dan catatan opsional.
+- Layar detail **pemasok** menampilkan **saldo terutang** — berapa banyak yang Anda utang kepada mereka saat ini — dengan jenis buku besar yang sama (pembelian menambah apa yang Anda utang; pembayaran atau nota debit menguranginya). Jika Anda berutang uang kepada pemasok, tombol **Catat Pembayaran** memungkinkan Anda mencatat pembayaran langsung kepada mereka (Tunai, Transfer Bank, Cek, UPI, Kartu, atau Lainnya), dengan nomor referensi dan catatan opsional.
 
 Kedua buku besar menampilkan 100 entri terakhir. Saldo yang ditampilkan selalu dihitung dari riwayat transaksi lengkap, bukan angka berjalan yang di-cache, sehingga tidak bisa melenceng dari apa yang sebenarnya terjadi.
 
@@ -23,4 +23,4 @@ Ini disengaja: mencari berdasarkan nomor telepon sebelum membuat catatan baru ad
 
 ## Riwayat pembelian pemasok
 
-Keterlibatan pemasok dalam pembelian Anda muncul di beberapa tempat yang saling terhubung, bukan satu layar tunggal: **Pesanan Pembelian** yang difilter atau dicari berdasarkan nama pemasok, buku besar pemasok itu sendiri (yang mencerminkan setiap pesanan pembelian yang diterima dan setiap pembayaran yang dilakukan kepada mereka), dan **Debit Notes** apa pun yang dibuat terhadap pesanan pembelian dengan pemasok tersebut. Bersama-sama, ini memberi Anda gambaran lengkap tentang apa yang telah Anda beli dari seorang pemasok dan berapa yang saat ini Anda utang kepada mereka.
+Keterlibatan pemasok dalam pembelian Anda muncul di beberapa tempat yang saling terhubung, bukan satu layar tunggal: **Pesanan Pembelian** yang difilter atau dicari berdasarkan nama pemasok, buku besar pemasok itu sendiri (yang mencerminkan setiap pesanan pembelian yang diterima dan setiap pembayaran yang dilakukan kepada mereka), dan **Nota Debit** apa pun yang dibuat terhadap pesanan pembelian dengan pemasok tersebut. Bersama-sama, ini memberi Anda gambaran lengkap tentang apa yang telah Anda beli dari seorang pemasok dan berapa yang saat ini Anda utang kepada mereka.
