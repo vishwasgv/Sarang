@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { Plus, RefreshCw, UtensilsCrossed, Trash2, CheckCircle2, Clock, AlertTriangle, MoonStar, QrCode, X, Receipt, Merge, CalendarClock } from 'lucide-react'
+import { Plus, RefreshCw, UtensilsCrossed, Trash2, CheckCircle2, Clock, AlertTriangle, MoonStar, QrCode, X, Receipt, Merge, CalendarClock, Wifi, Pencil } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
@@ -76,8 +76,20 @@ export function RestaurantTablesScreen() {
   const [qrToggling, setQrToggling] = useState(false)
   const [qrStatus, setQrStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[] } | null>(null)
   const [qrModalTable, setQrModalTable] = useState<RestaurantTable | null>(null)
-  const [qrImage, setQrImage] = useState<{ qrDataUrl: string; orderUrl: string } | null>(null)
+  const [qrImage, setQrImage] = useState<{ qrDataUrl: string; orderUrl: string; wifiQrDataUrl: string | null; wifiSsid: string | null } | null>(null)
   const [qrModalError, setQrModalError] = useState<string | null>(null)
+
+  // Task 18 — WiFi-join QR, printed alongside the order QR so a customer
+  // whose phone isn't already on the restaurant's network can join it with
+  // the same scan gesture. Entirely optional — if no SSID is ever saved,
+  // generateTableQr just returns wifiQrDataUrl: null and everything behaves
+  // exactly as before this feature existed.
+  const [wifiSsidInput, setWifiSsidInput] = useState('')
+  const [wifiPasswordInput, setWifiPasswordInput] = useState('')
+  const [wifiOpenInput, setWifiOpenInput] = useState(false)
+  const [wifiHasPassword, setWifiHasPassword] = useState(false)
+  const [wifiSaving, setWifiSaving] = useState(false)
+  const [wifiEditing, setWifiEditing] = useState(false)
 
   // Phase 58 §2 (2026-07-21) — upcoming reservations, table merge, and the
   // Reservations panel.
@@ -125,6 +137,45 @@ export function RestaurantTablesScreen() {
     }
   }, [toastError, t])
 
+  const loadWifiConfig = useCallback(async () => {
+    try {
+      const res = await api.restaurant.getWifiConfig()
+      if (res.success && res.data) {
+        const data = res.data as { ssid: string; hasPassword: boolean; open: boolean }
+        setWifiSsidInput(data.ssid)
+        setWifiHasPassword(data.hasPassword)
+        setWifiOpenInput(data.open)
+      }
+    } catch { /* WiFi card is supplementary — table list itself already surfaces errors */ }
+  }, [])
+
+  async function saveWifiConfig() {
+    setWifiSaving(true)
+    try {
+      const res = await api.restaurant.setWifiConfig({
+        ssid: wifiSsidInput.trim(),
+        // Blank password input means "don't change it" once one is already
+        // saved — only send it through when the field actually has text, so
+        // re-saving just to rename the network can't silently wipe a working
+        // password.
+        password: wifiPasswordInput ? wifiPasswordInput : undefined,
+        open: wifiOpenInput
+      })
+      if (res.success) {
+        toastSuccess(t('restaurantTables.wifiSaved'))
+        setWifiPasswordInput('')
+        setWifiEditing(false)
+        await loadWifiConfig()
+      } else {
+        toastError('Error', res.error?.message ?? t('restaurantTables.couldNotSaveWifi'))
+      }
+    } catch {
+      toastError('Error', t('restaurantTables.couldNotSaveWifi'))
+    } finally {
+      setWifiSaving(false)
+    }
+  }
+
   const loadUpcomingReservations = useCallback(async () => {
     try {
       const res = await api.reservations.upcomingByTable()
@@ -145,7 +196,7 @@ export function RestaurantTablesScreen() {
     }
   }, [toastError, t])
 
-  useEffect(() => { load(); loadQrStatus(); loadUpcomingReservations() }, [load, loadQrStatus, loadUpcomingReservations])
+  useEffect(() => { load(); loadQrStatus(); loadUpcomingReservations(); loadWifiConfig() }, [load, loadQrStatus, loadUpcomingReservations, loadWifiConfig])
   useEffect(() => { if (showReservations) loadReservations() }, [showReservations, loadReservations])
 
   useEffect(() => {
@@ -187,16 +238,33 @@ export function RestaurantTablesScreen() {
     setQrModalError(null)
     try {
       const res = await api.restaurant.generateTableQr({ tableId: table.id })
-      if (res.success && res.data) setQrImage(res.data as { qrDataUrl: string; orderUrl: string })
+      if (res.success && res.data) setQrImage(res.data as { qrDataUrl: string; orderUrl: string; wifiQrDataUrl: string | null; wifiSsid: string | null })
       else setQrModalError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotGenerateQr'))
     } catch {
       setQrModalError(t('restaurantTables.couldNotGenerateQr'))
     }
   }
 
-  function printTableQr(table: RestaurantTable, qrDataUrl: string) {
+  function printTableQr(table: RestaurantTable, qrDataUrl: string, wifiQrDataUrl?: string | null, wifiSsid?: string | null) {
     const w = window.open('', '_blank')
-    const html = `<html><head><style>body{font-family:Arial,sans-serif;text-align:center;padding:40px}h1{font-size:20px;margin-bottom:4px}p{color:#666;margin-top:0}img{width:280px;height:280px;margin:20px auto}footer{margin-top:24px;font-size:10px;color:#888}</style></head><body><h1>${table.tableName || table.tableNumber}</h1><p>${t('restaurantTables.scanToOrder')}</p><img src="${qrDataUrl}" alt="QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
+    // Task 18 — when a WiFi QR is available, print it first with a "join
+    // WiFi, then scan to order" flow, side by side on one card rather than
+    // two separate printouts, so staff only handle one piece of paper per
+    // table.
+    const wifiBlock = wifiQrDataUrl
+      ? `<div class="qr-block"><h2>${t('restaurantTables.scanToJoinWifi')}</h2><img src="${wifiQrDataUrl}" alt="WiFi QR code" />${wifiSsid ? `<p class="ssid">${wifiSsid}</p>` : ''}</div>`
+      : ''
+    const orderBlock = `<div class="qr-block"><h2>${t('restaurantTables.scanToOrder')}</h2><img src="${qrDataUrl}" alt="Order QR code" /></div>`
+    const html = `<html><head><style>
+      body{font-family:Arial,sans-serif;text-align:center;padding:40px}
+      h1{font-size:20px;margin-bottom:16px}
+      h2{font-size:13px;color:#666;font-weight:600;margin:0 0 8px}
+      .row{display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+      .qr-block{width:220px}
+      img{width:200px;height:200px}
+      .ssid{font-size:11px;color:#666;margin-top:6px;word-break:break-word}
+      footer{margin-top:24px;font-size:10px;color:#888}
+    </style></head><body><h1>${table.tableName || table.tableNumber}</h1><div class="row">${wifiBlock}${orderBlock}</div><footer>${aszurexFooterHtml(10)}</footer></body></html>`
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
@@ -388,6 +456,59 @@ export function RestaurantTablesScreen() {
           )
         )}
       </Card>
+
+      {/* Task 18 — WiFi Network, printed as a combo QR alongside each
+          table's order QR. Only meaningful once QR ordering itself is on. */}
+      {qrEnabled && (
+        <Card padding="lg" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><Wifi size={16} /> {t('restaurantTables.wifiNetwork')}</h3>
+              <p className="text-xs text-slate-400 mt-1">{t('restaurantTables.wifiNetworkDesc')}</p>
+            </div>
+            {!wifiEditing && (
+              <button onClick={() => { setWifiEditing(true); setWifiPasswordInput('') }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors">
+                <Pencil size={13} /> {wifiSsidInput ? t('common.edit') : t('restaurantTables.addWifi')}
+              </button>
+            )}
+          </div>
+
+          {wifiEditing ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input value={wifiSsidInput} onChange={e => setWifiSsidInput(e.target.value)} maxLength={32}
+                  placeholder={t('restaurantTables.wifiSsidPlaceholder')}
+                  className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                {!wifiOpenInput && (
+                  <input type="password" value={wifiPasswordInput} onChange={e => setWifiPasswordInput(e.target.value)} maxLength={63}
+                    placeholder={wifiHasPassword ? t('restaurantTables.wifiPasswordKeepPlaceholder') : t('restaurantTables.wifiPasswordPlaceholder')}
+                    className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand" />
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <input type="checkbox" checked={wifiOpenInput} onChange={e => setWifiOpenInput(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                {t('restaurantTables.wifiOpenNetwork')}
+              </label>
+              <div className="flex gap-2">
+                <button onClick={saveWifiConfig} disabled={wifiSaving || !wifiSsidInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
+                  {wifiSaving ? t('restaurantTables.saving') : t('common.save')}
+                </button>
+                <button onClick={() => { setWifiEditing(false); setWifiPasswordInput(''); loadWifiConfig() }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors">
+                  {t('restaurantTables.cancel')}
+                </button>
+              </div>
+            </div>
+          ) : wifiSsidInput ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">{wifiSsidInput}</p>
+          ) : (
+            <p className="text-xs text-slate-400 italic">{t('restaurantTables.wifiNotConfigured')}</p>
+          )}
+        </Card>
+      )}
 
       {/* Phase 58 §2 (2026-07-21) — Reservations panel */}
       {showReservations && (
@@ -668,9 +789,17 @@ export function RestaurantTablesScreen() {
               <p className="text-sm text-danger">{qrModalError}</p>
             ) : qrImage ? (
               <>
+                {qrImage.wifiQrDataUrl && (
+                  <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">{t('restaurantTables.scanToJoinWifi')}</p>
+                    <img src={qrImage.wifiQrDataUrl} alt="WiFi QR code" className="w-40 h-40 mx-auto" />
+                    {qrImage.wifiSsid && <p className="text-xs text-slate-400 mt-1">{qrImage.wifiSsid}</p>}
+                  </div>
+                )}
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('restaurantTables.scanToOrder')}</p>
                 <img src={qrImage.qrDataUrl} alt="Table QR code" className="w-56 h-56 mx-auto" />
                 <p className="text-xs text-slate-400 break-all">{qrImage.orderUrl}</p>
-                <button onClick={() => printTableQr(qrModalTable, qrImage.qrDataUrl)}
+                <button onClick={() => printTableQr(qrModalTable, qrImage.qrDataUrl, qrImage.wifiQrDataUrl, qrImage.wifiSsid)}
                   className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
                   {t('restaurantTables.print')}
                 </button>

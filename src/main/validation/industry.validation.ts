@@ -65,6 +65,12 @@ export const GenerateTableQrSchema = z.object({
   tableId: z.string().min(1, 'tableId is required'),
 })
 
+export const SetWifiConfigSchema = z.object({
+  ssid: z.string().max(32, 'Network name is too long').optional(),
+  password: z.string().max(63, 'Password is too long').optional(),
+  open: z.boolean().optional(),
+})
+
 export type ChangeBusinessTypePayload = z.infer<typeof ChangeBusinessTypeSchema>
 export type UpdateModulesPayload = z.infer<typeof UpdateModulesSchema>
 export type UpsertRecipePayload = z.infer<typeof UpsertRecipeSchema>

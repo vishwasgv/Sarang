@@ -3,6 +3,8 @@ import * as restaurantService from '../../services/restaurant.service'
 import * as restaurantOrderService from '../../services/restaurant-order.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
+import { getPrisma } from '../../database/db'
+import { buildWifiQrPayload } from '../../utils/wifi-qr.util'
 import { ensureQrOrderServerState, getServerStatus } from '../../server/qr-order-server'
 import {
   ensureKitchenDisplayServerState, getKitchenDisplayServerStatus,
@@ -17,7 +19,25 @@ import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
   DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
   AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema, MergeTableIntoInvoiceSchema,
+  SetWifiConfigSchema,
 } from '../../validation/industry.validation'
+
+const WIFI_SSID_SETTING_KEY = 'restaurant_wifi_ssid'
+const WIFI_PASSWORD_SETTING_KEY = 'restaurant_wifi_password'
+const WIFI_OPEN_SETTING_KEY = 'restaurant_wifi_open'
+
+async function readWifiConfig(): Promise<{ ssid: string; password?: string; security: 'WPA' | 'nopass' } | null> {
+  const db = getPrisma()
+  const [ssidRow, passwordRow, openRow] = await Promise.all([
+    db.setting.findUnique({ where: { settingKey: WIFI_SSID_SETTING_KEY } }),
+    db.setting.findUnique({ where: { settingKey: WIFI_PASSWORD_SETTING_KEY } }),
+    db.setting.findUnique({ where: { settingKey: WIFI_OPEN_SETTING_KEY } })
+  ])
+  const ssid = ssidRow?.settingValue?.trim()
+  if (!ssid) return null
+  const open = openRow?.settingValue === 'true'
+  return { ssid, password: passwordRow?.settingValue, security: open ? 'nopass' : 'WPA' }
+}
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -202,7 +222,58 @@ export function register(handle: HandleFn): void {
     const orderUrl = `${status.lanUrls[0]}/order/${tableId}`
     const QRCode = await import('qrcode')
     const qrDataUrl = await QRCode.toDataURL(orderUrl, { margin: 1, width: 320 })
-    return { success: true, data: { qrDataUrl, orderUrl } }
+
+    // Task 18 — printed alongside the order QR so a customer whose phone
+    // isn't already on the restaurant's WiFi can join it with the same scan
+    // gesture, then immediately scan the order QR below it. Entirely
+    // optional: no WiFi config saved means no wifiQrDataUrl in the response,
+    // and the renderer already handles that (order QR alone, unchanged from
+    // before this feature existed).
+    const wifiConfig = await readWifiConfig()
+    const wifiPayload = wifiConfig ? buildWifiQrPayload(wifiConfig) : null
+    const wifiQrDataUrl = wifiPayload ? await QRCode.toDataURL(wifiPayload, { margin: 1, width: 320 }) : null
+
+    return { success: true, data: { qrDataUrl, orderUrl, wifiQrDataUrl, wifiSsid: wifiConfig?.ssid ?? null } }
+  })
+
+  handle('restaurant:getWifiConfig', async () => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const config = await readWifiConfig()
+    // Password is deliberately never sent back to the renderer — the QR
+    // itself is generated main-process-side in restaurant:generateTableQr,
+    // so the renderer never needs the plaintext value, only whether one is
+    // set (to decide whether to show "change password" vs "set password").
+    return { success: true, data: { ssid: config?.ssid ?? '', hasPassword: !!config?.password, open: config?.security === 'nopass' } }
+  })
+
+  handle('restaurant:setWifiConfig', async (payload) => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const parsed = SetWifiConfigSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const db = getPrisma()
+    const { ssid, password, open } = parsed.data
+    await db.setting.upsert({
+      where: { settingKey: WIFI_SSID_SETTING_KEY },
+      create: { settingKey: WIFI_SSID_SETTING_KEY, settingValue: ssid ?? '' },
+      update: { settingValue: ssid ?? '' }
+    })
+    // Only overwrite the stored password when a new one is actually
+    // provided — leaving the field blank in the UI on a later edit (e.g.
+    // just renaming the network) must not silently wipe out a working
+    // password.
+    if (password !== undefined) {
+      await db.setting.upsert({
+        where: { settingKey: WIFI_PASSWORD_SETTING_KEY },
+        create: { settingKey: WIFI_PASSWORD_SETTING_KEY, settingValue: password },
+        update: { settingValue: password }
+      })
+    }
+    await db.setting.upsert({
+      where: { settingKey: WIFI_OPEN_SETTING_KEY },
+      create: { settingKey: WIFI_OPEN_SETTING_KEY, settingValue: open ? 'true' : 'false' },
+      update: { settingValue: open ? 'true' : 'false' }
+    })
+    return { success: true, data: null }
   })
 
   // ── Kitchen Display (phone/laptop, LAN) ─────────────────────────────────────

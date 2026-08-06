@@ -60,6 +60,12 @@ Menu items with no recipe configured simply don't deduct any ingredient stock wh
 
 Restaurant Tables also has a **QR Table Ordering** toggle, off by default. Turn it on and Sarang starts a small local server on your own WiFi network (no internet needed) so customers can scan a table's printed QR code, browse the menu, and submit an order request from their phone. Nothing becomes a real bill automatically — every incoming order shows up under **Incoming Orders** on the Kitchen Order Tickets screen, where staff explicitly **Accept** (choosing a payment method, which creates the invoice and KOT together) or **Reject** it. Each table's QR code can be generated and printed from its card on the Restaurant Tables screen.
 
+### WiFi-join QR (combo with the order QR)
+
+Since a customer's phone needs to be on your restaurant's WiFi to reach the order page at all, the **WiFi Network** card (shown once QR Table Ordering is on) lets you save your guest network's name and password once. After that, every table's QR code shows — and prints — a second QR code above the order QR: scan it to join the WiFi automatically, then scan the order QR right below it to browse the menu and order. No typing a password, no separate WiFi sign next to the table.
+
+This is entirely optional — leave the WiFi Network card unconfigured and table QR codes work exactly as before (order QR only). Editing the network later (e.g. after changing your router's password) is a simple re-save; leaving the password field blank while updating just the network name keeps the existing password rather than clearing it. Marking the network as **open** (no password) skips the password field entirely — useful if your guest WiFi has no password of its own.
+
 ## What's shared with every business
 
 Billing, invoicing, payments, Customers, Products, Reports, Backup, and Users & Permissions all work exactly as described in their own chapters. If you also turn on Logistics & Supply Chain in **Settings → Additional Business Features**, you get Fleet, Carriers, Shipments, GRN, Delivery Challan, Freight Ledger, and Logistics Analytics too — but this isn't on by default for a restaurant, since most restaurants don't run their own delivery fleet or receive formal supplier shipments.

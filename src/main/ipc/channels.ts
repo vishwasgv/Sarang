@@ -440,7 +440,12 @@ export interface IpcChannels {
     listOrderRequests: (payload?: { status?: string }) => Promise<ApiResponse>
     acceptOrderRequest: (payload: { requestId: string; paymentMethod: string; customerId?: string }) => Promise<ApiResponse>
     rejectOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
-    generateTableQr: (payload: { tableId: string }) => Promise<ApiResponse>
+    generateTableQr: (payload: { tableId: string }) => Promise<ApiResponse<{ qrDataUrl: string; orderUrl: string; wifiQrDataUrl: string | null; wifiSsid: string | null }>>
+    // Task 18 — WiFi-join QR printed alongside the order QR. Password is
+    // write-only from the renderer's perspective (never read back), matching
+    // how the kitchen-display/field-order tokens already work.
+    getWifiConfig: () => Promise<ApiResponse<{ ssid: string; hasPassword: boolean; open: boolean }>>
+    setWifiConfig: (payload: { ssid?: string; password?: string; open?: boolean }) => Promise<ApiResponse>
     // Kitchen Display (phone/laptop, LAN) — additive to KOT printing and the
     // second-monitor board, same qr-order-server.ts LAN-trust model.
     getKitchenDisplayStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
