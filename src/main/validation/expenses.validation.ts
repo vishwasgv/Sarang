@@ -17,6 +17,11 @@ export const CreateExpenseSchema = z.object({
   mileageKm: z.number().finite().positive().optional(),
   mileageRatePerKm: z.number().finite().min(0).optional(),
   billableCustomerId: z.string().min(1).optional(),
+  // Phase 62 — Reverse Charge Mechanism, same meaning as Bill/PurchaseOrder's
+  // own. Doesn't change this expense's own math (Expense never computes a
+  // separate tax line), but feeds GSTR-3B Table 3.1(d)'s real disclosure —
+  // was schema-only until now, unsettable by any real caller.
+  isReverseCharge: z.boolean().default(false),
 })
 
 export const UpdateExpenseSchema = z.object({
@@ -31,6 +36,7 @@ export const UpdateExpenseSchema = z.object({
   mileageKm: z.number().finite().positive().optional(),
   mileageRatePerKm: z.number().finite().min(0).optional(),
   billableCustomerId: z.string().min(1).optional(),
+  isReverseCharge: z.boolean().optional(),
 })
 
 export const CreateExpenseCategorySchema = z.object({

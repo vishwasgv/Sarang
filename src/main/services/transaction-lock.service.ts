@@ -45,7 +45,18 @@ export const transactionLockService = {
     try {
       const db = getPrisma()
       const profile = await db.businessProfile.findFirst({ select: { lockDate: true } })
-      return { success: true, data: { lockDate: profile?.lockDate ?? null } }
+      // Real bug found live 2026-08-12 (LedgerSettingsScreen.tsx UAT, not a
+      // unit test — mocked IPC responses matched whatever shape the test
+      // author assumed, not what this handler actually returned): a raw
+      // Prisma Date object crosses the contextBridge as a genuine JS Date
+      // (structured clone preserves it), but the renderer calls
+      // `lockDate.slice(0, 10)` in two places, assuming an ISO string — the
+      // same convention this service's own assertNotLocked/OrThrow error
+      // messages already use (`profile.lockDate.toISOString().slice(0,10)`).
+      // Crashed LedgerSettingsScreen's ErrorBoundary the instant a lock date
+      // was ever set, for every future business, since none had ever set one
+      // in this dev DB before this test.
+      return { success: true, data: { lockDate: profile?.lockDate?.toISOString() ?? null } }
     } catch (err) {
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to fetch lock date.' } }
     }
@@ -64,7 +75,10 @@ export const transactionLockService = {
         data: { lockDate: lockDate ? parseLocalDateStart(lockDate) : null }
       })
       await logAction({ userId, action: 'TRANSACTION_LOCK_DATE_CHANGED', entityType: 'BusinessProfile', entityId: profile.id, oldValue: { lockDate: profile.lockDate }, newValue: { lockDate: updated.lockDate } })
-      return { success: true, data: { lockDate: updated.lockDate } }
+      // Same raw-Date-vs-ISO-string convention as getLockDate() above — kept
+      // consistent even though today's one caller (LedgerSettingsScreen)
+      // re-fetches via getLockDate() instead of reading this response.
+      return { success: true, data: { lockDate: updated.lockDate?.toISOString() ?? null } }
     } catch (err) {
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to set lock date.' } }
     }

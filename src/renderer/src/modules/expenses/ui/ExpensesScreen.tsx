@@ -21,7 +21,7 @@ interface Expense {
   category: { categoryName: string }
   createdBy?: { fullName: string } | null
   supplierId?: string | null; mileageKm?: number | null; mileageRatePerKm?: number | null
-  billableCustomerId?: string | null
+  billableCustomerId?: string | null; isReverseCharge?: boolean
 }
 interface SupplierOption { id: string; supplierName: string }
 interface CustomerOption { id: string; customerName: string }
@@ -65,7 +65,7 @@ export function ExpensesScreen() {
   const [editExpense, setEditExpense] = useState<Expense | null>(null)
   const [formData, setFormData] = useState({
     categoryId: '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: ''
+    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false
   })
   const [formSaving, setFormSaving] = useState(false)
 
@@ -109,7 +109,7 @@ export function ExpensesScreen() {
     setEditExpense(null)
     setFormData({
       categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: ''
+      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false
     })
     setFormOpen(true)
   }
@@ -128,7 +128,8 @@ export function ExpensesScreen() {
       billableCustomerId: exp.billableCustomerId ?? '',
       isMileage,
       mileageKm: isMileage ? String(exp.mileageKm) : '',
-      mileageRatePerKm: isMileage ? String(exp.mileageRatePerKm) : ''
+      mileageRatePerKm: isMileage ? String(exp.mileageRatePerKm) : '',
+      isReverseCharge: exp.isReverseCharge ?? false
     })
     setFormOpen(true)
   }
@@ -153,7 +154,8 @@ export function ExpensesScreen() {
         supplierId: formData.supplierId || undefined,
         billableCustomerId: formData.billableCustomerId || undefined,
         mileageKm: km && km > 0 ? km : undefined,
-        mileageRatePerKm: rate != null && !Number.isNaN(rate) ? rate : undefined
+        mileageRatePerKm: rate != null && !Number.isNaN(rate) ? rate : undefined,
+        isReverseCharge: formData.isReverseCharge
       }
       const res = editExpense
         ? await window.api.expenses.update({ id: editExpense.id, ...payload })
@@ -400,6 +402,11 @@ export function ExpensesScreen() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.customerName}</option>)}
               </Select>
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={formData.isReverseCharge} onChange={e => setFormData(d => ({ ...d, isReverseCharge: e.target.checked }))} className="w-4 h-4 rounded accent-brand" />
+              <span className="text-sm font-medium text-dark dark:text-slate-100">{t('bills.reverseCharge')}</span>
+            </label>
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t('expenses.paymentMethod')}</label>

@@ -36,12 +36,27 @@ export function LedgerSettingsScreen() {
 
   useEffect(() => { loadLockDate() }, [loadLockDate])
 
-  async function handleSetLockDate() {
+  // Real bug found live 2026-08-12 (LedgerSettingsScreen UAT against the
+  // real app): the "Clear Lock" button called `setLockDateInput('')` then
+  // immediately `handleSetLockDate()` in the same event handler — but
+  // `handleSetLockDate` read `lockDateInput` from its own render's closure,
+  // which still held the OLD (non-empty) value, since a state setter's
+  // effect isn't visible until the next render. The button silently
+  // re-saved the same lock date it was supposed to clear, while still
+  // showing a "success" toast — an administrator clicking "Clear Lock"
+  // would see confirmation but the lock would remain fully in effect.
+  // Accepting an explicit override value sidesteps the stale closure
+  // instead of relying on state that hasn't re-rendered yet.
+  async function handleSetLockDate(overrideValue?: string) {
+    const value = overrideValue !== undefined ? overrideValue : lockDateInput
     setSavingLock(true)
     try {
-      const res = await window.api.transactionLock.setLockDate({ lockDate: lockDateInput || null })
-      if (res.success) { toastSuccess(t('accounting.ledgerSettings.lockDateUpdated'), lockDateInput || t('accounting.ledgerSettings.cleared')); loadLockDate() }
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.ledgerSettings.couldNotSetLockDate'))
+      const res = await window.api.transactionLock.setLockDate({ lockDate: value || null })
+      if (res.success) {
+        setLockDateInput(value)
+        toastSuccess(t('accounting.ledgerSettings.lockDateUpdated'), value || t('accounting.ledgerSettings.cleared'))
+        loadLockDate()
+      } else toastError(t('common.error'), res.error?.message ?? t('accounting.ledgerSettings.couldNotSetLockDate'))
     } catch {
       toastError(t('common.error'), t('accounting.ledgerSettings.couldNotSetLockDate'))
     } finally { setSavingLock(false) }
@@ -83,8 +98,8 @@ export function LedgerSettingsScreen() {
           <div className="flex items-center gap-3">
             <input type="date" value={lockDateInput} onChange={(e) => setLockDateInput(e.target.value)}
               className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-            <Button size="sm" onClick={handleSetLockDate} loading={savingLock}>{t('common.save')}</Button>
-            {lockDate && <Button size="sm" variant="outline" onClick={() => { setLockDateInput(''); handleSetLockDate() }}>{t('accounting.ledgerSettings.clearLock')}</Button>}
+            <Button size="sm" onClick={() => handleSetLockDate()} loading={savingLock}>{t('common.save')}</Button>
+            {lockDate && <Button size="sm" variant="outline" onClick={() => handleSetLockDate('')}>{t('accounting.ledgerSettings.clearLock')}</Button>}
           </div>
         ) : (
           <p className="text-xs text-slate-400 italic">{t('accounting.ledgerSettings.adminOnlyLock')}</p>
