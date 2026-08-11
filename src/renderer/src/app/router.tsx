@@ -18,6 +18,17 @@ import { InventoryScreen } from '@modules/inventory/ui/InventoryScreen'
 import { InventoryMovementsScreen } from '@modules/inventory/ui/InventoryMovementsScreen'
 import { PurchaseOrdersScreen } from '@modules/inventory/ui/PurchaseOrdersScreen'
 import { PurchaseOrderDetailScreen } from '@modules/inventory/ui/PurchaseOrderDetailScreen'
+import { BillsScreen } from '@modules/suppliers/ui/BillsScreen'
+import { BillDetailScreen } from '@modules/suppliers/ui/BillDetailScreen'
+import { SupplierPaymentsScreen } from '@modules/suppliers/ui/SupplierPaymentsScreen'
+import { ChartOfAccountsScreen } from '@modules/accounting/ui/ChartOfAccountsScreen'
+import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScreen'
+import { BankAccountsScreen } from '@modules/accounting/ui/BankAccountsScreen'
+import { BankReconciliationScreen } from '@modules/accounting/ui/BankReconciliationScreen'
+import { PostDatedChequesScreen } from '@modules/accounting/ui/PostDatedChequesScreen'
+import { FixedAssetsScreen } from '@modules/accounting/ui/FixedAssetsScreen'
+import { FixedAssetDetailScreen } from '@modules/accounting/ui/FixedAssetDetailScreen'
+import { LedgerSettingsScreen } from '@modules/accounting/ui/LedgerSettingsScreen'
 import { BillingScreen } from '@modules/billing/ui/BillingScreen'
 import { InvoiceListScreen } from '@modules/billing/ui/InvoiceListScreen'
 import { InvoiceDetailScreen } from '@modules/billing/ui/InvoiceDetailScreen'
@@ -269,6 +280,18 @@ export function AppRouter() {
         <Route path="/inventory/movements" element={<ProtectedRoute permission="inventory.viewMovements"><InventoryMovementsScreen /></ProtectedRoute>} />
         <Route path="/purchase-orders" element={<ProtectedRoute permission="purchaseOrders.view"><PurchaseOrdersScreen /></ProtectedRoute>} />
         <Route path="/purchase-orders/:id" element={<ProtectedRoute permission="purchaseOrders.view"><PurchaseOrderDetailScreen /></ProtectedRoute>} />
+        <Route path="/bills" element={<ProtectedRoute permission="bills.view"><BillsScreen /></ProtectedRoute>} />
+        <Route path="/bills/:id" element={<ProtectedRoute permission="bills.view"><BillDetailScreen /></ProtectedRoute>} />
+        <Route path="/supplier-payments" element={<ProtectedRoute permission="supplierPayments.view"><SupplierPaymentsScreen /></ProtectedRoute>} />
+        {/* Phase 62 — Banking, Ledger & Compliance Backbone */}
+        <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute permission="chartOfAccounts.view"><ChartOfAccountsScreen /></ProtectedRoute>} />
+        <Route path="/accounting/journal-entries" element={<ProtectedRoute permission="journalEntries.view"><JournalEntriesScreen /></ProtectedRoute>} />
+        <Route path="/accounting/bank-accounts" element={<ProtectedRoute permission="bankAccounts.view"><BankAccountsScreen /></ProtectedRoute>} />
+        <Route path="/accounting/bank-accounts/:id" element={<ProtectedRoute permission="bankReconciliation.view"><BankReconciliationScreen /></ProtectedRoute>} />
+        <Route path="/accounting/post-dated-cheques" element={<ProtectedRoute permission="postDatedCheques.view"><PostDatedChequesScreen /></ProtectedRoute>} />
+        <Route path="/accounting/fixed-assets" element={<ProtectedRoute permission="fixedAssets.view"><FixedAssetsScreen /></ProtectedRoute>} />
+        <Route path="/accounting/fixed-assets/:id" element={<ProtectedRoute permission="fixedAssets.view"><FixedAssetDetailScreen /></ProtectedRoute>} />
+        <Route path="/accounting/ledger-settings" element={<ProtectedRoute permission="bankAccounts.view"><LedgerSettingsScreen /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute permission="customers.view"><CustomersScreen /></ProtectedRoute>} />
         <Route path="/customers/:id" element={<ProtectedRoute permission="customers.view"><CustomerDetailScreen /></ProtectedRoute>} />
         <Route path="/suppliers" element={<ProtectedRoute permission="suppliers.view"><SuppliersScreen /></ProtectedRoute>} />

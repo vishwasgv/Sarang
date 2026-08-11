@@ -16,7 +16,8 @@ import {
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
-  Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout,
+  Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
+  BookText, Wallet, Lock,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -101,7 +102,7 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 22 — Service Business Foundation (English-only, no i18nKey)
   { label: 'Appointments', path: '/appointments', icon: CalendarDays, permissionKey: 'billing.view', requiredModule: 'appointments' },
   { label: 'Service Catalog', path: '/service-catalog', icon: Layers, permissionKey: 'settings.view', requiredModule: 'service_catalog' },
-  { label: 'Normal Ranges', path: '/normal-ranges', icon: Activity, permissionKey: 'clinicalNotes.view', requiredModule: 'appointments' },
+  { label: 'Normal Ranges', path: '/normal-ranges', icon: Activity, permissionKey: 'clinicalNotes.view', requiredModule: 'token_queue' },
   { label: 'Provider Schedule', path: '/provider-schedule', icon: Calendar, permissionKey: 'settings.view', requiredModule: 'provider_schedule' },
   { label: 'WhatsApp Reminders', path: '/service-notifications', icon: Bell, permissionKey: 'billing.view', requiredModule: 'notification_queue' },
   // Phase 23 — Veterinary
@@ -173,6 +174,19 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Products', i18nKey: 'nav.products', path: '/products', icon: Package, permissionKey: 'products.view' },
   { label: 'Inventory', i18nKey: 'nav.inventory', path: '/inventory', icon: Warehouse, permissionKey: 'inventory.view' },
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },
+  // Phase 61 — Bills (AP: what we owe a supplier) + Payments Made.
+  { label: 'Bills', i18nKey: 'bills.title', path: '/bills', icon: Receipt, permissionKey: 'bills.view' },
+  { label: 'Payments Made', i18nKey: 'supplierPayments.title', path: '/supplier-payments', icon: Banknote, permissionKey: 'supplierPayments.view' },
+  // Phase 62 — Banking, Ledger & Compliance Backbone. English-label-only
+  // for now (no i18nKey), same deliberate scope-fork convention this file
+  // already uses elsewhere (e.g. Phase 38's "Print Labels") — full 13-
+  // language translation is a later, dedicated task.
+  { label: 'Chart of Accounts', path: '/accounting/chart-of-accounts', icon: Landmark, permissionKey: 'chartOfAccounts.view' },
+  { label: 'Journal Entries', path: '/accounting/journal-entries', icon: BookText, permissionKey: 'journalEntries.view' },
+  { label: 'Bank Accounts', path: '/accounting/bank-accounts', icon: Wallet, permissionKey: 'bankAccounts.view' },
+  { label: 'Post-Dated Cheques', path: '/accounting/post-dated-cheques', icon: Receipt, permissionKey: 'postDatedCheques.view' },
+  { label: 'Fixed Assets', path: '/accounting/fixed-assets', icon: Boxes, permissionKey: 'fixedAssets.view' },
+  { label: 'Ledger Settings', path: '/accounting/ledger-settings', icon: Lock, permissionKey: 'bankAccounts.view' },
   { label: 'Customers', i18nKey: 'nav.customers', path: '/customers', icon: Users, permissionKey: 'customers.view' },
   { label: 'Suppliers', i18nKey: 'nav.suppliers', path: '/suppliers', icon: Truck, permissionKey: 'suppliers.view' },
   { label: 'Cash Close', i18nKey: 'nav.cashClose', path: '/cash-close', icon: Landmark, permissionKey: 'billing.createInvoice' },

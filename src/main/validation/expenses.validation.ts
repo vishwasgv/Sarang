@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+// Phase 61 — an expense can optionally be tied to a Supplier (e.g. a
+// professional-fee invoice paid outside the Bill/PO flow), carry a
+// mileage breakdown (km + rate/km — amount is server-recomputed from these
+// when both are present, see expense.service.ts), and be marked
+// billable-to-customer (reimbursable client expense, e.g. travel a
+// consultant bills back to the client).
 export const CreateExpenseSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   expenseName: z.string().min(1, 'Expense name is required'),
@@ -7,6 +13,10 @@ export const CreateExpenseSchema = z.object({
   expenseDate: z.string().optional(),
   paymentMethod: z.string().max(50).optional(),
   remarks: z.string().max(2000).optional(),
+  supplierId: z.string().min(1).optional(),
+  mileageKm: z.number().finite().positive().optional(),
+  mileageRatePerKm: z.number().finite().min(0).optional(),
+  billableCustomerId: z.string().min(1).optional(),
 })
 
 export const UpdateExpenseSchema = z.object({
@@ -17,6 +27,10 @@ export const UpdateExpenseSchema = z.object({
   expenseDate: z.string().optional(),
   paymentMethod: z.string().max(50).optional(),
   remarks: z.string().max(2000).optional(),
+  supplierId: z.string().min(1).optional(),
+  mileageKm: z.number().finite().positive().optional(),
+  mileageRatePerKm: z.number().finite().min(0).optional(),
+  billableCustomerId: z.string().min(1).optional(),
 })
 
 export const CreateExpenseCategorySchema = z.object({

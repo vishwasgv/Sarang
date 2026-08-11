@@ -84,3 +84,50 @@ export function calculateLineTotal(qty: DecimalInput, unitPrice: DecimalInput, d
     lineTotal: lineTotalD.toNumber()
   }
 }
+
+// Fresh-audit fix (2026-08-11) — real GST compliance bug: a global/invoice-level
+// discount (BillingScreen.tsx's globalDiscount field) was previously subtracted
+// from the total only AFTER tax, so GST was charged on the pre-discount subtotal
+// even though Section 15(3) CGST Act excludes a discount recorded on the invoice
+// at time of supply from the value of supply. Per-line discounts already flowed
+// correctly into tax (calculateLineTotal above) — this function closes the same
+// gap for the invoice-level case.
+//
+// A flat global discount can't just be subtracted from the summed tax, because
+// lines can carry different tax rates — it has to be allocated proportionally to
+// each line's own taxable value first, then tax recomputed per line on the
+// reduced base, the same way a mixed-rate invoice is actually required to be
+// split. The last line absorbs whatever rounding remainder is left so the sum of
+// allocated shares exactly equals the global discount to the paisa — the same
+// remainder-absorption convention tax.util.ts already uses for CGST/SGST.
+export function allocateGlobalDiscount(
+  items: { lineTaxable: DecimalInput; taxRate: DecimalInput }[],
+  globalDiscount: DecimalInput,
+  decimals = 2
+): { lineTaxable: number; lineTax: number }[] {
+  const gd = new Decimal(globalDiscount).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+  const totalTaxableD = items.reduce((acc, i) => acc.add(new Decimal(i.lineTaxable)), new Decimal(0))
+
+  if (gd.lte(0) || totalTaxableD.lte(0) || items.length === 0) {
+    // No global discount to allocate — recompute tax from each line's own
+    // taxable base unchanged, so this is a true no-op for the common case.
+    return items.map(i => {
+      const taxableD = new Decimal(i.lineTaxable).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+      const taxD = taxableD.mul(i.taxRate).div(100).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+      return { lineTaxable: taxableD.toNumber(), lineTax: taxD.toNumber() }
+    })
+  }
+
+  let allocatedSoFar = new Decimal(0)
+  return items.map((item, idx) => {
+    const taxableD = new Decimal(item.lineTaxable).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+    const isLast = idx === items.length - 1
+    const shareD = isLast
+      ? gd.sub(allocatedSoFar)
+      : gd.mul(taxableD).div(totalTaxableD).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+    if (!isLast) allocatedSoFar = allocatedSoFar.add(shareD)
+    const newTaxableD = Decimal.max(0, taxableD.sub(shareD))
+    const newTaxD = newTaxableD.mul(item.taxRate).div(100).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
+    return { lineTaxable: newTaxableD.toNumber(), lineTax: newTaxD.toNumber() }
+  })
+}

@@ -34,6 +34,8 @@ function makeActiveInvoice(overrides: Record<string, unknown> = {}) {
 // now looks up the invoice (and re-checks its status) INSIDE the transaction
 // rather than against a pre-read snapshot, closing a double-cancel race.
 let sharedTx: {
+  businessProfile: { findFirst: ReturnType<typeof vi.fn> }
+  journalEntry: { findFirst: ReturnType<typeof vi.fn> }
   invoice: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }
   inventory: { update: ReturnType<typeof vi.fn> }
   inventoryMovement: { create: ReturnType<typeof vi.fn> }
@@ -46,6 +48,13 @@ let sharedTx: {
 
 function makeDb(invoiceOverride?: Record<string, unknown>) {
   sharedTx = {
+    // Phase 62 — Transaction Locking's assertNotLockedOrThrow reads this
+    // inside the same transaction; a null lockDate means "not locked."
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
+    // Phase 62 — GL auto-posting: reverseEntryBySourceTx looks this up
+    // inside the same transaction; null means "no GL entry to reverse"
+    // (this invoice fixture predates GL auto-posting), a valid no-op.
+    journalEntry: { findFirst: vi.fn().mockResolvedValue(null) },
     invoice: {
       findUnique: vi.fn().mockResolvedValue(makeActiveInvoice(invoiceOverride ?? {})),
       update: vi.fn().mockResolvedValue({}),

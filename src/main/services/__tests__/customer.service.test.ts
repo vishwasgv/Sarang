@@ -108,7 +108,7 @@ describe('customerService.createCustomer', () => {
     vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
 
     const result = await customerService.createCustomer({
-      customerName: 'New Customer', creditLimit: 0, taxExempt: false, phone: '9999999999'
+      customerName: 'New Customer', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL', phone: '9999999999'
     })
 
     expect(result.success).toBe(true)
@@ -120,7 +120,7 @@ describe('customerService.createCustomer', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await customerService.createCustomer({
-      customerName: 'Duplicate Phone', creditLimit: 0, taxExempt: false, phone: '9876543210'
+      customerName: 'Duplicate Phone', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL', phone: '9876543210'
     })
 
     expect(result.success).toBe(false)
@@ -131,7 +131,7 @@ describe('customerService.createCustomer', () => {
     vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
 
     const result = await customerService.createCustomer({
-      customerName: 'Walk-in Customer', creditLimit: 0, taxExempt: false
+      customerName: 'Walk-in Customer', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL'
     })
 
     expect(result.success).toBe(true)
@@ -143,7 +143,7 @@ describe('customerService.updateCustomer', () => {
     vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
 
     const result = await customerService.updateCustomer({
-      id: 'cust-1', customerName: 'Updated Name', creditLimit: 100000, taxExempt: false, country: 'IN'
+      id: 'cust-1', customerName: 'Updated Name', creditLimit: 100000, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN'
     })
 
     expect(result.success).toBe(true)
@@ -158,7 +158,7 @@ describe('customerService.updateCustomer', () => {
     db.customer.findUnique = vi.fn().mockResolvedValue(null)
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    const result = await customerService.updateCustomer({ id: 'ghost', customerName: 'Name', creditLimit: 0, taxExempt: false, country: 'IN' })
+    const result = await customerService.updateCustomer({ id: 'ghost', customerName: 'Name', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN' })
 
     expect(result.success).toBe(false)
   })

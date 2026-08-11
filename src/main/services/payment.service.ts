@@ -5,7 +5,29 @@ import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
 import { roundCurrency } from './currency.service'
+import { assertNotLockedOrThrow } from './transaction-lock.service'
+import { chartOfAccountsService } from './chart-of-accounts.service'
+import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import type { RecordPaymentPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
+
+type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
+
+// Phase 62 — GL auto-posting: a customer payment moves cash in, reduces
+// what they owe. Debit Cash & Bank / Credit Accounts Receivable.
+async function postPaymentJournalEntry(tx: TxClient, params: { paymentId: string; invoiceNumber: string; amount: number }): Promise<void> {
+  if (params.amount <= 0) return
+  const [cashAccount, arAccount] = await Promise.all([
+    chartOfAccountsService.getSystemAccountByCode('1000', tx),
+    chartOfAccountsService.getSystemAccountByCode('1100', tx)
+  ])
+  await journalEntryService.postSystemEntry(tx, {
+    sourceType: 'PAYMENT', sourceId: params.paymentId, narration: `Payment for Invoice ${params.invoiceNumber}`,
+    lines: [
+      { accountId: cashAccount.id, bankAccountId: null, debitAmount: params.amount, creditAmount: 0 },
+      { accountId: arAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: params.amount }
+    ]
+  })
+}
 
 // Real bug found live (core-commerce audit): `new Date(payload.paymentDate)`
 // below parsed a bare date-only "YYYY-MM-DD" string (exactly what a
@@ -47,6 +69,8 @@ export const paymentService = {
         if (payload.amount > invoice.balanceAmount + 0.01) { // small tolerance for floating point
           throw new ServiceError('PM-003', `Payment amount (${payload.amount.toFixed(2)}) exceeds outstanding balance (${invoice.balanceAmount.toFixed(2)}).`)
         }
+
+        await assertNotLockedOrThrow(tx, payload.paymentDate ? parsePaymentDate(payload.paymentDate) : new Date())
 
         const pmt = await tx.payment.create({
           data: {
@@ -101,6 +125,9 @@ export const paymentService = {
             remarks: `Payment for Invoice ${invoice.invoiceNumber}`
           }, tx)
         }
+
+        // Phase 62 — GL auto-posting.
+        await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: payload.amount })
 
         return pmt
       })
@@ -160,6 +187,10 @@ export const paymentService = {
               remarks: `Split payment for Invoice ${invoice.invoiceNumber}`
             }, tx)
           }
+
+          // Phase 62 — GL auto-posting: one JournalEntry per leg, same
+          // sourceType/sourceId shape as recordPayment's single-payment case.
+          await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: leg.amount })
         }
 
         await tx.invoice.update({
@@ -203,6 +234,10 @@ export const paymentService = {
         if (payment.invoice.status === 'CANCELLED') {
           throw new ServiceError('PM-006', 'Cannot reverse payment on a cancelled invoice.')
         }
+        await assertNotLockedOrThrow(tx, payment.paymentDate)
+
+        // Phase 62 — GL auto-posting: reverse the original payment's JournalEntry.
+        await reverseEntryBySourceTx(tx, 'PAYMENT', payment.id, `Payment reversed: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`, userId)
 
         await tx.payment.update({ where: { id: payload.paymentId }, data: { isReversed: true, reversalReason: payload.reason } })
 

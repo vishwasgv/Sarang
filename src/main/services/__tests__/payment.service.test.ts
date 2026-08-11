@@ -22,7 +22,37 @@ function makeMockDb(invoiceOverrides: Record<string, unknown> = {}) {
   // tx === db: recordPayment/recordSplitPayment/reversePayment now look up the
   // invoice/payment INSIDE the transaction (fixing a read-before-tx race), so
   // the callback must see the same mocked invoice/payment the tests assert against.
+  let settingRow: { settingKey: string; settingValue: string } | null = null
   const db: Record<string, any> = {
+    // Phase 62 — GL auto-posting's postSystemEntry generates a JE number via
+    // generateSequenceNumber, which needs a real Setting-row-backed mock, not
+    // just a stub — same in-memory-claim pattern bill.service.test.ts's own
+    // makeDb() already established.
+    setting: {
+      findUnique: vi.fn(async () => settingRow),
+      update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
+      create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),
+      updateMany: vi.fn(async ({ data }: { data: { settingValue: string } }) => {
+        if (!settingRow) return { count: 0 }
+        settingRow = { ...settingRow, settingValue: data.settingValue }
+        return { count: 1 }
+      }),
+    },
+    // Phase 62 — Transaction Locking's assertNotLockedOrThrow reads this
+    // inside the same transaction; a null lockDate means "not locked."
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
+    // Phase 62 — GL auto-posting: postPaymentJournalEntry resolves the
+    // system Cash/AR accounts and posts a JournalEntry; reversePayment
+    // reverses it via reverseEntryBySourceTx (journalEntry.findFirst).
+    chartOfAccounts: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET', isActive: true }),
+    },
+    journalEntry: {
+      create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({}),
+    },
     invoice: {
       findUnique: vi.fn().mockResolvedValue(baseInvoice(invoiceOverrides)),
       // releaseTablesForInvoiceTx (2026-07-30 split-group fix) resolves the
@@ -146,6 +176,23 @@ describe('paymentService.recordPayment', () => {
     expect(updateCall.data.paidAmount).toBe(0.3)
   })
 
+  it('posts a real balanced JournalEntry: Debit Cash & Bank, Credit Accounts Receivable, for the payment amount', async () => {
+    const db = makeMockDb({ balanceAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordPayment({ invoiceId: 'inv-1', amount: 400, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+    const jeArgs = db.journalEntry.create.mock.calls[0][0]
+    expect(jeArgs.data.sourceType).toBe('PAYMENT')
+    const lines = jeArgs.data.lines.create as Array<{ debitAmount: number; creditAmount: number }>
+    expect(lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ debitAmount: 400, creditAmount: 0 }),
+      expect.objectContaining({ debitAmount: 0, creditAmount: 400 }),
+    ]))
+  })
+
   // Real bug found live (core-commerce audit): `new Date(payload.paymentDate)`
   // parsed a bare "YYYY-MM-DD" string as UTC midnight, not local midnight —
   // the same class of bug already fixed across ~15 other files in this app.
@@ -242,6 +289,7 @@ describe('paymentService.reversePayment', () => {
   function makePayment(overrides: Record<string, unknown> = {}) {
     return {
       id: 'pmt-1', invoiceId: 'inv-1', amount: 200, isReversed: false, customerId: null,
+      paymentDate: new Date(),
       invoice: baseInvoice({ paidAmount: 200, balanceAmount: 800 }),
       ...overrides
     }

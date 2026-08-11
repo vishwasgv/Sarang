@@ -25,7 +25,15 @@ const schema = z.object({
   // field_order_capture is on (a DISTRIBUTOR default), same "config flags
   // only, no template-specific if/else" convention as area_pricing above.
   customerClass: z.string().max(50).optional(),
-  notes: z.string().max(500).optional()
+  notes: z.string().max(500).optional(),
+  // Phase 61 — Individual vs Business split: a distributor/B2B seller's
+  // customer is a company, not a person, and needs a registration number +
+  // named contact rather than an ID proof.
+  customerKind: z.enum(['INDIVIDUAL', 'BUSINESS']).optional(),
+  companyRegistrationNumber: z.string().max(50).optional(),
+  contactPersonName: z.string().max(200).optional(),
+  idProofType: z.string().max(50).optional(),
+  idProofNumber: z.string().max(50).optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -35,6 +43,9 @@ interface Customer {
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
   taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null
   creditLimit?: number; customerClass?: string | null; notes?: string | null
+  customerKind?: 'INDIVIDUAL' | 'BUSINESS'
+  companyRegistrationNumber?: string | null; contactPersonName?: string | null
+  idProofType?: string | null; idProofNumber?: string | null
 }
 
 interface CustomerFormModalProps {
@@ -54,6 +65,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
     resolver: zodResolver(schema)
   })
   const taxExempt = watch('taxExempt')
+  const customerKind = watch('customerKind')
 
   useEffect(() => {
     if (open) {
@@ -70,7 +82,12 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         taxExemptReason: customer?.taxExemptReason ?? '',
         creditLimit: customer?.creditLimit ?? 0,
         customerClass: customer?.customerClass ?? '',
-        notes: customer?.notes ?? ''
+        notes: customer?.notes ?? '',
+        customerKind: customer?.customerKind ?? 'INDIVIDUAL',
+        companyRegistrationNumber: customer?.companyRegistrationNumber ?? '',
+        contactPersonName: customer?.contactPersonName ?? '',
+        idProofType: customer?.idProofType ?? '',
+        idProofNumber: customer?.idProofNumber ?? ''
       })
     }
   }, [open, customer, reset])
@@ -110,7 +127,31 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        <Input label="Customer Name *" placeholder="e.g. Ramesh Enterprises" {...register('customerName')} error={errors.customerName?.message} />
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 p-1 w-fit">
+          {(['INDIVIDUAL', 'BUSINESS'] as const).map(kind => (
+            <label key={kind} className={`px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors ${customerKind === kind ? 'bg-brand text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <input type="radio" value={kind} {...register('customerKind')} className="sr-only" />
+              {kind === 'INDIVIDUAL' ? 'Individual' : 'Business'}
+            </label>
+          ))}
+        </div>
+        <Input
+          label={customerKind === 'BUSINESS' ? 'Business/Company Name *' : 'Customer Name *'}
+          placeholder={customerKind === 'BUSINESS' ? 'e.g. Ramesh Enterprises Pvt Ltd' : 'e.g. Ramesh Kumar'}
+          {...register('customerName')}
+          error={errors.customerName?.message}
+        />
+        {customerKind === 'BUSINESS' ? (
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Company Registration Number" placeholder="CIN / registration no." {...register('companyRegistrationNumber')} />
+            <Input label="Contact Person" placeholder="Person to reach at this company" {...register('contactPersonName')} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="ID Proof Type" placeholder="e.g. Aadhaar, Passport, Driving Licence" {...register('idProofType')} />
+            <Input label="ID Proof Number" {...register('idProofNumber')} />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Input label="Phone" placeholder="+91 98765 43210" {...register('phone')} error={errors.phone?.message} />
           <Input label="Email" type="email" placeholder="customer@example.com" {...register('email')} error={errors.email?.message} />

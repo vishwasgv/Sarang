@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Building2, Phone, Mail, MapPin, TrendingUp, TrendingDown, PlusCircle, X } from 'lucide-react'
+import { ArrowLeft, Building2, Phone, Mail, MapPin, TrendingUp, TrendingDown, PlusCircle, X, Receipt } from 'lucide-react'
 import { useAuthStore } from '@app/store/auth.store'
 import { api } from '@renderer/services/ipc-client'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
@@ -24,6 +24,11 @@ interface LedgerEntry {
 }
 
 const PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'UPI', 'CARD', 'OTHER'] as const
+// Phase 61 — Bills use their own enum (no OTHER — matches
+// supplier-payment.validation.ts's RecordBulkSupplierPaymentSchema exactly).
+const BILL_PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CHEQUE'] as const
+
+interface OpenBill { id: string; billNumber: string; balanceAmount: number; status: string }
 
 export function SupplierDetailScreen() {
   const { t } = useTranslation()
@@ -46,8 +51,21 @@ export function SupplierDetailScreen() {
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
 
+  // Phase 61 — pay several open Bills for this supplier in one run.
+  const [openBills, setOpenBills] = useState<OpenBill[]>([])
+  const [openBillsLoading, setOpenBillsLoading] = useState(false)
+  const [selectedBillIds, setSelectedBillIds] = useState<Set<string>>(new Set())
+  const [showBulkPayment, setShowBulkPayment] = useState(false)
+  const [bulkAmounts, setBulkAmounts] = useState<Record<string, string>>({})
+  const [bulkMethod, setBulkMethod] = useState<string>('CASH')
+  const [bulkRef, setBulkRef] = useState('')
+  const [bulkRemarks, setBulkRemarks] = useState('')
+  const [bulkPaying, setBulkPaying] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+
   const canViewLedger = hasPermission('suppliers.viewLedger')
   const canPay = hasPermission('suppliers.recordPayment')
+  const canPayBills = hasPermission('supplierPayments.record')
 
   const loadSupplier = useCallback(async () => {
     if (!id) return
@@ -82,10 +100,75 @@ export function SupplierDetailScreen() {
     } finally { setLedgerLoading(false) }
   }, [id, canViewLedger, t])
 
+  const loadOpenBills = useCallback(async () => {
+    if (!id || !canPayBills) return
+    setOpenBillsLoading(true)
+    try {
+      const res = await window.api.bills.list({ supplierId: id, limit: 100 })
+      if (res.success) {
+        const d = res.data as { bills: OpenBill[] }
+        setOpenBills((d.bills ?? []).filter(b => b.status === 'OPEN' || b.status === 'PARTIALLY_PAID'))
+      }
+    } catch {
+      // Silent — this section is supplementary to the ledger above, which
+      // already surfaces the same outstanding total with its own error state.
+    } finally { setOpenBillsLoading(false) }
+  }, [id, canPayBills])
+
   useEffect(() => {
     loadSupplier()
     loadLedger()
-  }, [loadSupplier, loadLedger])
+    loadOpenBills()
+  }, [loadSupplier, loadLedger, loadOpenBills])
+
+  function toggleBillSelection(billId: string, balance: number) {
+    setSelectedBillIds(prev => {
+      const next = new Set(prev)
+      if (next.has(billId)) next.delete(billId)
+      else next.add(billId)
+      return next
+    })
+    setBulkAmounts(prev => (billId in prev ? prev : { ...prev, [billId]: balance.toFixed(2) }))
+  }
+
+  function openBulkPaymentModal() {
+    setBulkError(null)
+    setBulkRef(''); setBulkRemarks(''); setBulkMethod('CASH')
+    setShowBulkPayment(true)
+  }
+
+  async function handleBulkPayment() {
+    if (!id) return
+    setBulkError(null)
+    const allocations = Array.from(selectedBillIds).map(billId => ({
+      billId, amount: parseFloat(bulkAmounts[billId] ?? '0')
+    })).filter(a => a.amount > 0)
+    if (allocations.length < 2) {
+      setBulkError(t('suppliers.selectAtLeastTwo'))
+      return
+    }
+    setBulkPaying(true)
+    try {
+      const res = await window.api.supplierPayments.recordBulk({
+        supplierId: id,
+        paymentMethod: bulkMethod,
+        referenceNumber: bulkRef.trim() || undefined,
+        remarks: bulkRemarks.trim() || undefined,
+        allocations
+      })
+      if (res.success) {
+        setShowBulkPayment(false)
+        setSelectedBillIds(new Set())
+        setBulkAmounts({})
+        loadOpenBills()
+        loadLedger()
+      } else {
+        setBulkError(res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      setBulkError(t('common.error'))
+    } finally { setBulkPaying(false) }
+  }
 
   async function handleRecordPayment(e: React.FormEvent) {
     e.preventDefault()
@@ -297,6 +380,120 @@ export function SupplierDetailScreen() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Open Bills — pay several at once */}
+      {canPayBills && (
+        <Card padding="none">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Receipt size={16} className="text-slate-400" />
+              <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('suppliers.openBills')}</p>
+            </div>
+            {selectedBillIds.size > 0 && (
+              <button onClick={openBulkPaymentModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors">
+                <PlusCircle size={13} /> {t('suppliers.payMultipleBills')} ({selectedBillIds.size})
+              </button>
+            )}
+          </div>
+          {openBillsLoading ? (
+            <div className="p-6 space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-9 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />)}
+            </div>
+          ) : openBills.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-slate-400 text-center">{t('suppliers.noOpenBills')}</p>
+          ) : (
+            <div className="divide-y divide-slate-50 dark:divide-slate-800">
+              {openBills.map(bill => (
+                <label key={bill.id} className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <input type="checkbox" checked={selectedBillIds.has(bill.id)}
+                    onChange={() => toggleBillSelection(bill.id, bill.balanceAmount)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                  <button type="button" onClick={() => navigate(`/bills/${bill.id}`)} className="text-sm font-mono font-medium text-brand hover:underline">
+                    {bill.billNumber}
+                  </button>
+                  <Badge variant={bill.status === 'PARTIALLY_PAID' ? 'brand' : 'warning'} size="sm">{bill.status.replace('_', ' ')}</Badge>
+                  <span className="ms-auto text-sm font-semibold text-danger">{formatCurrency(bill.balanceAmount)}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Bulk Payment Modal */}
+      {showBulkPayment && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowBulkPayment(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base font-semibold text-dark dark:text-slate-100">{t('suppliers.bulkPaymentTitle')}</h2>
+              <button onClick={() => setShowBulkPayment(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-xs text-slate-400">{t('suppliers.bulkPaymentHint')}</p>
+
+              <div className="space-y-2">
+                {Array.from(selectedBillIds).map(billId => {
+                  const bill = openBills.find(b => b.id === billId)
+                  if (!bill) return null
+                  return (
+                    <div key={billId} className="flex items-center gap-3">
+                      <span className="text-sm font-mono text-slate-600 dark:text-slate-300 w-24 shrink-0">{bill.billNumber}</span>
+                      <input type="number" step="0.01" min="0.01" max={bill.balanceAmount}
+                        value={bulkAmounts[billId] ?? ''}
+                        onChange={e => setBulkAmounts(prev => ({ ...prev, [billId]: e.target.value }))}
+                        className="flex-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      <span className="text-xs text-slate-400 w-24 shrink-0 text-end">/ {formatCurrency(bill.balanceAmount)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('suppliers.selectedTotal')}</span>
+                <span className="text-sm font-bold text-dark dark:text-slate-100">
+                  {formatCurrency(Array.from(selectedBillIds).reduce((s, id2) => s + (parseFloat(bulkAmounts[id2] ?? '0') || 0), 0))}
+                </span>
+              </div>
+
+              <Select label={t('suppliers.paymentMethod')} required value={bulkMethod} onChange={e => setBulkMethod(e.target.value)}>
+                {BILL_PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace('_', ' ')}</option>)}
+              </Select>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('suppliers.referenceNo')}</label>
+                <input type="text" value={bulkRef} onChange={e => setBulkRef(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  placeholder={t('common.optional')} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('common.notes')}</label>
+                <input type="text" value={bulkRemarks} onChange={e => setBulkRemarks(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  placeholder={t('common.optional')} />
+              </div>
+
+              {bulkError && (
+                <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{bulkError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowBulkPayment(false)}
+                  className="flex-1 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  {t('common.cancel')}
+                </button>
+                <button type="button" onClick={handleBulkPayment} disabled={bulkPaying}
+                  className="flex-1 bg-brand text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-brand/90 disabled:opacity-50 transition-colors">
+                  {bulkPaying ? t('suppliers.recording') : t('suppliers.payMultipleBills')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Record Payment Modal */}

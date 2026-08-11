@@ -40,6 +40,17 @@ describe('findManualMatch', () => {
     }
   })
 
+  // Phase 61 — proves the new bills-purchases Manual chapter is genuinely
+  // reachable through this fully generic title/body matcher, not just
+  // present in the manifest.
+  it("returns a 'confident' match for a well-known real navigation question (bills)", () => {
+    const result = findManualMatch('How do I record a bill from a supplier?', 'en')
+    expect(result.kind).toBe('confident')
+    if (result.kind === 'confident') {
+      expect(result.chapter.slug).toBe('bills-purchases')
+    }
+  })
+
   it("returns 'weak' with candidate suggestions (not silently 'none') for a navigation-shaped question too vague to confidently resolve", () => {
     // Navigation-shaped, but "settings" alone is a single, short, extremely
     // common word matched by dozens of chapters — exactly the class of

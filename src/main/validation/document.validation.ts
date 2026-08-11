@@ -22,6 +22,8 @@ export const DocumentEntityTypeSchema = z.enum([
   'APPOINTMENT',
   // Phase 58 §2 — Placement Agency resume/CV attachment.
   'CANDIDATE',
+  // Phase 62 §4.1 item 14 — bank-statement inbox, keyed to BankAccount.id.
+  'BANK_STATEMENT',
 ])
 
 export const AttachDocumentSchema = z.object({

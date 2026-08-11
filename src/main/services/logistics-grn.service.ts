@@ -235,7 +235,13 @@ export async function postGRN(id: string, userId?: string) {
             { _code: 'PO_NOT_RECEIVABLE' }
           )
         }
-        poItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } })
+        // Phase 61 — PurchaseOrderItem.productId is now nullable (service
+        // lines). GRN receiving is inherently about physical goods — a
+        // service line has nothing to receive into inventory — so those
+        // rows are excluded here rather than requiring every downstream
+        // GRN consumer to re-handle the null case.
+        poItems = (await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } }))
+          .filter((item): item is typeof item & { productId: string } => item.productId !== null)
         for (const grnItem of grn.items) {
           if (!grnItem.productId) continue
           const poItem = poItems.find(p => p.productId === grnItem.productId)
@@ -389,7 +395,13 @@ export async function reverseGRN(id: string, userId?: string) {
 
       let poItems: Array<{ id: string; productId: string; quantity: number; receivedQty: number }> = []
       if (grn.purchaseOrderId) {
-        poItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } })
+        // Phase 61 — PurchaseOrderItem.productId is now nullable (service
+        // lines). GRN receiving is inherently about physical goods — a
+        // service line has nothing to receive into inventory — so those
+        // rows are excluded here rather than requiring every downstream
+        // GRN consumer to re-handle the null case.
+        poItems = (await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } }))
+          .filter((item): item is typeof item & { productId: string } => item.productId !== null)
       }
 
       for (const item of grn.items) {

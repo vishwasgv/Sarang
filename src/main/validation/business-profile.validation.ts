@@ -18,6 +18,10 @@ export const BusinessProfileUpdateSchema = z.object({
   currencyCode: z.string().length(3, 'Currency code must be 3 characters').optional(),
   currencySymbol: z.string().max(5).optional(),
   taxModel: z.enum(['GST', 'VAT', 'SALES_TAX', 'CUSTOM', 'NONE'], { errorMap: () => ({ message: 'Invalid tax model' }) }).optional(),
+  // Phase 62 — Composition Scheme dealers cannot charge GST at all; billing.service.ts's
+  // createInvoice reads this to force a 0% tax invoice, and print.service.ts reads it to
+  // print "Bill of Supply" instead of "Tax Invoice".
+  gstScheme: z.enum(['REGULAR', 'COMPOSITION'], { errorMap: () => ({ message: 'Invalid GST scheme' }) }).optional(),
   taxNumber: z.string().max(50).nullable().optional(),
   upiId: z.string().max(100).nullable().optional(),
   website: z.string().max(200).nullable().optional(),

@@ -49,6 +49,7 @@ const ENTITY_VARIANT: Record<string, 'brand' | 'info' | 'success' | 'warning' | 
   RENTAL_BOOKING_ITEM: 'brand',
   APPOINTMENT: 'brand',
   CANDIDATE: 'neutral',
+  BANK_STATEMENT: 'info',
 }
 
 function fileIcon(mimeType: string) {
@@ -97,6 +98,7 @@ export function DocumentsScreen() {
     RENTAL_BOOKING_ITEM: t('documents.entityRentalBookingItem'),
     APPOINTMENT: t('documents.entityAppointment'),
     CANDIDATE: t('documents.entityCandidate'),
+    BANK_STATEMENT: t('documents.entityBankStatement'),
   }
 
   useEffect(() => { load() }, [])

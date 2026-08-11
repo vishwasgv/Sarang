@@ -50,8 +50,12 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     customerLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
     supplier: { findMany: vi.fn().mockResolvedValue([]) },
     supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    bill: { findMany: vi.fn().mockResolvedValue([]) },
+    billItem: { findMany: vi.fn().mockResolvedValue([]) },
     payment: { findMany: vi.fn().mockResolvedValue([]) },
     expense: { findMany: vi.fn().mockResolvedValue([]) },
+    chartOfAccounts: { findMany: vi.fn().mockResolvedValue([]) },
+    journalEntryLine: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0)
@@ -590,7 +594,7 @@ describe('reportService.generateGSTR3BPreview', () => {
     expect(result.table32[0].igstAmount).toBe(90)
   })
 
-  it('always discloses ITC/reverse-charge as not tracked rather than a fabricated zero', async () => {
+  it('always discloses Input Tax Credit as not tracked rather than a fabricated zero', async () => {
     const db = makeDb()
     db.invoice.findMany = vi.fn().mockResolvedValue([])
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -598,7 +602,40 @@ describe('reportService.generateGSTR3BPreview', () => {
     const result = await reportService.generateGSTR3BPreview({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
 
     expect(result.notes.some(n => /Input Tax Credit/.test(n))).toBe(true)
-    expect(result.notes.some(n => /[Rr]everse-charge/.test(n))).toBe(true)
+  })
+
+  // Phase 62 — Table 3.1(d) (reverse-charge inward supplies) is now real,
+  // computed from Bill/Expense isReverseCharge data, not a "not tracked"
+  // disclaimer. Bill carries a proper tax split; Expense doesn't (a single
+  // flat `amount`, no rate field), so an RCM Expense contributes to taxable
+  // value but not to the computed tax total, and triggers its own note.
+  it('computes Table 3.1(d) from real RCM Bill + Expense data, with Bill contributing both value and tax, Expense only value', async () => {
+    const db = makeDb()
+    db.invoice.findMany = vi.fn().mockResolvedValue([])
+    db.bill.findMany = vi.fn().mockResolvedValue([{ totalAmount: 1000, taxAmount: 180 }])
+    db.expense.findMany = vi.fn().mockResolvedValue([{ amount: 500 }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateGSTR3BPreview({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.table31d.taxableValue).toBe(1500) // 1000 (Bill) + 500 (Expense)
+    expect(result.table31d.taxAmount).toBe(180) // only the Bill's real computed tax
+    expect(result.table31d.expenseTaxNotComputable).toBe(true)
+    expect(result.notes.some(n => /reverse-charge Expenses/.test(n))).toBe(true)
+  })
+
+  it('omits the RCM-expense caveat note when no reverse-charge Expense exists in the period', async () => {
+    const db = makeDb()
+    db.invoice.findMany = vi.fn().mockResolvedValue([])
+    db.bill.findMany = vi.fn().mockResolvedValue([{ totalAmount: 1000, taxAmount: 180 }])
+    db.expense.findMany = vi.fn().mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateGSTR3BPreview({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.table31d.taxableValue).toBe(1000)
+    expect(result.table31d.expenseTaxNotComputable).toBe(false)
+    expect(result.notes.some(n => /reverse-charge Expenses/.test(n))).toBe(false)
   })
 
   it('nets a RETURN invoice out of taxableOutwardSupplies/tax instead of adding to them', async () => {
@@ -697,6 +734,141 @@ describe('reportService.generateOutstandingReport', () => {
 
     expect(result.suppliers.rows).toHaveLength(1)
     expect(result.suppliers.rows[0].outstanding).toBe(400)
+  })
+})
+
+// ─── Phase 61: AP Aging ──────────────────────────────────────────────────────
+
+describe('reportService.generateApAgingReport', () => {
+  // Genuinely reuses generateOutstandingReport's supplier-aging computation
+  // (computeAgingRows) rather than a re-typed copy — this test proves both
+  // report entry points agree on the same figure for the same ledger data.
+  it('matches generateOutstandingReport\'s supplier-side figures for the same data', async () => {
+    const db = makeDb()
+    db.supplier.findMany = vi.fn().mockResolvedValue([{ id: 'sup-1', supplierName: 'Acme Supplies', phone: null }])
+    db.supplierLedger.findMany = vi.fn().mockResolvedValue([
+      { supplierId: 'sup-1', debitAmount: 500, creditAmount: 0, createdAt: new Date() },
+      { supplierId: 'sup-1', debitAmount: 0, creditAmount: 100, createdAt: new Date() }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateApAgingReport()
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].outstanding).toBe(400)
+    expect(result.summary.totalOutstanding).toBe(400)
+  })
+
+  it('excludes a supplier with a zero/settled balance', async () => {
+    const db = makeDb()
+    db.supplier.findMany = vi.fn().mockResolvedValue([{ id: 'sup-1', supplierName: 'Settled Co', phone: null }])
+    db.supplierLedger.findMany = vi.fn().mockResolvedValue([
+      { supplierId: 'sup-1', debitAmount: 500, creditAmount: 500, createdAt: new Date() }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateApAgingReport()
+
+    expect(result.rows).toHaveLength(0)
+  })
+
+  it('sorts rows by outstanding balance, highest first', async () => {
+    const db = makeDb()
+    db.supplier.findMany = vi.fn().mockResolvedValue([
+      { id: 'sup-1', supplierName: 'Small Balance', phone: null },
+      { id: 'sup-2', supplierName: 'Large Balance', phone: null }
+    ])
+    db.supplierLedger.findMany = vi.fn().mockResolvedValue([
+      { supplierId: 'sup-1', debitAmount: 100, creditAmount: 0, createdAt: new Date() },
+      { supplierId: 'sup-2', debitAmount: 900, creditAmount: 0, createdAt: new Date() }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateApAgingReport()
+
+    expect(result.rows[0].supplierName).toBe('Large Balance')
+    expect(result.rows[1].supplierName).toBe('Small Balance')
+  })
+})
+
+// ─── Phase 61: Purchase Register / by Vendor / by Item ──────────────────────
+
+function makeBill(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'bill-1', billNumber: 'BILL-00001', supplierId: 'sup-1',
+    billDate: new Date('2024-01-15'), status: 'OPEN',
+    subtotal: 1000, discountAmount: 0, taxAmount: 180, totalAmount: 1180,
+    supplier: { supplierName: 'Acme Supplies' },
+    items: [{ id: 'bi-1' }],
+    ...overrides
+  }
+}
+
+describe('reportService.generatePurchaseRegisterReport', () => {
+  it('excludes VOID bills and totals the rest', async () => {
+    const db = makeDb()
+    db.bill.findMany = vi.fn().mockResolvedValue([makeBill()])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchaseRegisterReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.summary.totalPurchases).toBe(1180)
+    expect(result.summary.billCount).toBe(1)
+    // The where clause itself must filter VOID out at the DB level, not rely
+    // on post-filtering — assert the query was actually built that way.
+    const call = vi.mocked(db.bill.findMany).mock.calls[0][0] as { where: { status: { not: string } } }
+    expect(call.where.status).toEqual({ not: 'VOID' })
+  })
+
+  it('groups spend by vendor, ranked highest first', async () => {
+    const db = makeDb()
+    db.bill.findMany = vi.fn().mockResolvedValue([
+      makeBill({ id: 'b1', supplierId: 'sup-1', totalAmount: 300, supplier: { supplierName: 'Small Vendor' } }),
+      makeBill({ id: 'b2', supplierId: 'sup-2', totalAmount: 900, supplier: { supplierName: 'Big Vendor' } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchaseRegisterReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.byVendor[0].supplierName).toBe('Big Vendor')
+    expect(result.byVendor[0].totalAmount).toBe(900)
+  })
+})
+
+describe('reportService.generatePurchasesByVendorReport', () => {
+  it('aggregates total spend and bill count per vendor', async () => {
+    const db = makeDb()
+    db.bill.findMany = vi.fn().mockResolvedValue([
+      { totalAmount: 500, supplierId: 'sup-1', supplier: { supplierName: 'Acme' } },
+      { totalAmount: 300, supplierId: 'sup-1', supplier: { supplierName: 'Acme' } }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchasesByVendorReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toEqual(expect.objectContaining({ supplierName: 'Acme', totalAmount: 800, billCount: 2 }))
+  })
+})
+
+describe('reportService.generatePurchasesByItemReport', () => {
+  it('aggregates product lines by productId and service lines by description separately', async () => {
+    const db = makeDb()
+    db.billItem.findMany = vi.fn().mockResolvedValue([
+      { quantity: 5, total: 500, productId: 'prod-1', serviceDescription: null, product: { productName: 'Widget' } },
+      { quantity: 3, total: 300, productId: 'prod-1', serviceDescription: null, product: { productName: 'Widget' } },
+      { quantity: 1, total: 5000, productId: null, serviceDescription: 'AMC — quarterly', product: null }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchasesByItemReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toHaveLength(2)
+    const widgetRow = result.rows.find(r => r.itemName === 'Widget')
+    expect(widgetRow).toEqual(expect.objectContaining({ isService: false, quantity: 8, totalAmount: 800, billCount: 2 }))
+    const serviceRow = result.rows.find(r => r.itemName === 'AMC — quarterly')
+    expect(serviceRow).toEqual(expect.objectContaining({ isService: true, quantity: 1, totalAmount: 5000 }))
   })
 })
 
@@ -1365,23 +1537,29 @@ describe('reportService.generateCashBookReport', () => {
 })
 
 describe('reportService.generateTrialBalanceReport', () => {
-  it('always balances (total debit === total credit) via the Capital & Retained Earnings plug line', async () => {
+  // Phase 62 rewrite: reads real ChartOfAccounts + JournalEntryLine rows
+  // posted by the GL auto-posting services, instead of synthesizing figures
+  // from invoices/expenses/customer balances. See report.service.ts's own
+  // comment above the function for the full reasoning.
+
+  const CASH = { id: 'coa-cash', accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET', isActive: true }
+  const AR = { id: 'coa-ar', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET', isActive: true }
+  const AP = { id: 'coa-ap', accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY', isActive: true }
+  const REVENUE = { id: 'coa-rev', accountCode: '4000', accountName: 'Sales Revenue', accountType: 'INCOME', isActive: true }
+  const UNUSED = { id: 'coa-unused', accountCode: '6100', accountName: 'Depreciation Expense', accountType: 'EXPENSE', isActive: true }
+
+  it('sums real posted JournalEntryLine rows per account and balances by construction', async () => {
     const db = makeDb({
-      invoice: { findMany: vi.fn().mockResolvedValue([
-        { totalAmount: 1180, invoiceType: 'SALE', taxAmount: 180, items: [{ quantity: 2, product: { costPrice: 100 } }] },
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, AR, AP, REVENUE, UNUSED]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        // Invoice: Debit Cash 1180, Credit Sales Revenue 1000, Credit AP... no — use a
+        // realistic pair: Debit Cash 1180 / Credit Sales Revenue 1180 (tax-inclusive kept simple here)
+        { accountId: CASH.id, debitAmount: 1180, creditAmount: 0 },
+        { accountId: REVENUE.id, debitAmount: 0, creditAmount: 1180 },
+        // Bill: Debit... skipped; separate AP movement instead — Credit AP 500, Debit Cash side already covered
+        { accountId: AP.id, debitAmount: 0, creditAmount: 500 },
+        { accountId: AR.id, debitAmount: 500, creditAmount: 0 },
       ]) },
-      expense: { findMany: vi.fn().mockResolvedValue([{ amount: 150, category: { categoryName: 'Rent' } }]) },
-      payment: { findMany: vi.fn().mockResolvedValue([
-        { paymentDate: new Date('2026-01-10'), amount: 1180, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } },
-      ]) },
-      customer: { findMany: vi.fn().mockResolvedValue([{ outstandingBalance: 250 }, { outstandingBalance: 400 }]) },
-      supplierLedger: {
-        findMany: vi.fn().mockResolvedValue([]),
-        groupBy: vi.fn().mockResolvedValue([
-          { supplierId: 's1', _sum: { debitAmount: 600, creditAmount: 100 } }, // net payable 500
-          { supplierId: 's2', _sum: { debitAmount: 50, creditAmount: 200 } },  // net -150, excluded (not payable)
-        ]),
-      },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -1391,47 +1569,44 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(result.totalDebit).toBe(result.totalCredit)
 
     const byAccount = Object.fromEntries(result.rows.map(r => [r.account, r]))
-    expect(byAccount['Accounts Receivable'].debit).toBe(650) // 250 + 400
-    expect(byAccount['Accounts Payable'].credit).toBe(500) // only the positive net balance
-    expect(byAccount['Sales Revenue'].credit).toBe(1000) // 1180 total - 180 tax
-    expect(byAccount['Tax Payable (Output)'].credit).toBe(180)
-    expect(byAccount['Cost of Goods Sold'].debit).toBe(200) // 2 * 100
-    expect(byAccount['Operating Expenses'].debit).toBe(150)
-    expect(byAccount['Cash & Bank'].debit).toBe(1180 - 150) // payments in - expenses out
+    expect(byAccount['1000 — Cash & Bank'].debit).toBe(1180)
+    expect(byAccount['4000 — Sales Revenue'].credit).toBe(1180)
+    expect(byAccount['2000 — Accounts Payable'].credit).toBe(500)
+    expect(byAccount['1100 — Accounts Receivable'].debit).toBe(500)
+    // UNUSED had no postings at all — omitted, not shown as an all-zero row.
+    expect(byAccount['6100 — Depreciation Expense']).toBeUndefined()
   })
 
-  it('produces a balanced trial balance even with zero activity', async () => {
+  it('produces an empty, balanced trial balance when the GL has no postings at all', async () => {
     const db = makeDb({
-      invoice: { findMany: vi.fn().mockResolvedValue([]) },
-      expense: { findMany: vi.fn().mockResolvedValue([]) },
-      payment: { findMany: vi.fn().mockResolvedValue([]) },
-      customer: { findMany: vi.fn().mockResolvedValue([]) },
-      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, AR, AP, REVENUE]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
+    expect(result.rows).toHaveLength(0)
     expect(result.balanced).toBe(true)
     expect(result.totalDebit).toBe(0)
     expect(result.totalCredit).toBe(0)
   })
 
-  it('puts a negative Cash & Bank balance on the credit side (never a negative number in either column), and still balances', async () => {
+  it('puts an overdrawn (net-credit) asset account on the credit side, never a negative number in either column, and still balances', async () => {
     const db = makeDb({
-      invoice: { findMany: vi.fn().mockResolvedValue([]) },
-      expense: { findMany: vi.fn().mockResolvedValue([{ amount: 5000, category: { categoryName: 'Salary' } }]) },
-      payment: { findMany: vi.fn().mockResolvedValue([
-        { paymentDate: new Date('2026-01-05'), amount: 1000, paymentMethod: 'CASH', referenceNumber: null, invoice: { invoiceNumber: 'INV-1' } },
-      ]) }, // 1000 in, 5000 out -> cash = -4000
-      customer: { findMany: vi.fn().mockResolvedValue([]) },
-      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, REVENUE]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        // More paid out of Cash than ever came in: Debit Cash 1000, Credit Cash 5000 -> net -4000
+        { accountId: CASH.id, debitAmount: 1000, creditAmount: 0 },
+        { accountId: CASH.id, debitAmount: 0, creditAmount: 5000 },
+        { accountId: REVENUE.id, debitAmount: 4000, creditAmount: 0 },
+      ]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
-    const cashRow = result.rows.find(r => r.account === 'Cash & Bank')!
+    const cashRow = result.rows.find(r => r.account === '1000 — Cash & Bank')!
     expect(cashRow.debit).toBe(0)
     expect(cashRow.credit).toBe(4000) // -(-4000), shown positive on the correct side
     for (const row of result.rows) {
@@ -1442,36 +1617,29 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(result.totalDebit).toBe(result.totalCredit)
   })
 
-  it('puts negative COGS and negative net Revenue on the correct side when RETURN invoices outweigh SALEs in the period, and the Total row matches what is actually visible', async () => {
+  it('is cumulative as-of dateTo — includes postings before dateFrom, excludes postings after dateTo', async () => {
     const db = makeDb({
-      invoice: { findMany: vi.fn().mockResolvedValue([
-        // A single big RETURN with no offsetting SALE: revenue goes negative,
-        // and so does COGS (goods came back into stock) — the same sign case
-        // generateProfitAndLossReport's own RETURN correction handles.
-        { totalAmount: -1180, invoiceType: 'RETURN', taxAmount: -180, items: [{ quantity: 1, product: { costPrice: 100 } }] },
-      ]) },
-      expense: { findMany: vi.fn().mockResolvedValue([]) },
-      payment: { findMany: vi.fn().mockResolvedValue([]) },
-      customer: { findMany: vi.fn().mockResolvedValue([]) },
-      supplierLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, REVENUE]) },
+      journalEntryLine: {
+        findMany: vi.fn(async ({ where }: { where: { journalEntry: { entryDate: { lte: Date } } } }) => {
+          const cutoff = where.journalEntry.entryDate.lte
+          const allLines = [
+            { entryDate: new Date('2025-06-01'), accountId: CASH.id, debitAmount: 300, creditAmount: 0 },
+            { entryDate: new Date('2025-06-01'), accountId: REVENUE.id, debitAmount: 0, creditAmount: 300 },
+            { entryDate: new Date('2026-02-15'), accountId: CASH.id, debitAmount: 9999, creditAmount: 0 }, // after dateTo
+            { entryDate: new Date('2026-02-15'), accountId: REVENUE.id, debitAmount: 0, creditAmount: 9999 },
+          ]
+          return allLines.filter((l) => l.entryDate.getTime() <= cutoff.getTime())
+        })
+      },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
-    // No row anywhere shows a negative number in either column — this is
-    // the exact bug a live-app check caught: a negative row's total was
-    // silently correct while the row itself vanished from both columns.
-    for (const row of result.rows) {
-      expect(row.debit).toBeGreaterThanOrEqual(0)
-      expect(row.credit).toBeGreaterThanOrEqual(0)
-    }
-    // The Total row must equal the sum of what's actually visible in each
-    // column — not just "some number that happens to balance."
-    const sumDebit = result.rows.reduce((s, r) => s + r.debit, 0)
-    const sumCredit = result.rows.reduce((s, r) => s + r.credit, 0)
-    expect(Math.round(sumDebit * 100) / 100).toBe(result.totalDebit)
-    expect(Math.round(sumCredit * 100) / 100).toBe(result.totalCredit)
+    const byAccount = Object.fromEntries(result.rows.map(r => [r.account, r]))
+    expect(byAccount['1000 — Cash & Bank'].debit).toBe(300) // the pre-dateFrom posting still counts
+    expect(byAccount['4000 — Sales Revenue'].credit).toBe(300) // the post-dateTo posting is excluded
     expect(result.balanced).toBe(true)
   })
 })

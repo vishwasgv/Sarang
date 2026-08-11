@@ -190,7 +190,12 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
           creditLimit: payload.creditLimit ?? 0,
           customerClass: payload.customerClass?.trim() || null,
-          notes: payload.notes
+          notes: payload.notes,
+          customerKind: payload.customerKind ?? 'INDIVIDUAL',
+          companyRegistrationNumber: payload.companyRegistrationNumber?.trim() || null,
+          contactPersonName: payload.contactPersonName?.trim() || null,
+          idProofType: payload.idProofType?.trim() || null,
+          idProofNumber: payload.idProofNumber?.trim() || null
         }
       })
     })
@@ -229,7 +234,12 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
         creditLimit: payload.creditLimit ?? existing.creditLimit,
         customerClass: payload.customerClass?.trim() || null,
-        notes: payload.notes
+        notes: payload.notes,
+        customerKind: payload.customerKind ?? existing.customerKind,
+        companyRegistrationNumber: payload.companyRegistrationNumber?.trim() || null,
+        contactPersonName: payload.contactPersonName?.trim() || null,
+        idProofType: payload.idProofType?.trim() || null,
+        idProofNumber: payload.idProofNumber?.trim() || null
       }
     })
 

@@ -291,7 +291,7 @@ export function SettingsScreen() {
 interface BPProfile {
   businessName?: string | null; businessType?: string | null; ownerName?: string | null
   country?: string | null; currencyCode?: string | null; currencySymbol?: string | null
-  taxModel?: string | null; taxNumber?: string | null; upiId?: string | null
+  taxModel?: string | null; taxNumber?: string | null; upiId?: string | null; gstScheme?: string | null
   phone?: string | null; email?: string | null; address?: string | null
   city?: string | null; state?: string | null; postalCode?: string | null; website?: string | null
   logoPath?: string | null
@@ -311,6 +311,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     phone: profile?.phone ?? '',
     email: profile?.email ?? '',
     taxNumber: profile?.taxNumber ?? '',
+    gstScheme: profile?.gstScheme ?? 'REGULAR',
     upiId: profile?.upiId ?? '',
     address: profile?.address ?? '',
     city: profile?.city ?? '',
@@ -333,6 +334,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
       phone: profile?.phone ?? '',
       email: profile?.email ?? '',
       taxNumber: profile?.taxNumber ?? '',
+      gstScheme: profile?.gstScheme ?? 'REGULAR',
       upiId: profile?.upiId ?? '',
       address: profile?.address ?? '',
       city: profile?.city ?? '',
@@ -373,6 +375,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
         taxNumber: form.taxNumber.trim() || null,
+        gstScheme: form.gstScheme,
         upiId: form.upiId.trim() || null,
         address: form.address.trim() || null,
         city: form.city.trim() || null,
@@ -491,6 +494,13 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
               <input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} className={inputCls} />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">GST Scheme</label>
+              <Select value={form.gstScheme} onChange={e => setForm(f => ({ ...f, gstScheme: e.target.value }))}>
+                <option value="REGULAR">Regular</option>
+                <option value="COMPOSITION">Composition Scheme</option>
+              </Select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID</label>
               <input value={form.upiId} onChange={e => setForm(f => ({ ...f, upiId: e.target.value }))} placeholder="yourname@upi" className={inputCls} />
             </div>
@@ -538,6 +548,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             { label: 'Currency', value: profile?.currencyCode ? `${profile.currencySymbol} (${profile.currencyCode})` : undefined },
             { label: 'Tax Model', value: profile?.taxModel },
             { label: 'GST/VAT Number', value: profile?.taxNumber },
+            { label: 'GST Scheme', value: profile?.gstScheme === 'COMPOSITION' ? 'Composition Scheme' : 'Regular' },
             { label: 'UPI ID', value: profile?.upiId },
             { label: 'Phone', value: profile?.phone },
             { label: 'Email', value: profile?.email },

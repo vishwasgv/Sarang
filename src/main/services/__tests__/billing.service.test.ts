@@ -36,9 +36,25 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(makeProduct(productOverrides)),
     },
     customer: { findUnique: vi.fn().mockResolvedValue(null) },
-    businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencyCode: 'INR' }) },
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencyCode: 'INR', lockDate: null }) },
+    // Phase 62 — GL auto-posting: postInvoiceJournalEntry resolves the
+    // system Cash/AR/Sales/Tax accounts and posts a JournalEntry inside the
+    // same transaction as the invoice create.
+    chartOfAccounts: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET', isActive: true }),
+    },
+    journalEntry: {
+      create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     invoice: {
-      create: vi.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-2024-000001', paidAmount: 0 }),
+      // Phase 62 — postInvoiceJournalEntry reads totalAmount/taxAmount off
+      // whatever tx.invoice.create() returns, same as real Prisma would
+      // (create() returns the full written row) — this default fixture
+      // deliberately doesn't try to mirror the real computed total (most
+      // tests don't assert on it), just needs to be a non-negative number so
+      // the GL-posting early-exit (`totalAmount <= 0`) behaves sanely.
+      create: vi.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-2024-000001', paidAmount: 0, totalAmount: 100, taxAmount: 0 }),
       findUnique: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
@@ -145,6 +161,32 @@ describe('billingService.createInvoice — Phase 59 license enforcement', () => 
 })
 
 describe('billingService.createInvoice', () => {
+  it('posts a real balanced JournalEntry on a CASH sale: Debit Cash & Bank, Credit Sales Revenue + Tax Payable', async () => {
+    const db = makeMockDb()
+    // Reflect the actual computed total (2 * 100 * 1.18 = 236, tax = 36) —
+    // the default fixture's totalAmount/taxAmount don't track payload math,
+    // same reasoning as bill.service.test.ts's own equivalent override.
+    db.invoice.create = vi.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-2024-000001', paidAmount: 0, totalAmount: 236, taxAmount: 36 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 18 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+    const jeArgs = db.journalEntry.create.mock.calls[0][0]
+    expect(jeArgs.data.sourceType).toBe('INVOICE')
+    const lines = jeArgs.data.lines.create as Array<{ debitAmount: number; creditAmount: number }>
+    expect(lines).toHaveLength(3)
+    expect(lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ debitAmount: 236, creditAmount: 0 }), // Cash & Bank — paid now
+      expect.objectContaining({ debitAmount: 0, creditAmount: 200 }), // Sales Revenue = total - tax
+      expect.objectContaining({ debitAmount: 0, creditAmount: 36 }),  // Tax Payable
+    ]))
+  })
+
   it('rejects archived products with PRD-005', async () => {
     vi.mocked(getPrisma).mockReturnValue(makeMockDb({ isActive: false }) as never)
 
@@ -270,6 +312,43 @@ describe('billingService.createInvoice', () => {
     const createCall = db.invoice.create.mock.calls[0][0]
     expect(createCall.data.taxAmount).toBeCloseTo(36, 2) // 200 * 18%
     expect(createCall.data.notes).toBeNull()
+  })
+
+  // Phase 62 — Composition Scheme dealers are legally barred from charging
+  // GST on outward invoices at all, regardless of the customer's own
+  // tax-exempt status or the product's configured rate.
+  it('zeroes tax on every line when the business is on the Composition Scheme, regardless of product/item tax rate', async () => {
+    const db = makeMockDb({ taxRate: 18 })
+    db.businessProfile.findFirst = vi.fn().mockResolvedValue({ currencyCode: 'INR', lockDate: null, gstScheme: 'COMPOSITION' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 18 }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = db.invoice.create.mock.calls[0][0]
+    expect(createCall.data.taxAmount).toBe(0)
+    expect(createCall.data.totalAmount).toBe(200) // 2*100, no tax
+    const itemCreateCall = db.invoiceItem.create.mock.calls[0][0]
+    expect(itemCreateCall.data.taxRate).toBe(0)
+    expect(itemCreateCall.data.taxAmount).toBe(0)
+  })
+
+  it('applies normal tax when gstScheme is REGULAR (the default)', async () => {
+    const db = makeMockDb({ taxRate: 18 })
+    db.businessProfile.findFirst = vi.fn().mockResolvedValue({ currencyCode: 'INR', lockDate: null, gstScheme: 'REGULAR' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 18 }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = db.invoice.create.mock.calls[0][0]
+    expect(createCall.data.taxAmount).toBeCloseTo(36, 2) // 200 * 18%
   })
 
   it('rejects a discount exceeding the configured max_discount_percent with INVOC-011', async () => {

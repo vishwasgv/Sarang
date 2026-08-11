@@ -9,6 +9,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { cn } from '@shared/utils/cn'
+import { SupplierFormModal } from '@modules/suppliers/ui/SupplierFormModal'
 
 const itemSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
@@ -105,6 +106,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const [supplierFormOpen, setSupplierFormOpen] = useState(false)
 
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -114,29 +116,33 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
 
+  async function loadSuppliers() {
+    const sRes = await window.api.suppliers.list({ limit: 200 })
+    if (sRes.success) {
+      // suppliers.list returns a paginated wrapper ({ suppliers, total,
+      // page, limit, pages }), not a bare array — casting sRes.data
+      // straight to Supplier[] (as this used to) left `suppliers` state
+      // holding that wrapper object, and every suppliers.map() below
+      // threw "suppliers.map is not a function", making the Purchase
+      // Order form's supplier dropdown permanently empty/broken. Found
+      // live 2026-07-13 while setting up test data, not a hypothetical.
+      const d = sRes.data as { suppliers: Supplier[] }
+      setSuppliers(d.suppliers ?? [])
+    } else {
+      toastError('Error', sRes.error?.message ?? 'Failed to load suppliers.')
+    }
+  }
+
   useEffect(() => {
     if (!open) return
     reset({ supplierId: '', expectedDate: '', notes: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] })
     async function loadOptions() {
       setLoadingData(true)
       try {
-        const [sRes, pRes] = await Promise.all([
-          window.api.suppliers.list({ limit: 200 }),
+        const [, pRes] = await Promise.all([
+          loadSuppliers(),
           window.api.products.list({ isActive: true, limit: 500 })
         ])
-        if (sRes.success) {
-          // suppliers.list returns a paginated wrapper ({ suppliers, total,
-          // page, limit, pages }), not a bare array — casting sRes.data
-          // straight to Supplier[] (as this used to) left `suppliers` state
-          // holding that wrapper object, and every suppliers.map() below
-          // threw "suppliers.map is not a function", making the Purchase
-          // Order form's supplier dropdown permanently empty/broken. Found
-          // live 2026-07-13 while setting up test data, not a hypothetical.
-          const d = sRes.data as { suppliers: Supplier[] }
-          setSuppliers(d.suppliers ?? [])
-        } else {
-          toastError('Error', sRes.error?.message ?? 'Failed to load suppliers.')
-        }
         if (pRes.success) {
           const d = pRes.data as { products: Product[] }
           setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
@@ -150,7 +156,14 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
       }
     }
     loadOptions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, reset])
+
+  async function handleSupplierCreated(newSupplier?: { id: string; supplierName: string }) {
+    setSupplierFormOpen(false)
+    await loadSuppliers()
+    if (newSupplier) setValue('supplierId', newSupplier.id)
+  }
 
   function handleProductChange(index: number, productId: string, onChange: (v: string) => void) {
     const previousProductId = watchedItems[index]?.productId
@@ -211,10 +224,23 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           {/* Supplier + Date */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Select label="Supplier" required error={errors.supplierId?.message} {...register('supplierId')}>
-                <option value="">Select supplier…</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName} ({s.supplierCode})</option>)}
-              </Select>
+              {(() => {
+                const supplierField = register('supplierId')
+                return (
+                  <Select
+                    label="Supplier" required error={errors.supplierId?.message}
+                    {...supplierField}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') { setSupplierFormOpen(true); return }
+                      supplierField.onChange(e)
+                    }}
+                  >
+                    <option value="">Select supplier…</option>
+                    <option value="__NEW__">+ Add New Supplier…</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName} ({s.supplierCode})</option>)}
+                  </Select>
+                )
+              })()}
             </div>
             <Input label="Expected Delivery Date" type="date" {...register('expectedDate')} />
           </div>
@@ -304,6 +330,12 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           </div>
         </form>
       )}
+
+      <SupplierFormModal
+        open={supplierFormOpen}
+        onClose={() => setSupplierFormOpen(false)}
+        onSaved={handleSupplierCreated}
+      />
     </Modal>
   )
 }

@@ -11,37 +11,48 @@ datasource db {
 // BUSINESS PROFILE
 // ─────────────────────────────────────────────────────────────────────────────
 model BusinessProfile {
-  id                      String   @id @default(cuid())
-  businessName            String
-  businessType            String
-  businessCategory        String   @default("PRODUCT") // PRODUCT | SERVICE
-  serviceTemplateType     String? // e.g. VET_CLINIC, GP_CLINIC
-  clinicSpecialty         String? // Phase 54B — free text, e.g. "Pediatrics", "Orthopedics", "ENT", "Ophthalmology" — SPECIALIST_CLINIC's own real identity, not a fixed enum (matches ServiceCatalog.category's free-text precedent)
-  languageLock            String   @default("multi") // multi | en
-  ownerName               String?
-  email                   String?
-  phone                   String?
-  address                 String?
-  city                    String?
-  state                   String?
-  country                 String   @default("IN")
-  postalCode              String?
-  currencyCode            String   @default("INR")
-  currencySymbol          String   @default("₹")
-  taxModel                String   @default("GST")
-  taxNumber               String?
+  id                        String    @id @default(cuid())
+  businessName              String
+  businessType              String
+  businessCategory          String    @default("PRODUCT") // PRODUCT | SERVICE
+  serviceTemplateType       String? // e.g. VET_CLINIC, GP_CLINIC
+  clinicSpecialty           String? // Phase 54B — free text, e.g. "Pediatrics", "Orthopedics", "ENT", "Ophthalmology" — SPECIALIST_CLINIC's own real identity, not a fixed enum (matches ServiceCatalog.category's free-text precedent)
+  languageLock              String    @default("multi") // multi | en
+  ownerName                 String?
+  email                     String?
+  phone                     String?
+  address                   String?
+  city                      String?
+  state                     String?
+  country                   String    @default("IN")
+  postalCode                String?
+  currencyCode              String    @default("INR")
+  currencySymbol            String    @default("₹")
+  taxModel                  String    @default("GST")
+  taxNumber                 String?
   // Phase 58 §2 — Pharmacy regulatory identifier, same flat/nullable shape
   // as clinicSpecialty above — free text (drug-license format varies by
   // jurisdiction), only meaningful/shown for PHARMACY.
-  drugLicenseNumber       String?
-  upiId                   String?
-  website                 String?
-  logoPath                String?
-  showLogoOnDashboard     Boolean  @default(false)
-  enableDocumentWatermark Boolean  @default(false)
-  timezone                String   @default("Asia/Kolkata")
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  drugLicenseNumber         String?
+  upiId                     String?
+  website                   String?
+  logoPath                  String?
+  showLogoOnDashboard       Boolean   @default(false)
+  enableDocumentWatermark   Boolean   @default(false)
+  timezone                  String    @default("Asia/Kolkata")
+  // Phase 62 — Transaction Locking: blocks create/edit/delete/void on any
+  // dated financial transaction on or before this date. Null means no lock.
+  lockDate                  DateTime?
+  // Phase 62 — REGULAR | COMPOSITION. COMPOSITION issues a Bill of Supply
+  // instead of a tax invoice (no itemized tax line) — see billing.service.ts.
+  gstScheme                 String    @default("REGULAR")
+  // Phase 62 — credit-interest on overdue customer balances. Disabled by
+  // default so no existing install starts silently charging interest.
+  creditInterestEnabled     Boolean   @default(false)
+  creditInterestRatePercent Float     @default(0) // annual rate
+  creditInterestType        String    @default("SIMPLE") // SIMPLE | COMPOUND
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,19 +73,22 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  role               Role                @relation(fields: [roleId], references: [id])
-  auditLogs          AuditLog[]
-  aiQueryLogs        AiQueryLog[]
-  invoices           Invoice[]           @relation("InvoiceCreatedBy")
-  expenses           Expense[]           @relation("ExpenseCreatedBy")
-  payments           Payment[]           @relation("PaymentRecordedBy")
-  stockMovements     InventoryMovement[] @relation("MovementCreatedBy")
-  assignedProjects   Project[]           @relation("ProjectAssignedTo")
-  assignedTickets    ServiceTicket[]     @relation("TicketAssignedTo")
-  assignedJobCards   JobCard[]           @relation("JobCardAssignedTo")
-  workLogs           WorkLog[]
-  bloodIssuesHandled BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
-  issueComments      IssueComment[] // Phase 58 §2 — Software Agency
+  role                  Role                @relation(fields: [roleId], references: [id])
+  auditLogs             AuditLog[]
+  aiQueryLogs           AiQueryLog[]
+  invoices              Invoice[]           @relation("InvoiceCreatedBy")
+  expenses              Expense[]           @relation("ExpenseCreatedBy")
+  payments              Payment[]           @relation("PaymentRecordedBy")
+  billsCreated          Bill[]              @relation("BillCreatedBy") // Phase 61
+  supplierPayments      SupplierPayment[]   @relation("SupplierPaymentRecordedBy") // Phase 61
+  journalEntriesCreated JournalEntry[]      @relation("JournalEntryCreatedBy") // Phase 62
+  stockMovements        InventoryMovement[] @relation("MovementCreatedBy")
+  assignedProjects      Project[]           @relation("ProjectAssignedTo")
+  assignedTickets       ServiceTicket[]     @relation("TicketAssignedTo")
+  assignedJobCards      JobCard[]           @relation("JobCardAssignedTo")
+  workLogs              WorkLog[]
+  bloodIssuesHandled    BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
+  issueComments         IssueComment[] // Phase 58 §2 — Software Agency
 }
 
 model Role {
@@ -246,6 +260,8 @@ model Product {
   pestJobSheetPesticides    PestJobSheetPesticide[] // Phase 58 §2 — Pest Control
   invoiceItems              InvoiceItem[]
   purchaseItems             PurchaseOrderItem[]
+  billItems                 BillItem[] // Phase 61
+  costHistory               ProductCostHistory[] // Phase 61 — real purchase-price history, replacing the "one static costPrice field, overwritten on every purchase" gap
   recipeItems               RecipeItem[]
   variants                  ProductVariant[]
   batches                   ProductBatch[]
@@ -619,38 +635,50 @@ model InventoryMovement {
 // CUSTOMERS
 // ─────────────────────────────────────────────────────────────────────────────
 model Customer {
-  id                 String    @id @default(cuid())
-  customerCode       String?   @unique
-  customerName       String
-  phone              String?
-  email              String?
-  address            String?
-  city               String?
-  state              String?
-  country            String?
-  taxNumber          String?
-  taxExempt          Boolean   @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
-  taxExemptReason    String? // e.g. "Reverse charge — VAT Reg GB123456789" — printed on the invoice so it's not just a silent internal flag
-  creditLimit        Float     @default(0)
-  outstandingBalance Float     @default(0)
-  notes              String?
-  isActive           Boolean   @default(true)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  customerCode              String?   @unique
+  customerName              String
+  phone                     String?
+  email                     String?
+  address                   String?
+  city                      String?
+  state                     String?
+  country                   String?
+  taxNumber                 String?
+  taxExempt                 Boolean   @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
+  taxExemptReason           String? // e.g. "Reverse charge — VAT Reg GB123456789" — printed on the invoice so it's not just a silent internal flag
+  creditLimit               Float     @default(0)
+  outstandingBalance        Float     @default(0)
+  notes                     String?
+  isActive                  Boolean   @default(true)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
   // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text
   // (e.g. "RETAILER"/"WHOLESALER"/"VIP"), not a Prisma enum — matches this
   // schema's existing convention of validating category-style fields via a
   // Zod .enum() at the validation layer rather than a DB-level enum.
-  customerClass      String?
+  customerClass             String?
   // Phase 58 §2 — CA Firm/Company Secretary. Most recently held/known AGM
   // date for a company client — feeds AGM-relative ROC event generation
   // (MGT-7/AOC-4/ADT-1 due 60/30/15 days after this date). Only ever set for
   // company clients; its mere presence (not a separate customerType flag,
   // which doesn't exist in this schema) is what gates AGM-relative
   // auto-generation for a given client.
-  lastAgmDate        DateTime?
+  lastAgmDate               DateTime?
+  // Phase 61 — individual-vs-business split (fresh-audit finding: one flat
+  // field set previously served both). Default INDIVIDUAL, backfilled to
+  // BUSINESS for any existing row that already has a taxNumber (GSTIN),
+  // since only a registered business customer would have one. The four
+  // fields below are additive and nullable — meaningful only for the kind
+  // they're named for, unused (and unenforced) for the other.
+  customerKind              String    @default("INDIVIDUAL") // INDIVIDUAL | BUSINESS
+  companyRegistrationNumber String? // BUSINESS only — CIN/registration number, distinct from taxNumber (GSTIN)
+  contactPersonName         String? // BUSINESS only — who to actually deal with at the company
+  idProofType               String? // INDIVIDUAL only — e.g. "Aadhaar", "PAN", "Driving Licence"
+  idProofNumber             String? // INDIVIDUAL only
 
   documentChecklistItems    ClientDocumentChecklistItem[] // Phase 58 §2 — CA Firm
+  billableExpenses          Expense[]                     @relation("ExpenseBillableCustomer") // Phase 61
   ledgerEntries             CustomerLedger[]
   invoices                  Invoice[]
   payments                  Payment[]
@@ -734,20 +762,32 @@ model CustomerLedger {
 // SUPPLIERS
 // ─────────────────────────────────────────────────────────────────────────────
 model Supplier {
-  id           String   @id @default(cuid())
-  supplierCode String?  @unique
-  supplierName String
-  phone        String?
-  email        String?
-  address      String?
-  city         String?
-  state        String?
-  country      String?
-  taxNumber    String?
-  notes        String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(cuid())
+  supplierCode      String?  @unique
+  supplierName      String
+  phone             String?
+  email             String?
+  address           String?
+  city              String?
+  state             String?
+  country           String?
+  taxNumber         String?
+  notes             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  // Phase 61 — vendor record depth (fresh-audit finding vs. Zoho's own Vendor
+  // screen, which has all four). Additive, nullable/defaulted — no effect on
+  // any existing supplier row.
+  bankAccountNumber String?
+  bankIfscCode      String?
+  bankName          String?
+  panNumber         String?
+  openingBalance    Float    @default(0)
+  // Phase 62 — MSME Samadhaan Act 45-day statutory payment due-date rule
+  // applies only to MSME-registered suppliers.
+  isMsmeRegistered  Boolean  @default(false)
+  msmeCategory      String? // MICRO | SMALL | MEDIUM
 
   ledgerEntries         SupplierLedger[]
   purchaseOrders        PurchaseOrder[]
@@ -758,6 +798,9 @@ model Supplier {
   defaultForProducts    Product[]            @relation("ProductDefaultSupplier") // Phase 58 §2 — reorder automation
   repairTicketsAsVendor RepairTicket[] // Phase 58 §2 — Electronics repair/RMA (vendor RMA tracking)
   rawMaterialBatches    RawMaterialBatch[] // Phase 58 §2 — Manufacturing raw-material lot traceability
+  expenses              Expense[] // Phase 61 — service-vendor spend, previously untrackable per-vendor
+  bills                 Bill[] // Phase 61
+  paymentsMade          SupplierPayment[] // Phase 61
 }
 
 model SupplierLedger {
@@ -781,68 +824,399 @@ model SupplierLedger {
 // PURCHASE ORDERS
 // ─────────────────────────────────────────────────────────────────────────────
 model PurchaseOrder {
-  id           String    @id @default(cuid())
-  poNumber     String    @unique
-  supplierId   String
-  orderDate    DateTime  @default(now())
-  expectedDate DateTime?
-  status       String    @default("DRAFT")
-  subtotal     Float     @default(0)
-  taxAmount    Float     @default(0)
-  totalAmount  Float     @default(0)
-  notes        String?
-  createdById  String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  poNumber        String    @unique
+  supplierId      String
+  orderDate       DateTime  @default(now())
+  expectedDate    DateTime?
+  status          String    @default("DRAFT")
+  subtotal        Float     @default(0)
+  taxAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  notes           String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Phase 62 — Reverse Charge Mechanism: GST liability shifts to the
+  // business receiving the supply instead of the supplier charging it.
+  isReverseCharge Boolean   @default(false)
 
   supplier   Supplier            @relation(fields: [supplierId], references: [id])
   items      PurchaseOrderItem[]
   debitNotes DebitNote[]
   grns       GoodsReceiptNote[]  @relation("GRNPurchaseOrder")
+  bills      Bill[] // Phase 61 — a Bill can optionally be raised against this PO
 }
 
 model PurchaseOrderItem {
-  id              String   @id @default(cuid())
-  purchaseOrderId String
-  productId       String
-  quantity        Float
-  unitCost        Float
-  taxRate         Float    @default(0)
-  taxAmount       Float    @default(0)
-  itcAmount       Float    @default(0)
-  total           Float
-  createdAt       DateTime @default(now())
+  id                 String   @id @default(cuid())
+  purchaseOrderId    String
+  // Phase 61 — relaxed to nullable: a line is either a stocked Product
+  // (productId set, the original/only shape) or a free-text service line
+  // (productId null, serviceDescription + serviceCategoryId set instead) —
+  // the fix for "no equivalent structured way to buy a service from a
+  // vendor," the headline finding of the fresh 2026-08 audit. Existing rows
+  // are unaffected (productId already set on all of them).
+  productId          String?
+  serviceDescription String? // set only when productId is null
+  serviceCategoryId  String? // reuses ExpenseCategory for service-line categorization — no separate Chart of Accounts yet (that's Phase 62)
+  quantity           Float
+  unitCost           Float
+  taxRate            Float    @default(0)
+  taxAmount          Float    @default(0)
+  itcAmount          Float    @default(0)
+  total              Float
+  createdAt          DateTime @default(now())
 
   receivedQty Float @default(0) // updated by postGRN() transaction — Phase 37
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product       Product       @relation(fields: [productId], references: [id])
+  purchaseOrder   PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  serviceCategory ExpenseCategory? @relation(fields: [serviceCategoryId], references: [id])
+
+  @@index([serviceCategoryId])
+}
+
+// Phase 61 — Bill: the headline fix. A vendor invoice, independent of a
+// Purchase Order (the common case — a subcontractor's invoice, a rent bill,
+// an ad-hoc purchase), matching Zoho's PO → GRN → Bill separation instead of
+// forcing everything through the PO flow. Optionally linked back to a PO
+// (purchaseOrderId) for the case where one was raised first. Mirrors
+// Invoice's shape deliberately — a Bill is the purchase-side mirror of an
+// Invoice, right down to paidAmount/balanceAmount tracking.
+model Bill {
+  id              String    @id @default(cuid())
+  billNumber      String    @unique
+  supplierId      String
+  purchaseOrderId String?
+  billDate        DateTime  @default(now())
+  dueDate         DateTime?
+  status          String    @default("OPEN") // OPEN | PARTIALLY_PAID | PAID | VOID
+  subtotal        Float     @default(0)
+  discountAmount  Float     @default(0)
+  taxAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  paidAmount      Float     @default(0)
+  balanceAmount   Float     @default(0)
+  notes           String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Phase 62 — Reverse Charge Mechanism, same meaning as PurchaseOrder's own.
+  isReverseCharge Boolean   @default(false)
+
+  supplier      Supplier          @relation(fields: [supplierId], references: [id])
+  purchaseOrder PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
+  createdBy     User?             @relation("BillCreatedBy", fields: [createdById], references: [id])
+  items         BillItem[]
+  payments      SupplierPayment[]
+
+  @@index([supplierId])
+  @@index([purchaseOrderId])
+  @@index([status])
+  @@index([billDate])
+}
+
+// Same Product-or-service-line duality as PurchaseOrderItem above, for the
+// same reason — a Bill needs to carry either a stocked Product or a
+// free-text service line categorized via the existing ExpenseCategory.
+model BillItem {
+  id                 String   @id @default(cuid())
+  billId             String
+  productId          String?
+  serviceDescription String?
+  serviceCategoryId  String?
+  quantity           Float    @default(1)
+  unitCost           Float
+  discountAmount     Float    @default(0)
+  taxRate            Float    @default(0)
+  taxAmount          Float    @default(0)
+  total              Float
+  createdAt          DateTime @default(now())
+
+  bill            Bill             @relation(fields: [billId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  serviceCategory ExpenseCategory? @relation(fields: [serviceCategoryId], references: [id])
+
+  @@index([billId])
+  @@index([serviceCategoryId])
+}
+
+// Phase 61 — "Payments Made," mirroring the existing Payment (Payments
+// Received) model field-for-field on purpose, same partial-payment-over-time
+// shape: one row per payment, a Bill can accumulate several as it's paid
+// down. Closes "Payment is invoice-linked only — receiving money is
+// modeled, paying a supplier isn't, at all."
+model SupplierPayment {
+  id              String   @id @default(cuid())
+  billId          String
+  supplierId      String?
+  paymentMethod   String
+  amount          Float
+  referenceNumber String?
+  paymentDate     DateTime @default(now())
+  remarks         String?
+  isReversed      Boolean  @default(false)
+  reversalReason  String?
+  recordedById    String?
+  createdAt       DateTime @default(now())
+  // Phase 62 — TDS withheld from this payment (still settles the Bill in
+  // full — the withheld amount is a legal substitute for cash, remitted to
+  // the tax authority instead of the vendor). tdsSection is free text (e.g.
+  // "194C", "194J"), matching this codebase's category-as-free-text
+  // convention elsewhere rather than a fixed enum of statutory sections.
+  tdsAmount       Float    @default(0)
+  tdsSection      String?
+
+  bill       Bill      @relation(fields: [billId], references: [id])
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+  recordedBy User?     @relation("SupplierPaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([billId])
+  @@index([supplierId])
+  @@index([paymentDate])
+  @@index([isReversed])
+}
+
+// Phase 61 — real purchase-price history. Product.costPrice stays as a
+// computed "most recent" convenience field (existing reads of it are
+// unaffected), but every PO/Bill line that touches a product now also
+// appends here instead of that being the only record — closes "no visible
+// history of what a product actually cost across its last five purchases."
+// sourceId deliberately isn't a hard FK (it can point to either a
+// PurchaseOrderItem.id or a BillItem.id, two different tables) — sourceType
+// disambiguates which.
+model ProductCostHistory {
+  id         String   @id @default(cuid())
+  productId  String
+  unitCost   Float
+  quantity   Float
+  sourceType String // 'PURCHASE_ORDER' | 'BILL'
+  sourceId   String
+  recordedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([recordedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 62 — BANKING, LEDGER & COMPLIANCE BACKBONE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Bank and cash accounts share one model with an accountType discriminator
+// (matches this codebase's existing convention for closely related concepts —
+// Customer.customerKind, Product.productType — rather than near-duplicate
+// tables) — a cash "account" is just a till/register with accountType=CASH
+// and no bank-specific fields set.
+model BankAccount {
+  id                  String   @id @default(cuid())
+  accountName         String
+  accountType         String   @default("BANK") // BANK | CASH
+  bankName            String?
+  accountNumberMasked String?
+  ifscCode            String?
+  currencyCode        String   @default("INR")
+  openingBalance      Float    @default(0)
+  // Denormalized running balance, same pattern as Customer.outstandingBalance
+  // — kept in sync by the service layer on every posting, not computed live.
+  currentBalance      Float    @default(0)
+  isActive            Boolean  @default(true)
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  statementLines   BankStatementLine[]
+  postDatedCheques PostDatedCheque[]
+  journalLines     JournalEntryLine[]
+
+  @@index([accountType])
+  @@index([isActive])
+}
+
+// One row per imported bank-statement line. matchedType/matchedId point at
+// whichever existing record (Payment/Expense/SupplierPayment/JournalEntry)
+// this line was reconciled against — deliberately not a hard FK since it can
+// point at any one of several different tables, same sourceType/sourceId
+// pattern ProductCostHistory above already established for the same reason.
+model BankStatementLine {
+  id              String    @id @default(cuid())
+  bankAccountId   String
+  transactionDate DateTime
+  description     String
+  referenceNumber String?
+  debitAmount     Float     @default(0) // money out, per the bank's own statement
+  creditAmount    Float     @default(0) // money in
+  matchedType     String? // PAYMENT | EXPENSE | SUPPLIER_PAYMENT | JOURNAL_ENTRY
+  matchedId       String?
+  reconciled      Boolean   @default(false)
+  reconciledAt    DateTime?
+  importBatchId   String? // groups lines from one CSV import together
+
+  createdAt DateTime @default(now())
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  @@index([bankAccountId])
+  @@index([reconciled])
+  @@index([transactionDate])
+  @@index([importBatchId])
+}
+
+model ChartOfAccounts {
+  id          String   @id @default(cuid())
+  accountCode String   @unique
+  accountName String
+  accountType String // ASSET | LIABILITY | EQUITY | INCOME | EXPENSE
+  parentId    String?
+  // Seeded/system accounts (Cash, Accounts Receivable, Accounts Payable,
+  // Sales, etc.) vs. user-created ones — system accounts can't be deleted.
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent       ChartOfAccounts?   @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children     ChartOfAccounts[]  @relation("AccountHierarchy")
+  journalLines JournalEntryLine[]
+
+  @@index([accountType])
+  @@index([parentId])
+}
+
+model JournalEntry {
+  id             String   @id @default(cuid())
+  entryNumber    String   @unique
+  entryDate      DateTime @default(now())
+  narration      String?
+  // MANUAL (user-entered) | YEAR_END_OPENING | ASSET_DEPRECIATION |
+  // ASSET_DISPOSAL | INTEREST_CHARGE — distinguishes system-posted entries
+  // (from this phase's own automated postings) from user-entered ones.
+  sourceType     String   @default("MANUAL")
+  sourceId       String?
+  isReversed     Boolean  @default(false)
+  reversalReason String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  createdBy User?              @relation("JournalEntryCreatedBy", fields: [createdById], references: [id])
+  lines     JournalEntryLine[]
+
+  @@index([entryDate])
+  @@index([sourceType])
+}
+
+model JournalEntryLine {
+  id             String  @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  // Optional direct link when this line touches a bank/cash account (e.g.
+  // bank charges, a reconciled deposit) — lets bank-account running balances
+  // stay in sync from Journal postings, not just from Payment/Expense rows.
+  bankAccountId  String?
+  debitAmount    Float   @default(0)
+  creditAmount   Float   @default(0)
+  remarks        String?
+
+  journalEntry JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      ChartOfAccounts @relation(fields: [accountId], references: [id])
+  bankAccount  BankAccount?    @relation(fields: [bankAccountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([bankAccountId])
+}
+
+model PostDatedCheque {
+  id            String   @id @default(cuid())
+  bankAccountId String
+  chequeNumber  String
+  direction     String // RECEIVED | ISSUED
+  partyType     String? // CUSTOMER | SUPPLIER
+  partyId       String?
+  dueDate       DateTime
+  amount        Float
+  status        String   @default("PENDING") // PENDING | DEPOSITED | CLEARED | BOUNCED | CANCELLED
+  remarks       String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  @@index([bankAccountId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model FixedAsset {
+  id                      String    @id @default(cuid())
+  assetCode               String    @unique
+  assetName               String
+  category                String?
+  purchaseDate            DateTime
+  purchaseCost            Float
+  usefulLifeMonths        Int
+  depreciationMethod      String    @default("STRAIGHT_LINE") // STRAIGHT_LINE | WDV
+  salvageValue            Float     @default(0)
+  accumulatedDepreciation Float     @default(0)
+  status                  String    @default("ACTIVE") // ACTIVE | DISPOSED
+  disposalDate            DateTime?
+  disposalAmount          Float?
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  depreciationRuns FixedAssetDepreciation[]
+
+  @@index([status])
+  @@index([category])
+}
+
+// @@unique([fixedAssetId, periodEnd]) is the idempotent-rerun guard the
+// Section 4.1 spec explicitly requires — enforced at the DB level, not just
+// application logic, so a second depreciation run for an already-depreciated
+// period fails atomically instead of silently double-posting.
+model FixedAssetDepreciation {
+  id             String   @id @default(cuid())
+  fixedAssetId   String
+  periodStart    DateTime
+  periodEnd      DateTime
+  amount         Float
+  journalEntryId String?
+  createdAt      DateTime @default(now())
+
+  fixedAsset FixedAsset @relation(fields: [fixedAssetId], references: [id])
+
+  @@unique([fixedAssetId, periodEnd])
+  @@index([fixedAssetId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INVOICES & BILLING
 // ─────────────────────────────────────────────────────────────────────────────
 model Invoice {
-  id                String    @id @default(cuid())
-  invoiceNumber     String    @unique
-  invoiceType       String    @default("RETAIL")
-  customerId        String?
-  invoiceDate       DateTime  @default(now())
-  dueDate           DateTime?
-  status            String    @default("ACTIVE")
-  subtotal          Float     @default(0)
-  discountAmount    Float     @default(0)
-  taxAmount         Float     @default(0)
-  roundingAmount    Float     @default(0)
-  totalAmount       Float     @default(0)
-  paidAmount        Float     @default(0)
-  balanceAmount     Float     @default(0)
-  paymentStatus     String    @default("UNPAID")
-  gstType           String    @default("CGST_SGST")
-  buyerState        String?
-  notes             String?
-  quotationId       String?   @unique
-  originalInvoiceId String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
+  id                 String    @id @default(cuid())
+  invoiceNumber      String    @unique
+  invoiceType        String    @default("RETAIL")
+  customerId         String?
+  invoiceDate        DateTime  @default(now())
+  dueDate            DateTime?
+  status             String    @default("ACTIVE")
+  subtotal           Float     @default(0)
+  discountAmount     Float     @default(0)
+  taxAmount          Float     @default(0)
+  roundingAmount     Float     @default(0)
+  totalAmount        Float     @default(0)
+  paidAmount         Float     @default(0)
+  balanceAmount      Float     @default(0)
+  paymentStatus      String    @default("UNPAID")
+  gstType            String    @default("CGST_SGST")
+  buyerState         String?
+  notes              String?
+  quotationId        String?   @unique
+  originalInvoiceId  String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
   // Phase 58 §2 (2026-07-21) — restaurant table↔order binding. Snapshot of
   // the primary dine-in table this invoice was opened for (nullable — only
   // ever set for restaurant dine-in invoices). The reverse/live pointer
@@ -850,14 +1224,19 @@ model Invoice {
   // RestaurantTable.currentInvoiceId instead, since a merge lets MULTIPLE
   // tables point at the same invoice — a single scalar here can only ever
   // record the one table the order was opened at.
-  tableId           String?
+  tableId            String?
   // Set only on a new invoice produced by splitInvoice() — real FK back to
   // the original (now status='SPLIT') invoice it was divided from, mirroring
   // originalInvoiceId's return-lineage pattern above.
   splitFromInvoiceId String?
-  createdById       String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  // Phase 61 — moved onto the Invoice itself, independent of whether the
+  // opt-in Logistics module is on (was previously LogisticsShipment-only,
+  // so absent for every service vertical and any product vertical that
+  // doesn't turn Logistics on). Nullable, printed only when set.
+  ewayBillNumber     String?
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   customer         Customer?         @relation(fields: [customerId], references: [id])
   createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
@@ -969,27 +1348,43 @@ model ExpenseCategory {
   description  String?
   createdAt    DateTime @default(now())
 
-  expenses Expense[]
+  expenses           Expense[]
+  purchaseOrderItems PurchaseOrderItem[] // Phase 61 — service-line categorization
+  billItems          BillItem[] // Phase 61
 }
 
 model Expense {
-  id            String   @id @default(cuid())
-  categoryId    String
-  expenseName   String
-  amount        Float
-  expenseDate   DateTime @default(now())
-  paymentMethod String   @default("CASH")
-  remarks       String?
-  createdById   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  categoryId         String
+  expenseName        String
+  amount             Float
+  expenseDate        DateTime @default(now())
+  paymentMethod      String   @default("CASH")
+  remarks            String?
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  // Phase 61 — closes three real gaps found against Zoho's Record Expense
+  // screen: no vendor field, no mileage type, no way to bill an expense
+  // through to a customer for reimbursement. All additive/nullable, no
+  // effect on an existing expense row (which just has all three unset).
+  supplierId         String? // who this was actually paid to — the field that was entirely missing before
+  mileageKm          Float? // set only when this expense is a mileage claim, distinct from a goods/service spend
+  mileageRatePerKm   Float?
+  billableCustomerId String? // set to re-bill this expense through to a customer/project — closes the "billable expense pass-through" gap
+  // Phase 62 — Reverse Charge Mechanism, same meaning as Bill/PurchaseOrder's own.
+  isReverseCharge    Boolean  @default(false)
 
-  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
-  createdBy     User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
-  salaryPayment SalaryPayment?
+  category         ExpenseCategory @relation(fields: [categoryId], references: [id])
+  createdBy        User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  supplier         Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  billableCustomer Customer?       @relation("ExpenseBillableCustomer", fields: [billableCustomerId], references: [id], onDelete: SetNull)
+  salaryPayment    SalaryPayment?
 
   @@index([categoryId])
   @@index([expenseDate])
+  @@index([supplierId])
+  @@index([billableCustomerId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1107,14 +1502,14 @@ model IndustryTemplateSetting {
 // RESTAURANT MODULE
 // ─────────────────────────────────────────────────────────────────────────────
 model RestaurantTable {
-  id          String   @id @default(cuid())
-  tableNumber String   @unique
-  tableName   String?
-  status      String   @default("AVAILABLE")
+  id               String   @id @default(cuid())
+  tableNumber      String   @unique
+  tableName        String?
+  status           String   @default("AVAILABLE")
   // Phase 58 §2 (2026-07-17) — waiter/staff assignment for tip pooling.
   // Nullable FK to Employee, onDelete: SetNull, mirroring the established
   // TailoringOrder.assignedToId/PestServiceContract.assignedToId pattern.
-  waiterId    String?
+  waiterId         String?
   // Phase 58 §2 (2026-07-21) — live pointer to this table's currently
   // running dine-in order. Set when an order is opened at this table (see
   // billingService.createInvoice's optional tableIds) or when another table
@@ -1126,14 +1521,14 @@ model RestaurantTable {
   // restaurant.service.ts, called from payments.service.ts on full
   // settlement and from billing.service.ts on cancel/split.
   currentInvoiceId String?
-  createdAt   DateTime @default(now())
+  createdAt        DateTime @default(now())
 
-  kots            KOT[]
-  orderRequests   TableOrderRequest[]
-  waiter          Employee?           @relation("RestaurantTableWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
-  currentInvoice  Invoice?            @relation("TableCurrentInvoice", fields: [currentInvoiceId], references: [id], onDelete: SetNull)
-  invoicesOpened  Invoice[]           @relation("InvoiceTable")
-  reservations    Reservation[]
+  kots           KOT[]
+  orderRequests  TableOrderRequest[]
+  waiter         Employee?           @relation("RestaurantTableWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  currentInvoice Invoice?            @relation("TableCurrentInvoice", fields: [currentInvoiceId], references: [id], onDelete: SetNull)
+  invoicesOpened Invoice[]           @relation("InvoiceTable")
+  reservations   Reservation[]
 
   @@index([waiterId])
   @@index([currentInvoiceId])
@@ -1145,16 +1540,16 @@ model RestaurantTable {
 // reservation can be taken without pre-assigning a specific table (common
 // for a phone booking made before the floor plan is known for that slot).
 model Reservation {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   customerName String
   phone        String
   partySize    Int
   reservedFor  DateTime
   tableId      String?
   notes        String?
-  status       String    @default("CONFIRMED") // CONFIRMED | SEATED | CANCELLED | NO_SHOW
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  status       String   @default("CONFIRMED") // CONFIRMED | SEATED | CANCELLED | NO_SHOW
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   table RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
 
@@ -3461,7 +3856,7 @@ model Lead {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  assignedTo     Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo      Employee? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   // Fresh-audit fix (2026-07-23): convertedClientId was a bare String with no
   // @relation — no FK constraint, no index — despite the field comment above
   // ("set when WON and linked to a Customer") documenting it as a real link.
@@ -3995,8 +4390,8 @@ model ShootBooking {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  client     Customer          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  editor     Employee?         @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
+  client     Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editor     Employee?            @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
   delivery   DeliveryTracker?
   checklist  ShootChecklistItem[] // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist
   addOnItems ShootAddOnItem[] // Phase 58 §2 — Photo Studio: itemized add-ons
@@ -4485,22 +4880,22 @@ model Candidate {
 }
 
 model JobOrder {
-  id                String    @id @default(cuid())
-  orderNumber       String    @unique
-  clientId          String // the hiring company (Customer)
-  jobTitle          String
-  jobDescription    String?
-  requiredSkills    String    @default("[]") // JSON: ["Java","Spring Boot"]
-  experienceMin     Decimal? // years
-  experienceMax     Decimal?
-  salaryBudgetMin   Decimal?
-  salaryBudgetMax   Decimal?
-  location          String?
-  numberOfPositions Int       @default(1)
-  status            String    @default("OPEN") // OPEN|IN_PROGRESS|ON_HOLD|CLOSED|CANCELLED
-  targetDate        DateTime?
-  commissionType    String    @default("PERCENTAGE") // PERCENTAGE|FIXED
-  commissionValue   Decimal   @default(0)
+  id                       String    @id @default(cuid())
+  orderNumber              String    @unique
+  clientId                 String // the hiring company (Customer)
+  jobTitle                 String
+  jobDescription           String?
+  requiredSkills           String    @default("[]") // JSON: ["Java","Spring Boot"]
+  experienceMin            Decimal? // years
+  experienceMax            Decimal?
+  salaryBudgetMin          Decimal?
+  salaryBudgetMax          Decimal?
+  location                 String?
+  numberOfPositions        Int       @default(1)
+  status                   String    @default("OPEN") // OPEN|IN_PROGRESS|ON_HOLD|CLOSED|CANCELLED
+  targetDate               DateTime?
+  commissionType           String    @default("PERCENTAGE") // PERCENTAGE|FIXED
+  commissionValue          Decimal   @default(0)
   // Phase 58 §2 — Placement Agency: fee-agreement/replacement-guarantee
   // terms per job order. Plain String/Int, deliberately NOT Decimal — this
   // phase has repeatedly hit a real bug where a new Decimal column gets
@@ -4508,9 +4903,9 @@ model JobOrder {
   // field and a plain day-count sidestep that whole bug class outright.
   feeAgreementTerms        String?
   replacementGuaranteeDays Int?
-  notes             String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  notes                    String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   client          Customer         @relation("JobOrderClient", fields: [clientId], references: [id], onDelete: Cascade)
   placements      Placement[]
@@ -4526,18 +4921,18 @@ model JobOrder {
 // client feedback), distinct from Placement — which only exists once an
 // actual offer/join happens.
 model InterviewRound {
-  id               String    @id @default(cuid())
-  candidateId      String
-  jobOrderId       String
-  roundNumber      Int
-  roundType        String    @default("PHONE_SCREEN") // PHONE_SCREEN|TECHNICAL|HR|FINAL|OTHER
-  scheduledDate    DateTime?
-  status           String    @default("SCHEDULED") // SCHEDULED|COMPLETED|PASSED|REJECTED|NO_SHOW
-  interviewerName  String?
-  clientFeedback   String?
-  notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  candidateId     String
+  jobOrderId      String
+  roundNumber     Int
+  roundType       String    @default("PHONE_SCREEN") // PHONE_SCREEN|TECHNICAL|HR|FINAL|OTHER
+  scheduledDate   DateTime?
+  status          String    @default("SCHEDULED") // SCHEDULED|COMPLETED|PASSED|REJECTED|NO_SHOW
+  interviewerName String?
+  clientFeedback  String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   jobOrder  JobOrder  @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)

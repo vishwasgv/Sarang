@@ -106,6 +106,69 @@ const api: IpcChannels = {
     print: (id) => invoke('purchaseOrders:print', id),
     exportPdf: (id) => invoke('purchaseOrders:exportPdf', id)
   },
+  bills: {
+    list: (p) => invoke('bills:list', p),
+    get: (id) => invoke('bills:get', id),
+    create: (p) => invoke('bills:create', p),
+    void: (p) => invoke('bills:void', p)
+  },
+  supplierPayments: {
+    record: (p) => invoke('supplierPayments:record', p),
+    recordBulk: (p) => invoke('supplierPayments:recordBulk', p),
+    reverse: (p) => invoke('supplierPayments:reverse', p),
+    list: (p) => invoke('supplierPayments:list', p),
+    suggestTds: (p) => invoke('supplierPayments:suggestTds', p)
+  },
+  // Phase 62 — Banking, Ledger & Compliance Backbone
+  chartOfAccounts: {
+    list: (p) => invoke('chartOfAccounts:list', p),
+    get: (id) => invoke('chartOfAccounts:get', id),
+    create: (p) => invoke('chartOfAccounts:create', p),
+    update: (p) => invoke('chartOfAccounts:update', p)
+  },
+  journalEntries: {
+    list: (p) => invoke('journalEntries:list', p),
+    get: (id) => invoke('journalEntries:get', id),
+    create: (p) => invoke('journalEntries:create', p),
+    reverse: (p) => invoke('journalEntries:reverse', p)
+  },
+  transactionLock: {
+    getLockDate: () => invoke('transactionLock:getLockDate'),
+    setLockDate: (p) => invoke('transactionLock:setLockDate', p)
+  },
+  bankAccounts: {
+    list: (p) => invoke('bankAccounts:list', p),
+    get: (id) => invoke('bankAccounts:get', id),
+    create: (p) => invoke('bankAccounts:create', p),
+    update: (p) => invoke('bankAccounts:update', p)
+  },
+  bankStatement: {
+    import: (p) => invoke('bankStatement:import', p),
+    list: (p) => invoke('bankStatement:list', p),
+    autoMatch: (p) => invoke('bankStatement:autoMatch', p),
+    reconcileLine: (p) => invoke('bankStatement:reconcileLine', p),
+    unreconcileLine: (p) => invoke('bankStatement:unreconcileLine', p),
+    summary: (p) => invoke('bankStatement:summary', p)
+  },
+  creditInterest: {
+    calculate: (p) => invoke('creditInterest:calculate', p),
+    post: (p) => invoke('creditInterest:post', p)
+  },
+  postDatedCheques: {
+    create: (p) => invoke('postDatedCheques:create', p),
+    list: (p) => invoke('postDatedCheques:list', p),
+    updateStatus: (p) => invoke('postDatedCheques:updateStatus', p)
+  },
+  fixedAssets: {
+    create: (p) => invoke('fixedAssets:create', p),
+    list: (p) => invoke('fixedAssets:list', p),
+    get: (id) => invoke('fixedAssets:get', id),
+    runDepreciation: (p) => invoke('fixedAssets:runDepreciation', p),
+    dispose: (p) => invoke('fixedAssets:dispose', p)
+  },
+  yearEndClose: {
+    execute: (p) => invoke('yearEndClose:execute', p)
+  },
   billing: {
     createInvoice: (p) => invoke('billing:createInvoice', p),
     getInvoice: (id) => invoke('billing:getInvoice', id),
@@ -153,6 +216,10 @@ const api: IpcChannels = {
     inventory: (p) => invoke('reports:inventory', p),
     tax: (p) => invoke('reports:tax', p),
     outstanding: () => invoke('reports:outstanding'),
+    apAging: () => invoke('reports:apAging'),
+    purchaseRegister: (p) => invoke('reports:purchaseRegister', p),
+    purchasesByVendor: (p) => invoke('reports:purchasesByVendor', p),
+    purchasesByItem: (p) => invoke('reports:purchasesByItem', p),
     expenses: (p) => invoke('reports:expenses', p),
     profitAndLoss: (p) => invoke('reports:profitAndLoss', p),
     cashBook: (p) => invoke('reports:cashBook', p),
@@ -675,6 +742,9 @@ const api: IpcChannels = {
     seen: (p: unknown) => invoke('tokenQueue:seen', p),
     skip: (p: unknown) => invoke('tokenQueue:skip', p),
     reset: (p: unknown) => invoke('tokenQueue:reset', p),
+    getServerStatus: () => invoke('tokenQueue:getServerStatus'),
+    regenerateServerToken: () => invoke('tokenQueue:regenerateServerToken'),
+    generateServerQr: () => invoke('tokenQueue:generateServerQr'),
   },
   // Phase 50 — Diagnostic & Pathology Labs
   labTestOrders: {

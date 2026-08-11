@@ -143,6 +143,43 @@ const PERMISSIONS = [
   // itself), so printing/sharing an actual PO document requires the same
   // trust level printing a Debit Note already does.
   { permissionKey: 'purchaseOrders.printDocument', permissionName: 'Print/Export Purchase Order' },
+  // Phase 61 — Bills (AP: what we owe a supplier) and Payments Made against
+  // a specific Bill. Same trust tier as purchaseOrders.create/approve and
+  // payments.record/reverse respectively — these are real financial
+  // commitments and outflows, not floor-staff-level actions.
+  { permissionKey: 'bills.view', permissionName: 'View Bills' },
+  { permissionKey: 'bills.create', permissionName: 'Create Bill' },
+  { permissionKey: 'bills.void', permissionName: 'Void Bill' },
+  { permissionKey: 'supplierPayments.record', permissionName: 'Record Supplier Payment (Bill)' },
+  { permissionKey: 'supplierPayments.reverse', permissionName: 'Reverse Supplier Payment (Bill)' },
+  { permissionKey: 'supplierPayments.view', permissionName: 'View Supplier Payments (Bill)' },
+  // Phase 62 — Banking, Ledger & Compliance Backbone. Journal Entries and
+  // the Transaction Lock date are Admin-only (not granted to Manager below)
+  // — posting a manual GL adjustment or moving the lock date are structural
+  // ledger actions with a different consequence tier than recording a day-
+  // to-day Bill/Payment, which Manager already has.
+  { permissionKey: 'chartOfAccounts.view', permissionName: 'View Chart of Accounts' },
+  { permissionKey: 'chartOfAccounts.manage', permissionName: 'Manage Chart of Accounts' },
+  { permissionKey: 'journalEntries.view', permissionName: 'View Journal Entries' },
+  { permissionKey: 'journalEntries.create', permissionName: 'Create Journal Entry' },
+  { permissionKey: 'journalEntries.reverse', permissionName: 'Reverse Journal Entry' },
+  { permissionKey: 'transactionLock.manage', permissionName: 'Set Transaction Lock Date' },
+  { permissionKey: 'bankAccounts.view', permissionName: 'View Bank Accounts' },
+  { permissionKey: 'bankAccounts.manage', permissionName: 'Manage Bank Accounts' },
+  { permissionKey: 'bankReconciliation.view', permissionName: 'View Bank Reconciliation' },
+  { permissionKey: 'bankReconciliation.import', permissionName: 'Import Bank Statement' },
+  { permissionKey: 'bankReconciliation.reconcile', permissionName: 'Reconcile Bank Statement Lines' },
+  { permissionKey: 'creditInterest.view', permissionName: 'View Credit Interest' },
+  { permissionKey: 'creditInterest.post', permissionName: 'Post Credit Interest Charge' },
+  { permissionKey: 'postDatedCheques.view', permissionName: 'View Post-Dated Cheques' },
+  { permissionKey: 'postDatedCheques.manage', permissionName: 'Manage Post-Dated Cheques' },
+  { permissionKey: 'fixedAssets.view', permissionName: 'View Fixed Assets' },
+  { permissionKey: 'fixedAssets.manage', permissionName: 'Manage Fixed Assets' },
+  { permissionKey: 'fixedAssets.runDepreciation', permissionName: 'Run Fixed Asset Depreciation' },
+  // Year-End Close — Admin-only, the single highest-consequence action in
+  // this phase (locks an entire year and posts the opening balances every
+  // subsequent report depends on).
+  { permissionKey: 'yearEndClose.execute', permissionName: 'Execute Year-End Close' },
   // Restaurant
   { permissionKey: 'restaurant.viewKOT', permissionName: 'View KOT' },
   { permissionKey: 'restaurant.updateKOT', permissionName: 'Update KOT Status' },
@@ -464,6 +501,19 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'settings.view',
     'audit.view',
     'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve', 'purchaseOrders.receive', 'purchaseOrders.cancel', 'purchaseOrders.print', 'purchaseOrders.printDocument',
+    'bills.view', 'bills.create', 'bills.void', 'supplierPayments.record', 'supplierPayments.reverse', 'supplierPayments.view',
+    // Phase 62 — Chart of Accounts/Journal Entries view-only for Manager
+    // (posting/reversing a manual entry and moving the lock date stay
+    // Admin-only, see the permission definitions' own comment above);
+    // day-to-day Bank Accounts + reconciliation are full Manager actions,
+    // same trust tier as Bills/Payments.
+    'chartOfAccounts.view', 'journalEntries.view',
+    'bankAccounts.view', 'bankAccounts.manage', 'bankReconciliation.view', 'bankReconciliation.import', 'bankReconciliation.reconcile',
+    'creditInterest.view', 'creditInterest.post', 'postDatedCheques.view', 'postDatedCheques.manage',
+    // fixedAssets.runDepreciation stays Admin-only — a GL-wide batch
+    // operation with year-end-close-adjacent consequence, same tier as
+    // Journal Entry posting/reversal and the Transaction Lock date above.
+    'fixedAssets.view', 'fixedAssets.manage',
     'restaurant.viewKOT', 'restaurant.updateKOT', 'restaurant.manageTables', 'restaurant.manageRecipes', 'restaurant.manageOrderRequests',
     'distributor.manageFieldOrders',
     'repairTickets.view', 'repairTickets.create', 'repairTickets.manage',

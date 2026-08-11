@@ -37,6 +37,7 @@ interface BusinessProfile {
   currencySymbol?: string
   taxModel?: string | null
   country?: string | null
+  gstScheme?: string | null
 }
 
 // UPI is exclusively an Indian payment system — a business outside India
@@ -241,6 +242,15 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const isReturn = invoice.invoiceType === 'RETURN'
+    // Composition Scheme dealers are legally barred from issuing a tax
+    // invoice at all — the document itself must be labelled "Bill of
+    // Supply", not a relabeled tax invoice with the tax lines hidden
+    // (taxHtml below already comes out empty on its own, since
+    // billing.service.ts's createInvoice zeroes tax for a composition-
+    // scheme business — this only changes the label). A RETURN document
+    // keeps its own "Return" wording regardless of scheme.
+    const isBillOfSupply = !isReturn && profile?.gstScheme === 'COMPOSITION'
+    const docLabel = isReturn ? 'Return' : (isBillOfSupply ? 'Bill of Supply' : 'Invoice')
 
     let qrHtml = ''
     if (canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
@@ -281,7 +291,7 @@ export const printService = {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice ${invoice.invoiceNumber}</title>
+<title>${escHtml(docLabel)} ${invoice.invoiceNumber}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
@@ -333,7 +343,7 @@ export const printService = {
       </div>
     </div>
     <div class="invoice-meta">
-      <div class="inv-number">${isReturn ? 'Return' : 'Invoice'} ${escHtml(invoice.invoiceNumber)}</div>
+      <div class="inv-number">${escHtml(docLabel)} ${escHtml(invoice.invoiceNumber)}</div>
       <div class="inv-date">${formatDate(invoice.invoiceDate)}</div>
       <div><span class="status-badge status-${isReturn ? 'RETURN' : invoice.status}">${isReturn ? 'RETURN' : invoice.status}</span></div>
     </div>
@@ -526,6 +536,8 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const isReturn = invoice.invoiceType === 'RETURN'
+    const isBillOfSupply = !isReturn && profile?.gstScheme === 'COMPOSITION'
+    const docLabel = isReturn ? 'Return' : (isBillOfSupply ? 'Bill of Supply' : 'Invoice')
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     // 58mm paper is narrower — tighten font
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
@@ -589,7 +601,7 @@ export const printService = {
   ${profile?.taxNumber ? `<div class="center" style="font-size:8px">GST: ${escHtml(profile.taxNumber)}</div>` : ''}
   <div class="divider"></div>
   ${isReturn ? `<div class="center bold" style="border:1px solid #000;padding:3px;margin-bottom:4px">*** RETURN / REFUND ***</div>` : ''}
-  <div class="bold">${isReturn ? 'Return' : 'Invoice'}: ${escHtml(invoice.invoiceNumber)}</div>
+  <div class="bold">${escHtml(docLabel)}: ${escHtml(invoice.invoiceNumber)}</div>
   <div style="font-size:8px">Date: ${formatDate(invoice.invoiceDate)}</div>
   ${invoice.customer ? `<div style="font-size:8px">Customer: ${escHtml(invoice.customer.customerName)}</div>` : ''}
   <div class="divider"></div>

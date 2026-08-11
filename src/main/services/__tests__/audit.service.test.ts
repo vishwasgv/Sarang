@@ -159,6 +159,26 @@ describe('audit.service — hash chain (logAction / verifyAuditLogChain)', () =>
     expect(logs[2].prevHash).toBe(logs[1].hash)
   })
 
+  // Real bug found live 2026-08-12 (Phase 62 UAT against the real app, not
+  // this mock — mocked Prisma has no real SQLite locking to deadlock
+  // against): reverseEntryTx (journal-entry.service.ts) runs INSIDE its
+  // caller's own $transaction, so a plain logAction() call from there used
+  // to open a SECOND, separate db.$transaction() against the same SQLite
+  // file — a genuine self-deadlock, resolved only by SQLite's 5000ms
+  // busy_timeout, which silently burned ~5s and then blew the outer
+  // transaction's own interactive-timeout budget. Passing `tx` makes
+  // logAction reuse the caller's already-open transaction instead.
+  it('with an explicit tx, reuses it directly instead of opening a nested db.$transaction', async () => {
+    const { db } = makeChainDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const callerTx = { setting: db.setting, auditLog: db.auditLog }
+
+    await logAction({ action: 'JOURNAL_ENTRY_REVERSED', tx: callerTx as never })
+
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(db.auditLog.create).toHaveBeenCalledTimes(1)
+  })
+
   it('verifyAuditLogChain reports a clean chain as intact', async () => {
     const { db } = makeChainDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

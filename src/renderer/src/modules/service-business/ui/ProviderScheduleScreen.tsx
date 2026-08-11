@@ -248,9 +248,9 @@ export function ProviderScheduleScreen() {
           </>
         )}
 
-        {/* Clinic Holidays */}
+        {/* Business Holidays */}
         <div>
-          <h2 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Clinic Holidays</h2>
+          <h2 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Business Holidays</h2>
           {canManage && (
             <div className="flex items-end gap-2 mb-3">
               <div className="flex-1 max-w-xs">

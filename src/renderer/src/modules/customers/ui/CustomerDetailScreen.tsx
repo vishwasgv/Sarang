@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent } from 'lucide-react'
 import { useAuthStore } from '@app/store/auth.store'
+import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
+import { Button } from '@shared/ui/atoms/Button'
 
 interface Customer {
   id: string; customerCode: string; customerName: string
@@ -20,11 +23,15 @@ interface LedgerEntry {
   debitAmount: number; creditAmount: number; balance: number
 }
 
+interface InterestLine { invoiceId: string; invoiceNumber: string; balanceAmount: number; daysOverdue: number; interest: number }
+interface InterestPreview { ratePercent: number; type: 'SIMPLE' | 'COMPOUND'; lines: InterestLine[]; totalInterest: number }
+
 export function CustomerDetailScreen() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { hasPermission } = useAuthStore()
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [entries, setEntries] = useState<LedgerEntry[]>([])
   const [outstanding, setOutstanding] = useState(0)
@@ -32,8 +39,13 @@ export function CustomerDetailScreen() {
   const [ledgerLoading, setLedgerLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ledgerError, setLedgerError] = useState<string | null>(null)
+  const [interest, setInterest] = useState<InterestPreview | null>(null)
+  const [interestEnabled, setInterestEnabled] = useState(true)
+  const [postingInterest, setPostingInterest] = useState(false)
 
   const canViewLedger = hasPermission('customers.viewLedger')
+  const canViewInterest = hasPermission('creditInterest.view')
+  const canPostInterest = hasPermission('creditInterest.post')
 
   const loadCustomer = useCallback(async () => {
     if (!id) return
@@ -79,10 +91,51 @@ export function CustomerDetailScreen() {
     }
   }, [id, canViewLedger, t])
 
+  // Phase 62 — Credit Interest. This customer's accrued interest on overdue
+  // invoices, read from the real creditInterestService.calculateInterest
+  // (not re-derived here) so this can never disagree with the ledger figure
+  // that actually gets posted. A CI-001 (feature not enabled in Settings)
+  // response means there's nothing to show, not an error — the card simply
+  // doesn't render, rather than confusing an owner who hasn't turned this on.
+  const loadInterest = useCallback(async () => {
+    if (!id || !canViewInterest) return
+    try {
+      const res = await window.api.creditInterest.calculate({ customerId: id })
+      if (res.success) {
+        setInterest(res.data as InterestPreview)
+        setInterestEnabled(true)
+      } else {
+        setInterestEnabled(false)
+      }
+    } catch {
+      setInterestEnabled(false)
+    }
+  }, [id, canViewInterest])
+
   useEffect(() => {
     loadCustomer()
     loadLedger()
-  }, [loadCustomer, loadLedger])
+    loadInterest()
+  }, [loadCustomer, loadLedger, loadInterest])
+
+  async function handlePostInterest() {
+    if (!id) return
+    setPostingInterest(true)
+    try {
+      const res = await window.api.creditInterest.post({ customerId: id })
+      if (res.success) {
+        toastSuccess(t('customers.interestPosted'), '')
+        loadInterest()
+        loadLedger()
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('customers.couldNotPostInterest'))
+      }
+    } catch {
+      toastError(t('common.error'), t('customers.couldNotPostInterest'))
+    } finally {
+      setPostingInterest(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -260,6 +313,39 @@ export function CustomerDetailScreen() {
                 </tbody>
               </table>
             </div>
+          )}
+        </Card>
+      )}
+
+      {/* Credit Interest — Phase 62 */}
+      {canViewInterest && interestEnabled && interest && (
+        <Card padding="lg" className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Percent size={16} className="text-brand" />
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('customers.creditInterestTitle')}</p>
+          </div>
+          {interest.totalInterest > 0 ? (
+            <>
+              <p className="text-xs text-slate-400">
+                {t('customers.interestAccrued', { type: interest.type === 'SIMPLE' ? t('customers.interestSimple') : t('customers.interestCompound'), rate: interest.ratePercent })}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-danger">{formatCurrency(interest.totalInterest)}</span>
+                {canPostInterest && (
+                  <Button size="sm" onClick={handlePostInterest} loading={postingInterest}>{t('customers.postInterestCharge')}</Button>
+                )}
+              </div>
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {interest.lines.map((line) => (
+                  <div key={line.invoiceId} className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 dark:text-slate-400">{line.invoiceNumber} — {t('customers.daysOverdue', { count: line.daysOverdue })}</span>
+                    <span className="font-medium text-dark dark:text-slate-100">{formatCurrency(line.interest)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-slate-400">{t('customers.noInterestAccrued')}</p>
           )}
         </Card>
       )}

@@ -12,6 +12,7 @@ import { scanPaymentOverdueNotifications } from './services/payment-overdue.serv
 import { ensureQrOrderServerState, stopQrOrderServer } from './server/qr-order-server'
 import { ensureKitchenDisplayServerState, stopKitchenDisplayServer } from './server/kitchen-display-server'
 import { ensureFieldOrderServerState, stopFieldOrderServer } from './server/field-order-server'
+import { ensureTokenQueueServerState, stopTokenQueueServer } from './server/token-queue-server'
 import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-window'
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { isModuleEnabled } from './services/industry-template.service'
@@ -383,6 +384,7 @@ app.whenReady().then(async () => {
   ensureQrOrderServerState().catch(e => logger.error('[QROrderServer] Startup check failed:', e))
   ensureKitchenDisplayServerState().catch(e => logger.error('[KitchenDisplayServer] Startup check failed:', e))
   ensureFieldOrderServerState().catch(e => logger.error('[FieldOrderServer] Startup check failed:', e))
+  ensureTokenQueueServerState().catch(e => logger.error('[TokenQueueServer] Startup check failed:', e))
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -393,6 +395,7 @@ app.on('window-all-closed', () => {
   stopQrOrderServer().catch(() => {})
   stopKitchenDisplayServer().catch(() => {})
   stopFieldOrderServer().catch(() => {})
+  stopTokenQueueServer().catch(() => {})
   // REAL BUG found+fixed 2026-07-31: shutdownAi() (disposes the local LLM's
   // native context/model handles) was defined but never called from
   // anywhere — dead code, so the AI Assistant's native resources were never

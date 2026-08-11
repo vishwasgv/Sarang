@@ -419,3 +419,35 @@ describe('printService — RETURN invoice visual distinction', () => {
     expect(html).not.toContain('RETURN / REFUND')
   })
 })
+
+// Phase 62 — Composition Scheme dealers are legally barred from issuing a
+// tax invoice; the document itself must be relabelled "Bill of Supply".
+describe('printService — Composition Scheme "Bill of Supply" labelling', () => {
+  it('generateInvoiceHtml labels the document "Bill of Supply" when the business is on the Composition Scheme', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, { ...profile, gstScheme: 'COMPOSITION' } as never)
+
+    expect(html).toContain('Bill of Supply')
+    expect(html).not.toMatch(/<title>Invoice /)
+    expect(html).not.toMatch(/inv-number">Invoice /)
+  })
+
+  it('generateInvoiceHtml still says "Invoice" for a REGULAR-scheme business', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, { ...profile, gstScheme: 'REGULAR' } as never)
+
+    expect(html).not.toContain('Bill of Supply')
+    expect(html).toMatch(/inv-number">Invoice /)
+  })
+
+  it('generateInvoiceHtml keeps the "Return" label on a RETURN document even under Composition Scheme, never "Bill of Supply"', async () => {
+    const html = await printService.generateInvoiceHtml({ ...makeInvoice(), invoiceType: 'RETURN', invoiceNumber: 'RET-2026-000001' } as never, { ...profile, gstScheme: 'COMPOSITION' } as never)
+
+    expect(html).not.toContain('Bill of Supply')
+    expect(html).toMatch(/inv-number">Return /)
+  })
+
+  it('generateReceiptHtml labels the document "Bill of Supply" when the business is on the Composition Scheme', async () => {
+    const html = await printService.generateReceiptHtml(makeInvoice() as never, { ...profile, gstScheme: 'COMPOSITION' } as never, '80mm')
+
+    expect(html).toContain('Bill of Supply')
+  })
+})

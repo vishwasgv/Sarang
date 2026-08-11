@@ -60,6 +60,48 @@ export interface LedgerRow {
   debitAmount: number; creditAmount: number; balance: number; remarks: string | null
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 61 — Purchase-side reports (Bill is the definitive purchase record,
+// same reasoning as Section 3.1 item 2 of the Phase 61 roadmap: a PO is a
+// commitment, a Bill is what was actually purchased/owed).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PurchaseRegisterRow {
+  billNumber: string; date: string; supplier: string; status: string
+  itemCount: number; subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number
+}
+export interface PurchaseRegisterByVendorRow { supplierName: string; totalAmount: number; billCount: number }
+
+export interface PurchaseRegisterReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPurchases: number; billCount: number; totalTax: number }
+  byVendor: PurchaseRegisterByVendorRow[]
+  rows: PurchaseRegisterRow[]
+  total: number
+}
+
+export interface PurchasesByVendorRow { supplierId: string; supplierName: string; totalAmount: number; billCount: number }
+export interface PurchasesByVendorReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPurchases: number; vendorCount: number }
+  rows: PurchasesByVendorRow[]
+}
+
+export interface PurchasesByItemRow { itemName: string; isService: boolean; quantity: number; totalAmount: number; billCount: number }
+export interface PurchasesByItemReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPurchases: number; itemCount: number }
+  rows: PurchasesByItemRow[]
+}
+
+export interface ApAgingRow { id: string; supplierName: string; phone: string | null; outstanding: number; aging: AgingBuckets }
+export interface ApAgingReport {
+  generatedAt: string
+  summary: { totalOutstanding: number; count: number }
+  agingTotals: AgingBuckets
+  rows: ApAgingRow[]
+}
+
 export interface CustomerLedgerReport {
   customer: { id: string; customerName: string; phone: string | null; email: string | null }
   dateFrom?: string; dateTo?: string
@@ -430,6 +472,39 @@ function mergeAging(a: AgingBuckets, b: AgingBuckets): AgingBuckets {
 
 const ZERO_AGING: AgingBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90plus: 0 }
 
+// Shared FIFO-oldest-debit-first aging allocation — factored out of
+// generateOutstandingReport's supplier branch so generateApAgingReport
+// (Phase 61) genuinely reuses the same proven-correct algorithm instead of
+// a re-typed copy that could silently drift from it.
+function computeAgingRows(
+  now: Date,
+  entities: { id: string; name: string; phone: string | null }[],
+  ledgerByEntity: Map<string, { debitAmount: number; creditAmount: number; createdAt: Date }[]>
+): { id: string; name: string; phone: string | null; outstanding: number; aging: AgingBuckets }[] {
+  const rows: { id: string; name: string; phone: string | null; outstanding: number; aging: AgingBuckets }[] = []
+  for (const e of entities) {
+    const ledgerEntries = ledgerByEntity.get(e.id) ?? []
+    if (ledgerEntries.length === 0) continue
+
+    const outstanding = ledgerEntries.reduce((sum, x) => sum + x.debitAmount - x.creditAmount, 0)
+    if (outstanding <= 0.01) continue
+
+    let aging: AgingBuckets = { ...ZERO_AGING }
+    let remaining = outstanding
+    const debitEntries = ledgerEntries.filter(x => x.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    for (const entry of debitEntries) {
+      if (remaining <= 0) break
+      const portion = Math.min(entry.debitAmount, remaining)
+      const daysOld = Math.floor((now.getTime() - entry.createdAt.getTime()) / 86400000)
+      aging = mergeAging(aging, agingBucket(daysOld, portion))
+      remaining -= portion
+    }
+
+    rows.push({ id: e.id, name: e.name, phone: e.phone, outstanding, aging })
+  }
+  return rows
+}
+
 async function generateOutstandingReport(): Promise<OutstandingReport> {
   const db = getPrisma()
   const now = new Date()
@@ -475,49 +550,11 @@ async function generateOutstandingReport(): Promise<OutstandingReport> {
   // means aging is now relative to when each ledger entry was recorded rather
   // than an invoice's due date — consistent with the supplier side, and the
   // only basis that makes sense for a non-invoice ledger entry.
-  const customerRows: OutstandingCustomer[] = []
-  for (const c of customers) {
-    const ledgerEntries = ledgerByCustomer.get(c.id) ?? []
-    if (ledgerEntries.length === 0) continue
+  const customerRows = computeAgingRows(now, customers.map(c => ({ id: c.id, name: c.customerName, phone: c.phone })), ledgerByCustomer)
+    .map(r => ({ id: r.id, customerName: r.name, phone: r.phone, outstanding: r.outstanding, aging: r.aging }))
 
-    const outstanding = ledgerEntries.reduce((sum, e) => sum + e.debitAmount - e.creditAmount, 0)
-    if (outstanding <= 0.01) continue
-
-    let aging: AgingBuckets = { ...ZERO_AGING }
-    let remaining = outstanding
-    const debitEntries = ledgerEntries.filter(e => e.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    for (const entry of debitEntries) {
-      if (remaining <= 0) break
-      const portion = Math.min(entry.debitAmount, remaining)
-      const daysOld = Math.floor((now.getTime() - entry.createdAt.getTime()) / 86400000)
-      aging = mergeAging(aging, agingBucket(daysOld, portion))
-      remaining -= portion
-    }
-
-    customerRows.push({ id: c.id, customerName: c.customerName, phone: c.phone, outstanding, aging })
-  }
-
-  const supplierRows: OutstandingSupplier[] = []
-  for (const s of suppliers) {
-    const ledgerEntries = ledgerBySupplier.get(s.id) ?? []
-    if (ledgerEntries.length === 0) continue
-
-    const outstanding = ledgerEntries.reduce((sum, e) => sum + e.debitAmount - e.creditAmount, 0)
-    if (outstanding <= 0.01) continue
-
-    let aging: AgingBuckets = { ...ZERO_AGING }
-    let remaining = outstanding
-    const debitEntries = ledgerEntries.filter(e => e.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    for (const entry of debitEntries) {
-      if (remaining <= 0) break
-      const portion = Math.min(entry.debitAmount, remaining)
-      const daysOld = Math.floor((now.getTime() - entry.createdAt.getTime()) / 86400000)
-      aging = mergeAging(aging, agingBucket(daysOld, portion))
-      remaining -= portion
-    }
-
-    supplierRows.push({ id: s.id, supplierName: s.supplierName, phone: s.phone, outstanding, aging })
-  }
+  const supplierRows = computeAgingRows(now, suppliers.map(s => ({ id: s.id, name: s.supplierName, phone: s.phone })), ledgerBySupplier)
+    .map(r => ({ id: r.id, supplierName: r.name, phone: r.phone, outstanding: r.outstanding, aging: r.aging }))
 
   customerRows.sort((a, b) => b.outstanding - a.outstanding)
   supplierRows.sort((a, b) => b.outstanding - a.outstanding)
@@ -539,6 +576,153 @@ async function generateOutstandingReport(): Promise<OutstandingReport> {
       rows: supplierRows,
       agingTotals: supplierAgingTotals
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 61 — AP Aging (Summary/Details): the exact same supplier-side
+// computation generateOutstandingReport already does, just as its own
+// dedicated report instead of bundled invisibly inside "Outstanding" — see
+// PHASE_61_ROADMAP_MASTER_PROMPT.md Section 3.1 item 5.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generateApAgingReport(): Promise<ApAgingReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const [suppliers, allSupplierLedger] = await Promise.all([
+    db.supplier.findMany({ where: { isActive: true }, select: { id: true, supplierName: true, phone: true } }),
+    db.supplierLedger.findMany({ select: { supplierId: true, debitAmount: true, creditAmount: true, createdAt: true } })
+  ])
+
+  const ledgerBySupplier = new Map<string, { debitAmount: number; creditAmount: number; createdAt: Date }[]>()
+  for (const e of allSupplierLedger) {
+    const arr = ledgerBySupplier.get(e.supplierId) ?? []
+    arr.push(e)
+    ledgerBySupplier.set(e.supplierId, arr)
+  }
+
+  const rows: ApAgingRow[] = computeAgingRows(now, suppliers.map(s => ({ id: s.id, name: s.supplierName, phone: s.phone })), ledgerBySupplier)
+    .map(r => ({ id: r.id, supplierName: r.name, phone: r.phone, outstanding: r.outstanding, aging: r.aging }))
+    .sort((a, b) => b.outstanding - a.outstanding)
+
+  const agingTotals = rows.reduce((acc, r) => mergeAging(acc, r.aging), { ...ZERO_AGING })
+
+  return {
+    generatedAt: now.toISOString(),
+    summary: { totalOutstanding: rows.reduce((s, r) => s + r.outstanding, 0), count: rows.length },
+    agingTotals,
+    rows
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 61 — Purchase Register / Purchases by Vendor / Purchases by Item.
+// Bill (not PurchaseOrder) is the source: a PO is a commitment, a Bill is
+// the actual recorded purchase/AP obligation — see Section 3.1 item 2.
+// VOID bills are excluded throughout (never a real purchase).
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generatePurchaseRegisterReport(params: { dateFrom: string; dateTo: string }): Promise<PurchaseRegisterReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bills = await db.bill.findMany({
+    where: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } },
+    include: {
+      supplier: { select: { supplierName: true } },
+      items: { select: { id: true } }
+    },
+    orderBy: { billDate: 'asc' }
+  })
+
+  const byVendorMap = new Map<string, PurchaseRegisterByVendorRow>()
+  const rows: PurchaseRegisterRow[] = bills.map(b => {
+    const vendorRow = byVendorMap.get(b.supplier.supplierName) ?? { supplierName: b.supplier.supplierName, totalAmount: 0, billCount: 0 }
+    vendorRow.totalAmount += b.totalAmount
+    vendorRow.billCount += 1
+    byVendorMap.set(b.supplier.supplierName, vendorRow)
+
+    return {
+      billNumber: b.billNumber, date: toLocalISODate(b.billDate), supplier: b.supplier.supplierName, status: b.status,
+      itemCount: b.items.length, subtotal: b.subtotal, discountAmount: b.discountAmount, taxAmount: b.taxAmount, totalAmount: b.totalAmount
+    }
+  })
+
+  const byVendor = Array.from(byVendorMap.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalPurchases: sumCurrency(bills.map(b => b.totalAmount)),
+      billCount: bills.length,
+      totalTax: sumCurrency(bills.map(b => b.taxAmount))
+    },
+    byVendor,
+    rows, total: rows.length
+  }
+}
+
+async function generatePurchasesByVendorReport(params: { dateFrom: string; dateTo: string }): Promise<PurchasesByVendorReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bills = await db.bill.findMany({
+    where: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } },
+    select: { totalAmount: true, supplierId: true, supplier: { select: { supplierName: true } } }
+  })
+
+  const byVendor = new Map<string, PurchasesByVendorRow>()
+  for (const b of bills) {
+    const row = byVendor.get(b.supplierId) ?? { supplierId: b.supplierId, supplierName: b.supplier.supplierName, totalAmount: 0, billCount: 0 }
+    row.totalAmount += b.totalAmount
+    row.billCount += 1
+    byVendor.set(b.supplierId, row)
+  }
+
+  const rows = Array.from(byVendor.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalPurchases: sumCurrency(rows.map(r => r.totalAmount)), vendorCount: rows.length },
+    rows
+  }
+}
+
+async function generatePurchasesByItemReport(params: { dateFrom: string; dateTo: string }): Promise<PurchasesByItemReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.billItem.findMany({
+    where: { bill: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } } },
+    select: {
+      quantity: true, total: true,
+      productId: true, serviceDescription: true,
+      product: { select: { productName: true } }
+    }
+  })
+
+  const byItem = new Map<string, PurchasesByItemRow>()
+  for (const item of items) {
+    const isService = !item.productId
+    const key = isService ? `SVC:${item.serviceDescription}` : `PRD:${item.productId}`
+    const itemName = isService ? (item.serviceDescription ?? 'Service') : (item.product?.productName ?? 'Unknown Product')
+    const row = byItem.get(key) ?? { itemName, isService, quantity: 0, totalAmount: 0, billCount: 0 }
+    row.quantity += item.quantity
+    row.totalAmount += item.total
+    row.billCount += 1
+    byItem.set(key, row)
+  }
+
+  const rows = Array.from(byItem.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalPurchases: sumCurrency(rows.map(r => r.totalAmount)), itemCount: rows.length },
+    rows
   }
 }
 
@@ -876,24 +1060,31 @@ async function generateCashBookReport(params: { dateFrom: string; dateTo: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Trial Balance — derived from this app's existing ledgers/invoices/expenses
-// rather than a persisted double-entry general ledger (this app doesn't have
-// one; see currency/ledger notes elsewhere). Deliberately reuses
-// generateProfitAndLossReport's exact revenue/COGS/expense numbers so this
-// never disagrees with the P&L report for the same period.
+// Trial Balance — Phase 62 rewrite. Now that a real double-entry Chart of
+// Accounts + Journal Entry ledger exists (every Invoice/Bill/Payment/
+// SupplierPayment/Expense/PDC-clear/depreciation/etc. auto-posts a balanced
+// JournalEntry), this reads real posted GL rows instead of synthesizing
+// figures from invoices/expenses/customer balances. Superseded, not kept
+// alongside, the old synthetic version — see Section 4.1 item 17 of
+// PHASE_61_ROADMAP_MASTER_PROMPT.md for why this rewrite was deferred until
+// the GL existed to read from.
 //
-// Cash & Bank, Accounts Receivable, and Accounts Payable are CURRENT
-// (as-of-now) balances, not reconstructed as of dateTo — Customer.
-// outstandingBalance and the SupplierLedger running balance are maintained
-// as live running totals, not a dated history that can be rewound. Cash &
-// Bank IS computed as of dateTo (it's derived from dated transaction rows,
-// so it can be). This is stated plainly in the report's own `asOf` field
-// rather than silently presented as more precise than it is.
+// A trial balance is inherently a cumulative as-of-a-date snapshot, not a
+// period movement — every ChartOfAccounts row's balance is summed from ALL
+// its JournalEntryLine postings up to and including dateTo, not just the
+// dateFrom..dateTo window (`dateFrom` is kept in the returned shape only
+// because the report screen's date-range picker still expects it, and is
+// not used in the computation).
 //
-// "Capital & Retained Earnings" is a balancing entry, not a tracked account
-// (this app has no owner's-capital ledger) — it's Debit total minus every
-// other Credit line, labelled as computed so it's never mistaken for a real
-// ledger balance.
+// Each JournalEntry is enforced balanced at posting time (assertBalanced in
+// journal-entry.service.ts), and a reversed entry's own mirrored lines net
+// to zero against the original by construction — so summing every posted
+// line, with no isReversed filtering needed, is guaranteed to net to zero
+// across the whole ledger. Per account, net = debit − credit: a positive
+// net is shown as a debit, a negative net as a credit magnitude — this
+// single sign rule is what keeps every account (regardless of whether its
+// "natural" balance is debit or credit) correctly balanced and never shows
+// a negative number in either column.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TrialBalanceRow { account: string; debit: number; credit: number }
@@ -909,69 +1100,34 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
   const db = getPrisma()
   const to = toDateEnd(params.dateTo)
 
-  const [pnl, taxInvoices, customers, supplierBalances, cashMovements] = await Promise.all([
-    generateProfitAndLossReport({ dateFrom: params.dateFrom, dateTo: params.dateTo }),
-    db.invoice.findMany({
-      where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: toDate(params.dateFrom), lte: to } },
-      select: { taxAmount: true }
-    }),
-    db.customer.findMany({ where: { outstandingBalance: { gt: 0 } }, select: { outstandingBalance: true } }),
-    db.supplierLedger.groupBy({ by: ['supplierId'], _sum: { debitAmount: true, creditAmount: true } }),
-    fetchCashMovements(to)
+  const [accounts, lines] = await Promise.all([
+    db.chartOfAccounts.findMany({ where: { isActive: true }, orderBy: { accountCode: 'asc' } }),
+    db.journalEntryLine.findMany({
+      where: { journalEntry: { entryDate: { lte: to } } },
+      select: { accountId: true, debitAmount: true, creditAmount: true }
+    })
   ])
 
-  const taxCollected = sumCurrency(taxInvoices.map((inv) => inv.taxAmount))
-  const revenueNet = roundCurrency(pnl.summary.revenue - taxCollected)
-
-  const accountsReceivable = sumCurrency(customers.map((c) => c.outstandingBalance))
-  const accountsPayable = sumCurrency(
-    supplierBalances
-      .map((s) => (s._sum.debitAmount ?? 0) - (s._sum.creditAmount ?? 0))
-      .filter((bal) => bal > 0)
-  )
-  const cashAndBank = roundCurrency(
-    sumCurrency(cashMovements.filter((m) => m.type === 'IN').map((m) => m.amount)) -
-    sumCurrency(cashMovements.filter((m) => m.type === 'OUT').map((m) => m.amount))
-  )
-
-  // Several of these figures can legitimately go negative: Cash & Bank
-  // (more paid out than ever came in), Cost of Goods Sold and Sales Revenue
-  // (a period where RETURN invoices outweigh SALE invoices — the same sign
-  // case generateProfitAndLossReport's own RETURN-invoice correction
-  // handles). A negative "debit" account is, by definition, actually a
-  // credit balance for that period — put each figure on whichever side its
-  // sign actually belongs on, rather than either showing a negative number
-  // in a column (not how a real trial balance reads) or letting it silently
-  // disappear from both columns while still being netted into the totals.
-  function signedRow(account: string, naturalSide: 'debit' | 'credit', amount: number): TrialBalanceRow {
-    const magnitude = Math.abs(amount)
-    const side = amount >= 0 ? naturalSide : (naturalSide === 'debit' ? 'credit' : 'debit')
-    return side === 'debit' ? { account, debit: magnitude, credit: 0 } : { account, debit: 0, credit: magnitude }
+  const debitByAccount = new Map<string, number>()
+  const creditByAccount = new Map<string, number>()
+  for (const line of lines) {
+    debitByAccount.set(line.accountId, (debitByAccount.get(line.accountId) ?? 0) + line.debitAmount)
+    creditByAccount.set(line.accountId, (creditByAccount.get(line.accountId) ?? 0) + line.creditAmount)
   }
 
-  const rowsExclCapital: TrialBalanceRow[] = [
-    signedRow('Cash & Bank', 'debit', cashAndBank),
-    signedRow('Accounts Receivable', 'debit', accountsReceivable),
-    signedRow('Cost of Goods Sold', 'debit', pnl.summary.cogs),
-    signedRow('Operating Expenses', 'debit', pnl.summary.totalExpenses),
-    signedRow('Accounts Payable', 'credit', accountsPayable),
-    signedRow('Sales Revenue', 'credit', revenueNet),
-    signedRow('Tax Payable (Output)', 'credit', taxCollected)
-  ]
+  const rows: TrialBalanceRow[] = []
+  for (const acct of accounts) {
+    const debitTotal = debitByAccount.get(acct.id) ?? 0
+    const creditTotal = creditByAccount.get(acct.id) ?? 0
+    if (debitTotal === 0 && creditTotal === 0) continue // never posted to — omit rather than pad with all-zero rows
+    const net = roundCurrency(debitTotal - creditTotal)
+    if (Math.abs(net) < 0.005) continue // posted both ways but nets to zero — nothing to show
+    const account = `${acct.accountCode} — ${acct.accountName}`
+    rows.push(net > 0 ? { account, debit: net, credit: 0 } : { account, debit: 0, credit: -net })
+  }
 
-  const totalDebitExclCapital = roundCurrency(sumCurrency(rowsExclCapital.map((r) => r.debit)))
-  const totalCreditExclCapital = roundCurrency(sumCurrency(rowsExclCapital.map((r) => r.credit)))
-  const capital = roundCurrency(totalDebitExclCapital - totalCreditExclCapital)
-  // The balancing plug can land on either side too (liabilities+income
-  // outweighing assets+expenses is a legitimate negative-equity position,
-  // not just a rounding artifact) — same non-negative-per-column treatment.
-  const capitalRow: TrialBalanceRow = capital >= 0
-    ? { account: 'Capital & Retained Earnings (balancing)', debit: 0, credit: capital }
-    : { account: 'Capital & Retained Earnings (balancing)', debit: -capital, credit: 0 }
-
-  const rows: TrialBalanceRow[] = [...rowsExclCapital, capitalRow]
-  const totalDebit = roundCurrency(totalDebitExclCapital + capitalRow.debit)
-  const totalCredit = roundCurrency(totalCreditExclCapital + capitalRow.credit)
+  const totalDebit = roundCurrency(sumCurrency(rows.map((r) => r.debit)))
+  const totalCredit = roundCurrency(sumCurrency(rows.map((r) => r.credit)))
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, asOf: params.dateTo,
@@ -1342,6 +1498,17 @@ export interface GSTR3BPreview {
     exemptNilNonGstSupplies: number
     taxAmount: { igst: number; cgst: number; sgst: number }
   }
+  // Table 3.1(d) — inward supplies liable to reverse charge. Real, Phase 62
+  // addition: Bill carries a proper line-level tax split so its
+  // contribution here is exact; Expense has no tax-rate/amount field at
+  // all (a single flat `amount`), so an RCM expense contributes its full
+  // amount to taxableValue with no computable tax split — flagged plainly
+  // via `expenseTaxNotComputable`, never silently guessed at.
+  table31d: {
+    taxableValue: number
+    taxAmount: number
+    expenseTaxNotComputable: boolean
+  }
   table32: GSTR3BStateRow[]
   notes: string[]
 }
@@ -1356,11 +1523,31 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
-  const invoices = await db.invoice.findMany({
-    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
-    include: { customer: { select: { taxNumber: true, state: true } }, items: true },
-    orderBy: { invoiceDate: 'asc' }
-  })
+  const [invoices, rcmBills, rcmExpenses] = await Promise.all([
+    db.invoice.findMany({
+      where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+      include: { customer: { select: { taxNumber: true, state: true } }, items: true },
+      orderBy: { invoiceDate: 'asc' }
+    }),
+    // Table 3.1(d) — RCM Bills carry a real tax-exclusive totalAmount plus a
+    // separately tracked taxAmount (see bill.service.ts's own RCM comment).
+    db.bill.findMany({
+      where: { billDate: { gte: from, lte: to }, isReverseCharge: true, status: { not: 'VOID' } },
+      select: { totalAmount: true, taxAmount: true }
+    }),
+    db.expense.findMany({
+      where: { expenseDate: { gte: from, lte: to }, isReverseCharge: true },
+      select: { amount: true }
+    })
+  ])
+
+  const table31d = {
+    taxableValue: roundCurrency(
+      sumCurrency(rcmBills.map((b) => b.totalAmount)) + sumCurrency(rcmExpenses.map((e) => e.amount))
+    ),
+    taxAmount: roundCurrency(sumCurrency(rcmBills.map((b) => b.taxAmount))),
+    expenseTaxNotComputable: rcmExpenses.length > 0
+  }
 
   let taxableOutwardSupplies = 0
   let exemptNilNonGstSupplies = 0
@@ -1405,9 +1592,12 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
       exemptNilNonGstSupplies,
       taxAmount: { igst: igstTotal, cgst: cgstTotal, sgst: sgstTotal }
     },
+    table31d,
     table32: Array.from(stateMap.values()),
     notes: [
-      'Reverse-charge inward supplies (Table 3.1(d)) are not tracked by Sarang — enter manually if applicable.',
+      ...(table31d.expenseTaxNotComputable
+        ? ['One or more reverse-charge Expenses in this period have no separate tax-rate/amount field — their full amount is included in Table 3.1(d) taxable value, but not in its tax total. Check those manually.']
+        : []),
       'Input Tax Credit (Table 4) is not covered by this report — Sarang does not track purchase-side GST input credit.',
       'Table 5 (composition/exempt inward supplies from unregistered persons) is not tracked by Sarang.'
     ]
@@ -3316,6 +3506,10 @@ export const reportService = {
   generateInventoryReport,
   generateTaxReport,
   generateOutstandingReport,
+  generateApAgingReport,
+  generatePurchaseRegisterReport,
+  generatePurchasesByVendorReport,
+  generatePurchasesByItemReport,
   generateCustomerLedgerReport,
   generateSupplierLedgerReport,
   generateExpenseReport,

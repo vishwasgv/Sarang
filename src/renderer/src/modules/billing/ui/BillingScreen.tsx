@@ -161,6 +161,9 @@ export function BillingScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [notes, setNotes] = useState('')
+  // Phase 61 — lives on Invoice directly, independent of the opt-in
+  // Logistics module (which only tracks it at shipment level).
+  const [ewayBillNumber, setEwayBillNumber] = useState('')
   const [submitting, setSubmitting] = useState(false)
   // Discount mode per item: 'amount' (₹) or 'percent' (%)
   // 'finalPrice' — bargained/negotiated pricing (very common in Indian retail,
@@ -296,14 +299,14 @@ export function BillingScreen() {
     if (cart.length === 0) { toastError(t('common.error'), t('billing.emptyCartCannotHold')); return }
     setHolding(true)
     try {
-      const snapshot = { cart, customer, globalDiscount, paymentMethod, notes, referenceNumber, isInterState, buyerState }
+      const snapshot = { cart, customer, globalDiscount, paymentMethod, notes, referenceNumber, ewayBillNumber, isInterState, buyerState }
       const res = await window.api.heldSale.hold({
         cartJson: JSON.stringify(snapshot), itemCount: cart.length, totalAmount: totals.totalAmount,
         label: holdLabel.trim() || undefined, customerId: customer?.id,
       })
       if (res.success) {
         toastSuccess(t('billing.holdSaleSuccess'), '')
-        setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber('')
+        setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber('')
         setIsInterState(false); setBuyerState('')
         setShowHoldModal(false); setHoldLabel('')
       } else {
@@ -332,10 +335,11 @@ export function BillingScreen() {
       if (res.success && res.data) {
         const snapshot = JSON.parse((res.data as { cartJson: string }).cartJson) as {
           cart: CartItem[]; customer: Customer | null; globalDiscount: number; paymentMethod: PaymentMethod
-          notes: string; referenceNumber: string; isInterState: boolean; buyerState: string
+          notes: string; referenceNumber: string; ewayBillNumber?: string; isInterState: boolean; buyerState: string
         }
         setCart(snapshot.cart); setCustomer(snapshot.customer); setGlobalDiscount(snapshot.globalDiscount)
         setPaymentMethod(snapshot.paymentMethod); setNotes(snapshot.notes); setReferenceNumber(snapshot.referenceNumber)
+        setEwayBillNumber(snapshot.ewayBillNumber ?? '')
         setIsInterState(snapshot.isInterState); setBuyerState(snapshot.buyerState)
         setShowResumeModal(false)
       } else {
@@ -870,6 +874,7 @@ export function BillingScreen() {
         globalDiscount,
         notes: notes.trim() || undefined,
         referenceNumber: referenceNumber.trim() || undefined,
+        ewayBillNumber: ewayBillNumber.trim() || undefined,
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
@@ -927,7 +932,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -1573,6 +1578,18 @@ export function BillingScreen() {
             </div>
           )}
 
+          {/* E-way bill number — Phase 61, lives on Invoice directly,
+              available regardless of whether the Logistics module is on */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.ewayBillNumber')}</p>
+            <input
+              value={ewayBillNumber}
+              onChange={e => setEwayBillNumber(e.target.value)}
+              placeholder={t('billing.ewayBillNumber')}
+              className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+            />
+          </div>
+
           {/* Notes */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.notes')}</p>
@@ -1623,7 +1640,7 @@ export function BillingScreen() {
           </Button>
 
           <button
-            onClick={() => { setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setIsInterState(false); setBuyerState('') }}
+            onClick={() => { setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setIsInterState(false); setBuyerState('') }}
             className="w-full text-xs text-slate-400 hover:text-danger transition-colors py-1"
           >
             {t('billing.clearCart')}

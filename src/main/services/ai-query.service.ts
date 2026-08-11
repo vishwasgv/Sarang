@@ -26,8 +26,11 @@ import { quotationService } from './quotation.service'
 import { purchaseOrderService } from './purchase-order.service'
 import { listCustomers, searchCustomers } from './customer.service'
 import { searchSuppliers } from './supplier.service'
+import { supplierLedgerService } from './supplier-ledger.service'
 import { billingService } from './billing.service'
 import { inventoryService } from './inventory.service'
+import { bankAccountService } from './bank-account.service'
+import { creditInterestService } from './credit-interest.service'
 import { formatAmountForSpeech, refreshAiNumberFormat } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
@@ -147,6 +150,10 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // direction confusion (money I owe vs. money owed to me). Zero fast-path
   // coverage existed for this template before this fix.
   { template: 'suppliers.pendingPayments', patterns: [/pending.*(payment|suppliers?)/i, /suppliers?.*pending/i, /payments?\s+(due|owed)\s+to\s+suppliers?/i] },
+  // Phase 61 — Bill-based "what am I spending the most on" question, distinct
+  // from suppliers.topByPurchaseVolume (which is per-vendor, not per-item).
+  { template: 'suppliers.topPurchasedItems', patterns: [/spend.*most.*on/i, /what.*(buy|bought|purchas).*most/i, /(top|biggest).*(purchase|bought)\s+items?/i, /what.*am i (spending|buying)/i] },
+  { template: 'suppliers.purchaseRegisterSummary', patterns: [/purchase register/i, /(show|see).*(my )?purchases?\b/i] },
   // Vertical-template fast-path patterns, added 2026-07-13 alongside the
   // vertical-coverage expansion. Real bug found live: the model
   // misclassified "How is production going this month?" as
@@ -262,7 +269,15 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'dental.recallsDue', patterns: [/(patient )?recalls?.*(due|soon)/i] },
   { template: 'carService.vehiclesInService', patterns: [/vehicles?.*in service/i] },
   { template: 'lab.reportsPendingFinalization', patterns: [/lab reports?.*pending/i, /reports?.*finaliz/i] },
-  { template: 'placement.pipelineByStage', patterns: [/pipeline.*stage/i, /candidate pipeline/i] }
+  { template: 'placement.pipelineByStage', patterns: [/pipeline.*stage/i, /candidate pipeline/i] },
+  // Phase 62 — the 4 required Ask Sarang AI intents' own literal example
+  // phrasings from Section 4.3, given deterministic fast-path coverage the
+  // same way every other "must answer" example in this file already gets it
+  // rather than trusting the model to discriminate a growing catalog.
+  { template: 'ledger.bankBalance', patterns: [/bank balance/i, /how much (money |cash )?do i have in (the )?bank/i, /(bank|cash) account balance/i] },
+  { template: 'ledger.unreconciledTransactions', patterns: [/unreconciled (transactions?|(bank )?statement lines?)/i, /transactions?.*not.*reconciled/i] },
+  { template: 'credit.customerOverdueInterest', patterns: [/interest.*(owe|owed).*overdue/i, /overdue.*interest/i, /interest.*on.*overdue balance/i] },
+  { template: 'ledger.fixedAssetDepreciationThisYear', patterns: [/(fixed asset )?depreciation this year/i, /depreciation.*year/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -275,7 +290,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -732,6 +747,42 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
       }
     }
   },
+  // Phase 61 — real Bill-based purchase spend by item/service, genuinely new
+  // capability (existing suppliers.topByPurchaseVolume/
+  // totalPurchaseValueThisMonth are PO-based; this is the first intent
+  // reading actual recorded Bills, closing 1.2's "any new report gets a
+  // matching AI query pattern" requirement for the new Purchases-by-Item
+  // report).
+  'suppliers.topPurchasedItems': {
+    category: 'suppliers',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generatePurchasesByItemReport({ dateFrom, dateTo })
+      const top10 = report.rows.slice(0, 10)
+      return {
+        headline: `Total purchases this period: ${formatAmountForSpeech(report.summary.totalPurchases, sym)} across ${report.summary.itemCount} items/services`,
+        details: top10.map((r) => `${r.itemName}${r.isService ? ' (service)' : ''}: ${formatAmountForSpeech(r.totalAmount, sym)}`),
+        isEmpty: report.rows.length === 0
+      }
+    }
+  },
+  // Phase 61 Section 3.3 — the third of the three "must answer" example
+  // questions ("show me my purchase register"), a whole-business summary
+  // distinct from suppliers.byName (one named vendor) and
+  // suppliers.topPurchasedItems (by item, not by vendor).
+  'suppliers.purchaseRegisterSummary': {
+    category: 'suppliers',
+    async execute(params, sym) {
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const report = await reportService.generatePurchaseRegisterReport({ dateFrom, dateTo })
+      const topVendors = report.byVendor.slice(0, 5)
+      return {
+        headline: `Purchase Register for ${dateFrom} to ${dateTo}: ${formatAmountForSpeech(report.summary.totalPurchases, sym)} across ${report.summary.billCount} bills`,
+        details: topVendors.map((v) => `${v.supplierName}: ${formatAmountForSpeech(v.totalAmount, sym)} (${v.billCount} bills)`),
+        isEmpty: report.rows.length === 0
+      }
+    }
+  },
   // credit.overdueInvoices — decision (spec Section 5): ship the aggregate
   // aging-bucket view from generateOutstandingReport, matching
   // reuse-over-reimplementation, rather than a new flat per-invoice list.
@@ -767,9 +818,9 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     category: 'meta',
     async execute(_params, _sym) {
       return {
-        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, finance, staff, and documents like quotations and purchase orders — plus questions specific to your business type',
+        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, finance, staff, and documents like quotations, purchase orders, and bills — plus questions specific to your business type',
         details: [
-          'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What\'s our profit this month?"',
+          'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What do I owe suppliers?", "What am I spending the most on?", "What\'s our profit this month?"',
           'I can also look up one specific invoice, customer, supplier, or product by name or number — e.g. "Look up invoice INV-2026-000123"',
           "I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records",
           'Ask "how do I..." or "where is..." a feature and I\'ll point you to the right Manual chapter',
@@ -1049,17 +1100,40 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
       }
     }
   },
+  // Phase 61 — Section 3.3's "must answer" examples "what do I owe
+  // [vendor]" and "what did I spend on [vendor] last month" both name a
+  // SPECIFIC supplier, so both are answered from this same by-name lookup
+  // rather than two separate intents (avoids classification ambiguity
+  // between two near-identical "about one named vendor" questions).
+  // Outstanding balance reuses supplierLedgerService.calculateBalance (the
+  // same true-aggregate function receivePO/recordPayment/etc. all already
+  // trust), and period spend sums that supplier's non-VOID Bills for
+  // whatever date range extractParams derived (defaults to this month).
   'suppliers.byName': {
     category: 'suppliers',
-    async execute(params, _sym) {
+    async execute(params, sym) {
       const term = params.searchTerm as string | undefined
       if (!term) return { headline: '', details: [], isEmpty: true }
       const res = await searchSuppliers(term)
-      const supplier = (res.data as Array<{ supplierName: string; phone: string | null; supplierCode: string | null }> | undefined)?.[0]
+      const supplier = (res.data as Array<{ id: string; supplierName: string; phone: string | null; supplierCode: string | null }> | undefined)?.[0]
       if (!supplier) return { headline: '', details: [], isEmpty: true }
+
+      const outstanding = await supplierLedgerService.calculateBalance(supplier.id)
+      const { dateFrom, dateTo } = defaultThisMonthRange(params)
+      const db = getPrisma()
+      const periodSpendAgg = await db.bill.aggregate({
+        where: { supplierId: supplier.id, status: { not: 'VOID' }, billDate: { gte: parseLocalDateStart(dateFrom), lte: parseLocalDateEnd(dateTo) } },
+        _sum: { totalAmount: true }
+      })
+      const periodSpend = periodSpendAgg._sum.totalAmount ?? 0
+
       return {
         headline: `${supplier.supplierName}${supplier.supplierCode ? ` (${supplier.supplierCode})` : ''}`,
-        details: [`Phone: ${supplier.phone ?? 'not recorded'}`],
+        details: [
+          `Phone: ${supplier.phone ?? 'not recorded'}`,
+          `You currently owe them: ${formatAmountForSpeech(outstanding, sym)}`,
+          `Spend from ${dateFrom} to ${dateTo}: ${formatAmountForSpeech(periodSpend, sym)}`
+        ],
         isEmpty: false
       }
     }
@@ -1754,6 +1828,99 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
         headline: `${orders.length} purchase orders are overdue for receipt, worth ${formatAmountForSpeech(totalValue, sym)}`,
         details: orders.slice(0, 10).map((o) => `${o.poNumber} — ${o.supplier.supplierName}, expected ${o.expectedDate ? toLocalISODate(o.expectedDate) : 'unknown'}`),
         isEmpty: orders.length === 0
+      }
+    }
+  },
+  // Phase 62 — Section 4.3's 4 required Ask Sarang AI intents, mapped to the
+  // new Banking/Ledger/Compliance backend.
+  'ledger.bankBalance': {
+    category: 'ledger',
+    async execute(_params, sym) {
+      const res = await bankAccountService.listAccounts({ isActive: true })
+      const accounts = (res.data ?? []) as Array<{ accountName: string; accountType: string; currentBalance: number }>
+      const total = accounts.reduce((s, a) => s + a.currentBalance, 0)
+      return {
+        headline: `Total bank & cash balance: ${formatAmountForSpeech(total, sym)} across ${accounts.length} account${accounts.length === 1 ? '' : 's'}`,
+        details: accounts.map((a) => `${a.accountName} (${a.accountType === 'CASH' ? 'Cash' : 'Bank'}): ${formatAmountForSpeech(a.currentBalance, sym)}`),
+        isEmpty: accounts.length === 0
+      }
+    }
+  },
+  'ledger.unreconciledTransactions': {
+    category: 'ledger',
+    async execute(_params, sym) {
+      const db = await getReadOnlyPrisma()
+      const lines = await db.bankStatementLine.findMany({
+        where: { reconciled: false },
+        select: { debitAmount: true, creditAmount: true, description: true, transactionDate: true, bankAccount: { select: { accountName: true } } },
+        orderBy: { transactionDate: 'desc' },
+        take: 10
+      })
+      const totalCount = await db.bankStatementLine.count({ where: { reconciled: false } })
+      const totalMovement = lines.reduce((s, l) => s + l.debitAmount + l.creditAmount, 0)
+      return {
+        headline: `${totalCount} unreconciled bank statement line${totalCount === 1 ? '' : 's'} across all accounts`,
+        details: lines.map((l) => `${l.bankAccount.accountName} — ${l.description} (${formatAmountForSpeech(l.debitAmount || l.creditAmount, sym)})`),
+        isEmpty: totalCount === 0 && totalMovement === 0
+      }
+    }
+  },
+  // "what interest do I owe on [customer]'s overdue balance" — reuses the
+  // same params.searchTerm customer-name resolution as customers.byNameOrPhone,
+  // then the real creditInterestService.calculateInterest (not a re-derived
+  // calculation) so this answer can never disagree with the Customer Detail
+  // screen's own figure.
+  'credit.customerOverdueInterest': {
+    category: 'credit',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await searchCustomers(term)
+      const customer = (res.data as Array<{ id: string; customerName: string }> | undefined)?.[0]
+      if (!customer) return { headline: '', details: [], isEmpty: true }
+      const interestRes = await creditInterestService.calculateInterest(customer.id)
+      if (!interestRes.success || !interestRes.data) {
+        // Credit interest not enabled, or no overdue invoices — either way a
+        // real, honest "not applicable" answer, not a fabricated zero.
+        return { headline: `${customer.customerName}: ${interestRes.error?.message ?? 'no interest applicable.'}`, details: [], isEmpty: true }
+      }
+      const d = interestRes.data as { totalInterest: number; ratePercent: number; type: string; lines: Array<{ invoiceNumber: string; daysOverdue: number; interest: number }> }
+      return {
+        headline: `${customer.customerName} owes ${formatAmountForSpeech(d.totalInterest, sym)} in accrued interest (${d.type === 'SIMPLE' ? 'simple' : 'compound'}, ${d.ratePercent}% p.a.)`,
+        details: d.lines.map((l) => `${l.invoiceNumber} — ${l.daysOverdue} days overdue, ${formatAmountForSpeech(l.interest, sym)} interest`),
+        isEmpty: d.totalInterest === 0
+      }
+    }
+  },
+  'ledger.fixedAssetDepreciationThisYear': {
+    category: 'ledger',
+    async execute(_params, sym) {
+      const db = await getReadOnlyPrisma()
+      const now = new Date()
+      const yearStart = new Date(now.getFullYear(), 0, 1)
+      // Real bug found live 2026-08-12 (Phase 62 UAT, not a unit test — the
+      // mocked-Prisma unit tests never exercise a genuinely current-month
+      // depreciation row against a real clock): a depreciation run for the
+      // CURRENT month intentionally sets periodEnd to that month's last day
+      // (see FixedAssetDetailScreen.tsx's RunDepreciationModal default),
+      // which is a future timestamp relative to `now` on every day before
+      // the month's last — so `periodEnd: { lte: now }` silently excluded
+      // the most common real case (asking about depreciation right after
+      // running it this month), always answering "I could not find enough
+      // information" instead. "This year" means periodEnd falls within the
+      // current calendar year, not that the period has already fully
+      // elapsed as of this exact instant — bounded by yearEnd, not `now`.
+      const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+      const rows = await db.fixedAssetDepreciation.findMany({
+        where: { periodEnd: { gte: yearStart, lte: yearEnd } },
+        select: { amount: true, periodEnd: true, fixedAsset: { select: { assetName: true, assetCode: true } } },
+        orderBy: { periodEnd: 'desc' }
+      })
+      const total = rows.reduce((s, r) => s + r.amount, 0)
+      return {
+        headline: `Fixed asset depreciation this year: ${formatAmountForSpeech(total, sym)} across ${rows.length} depreciation run${rows.length === 1 ? '' : 's'}`,
+        details: rows.slice(0, 10).map((r) => `${r.fixedAsset.assetName} (${r.fixedAsset.assetCode}): ${formatAmountForSpeech(r.amount, sym)}, period ending ${toLocalISODate(r.periodEnd)}`),
+        isEmpty: rows.length === 0
       }
     }
   }

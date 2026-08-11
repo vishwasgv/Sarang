@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle } from 'lucide-react'
+import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
 import { Button } from '@shared/ui/atoms/Button'
@@ -10,6 +10,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 type TokenStatus = 'WAITING' | 'CALLED' | 'SEEN' | 'SKIPPED'
 
@@ -45,8 +46,9 @@ const STATUS_VARIANT: Record<TokenStatus, 'info' | 'warning' | 'success' | 'neut
 
 export function TokenQueueScreen() {
   const { hasPermission } = useAuthStore()
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const canManage = hasPermission('billing.createInvoice')
+  const canManageCheckIn = hasPermission('tokenQueue.manage')
 
   const [tokens, setTokens] = useState<Token[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -54,6 +56,14 @@ export function TokenQueueScreen() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // Phase 62 — self check-in via QR (LAN server), mirrors
+  // FieldOrdersScreen.tsx's own status/QR block exactly.
+  const [serverStatus, setServerStatus] = useState<{ running: boolean; lanUrls: string[]; token: string | null } | null>(null)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [captureUrl, setCaptureUrl] = useState<string | null>(null)
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -74,7 +84,51 @@ export function TokenQueueScreen() {
     }
   }, [toastError])
 
+  const loadServerStatus = useCallback(async () => {
+    if (!canManageCheckIn) return
+    try {
+      const res = await api.tokenQueue.getServerStatus()
+      if (res.success && res.data) setServerStatus(res.data as { running: boolean; lanUrls: string[]; token: string | null })
+    } catch {
+      // status panel failing to load must never block the queue above
+    }
+  }, [canManageCheckIn])
+
   useEffect(() => { load() }, [load])
+  useEffect(() => { loadServerStatus() }, [loadServerStatus])
+
+  async function handleShowQr() {
+    try {
+      const res = await api.tokenQueue.generateServerQr()
+      if (res.success && res.data) {
+        const d = res.data as { qrDataUrl: string; captureUrl: string }
+        setQrDataUrl(d.qrDataUrl); setCaptureUrl(d.captureUrl)
+      } else {
+        toastError('Error', res.error?.message ?? 'Check-in is not currently running.')
+      }
+    } catch {
+      toastError('Error', 'Could not generate QR code.')
+    }
+  }
+
+  async function handleRegenerateToken() {
+    setRegenerating(true)
+    try {
+      const res = await api.tokenQueue.regenerateServerToken()
+      if (res.success) {
+        toastSuccess('Link regenerated', 'The old check-in link and QR code no longer work.')
+        setQrDataUrl(null); setCaptureUrl(null)
+        setRegenerateConfirmOpen(false)
+        loadServerStatus()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not regenerate the link.')
+      }
+    } catch {
+      toastError('Error', 'Could not regenerate the link.')
+    } finally {
+      setRegenerating(false)
+    }
+  }
 
   async function handleAction(id: string, action: 'call' | 'seen' | 'skip' | 'reset') {
     setActioningId(id)
@@ -177,6 +231,45 @@ export function TokenQueueScreen() {
           </Button>
         )}
       </div>
+
+      {/* Phase 62 — self check-in via QR */}
+      {canManageCheckIn && serverStatus?.running && (
+        <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 me-1">Patient self check-in:</p>
+            <button onClick={handleShowQr} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors">
+              <QrCode size={13} /> Show QR
+            </button>
+            <button onClick={() => setRegenerateConfirmOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors">
+              <RotateCw size={13} /> Regenerate Link
+            </button>
+          </div>
+          {captureUrl && (
+            <div className="flex items-center gap-3 mt-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 max-w-md">
+              {qrDataUrl && <img src={qrDataUrl} alt="Token queue check-in QR code" className="w-28 h-28" />}
+              <div className="min-w-0">
+                <p className="text-xs text-slate-400 mb-1">Patients on the same Wi-Fi scan this to check themselves in.</p>
+                <div className="flex items-center gap-1.5">
+                  <code className="text-xs text-dark dark:text-slate-200 truncate">{captureUrl}</code>
+                  <button onClick={() => { navigator.clipboard.writeText(captureUrl); toastSuccess('Copied', 'Link copied to clipboard.') }} className="text-slate-400 hover:text-brand transition-colors shrink-0">
+                    <Copy size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={regenerateConfirmOpen}
+        onClose={() => setRegenerateConfirmOpen(false)}
+        onConfirm={handleRegenerateToken}
+        title="Regenerate check-in link?"
+        message="The current QR code and link will stop working immediately. Anyone who already has it open will need the new one."
+        confirmLabel="Regenerate"
+        loading={regenerating}
+      />
 
       {/* Action error */}
       {actionError && (

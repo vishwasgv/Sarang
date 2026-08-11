@@ -14,6 +14,7 @@ import {
   ensureFieldOrderServerState, getFieldOrderServerStatus,
   getOrCreateFieldOrderToken, regenerateFieldOrderToken
 } from '../../server/field-order-server'
+import { ensureTokenQueueServerState } from '../../server/token-queue-server'
 import * as fieldOrderService from '../../services/field-order.service'
 import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
@@ -56,7 +57,7 @@ export function register(handle: HandleFn): void {
     const parsed = ChangeBusinessTypeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
     return result
   })
 
@@ -67,7 +68,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
     // Phase 47: a business-type switch changes which enabledModules apply —
     // resync the QR-ordering server's running state either way.
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
     return result
   })
 
@@ -78,7 +79,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.updateEnabledModules(parsed.data.modules as industryService.TemplateModule[], getCurrentSession()?.userId)
     // Phase 47: toggling qr_table_ordering on/off must take effect immediately —
     // starts/stops the local HTTP server without requiring an app restart.
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
     return result
   })
 

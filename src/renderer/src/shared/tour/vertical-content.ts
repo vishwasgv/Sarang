@@ -120,6 +120,18 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/billing/debit-notes', key: 'debitNotes' },
   { path: '/purchase-orders', key: 'purchaseOrders' },
   { path: '/suppliers', key: 'suppliers' },
+  // Phase 61 — Bills (AP: what we owe a supplier, distinct from a PO — a
+  // vendor invoice can be recorded even without one) and Payments Made.
+  { path: '/bills', key: 'bills' },
+  { path: '/supplier-payments', key: 'supplierPayments' },
+  // Phase 62 — Section 4.3's 2 required flagship Tutorial entries: the two
+  // screens an owner is most likely to open without knowing what to do
+  // first. Bank Accounts is the entry point into Bank Reconciliation
+  // (the reconciliation screen itself is a detail view reached from here,
+  // not its own NAV_ITEMS path, so the flagship content targets this nav
+  // item directly, same as every other hand-authored entry in this file).
+  { path: '/accounting/bank-accounts', key: 'bankReconciliation' },
+  { path: '/accounting/journal-entries', key: 'manualJournal' },
   { path: '/cash-close', key: 'cashClose' },
   { path: '/expenses', key: 'expenses' },
   { path: '/documents', key: 'documents' },

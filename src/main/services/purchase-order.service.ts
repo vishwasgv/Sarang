@@ -6,6 +6,7 @@ import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.servi
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
+import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreatePOPayload } from '../validation/purchase-order.validation'
 
@@ -44,11 +45,22 @@ export const purchaseOrderService = {
     if (!supplier) return { success: false, error: { code: 'SUP-001', message: 'Supplier not found.' } }
     if (!supplier.isActive) return { success: false, error: { code: 'SUP-004', message: 'Cannot create PO for an archived supplier.' } }
 
+    // Phase 61 — a line is either a physical product (validated as before) or
+    // a genuine free-text service line (productId absent entirely). The
+    // PRD-006 rejection stays for product lines: it blocks selecting an
+    // internal placeholder SERVICE-type Product record as a PO line, which
+    // is a different thing from the new additive no-productId service-line
+    // path below.
     for (const item of payload.items) {
-      const product = await db.product.findUnique({ where: { id: item.productId } })
-      if (!product) return { success: false, error: { code: 'PRD-001', message: `Product not found.` } }
-      if (!product.isActive) return { success: false, error: { code: 'PRD-005', message: `Product "${product.productName}" is archived.` } }
-      if (product.productType !== 'STANDARD') return { success: false, error: { code: 'PRD-006', message: `Cannot order service product "${product.productName}". Only physical products can be ordered.` } }
+      if (item.productId) {
+        const product = await db.product.findUnique({ where: { id: item.productId } })
+        if (!product) return { success: false, error: { code: 'PRD-001', message: `Product not found.` } }
+        if (!product.isActive) return { success: false, error: { code: 'PRD-005', message: `Product "${product.productName}" is archived.` } }
+        if (product.productType !== 'STANDARD') return { success: false, error: { code: 'PRD-006', message: `Cannot order service product "${product.productName}". Only physical products can be ordered.` } }
+      } else if (item.serviceCategoryId) {
+        const cat = await db.expenseCategory.findUnique({ where: { id: item.serviceCategoryId } })
+        if (!cat) return { success: false, error: { code: 'EXP-002', message: 'Expense category not found.' } }
+      }
     }
 
     // Real bug found live (core-commerce audit): subtotal/taxAmount/totalAmount
@@ -71,6 +83,12 @@ export const purchaseOrderService = {
     const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount))
     const totalAmount = roundCurrency(subtotal + taxAmount)
 
+    // Phase 62 — Transaction Locking. POs always order at "now" (no
+    // backdating field exists), same reasoning as billing.service.ts's own
+    // createInvoice check.
+    const lockError = await assertNotLocked(new Date())
+    if (lockError) return lockError
+
     const po = await db.$transaction(async (tx) => {
       const poNumber = await generatePONumber(tx)
       return tx.purchaseOrder.create({
@@ -89,10 +107,13 @@ export const purchaseOrderService = {
           subtotal,
           taxAmount,
           totalAmount,
+          isReverseCharge: payload.isReverseCharge,
           createdById: userId || null,
           items: {
             create: lineRows.map(({ item, taxAmount: lineTax, lineTotal }) => ({
-              productId: item.productId,
+              productId: item.productId || null,
+              serviceDescription: item.serviceDescription || null,
+              serviceCategoryId: item.serviceCategoryId || null,
               quantity: item.quantity,
               unitCost: item.unitCost,
               taxRate: item.taxRate ?? 0,
@@ -105,7 +126,10 @@ export const purchaseOrderService = {
         include: {
           supplier: { select: { id: true, supplierName: true, supplierCode: true } },
           items: {
-            include: { product: { select: { id: true, productName: true, sku: true, unit: true } } }
+            include: {
+              product: { select: { id: true, productName: true, sku: true, unit: true } },
+              serviceCategory: { select: { id: true, categoryName: true } }
+            }
           }
         }
       })
@@ -159,7 +183,7 @@ export const purchaseOrderService = {
 
     const created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }> = []
     for (const [supplierId, items] of bySupplier) {
-      const res = await this.createPO({ supplierId, items, notes: 'Auto-drafted from low-stock reorder alert — review before approving.' }, userId)
+      const res = await this.createPO({ supplierId, items, isReverseCharge: false, notes: 'Auto-drafted from low-stock reorder alert — review before approving.' }, userId)
       if (res.success && res.data) {
         const po = res.data as { id: string; poNumber: string; supplier: { supplierName: string } }
         created.push({ poId: po.id, poNumber: po.poNumber, supplierId, supplierName: po.supplier.supplierName, itemCount: items.length })
@@ -185,7 +209,8 @@ export const purchaseOrderService = {
                 id: true, productName: true, sku: true, unit: true,
                 inventory: { select: { quantity: true } }
               }
-            }
+            },
+            serviceCategory: { select: { id: true, categoryName: true } }
           }
         }
       }
@@ -258,8 +283,11 @@ export const purchaseOrderService = {
           throw new ServiceError('PO-003', `PO must be APPROVED before receiving. Current status: ${po.status}.`)
         }
 
-        // Update inventory for each PO item — average cost recalculated
+        // Update inventory for each PO item — average cost recalculated.
+        // Phase 61 — a service line (productId null) has no stock to
+        // receive, same reasoning as GRN's own receiving logic.
         for (const item of po.items) {
+          if (!item.productId) continue
           await inventoryService.addStockTx(
             tx,
             item.productId,
@@ -270,6 +298,20 @@ export const purchaseOrderService = {
             po.id,
             userId
           )
+          // "From where the goods are being bought, at what price" — one
+          // cost history row per product line, same as bill.service.ts's
+          // createBill writes for a billed product line. Purely additive:
+          // does not touch Inventory.averageCost, which addStockTx above
+          // already maintains.
+          await tx.productCostHistory.create({
+            data: {
+              productId: item.productId,
+              unitCost: item.unitCost,
+              quantity: item.quantity,
+              sourceType: 'PURCHASE_ORDER',
+              sourceId: po.id
+            }
+          })
         }
 
         // Add supplier ledger entry via supplier-ledger service — we owe supplier po.totalAmount
@@ -309,6 +351,7 @@ export const purchaseOrderService = {
         if (po.status === 'CANCELLED') {
           throw new ServiceError('PO-005', 'This purchase order is already cancelled.')
         }
+        await assertNotLockedOrThrow(tx, po.orderDate)
         const cancelNote = po.notes ? `${po.notes}\nCancelled: ${reason}` : `Cancelled: ${reason}`
         return tx.purchaseOrder.update({ where: { id }, data: { status: 'CANCELLED', notes: cancelNote } })
       })

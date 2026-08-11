@@ -40,6 +40,39 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 61 — Purchase-side reports (Section 3.1 item 5). Same permission
+  // tier as Outstanding/financial reports — these expose real vendor spend
+  // and payable data.
+  handle('reports:apAging', async () => {
+    const deny = await requirePermission('reports.outstanding'); if (deny) return deny
+    const data = await reportService.generateApAgingReport()
+    return { success: true, data }
+  })
+
+  handle('reports:purchaseRegister', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePurchaseRegisterReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:purchasesByVendor', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePurchasesByVendorReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:purchasesByItem', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePurchasesByItemReport(parsed.data)
+    return { success: true, data }
+  })
+
   handle('reports:expenses', async (payload) => {
     const deny = await requirePermission('reports.financial'); if (deny) return deny
     const parsed = ExpenseReportSchema.safeParse(payload)

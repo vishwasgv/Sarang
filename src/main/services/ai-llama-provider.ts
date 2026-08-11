@@ -29,7 +29,7 @@ export const INTENT_TEMPLATE_NAMES = [
   'sales.averageInvoiceValue', 'sales.compareToPreviousPeriod',
   'inventory.lowStock', 'inventory.deadStock', 'inventory.topRevenueProducts', 'inventory.bottomRevenueProducts',
   'customers.topThisPeriod', 'customers.outstandingBalances', 'customers.noRecentPurchases',
-  'suppliers.topByPurchaseVolume', 'suppliers.pendingPayments',
+  'suppliers.topByPurchaseVolume', 'suppliers.pendingPayments', 'suppliers.topPurchasedItems', 'suppliers.purchaseRegisterSummary',
   'credit.whoOwesMe', 'credit.totalReceivable', 'credit.overdueInvoices',
   'finance.profitAndLoss',
   'meta.capabilities', 'meta.suggestions',
@@ -57,6 +57,8 @@ export const INTENT_TEMPLATE_NAMES = [
   'finance.netWorthSnapshot', 'finance.expenseTrend', 'finance.profitTrend',
   'staff.totalSalaryPaidThisMonth', 'staff.bestWorstAttendance', 'staff.activeHeadcount',
   'documents.openQuotationsValue', 'documents.quotationConversionRate', 'documents.overduePurchaseOrders',
+  // Phase 62 — Banking, Ledger & Compliance Backbone's 4 required intents.
+  'ledger.bankBalance', 'ledger.unreconciledTransactions', 'credit.customerOverdueInterest', 'ledger.fixedAssetDepreciationThisYear',
   'out_of_scope'
 ] as const
 
@@ -77,7 +79,10 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   // AI expansion, 2026-07 — 18 vertical-specific templates' new prefixes.
   legal: 'vertical', realEstate: 'vertical', driving: 'vertical', pestControl: 'vertical',
   vet: 'vertical', dental: 'vertical', carService: 'vertical', tailoring: 'vertical', photography: 'vertical', events: 'vertical',
-  meta: 'meta'
+  meta: 'meta',
+  // Phase 62 — Banking, Ledger & Compliance Backbone's own static category
+  // (not 'vertical' — these are universal, not gated to specific BusinessTypes).
+  ledger: 'ledger'
 }
 
 function categoryFor(template: string): string {

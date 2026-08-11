@@ -118,6 +118,12 @@ const config: Configuration = {
       from: 'resources/field-order',
       to: 'field-order'
     },
+    // Phase 62 — Token Queue self check-in, another sibling of qr-menu
+    // above, served by token-queue-server.ts
+    {
+      from: 'resources/token-queue',
+      to: 'token-queue'
+    },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
     // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,

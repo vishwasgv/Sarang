@@ -36,7 +36,37 @@ function makeExpenseRow(overrides: Record<string, unknown> = {}) {
 }
 
 function makeDb(overrides: Record<string, any> = {}) {
+  // tx === db: createExpense/updateExpense/deleteExpense now wrap their
+  // write + GL posting in $transaction, so the callback must see the same
+  // mocked expense/etc. the tests assert against.
+  let settingRow: { settingKey: string; settingValue: string } | null = null
   const db: Record<string, any> = {
+    // Phase 62 — Transaction Locking's assertNotLocked reads this before
+    // every dated write; a null lockDate means "not locked."
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
+    // Phase 62 — GL auto-posting: postExpenseJournalEntry resolves the
+    // system Operating-Expenses/Cash accounts and posts a JournalEntry;
+    // updateExpense/deleteExpense reverse the prior one first
+    // (reverseEntryBySourceTx -> journalEntry.findFirst).
+    chartOfAccounts: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '6000', accountName: 'Operating Expenses', accountType: 'EXPENSE', isActive: true }),
+    },
+    journalEntry: {
+      create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    setting: {
+      findUnique: vi.fn(async () => settingRow),
+      update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
+      create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),
+      updateMany: vi.fn(async ({ data }: { data: { settingValue: string } }) => {
+        if (!settingRow) return { count: 0 }
+        settingRow = { ...settingRow, settingValue: data.settingValue }
+        return { count: 1 }
+      }),
+    },
     expenseCategory: { findUnique: vi.fn().mockResolvedValue(makeCategory()) },
     expense: {
       findMany: vi.fn().mockResolvedValue([makeExpenseRow()]),
@@ -44,9 +74,13 @@ function makeDb(overrides: Record<string, any> = {}) {
       count: vi.fn().mockResolvedValue(1),
       create: vi.fn().mockResolvedValue(makeExpenseRow()),
       update: vi.fn().mockResolvedValue(makeExpenseRow()),
+      delete: vi.fn().mockResolvedValue({}),
     },
     ...overrides,
   }
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   return db
 }
 
@@ -83,6 +117,23 @@ describe('expense.service — expenseDate across the IPC boundary and timezone-c
     expect(storedDate.getMonth()).toBe(6)
     expect(storedDate.getDate()).toBe(28)
     expect(storedDate.getHours()).toBe(0)
+  })
+
+  it('posts a real balanced JournalEntry: Debit Operating Expenses, Credit Cash & Bank, for the expense amount', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createExpense({ categoryId: 'cat-1', expenseName: 'July rent', amount: 5000 })
+
+    expect(res.success).toBe(true)
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+    const jeArgs = db.journalEntry.create.mock.calls[0][0]
+    expect(jeArgs.data.sourceType).toBe('EXPENSE')
+    const lines = jeArgs.data.lines.create as Array<{ debitAmount: number; creditAmount: number }>
+    expect(lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ debitAmount: 5000, creditAmount: 0 }),
+      expect.objectContaining({ debitAmount: 0, creditAmount: 5000 }),
+    ]))
   })
 
   it('updateExpense returns expenseDate as a string', async () => {

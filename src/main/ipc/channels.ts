@@ -169,6 +169,71 @@ export interface IpcChannels {
     print: (id: string) => Promise<ApiResponse>
     exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
   }
+  // Phase 61 — Bills (AP: what we owe a supplier) and Payments Made against
+  // a specific Bill, mirroring purchaseOrders/payments' own shapes.
+  bills: {
+    list: (payload?: { supplierId?: string; status?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    void: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+  }
+  supplierPayments: {
+    record: (payload: unknown) => Promise<ApiResponse>
+    recordBulk: (payload: unknown) => Promise<ApiResponse>
+    reverse: (payload: { paymentId: string; reason: string }) => Promise<ApiResponse>
+    list: (payload?: { billId?: string; supplierId?: string; method?: string; dateFrom?: string; dateTo?: string; search?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    suggestTds: (payload: { amount: number }) => Promise<ApiResponse>
+  }
+  // Phase 62 — Banking, Ledger & Compliance Backbone
+  chartOfAccounts: {
+    list: (payload?: { accountType?: string; isActive?: boolean }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+  }
+  journalEntries: {
+    list: (payload?: { sourceType?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    reverse: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+  }
+  transactionLock: {
+    getLockDate: () => Promise<ApiResponse<{ lockDate: string | null }>>
+    setLockDate: (payload: { lockDate: string | null }) => Promise<ApiResponse<{ lockDate: string | null }>>
+  }
+  bankAccounts: {
+    list: (payload?: { accountType?: string; isActive?: boolean }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+  }
+  bankStatement: {
+    import: (payload: unknown) => Promise<ApiResponse>
+    list: (payload: { bankAccountId: string; reconciled?: boolean; page?: number; limit?: number }) => Promise<ApiResponse>
+    autoMatch: (payload: { bankAccountId: string }) => Promise<ApiResponse>
+    reconcileLine: (payload: unknown) => Promise<ApiResponse>
+    unreconcileLine: (payload: { lineId: string }) => Promise<ApiResponse>
+    summary: (payload: { bankAccountId: string }) => Promise<ApiResponse>
+  }
+  creditInterest: {
+    calculate: (payload: { customerId: string }) => Promise<ApiResponse>
+    post: (payload: { customerId: string }) => Promise<ApiResponse>
+  }
+  postDatedCheques: {
+    create: (payload: unknown) => Promise<ApiResponse>
+    list: (payload?: { bankAccountId?: string; status?: string; direction?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    updateStatus: (payload: unknown) => Promise<ApiResponse>
+  }
+  fixedAssets: {
+    create: (payload: unknown) => Promise<ApiResponse>
+    list: (payload?: { status?: string; category?: string }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    runDepreciation: (payload: unknown) => Promise<ApiResponse>
+    dispose: (payload: unknown) => Promise<ApiResponse>
+  }
+  yearEndClose: {
+    execute: (payload: { closingDate: string }) => Promise<ApiResponse>
+  }
   billing: {
     createInvoice: (payload: unknown) => Promise<ApiResponse>
     getInvoice: (id: string) => Promise<ApiResponse>
@@ -218,6 +283,11 @@ export interface IpcChannels {
     inventory: (payload?: unknown) => Promise<ApiResponse>
     tax: (payload: unknown) => Promise<ApiResponse>
     outstanding: () => Promise<ApiResponse>
+    // Phase 61 — Purchase-side reports (Section 3.1 item 5)
+    apAging: () => Promise<ApiResponse>
+    purchaseRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    purchasesByVendor: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    purchasesByItem: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     expenses: (payload: unknown) => Promise<ApiResponse>
     profitAndLoss: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     cashBook: (payload: { dateFrom: string; dateTo: string; paymentMethod?: string }) => Promise<ApiResponse>
@@ -831,6 +901,11 @@ export interface IpcChannels {
     seen: (payload: { id: string }) => Promise<ApiResponse>
     skip: (payload: { id: string }) => Promise<ApiResponse>
     reset: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 62 — self check-in via QR (LAN server), mirrors distributor's
+    // own getFieldOrderStatus/regenerateFieldOrderToken/generateFieldOrderQr shape.
+    getServerStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
+    regenerateServerToken: () => Promise<ApiResponse<{ token: string }>>
+    generateServerQr: () => Promise<ApiResponse<{ qrDataUrl: string; captureUrl: string }>>
   }
   // Phase 50 — Diagnostic & Pathology Labs
   labTestOrders: {

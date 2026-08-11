@@ -62,6 +62,12 @@ export const CreateInvoiceSchema = z.object({
   // a large party actually is (see restaurant.service.ts). Absent/empty for
   // every non-restaurant invoice and for restaurant takeaway/counter sales.
   tableIds: z.array(z.string()).max(20).optional(),
+  // Phase 61 — GST e-way bill number (required by law for interstate/
+  // above-threshold goods movement), captured as a plain optional string
+  // the same way referenceNumber already is — Sarang doesn't generate or
+  // validate e-way bills itself (that's the government e-way bill portal's
+  // job), it just records the number for the printed invoice/GSTR1 export.
+  ewayBillNumber: z.string().max(50).optional(),
 })
 
 export const CancelInvoiceSchema = z.object({

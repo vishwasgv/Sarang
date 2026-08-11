@@ -122,7 +122,7 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
         }
       )
 
-      return tx.supplier.create({
+      const created = await tx.supplier.create({
         data: {
           supplierCode,
           supplierName: payload.supplierName,
@@ -133,9 +133,32 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
           state: payload.state,
           country: payload.country,
           taxNumber: payload.taxNumber,
-          notes: payload.notes
+          notes: payload.notes,
+          bankAccountNumber: payload.bankAccountNumber?.trim() || null,
+          bankIfscCode: payload.bankIfscCode?.trim() || null,
+          bankName: payload.bankName?.trim() || null,
+          panNumber: payload.panNumber?.trim() || null,
+          openingBalance: payload.openingBalance ?? 0,
+          isMsmeRegistered: payload.isMsmeRegistered ?? false,
+          msmeCategory: payload.msmeCategory ?? null
         }
       })
+
+      // Onboarding a supplier with real pre-existing dues — a one-time
+      // opening-balance debit on the ledger so their outstanding balance is
+      // correct from day one, same reasoning as receivePO's PO-received
+      // debit (debitAmount = amount we owe).
+      if (payload.openingBalance && payload.openingBalance > 0) {
+        await supplierLedgerService.addEntry({
+          supplierId: created.id,
+          referenceType: 'OPENING_BALANCE',
+          debitAmount: payload.openingBalance,
+          creditAmount: 0,
+          remarks: 'Opening balance at onboarding'
+        }, tx)
+      }
+
+      return created
     })
 
     await logAction({ userId: getCurrentSession()?.userId, action: 'SUPPLIER_CREATED', entityType: 'Supplier', entityId: supplier.id, newValue: { supplierName: payload.supplierName } })
@@ -168,7 +191,13 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
         state: payload.state,
         country: payload.country,
         taxNumber: payload.taxNumber,
-        notes: payload.notes
+        notes: payload.notes,
+        bankAccountNumber: payload.bankAccountNumber?.trim() || null,
+        bankIfscCode: payload.bankIfscCode?.trim() || null,
+        bankName: payload.bankName?.trim() || null,
+        panNumber: payload.panNumber?.trim() || null,
+        isMsmeRegistered: payload.isMsmeRegistered ?? false,
+        msmeCategory: payload.msmeCategory ?? null
       }
     })
 

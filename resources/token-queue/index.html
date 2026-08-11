@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Check In</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A; padding-bottom: 40px;
+  }
+  header { background: #00AEEF; color: #fff; padding: 24px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+  main { padding: 16px; max-width: 420px; margin: 0 auto; }
+  label { display: block; font-size: 13px; font-weight: 700; color: #64748B; margin: 16px 0 6px; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 13px; border-radius: 10px; border: 1px solid #E2E8F0; background: #fff;
+    font-size: 16px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .required { color: #DC2626; }
+  .submit-btn {
+    width: 100%; margin-top: 24px; padding: 15px; border-radius: 12px; border: none;
+    background: #00AEEF; color: #fff; font-weight: 700; font-size: 16px;
+  }
+  .submit-btn:disabled { opacity: 0.5; }
+  .error-box { background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; display: none; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 24px 16px 8px; }
+  .state-screen { padding: 60px 20px; text-align: center; }
+  .state-screen .token-number { font-size: 64px; font-weight: 900; color: #00AEEF; line-height: 1; margin: 12px 0; }
+  .state-screen h2 { font-size: 18px; margin: 0 0 4px; }
+  .state-screen p { color: #64748B; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="business-name">Loading…</h1>
+  <p>Check in for the queue</p>
+</header>
+<main id="app-root">
+  <div class="error-box" id="error-box"></div>
+
+  <label for="patient-name">Your name <span class="required">*</span></label>
+  <input type="text" id="patient-name" placeholder="Full name" autocomplete="name">
+
+  <label for="age">Age</label>
+  <input type="text" id="age" placeholder="Optional" autocomplete="off">
+
+  <label for="gender">Gender</label>
+  <select id="gender">
+    <option value="">Prefer not to say</option>
+    <option>Male</option>
+    <option>Female</option>
+    <option>Other</option>
+  </select>
+
+  <label for="phone">Phone</label>
+  <input type="text" id="phone" placeholder="Optional" autocomplete="tel">
+
+  <label for="notes">Reason for visit</label>
+  <textarea id="notes" placeholder="Optional"></textarea>
+
+  <button class="submit-btn" id="submit-btn">Check In</button>
+</main>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean)
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+
+  function showError(msg) {
+    var box = document.getElementById('error-box')
+    box.textContent = msg
+    box.style.display = 'block'
+  }
+
+  function apiGet(path) {
+    return fetch('/api/token-queue/' + token + path).then(function (r) { return r.json() })
+  }
+  function apiPost(path, body) {
+    return fetch('/api/token-queue/' + token + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json() })
+  }
+
+  apiGet('/business').then(function (res) {
+    if (res.success) document.getElementById('business-name').textContent = res.data.businessName
+  }).catch(function () {})
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    var name = document.getElementById('patient-name').value.trim()
+    if (!name) { showError('Please enter your name.'); return }
+    document.getElementById('error-box').style.display = 'none'
+
+    var btn = document.getElementById('submit-btn')
+    btn.disabled = true
+    btn.textContent = 'Checking in…'
+
+    apiPost('/submit', {
+      patientName: name,
+      age: document.getElementById('age').value.trim(),
+      gender: document.getElementById('gender').value,
+      phone: document.getElementById('phone').value.trim(),
+      notes: document.getElementById('notes').value.trim()
+    }).then(function (res) {
+      if (!res.success) {
+        showError((res.error && res.error.message) || 'Could not check in. Please try again.')
+        btn.disabled = false
+        btn.textContent = 'Check In'
+        return
+      }
+      var root = document.getElementById('app-root')
+      root.innerHTML =
+        '<div class="state-screen">' +
+        '<p>You\'re checked in</p>' +
+        '<div class="token-number">#' + res.data.tokenNumber + '</div>' +
+        '<h2>' + name + '</h2>' +
+        '<p>Please wait to be called. You can close this page.</p>' +
+        '</div>'
+    }).catch(function () {
+      showError('Could not check in. Please check your connection and try again.')
+      btn.disabled = false
+      btn.textContent = 'Check In'
+    })
+  })
+})()
+</script>
+</body>
+</html>

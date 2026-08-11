@@ -20,7 +20,11 @@ interface Expense {
   paymentMethod: string; remarks: string | null; categoryId: string
   category: { categoryName: string }
   createdBy?: { fullName: string } | null
+  supplierId?: string | null; mileageKm?: number | null; mileageRatePerKm?: number | null
+  billableCustomerId?: string | null
 }
+interface SupplierOption { id: string; supplierName: string }
+interface CustomerOption { id: string; customerName: string }
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'BANK_TRANSFER', 'CARD', 'CHEQUE', 'OTHER']
 
@@ -44,6 +48,8 @@ export function ExpensesScreen() {
 
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([])
+  const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -57,7 +63,10 @@ export function ExpensesScreen() {
   // Form modal
   const [formOpen, setFormOpen] = useState(false)
   const [editExpense, setEditExpense] = useState<Expense | null>(null)
-  const [formData, setFormData] = useState({ categoryId: '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '' })
+  const [formData, setFormData] = useState({
+    categoryId: '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
+    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: ''
+  })
   const [formSaving, setFormSaving] = useState(false)
 
   // Delete
@@ -88,23 +97,38 @@ export function ExpensesScreen() {
     }).catch(() => {
       toastError(t('common.error'), t('common.error'))
     })
+    window.api.suppliers.list({ limit: 200 }).then((res: any) => {
+      if (res.success) setSuppliers(((res.data as { suppliers: SupplierOption[] })?.suppliers) ?? [])
+    }).catch(() => {})
+    window.api.customers.list({ limit: 200 }).then((res: any) => {
+      if (res.success) setCustomers(((res.data as { customers: CustomerOption[] })?.customers) ?? [])
+    }).catch(() => {})
   }, [toastError, t])
 
   function openCreate() {
     setEditExpense(null)
-    setFormData({ categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '' })
+    setFormData({
+      categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
+      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: ''
+    })
     setFormOpen(true)
   }
 
   function openEdit(exp: Expense) {
     setEditExpense(exp)
+    const isMileage = exp.mileageKm != null && exp.mileageRatePerKm != null
     setFormData({
       categoryId: exp.categoryId,
       expenseName: exp.expenseName,
       amount: exp.amount.toString(),
       expenseDate: exp.expenseDate.slice(0, 10),
       paymentMethod: exp.paymentMethod,
-      remarks: exp.remarks ?? ''
+      remarks: exp.remarks ?? '',
+      supplierId: exp.supplierId ?? '',
+      billableCustomerId: exp.billableCustomerId ?? '',
+      isMileage,
+      mileageKm: isMileage ? String(exp.mileageKm) : '',
+      mileageRatePerKm: isMileage ? String(exp.mileageRatePerKm) : ''
     })
     setFormOpen(true)
   }
@@ -117,13 +141,19 @@ export function ExpensesScreen() {
 
     setFormSaving(true)
     try {
+      const km = formData.isMileage ? parseFloat(formData.mileageKm) : undefined
+      const rate = formData.isMileage ? parseFloat(formData.mileageRatePerKm) : undefined
       const payload = {
         categoryId: formData.categoryId,
         expenseName: formData.expenseName.trim(),
         amount: amt,
         expenseDate: formData.expenseDate || undefined,
         paymentMethod: formData.paymentMethod,
-        remarks: formData.remarks.trim() || undefined
+        remarks: formData.remarks.trim() || undefined,
+        supplierId: formData.supplierId || undefined,
+        billableCustomerId: formData.billableCustomerId || undefined,
+        mileageKm: km && km > 0 ? km : undefined,
+        mileageRatePerKm: rate != null && !Number.isNaN(rate) ? rate : undefined
       }
       const res = editExpense
         ? await window.api.expenses.update({ id: editExpense.id, ...payload })
@@ -309,6 +339,38 @@ export function ExpensesScreen() {
               autoFocus
             />
 
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <input type="checkbox" checked={formData.isMileage}
+                onChange={e => setFormData(d => ({ ...d, isMileage: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+              {t('expenses.mileageKm')} × {t('expenses.mileageRatePerKm')}
+            </label>
+
+            {formData.isMileage ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={t('expenses.mileageKm')}
+                  type="number" min="0" step="0.1"
+                  value={formData.mileageKm}
+                  onChange={e => {
+                    const km = e.target.value
+                    setFormData(d => ({ ...d, mileageKm: km, amount: km && d.mileageRatePerKm ? String((parseFloat(km) * parseFloat(d.mileageRatePerKm)).toFixed(2)) : d.amount }))
+                  }}
+                  placeholder="0"
+                />
+                <Input
+                  label={`${t('expenses.mileageRatePerKm')} (${currSym})`}
+                  type="number" min="0" step="0.01"
+                  value={formData.mileageRatePerKm}
+                  onChange={e => {
+                    const rate = e.target.value
+                    setFormData(d => ({ ...d, mileageRatePerKm: rate, amount: rate && d.mileageKm ? String((parseFloat(d.mileageKm) * parseFloat(rate)).toFixed(2)) : d.amount }))
+                  }}
+                  placeholder="0.00"
+                />
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label={`${t('expenses.amount')} (${currSym}) *`}
@@ -316,6 +378,7 @@ export function ExpensesScreen() {
                 min="0"
                 step="1"
                 value={formData.amount}
+                disabled={formData.isMileage}
                 onChange={e => setFormData(d => ({ ...d, amount: e.target.value }))}
                 placeholder="0.00"
               />
@@ -325,6 +388,17 @@ export function ExpensesScreen() {
                   onChange={e => setFormData(d => ({ ...d, expenseDate: e.target.value }))}
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Select label={t('expenses.supplier')} value={formData.supplierId} onChange={e => setFormData(d => ({ ...d, supplierId: e.target.value }))}>
+                <option value="">{t('expenses.none')}</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName}</option>)}
+              </Select>
+              <Select label={t('expenses.billableToCustomer')} value={formData.billableCustomerId} onChange={e => setFormData(d => ({ ...d, billableCustomerId: e.target.value }))}>
+                <option value="">{t('expenses.none')}</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.customerName}</option>)}
+              </Select>
             </div>
 
             <div>

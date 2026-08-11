@@ -19,6 +19,13 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'billing', group: 'universal', title: 'Billing & Documents' },
   { slug: 'inventory', group: 'universal', title: 'Inventory' },
   { slug: 'customers-suppliers', group: 'universal', title: 'Customers & Suppliers' },
+  { slug: 'bills-purchases', group: 'universal', title: 'Bills & Payments Made' },
+  // Phase 62 — Banking, Ledger & Compliance Backbone. Placed right after
+  // bills-purchases, matching that chapter's own precedent of sitting
+  // between the transaction-recording chapters and Reports.
+  { slug: 'banking-reconciliation', group: 'universal', title: 'Banking & Reconciliation' },
+  { slug: 'ledger-journal-entries', group: 'universal', title: 'Ledger & Journal Entries' },
+  { slug: 'fixed-assets-year-end-close', group: 'universal', title: 'Fixed Assets & Year-End Close' },
   { slug: 'reports', group: 'universal', title: 'Reports' },
   { slug: 'settings', group: 'universal', title: 'Settings & Business Profile' },
   { slug: 'backup-restore', group: 'universal', title: 'Backup & Restore' },

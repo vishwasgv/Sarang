@@ -15,7 +15,7 @@ import { purchaseOrderService } from '../purchase-order.service'
 import { ServiceError } from '../../errors/service-error'
 
 const baseItem = { productId: 'prod-1', quantity: 10, unitCost: 100, taxRate: 18 }
-const basePayload = { supplierId: 'sup-1', items: [baseItem] }
+const basePayload = { supplierId: 'sup-1', items: [baseItem], isReverseCharge: false }
 
 function makeSupplier(overrides: Record<string, unknown> = {}) {
   return { id: 'sup-1', supplierName: 'ACME', isActive: true, ...overrides }
@@ -29,7 +29,7 @@ function makePO(overrides: Record<string, unknown> = {}) {
   return {
     id: 'po-1', poNumber: 'PO-00001', supplierId: 'sup-1',
     status: 'DRAFT', subtotal: 1000, taxAmount: 180, totalAmount: 1180,
-    notes: null, items: [],
+    notes: null, items: [], orderDate: new Date(),
     ...overrides
   }
 }
@@ -39,6 +39,9 @@ function makeDb(overrides: Record<string, unknown> = {}) {
   // so the callback must see the same mocked purchaseOrder/etc. the tests assert against.
   let settingRow: { settingKey: string; settingValue: string } | null = null
   const db = {
+    // Phase 62 — Transaction Locking's assertNotLocked/assertNotLockedOrThrow
+    // read this on every dated write; a null lockDate means "not locked."
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
     supplier: { findUnique: vi.fn().mockResolvedValue(makeSupplier()) },
     product: { findUnique: vi.fn().mockResolvedValue(makeProduct()) },
     purchaseOrder: {
@@ -53,6 +56,9 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
       create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow })
     },
+    // Phase 61 — receivePO writes one cost-history row per received
+    // product line (see purchase-order.service.ts's receivePO).
+    productCostHistory: { create: vi.fn().mockResolvedValue({}) },
     ...overrides
   } as Record<string, any>
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
@@ -152,7 +158,8 @@ describe('purchaseOrderService.createPO', () => {
 
     const result = await purchaseOrderService.createPO({
       supplierId: 'sup-1',
-      items: [{ productId: 'prod-1', quantity: 1.1, unitCost: 1.1, taxRate: 0 }]
+      items: [{ productId: 'prod-1', quantity: 1.1, unitCost: 1.1, taxRate: 0 }],
+      isReverseCharge: false
     })
 
     expect(result.success).toBe(true)
@@ -342,6 +349,10 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
     let poCounter = 0
     let settingRow: { settingKey: string; settingValue: string } | null = null
     const db: Record<string, any> = {
+      // Phase 62 — Transaction Locking's assertNotLocked reads this before
+      // every dated write (createPO, called internally by this function); a
+      // null lockDate means "not locked."
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
       inventory: { findMany: vi.fn().mockResolvedValue(inventoryRows) },
       purchaseOrderItem: { findMany: vi.fn().mockResolvedValue(openItems) },
       supplier: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => suppliers[where.id] ?? null) },

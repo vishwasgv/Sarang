@@ -52,6 +52,20 @@ interface OutstandingReport {
   suppliers: { totalOutstanding: number; count: number; rows: OutstandingSupplierRow[]; agingTotals: AgingBuckets }
 }
 
+// Phase 61 — Purchase-side reports
+interface PurchaseRegisterRow { billNumber: string; date: string; supplier: string; status: string; itemCount: number; subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number }
+interface PurchaseRegisterByVendorRow { supplierName: string; totalAmount: number; billCount: number }
+interface PurchaseRegisterReport { dateFrom: string; dateTo: string; summary: { totalPurchases: number; billCount: number; totalTax: number }; byVendor: PurchaseRegisterByVendorRow[]; rows: PurchaseRegisterRow[]; total: number }
+
+interface PurchasesByVendorRow { supplierId: string; supplierName: string; totalAmount: number; billCount: number }
+interface PurchasesByVendorReport { dateFrom: string; dateTo: string; summary: { totalPurchases: number; vendorCount: number }; rows: PurchasesByVendorRow[] }
+
+interface PurchasesByItemRow { itemName: string; isService: boolean; quantity: number; totalAmount: number; billCount: number }
+interface PurchasesByItemReport { dateFrom: string; dateTo: string; summary: { totalPurchases: number; itemCount: number }; rows: PurchasesByItemRow[] }
+
+interface ApAgingRow { id: string; supplierName: string; phone: string | null; outstanding: number; aging: AgingBuckets }
+interface ApAgingReport { generatedAt: string; summary: { totalOutstanding: number; count: number }; agingTotals: AgingBuckets; rows: ApAgingRow[] }
+
 interface LedgerRow { date: string; referenceType: string; referenceId: string; debitAmount: number; creditAmount: number; balance: number; remarks: string | null }
 interface CustomerLedgerReport { customerId?: string; supplierId?: string; customer?: { customerName: string; phone?: string | null }; supplier?: { supplierName: string; phone?: string | null }; openingBalance: number; totalDebit: number; totalCredit: number; closingBalance: number; rows: LedgerRow[] }
 interface SupplierLedgerReport { supplierId: string; supplier: { supplierName: string; phone?: string | null }; openingBalance: number; totalDebit: number; totalCredit: number; closingBalance: number; rows: LedgerRow[] }
@@ -105,9 +119,11 @@ interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; gue
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
 
 interface GSTR3BStateRow { state: string; taxableValue: number; igstAmount: number }
+interface GSTR3BTable31d { taxableValue: number; taxAmount: number; expenseTaxNotComputable: boolean }
 interface GSTR3BPreview {
   period: string
   table31: { taxableOutwardSupplies: number; zeroRatedSupplies: number; exemptNilNonGstSupplies: number; taxAmount: { igst: number; cgst: number; sgst: number } }
+  table31d: GSTR3BTable31d
   table32: GSTR3BStateRow[]
   notes: string[]
 }
@@ -313,6 +329,8 @@ type ReportType =
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
   | 'hotelOccupancy' | 'hotelGuestRegister'
+  // Phase 61 — Purchase-side reports (Section 3.1 item 5)
+  | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -334,6 +352,13 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'outstanding', icon: <AlertCircle size={18} />, category: 'finance', requiresDateRange: false, permission: 'reports.outstanding' },
   { id: 'customerLedger', icon: <Users size={18} />, category: 'customers', requiresDateRange: false, requiresEntity: 'customer', permission: 'reports.invoices' },
   { id: 'supplierLedger', icon: <Truck size={18} />, category: 'suppliers', requiresDateRange: false, requiresEntity: 'supplier', permission: 'reports.financial' },
+  // Phase 61 — Purchase-side reports (Section 3.1 item 5). Universal, no
+  // requiredModule — every business buys something, same reasoning as
+  // 'discounts' above.
+  { id: 'purchaseRegister', icon: <Receipt size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
+  { id: 'purchasesByVendor', icon: <Truck size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
+  { id: 'purchasesByItem', icon: <Package size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
+  { id: 'apAging', icon: <AlertCircle size={18} />, category: 'suppliers', requiresDateRange: false, permission: 'reports.outstanding' },
   { id: 'expenses', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'profitAndLoss', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashBook', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
@@ -600,6 +625,18 @@ export function ReportsScreen() {
         case 'discounts':
           res = await window.api.reports.discounts({ dateFrom, dateTo })
           break
+        case 'purchaseRegister':
+          res = await window.api.reports.purchaseRegister({ dateFrom, dateTo })
+          break
+        case 'purchasesByVendor':
+          res = await window.api.reports.purchasesByVendor({ dateFrom, dateTo })
+          break
+        case 'purchasesByItem':
+          res = await window.api.reports.purchasesByItem({ dateFrom, dateTo })
+          break
+        case 'apAging':
+          res = await window.api.reports.apAging()
+          break
         case 'batchExpiry':
           res = await window.api.reports.batchExpiry()
           break
@@ -861,6 +898,8 @@ export function ReportsScreen() {
             ['IGST', d.table31.taxAmount.igst],
             ['CGST', d.table31.taxAmount.cgst],
             ['SGST', d.table31.taxAmount.sgst],
+            [t('reports.section.table31dTaxableValue'), d.table31d.taxableValue],
+            [t('reports.section.table31dTax'), d.table31d.taxAmount],
             ...d.table32.map(r => [`${t('reports.section.table32')}: ${r.state}`, r.taxableValue])
           ]
         }
@@ -934,6 +973,34 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.invoiceNo'), t('common.date'), t('reports.col.customer'), t('reports.col.product'), t('reports.col.quantity'), t('reports.col.lineGross'), t('reports.col.discountGiven'), t('reports.col.discountPercent'), t('reports.col.staff')],
           rows: d.rows.map(r => [r.invoiceNumber, r.date, r.customer ?? '', r.productName, r.quantity, r.lineGross, r.discountAmount, r.discountPercent, r.staffName ?? ''])
+        }
+      }
+      case 'purchaseRegister': {
+        const d = reportData as PurchaseRegisterReport
+        return {
+          headers: [t('reports.col.billNumber'), t('common.date'), t('reports.col.supplier'), t('common.status'), t('reports.col.itemCount'), t('billing.subtotal'), t('reports.col.discountGiven'), t('billing.tax'), t('common.total')],
+          rows: d.rows.map(r => [r.billNumber, r.date, r.supplier, r.status, r.itemCount, r.subtotal, r.discountAmount, r.taxAmount, r.totalAmount])
+        }
+      }
+      case 'purchasesByVendor': {
+        const d = reportData as PurchasesByVendorReport
+        return {
+          headers: [t('reports.col.supplier'), t('reports.col.billCount'), t('common.total')],
+          rows: d.rows.map(r => [r.supplierName, r.billCount, r.totalAmount])
+        }
+      }
+      case 'purchasesByItem': {
+        const d = reportData as PurchasesByItemReport
+        return {
+          headers: [t('reports.col.item'), t('reports.col.type'), t('reports.col.quantity'), t('common.total')],
+          rows: d.rows.map(r => [r.itemName, r.isService ? t('reports.col.service') : t('reports.col.product'), r.quantity, r.totalAmount])
+        }
+      }
+      case 'apAging': {
+        const d = reportData as ApAgingReport
+        return {
+          headers: [t('reports.col.supplier'), t('common.phone'), t('reports.col.payable'), t('reports.aging.current'), t('reports.aging.d1to30Short'), t('reports.aging.d31to60Short'), t('reports.aging.d61to90Short'), t('reports.aging.d90plusShort')],
+          rows: d.rows.map(r => [r.supplierName, r.phone ?? '', r.outstanding, r.aging.current, r.aging.days1to30, r.aging.days31to60, r.aging.days61to90, r.aging.days90plus])
         }
       }
       case 'batchExpiry': {
@@ -1400,6 +1467,35 @@ export function ReportsScreen() {
           { label: t('reports.summary.avgDiscountPercent'), value: `${d.summary.averageDiscountPercent}%` }
         ]
       }
+      case 'purchaseRegister': {
+        const d = reportData as PurchaseRegisterReport
+        return [
+          { label: t('reports.summary.totalPurchases'), value: fmt(d.summary.totalPurchases) },
+          { label: t('reports.summary.billCount'), value: String(d.summary.billCount) },
+          { label: t('billing.tax'), value: fmt(d.summary.totalTax) }
+        ]
+      }
+      case 'purchasesByVendor': {
+        const d = reportData as PurchasesByVendorReport
+        return [
+          { label: t('reports.summary.totalPurchases'), value: fmt(d.summary.totalPurchases) },
+          { label: t('reports.summary.vendorCount'), value: String(d.summary.vendorCount) }
+        ]
+      }
+      case 'purchasesByItem': {
+        const d = reportData as PurchasesByItemReport
+        return [
+          { label: t('reports.summary.totalPurchases'), value: fmt(d.summary.totalPurchases) },
+          { label: t('reports.summary.itemCount'), value: String(d.summary.itemCount) }
+        ]
+      }
+      case 'apAging': {
+        const d = reportData as ApAgingReport
+        return [
+          { label: t('reports.summary.supplierPayables'), value: fmt(d.summary.totalOutstanding) },
+          { label: t('reports.col.count'), value: String(d.summary.count) }
+        ]
+      }
       case 'batchExpiry': {
         const d = reportData as BatchExpiryReport
         return [
@@ -1768,6 +1864,46 @@ export function ReportsScreen() {
         const d = reportData as DiscountReport
         if (d.byProduct.length === 0) return []
         return [{ type: 'bar', title: t('reports.section.topDiscountedProducts'), data: d.byProduct.slice(0, 10).map(p => ({ label: p.productName, value: p.discountGiven })), valueIsCurrency: true }]
+      }
+      case 'purchaseRegister': {
+        const d = reportData as PurchaseRegisterReport
+        if (d.byVendor.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.spendByVendor'), data: d.byVendor.slice(0, 10).map(v => ({ label: v.supplierName, value: v.totalAmount })), valueIsCurrency: true }]
+      }
+      case 'purchasesByVendor': {
+        const d = reportData as PurchasesByVendorReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.spendByVendor'), data: d.rows.slice(0, 10).map(v => ({ label: v.supplierName, value: v.totalAmount })), valueIsCurrency: true }]
+      }
+      case 'purchasesByItem': {
+        const d = reportData as PurchasesByItemReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.section.spendByItem'), data: d.rows.slice(0, 10).map(v => ({ label: v.itemName, value: v.totalAmount })), valueIsCurrency: true }]
+      }
+      case 'apAging': {
+        const d = reportData as ApAgingReport
+        if (d.rows.length === 0) return []
+        const top = d.rows.slice(0, 10)
+        return [{
+          type: 'stackedBar', title: t('reports.section.apAgingByVendor'),
+          data: top.map(r => ({
+            label: r.supplierName,
+            segments: [
+              { value: r.aging.current, color: STATUS_COLORS.success, name: t('reports.aging.current') },
+              { value: r.aging.days1to30, color: STATUS_COLORS.brand, name: t('reports.aging.days1to30') },
+              { value: r.aging.days31to60, color: STATUS_COLORS.warning, name: t('reports.aging.days31to60') },
+              { value: r.aging.days61to90, color: STATUS_COLORS.danger, name: t('reports.aging.days61to90') },
+              { value: r.aging.days90plus, color: STATUS_COLORS.dangerDeep, name: t('reports.aging.days90plus') }
+            ]
+          })),
+          legend: [
+            { name: t('reports.aging.current'), color: STATUS_COLORS.success },
+            { name: t('reports.aging.days1to30'), color: STATUS_COLORS.brand },
+            { name: t('reports.aging.days31to60'), color: STATUS_COLORS.warning },
+            { name: t('reports.aging.days61to90'), color: STATUS_COLORS.danger },
+            { name: t('reports.aging.days90plus'), color: STATUS_COLORS.dangerDeep }
+          ]
+        }]
       }
       case 'batchExpiry': {
         const d = reportData as BatchExpiryReport
@@ -2236,6 +2372,10 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'commission': return <CommissionReportView data={data as CommissionReport} fmt={fmt} />
     case 'orderVolume': return <OrderVolumeView data={data as OrderVolumeReport} />
     case 'discounts': return <DiscountsView data={data as DiscountReport} fmt={fmt} />
+    case 'purchaseRegister': return <PurchaseRegisterView data={data as PurchaseRegisterReport} fmt={fmt} />
+    case 'purchasesByVendor': return <PurchasesByVendorView data={data as PurchasesByVendorReport} fmt={fmt} />
+    case 'purchasesByItem': return <PurchasesByItemView data={data as PurchasesByItemReport} fmt={fmt} />
+    case 'apAging': return <ApAgingView data={data as ApAgingReport} fmt={fmt} />
     case 'batchExpiry': return <BatchExpiryView data={data as BatchExpiryReport} fmt={fmt} />
     case 'labThroughput': return <LabThroughputView data={data as LabThroughputReport} />
     case 'bloodStock': return <BloodStockView data={data as BloodStockReport} />
@@ -2831,6 +2971,16 @@ function GSTR3BPreviewView({ data, fmt }: { data: GSTR3BPreview; fmt: (n: number
           ]}
         />
       </div>
+      <div>
+        <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.table31dHeading')}</h3>
+        <DataTable
+          headers={[t('reports.col.item'), t('reports.col.value')]}
+          rows={[
+            [t('reports.section.table31dTaxableValue'), fmt(data.table31d.taxableValue)],
+            [t('reports.section.table31dTax'), fmt(data.table31d.taxAmount)],
+          ]}
+        />
+      </div>
       {data.table32.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.table32')}</h3>
@@ -3148,6 +3298,152 @@ function DiscountsView({ data, fmt }: { data: DiscountReport; fmt: (n: number) =
           emptyText={t('reports.empty.discounts')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 61 — Purchase Register / Purchases by Vendor / Purchases by Item /
+// AP Aging (Section 3.1 items 4-5). "We first buy and then sell" — Bill is
+// the source (a PO is a commitment, a Bill is the actual recorded purchase).
+function PurchaseRegisterView({ data, fmt }: { data: PurchaseRegisterReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const topVendors = data.byVendor.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalPurchases'), value: fmt(s.totalPurchases) },
+        { label: t('reports.summary.billCount'), value: String(s.billCount) },
+        { label: t('billing.tax'), value: fmt(s.totalTax) }
+      ]} />
+      {topVendors.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.spendByVendor')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={topVendors.map(v => ({ label: v.supplierName, value: v.totalAmount }))} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.purchaseDetails')}</h3>
+        <DataTable
+          headers={[t('reports.col.billNumber'), t('common.date'), t('reports.col.supplier'), t('common.status'), t('reports.col.itemCount'), t('common.total')]}
+          rows={data.rows.map(r => [r.billNumber, formatDate(r.date), r.supplier, r.status, String(r.itemCount), fmt(r.totalAmount)])}
+          emptyText={t('reports.empty.purchaseRegister')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PurchasesByVendorView({ data, fmt }: { data: PurchasesByVendorReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const top = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalPurchases'), value: fmt(s.totalPurchases) },
+        { label: t('reports.summary.vendorCount'), value: String(s.vendorCount) }
+      ]} />
+      {top.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.spendByVendor')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={top.map(v => ({ label: v.supplierName, value: v.totalAmount }))} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.supplier'), t('reports.col.billCount'), t('common.total')]}
+        rows={data.rows.map(r => [r.supplierName, String(r.billCount), fmt(r.totalAmount)])}
+        emptyText={t('reports.empty.purchasesByVendor')}
+      />
+    </div>
+  )
+}
+
+function PurchasesByItemView({ data, fmt }: { data: PurchasesByItemReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const top = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalPurchases'), value: fmt(s.totalPurchases) },
+        { label: t('reports.summary.itemCount'), value: String(s.itemCount) }
+      ]} />
+      {top.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.spendByItem')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={top.map(v => ({ label: v.itemName, value: v.totalAmount }))} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.item'), t('reports.col.type'), t('reports.col.quantity'), t('common.total')]}
+        rows={data.rows.map(r => [r.itemName, r.isService ? t('reports.col.service') : t('reports.col.product'), String(r.quantity), fmt(r.totalAmount)])}
+        emptyText={t('reports.empty.purchasesByItem')}
+      />
+    </div>
+  )
+}
+
+function ApAgingView({ data, fmt }: { data: ApAgingReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const top = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.supplierPayables'), value: fmt(data.summary.totalOutstanding), sub: t('reports.summary.suppliersSuffix', { count: data.summary.count }) }
+      ]} />
+      <AgingSummary aging={data.agingTotals} fmt={fmt} />
+      {top.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.apAgingByVendor')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={top.map(r => ({ label: r.supplierName, ...r.aging }))} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => t(`reports.aging.${value}`)} />
+              <Bar dataKey="current" stackId="aging" fill={STATUS_COLORS.success} />
+              <Bar dataKey="days1to30" stackId="aging" fill={STATUS_COLORS.brand} />
+              <Bar dataKey="days31to60" stackId="aging" fill={STATUS_COLORS.warning} />
+              <Bar dataKey="days61to90" stackId="aging" fill={STATUS_COLORS.danger} />
+              <Bar dataKey="days90plus" stackId="aging" fill={STATUS_COLORS.dangerDeep} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.supplier'), t('common.phone'), t('reports.col.payable'), t('reports.aging.current'), t('reports.aging.d1to30Short'), t('reports.aging.d31to60Short'), t('reports.aging.d61to90Short'), t('reports.aging.d90plusShort')]}
+        rows={data.rows.map(r => [
+          r.supplierName, r.phone ?? '—', fmt(r.outstanding),
+          fmt(r.aging.current), fmt(r.aging.days1to30), fmt(r.aging.days31to60), fmt(r.aging.days61to90), fmt(r.aging.days90plus)
+        ])}
+        emptyText={t('reports.empty.supplierOutstanding')}
+      />
     </div>
   )
 }

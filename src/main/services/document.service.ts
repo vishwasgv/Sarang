@@ -52,6 +52,12 @@ export type DocumentEntityType =
   | 'APPOINTMENT'
   // Phase 58 §2 — Placement Agency resume/CV attachment.
   | 'CANDIDATE'
+  // Phase 62 §4.1 item 14 — bank-statement inbox. Keyed to BankAccount.id,
+  // so the original imported statement file (PDF/CSV from the bank) sits
+  // alongside the parsed BankStatementLine rows for audit trail, reusing
+  // this same generic attach/list/delete system as every other entity type
+  // rather than a bespoke storage path.
+  | 'BANK_STATEMENT'
 
 function getDocDir(): string {
   return join(app.getPath('userData'), 'documents')

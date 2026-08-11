@@ -1,6 +1,8 @@
 import { createHash } from 'crypto'
 import { getPrisma } from '../database/db'
 
+type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
+
 type LogActionParams = {
   userId?: string
   action: string
@@ -8,6 +10,21 @@ type LogActionParams = {
   entityId?: string
   oldValue?: unknown
   newValue?: unknown
+  // Real bug found live 2026-08-12 (Phase 62 UAT, not a unit test — the
+  // mocked Prisma client in tests never hits real SQLite locking): every
+  // other logAction call site runs AFTER its caller's own $transaction
+  // resolves, but reverseEntryTx (journal-entry.service.ts) is designed to
+  // run INSIDE the caller's own transaction so a void/cancel/reversal and
+  // its GL reversal commit or roll back together. Calling plain logAction()
+  // from there opened a SECOND, separate db.$transaction() against the same
+  // SQLite file while the first was still open — a genuine self-deadlock,
+  // broken only by SQLite's 5000ms busy_timeout, which silently burned ~5s
+  // and then blew the outer transaction's own 5000ms interactive-timeout
+  // budget, failing whatever query ran next (e.g. voidBill's tx.bill.update)
+  // with an opaque "Transaction already closed" -> SYS-001. Passing the
+  // caller's own already-open tx here instead lets logAction reuse it
+  // rather than opening a nested one.
+  tx?: TxClient
 }
 
 // Setting key holding the hash of the most recently written AuditLog row —
@@ -67,6 +84,42 @@ export async function logAction(
 
   const oldValueStr = params.oldValue ? JSON.stringify(params.oldValue) : undefined
   const newValueStr = params.newValue ? JSON.stringify(params.newValue) : undefined
+
+  if (params.tx) {
+    // Reuse the caller's already-open transaction — see the `tx` field's
+    // doc comment above for why this branch exists. No retry-on-contention
+    // loop here (unlike the standalone path below): a real concurrent
+    // writer can't be racing this same already-serialized transaction, so a
+    // contended claim here would mean a genuine bug elsewhere, not a race
+    // worth retrying around. Best-effort like the standalone path — a
+    // failure here must never abort the caller's real business transaction
+    // over an audit-log write, so it's caught and swallowed, not rethrown.
+    try {
+      const tx = params.tx
+      const createdAt = new Date()
+      const createdAtIso = createdAt.toISOString()
+      const tip = await tx.setting.findUnique({ where: { settingKey: CHAIN_TIP_KEY } })
+      const prevHash = tip?.settingValue ?? null
+      const hash = computeHash({
+        prevHash, action: params.action, entityType: params.entityType, entityId: params.entityId,
+        oldValue: oldValueStr, newValue: newValueStr, createdAt: createdAtIso, userId: params.userId,
+      })
+      await tx.auditLog.create({
+        data: {
+          userId: params.userId, action: params.action, entityType: params.entityType, entityId: params.entityId,
+          oldValue: oldValueStr, newValue: newValueStr, createdAt, prevHash, hash,
+        }
+      })
+      if (tip) {
+        await tx.setting.updateMany({ where: { settingKey: CHAIN_TIP_KEY, settingValue: tip.settingValue }, data: { settingValue: hash } })
+      } else {
+        await tx.setting.create({ data: { settingKey: CHAIN_TIP_KEY, settingValue: hash, settingType: 'STRING' } })
+      }
+    } catch {
+      console.error('[Audit] Failed to log action (in-transaction):', params.action)
+    }
+    return
+  }
 
   try {
     const db = getPrisma()

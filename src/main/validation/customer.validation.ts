@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+// Phase 61 — Individual vs Business customer distinction (a real field-note
+// gap: a distributor/B2B seller's customer is a company, not a person, and
+// needs a registration number + a named contact rather than an ID proof).
+const customerKindFields = {
+  customerKind: z.enum(['INDIVIDUAL', 'BUSINESS']).default('INDIVIDUAL'),
+  companyRegistrationNumber: z.string().max(50).optional(),
+  contactPersonName: z.string().max(200).optional(),
+  idProofType: z.string().max(50).optional(),
+  idProofNumber: z.string().max(50).optional(),
+}
+
 export const CreateCustomerSchema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
   phone: z.string().max(30).optional(),
@@ -17,7 +28,8 @@ export const CreateCustomerSchema = z.object({
   // taxExemptReason above) of validating category-style fields as plain
   // strings rather than a DB-level enum.
   customerClass: z.string().max(50).optional(),
-  notes: z.string().max(500).optional()
+  notes: z.string().max(500).optional(),
+  ...customerKindFields
 })
 
 export const UpdateCustomerSchema = z.object({
@@ -38,7 +50,8 @@ export const UpdateCustomerSchema = z.object({
   // taxExemptReason above) of validating category-style fields as plain
   // strings rather than a DB-level enum.
   customerClass: z.string().max(50).optional(),
-  notes: z.string().max(500).optional()
+  notes: z.string().max(500).optional(),
+  ...customerKindFields
 })
 
 export type CreateCustomerPayload = z.infer<typeof CreateCustomerSchema>

@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
-import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
+import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals, allocateGlobalDiscount } from './currency.service'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { createNotification } from './notification.service'
@@ -12,8 +12,42 @@ import { markSerialSoldTx, markSerialAvailableTx } from './serial.service'
 import { SequenceContendedError } from './sequence.service'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
 import { getLicenseState } from './license.service'
+import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
+import { chartOfAccountsService } from './chart-of-accounts.service'
+import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
+
+type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
+
+// Phase 62 — GL auto-posting. Every real money-moving transaction now posts
+// a real, balanced JournalEntry, not just the CustomerLedger/SupplierLedger
+// sub-ledgers — this is what lets generateTrialBalanceReport() eventually
+// read real GL rows instead of synthesizing buckets. Deliberately
+// simplified: GST is posted as one "Tax Payable" line regardless of
+// CGST/SGST/IGST split, and discount/rounding are folded into the Sales
+// Revenue line (computed as totalAmount − taxAmount, which guarantees the
+// entry balances by construction rather than by independently recomputing
+// subtotal/discount/rounding and risking a mismatch). COGS/inventory-value
+// posting is deliberately NOT included — that depends on the valuation
+// method Phase 64 has not yet chosen, and is flagged there, not guessed here.
+async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: string; invoiceNumber: string; totalAmount: number; taxAmount: number }, receivesCashNow: boolean): Promise<void> {
+  if (invoice.totalAmount <= 0) return
+  const [debitAccount, salesAccount] = await Promise.all([
+    chartOfAccountsService.getSystemAccountByCode(receivesCashNow ? '1000' : '1100', tx),
+    chartOfAccountsService.getSystemAccountByCode('4000', tx)
+  ])
+  const revenueAmount = roundCurrency(invoice.totalAmount - invoice.taxAmount)
+  const lines = [{ accountId: debitAccount.id, bankAccountId: null, debitAmount: invoice.totalAmount, creditAmount: 0 }]
+  if (invoice.taxAmount > 0) {
+    const taxAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
+    lines.push({ accountId: salesAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: revenueAmount })
+    lines.push({ accountId: taxAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: invoice.taxAmount })
+  } else {
+    lines.push({ accountId: salesAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: revenueAmount })
+  }
+  await journalEntryService.postSystemEntry(tx, { sourceType: 'INVOICE', sourceId: invoice.id, narration: `Invoice ${invoice.invoiceNumber}`, lines })
+}
 
 export async function generateInvoiceNumber(tx?: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]): Promise<string> {
   const db = tx ?? getPrisma()
@@ -184,6 +218,12 @@ export const billingService = {
       return { success: false, error: { code: 'LIC-002', message } }
     }
 
+    // Phase 62 — Transaction Locking. Invoices always post at "now" (no
+    // backdating field exists), so this only ever fires when the lock date
+    // has been set to today or later — an unusual but valid admin action.
+    const lockError = await assertNotLocked(new Date())
+    if (lockError) return lockError
+
     // Pre-transaction validation: verify products + compute line totals
     const allowNegative = await getAllowNegativeInventory()
     const allowExpiredBatchSale = await getAllowExpiredBatchSale()
@@ -191,8 +231,15 @@ export const billingService = {
     // Decimal places vary by currency (JPY/KRW have none, BHD/KWD/OMR have
     // 3) — hardcoding 2 everywhere silently mis-rounds every non-2dp
     // currency's invoice math, not just its display.
-    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true, gstScheme: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+    // Phase 62 — Composition Scheme dealers are legally barred from charging
+    // GST on outward invoices at all (they pay a flat turnover-based rate to
+    // the government directly, not itemized per sale) — every line taxes at
+    // 0% the same way a tax-exempt customer already does, and
+    // generateInvoiceHtml prints "Bill of Supply" instead of "Invoice" once
+    // taxAmount naturally comes out zero for a composition-scheme business.
+    const isCompositionScheme = businessProfile?.gstScheme === 'COMPOSITION'
 
     // Fresh-audit fix (2026-07-12): a B2B customer marked tax-exempt (reverse
     // charge, diplomatic/NGO exemption, etc.) previously had no way to get a
@@ -308,7 +355,7 @@ export const billingService = {
         }
       }
 
-      const effectiveTaxRate = customerTaxExempt ? 0 : (item.taxRate ?? product.taxRate ?? 0)
+      const effectiveTaxRate = (customerTaxExempt || isCompositionScheme) ? 0 : (item.taxRate ?? product.taxRate ?? 0)
       const lineDiscount = item.discountAmount ?? 0
       // Decimal-safe: subtotal/discount/tax/total are computed once via
       // Prisma.Decimal (see currency.service.ts) instead of chained float
@@ -368,20 +415,31 @@ export const billingService = {
     // across a multi-line invoice.
     const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
     const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
-    // Design note (previously undocumented — flagged in a 2026-07-22 audit as "not
-    // documented as an intentional choice anywhere"): globalDiscount/metalExchangeDiscount
-    // are applied only to the final total, AFTER taxAmount below is already summed from
-    // each line's own tax-on-discounted-base (lineTax uses only that line's own
-    // discountAmount, computed earlier per item). A global/invoice-level discount does NOT
-    // reduce the taxable value tax was computed on. This is a deliberate scope choice, not
-    // a drift bug: client and server agree on the number, and correctly reducing the taxable
-    // base for a lump-sum, not-tied-to-any-line discount is a jurisdiction-specific tax-law
-    // question (GST/VAT treatment of trade discounts varies by country and by whether the
-    // discount was disclosed at the time of supply) that this app does not currently attempt
-    // to model. Businesses that need discounts to affect the taxable value should apply them
-    // as per-line discounts instead, which already flow correctly into lineTax.
     const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount
     const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
+    // Fresh-audit fix (2026-08-11) — real GST compliance bug, not a stylistic choice: this
+    // used to subtract globalDiscount/metalExchangeDiscount from the total only AFTER
+    // taxAmount was already summed from each line's own tax-on-discounted-base, so GST was
+    // charged on the pre-global-discount subtotal. Section 15(3) CGST Act excludes a
+    // discount recorded on the invoice at time of supply from the value of supply — a
+    // bargain applied at billing time (globalDiscount) qualifies. allocateGlobalDiscount
+    // proportionally reduces each line's own taxable base by its share of the global
+    // discount (correct for mixed-tax-rate invoices, not just a flat subtraction) and
+    // recomputes tax per line on the reduced base; a no-op when there's no global discount,
+    // so the common case is byte-for-byte unchanged. The adjusted lineTaxable/lineTax are
+    // written back onto validatedItems so the persisted InvoiceItem rows (and everything
+    // downstream that reads them — HSN Summary, GSTR-1) reflect the correct per-line tax,
+    // not just the invoice-level total.
+    const allocated = allocateGlobalDiscount(
+      validatedItems.map(i => ({ lineTaxable: i.lineTaxable, taxRate: i.taxRate })),
+      globalDiscount,
+      currencyDecimals
+    )
+    validatedItems.forEach((item, idx) => {
+      item.lineTaxable = allocated[idx].lineTaxable
+      item.lineTax = allocated[idx].lineTax
+      item.lineTotal = roundCurrency(allocated[idx].lineTaxable + allocated[idx].lineTax, currencyDecimals)
+    })
     const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax), currencyDecimals)
     const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
     // Whole-unit cash rounding is an Indian retail convention (rupee coins
@@ -465,6 +523,7 @@ export const billingService = {
             // Same fix already applied to compliance-task.service.ts's
             // dueDate for the identical "date picker -> due date" shape.
             dueDate: payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
+            ewayBillNumber: payload.ewayBillNumber?.trim() || null,
             tableId: payload.tableIds?.[0] ?? null,
             notes: customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
@@ -594,6 +653,9 @@ export const billingService = {
             }
           })
         }
+
+        // Phase 62 — GL auto-posting.
+        await postInvoiceJournalEntry(tx, inv, !startsUnpaid)
 
         return inv
       }, { timeout: 15000, maxWait: 10000 })
@@ -780,6 +842,14 @@ export const billingService = {
         if (invoice.status === 'CANCELLED') {
           throw new ServiceError('INVOC-006', 'This invoice is already cancelled.')
         }
+        // Phase 62 — Transaction Locking: cancelling reverses inventory and
+        // ledger effects dated to the ORIGINAL invoiceDate, so that's the
+        // date checked, not today.
+        await assertNotLockedOrThrow(tx, invoice.invoiceDate)
+        // Phase 62 — GL auto-posting: reverses the original invoice's
+        // JournalEntry within this same transaction (no-ops if the invoice
+        // predates GL auto-posting and never had one).
+        await reverseEntryBySourceTx(tx, 'INVOICE', invoice.id, `Invoice ${invoice.invoiceNumber} cancelled: ${payload.reason}`, userId)
         // BUG FOUND 2026-07-22: every sibling mutation that must not touch a
         // RETURN invoice (splitInvoice's SPLIT-003, createReturn's RET-004)
         // has this exact guard; cancelInvoice didn't, relying only on the UI

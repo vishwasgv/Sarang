@@ -14,8 +14,17 @@ import { register as registerSuppliers } from './handlers/suppliers.handler'
 import { register as registerProducts } from './handlers/products.handler'
 import { register as registerInventory } from './handlers/inventory.handler'
 import { register as registerPurchaseOrders } from './handlers/purchase-orders.handler'
+import { register as registerBills } from './handlers/bills.handler'
 import { register as registerExpenses } from './handlers/expenses.handler'
 import { register as registerPayments } from './handlers/payments.handler'
+import { register as registerSupplierPayments } from './handlers/supplier-payments.handler'
+import { register as registerChartOfAccounts } from './handlers/chart-of-accounts.handler'
+import { register as registerJournalEntries } from './handlers/journal-entry.handler'
+import { register as registerBankAccounts } from './handlers/bank-account.handler'
+import { register as registerCreditInterest } from './handlers/credit-interest.handler'
+import { register as registerPostDatedCheques } from './handlers/post-dated-cheque.handler'
+import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
+import { register as registerYearEndClose } from './handlers/year-end-close.handler'
 import { register as registerImport } from './handlers/import.handler'
 import { register as registerBackup } from './handlers/backup.handler'
 import { register as registerBilling } from './handlers/billing.handler'
@@ -176,8 +185,17 @@ export function registerAllIpcHandlers(): void {
   registerProducts(h)
   registerInventory(h)
   registerPurchaseOrders(h)
+  registerBills(h)
   registerExpenses(h)
   registerPayments(h)
+  registerSupplierPayments(h)
+  registerChartOfAccounts(h)
+  registerJournalEntries(h)
+  registerBankAccounts(h)
+  registerCreditInterest(h)
+  registerPostDatedCheques(h)
+  registerFixedAssets(h)
+  registerYearEndClose(h)
   registerImport(h)
   registerBackup(h)
   registerBilling(h)

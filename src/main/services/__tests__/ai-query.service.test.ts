@@ -32,7 +32,9 @@ vi.mock('../report.service', () => ({
     generateSalesReport: vi.fn(),
     generateOutstandingReport: vi.fn(),
     generateProfitAndLossReport: vi.fn(),
-    generateProductionReport: vi.fn()
+    generateProductionReport: vi.fn(),
+    generatePurchasesByItemReport: vi.fn(),
+    generatePurchaseRegisterReport: vi.fn()
   }
 }))
 vi.mock('../analytics.service', () => ({
@@ -56,14 +58,19 @@ vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
 // directly and are covered by the underlying, already-tested service/report
 // functions they reuse rather than re-tested here individually).
 vi.mock('../customer.service', () => ({ listCustomers: vi.fn(), searchCustomers: vi.fn() }))
+vi.mock('../supplier.service', () => ({ searchSuppliers: vi.fn() }))
+vi.mock('../supplier-ledger.service', () => ({ supplierLedgerService: { calculateBalance: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
+import { getReadOnlyPrisma } from '../../database/ai-readonly-db'
 import { isModuleEnabled, getActiveTemplate } from '../industry-template.service'
 import { reportService } from '../report.service'
 import { getDashboardKpis, getOutstandingAmount, getDashboardAlerts } from '../analytics.service'
 import { getDeadStock, getTopSuppliersByPurchaseVolume } from '../ai-aggregations.service'
 import { getPlacementKPIs } from '../placement.service'
 import { listCustomers, searchCustomers } from '../customer.service'
+import { searchSuppliers } from '../supplier.service'
+import { supplierLedgerService } from '../supplier-ledger.service'
 import { askQuestion, setAIProvider } from '../ai-query.service'
 import { FakeAIProvider } from '../ai-provider'
 
@@ -83,7 +90,9 @@ function toISO(d: Date): string {
 function makeMockDb() {
   const db: Record<string, any> = {
     businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
-    aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    aiQueryLog: { create: vi.fn().mockResolvedValue({}) },
+    // Phase 61 — suppliers.byName's period-spend lookup queries Bill directly.
+    bill: { aggregate: vi.fn().mockResolvedValue({ _sum: { totalAmount: 0 } }) }
   }
   return db
 }
@@ -381,6 +390,73 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
 
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('suppliers.topByPurchaseVolume')
+    expect(res.data?.answer).toContain('Acme Supplies')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 61 — real Bill-based "what am I spending the most on" question,
+  // distinct from suppliers.topByPurchaseVolume (per-vendor, not per-item).
+  it('routes "what am I spending the most on" to suppliers.topPurchasedItems via the fast-path', async () => {
+    vi.mocked(reportService.generatePurchasesByItemReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-11',
+      summary: { totalPurchases: 15000, itemCount: 2 },
+      rows: [
+        { itemName: 'Widget', isService: false, quantity: 50, totalAmount: 10000, billCount: 3 },
+        { itemName: 'AMC — quarterly', isService: true, quantity: 1, totalAmount: 5000, billCount: 1 }
+      ]
+    })
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What am I spending the most on?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('suppliers.topPurchasedItems')
+    expect(res.data?.answer).toContain('Widget')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 61 — Section 3.3's "what do I owe [vendor]" and "what did I spend
+  // on [vendor] last month" both resolve through this same by-name lookup.
+  it('"look up supplier Acme" now also answers what is owed and this-period spend, not just phone', async () => {
+    vi.mocked(searchSuppliers).mockResolvedValue({
+      success: true,
+      data: [{ id: 'sup-1', supplierName: 'Acme Supplies', phone: '9999999999', supplierCode: 'SUP-00001' }]
+    })
+    vi.mocked(supplierLedgerService.calculateBalance).mockResolvedValue(4500)
+    const db = { businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) }, aiQueryLog: { create: vi.fn().mockResolvedValue({}) }, bill: { aggregate: vi.fn().mockResolvedValue({ _sum: { totalAmount: 12000 } }) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const fake = new FakeAIProvider({
+      'Look up supplier Acme': { template: 'suppliers.byName', category: 'suppliers', params: {} }
+    })
+    setAIProvider(fake)
+
+    const res = await askQuestion('Look up supplier Acme')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('suppliers.byName')
+    expect(res.data?.answer).toContain('Acme Supplies')
+    expect(res.data?.answer).toContain('4,500')
+    expect(res.data?.answer).toContain('12,000')
+  })
+
+  it('routes "show me my purchase register" to suppliers.purchaseRegisterSummary via the fast-path', async () => {
+    vi.mocked(reportService.generatePurchaseRegisterReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-11',
+      summary: { totalPurchases: 50000, billCount: 4, totalTax: 7627 },
+      byVendor: [{ supplierName: 'Acme Supplies', totalAmount: 30000, billCount: 3 }],
+      rows: [{ billNumber: 'BILL-00001', date: '2026-08-05', supplier: 'Acme Supplies', status: 'OPEN', itemCount: 1, subtotal: 25424, discountAmount: 0, taxAmount: 4576, totalAmount: 30000 }],
+      total: 1
+    })
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me my purchase register')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('suppliers.purchaseRegisterSummary')
     expect(res.data?.answer).toContain('Acme Supplies')
     expect(classifySpy).not.toHaveBeenCalled()
   })
@@ -711,5 +787,109 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
       expect(listCustomers).toHaveBeenCalledWith({ limit: 1 })
       expect(res.data?.answer).toContain('42 customers')
     })
+  })
+})
+
+// Phase 62 — the 4 required "Ask Sarang AI" intents for Banking, Ledger &
+// Compliance. All 4 routed here via their own real FAST_PATH_PATTERNS
+// entries, exercising the same live pipeline as every question above rather
+// than calling the template function directly.
+describe('askQuestion — Phase 62 Banking/Ledger AI intents', () => {
+  it('answers "what is my bank balance" via the fast-path, summing real currentBalance across active accounts', async () => {
+    const db = makeMockDb()
+    db.bankAccount = { findMany: vi.fn().mockResolvedValue([
+      { accountName: 'HDFC Current', accountType: 'BANK', currentBalance: 40000, isActive: true },
+      { accountName: 'Petty Cash', accountType: 'CASH', currentBalance: 5000, isActive: true },
+    ]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('What is my bank balance?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('ledger.bankBalance')
+    expect(res.data?.answer).toContain('₹45,000.00')
+  })
+
+  it('answers "show unreconciled transactions" via the fast-path, using the real read-only Prisma connection', async () => {
+    vi.mocked(getReadOnlyPrisma).mockResolvedValue({
+      bankStatementLine: {
+        findMany: vi.fn().mockResolvedValue([
+          { debitAmount: 0, creditAmount: 1200, description: 'NEFT Credit', transactionDate: new Date(), bankAccount: { accountName: 'HDFC Current' } }
+        ]),
+        count: vi.fn().mockResolvedValue(3)
+      }
+    } as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Show me unreconciled transactions')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('ledger.unreconciledTransactions')
+    expect(res.data?.answer).toContain('3 unreconciled')
+  })
+
+  it('answers "what interest do I owe on Ramesh overdue balance" via the fast-path, resolving the customer by name then computing real interest', async () => {
+    vi.mocked(searchCustomers).mockResolvedValue({ success: true, data: [{ id: 'cust-1', customerName: 'Ramesh Kumar' }] } as never)
+    const db = makeMockDb()
+    db.businessProfile.findFirst = vi.fn().mockResolvedValue({ currencySymbol: '₹', creditInterestEnabled: true, creditInterestRatePercent: 12, creditInterestType: 'SIMPLE' })
+    db.customer = { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) }
+    const dueDate = new Date(Date.now() - 60 * 86400000) // 60 days overdue
+    db.invoice = { findMany: vi.fn().mockResolvedValue([
+      { id: 'inv-1', invoiceNumber: 'INV-001', balanceAmount: 10000, dueDate }
+    ]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('What interest do I owe on Ramesh overdue balance?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('credit.customerOverdueInterest')
+    expect(searchCustomers).toHaveBeenCalledWith('Ramesh')
+    // 10000 * 12% * (60/365) = 197.26 — same SIMPLE formula credit-interest.service.test.ts hand-verifies independently.
+    expect(res.data?.answer).toContain('197.26')
+  })
+
+  it('answers "what is my fixed asset depreciation this year" via the fast-path, using the real read-only Prisma connection', async () => {
+    vi.mocked(getReadOnlyPrisma).mockResolvedValue({
+      fixedAssetDepreciation: {
+        findMany: vi.fn().mockResolvedValue([
+          { amount: 1666.67, periodEnd: new Date(), fixedAsset: { assetName: 'Delivery Van', assetCode: 'FA-001' } },
+          { amount: 833.33, periodEnd: new Date(), fixedAsset: { assetName: 'Laptop', assetCode: 'FA-002' } }
+        ])
+      }
+    } as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('What is my fixed asset depreciation this year?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('ledger.fixedAssetDepreciationThisYear')
+    expect(res.data?.answer).toContain('₹2,500.00')
+  })
+
+  // Real bug found live 2026-08-12 (Phase 62 UAT against the real running
+  // app, not a unit test — the mock above bypasses the where-clause entirely
+  // by stubbing findMany's return value directly, so it couldn't have caught
+  // this): a depreciation run for the CURRENT month sets periodEnd to that
+  // month's last day (see FixedAssetDetailScreen.tsx's RunDepreciationModal
+  // default) — a future timestamp relative to `now` on every day before the
+  // month's last. The original query filtered `periodEnd: { lte: now }`,
+  // silently excluding the most common real case (asking about depreciation
+  // right after running it this month) and always answering "I could not
+  // find enough information" instead. Fixed to bound by year-end, not `now`.
+  it('bounds the depreciation-this-year query by year-end, not the current instant — regression guard', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    vi.mocked(getReadOnlyPrisma).mockResolvedValue({ fixedAssetDepreciation: { findMany } } as never)
+    setAIProvider(new FakeAIProvider())
+
+    await askQuestion('What is my fixed asset depreciation this year?')
+
+    const whereArg = findMany.mock.calls[0][0].where.periodEnd as { gte: Date; lte: Date }
+    const now = new Date()
+    // A same-month depreciation run's periodEnd (the month's last day) must
+    // fall inside the query's own range — the exact case the bug excluded.
+    const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    expect(whereArg.lte.getTime()).toBeGreaterThanOrEqual(thisMonthEnd.getTime())
   })
 })
