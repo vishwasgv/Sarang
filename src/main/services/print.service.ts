@@ -1182,6 +1182,13 @@ export const printService = {
     status: string
     notes?: string | null
     supplier: { supplierName: string; supplierCode?: string | null; phone?: string | null } | null
+    // Real gap found+fixed 2026-08-12 (post-phase completeness audit): the
+    // spec explicitly requires drop-shipment to change the PO's own SHOWN
+    // delivery address — the field was captured and stored since Task #3's
+    // own build, but never actually read anywhere, including here. A
+    // supplier reading this PDF had no way to know to ship to the
+    // customer instead of the business's own location.
+    dropShipToCustomer?: { customerName: string; address?: string | null; city?: string | null; state?: string | null; phone?: string | null } | null
     items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } }>
     subtotal: number; taxAmount: number; totalAmount: number
   }, profile: BusinessProfile | null): Promise<string> {
@@ -1190,6 +1197,9 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const supplierDisplay = escHtml(po.supplier?.supplierName ?? 'Supplier')
+    const dropShipAddressLine = po.dropShipToCustomer
+      ? [po.dropShipToCustomer.address, po.dropShipToCustomer.city, po.dropShipToCustomer.state].filter(Boolean).map(escHtml).join(', ')
+      : ''
 
     const itemsHtml = po.items.map(item => `
       <tr>
@@ -1256,13 +1266,24 @@ export const printService = {
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Issued To (Supplier)</div>
-    <div class="supplier-box">
-      <div class="supplier-name">${supplierDisplay}</div>
-      ${po.supplier?.supplierCode ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${escHtml(po.supplier.supplierCode)}</div>` : ''}
-      ${po.supplier?.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(po.supplier.phone)}</div>` : ''}
+  <div class="section" style="display:flex;gap:16px;">
+    <div style="flex:1;">
+      <div class="section-title">Issued To (Supplier)</div>
+      <div class="supplier-box">
+        <div class="supplier-name">${supplierDisplay}</div>
+        ${po.supplier?.supplierCode ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${escHtml(po.supplier.supplierCode)}</div>` : ''}
+        ${po.supplier?.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(po.supplier.phone)}</div>` : ''}
+      </div>
     </div>
+    ${po.dropShipToCustomer ? `
+    <div style="flex:1;">
+      <div class="section-title">Ship To (Drop-Ship)</div>
+      <div class="supplier-box" style="background:#fef3c7;border-color:#fde68a;">
+        <div class="supplier-name">${escHtml(po.dropShipToCustomer.customerName)}</div>
+        ${dropShipAddressLine ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${dropShipAddressLine}</div>` : ''}
+        ${po.dropShipToCustomer.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(po.dropShipToCustomer.phone)}</div>` : ''}
+      </div>
+    </div>` : ''}
   </div>
 
   <table>

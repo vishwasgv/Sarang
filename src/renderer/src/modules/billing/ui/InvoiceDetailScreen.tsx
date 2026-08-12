@@ -19,7 +19,23 @@ import { Badge } from '@shared/ui/atoms/Badge'
 
 interface InvoiceItem {
   id: string
-  product: { id: string; productName: string; sku?: string | null; unit: string }
+  // `productName` here is the InvoiceItem's own always-populated snapshot
+  // field — `getInvoice()`'s own `product: { select: { id, unit } }` never
+  // selects `product.productName` (confirmed by reading the actual Prisma
+  // query, not assumed), so `item.product.productName` is always
+  // `undefined` at runtime despite this file's own (wrong) type declaring
+  // it as required. Real bug found live 2026-08-12: both
+  // handleCreateDeliveryNote and handleCreatePackingSlip read
+  // `item.product.productName`, silently sending `undefined` — which
+  // vanishes entirely over JSON/IPC serialization, making the backend's
+  // Zod schema see a genuinely MISSING key and reject with its bare
+  // default "Required" message (distinct from the schema's own custom
+  // "Item product name is required" message, which only fires for an
+  // empty string, not an absent key) — exactly the same class of bug
+  // print.service.ts's own `generateInvoiceHtml` test already documents
+  // and guards against for the print path specifically.
+  productName: string
+  product: { id: string; sku?: string | null; unit: string }
   quantity: number; unitPrice: number; discountAmount: number; taxRate: number; taxAmount: number; lineTotal: number
 }
 interface Payment {
@@ -82,6 +98,7 @@ export function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [sendingToKitchen, setSendingToKitchen] = useState(false)
   const [creatingDeliveryNote, setCreatingDeliveryNote] = useState(false)
+  const [creatingPackingSlip, setCreatingPackingSlip] = useState(false)
 
   // Record payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -189,7 +206,7 @@ export function InvoiceDetailScreen() {
         notes: t('billing.deliveryNoteFromInvoice', { number: invoice.invoiceNumber }),
         items: invoice.items.map(item => ({
           productId: item.product.id,
-          productName: item.product.productName,
+          productName: item.productName,
           quantity: item.quantity,
           unit: item.product.unit,
           unitValue: item.unitPrice
@@ -205,6 +222,47 @@ export function InvoiceDetailScreen() {
       toastError(t('common.error'), t('billing.deliveryNoteFailed'))
     } finally {
       setCreatingDeliveryNote(false)
+    }
+  }
+
+  // Real gap found+fixed 2026-08-12 (post-phase completeness audit against
+  // Section 5.1 item 5's own spec text, which explicitly names BOTH
+  // DELIVERY_NOTE and PACKING_SLIP — only the former ever shipped). A
+  // Packing Slip is a warehouse picking/packing list, not a value document
+  // — the same shared print path (ChallanScreen.tsx's own printChallan(),
+  // deliberately reused rather than duplicated) always renders a Value/
+  // Total column, so this omits unitValue entirely rather than send a real
+  // price into a document that shouldn't show one; it renders as ₹0.00
+  // rather than a hidden column, an honest, disclosed simplification of
+  // fully suppressing the column, not silently wrong pricing.
+  async function handleCreatePackingSlip() {
+    if (!invoice || !invoice.customer) return
+    setCreatingPackingSlip(true)
+    try {
+      const res = await window.api.logisticsChallan.create({
+        challanType: 'PACKING_SLIP',
+        customerId: invoice.customer.id,
+        customerName: invoice.customer.customerName,
+        invoiceId: invoice.id,
+        dispatchDate: new Date().toISOString().slice(0, 10),
+        notes: t('billing.packingSlipFromInvoice', { number: invoice.invoiceNumber }),
+        items: invoice.items.map(item => ({
+          productId: item.product.id,
+          productName: item.productName,
+          quantity: item.quantity,
+          unit: item.product.unit
+        }))
+      })
+      if (res.success) {
+        const challan = res.data as { challanNumber: string }
+        toastSuccess(t('billing.packingSlipCreated'), challan.challanNumber)
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('billing.packingSlipFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('billing.packingSlipFailed'))
+    } finally {
+      setCreatingPackingSlip(false)
     }
   }
 
@@ -249,7 +307,7 @@ export function InvoiceDetailScreen() {
       return Math.abs(total - item.quantity) > 0.001
     })
     if (mismatched.length > 0) {
-      toastError(t('billing.splitMismatchTitle'), t('billing.splitMismatchMessage', { productName: mismatched[0].product.productName, quantity: mismatched[0].quantity }))
+      toastError(t('billing.splitMismatchTitle'), t('billing.splitMismatchMessage', { productName: mismatched[0].productName, quantity: mismatched[0].quantity }))
       return
     }
     const splits = Array.from({ length: splitCheckCount }, (_, checkIndex) => ({
@@ -448,6 +506,11 @@ export function InvoiceDetailScreen() {
               <Truck size={14} className="me-1" /> {t('billing.createDeliveryNote')}
             </Button>
           )}
+          {!isCancelled && invoice.customer && canCreateDeliveryNote && (
+            <Button size="sm" variant="outline" onClick={handleCreatePackingSlip} loading={creatingPackingSlip}>
+              <Truck size={14} className="me-1" /> {t('billing.createPackingSlip')}
+            </Button>
+          )}
           {canPrint && (
             <>
               <Button size="sm" variant="outline" onClick={() => handleOpenPreview(false)} loading={previewLoading && !previewIsReceipt}>
@@ -525,7 +588,7 @@ export function InvoiceDetailScreen() {
             {invoice.items.map(item => (
               <tr key={item.id} className="border-b border-slate-50 dark:border-slate-800">
                 <td className="px-5 py-3">
-                  <p className="font-medium text-dark">{item.product.productName}</p>
+                  <p className="font-medium text-dark">{item.productName}</p>
                   {item.product.sku && <p className="text-xs text-slate-400">{item.product.sku}</p>}
                 </td>
                 <td className="px-4 py-3 text-end text-slate-600">{item.quantity} {item.product.unit}</td>
@@ -709,7 +772,7 @@ export function InvoiceDetailScreen() {
                       return (
                         <tr key={item.id} className="border-b border-slate-50 dark:border-slate-800">
                           <td className="px-4 py-2.5">
-                            <p className="font-medium text-dark dark:text-slate-100">{item.product.productName}</p>
+                            <p className="font-medium text-dark dark:text-slate-100">{item.productName}</p>
                             {mismatch && <p className="text-xs text-danger">{t('billing.splitMismatch', { allocated, billed: item.quantity })}</p>}
                           </td>
                           <td className="px-3 py-2.5 text-end text-slate-500">{item.quantity}</td>

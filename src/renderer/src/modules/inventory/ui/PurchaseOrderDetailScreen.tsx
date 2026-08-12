@@ -17,11 +17,21 @@ import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
 interface POItem { id: string; quantity: number; unitCost: number; taxRate: number; total: number; product: Product }
+interface DropShipCustomer { id: string; customerName: string; address?: string | null; city?: string | null; state?: string | null; phone?: string | null }
 interface PurchaseOrder {
   id: string; poNumber: string; status: string
   orderDate: string; expectedDate?: string | null; notes?: string | null
   subtotal: number; taxAmount: number; totalAmount: number
   supplier: Supplier; items: POItem[]
+  // Real gap found+fixed 2026-08-12 (post-phase completeness audit): the
+  // backend has captured and returned this since Task #3's own build
+  // (`purchase-order.service.ts`'s `getPO` already includes
+  // `dropShipToCustomer`), but nothing ever displayed it anywhere —
+  // neither this detail screen nor the printed PO — contradicting the
+  // spec's own explicit requirement that drop-ship change the PO's shown
+  // delivery address. Once set at creation, it was completely invisible
+  // afterward.
+  dropShipToCustomer?: DropShipCustomer | null
 }
 
 const STATUS_VARIANT: Record<string, 'neutral' | 'brand' | 'success' | 'danger' | 'warning'> = {
@@ -289,6 +299,20 @@ export function PurchaseOrderDetailScreen() {
           )}
         </Card>
       </div>
+
+      {po.dropShipToCustomer && (
+        <Card padding="md" className="space-y-1 border-brand/30 bg-brand/5">
+          <p className="text-xs font-semibold text-brand uppercase tracking-wide">{t('purchaseOrders.dropShipTo')}</p>
+          <p className="text-sm font-semibold text-dark dark:text-slate-100">{po.dropShipToCustomer.customerName}</p>
+          {(po.dropShipToCustomer.address || po.dropShipToCustomer.city || po.dropShipToCustomer.state) && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {[po.dropShipToCustomer.address, po.dropShipToCustomer.city, po.dropShipToCustomer.state].filter(Boolean).join(', ')}
+            </p>
+          )}
+          {po.dropShipToCustomer.phone && <p className="text-xs text-slate-500 dark:text-slate-400">{po.dropShipToCustomer.phone}</p>}
+          <p className="text-xs text-slate-400">{t('purchaseOrders.dropShipHint')}</p>
+        </Card>
+      )}
 
       {/* Line items */}
       <Card padding="none">

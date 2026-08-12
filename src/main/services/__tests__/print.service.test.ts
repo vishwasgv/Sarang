@@ -562,3 +562,35 @@ describe('printService.generateSalesOrderHtml', () => {
     expect(html).toContain('PENDING APPROVAL')
   })
 })
+
+// Real gap found+fixed 2026-08-12 (post-phase completeness audit): the
+// spec explicitly requires drop-shipment to change the PO's own printed
+// delivery address — `dropShipToCustomer` was captured/stored since
+// Task #3's own build but the print template never actually read it.
+describe('printService.generatePurchaseOrderHtml — drop-shipment', () => {
+  const po = {
+    poNumber: 'PO-00001',
+    orderDate: '2026-08-01T00:00:00.000Z',
+    status: 'DRAFT',
+    notes: null,
+    supplier: { supplierName: 'Print Verify Supplier', supplierCode: 'SUP-00001', phone: '9876500000' },
+    items: [
+      { quantity: 5, unitCost: 100, taxRate: 0, total: 500, product: { productName: 'Print Verify Widget', sku: 'PVW-01', unit: 'PCS' } }
+    ],
+    subtotal: 500, taxAmount: 0, totalAmount: 500
+  }
+
+  it('renders a Ship To section with the drop-ship customer when set', async () => {
+    const withDropShip = { ...po, dropShipToCustomer: { customerName: 'Print Verify Drop-Ship Customer', address: '123 Test Lane', city: 'Mumbai', state: 'Maharashtra', phone: '9123456789' } }
+    const html = await printService.generatePurchaseOrderHtml(withDropShip as never, profile as never)
+    expect(html).toContain('Ship To (Drop-Ship)')
+    expect(html).toContain('Print Verify Drop-Ship Customer')
+    expect(html).toContain('123 Test Lane')
+    expect(html).toContain('Mumbai')
+  })
+
+  it('omits the Ship To section entirely when no drop-ship customer is set', async () => {
+    const html = await printService.generatePurchaseOrderHtml(po as never, profile as never)
+    expect(html).not.toContain('Ship To (Drop-Ship)')
+  })
+})
