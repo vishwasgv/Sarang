@@ -1,7 +1,9 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
+import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
+import { chequeBookService } from './cheque-book.service'
 import { journalEntryService } from './journal-entry.service'
 import type { CreatePDCPayload, UpdatePDCStatusPayload } from '../validation/post-dated-cheque.validation'
 
@@ -16,24 +18,47 @@ export const postDatedChequeService = {
       const account = await db.bankAccount.findUnique({ where: { id: payload.bankAccountId } })
       if (!account) return { success: false, error: { code: 'BANK-001', message: 'Bank account not found.' } }
 
-      const pdc = await db.postDatedCheque.create({
-        data: {
-          bankAccountId: payload.bankAccountId,
-          chequeNumber: payload.chequeNumber,
-          direction: payload.direction,
-          partyType: payload.partyType ?? null,
-          partyId: payload.partyId ?? null,
-          dueDate: parseLocalDateStart(payload.dueDate),
-          amount: payload.amount,
-          status: 'PENDING',
-          remarks: payload.remarks ?? null,
-          createdById: userId ?? null
+      const pdc = await db.$transaction(async (tx) => {
+        let chequeNumber = payload.chequeNumber ?? null
+        let chequeBookId: string | null = null
+
+        // useChequeBook auto-consumes the next number from the bank
+        // account's active ChequeBook, inside this same transaction, so the
+        // increment and the PDC row it's issued for can never drift apart.
+        // Only meaningful for ISSUED cheques — a RECEIVED cheque's number
+        // belongs to the payer's own bank, not one of our ChequeBooks.
+        if (payload.useChequeBook && payload.direction !== 'ISSUED') {
+          throw new ServiceError('CHQ-005', 'A cheque book can only supply the number for a cheque you are issuing, not one you received.')
         }
+        if (payload.useChequeBook) {
+          const consumed = await chequeBookService.consumeNextChequeNumber(tx, payload.bankAccountId)
+          if (!consumed) throw new ServiceError('CHQ-001', 'No active cheque book with numbers remaining for this bank account.')
+          chequeNumber = consumed.chequeNumber
+          chequeBookId = consumed.chequeBookId
+        }
+        if (!chequeNumber) throw new ServiceError('CHQ-002', 'Cheque number is required.')
+
+        return tx.postDatedCheque.create({
+          data: {
+            bankAccountId: payload.bankAccountId,
+            chequeNumber,
+            chequeBookId,
+            direction: payload.direction,
+            partyType: payload.partyType ?? null,
+            partyId: payload.partyId ?? null,
+            dueDate: parseLocalDateStart(payload.dueDate),
+            amount: payload.amount,
+            status: 'PENDING',
+            remarks: payload.remarks ?? null,
+            createdById: userId ?? null
+          }
+        })
       })
 
       await logAction({ userId, action: 'PDC_CREATED', entityType: 'PostDatedCheque', entityId: pdc.id, newValue: { chequeNumber: pdc.chequeNumber, direction: pdc.direction, amount: pdc.amount } })
       return { success: true, data: pdc }
     } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to create post-dated cheque.' } }
     }
   },

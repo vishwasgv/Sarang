@@ -31,6 +31,9 @@ import { billingService } from './billing.service'
 import { inventoryService } from './inventory.service'
 import { bankAccountService } from './bank-account.service'
 import { creditInterestService } from './credit-interest.service'
+import { salesOrderService } from './sales-order.service'
+import { priceListService } from './price-list.service'
+import { invoiceTemplateService } from './invoice-template.service'
 import { formatAmountForSpeech, refreshAiNumberFormat } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
@@ -277,7 +280,18 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'ledger.bankBalance', patterns: [/bank balance/i, /how much (money |cash )?do i have in (the )?bank/i, /(bank|cash) account balance/i] },
   { template: 'ledger.unreconciledTransactions', patterns: [/unreconciled (transactions?|(bank )?statement lines?)/i, /transactions?.*not.*reconciled/i] },
   { template: 'credit.customerOverdueInterest', patterns: [/interest.*(owe|owed).*overdue/i, /overdue.*interest/i, /interest.*on.*overdue balance/i] },
-  { template: 'ledger.fixedAssetDepreciationThisYear', patterns: [/(fixed asset )?depreciation this year/i, /depreciation.*year/i] }
+  { template: 'ledger.fixedAssetDepreciationThisYear', patterns: [/(fixed asset )?depreciation this year/i, /depreciation.*year/i] },
+  // Phase 63 — Section 5.3's 5 required Ask Sarang AI intents, given
+  // deterministic fast-path coverage the same way every other "must answer"
+  // example in this file already gets it. Placed after every pre-existing
+  // pattern so an older, more specific phrasing (e.g.
+  // documents.pendingPurchaseOrders's "purchase orders pending approval")
+  // keeps winning over these newer, more general ones.
+  { template: 'salesOrders.createForCustomer', patterns: [/(create|make|start|raise).*sales order/i, /sales order for/i] },
+  { template: 'pricing.priceListForCustomer', patterns: [/price list for/i, /what'?s on.*price list/i, /(price list|pricing).*(assigned|applies)/i] },
+  { template: 'pricing.schemeCostThisMonth', patterns: [/free.?[- ]?scheme.*cost/i, /scheme.*cost/i, /(free of cost|foc).*(cost|value|given)/i] },
+  { template: 'invoiceTemplate.switch', patterns: [/switch.*invoice template/i, /(change|which).*invoice template/i, /invoice templates?\b/i] },
+  { template: 'approvals.pendingApproval', patterns: [/what'?s (still )?pending approval/i, /still pending approval/i, /awaiting approval/i, /orders?.*pending approval/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -290,7 +304,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -1921,6 +1935,127 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
         headline: `Fixed asset depreciation this year: ${formatAmountForSpeech(total, sym)} across ${rows.length} depreciation run${rows.length === 1 ? '' : 's'}`,
         details: rows.slice(0, 10).map((r) => `${r.fixedAsset.assetName} (${r.fixedAsset.assetCode}): ${formatAmountForSpeech(r.amount, sym)}, period ending ${toLocalISODate(r.periodEnd)}`),
         isEmpty: rows.length === 0
+      }
+    }
+  },
+  // Phase 63 — Sales-Side Completion & Pricing Infrastructure's 5 required
+  // Ask Sarang AI intents (Section 5.3). Every existing template in this
+  // catalog only ANSWERS a read-only data question — the model never writes
+  // to the database (see this file's own header comment) — so the two
+  // action-phrased examples in the spec ("create a sales order for X",
+  // "switch my invoice template") are answered the same honest way: real
+  // account/business-data context plus a pointer to the exact screen,
+  // never a claim that the action was actually performed.
+  'salesOrders.createForCustomer': {
+    category: 'salesOrders',
+    async execute(params, _sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) {
+        return {
+          headline: 'Open Sales Orders and click New Sales Order to create one — I can\'t create records myself, only answer questions about your data.',
+          details: [],
+          isEmpty: false
+        }
+      }
+      const res = await searchCustomers(term)
+      const customer = (res.data as Array<{ id: string; customerName: string }> | undefined)?.[0]
+      if (!customer) return { headline: '', details: [], isEmpty: true }
+      const soRes = await salesOrderService.listSalesOrders({ customerId: customer.id, limit: 50 })
+      const orders = (soRes.data as { orders: Array<{ soNumber: string; status: string }>; total: number } | undefined)?.orders ?? []
+      const open = orders.filter((o) => o.status !== 'INVOICED' && o.status !== 'CANCELLED')
+      return {
+        headline: `Open Sales Orders and click New Sales Order to create one for ${customer.customerName} — I can't create records myself, only show you what already exists.`,
+        details: open.length > 0
+          ? [`${customer.customerName} already has ${open.length} open sales order${open.length === 1 ? '' : 's'}: ${open.slice(0, 5).map((o) => `${o.soNumber} (${o.status})`).join(', ')}`]
+          : [`${customer.customerName} has no open sales orders right now.`],
+        isEmpty: false
+      }
+    }
+  },
+  'pricing.priceListForCustomer': {
+    category: 'pricing',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await searchCustomers(term)
+      const customer = (res.data as Array<{ id: string; customerName: string; priceListId: string | null }> | undefined)?.[0]
+      if (!customer) return { headline: '', details: [], isEmpty: true }
+      if (!customer.priceListId) {
+        return {
+          headline: `${customer.customerName} has no price list assigned — they're billed at each product's normal selling price.`,
+          details: [],
+          isEmpty: true
+        }
+      }
+      const plRes = await priceListService.getPriceList(customer.priceListId)
+      const priceList = plRes.data as { name: string; items: Array<{ minQuantity: number; unitPrice: number; product: { productName: string } }> } | undefined
+      if (!priceList) return { headline: `${customer.customerName} has a price list assigned, but it could not be loaded.`, details: [], isEmpty: true }
+      return {
+        headline: `${customer.customerName} is on the "${priceList.name}" price list, ${priceList.items.length} tier${priceList.items.length === 1 ? '' : 's'}`,
+        details: priceList.items.slice(0, 10).map((i) => `${i.product.productName}: ${formatAmountForSpeech(i.unitPrice, sym)} at ${i.minQuantity}+ units`),
+        isEmpty: priceList.items.length === 0
+      }
+    }
+  },
+  // "this month's free-scheme cost" — InvoiceItem never snapshots what an
+  // isFreeOfCost line would have cost (unitPrice/lineTotal are forced to 0
+  // at billing time, by design — see the model's own field comment), so
+  // this is honestly computed at current Product.sellingPrice, not a stored
+  // historical figure. Framed in the answer so it never reads as more
+  // precise than it is.
+  'pricing.schemeCostThisMonth': {
+    category: 'pricing',
+    async execute(_params, sym) {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const db = await getReadOnlyPrisma()
+      const lines = await db.invoiceItem.findMany({
+        where: { isFreeOfCost: true, invoice: { invoiceDate: { gte: monthStart }, status: { not: 'CANCELLED' } } },
+        select: { quantity: true, product: { select: { productName: true, sellingPrice: true } }, scheme: { select: { name: true } } }
+      })
+      const total = lines.reduce((s, l) => s + l.quantity * l.product.sellingPrice, 0)
+      const byScheme = new Map<string, number>()
+      for (const l of lines) {
+        const key = l.scheme?.name ?? 'Unknown scheme'
+        byScheme.set(key, (byScheme.get(key) ?? 0) + l.quantity * l.product.sellingPrice)
+      }
+      return {
+        headline: `This month's free-of-cost giveaways from Pricing Schemes are worth about ${formatAmountForSpeech(total, sym)}, at current selling prices`,
+        details: [...byScheme.entries()].map(([name, amt]) => `${name}: ${formatAmountForSpeech(amt, sym)}`),
+        isEmpty: lines.length === 0
+      }
+    }
+  },
+  'invoiceTemplate.switch': {
+    category: 'invoiceTemplate',
+    async execute(_params, _sym) {
+      const res = await invoiceTemplateService.listTemplates()
+      const templates = (res.data as Array<{ name: string; isDefault: boolean }> | undefined) ?? []
+      const current = templates.find((t) => t.isDefault)
+      return {
+        headline: `Open Settings → Invoice Templates and click "Set as Default" to switch — your current default is ${current ? `"${current.name}"` : 'not set'}`,
+        details: [`Available templates: ${templates.map((t) => t.name).join(', ')}`],
+        isEmpty: templates.length === 0
+      }
+    }
+  },
+  'approvals.pendingApproval': {
+    category: 'approvals',
+    async execute(_params, _sym) {
+      const [soRes, poRes] = await Promise.all([
+        salesOrderService.listSalesOrders({ status: 'PENDING_APPROVAL', limit: 50 }),
+        purchaseOrderService.listPOs({ status: 'PENDING_APPROVAL', limit: 50 })
+      ])
+      const salesOrders = (soRes.data as { orders: Array<{ soNumber: string; customer: { customerName: string } }> } | undefined)?.orders ?? []
+      const purchaseOrders = (poRes.data as { orders: Array<{ poNumber: string; supplier: { supplierName: string } }> } | undefined)?.orders ?? []
+      const total = salesOrders.length + purchaseOrders.length
+      return {
+        headline: `${total} order${total === 1 ? ' is' : 's are'} still pending approval`,
+        details: [
+          ...salesOrders.slice(0, 5).map((o) => `Sales Order ${o.soNumber} — ${o.customer.customerName}`),
+          ...purchaseOrders.slice(0, 5).map((o) => `Purchase Order ${o.poNumber} — ${o.supplier.supplierName}`)
+        ],
+        isEmpty: total === 0
       }
     }
   }

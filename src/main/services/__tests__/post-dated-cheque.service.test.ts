@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
+vi.mock('../cheque-book.service', () => ({ chequeBookService: { consumeNextChequeNumber: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
 import { postDatedChequeService } from '../post-dated-cheque.service'
+import { chequeBookService } from '../cheque-book.service'
 
 function makePdc(overrides: Record<string, unknown> = {}) {
   return {
@@ -70,6 +72,53 @@ describe('postDatedChequeService.createPDC', () => {
     expect(res.success).toBe(true)
     expect(db.postDatedCheque.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING' }) }))
     expect(db.journalEntry.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects when neither a cheque number nor useChequeBook is given', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await postDatedChequeService.createPDC({ bankAccountId: 'bank-1', direction: 'ISSUED', dueDate: '2026-09-01', amount: 5000 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CHQ-002')
+  })
+
+  it('useChequeBook auto-consumes the next number and stamps chequeBookId on the created row', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(chequeBookService.consumeNextChequeNumber).mockResolvedValue({ chequeBookId: 'book-1', chequeNumber: '100234' })
+
+    const res = await postDatedChequeService.createPDC({ bankAccountId: 'bank-1', useChequeBook: true, direction: 'ISSUED', dueDate: '2026-09-01', amount: 5000 })
+
+    expect(res.success).toBe(true)
+    expect(chequeBookService.consumeNextChequeNumber).toHaveBeenCalledWith(db, 'bank-1')
+    expect(db.postDatedCheque.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ chequeNumber: '100234', chequeBookId: 'book-1' })
+    }))
+  })
+
+  it('useChequeBook is rejected on a RECEIVED cheque — the number belongs to the payer\'s own bank', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await postDatedChequeService.createPDC({ bankAccountId: 'bank-1', useChequeBook: true, direction: 'RECEIVED', dueDate: '2026-09-01', amount: 5000 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CHQ-005')
+    expect(chequeBookService.consumeNextChequeNumber).not.toHaveBeenCalled()
+  })
+
+  it('useChequeBook fails with CHQ-001 when no active cheque book has numbers remaining', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(chequeBookService.consumeNextChequeNumber).mockResolvedValue(null)
+
+    const res = await postDatedChequeService.createPDC({ bankAccountId: 'bank-1', useChequeBook: true, direction: 'ISSUED', dueDate: '2026-09-01', amount: 5000 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CHQ-001')
+    expect(db.postDatedCheque.create).not.toHaveBeenCalled()
   })
 })
 

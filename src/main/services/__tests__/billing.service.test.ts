@@ -9,6 +9,7 @@ vi.mock('../notification.service', () => ({ createNotification: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled } from '../industry-template.service'
+import { inventoryService } from '../inventory.service'
 import { billingService } from '../billing.service'
 import { generateLicenseKey } from '../license.service'
 
@@ -524,6 +525,62 @@ describe('billingService.createInvoice', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('INV-002')
+  })
+})
+
+// Phase 63 — zero-value/free-of-cost billing. isFreeOfCost is enforced
+// server-side, never trusted from the client's own unitPrice — the point of
+// the field is that the client can only flag a line as qualifying, not set
+// its own "free" price.
+describe('billingService.createInvoice — Phase 63 zero-value/free-of-cost billing', () => {
+  it('forces unitPrice/tax/discount to 0 on a FOC line, ignoring whatever the client sent', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 999, discountAmount: 50, taxRate: 18, isFreeOfCost: true, schemeId: 'scheme-1' }],
+    })
+
+    expect(res.success).toBe(true)
+    const itemCreateCall = db.invoiceItem.create.mock.calls[0][0] as { data: { unitPrice: number; taxAmount: number; discountAmount: number; lineTotal: number; isFreeOfCost: boolean; schemeId: string } }
+    expect(itemCreateCall.data.unitPrice).toBe(0)
+    expect(itemCreateCall.data.taxAmount).toBe(0)
+    expect(itemCreateCall.data.discountAmount).toBe(0)
+    expect(itemCreateCall.data.lineTotal).toBe(0)
+    expect(itemCreateCall.data.isFreeOfCost).toBe(true)
+    expect(itemCreateCall.data.schemeId).toBe('scheme-1')
+  })
+
+  it('still deducts real stock for a FOC line, even though revenue is zero', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 3, unitPrice: 0, discountAmount: 0, taxRate: 0, isFreeOfCost: true }],
+    })
+
+    // inventoryService.reduceStockTx is mocked at module level in this file —
+    // asserting it ran for the real quantity confirms FOC lines aren't
+    // silently skipped the way a zero-quantity line would be.
+    expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
+      expect.anything(), 'prod-1', 3, expect.any(String), 'INVOICE', expect.any(String), undefined
+    )
+  })
+
+  it('a non-FOC line on the same invoice keeps its own real price, unaffected', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 18, isFreeOfCost: false }],
+    })
+
+    const itemCreateCall = db.invoiceItem.create.mock.calls[0][0] as { data: { unitPrice: number; isFreeOfCost: boolean } }
+    expect(itemCreateCall.data.unitPrice).toBe(200)
+    expect(itemCreateCall.data.isFreeOfCost).toBe(false)
   })
 })
 

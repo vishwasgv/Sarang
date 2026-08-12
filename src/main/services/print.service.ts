@@ -22,6 +22,15 @@ function escHtml(s: string | null | undefined): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+// Phase 63 — the structured config an InvoiceTemplate row carries (parsed
+// from its own configJson column). All fields optional — an absent config
+// (or a null template) renders identically to the pre-Phase-63 layout.
+export interface InvoiceTemplateConfig {
+  accentColor?: string
+  footerText?: string
+  density?: 'comfortable' | 'compact'
+}
+
 interface BusinessProfile {
   businessName: string
   ownerName?: string | null
@@ -232,7 +241,20 @@ export async function formatAmount(amount: number, symbol = '₹'): Promise<stri
 }
 
 export const printService = {
-  async generateInvoiceHtml(invoice: Invoice, profile: BusinessProfile | null): Promise<string> {
+  // Phase 63 — editable invoice template system, the phase's own named "wow
+  // factor" item. Deliberately a thin visual layer, not a rewrite: every
+  // financial/data field below (GST breakup, line items, totals) is computed
+  // exactly as before, regardless of templateConfig — only accent color,
+  // footer text, and spacing density vary, which is what actually
+  // distinguishes the seeded starter templates (Classic/Modern/Minimal/
+  // GST-detailed). Kept intentionally narrow to avoid the highest
+  // regression-risk change in this whole phase touching anything but
+  // presentation.
+  async generateInvoiceHtml(invoice: Invoice, profile: BusinessProfile | null, templateConfig?: InvoiceTemplateConfig | null): Promise<string> {
+    const accent = escHtml(templateConfig?.accentColor || '#00AEEF')
+    const footerLine = escHtml(templateConfig?.footerText || 'Thank you for your business!')
+    const compact = templateConfig?.density === 'compact'
+    const bodyPadding = compact ? '14mm' : '20mm'
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -294,12 +316,12 @@ export const printService = {
 <title>${escHtml(docLabel)} ${invoice.invoiceNumber}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #00AEEF; padding-bottom: 16px; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: ${bodyPadding}; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid ${accent}; padding-bottom: 16px; }
   .biz-name { font-size: 22px; font-weight: 700; color: #0F172A; }
   .biz-meta { font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.5; }
   .invoice-meta { text-align: right; }
-  .inv-number { font-size: 16px; font-weight: 700; color: #00AEEF; }
+  .inv-number { font-size: 16px; font-weight: 700; color: ${accent}; }
   .inv-date { font-size: 11px; color: #64748b; margin-top: 4px; }
   .status-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-top: 6px; }
   .status-ACTIVE { background: #dcfce7; color: #166534; }
@@ -318,7 +340,7 @@ export const printService = {
   .totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
   .totals-table { min-width: 260px; }
   .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: #475569; }
-  .totals-total { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #0F172A; border-top: 2px solid #00AEEF; margin-top: 4px; }
+  .totals-total { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #0F172A; border-top: 2px solid ${accent}; margin-top: 4px; }
   .totals-balance { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; font-weight: 600; color: #EF4444; }
   .qr-section { text-align: center; margin: 16px 0; }
   .qr-label { font-size: 11px; font-weight: 600; color: #0F172A; margin-bottom: 8px; }
@@ -393,7 +415,7 @@ export const printService = {
   ${qrHtml}
 
   <div class="footer">
-    <p>Thank you for your business!</p>
+    <p>${footerLine}</p>
     <p style="margin-top:8px;font-style:italic;color:#64748b;font-size:9px">This is a computer-generated document. Calculations are based on data entered by the user. Verify all totals before use for legal or tax purposes.</p>
     <p style="margin-top:4px">${await aszurexFooterHtml(10)}</p>
   </div>
@@ -1273,6 +1295,259 @@ export const printService = {
 
   <div class="footer">
     Computer-generated purchase order.<br/>
+    ${await aszurexFooterHtml(10)}
+  </div>
+</body>
+</html>`
+  },
+
+  // Phase 63 print gap closed — Bill had no print/PDF at all before this.
+  // Mirrors generatePurchaseOrderHtml's structure exactly (business header,
+  // "billed by" party box, line-items table, totals, footer), but a
+  // BillItem line can be a product OR a free-text service (unlike
+  // PurchaseOrderItem, which is always a product) — same duality
+  // SalesOrderItem has, handled the same way in generateSalesOrderHtml below.
+  async generateBillHtml(bill: {
+    billNumber: string
+    billDate: string | Date
+    dueDate?: string | Date | null
+    status: string
+    notes?: string | null
+    supplier: { supplierName: string; supplierCode?: string | null; phone?: string | null } | null
+    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
+    subtotal: number; taxAmount: number; totalAmount: number; balanceAmount: number
+  }, profile: BusinessProfile | null): Promise<string> {
+    const sym = escHtml(profile?.currencySymbol ?? '₹')
+    const bizName = escHtml(profile?.businessName ?? 'Business')
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
+    const supplierDisplay = escHtml(bill.supplier?.supplierName ?? 'Supplier')
+
+    const itemsHtml = bill.items.map(item => `
+      <tr>
+        <td>${item.product ? escHtml(item.product.productName) + (item.product.sku ? `<br/><span style="font-size:9px;color:#94a3b8">SKU: ${escHtml(item.product.sku)}</span>` : '') : escHtml(item.serviceDescription ?? '')}</td>
+        <td class="right">${item.quantity}${item.product ? ' ' + escHtml(item.product.unit) : ''}</td>
+        <td class="right">${formatAmount(item.unitCost, sym)}</td>
+        <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
+        <td class="right bold">${formatAmount(item.total, sym)}</td>
+      </tr>`).join('')
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bill ${escHtml(bill.billNumber)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #00AEEF; padding-bottom: 16px; }
+  .biz-name { font-size: 22px; font-weight: 700; color: #0F172A; }
+  .biz-meta { font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.5; }
+  .doc-meta { text-align: right; }
+  .doc-label { font-size: 20px; font-weight: 700; color: #0284c7; letter-spacing: 0.05em; }
+  .doc-number { font-size: 16px; font-weight: 700; color: #075985; margin-top: 2px; }
+  .doc-date { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .party-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; }
+  .party-name { font-weight: 600; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #e0f2fe; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; color: #075985; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; }
+  .right { text-align: right; }
+  .bold { font-weight: 600; }
+  .totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-table { min-width: 260px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: #475569; }
+  .totals-total { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #0F172A; border-top: 2px solid #00AEEF; margin-top: 4px; }
+  .status-badge { display: inline-block; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+  .footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center; color: #94a3b8; font-size: 10px; }
+  .notice { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #075985; margin-bottom: 16px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body style="position:relative;z-index:0;">
+  ${watermarkHtml(profile)}
+  <div class="header">
+    <div>
+      ${profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
+      <div class="biz-name">${bizName}</div>
+      <div class="biz-meta">
+        ${[profile?.address, profile?.city, profile?.state].filter(Boolean).map(escHtml).join(', ')}<br/>
+        ${profile?.phone ? 'Ph: ' + escHtml(profile.phone) : ''}
+        ${profile?.email ? ' | ' + escHtml(profile.email) : ''}
+        ${profile?.taxNumber ? '<br/>GSTIN: ' + escHtml(profile.taxNumber) : ''}
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="doc-label">BILL</div>
+      <div class="doc-number">${escHtml(bill.billNumber)}</div>
+      <div class="doc-date">Date: ${formatDate(bill.billDate)}</div>
+      ${bill.dueDate ? `<div class="doc-date">Due: ${formatDate(bill.dueDate)}</div>` : ''}
+      <div class="status-badge">${escHtml(bill.status.replace(/_/g, ' '))}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Billed By (Supplier)</div>
+    <div class="party-box">
+      <div class="party-name">${supplierDisplay}</div>
+      ${bill.supplier?.supplierCode ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${escHtml(bill.supplier.supplierCode)}</div>` : ''}
+      ${bill.supplier?.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(bill.supplier.phone)}</div>` : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="right">Qty</th>
+        <th class="right">Unit Cost</th>
+        <th class="right">Tax%</th>
+        <th class="right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-table">
+      <div class="totals-row"><span>Subtotal</span><span>${formatAmount(bill.subtotal, sym)}</span></div>
+      ${bill.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(bill.taxAmount, sym)}</span></div>` : ''}
+      <div class="totals-total"><span>Total Amount</span><span>${formatAmount(bill.totalAmount, sym)}</span></div>
+      ${bill.balanceAmount > 0 && bill.balanceAmount !== bill.totalAmount ? `<div class="totals-row"><span>Balance Due</span><span>${formatAmount(bill.balanceAmount, sym)}</span></div>` : ''}
+    </div>
+  </div>
+
+  ${bill.notes ? `<div class="notice"><strong>Notes:</strong> ${escHtml(bill.notes)}</div>` : ''}
+
+  <div class="footer">
+    Computer-generated bill record.<br/>
+    ${await aszurexFooterHtml(10)}
+  </div>
+</body>
+</html>`
+  },
+
+  // Phase 63 print gap closed — Sales Order had no print/PDF at all before
+  // this. Mirrors generatePurchaseOrderHtml exactly (its own mirror-image
+  // document — links to Customer, not Supplier) with the same
+  // product-or-service line duality generateBillHtml above handles.
+  async generateSalesOrderHtml(so: {
+    soNumber: string
+    orderDate: string | Date
+    expectedDate?: string | Date | null
+    status: string
+    notes?: string | null
+    customer: { customerName: string; customerCode?: string | null; phone?: string | null } | null
+    items: Array<{ quantity: number; unitPrice: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
+    subtotal: number; taxAmount: number; totalAmount: number
+  }, profile: BusinessProfile | null): Promise<string> {
+    const sym = escHtml(profile?.currencySymbol ?? '₹')
+    const bizName = escHtml(profile?.businessName ?? 'Business')
+    const _fmtSettings = await getPrintFormatSettings()
+    const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
+    const customerDisplay = escHtml(so.customer?.customerName ?? 'Customer')
+
+    const itemsHtml = so.items.map(item => `
+      <tr>
+        <td>${item.product ? escHtml(item.product.productName) + (item.product.sku ? `<br/><span style="font-size:9px;color:#94a3b8">SKU: ${escHtml(item.product.sku)}</span>` : '') : escHtml(item.serviceDescription ?? '')}</td>
+        <td class="right">${item.quantity}${item.product ? ' ' + escHtml(item.product.unit) : ''}</td>
+        <td class="right">${formatAmount(item.unitPrice, sym)}</td>
+        <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
+        <td class="right bold">${formatAmount(item.total, sym)}</td>
+      </tr>`).join('')
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Order ${escHtml(so.soNumber)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #00AEEF; padding-bottom: 16px; }
+  .biz-name { font-size: 22px; font-weight: 700; color: #0F172A; }
+  .biz-meta { font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.5; }
+  .doc-meta { text-align: right; }
+  .doc-label { font-size: 20px; font-weight: 700; color: #0284c7; letter-spacing: 0.05em; }
+  .doc-number { font-size: 16px; font-weight: 700; color: #075985; margin-top: 2px; }
+  .doc-date { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .party-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; }
+  .party-name { font-weight: 600; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #e0f2fe; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; color: #075985; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; }
+  .right { text-align: right; }
+  .bold { font-weight: 600; }
+  .totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-table { min-width: 260px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: #475569; }
+  .totals-total { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #0F172A; border-top: 2px solid #00AEEF; margin-top: 4px; }
+  .status-badge { display: inline-block; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+  .footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center; color: #94a3b8; font-size: 10px; }
+  .notice { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #075985; margin-bottom: 16px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body style="position:relative;z-index:0;">
+  ${watermarkHtml(profile)}
+  <div class="header">
+    <div>
+      ${profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
+      <div class="biz-name">${bizName}</div>
+      <div class="biz-meta">
+        ${[profile?.address, profile?.city, profile?.state].filter(Boolean).map(escHtml).join(', ')}<br/>
+        ${profile?.phone ? 'Ph: ' + escHtml(profile.phone) : ''}
+        ${profile?.email ? ' | ' + escHtml(profile.email) : ''}
+        ${profile?.taxNumber ? '<br/>GSTIN: ' + escHtml(profile.taxNumber) : ''}
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="doc-label">SALES ORDER</div>
+      <div class="doc-number">${escHtml(so.soNumber)}</div>
+      <div class="doc-date">Date: ${formatDate(so.orderDate)}</div>
+      ${so.expectedDate ? `<div class="doc-date">Expected by: ${formatDate(so.expectedDate)}</div>` : ''}
+      <div class="status-badge">${escHtml(so.status.replace(/_/g, ' '))}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Sold To (Customer)</div>
+    <div class="party-box">
+      <div class="party-name">${customerDisplay}</div>
+      ${so.customer?.customerCode ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${escHtml(so.customer.customerCode)}</div>` : ''}
+      ${so.customer?.phone ? `<div style="font-size:11px;color:#64748b;margin-top:2px">Ph: ${escHtml(so.customer.phone)}</div>` : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="right">Qty</th>
+        <th class="right">Unit Price</th>
+        <th class="right">Tax%</th>
+        <th class="right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-table">
+      <div class="totals-row"><span>Subtotal</span><span>${formatAmount(so.subtotal, sym)}</span></div>
+      ${so.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(so.taxAmount, sym)}</span></div>` : ''}
+      <div class="totals-total"><span>Total Amount</span><span>${formatAmount(so.totalAmount, sym)}</span></div>
+    </div>
+  </div>
+
+  ${so.notes ? `<div class="notice"><strong>Notes:</strong> ${escHtml(so.notes)}</div>` : ''}
+
+  <div class="footer">
+    Computer-generated sales order.<br/>
     ${await aszurexFooterHtml(10)}
   </div>
 </body>

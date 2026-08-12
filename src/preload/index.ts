@@ -110,7 +110,54 @@ const api: IpcChannels = {
     list: (p) => invoke('bills:list', p),
     get: (id) => invoke('bills:get', id),
     create: (p) => invoke('bills:create', p),
-    void: (p) => invoke('bills:void', p)
+    void: (p) => invoke('bills:void', p),
+    print: (id) => invoke('bills:print', id)
+  },
+  salesOrders: {
+    list: (p) => invoke('salesOrders:list', p),
+    get: (id) => invoke('salesOrders:get', id),
+    create: (p) => invoke('salesOrders:create', p),
+    confirm: (id) => invoke('salesOrders:confirm', id),
+    cancel: (p) => invoke('salesOrders:cancel', p),
+    createInvoice: (p) => invoke('salesOrders:createInvoice', p),
+    print: (id) => invoke('salesOrders:print', id)
+  },
+  priceLists: {
+    list: (p) => invoke('priceLists:list', p),
+    get: (id) => invoke('priceLists:get', id),
+    create: (p) => invoke('priceLists:create', p),
+    update: (p) => invoke('priceLists:update', p),
+    setItems: (p) => invoke('priceLists:setItems', p),
+    resolve: (p) => invoke('priceLists:resolve', p)
+  },
+  recurringProfiles: {
+    list: (p) => invoke('recurringProfiles:list', p),
+    get: (id) => invoke('recurringProfiles:get', id),
+    create: (p) => invoke('recurringProfiles:create', p),
+    update: (p) => invoke('recurringProfiles:update', p),
+    delete: (id) => invoke('recurringProfiles:delete', id)
+  },
+  pricingSchemes: {
+    list: (p) => invoke('pricingSchemes:list', p),
+    create: (p) => invoke('pricingSchemes:create', p),
+    update: (p) => invoke('pricingSchemes:update', p),
+    delete: (id) => invoke('pricingSchemes:delete', id),
+    evaluateCart: (p) => invoke('pricingSchemes:evaluateCart', p)
+  },
+  invoiceTemplates: {
+    list: () => invoke('invoiceTemplates:list'),
+    create: (p) => invoke('invoiceTemplates:create', p),
+    update: (p) => invoke('invoiceTemplates:update', p),
+    delete: (id) => invoke('invoiceTemplates:delete', id),
+    setBusinessDefault: (p) => invoke('invoiceTemplates:setBusinessDefault', p)
+  },
+  approvalWorkflows: {
+    list: (documentType) => invoke('approvalWorkflows:list', documentType),
+    create: (p) => invoke('approvalWorkflows:create', p),
+    update: (p) => invoke('approvalWorkflows:update', p),
+    delete: (id) => invoke('approvalWorkflows:delete', id),
+    getInstanceForDocument: (p) => invoke('approvalWorkflows:getInstanceForDocument', p),
+    actOnStep: (p) => invoke('approvalWorkflows:actOnStep', p)
   },
   supplierPayments: {
     record: (p) => invoke('supplierPayments:record', p),
@@ -158,6 +205,12 @@ const api: IpcChannels = {
     create: (p) => invoke('postDatedCheques:create', p),
     list: (p) => invoke('postDatedCheques:list', p),
     updateStatus: (p) => invoke('postDatedCheques:updateStatus', p)
+  },
+  chequeBooks: {
+    create: (p) => invoke('chequeBooks:create', p),
+    list: (bankAccountId) => invoke('chequeBooks:list', bankAccountId),
+    getNextNumber: (bankAccountId) => invoke('chequeBooks:getNextNumber', bankAccountId),
+    setActive: (p) => invoke('chequeBooks:setActive', p)
   },
   fixedAssets: {
     create: (p) => invoke('fixedAssets:create', p),
@@ -650,6 +703,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('quotations:create', p),
     updateStatus: (p: unknown) => invoke('quotations:updateStatus', p),
     convertToInvoice: (id: string) => invoke('quotations:convertToInvoice', id),
+    convertToRetainer: (id: string) => invoke('quotations:convertToRetainer', id),
     print: (id: string) => invoke('quotations:print', id),
     printReceipt: (p: unknown) => invoke('quotations:printReceipt', p),
     exportPdf: (id: string) => invoke('quotations:exportPdf', id),
@@ -998,6 +1052,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('serviceProject:create', p),
     update: (p: unknown) => invoke('serviceProject:update', p),
     delete: (p: unknown) => invoke('serviceProject:delete', p),
+    generateInvoice: (p: unknown) => invoke('serviceProject:generateInvoice', p),
   },
   milestone: {
     list: (p: unknown) => invoke('milestone:list', p),

@@ -23,6 +23,7 @@ interface Quotation {
   totalAmount: number; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
   invoice?: { id: string; invoiceNumber: string } | null
   customer?: { id: string; customerName: string; phone?: string | null; email?: string | null } | null
+  retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED' | null
 }
 
 // Matches quotation.service.ts's status type: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED'.
@@ -111,6 +112,23 @@ export function QuotationsScreen() {
       }
     } catch {
       toastError(t('quotations.failedConvert'))
+    } finally {
+      setConverting(null)
+    }
+  }
+
+  async function convertToRetainer(q: Quotation) {
+    setConverting(q.id)
+    try {
+      const res = await window.api.quotations.convertToRetainer(q.id)
+      if (res.success) {
+        toastSuccess(t('quotations.convertedToRetainer'))
+        loadData()
+      } else {
+        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvertRetainer'))
+      }
+    } catch {
+      toastError(t('quotations.failedConvertRetainer'))
     } finally {
       setConverting(null)
     }
@@ -222,13 +240,25 @@ export function QuotationsScreen() {
                   {q.invoice.invoiceNumber} <ChevronRight size={12} className="inline" />
                 </button>
               ) : q.status !== 'EXPIRED' && canCreate ? (
-                <button
-                  onClick={() => convertToInvoice(q)}
-                  disabled={converting === q.id}
-                  className="flex items-center gap-1 text-xs text-brand font-semibold hover:underline disabled:opacity-50 whitespace-nowrap">
-                  <ArrowRightCircle size={13} />
-                  {converting === q.id ? t('quotations.converting') : t('quotations.convertToInvoice')}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => convertToInvoice(q)}
+                    disabled={converting === q.id}
+                    className="flex items-center gap-1 text-xs text-brand font-semibold hover:underline disabled:opacity-50 whitespace-nowrap">
+                    <ArrowRightCircle size={13} />
+                    {converting === q.id ? t('quotations.converting') : t('quotations.convertToInvoice')}
+                  </button>
+                  {q.retainerType && (
+                    <button
+                      onClick={() => convertToRetainer(q)}
+                      disabled={converting === q.id}
+                      title={t('quotations.retainerHint') as string}
+                      className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline disabled:opacity-50 whitespace-nowrap">
+                      <RefreshCw size={12} />
+                      {converting === q.id ? t('quotations.converting') : t('quotations.convertToRetainer')}
+                    </button>
+                  )}
+                </div>
               ) : null}
               <button onClick={() => handlePrint(q)} disabled={printing === q.id} title="Print (A4)"
                 className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-brand transition-all disabled:opacity-30">

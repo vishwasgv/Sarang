@@ -84,6 +84,41 @@ describe('printService.generateInvoiceHtml', () => {
   })
 })
 
+// Phase 63 — the editable invoice template system. A thin visual layer:
+// financial data must stay byte-identical regardless of template, only
+// accent color/footer/density vary.
+describe('printService.generateInvoiceHtml — Phase 63 template config', () => {
+  it('renders the default accent color and footer text when no template config is given', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
+    expect(html).toContain('#00AEEF')
+    expect(html).toContain('Thank you for your business!')
+    expect(html).toContain('padding: 20mm')
+  })
+
+  it('applies a custom accent color throughout, replacing the default everywhere it appears', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { accentColor: '#7C3AED' })
+    expect(html).toContain('#7C3AED')
+    expect(html).not.toContain('#00AEEF')
+  })
+
+  it('applies a custom footer line in place of the default', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { footerText: 'GST Invoice — thank you!' })
+    expect(html).toContain('GST Invoice — thank you!')
+    expect(html).not.toContain('<p>Thank you for your business!</p>')
+  })
+
+  it('compact density reduces body padding without changing any financial figure', async () => {
+    const comfortable = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
+    const compact = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { density: 'compact' })
+    expect(compact).toContain('padding: 14mm')
+    // Strip the <style> block (the only place padding/color differ) and
+    // confirm the remaining document body — every dollar figure, every line
+    // item — is byte-identical between the two.
+    const stripStyle = (h: string) => h.replace(/<style>[\s\S]*?<\/style>/, '')
+    expect(stripStyle(compact)).toBe(stripStyle(comfortable))
+  })
+})
+
 // Regression coverage for a real gap found and fixed 2026-07-08: the UPI QR
 // only ever checked whether `upiId` was filled in, never the business's
 // actual country — UPI is exclusively an Indian payment system, so a
@@ -449,5 +484,81 @@ describe('printService — Composition Scheme "Bill of Supply" labelling', () =>
     const html = await printService.generateReceiptHtml(makeInvoice() as never, { ...profile, gstScheme: 'COMPOSITION' } as never, '80mm')
 
     expect(html).toContain('Bill of Supply')
+  })
+})
+
+// Real print gap closed 2026-08-12 (user-reported: "ensure we can print all
+// kinds of invoices and bill") — Bill had zero print/PDF support at all
+// before this. Mirrors generatePurchaseOrderHtml's own test coverage shape.
+describe('printService.generateBillHtml', () => {
+  const bill = {
+    billNumber: 'BILL-00001',
+    billDate: '2026-08-01T00:00:00.000Z',
+    dueDate: '2026-08-15T00:00:00.000Z',
+    status: 'OPEN',
+    notes: null,
+    supplier: { supplierName: 'Print Verify Supplier', supplierCode: 'SUP-00001', phone: '9876500000' },
+    items: [
+      { quantity: 3, unitCost: 100, taxRate: 18, total: 354, product: { productName: 'Print Verify Widget', sku: 'PVW-01', unit: 'PCS' }, serviceDescription: null }
+    ],
+    subtotal: 300, taxAmount: 54, totalAmount: 354, balanceAmount: 354
+  }
+
+  it('renders the bill number, supplier, and a product line', async () => {
+    const html = await printService.generateBillHtml(bill as never, profile as never)
+    expect(html).toContain('BILL-00001')
+    expect(html).toContain('Print Verify Supplier')
+    expect(html).toContain('Print Verify Widget')
+    expect(html).toContain('354.00')
+  })
+
+  it('renders a service-only line via serviceDescription when product is null', async () => {
+    const serviceBill = { ...bill, items: [{ quantity: 1, unitCost: 5000, taxRate: 18, total: 5900, product: null, serviceDescription: 'Consulting fee' }] }
+    const html = await printService.generateBillHtml(serviceBill as never, profile as never)
+    expect(html).toContain('Consulting fee')
+  })
+
+  it('shows Balance Due only when it differs from the total (partially paid)', async () => {
+    const partiallyPaid = { ...bill, balanceAmount: 100 }
+    const html = await printService.generateBillHtml(partiallyPaid as never, profile as never)
+    expect(html).toContain('Balance Due')
+    const fullyOwed = { ...bill, balanceAmount: bill.totalAmount }
+    const htmlFull = await printService.generateBillHtml(fullyOwed as never, profile as never)
+    expect(htmlFull).not.toContain('Balance Due')
+  })
+})
+
+describe('printService.generateSalesOrderHtml', () => {
+  const salesOrder = {
+    soNumber: 'SO-00001',
+    orderDate: '2026-08-01T00:00:00.000Z',
+    expectedDate: '2026-08-10T00:00:00.000Z',
+    status: 'CONFIRMED',
+    notes: null,
+    customer: { customerName: 'Print Verify Customer', customerCode: 'CUS-00001', phone: '9876500000' },
+    items: [
+      { quantity: 5, unitPrice: 100, taxRate: 0, total: 500, product: { productName: 'Print Verify Widget', sku: 'PVW-01', unit: 'PCS' }, serviceDescription: null }
+    ],
+    subtotal: 500, taxAmount: 0, totalAmount: 500
+  }
+
+  it('renders the SO number, customer, and a product line', async () => {
+    const html = await printService.generateSalesOrderHtml(salesOrder as never, profile as never)
+    expect(html).toContain('SO-00001')
+    expect(html).toContain('Print Verify Customer')
+    expect(html).toContain('Print Verify Widget')
+    expect(html).toContain('500.00')
+  })
+
+  it('renders a service-only line via serviceDescription when product is null', async () => {
+    const serviceSO = { ...salesOrder, items: [{ quantity: 1, unitPrice: 2000, taxRate: 18, total: 2360, product: null, serviceDescription: 'Consulting fee' }] }
+    const html = await printService.generateSalesOrderHtml(serviceSO as never, profile as never)
+    expect(html).toContain('Consulting fee')
+  })
+
+  it('shows the status badge with underscores replaced by spaces', async () => {
+    const pending = { ...salesOrder, status: 'PENDING_APPROVAL' }
+    const html = await printService.generateSalesOrderHtml(pending as never, profile as never)
+    expect(html).toContain('PENDING APPROVAL')
   })
 })

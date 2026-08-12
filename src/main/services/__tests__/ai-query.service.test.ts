@@ -893,3 +893,102 @@ describe('askQuestion — Phase 62 Banking/Ledger AI intents', () => {
     expect(whereArg.lte.getTime()).toBeGreaterThanOrEqual(thisMonthEnd.getTime())
   })
 })
+
+describe('askQuestion — Phase 63 Sales Orders/Pricing AI intents', () => {
+  it('answers "create a sales order for Ramesh" via the fast-path — points to the screen, never claims to have created one', async () => {
+    vi.mocked(searchCustomers).mockResolvedValue({ success: true, data: [{ id: 'cust-1', customerName: 'Ramesh Kumar' }] } as never)
+    const db = makeMockDb()
+    db.$transaction = vi.fn((arg: unknown) => (Array.isArray(arg) ? Promise.all(arg) : arg))
+    db.salesOrder = {
+      findMany: vi.fn().mockResolvedValue([{ soNumber: 'SO-001', status: 'CONFIRMED' }]),
+      count: vi.fn().mockResolvedValue(1)
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Create a sales order for Ramesh')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('salesOrders.createForCustomer')
+    expect(res.data?.answer).toContain('New Sales Order')
+    expect(res.data?.answer).toContain('SO-001')
+  })
+
+  it('answers "what\'s on my price list for Ramesh" via the fast-path, resolving the customer then their assigned tiers', async () => {
+    vi.mocked(searchCustomers).mockResolvedValue({ success: true, data: [{ id: 'cust-1', customerName: 'Ramesh Kumar', priceListId: 'pl-1' }] } as never)
+    const db = makeMockDb()
+    db.priceList = {
+      findUnique: vi.fn().mockResolvedValue({
+        name: 'Wholesale', items: [{ minQuantity: 50, unitPrice: 90, product: { productName: 'Widget' } }]
+      })
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's on my price list for Ramesh?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('pricing.priceListForCustomer')
+    expect(res.data?.answer).toContain('Wholesale')
+    expect(res.data?.answer).toContain('Widget')
+  })
+
+  it('answers "show me this month\'s free-scheme cost" via the fast-path, using the real read-only Prisma connection', async () => {
+    vi.mocked(getReadOnlyPrisma).mockResolvedValue({
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { quantity: 2, product: { productName: 'Widget', sellingPrice: 100 }, scheme: { name: 'Buy 2 Get 1' } }
+        ])
+      }
+    } as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("Show me this month's free-scheme cost")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('pricing.schemeCostThisMonth')
+    expect(res.data?.answer).toContain('₹200.00')
+  })
+
+  it('answers "switch my invoice template" via the fast-path, listing templates and the current default', async () => {
+    const db = makeMockDb()
+    db.invoiceTemplate = {
+      findFirst: vi.fn().mockResolvedValue({ id: 't-1', isSystem: true }),
+      findMany: vi.fn().mockResolvedValue([
+        { id: 't-1', name: 'Classic', isDefault: true, configJson: '{}' },
+        { id: 't-2', name: 'Modern', isDefault: false, configJson: '{}' }
+      ])
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Switch my invoice template')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('invoiceTemplate.switch')
+    expect(res.data?.answer).toContain('Classic')
+    expect(res.data?.answer).toContain('Modern')
+  })
+
+  it('answers "what\'s still pending approval" via the fast-path, combining Sales Orders and Purchase Orders', async () => {
+    const db = makeMockDb()
+    db.$transaction = vi.fn((arg: unknown) => (Array.isArray(arg) ? Promise.all(arg) : arg))
+    db.salesOrder = {
+      findMany: vi.fn().mockResolvedValue([{ soNumber: 'SO-002', customer: { customerName: 'Ramesh Kumar' } }]),
+      count: vi.fn().mockResolvedValue(1)
+    }
+    db.purchaseOrder = {
+      findMany: vi.fn().mockResolvedValue([{ poNumber: 'PO-009', supplier: { supplierName: 'Acme Supplies' } }]),
+      count: vi.fn().mockResolvedValue(1)
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's still pending approval?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('approvals.pendingApproval')
+    expect(res.data?.answer).toContain('SO-002')
+    expect(res.data?.answer).toContain('PO-009')
+  })
+})

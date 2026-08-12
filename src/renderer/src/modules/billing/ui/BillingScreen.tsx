@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed, LayoutGrid } from 'lucide-react'
+import { ShoppingCart, Search, X, Plus, Minus, UserPlus, User, Trash2, Ruler, HandCoins, UtensilsCrossed, LayoutGrid, Gift } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
@@ -24,7 +24,7 @@ interface Product {
   isPrescriptionRequired?: boolean
   category?: { id: string; name: string } | null
 }
-interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
+interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null }
 interface HeldSaleSummary {
   id: string; label: string | null; customerId: string | null; customerName: string | null
   itemCount: number; totalAmount: number; createdAt: string
@@ -73,7 +73,17 @@ interface CartItem {
   prescriptionPatientName?: string
   prescriptionDoctorName?: string
   prescriptionDate?: string
+  // Phase 63 — the scheme engine's "wow factor" line items: a free-of-cost
+  // line added from a BUY_X_GET_Y_FREE suggestion, or a scheme-sourced
+  // discount applied to an existing line. Server re-enforces isFreeOfCost
+  // regardless of what's sent (see billing.service.ts's createInvoice) —
+  // this is only ever a client-side suggestion, never trusted as-is.
+  isFreeOfCost?: boolean
+  schemeId?: string
 }
+
+interface SchemeFocSuggestion { productId: string; productName: string; quantity: number; schemeId: string; schemeName: string }
+interface SchemeDiscountSuggestion { productId: string; productName: string; discountPercent: number; schemeId: string; schemeName: string }
 
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash' },
@@ -139,6 +149,15 @@ export function BillingScreen() {
   const [areaCalc, setAreaCalc] = useState<Record<string, { l: string; w: string; open: boolean }>>({})
 
   const [cart, setCart] = useState<CartItem[]>([])
+  // Phase 63 — scheme engine suggestions (buy-X-get-Y-free / slab discount).
+  // Pure client-side suggestion, re-evaluated whenever the cart's
+  // product/quantity mix changes; applying one just edits the cart the same
+  // way a cashier would by hand — the server independently re-derives and
+  // enforces isFreeOfCost on submit, so a stale/manipulated suggestion can
+  // never under-price an invoice.
+  const [schemeFocSuggestions, setSchemeFocSuggestions] = useState<SchemeFocSuggestion[]>([])
+  const [schemeDiscountSuggestions, setSchemeDiscountSuggestions] = useState<SchemeDiscountSuggestion[]>([])
+  const [dismissedSchemeIds, setDismissedSchemeIds] = useState<Set<string>>(new Set())
   // Phase 58 §2 — tip / service-charge quick-add (no ad-hoc-line concept
   // exists anywhere in this app; this adds a real lookup-or-create generic
   // "Tip / Service Charge" Product to the cart with a custom price, same as
@@ -228,6 +247,62 @@ export function BillingScreen() {
   // what actually gets charged.
   const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0)
   const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount), [cart, effectiveGlobalDiscount])
+
+  // Phase 63 — re-evaluate scheme suggestions whenever the cart's real
+  // (non-FOC) product/quantity mix changes. Keyed on a flattened signature
+  // rather than the `cart` array reference itself, so quantity-only edits
+  // re-fire but unrelated re-renders don't spam evaluateCart.
+  const nonFocCartSignature = cart.filter(i => !i.isFreeOfCost).map(i => `${i.productId}:${i.quantity}`).join(',')
+  useEffect(() => {
+    const paidLines = cart.filter(i => !i.isFreeOfCost)
+    if (paidLines.length === 0) { setSchemeFocSuggestions([]); setSchemeDiscountSuggestions([]); return }
+    let cancelled = false
+    window.api.pricingSchemes.evaluateCart({ items: paidLines.map(i => ({ productId: i.productId, quantity: i.quantity })) })
+      .then(res => {
+        if (cancelled || !res.success) return
+        const data = res.data as { focLines: Array<{ productId: string; quantity: number; schemeId: string; schemeName: string }>; discounts: Array<{ productId: string; discountPercent: number; schemeId: string; schemeName: string }> }
+        const nameFor = (productId: string) => paidLines.find(i => i.productId === productId)?.productName ?? ''
+        setSchemeFocSuggestions(data.focLines.map(f => ({ ...f, productName: nameFor(f.productId) })))
+        setSchemeDiscountSuggestions(data.discounts.map(d => ({ ...d, productName: nameFor(d.productId) })))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nonFocCartSignature])
+
+  function applyFocSuggestion(s: SchemeFocSuggestion) {
+    setCart(prev => {
+      const already = prev.some(i => i.isFreeOfCost && i.schemeId === s.schemeId && i.productId === s.productId)
+      if (already) return prev
+      const source = prev.find(i => i.productId === s.productId && !i.isFreeOfCost)
+      if (!source) return prev
+      return [...prev, {
+        productId: s.productId, productName: `${source.productName} (${t('billing.freeOfCost')})`, unit: source.unit, productType: source.productType,
+        quantity: s.quantity, unitPrice: 0, discountAmount: 0, taxRate: 0, availableQty: source.availableQty,
+        isFreeOfCost: true, schemeId: s.schemeId
+      }]
+    })
+  }
+
+  function applyDiscountSuggestion(s: SchemeDiscountSuggestion) {
+    setCart(prev => prev.map(i => {
+      if (i.productId !== s.productId || i.isFreeOfCost) return i
+      const lineGross = i.quantity * i.unitPrice
+      return { ...i, discountAmount: Math.round(lineGross * (s.discountPercent / 100) * 100) / 100, schemeId: s.schemeId }
+    }))
+    setDismissedSchemeIds(prev => new Set(prev).add(s.schemeId))
+  }
+
+  function dismissScheme(schemeId: string) {
+    setDismissedSchemeIds(prev => new Set(prev).add(schemeId))
+  }
+
+  const visibleFocSuggestions = schemeFocSuggestions.filter(s =>
+    !dismissedSchemeIds.has(s.schemeId) && !cart.some(i => i.isFreeOfCost && i.schemeId === s.schemeId && i.productId === s.productId)
+  )
+  const visibleDiscountSuggestions = schemeDiscountSuggestions.filter(s =>
+    !dismissedSchemeIds.has(s.schemeId) && !cart.some(i => i.productId === s.productId && i.schemeId === s.schemeId)
+  )
 
   // Phase 58 §2 — Retail's hold/park-sale. Snapshots only the
   // fiscal/customer-relevant slice of cart state (the same fields the
@@ -611,6 +686,22 @@ export function BillingScreen() {
     if (isJewellery) {
       void loadJewelleryPriceForCartLine(product, cartKey)
     }
+    // Phase 63 gap found+fixed during live audit (2026-08-12): Price Lists
+    // were fully buildable and assignable to a customer, but `priceLists.
+    // resolve` was only ever called from the Distributor-only BulkOrderScreen
+    // — the main checkout screen every business type actually uses never
+    // called it at all, so "assign a customer a Price List and their next
+    // invoice auto-prices at the bulk rate" (an explicitly promised UAT
+    // scenario) silently never worked. Same async-resolve-after-add pattern
+    // as the jewellery branch above: add at the default price immediately
+    // (never blocks the cashier), then patch once resolved. Also covers the
+    // pre-existing CustomerClassPrice fallback for free, since resolvePrice
+    // already checks both. Skipped for loose/jewellery lines (already have
+    // their own pricing formula) and when no customer is selected yet (a
+    // walk-in sale has no counterparty to resolve against).
+    if (customer?.id && !isLoose && !isJewellery && product.productType === 'STANDARD') {
+      void loadResolvedPriceForCartLine(customer.id, product.id, cartKey)
+    }
     if (batchTrackingEnabled && product.productType === 'STANDARD' && !isLoose) {
       void loadBatchInfoForCartLine(product.id, cartKey)
     }
@@ -688,6 +779,23 @@ export function BillingScreen() {
     } catch {
       toastError(t('common.error'), t('jewellery.computeErrorDesc'))
     }
+  }
+
+  // Phase 63 — resolves a customer's Price List (or CustomerClassPrice
+  // fallback) tier for a newly-added cart line, same reasoning as its own
+  // call site's comment above. Deliberately never shown as an error toast on
+  // failure — this is a pricing SUGGESTION only (the cashier can always
+  // override the unit price by hand, same as the existing "bargaining"
+  // feature), so a failed lookup should just leave the line at its default
+  // price rather than interrupt the sale.
+  async function loadResolvedPriceForCartLine(customerId: string, productId: string, cartKey: string) {
+    try {
+      const res = await window.api.priceLists.resolve({ counterpartyId: customerId, for: 'CUSTOMER', productId, quantity: 1 })
+      if (!res.success) return
+      const { unitPrice, source } = res.data as { unitPrice: number; source: 'PRICE_LIST' | 'CUSTOMER_CLASS' | 'DEFAULT' }
+      if (source === 'DEFAULT') return
+      setCart(prev => prev.map(i => (i.serialId ?? i.variantId ?? i.productId) === cartKey ? { ...i, unitPrice } : i))
+    } catch { /* pricing suggestion only — never block the sale on a failed lookup */ }
   }
 
   // Phase 58 §2 — Jewellery: override the auto-computed making charge for
@@ -869,7 +977,9 @@ export function BillingScreen() {
           jewelleryHallmarkNumber: i.jewelleryDetail?.hallmarkNumber ?? undefined,
           prescriptionPatientName: i.prescriptionPatientName,
           prescriptionDoctorName: i.prescriptionDoctorName,
-          prescriptionDate: i.prescriptionDate
+          prescriptionDate: i.prescriptionDate,
+          isFreeOfCost: i.isFreeOfCost,
+          schemeId: i.schemeId
         })),
         globalDiscount,
         notes: notes.trim() || undefined,
@@ -1178,6 +1288,31 @@ export function BillingScreen() {
               </div>
 
               {cart.map(item => {
+                // Phase 63 — a scheme-sourced free line shares its productId
+                // with the paying line it came from (see evaluateCart's own
+                // comment: BUY_X_GET_Y_FREE always rewards the SAME
+                // product), which would collide with the shared `ck` key
+                // every other row below uses for +/- qty and remove. Render
+                // it as its own simplified, read-only row instead of
+                // reusing any of that shared mutation logic.
+                if (item.isFreeOfCost) {
+                  return (
+                    <div key={`foc:${item.schemeId}:${item.productId}`} className="bg-success/5 rounded-xl border border-success/20 px-3 py-3 grid grid-cols-[2fr_120px_100px_100px_36px] gap-2 items-center">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Gift size={13} className="text-success shrink-0" />
+                        <p className="text-sm font-medium text-dark truncate">{item.productName}</p>
+                      </div>
+                      <span className="text-center text-sm text-slate-500">{item.quantity}</span>
+                      <span className="text-end text-sm text-success font-semibold">{t('billing.freeOfCost')}</span>
+                      <span className="text-end text-sm font-semibold text-dark">{formatCurrency(0)}</span>
+                      <button
+                        onClick={() => setCart(prev => prev.filter(i => !(i.isFreeOfCost && i.schemeId === item.schemeId && i.productId === item.productId)))}
+                        className="text-slate-300 hover:text-danger transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )
+                }
                 const ck = item.serialId ?? item.variantId ?? item.productId
                 const taxable = (item.quantity * item.unitPrice) - item.discountAmount
                 const lineTax = taxable * (item.taxRate / 100)
@@ -1602,6 +1737,36 @@ export function BillingScreen() {
             />
           </div>
         </div>
+
+        {/* Phase 63 — scheme engine suggestions */}
+        {(visibleFocSuggestions.length > 0 || visibleDiscountSuggestions.length > 0) && (
+          <div className="px-6 pb-2 space-y-1.5">
+            {visibleFocSuggestions.map(s => (
+              <div key={`foc-suggestion:${s.schemeId}`} className="flex items-center justify-between gap-2 bg-success/10 border border-success/20 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Gift size={14} className="text-success shrink-0" />
+                  <p className="text-xs text-dark dark:text-slate-100 truncate">{t('billing.schemeFocOffer', { quantity: s.quantity, productName: s.productName, schemeName: s.schemeName })}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => applyFocSuggestion(s)} className="text-xs font-semibold text-success hover:text-success/80 transition-colors">{t('billing.applyScheme')}</button>
+                  <button onClick={() => dismissScheme(s.schemeId)} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
+                </div>
+              </div>
+            ))}
+            {visibleDiscountSuggestions.map(s => (
+              <div key={`discount-suggestion:${s.schemeId}`} className="flex items-center justify-between gap-2 bg-brand/10 border border-brand/20 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <HandCoins size={14} className="text-brand shrink-0" />
+                  <p className="text-xs text-dark dark:text-slate-100 truncate">{t('billing.schemeDiscountOffer', { percent: s.discountPercent, productName: s.productName, schemeName: s.schemeName })}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => applyDiscountSuggestion(s)} className="text-xs font-semibold text-brand hover:text-brand/80 transition-colors">{t('billing.applyScheme')}</button>
+                  <button onClick={() => dismissScheme(s.schemeId)} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Totals + Submit */}
         <div className="border-t border-slate-100 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-800/50 space-y-2">

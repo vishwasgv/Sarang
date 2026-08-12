@@ -12,6 +12,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { formatDate } from '@shared/utils/locale.util'
 import { formatCurrency } from '@shared/utils/currency.util'
+import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
@@ -25,6 +26,7 @@ interface PurchaseOrder {
 
 const STATUS_VARIANT: Record<string, 'neutral' | 'brand' | 'success' | 'danger' | 'warning'> = {
   DRAFT: 'neutral',
+  PENDING_APPROVAL: 'warning',
   APPROVED: 'brand',
   PARTIAL_RECEIVED: 'warning',
   RECEIVED: 'success',
@@ -84,7 +86,11 @@ export function PurchaseOrderDetailScreen() {
     try {
       const res = await window.api.purchaseOrders.approve(po.id)
       if (res.success) {
-        toastSuccess('PO Approved', `${po.poNumber} is now approved and locked for editing.`)
+        const status = (res.data as { status: string }).status
+        toastSuccess(
+          status === 'PENDING_APPROVAL' ? t('purchaseOrders.submittedForApproval') : t('purchaseOrders.poApproved'),
+          status === 'PENDING_APPROVAL' ? po.poNumber : `${po.poNumber} is now approved and locked for editing.`
+        )
         loadPO()
       } else {
         toastError('Error', res.error?.message ?? 'Failed to approve.')
@@ -219,9 +225,9 @@ export function PurchaseOrderDetailScreen() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {po.status === 'DRAFT' && canApprove && (
+          {(po.status === 'DRAFT' || po.status === 'PENDING_APPROVAL') && canApprove && (
             <Button size="sm" onClick={handleApprove} loading={approving}>
-              <CheckCircle size={14} className="me-1.5" /> {t('purchaseOrders.approve')}
+              <CheckCircle size={14} className="me-1.5" /> {po.status === 'PENDING_APPROVAL' ? t('purchaseOrders.checkApproval') : t('purchaseOrders.approve')}
             </Button>
           )}
           {po.status === 'APPROVED' && canReceive && (
@@ -229,7 +235,7 @@ export function PurchaseOrderDetailScreen() {
               <Truck size={14} className="me-1.5" /> {t('purchaseOrders.receiveStock')}
             </Button>
           )}
-          {(po.status === 'DRAFT' || po.status === 'APPROVED') && canCancel && (
+          {(po.status === 'DRAFT' || po.status === 'PENDING_APPROVAL' || po.status === 'APPROVED') && canCancel && (
             <Button variant="danger" size="sm" onClick={() => setCancelOpen(true)}>
               <XCircle size={14} className="me-1.5" /> {t('purchaseOrders.cancelPO')}
             </Button>
@@ -252,6 +258,8 @@ export function PurchaseOrderDetailScreen() {
           )}
         </div>
       </div>
+
+      <ApprovalPanel documentType="PURCHASE_ORDER" documentId={po.id} refreshSignal={po.status} onActioned={loadPO} />
 
       {/* Supplier info */}
       <div className="grid grid-cols-2 gap-4">

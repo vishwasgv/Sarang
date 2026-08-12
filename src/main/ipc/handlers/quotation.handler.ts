@@ -56,6 +56,15 @@ export function register(handle: HandleFn): void {
     return quotationService.convertToInvoice(id as string, session.userId)
   })
 
+  // Phase 63 — Estimate → auto-create Retainer Invoice on accept.
+  handle('quotations:convertToRetainer', async (id) => {
+    const deny = await requirePermission('billing.create'); if (deny) return deny
+    const bad = validateId(id, 'quotation ID'); if (bad) return bad
+    const session = getCurrentSession()
+    if (!session) return { success: false, error: { code: 'AUTH-001', message: 'Not authenticated.' } }
+    return quotationService.convertToRetainer(id as string, session.userId)
+  })
+
   handle('quotations:delete', async (id) => {
     const deny = await requirePermission('billing.void'); if (deny) return deny
     const bad = validateId(id, 'quotation ID'); if (bad) return bad

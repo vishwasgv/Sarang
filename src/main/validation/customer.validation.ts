@@ -29,6 +29,8 @@ export const CreateCustomerSchema = z.object({
   // strings rather than a DB-level enum.
   customerClass: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
+  // Phase 63 — formal Price List assignment, additive alongside customerClass.
+  priceListId: z.string().min(1).optional(),
   ...customerKindFields
 })
 
@@ -51,6 +53,8 @@ export const UpdateCustomerSchema = z.object({
   // strings rather than a DB-level enum.
   customerClass: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
+  // Phase 63 — formal Price List assignment, additive alongside customerClass.
+  priceListId: z.string().min(1).optional(),
   ...customerKindFields
 })
 

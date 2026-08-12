@@ -20,6 +20,12 @@ import { PurchaseOrdersScreen } from '@modules/inventory/ui/PurchaseOrdersScreen
 import { PurchaseOrderDetailScreen } from '@modules/inventory/ui/PurchaseOrderDetailScreen'
 import { BillsScreen } from '@modules/suppliers/ui/BillsScreen'
 import { BillDetailScreen } from '@modules/suppliers/ui/BillDetailScreen'
+import { SalesOrdersScreen } from '@modules/sales-orders/ui/SalesOrdersScreen'
+import { SalesOrderDetailScreen } from '@modules/sales-orders/ui/SalesOrderDetailScreen'
+import { PriceListsScreen } from '@modules/pricing/ui/PriceListsScreen'
+import { RecurringProfilesScreen } from '@modules/recurring/ui/RecurringProfilesScreen'
+import { ApprovalWorkflowsScreen } from '@modules/approvals/ui/ApprovalWorkflowsScreen'
+import { PricingSchemesScreen } from '@modules/pricing/ui/PricingSchemesScreen'
 import { SupplierPaymentsScreen } from '@modules/suppliers/ui/SupplierPaymentsScreen'
 import { ChartOfAccountsScreen } from '@modules/accounting/ui/ChartOfAccountsScreen'
 import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScreen'
@@ -282,6 +288,13 @@ export function AppRouter() {
         <Route path="/purchase-orders/:id" element={<ProtectedRoute permission="purchaseOrders.view"><PurchaseOrderDetailScreen /></ProtectedRoute>} />
         <Route path="/bills" element={<ProtectedRoute permission="bills.view"><BillsScreen /></ProtectedRoute>} />
         <Route path="/bills/:id" element={<ProtectedRoute permission="bills.view"><BillDetailScreen /></ProtectedRoute>} />
+        {/* Phase 63 — Sales Orders, the mirror image of Purchase Orders on the sales side */}
+        <Route path="/sales-orders" element={<ProtectedRoute permission="salesOrders.view"><SalesOrdersScreen /></ProtectedRoute>} />
+        <Route path="/sales-orders/:id" element={<ProtectedRoute permission="salesOrders.view"><SalesOrderDetailScreen /></ProtectedRoute>} />
+        <Route path="/pricing/price-lists" element={<ProtectedRoute permission="priceLists.view"><PriceListsScreen /></ProtectedRoute>} />
+        <Route path="/recurring-profiles" element={<ProtectedRoute permission="recurringProfiles.view"><RecurringProfilesScreen /></ProtectedRoute>} />
+        <Route path="/approval-workflows" element={<ProtectedRoute permission="approvalWorkflows.view"><ApprovalWorkflowsScreen /></ProtectedRoute>} />
+        <Route path="/pricing/schemes" element={<ProtectedRoute permission="pricingSchemes.view"><PricingSchemesScreen /></ProtectedRoute>} />
         <Route path="/supplier-payments" element={<ProtectedRoute permission="supplierPayments.view"><SupplierPaymentsScreen /></ProtectedRoute>} />
         {/* Phase 62 — Banking, Ledger & Compliance Backbone */}
         <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute permission="chartOfAccounts.view"><ChartOfAccountsScreen /></ProtectedRoute>} />

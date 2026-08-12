@@ -77,6 +77,36 @@ describe('debitNoteService.create', () => {
 
     expect((res as { data: { debitNoteNumber: string } }).data.debitNoteNumber).toBe('DN-00001')
   })
+
+  // Section 5.4's own explicit required coverage: a pre-Phase-63 (no items)
+  // record must keep using its own plain `amount` field untouched by the
+  // new sum-of-lines logic — same fallback behavior as creditNoteService.
+  it('uses the plain amount field untouched when no items are given (legacy shape)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await debitNoteService.create({ supplierId: 'sup-1', reason: 'Price correction', amount: 620 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { amount: number } }).data.amount).toBe(620)
+  })
+})
+
+// Phase 63 — Account-based line items, relabeled "Vendor Credit" in the UI.
+describe('debitNoteService.create — Phase 63 line items', () => {
+  it('computes amount as the sum of line totals, ignoring any separately-sent amount', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await debitNoteService.create({
+      supplierId: 'sup-1', reason: 'Vendor billing error', amount: 999999,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, taxRate: 18 }]
+    } as never, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { amount: number } }).data.amount).toBeCloseTo(236)
+    expect(db.__ledgerCreateCalls[0]).toMatchObject({ debitAmount: 236, creditAmount: 0 })
+  })
 })
 
 describe('debitNoteService.update', () => {

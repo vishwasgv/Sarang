@@ -22,12 +22,14 @@ const schema = z.object({
   supplierId: z.string().min(1, 'Select a supplier'),
   expectedDate: z.string().optional(),
   notes: z.string().max(500).optional(),
+  dropShipToCustomerId: z.string().optional(),
   items: z.array(itemSchema).min(1, 'Add at least one item')
 })
 
 type FormValues = z.infer<typeof schema>
 
-interface Supplier { id: string; supplierName: string; supplierCode: string }
+interface Supplier { id: string; supplierName: string; supplierCode: string; priceListId?: string | null }
+interface Customer { id: string; customerName: string; customerCode: string }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; productType: string; costPrice: number }
 
 interface PurchaseOrderFormModalProps {
@@ -104,13 +106,14 @@ function ProductPicker({ products, value, onChange, error }: {
 export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrderFormModalProps) {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
 
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: '', expectedDate: '', notes: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] }
+    defaultValues: { supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -135,13 +138,14 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
 
   useEffect(() => {
     if (!open) return
-    reset({ supplierId: '', expectedDate: '', notes: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] })
+    reset({ supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] })
     async function loadOptions() {
       setLoadingData(true)
       try {
-        const [, pRes] = await Promise.all([
+        const [, pRes, cRes] = await Promise.all([
           loadSuppliers(),
-          window.api.products.list({ isActive: true, limit: 500 })
+          window.api.products.list({ isActive: true, limit: 500 }),
+          window.api.customers.list({ limit: 200 })
         ])
         if (pRes.success) {
           const d = pRes.data as { products: Product[] }
@@ -149,6 +153,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
         } else {
           toastError('Error', pRes.error?.message ?? 'Failed to load products.')
         }
+        if (cRes.success) setCustomers((cRes.data as { customers: Customer[] }).customers ?? [])
       } catch {
         toastError('Error', 'Failed to load suppliers or products.')
       } finally {
@@ -174,6 +179,24 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     // silently price the new line item at the old product's cost.
     if (product && productId !== previousProductId) {
       setValue(`items.${index}.unitCost`, product.costPrice ?? 0)
+      // Phase 63 gap found+fixed during live audit (2026-08-12): this form
+      // never called priceLists.resolve at all, so a supplier with an
+      // assigned Price List never actually got their negotiated rate here —
+      // same gap BillingScreen.tsx had on the customer side, fixed there
+      // with the identical async-resolve-after-fill pattern (fill the
+      // default cost immediately, patch once resolved — never blocks the
+      // form). A pricing suggestion only; the buyer can still type over it.
+      const supplierId = watch('supplierId')
+      const supplier = suppliers.find(s => s.id === supplierId)
+      if (supplier?.priceListId) {
+        window.api.priceLists.resolve({ counterpartyId: supplierId, for: 'SUPPLIER', productId, quantity: 1 })
+          .then(res => {
+            if (!res.success) return
+            const { unitPrice, source } = res.data as { unitPrice: number; source: 'PRICE_LIST' | 'CUSTOMER_CLASS' | 'DEFAULT' }
+            if (source === 'PRICE_LIST') setValue(`items.${index}.unitCost`, unitPrice)
+          })
+          .catch(() => { /* pricing suggestion only — never block the form on a failed lookup */ })
+      }
     }
   }
 
@@ -189,7 +212,8 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
 
   async function onSubmit(values: FormValues) {
     try {
-      const res = await window.api.purchaseOrders.create(values)
+      const payload = { ...values, dropShipToCustomerId: values.dropShipToCustomerId || undefined }
+      const res = await window.api.purchaseOrders.create(payload)
       if (res.success) {
         const po = res.data as { id: string; poNumber: string }
         toastSuccess('PO Created', `Purchase order ${po.poNumber} has been saved as draft.`)
@@ -244,6 +268,14 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
             </div>
             <Input label="Expected Delivery Date" type="date" {...register('expectedDate')} />
           </div>
+
+          {/* Drop-ship — receive this PO directly at a customer's address
+              instead of your own warehouse, linked to a Sales Order you're
+              fulfilling straight from the supplier. */}
+          <Select label="Drop-Ship To Customer (optional)" {...register('dropShipToCustomerId')}>
+            <option value="">Deliver to my own location (default)</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.customerName} ({c.customerCode})</option>)}
+          </Select>
 
           {/* Line items */}
           <div>

@@ -150,6 +150,44 @@ const PERMISSIONS = [
   { permissionKey: 'bills.view', permissionName: 'View Bills' },
   { permissionKey: 'bills.create', permissionName: 'Create Bill' },
   { permissionKey: 'bills.void', permissionName: 'Void Bill' },
+  // Phase 63 — Sales Orders, the mirror image of Purchase Orders on the
+  // sales side. Same trust tier as purchaseOrders.create/approve — a real
+  // commitment to sell, not floor-staff-level.
+  { permissionKey: 'salesOrders.view', permissionName: 'View Sales Orders' },
+  { permissionKey: 'salesOrders.create', permissionName: 'Create/Confirm Sales Order' },
+  { permissionKey: 'salesOrders.cancel', permissionName: 'Cancel Sales Order' },
+  { permissionKey: 'salesOrders.invoice', permissionName: 'Invoice a Sales Order' },
+  // Phase 63 — Price Lists. Managing the list/tiers is Manager-tier (a real
+  // pricing-policy decision); resolving a price for a line already being
+  // billed is a read-only lookup and granted to Cashier too, same trust
+  // level as billing.createInvoice itself.
+  { permissionKey: 'priceLists.view', permissionName: 'View Price Lists' },
+  { permissionKey: 'priceLists.manage', permissionName: 'Manage Price Lists' },
+  { permissionKey: 'priceLists.resolve', permissionName: 'Resolve Price for a Line Item' },
+  // Phase 63 — Recurring Invoices/Bills/Expenses. Same trust tier as
+  // the documents they generate (Bills/salesOrders.invoice-level).
+  { permissionKey: 'recurringProfiles.view', permissionName: 'View Recurring Profiles' },
+  { permissionKey: 'recurringProfiles.manage', permissionName: 'Manage Recurring Profiles' },
+  // Phase 63 — scheme engine (buy-X-get-Y-free, slab discounts). Managing
+  // schemes is Manager-tier (a pricing-policy decision); evaluating a cart
+  // against active schemes is a read-only lookup during billing, same trust
+  // level as priceLists.resolve.
+  { permissionKey: 'pricingSchemes.view', permissionName: 'View Pricing Schemes' },
+  { permissionKey: 'pricingSchemes.manage', permissionName: 'Manage Pricing Schemes' },
+  { permissionKey: 'pricingSchemes.resolve', permissionName: 'Evaluate Cart Against Pricing Schemes' },
+  // Phase 63 — editable invoice template system, a branding/settings-level
+  // decision, same Manager trust tier as the rest of this phase's own
+  // pricing/catalog management permissions.
+  { permissionKey: 'invoiceTemplates.view', permissionName: 'View Invoice Templates' },
+  { permissionKey: 'invoiceTemplates.manage', permissionName: 'Manage Invoice Templates' },
+  // Phase 63 — multi-level approval workflows. Configuring a workflow (who
+  // approves what, at what threshold) is Admin-only, same tier as the
+  // Transaction Lock date — a structural policy decision, not granted to
+  // Manager below. Acting on a step you've been named an approver for is a
+  // normal Manager-tier action.
+  { permissionKey: 'approvalWorkflows.view', permissionName: 'View Approval Workflows' },
+  { permissionKey: 'approvalWorkflows.manage', permissionName: 'Configure Approval Workflows' },
+  { permissionKey: 'approvalWorkflows.act', permissionName: 'Approve or Reject an Approval Step' },
   { permissionKey: 'supplierPayments.record', permissionName: 'Record Supplier Payment (Bill)' },
   { permissionKey: 'supplierPayments.reverse', permissionName: 'Reverse Supplier Payment (Bill)' },
   { permissionKey: 'supplierPayments.view', permissionName: 'View Supplier Payments (Bill)' },
@@ -502,6 +540,14 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'audit.view',
     'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve', 'purchaseOrders.receive', 'purchaseOrders.cancel', 'purchaseOrders.print', 'purchaseOrders.printDocument',
     'bills.view', 'bills.create', 'bills.void', 'supplierPayments.record', 'supplierPayments.reverse', 'supplierPayments.view',
+    'salesOrders.view', 'salesOrders.create', 'salesOrders.cancel', 'salesOrders.invoice',
+    'priceLists.view', 'priceLists.manage', 'priceLists.resolve',
+    'recurringProfiles.view', 'recurringProfiles.manage',
+    'pricingSchemes.view', 'pricingSchemes.manage', 'pricingSchemes.resolve',
+    'invoiceTemplates.view', 'invoiceTemplates.manage',
+    // approvalWorkflows.manage (configuring workflows) stays Admin-only —
+    // not granted here, see the permission definitions' own comment above.
+    'approvalWorkflows.view', 'approvalWorkflows.act',
     // Phase 62 — Chart of Accounts/Journal Entries view-only for Manager
     // (posting/reversing a manual entry and moving the lock date stay
     // Admin-only, see the permission definitions' own comment above);
@@ -565,6 +611,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'inventory.view',
     'billing.createInvoice', 'billing.editDraftInvoice', 'billing.printInvoice', 'billing.view', 'billing.create',
     'payments.record', 'payments.view',
+    // Read-only price lookup during billing — same trust level as billing.createInvoice.
+    'priceLists.resolve', 'pricingSchemes.resolve',
     // Export/print scoped to the two report types Cashier can already view (Sales,
     // Customer Ledger) — covers the real end-of-shift "print today's sales" workflow.
     'reports.sales', 'reports.invoices', 'reports.export', 'reports.print',

@@ -15,6 +15,12 @@ import { register as registerProducts } from './handlers/products.handler'
 import { register as registerInventory } from './handlers/inventory.handler'
 import { register as registerPurchaseOrders } from './handlers/purchase-orders.handler'
 import { register as registerBills } from './handlers/bills.handler'
+import { register as registerSalesOrders } from './handlers/sales-order.handler'
+import { register as registerPriceLists } from './handlers/price-list.handler'
+import { register as registerRecurringProfiles } from './handlers/recurring-profile.handler'
+import { register as registerPricingSchemes } from './handlers/pricing-scheme.handler'
+import { register as registerInvoiceTemplates } from './handlers/invoice-template.handler'
+import { register as registerApprovalWorkflows } from './handlers/approval-workflow.handler'
 import { register as registerExpenses } from './handlers/expenses.handler'
 import { register as registerPayments } from './handlers/payments.handler'
 import { register as registerSupplierPayments } from './handlers/supplier-payments.handler'
@@ -23,6 +29,7 @@ import { register as registerJournalEntries } from './handlers/journal-entry.han
 import { register as registerBankAccounts } from './handlers/bank-account.handler'
 import { register as registerCreditInterest } from './handlers/credit-interest.handler'
 import { register as registerPostDatedCheques } from './handlers/post-dated-cheque.handler'
+import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
 import { register as registerYearEndClose } from './handlers/year-end-close.handler'
 import { register as registerImport } from './handlers/import.handler'
@@ -186,6 +193,12 @@ export function registerAllIpcHandlers(): void {
   registerInventory(h)
   registerPurchaseOrders(h)
   registerBills(h)
+  registerSalesOrders(h)
+  registerPriceLists(h)
+  registerRecurringProfiles(h)
+  registerPricingSchemes(h)
+  registerInvoiceTemplates(h)
+  registerApprovalWorkflows(h)
   registerExpenses(h)
   registerPayments(h)
   registerSupplierPayments(h)
@@ -194,6 +207,7 @@ export function registerAllIpcHandlers(): void {
   registerBankAccounts(h)
   registerCreditInterest(h)
   registerPostDatedCheques(h)
+  registerChequeBooks(h)
   registerFixedAssets(h)
   registerYearEndClose(h)
   registerImport(h)

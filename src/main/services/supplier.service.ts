@@ -140,7 +140,8 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
           panNumber: payload.panNumber?.trim() || null,
           openingBalance: payload.openingBalance ?? 0,
           isMsmeRegistered: payload.isMsmeRegistered ?? false,
-          msmeCategory: payload.msmeCategory ?? null
+          msmeCategory: payload.msmeCategory ?? null,
+          priceListId: payload.priceListId || null
         }
       })
 
@@ -197,7 +198,8 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
         bankName: payload.bankName?.trim() || null,
         panNumber: payload.panNumber?.trim() || null,
         isMsmeRegistered: payload.isMsmeRegistered ?? false,
-        msmeCategory: payload.msmeCategory ?? null
+        msmeCategory: payload.msmeCategory ?? null,
+        priceListId: payload.priceListId ?? existing.priceListId
       }
     })
 

@@ -20,6 +20,8 @@ Una cuadrícula de mosaicos con sus **productos más vendidos** aparece encima d
 
 ¿En medio de una venta necesita atender a otro cliente sin perder el carrito actual? Haga clic en **Retener venta** para dejarlo en espera y empezar de nuevo; **Reanudar venta** muestra sus carritos retenidos para continuar exactamente donde los dejó. El **MRP** de un producto, cuando está configurado por encima de su precio de venta, se muestra como un precio de referencia tachado junto al precio real en los resultados de búsqueda.
 
+Cuando un artículo agregado al carrito califica para un **esquema de precios** activo (Compre-X-Lleve-Y-Gratis o descuento por volumen), aparece una barra de sugerencia descartable con un botón **Aplicar** — hacer clic en ella agrega una línea gratuita o establece el descuento de línea automáticamente. Nada cambia hasta que usted hace clic en Aplicar.
+
 ## Historial y detalle de facturas
 
 **Invoice List** (`/billing`, mediante la vista de lista de facturas) muestra cada factura con su cliente, cantidad de artículos, total, saldo pendiente y estado de pago (SIN PAGAR / PARCIAL / PAGADA / CANCELADA). Busque por número de factura o cliente, filtre por rango de fechas o por estado Activa/Cancelada.
@@ -40,11 +42,21 @@ Al abrir una factura se muestran todas sus líneas de artículos, el desglose de
 
 Una cotización comienza como **Borrador** y puede ser **Enviada**, **Aceptada** o **Vencida**. Una vez que el cliente la acepta, haga clic en **Convertir en Factura** — esto crea una factura real a partir de los artículos de la cotización y marca la cotización como Aceptada. Una cotización que ya fue convertida muestra un enlace a la factura resultante en lugar del botón de conversión. Las cotizaciones se pueden imprimir en tamaño A4 o ancho de recibo, y se pueden eliminar mientras no hayan sido convertidas.
 
+Una cotización también puede tener un campo **Compromiso de Retención** (Honorario Fijo, Bolsa de Horas o Basado en Entregables) — cuando está configurado, una cotización aceptada muestra un botón **Convertir en Retención**, que convierte la cotización en un proyecto de servicio continuo.
+
 ## Notas de Crédito y Notas de Débito (Credit Notes / Debit Notes)
 
 **Notas de Crédito** (`/billing/credit-notes`) registran dinero que se debe *devolver a* un cliente — típicamente por una devolución, un cobro excesivo o un ajuste de buena voluntad. Cree una con un motivo e importe, opcionalmente vinculada a un cliente y/o a la factura original. Vincularla a un cliente acredita automáticamente su libro, reduciendo lo que le debe a usted.
 
-**Notas de Débito** (`/billing/debit-notes`) son el equivalente del lado del proveedor — dinero que un proveedor le debe a usted, por ejemplo una devolución de stock comprado o una corrección de facturación. Vincular una nota de débito a un proveedor debita su libro, reduciendo lo que usted le debe. Tanto las notas de crédito como las de débito pueden referenciar opcionalmente la factura u orden de compra a la que se relacionan, se pueden editar o eliminar, y se imprimen en tamaño A4 o ancho de recibo.
+**Notas de Débito** (`/billing/debit-notes`) son el equivalente del lado del proveedor — dinero que un proveedor le debe a usted, por ejemplo una devolución de stock comprado o una corrección de facturación. Vincular una nota de débito a un proveedor debita su libro, reduciendo lo que usted le debe. Tanto las notas de crédito como las de débito pueden referenciar opcionalmente la factura u orden de compra a la que se relacionan, se pueden editar o eliminar, y se imprimen en tamaño A4 o ancho de recibo. Al crear una, puede marcar **Detallar esta nota** para ingresar líneas de artículos de producto/servicio reales en lugar de un simple importe.
+
+## Plantillas de Factura
+
+La sección **Plantillas de Factura** en Configuración controla cómo se ven sus facturas, cotizaciones y otros documentos al imprimirlos. Elija entre las plantillas disponibles, haga clic en **Establecer como Predeterminada** en una, o cree su propia plantilla personalizada ajustando colores y diseño.
+
+## Notas de Entrega
+
+Desde la pantalla de detalle de una factura, hacer clic en **Crear Nota de Entrega** genera un albarán de entrega con los artículos de la factura ya completados — útil para enviarlo con el cliente cuando se despachan las mercancías. Esto está disponible incluso si el módulo de Logística no está activado.
 
 ## Compartir documentos por WhatsApp y Correo
 

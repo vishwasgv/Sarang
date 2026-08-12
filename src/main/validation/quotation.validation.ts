@@ -5,6 +5,8 @@ export const CreateQuotationSchema = z.object({
   customerName: z.string().optional(),
   validUntil: z.string().optional(),
   notes: z.string().optional(),
+  // Phase 63 — Estimate → auto-create Retainer Invoice on accept.
+  retainerType: z.enum(['FIXED_FEE', 'HOURLY_BUCKET', 'DELIVERABLE_BASED']).optional(),
   items: z.array(z.object({
     productId: z.string().optional(),
     productName: z.string().min(1, 'Product name is required'),

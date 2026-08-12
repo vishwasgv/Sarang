@@ -34,6 +34,13 @@ const InvoiceItemSchema = z.object({
   prescriptionPatientName: z.string().max(200).optional(),
   prescriptionDoctorName: z.string().max(200).optional(),
   prescriptionDate: z.string().optional(),
+  // Phase 63 — zero-value/free-of-cost billing. When true, billing.service.ts
+  // forces unitPrice/discount/tax to 0 server-side regardless of what's sent
+  // here — the client never gets to set the actual price on a FOC line, only
+  // flag that the line qualifies for one. schemeId is purely informational
+  // (which PricingScheme produced it, shown on the printed invoice).
+  isFreeOfCost: z.boolean().default(false),
+  schemeId: z.string().optional(),
 })
 
 export const CreateInvoiceSchema = z.object({

@@ -109,6 +109,7 @@ export function QuotationFormScreen() {
 
   const [customerName, setCustomerName] = useState('')
   const [validUntil, setValidUntil] = useState('')
+  const [retainerType, setRetainerType] = useState<'' | 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'>('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<LineItem[]>([
     { productName: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }
@@ -166,6 +167,7 @@ export function QuotationFormScreen() {
         customerId: selectedCustomerId || undefined,
         customerName: selectedCustomerId ? undefined : customerName || undefined,
         validUntil: validUntil || undefined,
+        retainerType: retainerType || undefined,
         notes: notes || undefined,
         items: validItems.map(i => ({
           productId: i.productId,
@@ -222,7 +224,14 @@ export function QuotationFormScreen() {
             <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
           </div>
+          <Select label={t('quotations.retainerEngagement')} value={retainerType} onChange={e => setRetainerType(e.target.value as typeof retainerType)}>
+            <option value="">{t('quotations.retainerNone')}</option>
+            <option value="FIXED_FEE">{t('quotations.retainerFixedFee')}</option>
+            <option value="HOURLY_BUCKET">{t('quotations.retainerHourlyBucket')}</option>
+            <option value="DELIVERABLE_BASED">{t('quotations.retainerDeliverableBased')}</option>
+          </Select>
         </div>
+        {retainerType && <p className="text-xs text-slate-400">{t('quotations.retainerHint')}</p>}
       </Card>
 
       <Card padding="lg" className="space-y-3">

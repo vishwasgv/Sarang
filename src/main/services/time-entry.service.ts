@@ -277,6 +277,65 @@ export async function generateTimeEntryInvoice(entryIds: string[]) {
   }
 }
 
+// Phase 63 — ServiceProject.billingMethod, read here instead of the
+// invoice-generation path always assuming hourly. HOURLY delegates straight
+// to generateTimeEntryInvoice above, unmodified — the one path that's
+// actually driven by real logged hours. The other three methods
+// (FIXED_COST/DAILY_PER_TASK/DAILY_PER_PROJECT/DAILY_PER_USER) aren't
+// hours-driven at all, so they bill one computed line instead of one line
+// per time entry. This schema has no dedicated daily-rate or per-task/
+// per-user breakdown on ServiceProject (a single totalContractValue and a
+// single assignedToId) — rather than invent an unverifiable elapsed-days or
+// per-task heuristic server-side, the caller explicitly states how many
+// days to bill (dayCount), the same "explicit selection, not a guess"
+// principle generateTimeEntryInvoice's own entryIds parameter already
+// follows. FIXED_COST needs no dayCount — it bills the contract value once.
+export async function generateInvoiceForServiceProject(payload: { serviceProjectId: string; timeEntryIds?: string[]; dayCount?: number }, userId?: string) {
+  const db = getPrisma()
+  try {
+    const project = await db.serviceProject.findUnique({
+      where: { id: payload.serviceProjectId },
+      select: { id: true, clientId: true, projectName: true, billingMethod: true, totalContractValue: true }
+    })
+    if (!project) return { success: false, error: { code: 'SP-001', message: 'Service project not found.' } }
+
+    if (project.billingMethod === 'HOURLY') {
+      if (!payload.timeEntryIds?.length) return { success: false, error: { code: 'SP-002', message: 'Select at least one time entry to bill for an hourly-billed project.' } }
+      return generateTimeEntryInvoice(payload.timeEntryIds)
+    }
+
+    const contractValue = project.totalContractValue ? Number(project.totalContractValue) : 0
+    if (contractValue <= 0) return { success: false, error: { code: 'SP-003', message: 'This project has no contract value set — cannot generate an invoice.' } }
+
+    let quantity = 1
+    let unitPrice = contractValue
+    let description = `${project.projectName} — Fixed Cost`
+    if (project.billingMethod !== 'FIXED_COST') {
+      if (!payload.dayCount || payload.dayCount <= 0) return { success: false, error: { code: 'SP-004', message: 'Enter the number of days to bill for a daily-rate project.' } }
+      quantity = payload.dayCount
+      unitPrice = contractValue // contractValue doubles as the per-day rate for the DAILY_* methods, per this schema's own single-field shape
+      description = `${project.projectName} — ${payload.dayCount} day(s) @ ${project.billingMethod}`
+    }
+
+    const product = await findOrCreateServiceProduct('998311', 'Professional Consulting Services')
+    const result = await billingService.createInvoice({
+      customerId: project.clientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: [{ productId: product.id, quantity, unitPrice, variantInfo: description.slice(0, 100) }],
+      notes: description,
+      referenceNumber: project.id.slice(0, 12)
+    }, userId)
+    if (!result.success) return result
+
+    const invoice = result.data as { id: string }
+    await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'ServiceProject', entityId: project.id, newValue: JSON.stringify({ invoiceId: invoice.id, billingMethod: project.billingMethod, quantity }) } }).catch(() => {})
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    return { success: false, error: { code: 'SP-005', message: err instanceof Error ? err.message : 'Could not generate invoice for service project.' } }
+  }
+}
+
 export async function markTimeEntriesBilled(ids: string[]) {
   try {
     const db = getPrisma()

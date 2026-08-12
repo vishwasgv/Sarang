@@ -93,6 +93,7 @@ export async function createServiceProject(payload: {
   projectType?: string
   stage?: string
   status?: string
+  billingMethod?: string
   totalContractValue?: number
   startDate?: string
   expectedEndDate?: string
@@ -111,6 +112,7 @@ export async function createServiceProject(payload: {
         projectType:        payload.projectType ?? 'GENERAL',
         stage:              payload.stage ?? null,
         status:             payload.status ?? 'ACTIVE',
+        billingMethod:      payload.billingMethod ?? 'FIXED_COST',
         totalContractValue: payload.totalContractValue ?? null,
         // Real bug found live (2026-07-28 service-vertical audit): a bare
         // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
@@ -144,6 +146,7 @@ export async function updateServiceProject(payload: {
   projectType?: string
   stage?: string | null
   status?: string
+  billingMethod?: string
   totalContractValue?: number | null
   startDate?: string | null
   expectedEndDate?: string | null

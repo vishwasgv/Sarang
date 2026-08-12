@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
+import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 
@@ -33,7 +34,12 @@ const schema = z.object({
   companyRegistrationNumber: z.string().max(50).optional(),
   contactPersonName: z.string().max(200).optional(),
   idProofType: z.string().max(50).optional(),
-  idProofNumber: z.string().max(50).optional()
+  idProofNumber: z.string().max(50).optional(),
+  // Phase 63 — Price List assignment (real gap found+fixed during live
+  // verification: the backend field/validation/service already accepted
+  // this, but no UI anywhere ever let a user actually set it, so an
+  // assigned Price List could never resolve at billing time in real use).
+  priceListId: z.string().optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -46,12 +52,18 @@ interface Customer {
   customerKind?: 'INDIVIDUAL' | 'BUSINESS'
   companyRegistrationNumber?: string | null; contactPersonName?: string | null
   idProofType?: string | null; idProofNumber?: string | null
+  priceListId?: string | null
 }
 
 interface CustomerFormModalProps {
   open: boolean
   onClose: () => void
-  onSaved: () => void
+  // Phase 63 — widened to optionally pass back the created/updated customer,
+  // same "+ New Supplier" precedent SupplierFormModal already established in
+  // Phase 61 — lets an inline "+ New Customer" picker (e.g. on the Sales
+  // Order form) auto-select the row it just created. Existing callers that
+  // ignore the argument are unaffected.
+  onSaved: (customer?: { id: string; customerName: string }) => void
   customer?: Customer | null
 }
 
@@ -66,6 +78,14 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
   })
   const taxExempt = watch('taxExempt')
   const customerKind = watch('customerKind')
+  const [priceLists, setPriceLists] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    if (!open) return
+    window.api.priceLists.list({ appliesTo: 'CUSTOMER', isActive: true }).then((res) => {
+      if (res.success) setPriceLists((res.data as Array<{ id: string; name: string }>) ?? [])
+    })
+  }, [open])
 
   useEffect(() => {
     if (open) {
@@ -87,14 +107,15 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         companyRegistrationNumber: customer?.companyRegistrationNumber ?? '',
         contactPersonName: customer?.contactPersonName ?? '',
         idProofType: customer?.idProofType ?? '',
-        idProofNumber: customer?.idProofNumber ?? ''
+        idProofNumber: customer?.idProofNumber ?? '',
+        priceListId: customer?.priceListId ?? ''
       })
     }
   }, [open, customer, reset])
 
   async function onSubmit(values: FormValues) {
     try {
-      const payload = { ...values, email: values.email || undefined }
+      const payload = { ...values, email: values.email || undefined, priceListId: values.priceListId || undefined }
       const response = isEdit
         ? await window.api.customers.update({ id: customer!.id, ...payload })
         : await window.api.customers.create(payload)
@@ -104,7 +125,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         return
       }
       toastSuccess(isEdit ? 'Customer Updated' : 'Customer Created', `${values.customerName} has been saved.`)
-      onSaved()
+      onSaved(response.data as { id: string; customerName: string } | undefined)
       onClose()
     } catch {
       toastError('Error', 'Something went wrong. Please try again.')
@@ -166,6 +187,14 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           <Input label="Tax Number" placeholder="GST / PAN / VAT" {...register('taxNumber')} />
           <Input label="Credit Limit" type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
         </div>
+        {priceLists.length > 0 && (
+          <Select label="Price List" {...register('priceListId')}>
+            <option value="">None — normal selling price</option>
+            {priceLists.map((pl) => (
+              <option key={pl.id} value={pl.id}>{pl.name}</option>
+            ))}
+          </Select>
+        )}
         {fieldOrderCaptureEnabled && (
           <Input
             label="Customer Class"

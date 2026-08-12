@@ -7,6 +7,7 @@ import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
+import { approvalWorkflowService } from './approval-workflow.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreatePOPayload } from '../validation/purchase-order.validation'
 
@@ -44,6 +45,17 @@ export const purchaseOrderService = {
     const supplier = await db.supplier.findUnique({ where: { id: payload.supplierId } })
     if (!supplier) return { success: false, error: { code: 'SUP-001', message: 'Supplier not found.' } }
     if (!supplier.isActive) return { success: false, error: { code: 'SUP-004', message: 'Cannot create PO for an archived supplier.' } }
+
+    // Phase 63 — drop-shipment: the delivery address on this PO's own print
+    // output/GRN flow becomes the customer's, not the business's own.
+    if (payload.dropShipToCustomerId) {
+      const dropShipCustomer = await db.customer.findUnique({ where: { id: payload.dropShipToCustomerId } })
+      if (!dropShipCustomer) return { success: false, error: { code: 'CUST-001', message: 'Drop-ship customer not found.' } }
+    }
+    if (payload.sourceSalesOrderId) {
+      const so = await db.salesOrder.findUnique({ where: { id: payload.sourceSalesOrderId } })
+      if (!so) return { success: false, error: { code: 'SO-001', message: 'Source sales order not found.' } }
+    }
 
     // Phase 61 — a line is either a physical product (validated as before) or
     // a genuine free-text service line (productId absent entirely). The
@@ -108,6 +120,8 @@ export const purchaseOrderService = {
           taxAmount,
           totalAmount,
           isReverseCharge: payload.isReverseCharge,
+          dropShipToCustomerId: payload.dropShipToCustomerId || null,
+          sourceSalesOrderId: payload.sourceSalesOrderId || null,
           createdById: userId || null,
           items: {
             create: lineRows.map(({ item, taxAmount: lineTax, lineTotal }) => ({
@@ -202,6 +216,10 @@ export const purchaseOrderService = {
         // FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md) — POs share to the
         // Supplier's contact info, not a Customer's.
         supplier: { select: { id: true, supplierName: true, supplierCode: true, phone: true, email: true } },
+        // Phase 63 — drop-shipment: the address a real user needs to see on
+        // this PO's own detail screen when it's shipping direct to a customer.
+        dropShipToCustomer: { select: { id: true, customerName: true, address: true, city: true, state: true, phone: true } },
+        sourceSalesOrder: { select: { id: true, soNumber: true } },
         items: {
           include: {
             product: {
@@ -246,17 +264,49 @@ export const purchaseOrderService = {
     return { success: true, data: { orders, total } }
   },
 
+  // Phase 63 — multi-level approval workflows, fully opt-in: an install with
+  // no active ApprovalWorkflow for PURCHASE_ORDER (the overwhelming
+  // majority) sees zero behavior change here — submitForApproval always
+  // returns requiresApproval:false and this goes straight to APPROVED
+  // exactly as before. Re-callable, mirroring
+  // salesOrderService.confirmSalesOrder's own identical pattern: once a
+  // PENDING_APPROVAL order's ApprovalInstance reaches APPROVED, calling
+  // this again finishes the DRAFT→APPROVED transition instead of erroring.
   async approvePO(id: string) {
     const db = getPrisma()
     try {
+      const po = await db.purchaseOrder.findUnique({ where: { id } })
+      if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
+
+      if (po.status === 'PENDING_APPROVAL') {
+        const instanceRes = await approvalWorkflowService.getInstanceForDocument('PURCHASE_ORDER', id)
+        const instance = instanceRes.success ? (instanceRes.data as { status: string } | null) : null
+        if (!instance || instance.status === 'PENDING') {
+          return { success: false, error: { code: 'PO-006', message: 'This Purchase Order is still awaiting approval.' } }
+        }
+        if (instance.status === 'REJECTED') {
+          return { success: false, error: { code: 'PO-007', message: 'This Purchase Order was rejected during approval and cannot be approved.' } }
+        }
+        // instance.status === 'APPROVED' — fall through to the real transition below.
+      } else if (po.status !== 'DRAFT') {
+        return { success: false, error: { code: 'PO-002', message: `Only DRAFT orders can be approved. Current status: ${po.status}.` } }
+      } else {
+        const approvalRes = await approvalWorkflowService.submitForApproval({ documentType: 'PURCHASE_ORDER', documentId: id, amount: po.totalAmount })
+        if (approvalRes.success && (approvalRes.data as { requiresApproval: boolean }).requiresApproval) {
+          const pending = await db.purchaseOrder.update({ where: { id }, data: { status: 'PENDING_APPROVAL' } })
+          await logAction({ userId: getCurrentSession()?.userId, action: 'PO_SUBMITTED_FOR_APPROVAL', entityType: 'PurchaseOrder', entityId: id, newValue: { status: 'PENDING_APPROVAL' } })
+          return { success: true, data: pending }
+        }
+      }
+
       // Read-check-write atomically inside one transaction — a status read
       // followed by a separate write left a window where a concurrent cancel
       // could land between them and get silently overwritten back to APPROVED.
       const updated = await db.$transaction(async (tx) => {
-        const po = await tx.purchaseOrder.findUnique({ where: { id } })
-        if (!po) throw new ServiceError('PO-001', 'Purchase order not found.')
-        if (po.status !== 'DRAFT') {
-          throw new ServiceError('PO-002', `Only DRAFT orders can be approved. Current status: ${po.status}.`)
+        const fresh = await tx.purchaseOrder.findUnique({ where: { id } })
+        if (!fresh) throw new ServiceError('PO-001', 'Purchase order not found.')
+        if (fresh.status !== 'DRAFT' && fresh.status !== 'PENDING_APPROVAL') {
+          throw new ServiceError('PO-002', `Only DRAFT orders can be approved. Current status: ${fresh.status}.`)
         }
         return tx.purchaseOrder.update({ where: { id }, data: { status: 'APPROVED' } })
       })

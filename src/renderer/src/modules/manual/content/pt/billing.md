@@ -20,6 +20,8 @@ Prefere clicar em vez de digitar? Clique no ícone de grade ao lado da caixa de 
 
 No meio de uma venda, precisa atender outro cliente sem perder o carrinho atual? Clique em **Reter Venda** para colocá-lo em espera e começar do zero; **Retomar Venda** traz de volta seus carrinhos retidos para continuar exatamente de onde parou. O **MRP** de um produto, quando definido acima do seu preço de venda, aparece como um preço de referência riscado ao lado do preço real nos resultados de busca.
 
+Quando um item adicionado ao carrinho é elegível para um **esquema de preços** ativo (Compre-X-Leve-Y-Grátis ou desconto por volume), aparece uma barra de sugestão dispensável com um botão **Aplicar** — clicar nela adiciona uma linha grátis ou define o desconto da linha automaticamente. Nada muda até você clicar em Aplicar.
+
 ## Histórico e detalhes das notas
 
 A **lista de notas** (`/billing`, na visualização de lista) mostra todas as notas com cliente, quantidade de itens, total, saldo pendente e status de pagamento (PENDENTE / PARCIAL / PAGA / CANCELADA). Busque por número da nota ou cliente, filtre por período ou por status Ativa/Cancelada.
@@ -40,11 +42,21 @@ O **Histórico de Pagamentos** é uma tela separada que lista todo pagamento já
 
 Um orçamento começa como **RASCUNHO** e pode ser marcado como **ENVIADO**, **ACEITO** ou **EXPIRADO**. Assim que o cliente concordar, clique em **Converter em Fatura** — isso cria uma nota real a partir dos itens do orçamento e marca o orçamento como Aceito. Um orçamento já convertido mostra um link para a nota resultante em vez do botão de conversão. Orçamentos podem ser impressos em A4 ou na largura de recibo, e excluídos enquanto não tiverem sido convertidos.
 
+Um orçamento também pode ter um campo **Contrato de Retenção** (Taxa Fixa, Pacote de Horas ou Baseado em Entregas) — quando definido, um orçamento aceito exibe um botão **Converter em Retenção**, que transforma o orçamento em um projeto de serviço contínuo.
+
 ## Notas de Crédito e Notas de Débito
 
 **Notas de Crédito** (`/billing/credit-notes`) registram dinheiro devido *de volta* a um cliente — normalmente por uma devolução, uma cobrança a mais ou um ajuste de cortesia. Crie uma informando um motivo e um valor, vinculando-a opcionalmente a um cliente e/ou à nota original. Vinculá-la a um cliente credita automaticamente o razão dele, reduzindo o que ele deve a você.
 
-**Notas de Débito** (`/billing/debit-notes`) são o equivalente do lado do fornecedor — dinheiro que um fornecedor deve devolver a você, por exemplo uma devolução de estoque comprado ou uma correção de cobrança. Vincular uma nota de débito a um fornecedor debita o razão dele, reduzindo o que você deve a ele. Tanto as notas de crédito quanto as de débito podem opcionalmente referenciar a nota fiscal ou o pedido de compra relacionado, podem ser editadas ou excluídas, e são impressas em A4 ou na largura de recibo.
+**Notas de Débito** (`/billing/debit-notes`) são o equivalente do lado do fornecedor — dinheiro que um fornecedor deve devolver a você, por exemplo uma devolução de estoque comprado ou uma correção de cobrança. Vincular uma nota de débito a um fornecedor debita o razão dele, reduzindo o que você deve a ele. Tanto as notas de crédito quanto as de débito podem opcionalmente referenciar a nota fiscal ou o pedido de compra relacionado, podem ser editadas ou excluídas, e são impressas em A4 ou na largura de recibo. Ao criar, você pode marcar **Detalhar esta nota** para informar itens reais de produto/serviço em vez de um valor simples.
+
+## Modelos de Nota Fiscal
+
+A seção **Modelos de Nota Fiscal** nas Configurações controla a aparência de suas notas, orçamentos e outros documentos ao serem impressos. Escolha entre os modelos disponíveis, clique em **Definir como Padrão** em um deles, ou crie seu próprio modelo personalizado ajustando cores e layout.
+
+## Notas de Entrega
+
+Na tela de detalhes de uma nota fiscal, clicar em **Criar Nota de Entrega** gera um romaneio de entrega com os itens da nota já preenchidos — útil para enviar junto com o cliente ao despachar mercadorias. Isso está disponível mesmo que o módulo de Logística não esteja ativado.
 
 ## Compartilhando documentos por WhatsApp e E-mail
 

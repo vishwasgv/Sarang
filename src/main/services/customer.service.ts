@@ -195,7 +195,8 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           companyRegistrationNumber: payload.companyRegistrationNumber?.trim() || null,
           contactPersonName: payload.contactPersonName?.trim() || null,
           idProofType: payload.idProofType?.trim() || null,
-          idProofNumber: payload.idProofNumber?.trim() || null
+          idProofNumber: payload.idProofNumber?.trim() || null,
+          priceListId: payload.priceListId || null
         }
       })
     })
@@ -239,7 +240,8 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         companyRegistrationNumber: payload.companyRegistrationNumber?.trim() || null,
         contactPersonName: payload.contactPersonName?.trim() || null,
         idProofType: payload.idProofType?.trim() || null,
-        idProofNumber: payload.idProofNumber?.trim() || null
+        idProofNumber: payload.idProofNumber?.trim() || null,
+        priceListId: payload.priceListId ?? existing.priceListId
       }
     })
 

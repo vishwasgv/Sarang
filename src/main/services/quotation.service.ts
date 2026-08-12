@@ -4,17 +4,23 @@ import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
-import { generateInvoiceNumber } from './billing.service'
+import { generateInvoiceNumber, postInvoiceJournalEntry } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
 import { ServiceError } from '../errors/service-error'
 import { getLicenseState } from './license.service'
+import { createRetainer, generateInvoiceForRetainer } from './retainer.service'
 
 export interface CreateQuotationPayload {
   customerId?: string
   customerName?: string
   validUntil?: string
   notes?: string
+  // Phase 63 — set when this Estimate represents a retainer engagement;
+  // mirrors RetainerAgreement.retainerType's own enum. Drives
+  // convertToRetainer() below instead of the normal one-shot
+  // convertToInvoice() when accepted.
+  retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'
   items: Array<{
     productId?: string
     productName: string
@@ -87,6 +93,7 @@ export const quotationService = {
           // billing.service.ts's dueDate (see its comment there).
           validUntil: payload.validUntil ? parseLocalDateStart(payload.validUntil) : null,
           notes: payload.notes ?? null,
+          retainerType: payload.retainerType ?? null,
           subtotal,
           taxAmount,
           discountAmount,
@@ -280,6 +287,12 @@ export const quotationService = {
           }, tx)
         }
 
+        // Phase 63 gap-fix — a converted invoice never posted to the GL at
+        // all before this. Always CREDIT-shaped (a quotation never collects
+        // payment itself), so receivesCashNow=false — Debit Accounts
+        // Receivable, same as any other unpaid invoice.
+        await postInvoiceJournalEntry(tx, inv, false)
+
         await tx.quotation.update({ where: { id }, data: { status: 'ACCEPTED' } })
 
         return inv
@@ -292,6 +305,53 @@ export const quotationService = {
         return { success: false, error: { code: err.code, message: err.message } }
       }
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+    }
+  },
+
+  // Phase 63 — Estimate → auto-create Retainer Invoice on accept. A retainer-
+  // flagged Quotation takes this path instead of the normal one-shot
+  // convertToInvoice() above: creates a real RetainerAgreement (reusing the
+  // customer's already-active one instead of creating a duplicate, if one
+  // exists) and immediately generates its first period's invoice via
+  // retainer.service.ts's own existing generateInvoiceForRetainer — not a
+  // second, parallel billing mechanism, a synchronous first call to the one
+  // that already exists and is already exercised by every other retainer.
+  async convertToRetainer(id: string, userId: string) {
+    const db = getPrisma()
+    const q = await db.quotation.findUnique({ where: { id } })
+    if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
+    if (!q.retainerType) return { success: false, error: { code: 'QT-004', message: 'This quotation is not marked as a retainer engagement.' } }
+    if (q.status === 'ACCEPTED') return { success: false, error: { code: 'QT-002', message: 'Quotation already accepted.' } }
+    if (!q.customerId) return { success: false, error: { code: 'QT-005', message: 'A retainer engagement requires a real customer, not a walk-in name.' } }
+
+    try {
+      let retainerId: string
+      const existingActive = await db.retainerAgreement.findFirst({ where: { clientId: q.customerId, status: 'ACTIVE' } })
+      if (existingActive) {
+        retainerId = existingActive.id
+      } else {
+        const created = await createRetainer({
+          clientId: q.customerId,
+          title: `Retainer — ${q.quotationNumber}`,
+          retainerType: q.retainerType,
+          monthlyAmount: q.totalAmount,
+          billingDay: new Date().getDate(),
+          startDate: new Date().toISOString().slice(0, 10),
+          notes: q.notes ?? undefined
+        })
+        if (!created.success || !created.data) return created
+        retainerId = (created.data as { id: string }).id
+      }
+
+      const invoiceResult = await generateInvoiceForRetainer(retainerId)
+      if (!invoiceResult.success) return invoiceResult
+
+      await db.quotation.update({ where: { id }, data: { status: 'ACCEPTED' } })
+      await logAction({ userId, action: 'CONVERT_QUOTATION_TO_RETAINER', entityType: 'RetainerAgreement', entityId: retainerId, newValue: `From quotation ${q.quotationNumber}` })
+
+      return { success: true, data: { retainerId, ...(invoiceResult.data as object) } }
+    } catch (err) {
+      return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to convert quotation to retainer.' } }
     }
   },
 

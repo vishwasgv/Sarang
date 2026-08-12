@@ -176,6 +176,53 @@ export interface IpcChannels {
     get: (id: string) => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
     void: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+    print: (id: string) => Promise<ApiResponse>
+  }
+  salesOrders: {
+    list: (payload?: { customerId?: string; status?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    confirm: (id: string) => Promise<ApiResponse>
+    cancel: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+    createInvoice: (payload: unknown) => Promise<ApiResponse>
+    print: (id: string) => Promise<ApiResponse>
+  }
+  priceLists: {
+    list: (payload?: { appliesTo?: string; isActive?: boolean }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+    setItems: (payload: unknown) => Promise<ApiResponse>
+    resolve: (payload: unknown) => Promise<ApiResponse>
+  }
+  recurringProfiles: {
+    list: (payload?: { documentType?: string; active?: boolean }) => Promise<ApiResponse>
+    get: (id: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+    delete: (id: string) => Promise<ApiResponse>
+  }
+  pricingSchemes: {
+    list: (payload?: { isActive?: boolean; productId?: string }) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+    delete: (id: string) => Promise<ApiResponse>
+    evaluateCart: (payload: unknown) => Promise<ApiResponse>
+  }
+  invoiceTemplates: {
+    list: () => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+    delete: (id: string) => Promise<ApiResponse>
+    setBusinessDefault: (payload: { id: string | null }) => Promise<ApiResponse>
+  }
+  approvalWorkflows: {
+    list: (documentType?: string) => Promise<ApiResponse>
+    create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
+    delete: (id: string) => Promise<ApiResponse>
+    getInstanceForDocument: (payload: { documentType: string; documentId: string }) => Promise<ApiResponse>
+    actOnStep: (payload: unknown) => Promise<ApiResponse>
   }
   supplierPayments: {
     record: (payload: unknown) => Promise<ApiResponse>
@@ -223,6 +270,12 @@ export interface IpcChannels {
     create: (payload: unknown) => Promise<ApiResponse>
     list: (payload?: { bankAccountId?: string; status?: string; direction?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     updateStatus: (payload: unknown) => Promise<ApiResponse>
+  }
+  chequeBooks: {
+    create: (payload: unknown) => Promise<ApiResponse>
+    list: (bankAccountId?: string) => Promise<ApiResponse>
+    getNextNumber: (bankAccountId: string) => Promise<ApiResponse>
+    setActive: (payload: { id: string; isActive: boolean }) => Promise<ApiResponse>
   }
   fixedAssets: {
     create: (payload: unknown) => Promise<ApiResponse>
@@ -798,7 +851,7 @@ export interface IpcChannels {
   quotations: {
     list: (payload?: { status?: string; customerId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
     // Share feature (Section 4/5.3): same HTML as `print`, saved to a chosen
@@ -808,12 +861,13 @@ export interface IpcChannels {
     exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
     updateStatus: (payload: { id: string; status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' }) => Promise<ApiResponse>
     convertToInvoice: (id: string) => Promise<ApiResponse>
+    convertToRetainer: (id: string) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
   }
   creditNotes: {
     list: (payload?: { customerId?: string; invoiceId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; invoiceId?: string; reason: string; amount: number; notes?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; invoiceId?: string; reason: string; amount?: number; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; customerId?: string | null; invoiceId?: string | null; reason?: string; amount?: number; notes?: string | null }) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
@@ -823,7 +877,7 @@ export interface IpcChannels {
   debitNotes: {
     list: (payload?: { supplierId?: string; purchaseOrderId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { supplierId?: string; purchaseOrderId?: string; reason: string; amount: number; notes?: string }) => Promise<ApiResponse>
+    create: (payload: { supplierId?: string; purchaseOrderId?: string; reason: string; amount?: number; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; supplierId?: string | null; purchaseOrderId?: string | null; reason?: string; amount?: number; notes?: string | null }) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
@@ -1159,9 +1213,13 @@ export interface IpcChannels {
   serviceProject: {
     list: (payload?: { clientId?: string; assignedToId?: string; status?: string }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
-    create: (payload: { clientId: string; projectName: string; projectType?: string; stage?: string; status?: string; totalContractValue?: number; startDate?: string; expectedEndDate?: string; assignedToId?: string; notes?: string; targetChannel?: string; deliverableType?: string; adSpendBudget?: number }) => Promise<ApiResponse>
-    update: (payload: { id: string; projectName?: string; projectType?: string; stage?: string | null; status?: string; totalContractValue?: number | null; startDate?: string | null; expectedEndDate?: string | null; completedDate?: string | null; assignedToId?: string | null; notes?: string | null; targetChannel?: string | null; deliverableType?: string | null; adSpendBudget?: number | null }) => Promise<ApiResponse>
+    create: (payload: { clientId: string; projectName: string; projectType?: string; stage?: string; status?: string; billingMethod?: 'FIXED_COST' | 'HOURLY' | 'DAILY_PER_TASK' | 'DAILY_PER_PROJECT' | 'DAILY_PER_USER'; totalContractValue?: number; startDate?: string; expectedEndDate?: string; assignedToId?: string; notes?: string; targetChannel?: string; deliverableType?: string; adSpendBudget?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; projectName?: string; projectType?: string; stage?: string | null; status?: string; billingMethod?: 'FIXED_COST' | 'HOURLY' | 'DAILY_PER_TASK' | 'DAILY_PER_PROJECT' | 'DAILY_PER_USER'; totalContractValue?: number | null; startDate?: string | null; expectedEndDate?: string | null; completedDate?: string | null; assignedToId?: string | null; notes?: string | null; targetChannel?: string | null; deliverableType?: string | null; adSpendBudget?: number | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 63 — ServiceProject.billingMethod-aware invoicing. HOURLY
+    // routes through timeEntry.generateInvoice above; the other 3 methods
+    // bill a single computed line here instead.
+    generateInvoice: (payload: { serviceProjectId: string; timeEntryIds?: string[]; dayCount?: number }) => Promise<ApiResponse>
   }
   milestone: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>

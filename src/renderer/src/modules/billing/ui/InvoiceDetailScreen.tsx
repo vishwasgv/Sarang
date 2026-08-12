@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed, Scissors } from 'lucide-react'
+import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed, Scissors, Truck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { Button } from '@shared/ui/atoms/Button'
@@ -73,10 +73,15 @@ export function InvoiceDetailScreen() {
   const canCancel = hasPermission('billing.cancelInvoice')
   const canReverse = hasPermission('payments.reverse')
   const canPrint = hasPermission('billing.printInvoice')
+  // Phase 63 — Delivery Note, independent of the Logistics module (which
+  // gates the dedicated Challan screen behind `requiredModule:
+  // 'logistics_challan'`) — same fix precedent as Phase 61's e-way bill gap.
+  const canCreateDeliveryNote = hasPermission('logistics.manage')
 
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [sendingToKitchen, setSendingToKitchen] = useState(false)
+  const [creatingDeliveryNote, setCreatingDeliveryNote] = useState(false)
 
   // Record payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -169,6 +174,38 @@ export function InvoiceDetailScreen() {
     } catch {
       toastError('Failed', 'Could not cancel invoice.')
     } finally { setCancelling(false) }
+  }
+
+  async function handleCreateDeliveryNote() {
+    if (!invoice || !invoice.customer) return
+    setCreatingDeliveryNote(true)
+    try {
+      const res = await window.api.logisticsChallan.create({
+        challanType: 'DELIVERY_NOTE',
+        customerId: invoice.customer.id,
+        customerName: invoice.customer.customerName,
+        invoiceId: invoice.id,
+        dispatchDate: new Date().toISOString().slice(0, 10),
+        notes: t('billing.deliveryNoteFromInvoice', { number: invoice.invoiceNumber }),
+        items: invoice.items.map(item => ({
+          productId: item.product.id,
+          productName: item.product.productName,
+          quantity: item.quantity,
+          unit: item.product.unit,
+          unitValue: item.unitPrice
+        }))
+      })
+      if (res.success) {
+        const challan = res.data as { challanNumber: string }
+        toastSuccess(t('billing.deliveryNoteCreated'), challan.challanNumber)
+      } else {
+        toastError(t('common.error'), res.error?.message ?? t('billing.deliveryNoteFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('billing.deliveryNoteFailed'))
+    } finally {
+      setCreatingDeliveryNote(false)
+    }
   }
 
   function openSplitModal() {
@@ -404,6 +441,11 @@ export function InvoiceDetailScreen() {
           {!isCancelled && invoice.balanceAmount > 0.01 && canRecordPayment && (
             <Button size="sm" variant="outline" onClick={() => setShowPaymentModal(true)}>
               <PlusCircle size={14} className="me-1" /> {t('billing.recordPayment')}
+            </Button>
+          )}
+          {!isCancelled && invoice.customer && canCreateDeliveryNote && (
+            <Button size="sm" variant="outline" onClick={handleCreateDeliveryNote} loading={creatingDeliveryNote}>
+              <Truck size={14} className="me-1" /> {t('billing.createDeliveryNote')}
             </Button>
           )}
           {canPrint && (

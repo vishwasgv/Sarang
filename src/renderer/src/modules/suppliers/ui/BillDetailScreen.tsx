@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Receipt, PlusCircle, XCircle, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Receipt, PlusCircle, XCircle, RotateCcw, Printer } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Card } from '@shared/ui/molecules/Card'
@@ -84,6 +84,7 @@ export function BillDetailScreen() {
   const canRecordPayment = hasPermission('supplierPayments.record')
   const canReversePayment = hasPermission('supplierPayments.reverse')
   const canVoid = hasPermission('bills.void')
+  const [printing, setPrinting] = useState(false)
 
   const loadBill = useCallback(async () => {
     if (!id) return
@@ -187,6 +188,17 @@ export function BillDetailScreen() {
     } finally { setVoiding(false) }
   }
 
+  async function handlePrint() {
+    if (!bill) return
+    setPrinting(true)
+    try {
+      const res = await window.api.bills.print(bill.id)
+      if (!res.success) toastError('Failed', res.error?.message ?? 'Could not print this bill.')
+    } catch {
+      toastError('Failed', 'Could not print this bill.')
+    } finally { setPrinting(false) }
+  }
+
   if (loading) {
     return (
       <div className="p-6 space-y-4">
@@ -230,6 +242,9 @@ export function BillDetailScreen() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={handlePrint} loading={printing}>
+            <Printer size={14} className="me-1.5" /> {t('billing.print')}
+          </Button>
           {bill.status !== 'VOID' && bill.balanceAmount > 0.01 && canRecordPayment && (
             <Button size="sm" onClick={() => { setPaymentAmount(bill.balanceAmount.toFixed(2)); setShowPaymentModal(true) }}>
               <PlusCircle size={14} className="me-1.5" /> {t('bills.recordPayment')}

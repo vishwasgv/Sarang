@@ -51,6 +51,11 @@ model BusinessProfile {
   creditInterestEnabled     Boolean   @default(false)
   creditInterestRatePercent Float     @default(0) // annual rate
   creditInterestType        String    @default("SIMPLE") // SIMPLE | COMPOUND
+  // Phase 63 — default invoice template, plain scalar not a relation (this
+  // model has no relations today — a loose reference matches its own
+  // existing settings-row shape better than being the first ever added).
+  // Null means "use the system default" (InvoiceTemplate.isDefault=true).
+  defaultInvoiceTemplateId  String?
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 }
@@ -73,22 +78,26 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  role                  Role                @relation(fields: [roleId], references: [id])
-  auditLogs             AuditLog[]
-  aiQueryLogs           AiQueryLog[]
-  invoices              Invoice[]           @relation("InvoiceCreatedBy")
-  expenses              Expense[]           @relation("ExpenseCreatedBy")
-  payments              Payment[]           @relation("PaymentRecordedBy")
-  billsCreated          Bill[]              @relation("BillCreatedBy") // Phase 61
-  supplierPayments      SupplierPayment[]   @relation("SupplierPaymentRecordedBy") // Phase 61
-  journalEntriesCreated JournalEntry[]      @relation("JournalEntryCreatedBy") // Phase 62
-  stockMovements        InventoryMovement[] @relation("MovementCreatedBy")
-  assignedProjects      Project[]           @relation("ProjectAssignedTo")
-  assignedTickets       ServiceTicket[]     @relation("TicketAssignedTo")
-  assignedJobCards      JobCard[]           @relation("JobCardAssignedTo")
-  workLogs              WorkLog[]
-  bloodIssuesHandled    BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
-  issueComments         IssueComment[] // Phase 58 §2 — Software Agency
+  role                     Role                @relation(fields: [roleId], references: [id])
+  auditLogs                AuditLog[]
+  aiQueryLogs              AiQueryLog[]
+  invoices                 Invoice[]           @relation("InvoiceCreatedBy")
+  expenses                 Expense[]           @relation("ExpenseCreatedBy")
+  payments                 Payment[]           @relation("PaymentRecordedBy")
+  billsCreated             Bill[]              @relation("BillCreatedBy") // Phase 61
+  supplierPayments         SupplierPayment[]   @relation("SupplierPaymentRecordedBy") // Phase 61
+  journalEntriesCreated    JournalEntry[]      @relation("JournalEntryCreatedBy") // Phase 62
+  stockMovements           InventoryMovement[] @relation("MovementCreatedBy")
+  assignedProjects         Project[]           @relation("ProjectAssignedTo")
+  assignedTickets          ServiceTicket[]     @relation("TicketAssignedTo")
+  assignedJobCards         JobCard[]           @relation("JobCardAssignedTo")
+  workLogs                 WorkLog[]
+  bloodIssuesHandled       BloodIssue[]        @relation("BloodIssueIssuedBy") // Phase 51
+  issueComments            IssueComment[] // Phase 58 §2 — Software Agency
+  salesOrdersCreated       SalesOrder[]        @relation("SalesOrderCreatedBy") // Phase 63
+  recurringProfilesCreated RecurringProfile[]  @relation("RecurringProfileCreatedBy") // Phase 63
+  approvalStepsAsApprover  ApprovalStep[]      @relation("ApprovalStepApprover") // Phase 63
+  approvalActions          ApprovalAction[]    @relation("ApprovalActionBy") // Phase 63
 }
 
 model Role {
@@ -100,6 +109,7 @@ model Role {
 
   users           User[]
   rolePermissions RolePermission[]
+  approvalSteps   ApprovalStep[] // Phase 63
 }
 
 model Permission {
@@ -136,9 +146,10 @@ model ProductCategory {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  parent   ProductCategory?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
-  children ProductCategory[] @relation("CategoryHierarchy")
-  products Product[]
+  parent         ProductCategory?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  children       ProductCategory[] @relation("CategoryHierarchy")
+  products       Product[]
+  pricingSchemes PricingScheme[] // Phase 63
 }
 
 model Product {
@@ -276,6 +287,11 @@ model Product {
   repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
   bomComponentUsages        BillOfMaterialItem[]      @relation("BomComponentProduct") // Phase 58 §2 — Manufacturing multi-level BOM
   productionComponentUsages ProductionMaterialUsage[] @relation("ProductionComponentUsage") // Phase 58 §2 — Manufacturing multi-level BOM
+  salesOrderItems           SalesOrderItem[] // Phase 63
+  priceListItems            PriceListItem[] // Phase 63
+  pricingSchemes            PricingScheme[] // Phase 63
+  creditNoteItems           CreditNoteItem[] // Phase 63
+  debitNoteItems            DebitNoteItem[] // Phase 63
 
   @@index([productName])
   @@index([isActive])
@@ -676,7 +692,15 @@ model Customer {
   contactPersonName         String? // BUSINESS only — who to actually deal with at the company
   idProofType               String? // INDIVIDUAL only — e.g. "Aadhaar", "PAN", "Driving Licence"
   idProofNumber             String? // INDIVIDUAL only
+  // Phase 63 — formal Price List assignment, additive alongside the existing
+  // customerClass-based CustomerClassPrice (see PriceList's own model
+  // comment for the resolution order between the two).
+  priceListId               String?
 
+  priceList                 PriceList?                    @relation(fields: [priceListId], references: [id])
+  salesOrders               SalesOrder[] // Phase 63
+  recurringProfiles         RecurringProfile[] // Phase 63
+  dropShipOrders            PurchaseOrder[]               @relation("DropShipCustomer") // Phase 63
   documentChecklistItems    ClientDocumentChecklistItem[] // Phase 58 §2 — CA Firm
   billableExpenses          Expense[]                     @relation("ExpenseBillableCustomer") // Phase 61
   ledgerEntries             CustomerLedger[]
@@ -788,7 +812,11 @@ model Supplier {
   // applies only to MSME-registered suppliers.
   isMsmeRegistered  Boolean  @default(false)
   msmeCategory      String? // MICRO | SMALL | MEDIUM
+  // Phase 63 — formal Price List assignment (vendor-specific pricing).
+  priceListId       String?
 
+  priceList             PriceList?           @relation(fields: [priceListId], references: [id])
+  recurringProfiles     RecurringProfile[] // Phase 63
   ledgerEntries         SupplierLedger[]
   purchaseOrders        PurchaseOrder[]
   batches               ProductBatch[]
@@ -824,28 +852,38 @@ model SupplierLedger {
 // PURCHASE ORDERS
 // ─────────────────────────────────────────────────────────────────────────────
 model PurchaseOrder {
-  id              String    @id @default(cuid())
-  poNumber        String    @unique
-  supplierId      String
-  orderDate       DateTime  @default(now())
-  expectedDate    DateTime?
-  status          String    @default("DRAFT")
-  subtotal        Float     @default(0)
-  taxAmount       Float     @default(0)
-  totalAmount     Float     @default(0)
-  notes           String?
-  createdById     String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  poNumber             String    @unique
+  supplierId           String
+  orderDate            DateTime  @default(now())
+  expectedDate         DateTime?
+  status               String    @default("DRAFT")
+  subtotal             Float     @default(0)
+  taxAmount            Float     @default(0)
+  totalAmount          Float     @default(0)
+  notes                String?
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
   // Phase 62 — Reverse Charge Mechanism: GST liability shifts to the
   // business receiving the supply instead of the supplier charging it.
-  isReverseCharge Boolean   @default(false)
+  isReverseCharge      Boolean   @default(false)
+  // Phase 63 — drop-shipment: when dropShipToCustomerId is set, this PO's
+  // own print output and GRN-receiving flow treat the delivery address as
+  // the customer's, not the business's own location. Goods still post to
+  // inventory normally — this narrower cut means "correct delivery
+  // address," not "invisible pass-through inventory."
+  dropShipToCustomerId String?
+  sourceSalesOrderId   String? // the SalesOrder this drop-ship PO is fulfilling, if any
 
-  supplier   Supplier            @relation(fields: [supplierId], references: [id])
-  items      PurchaseOrderItem[]
-  debitNotes DebitNote[]
-  grns       GoodsReceiptNote[]  @relation("GRNPurchaseOrder")
-  bills      Bill[] // Phase 61 — a Bill can optionally be raised against this PO
+  supplier           Supplier            @relation(fields: [supplierId], references: [id])
+  dropShipToCustomer Customer?           @relation("DropShipCustomer", fields: [dropShipToCustomerId], references: [id])
+  sourceSalesOrder   SalesOrder?         @relation("DropShipSalesOrder", fields: [sourceSalesOrderId], references: [id])
+  approvalInstance   ApprovalInstance?
+  items              PurchaseOrderItem[]
+  debitNotes         DebitNote[]
+  grns               GoodsReceiptNote[]  @relation("GRNPurchaseOrder")
+  bills              Bill[] // Phase 61 — a Bill can optionally be raised against this PO
 }
 
 model PurchaseOrderItem {
@@ -1030,6 +1068,7 @@ model BankAccount {
   statementLines   BankStatementLine[]
   postDatedCheques PostDatedCheque[]
   journalLines     JournalEntryLine[]
+  chequeBooks      ChequeBook[]
 
   @@index([accountType])
   @@index([isActive])
@@ -1132,6 +1171,9 @@ model PostDatedCheque {
   id            String   @id @default(cuid())
   bankAccountId String
   chequeNumber  String
+  // Nullable — only set when this cheque's number was auto-consumed from an
+  // active ChequeBook rather than typed in by hand.
+  chequeBookId  String?
   direction     String // RECEIVED | ISSUED
   partyType     String? // CUSTOMER | SUPPLIER
   partyId       String?
@@ -1144,10 +1186,36 @@ model PostDatedCheque {
   updatedAt     DateTime @updatedAt
 
   bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+  chequeBook  ChequeBook? @relation(fields: [chequeBookId], references: [id])
 
   @@index([bankAccountId])
   @@index([status])
   @@index([dueDate])
+  @@index([chequeBookId])
+}
+
+// Real gap closed 2026-08-12 — Phase 62's own spec (Section 4.1 item 7)
+// promised "cheque-book management... simple cheque-number-sequence tracking
+// per account," but only a free-text PostDatedCheque.chequeNumber ever
+// shipped. One or more ChequeBooks per BankAccount, each a real number
+// range — nextNumber only ever advances via chequeBookService's own
+// consumeNextChequeNumber, inside the same transaction as the PDC it's
+// issued for, so a crash mid-create can never skip or double-issue a number.
+model ChequeBook {
+  id            String   @id @default(cuid())
+  bankAccountId String
+  startNumber   Int
+  endNumber     Int
+  nextNumber    Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bankAccount BankAccount       @relation(fields: [bankAccountId], references: [id])
+  cheques     PostDatedCheque[]
+
+  @@index([bankAccountId])
+  @@index([isActive])
 }
 
 model FixedAsset {
@@ -1234,6 +1302,13 @@ model Invoice {
   // so absent for every service vertical and any product vertical that
   // doesn't turn Logistics on). Nullable, printed only when set.
   ewayBillNumber     String?
+  // Phase 63 — set when this Invoice was generated (fully or partially) off
+  // a SalesOrder. Not unique — one SalesOrder can spawn several Invoices as
+  // it's fulfilled in stages, unlike Quotation's 1:1 quotationId above.
+  salesOrderId       String?
+  // Phase 63 — per-invoice template override; falls back to
+  // BusinessProfile's own default when null.
+  invoiceTemplateId  String?
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1252,8 +1327,11 @@ model Invoice {
   occupiedTables   RestaurantTable[] @relation("TableCurrentInvoice")
   splitFromInvoice Invoice?          @relation("InvoiceSplitLineage", fields: [splitFromInvoiceId], references: [id])
   splitInvoices    Invoice[]         @relation("InvoiceSplitLineage")
+  salesOrder       SalesOrder?       @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
+  invoiceTemplate  InvoiceTemplate?  @relation(fields: [invoiceTemplateId], references: [id])
 
   @@index([customerId])
+  @@index([salesOrderId])
   @@index([invoiceDate])
   @@index([paymentStatus])
   @@index([status])
@@ -1303,13 +1381,22 @@ model InvoiceItem {
   prescriptionPatientName String?
   prescriptionDoctorName  String?
   prescriptionDate        DateTime?
+  // Phase 63 — zero-value/free-of-cost billing: a FOC line still deducts
+  // stock and still appears on Sales Register (real quantity, real
+  // product), just with unitPrice/lineTotal forced to 0. schemeId records
+  // which PricingScheme produced it, so the printed invoice can show a real
+  // reason rather than a silent zero price.
+  isFreeOfCost            Boolean   @default(false)
+  schemeId                String?
   createdAt               DateTime  @default(now())
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  invoice Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id])
+  scheme  PricingScheme? @relation(fields: [schemeId], references: [id])
 
   @@index([invoiceId])
   @@index([productId])
+  @@index([schemeId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1351,6 +1438,9 @@ model ExpenseCategory {
   expenses           Expense[]
   purchaseOrderItems PurchaseOrderItem[] // Phase 61 — service-line categorization
   billItems          BillItem[] // Phase 61
+  salesOrderItems    SalesOrderItem[] // Phase 63
+  creditNoteItems    CreditNoteItem[] // Phase 63
+  debitNoteItems     DebitNoteItem[] // Phase 63
 }
 
 model Expense {
@@ -2457,6 +2547,13 @@ model Quotation {
   discountAmount  Float     @default(0)
   totalAmount     Float     @default(0)
   notes           String?
+  // Phase 63 — set at creation when this Estimate represents a retainer
+  // engagement. Mirrors RetainerAgreement.retainerType's own enum. When
+  // set, accepting this Quotation creates a real RetainerAgreement (if the
+  // customer doesn't already have an active one) instead of a one-shot
+  // convertToInvoice(), then immediately generates the first period's
+  // invoice via RecurringProfile's own on-demand-evaluation path.
+  retainerType    String? // FIXED_FEE | HOURLY_BUCKET | DELIVERABLE_BASED
   createdBy       String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -2499,8 +2596,9 @@ model CreditNote {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  invoice  Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice  Invoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  items    CreditNoteItem[] // Phase 63 — real line items; amount above stays as a computed sum-of-lines for pre-Phase-63 rows
 
   @@index([customerId])
   @@index([invoiceId])
@@ -2519,8 +2617,9 @@ model DebitNote {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  supplier      Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  supplier      Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder?  @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  items         DebitNoteItem[] // Phase 63 — real line items; relabeled "Vendor Credit" in the UI, model name kept as-is
 
   @@index([supplierId])
   @@index([purchaseOrderId])
@@ -3897,6 +3996,11 @@ model ServiceProject {
   targetChannel      String? // e.g. "Google Ads", "Meta Ads", "SEO", "Email", "Social Media", "Content" — free text, not a fixed enum
   deliverableType    String? // e.g. "Campaign Launch", "Creative Asset Set", "Monthly Report", "Website"
   adSpendBudget      Decimal? // Planned/allocated ad spend for this campaign — distinct from totalContractValue (the agency's own fee)
+  // Phase 63 — how this project is actually billed. Real field, not a
+  // description string — targets ServiceProject specifically (not the
+  // separate, generic Project Kanban model) since this is the model
+  // TimeEntry's hours/ratePerHour already drive real invoicing from.
+  billingMethod      String    @default("FIXED_COST") // FIXED_COST | HOURLY | DAILY_PER_TASK | DAILY_PER_PROJECT | DAILY_PER_USER
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -5310,4 +5414,319 @@ model AiQueryLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 63 — SALES-SIDE COMPLETION & PRICING INFRASTRUCTURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sales Order — the mirror image of Phase 61's PurchaseOrder/PurchaseOrderItem
+// on the sales side, including the same product-or-service line duality.
+// A commit-to-sell before billing; one SalesOrder can spawn several Invoices
+// as it's fulfilled in stages (SalesOrderItem.invoicedQty tracks the running
+// total, not a one-shot conversion flag).
+model SalesOrder {
+  id           String    @id @default(cuid())
+  soNumber     String    @unique
+  customerId   String
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  status       String    @default("DRAFT") // DRAFT | PENDING_APPROVAL | CONFIRMED | PARTIALLY_INVOICED | INVOICED | CANCELLED
+  subtotal     Float     @default(0)
+  taxAmount    Float     @default(0)
+  totalAmount  Float     @default(0)
+  notes        String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  createdBy        User?             @relation("SalesOrderCreatedBy", fields: [createdById], references: [id])
+  items            SalesOrderItem[]
+  invoices         Invoice[]         @relation("SalesOrderInvoices")
+  dropShipPOs      PurchaseOrder[]   @relation("DropShipSalesOrder")
+  approvalInstance ApprovalInstance?
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+}
+
+model SalesOrderItem {
+  id                 String   @id @default(cuid())
+  salesOrderId       String
+  // Same product-or-service duality Phase 61 gave PurchaseOrderItem.
+  productId          String?
+  serviceDescription String? // set only when productId is null
+  serviceCategoryId  String? // reuses ExpenseCategory, same convention as PurchaseOrderItem
+  quantity           Float
+  // Running total invoiced across possibly-several partial invoices — never
+  // decremented, only ever increased by createInvoiceFromSalesOrder().
+  invoicedQty        Float    @default(0)
+  unitPrice          Float
+  taxRate            Float    @default(0)
+  taxAmount          Float    @default(0)
+  total              Float
+  createdAt          DateTime @default(now())
+
+  salesOrder      SalesOrder       @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  serviceCategory ExpenseCategory? @relation(fields: [serviceCategoryId], references: [id])
+
+  @@index([salesOrderId])
+  @@index([serviceCategoryId])
+}
+
+// Recurring Invoices/Bills/Expenses — one shared shape, reusing
+// RetainerAgreement's own proven claim-key pattern (lastGeneratedPeriod,
+// "YYYY-MM"-shaped, evaluated on demand) rather than building real cron,
+// since no scheduler infrastructure exists in this codebase (the only
+// scheduling is two setInterval loops in src/main/index.ts).
+model RecurringProfile {
+  id                  String    @id @default(cuid())
+  documentType        String // INVOICE | BILL | EXPENSE
+  // JSON snapshot of the line-item payload used to generate each new
+  // document — not a live FK to a source document, since that document may
+  // itself later change (mirrors why RetainerAgreement snapshots its own
+  // monthlyAmount rather than pointing at a live invoice).
+  payloadJson         String
+  customerId          String? // set for INVOICE
+  supplierId          String? // set for BILL
+  cadence             String    @default("MONTHLY") // WEEKLY | MONTHLY | QUARTERLY | YEARLY
+  dayOfPeriod         Int       @default(1)
+  startDate           DateTime
+  endDate             DateTime?
+  // Claim-key: never re-generates for a period already recorded here, no
+  // matter how many times the evaluator runs within that same period.
+  lastGeneratedPeriod String?
+  active              Boolean   @default(true)
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer  Customer? @relation(fields: [customerId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+  createdBy User?     @relation("RecurringProfileCreatedBy", fields: [createdById], references: [id])
+
+  @@index([documentType])
+  @@index([active])
+  @@index([customerId])
+  @@index([supplierId])
+}
+
+// Formal Price Lists — additive alongside the existing, narrower
+// CustomerClassPrice (Phase 58 §2: one flat price per product per
+// Customer.customerClass string, no quantity tiers, no supplier side, no
+// per-customer assignment). PriceList is more specific and resolved first;
+// CustomerClassPrice remains untouched as the class-wide fallback.
+model PriceList {
+  id           String   @id @default(cuid())
+  name         String
+  appliesTo    String // CUSTOMER | SUPPLIER
+  currencyCode String   @default("INR")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items     PriceListItem[]
+  customers Customer[]
+  suppliers Supplier[]
+
+  @@index([appliesTo])
+  @@index([isActive])
+}
+
+model PriceListItem {
+  id          String @id @default(cuid())
+  priceListId String
+  productId   String
+  // Best-matching tier ≤ the entered quantity wins — a row with
+  // minQuantity=1 is effectively the list's own base/default price.
+  minQuantity Float  @default(1)
+  unitPrice   Float
+
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([priceListId])
+  @@index([productId])
+}
+
+// Zero-value/free-of-cost billing + scheme engine — the second literal
+// field-note feature (buy-X-get-Y-free, slab discounts), independently named
+// by both Zoho ("zero-value line items") and Tally ("Actual and Billed
+// quantities... free samples").
+model PricingScheme {
+  id              String    @id @default(cuid())
+  name            String
+  ruleType        String // BUY_X_GET_Y_FREE | SLAB_DISCOUNT
+  // Scoped to a specific product OR a whole category — mutually exclusive by
+  // convention, not enforced at the DB level (same looseness this schema
+  // already accepts for e.g. PurchaseOrderItem's product-or-service split).
+  productId       String?
+  categoryId      String?
+  buyQuantity     Float? // BUY_X_GET_Y_FREE
+  freeQuantity    Float? // BUY_X_GET_Y_FREE
+  // SLAB_DISCOUNT — JSON array of {minQty:number, discountPercent:number},
+  // same "JSON for a variable-shape config" convention as
+  // Product.rentalRates.
+  slabBreakpoints String    @default("[]")
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  product      Product?         @relation(fields: [productId], references: [id])
+  category     ProductCategory? @relation(fields: [categoryId], references: [id])
+  invoiceItems InvoiceItem[]
+
+  @@index([isActive])
+  @@index([productId])
+  @@index([categoryId])
+}
+
+// Multi-level sales/purchase approval workflows — fully greenfield. A
+// PENDING_APPROVAL state is inserted into SalesOrder/PurchaseOrder's own
+// flat string status machine between DRAFT and CONFIRMED, not a parallel
+// workflow those documents have to know nothing about.
+model ApprovalWorkflow {
+  id           String   @id @default(cuid())
+  documentType String // SALES_ORDER | PURCHASE_ORDER
+  name         String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  steps     ApprovalStep[]
+  instances ApprovalInstance[]
+
+  @@index([documentType])
+  @@index([isActive])
+}
+
+model ApprovalStep {
+  id                 String  @id @default(cuid())
+  workflowId         String
+  sequenceOrder      Int
+  // A step targets a specific user OR a whole role — mutually exclusive by
+  // convention. Only triggers above minAmountThreshold, so small routine
+  // orders don't need sign-off.
+  approverRoleId     String?
+  approverUserId     String?
+  minAmountThreshold Float   @default(0)
+
+  workflow     ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  approverRole Role?            @relation(fields: [approverRoleId], references: [id])
+  approverUser User?            @relation("ApprovalStepApprover", fields: [approverUserId], references: [id])
+  actions      ApprovalAction[]
+
+  @@index([workflowId])
+}
+
+model ApprovalInstance {
+  id              String   @id @default(cuid())
+  workflowId      String
+  documentType    String // SALES_ORDER | PURCHASE_ORDER
+  salesOrderId    String?  @unique
+  purchaseOrderId String?  @unique
+  status          String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workflow      ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  salesOrder    SalesOrder?      @relation(fields: [salesOrderId], references: [id])
+  purchaseOrder PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  actions       ApprovalAction[]
+
+  @@index([workflowId])
+  @@index([status])
+}
+
+model ApprovalAction {
+  id         String   @id @default(cuid())
+  instanceId String
+  stepId     String
+  actionById String
+  action     String // APPROVED | REJECTED
+  comment    String?
+  actionedAt DateTime @default(now())
+
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  step     ApprovalStep     @relation(fields: [stepId], references: [id])
+  actionBy User             @relation("ApprovalActionBy", fields: [actionById], references: [id])
+
+  @@index([instanceId])
+  @@index([stepId])
+}
+
+// Account-based line items on Credit Notes and Vendor Credits — both models
+// were lump-sum (a single `amount` field, zero line items) before this
+// phase, confirmed via a live code read, not assumed. `amount` on the parent
+// model stays as a computed sum-of-lines for backward-compatible reads of
+// pre-Phase-63 rows; new rows always populate items.
+model CreditNoteItem {
+  id                 String  @id @default(cuid())
+  creditNoteId       String
+  productId          String?
+  serviceDescription String?
+  serviceCategoryId  String?
+  quantity           Float   @default(1)
+  unitPrice          Float
+  taxRate            Float   @default(0)
+  taxAmount          Float   @default(0)
+  lineTotal          Float
+
+  creditNote      CreditNote       @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  serviceCategory ExpenseCategory? @relation(fields: [serviceCategoryId], references: [id])
+
+  @@index([creditNoteId])
+  @@index([serviceCategoryId])
+}
+
+// DebitNote is relabeled "Vendor Credit" in every user-facing string this
+// phase — kept as the existing internal model name rather than introducing
+// a new one, matching this schema's own customerKind-style discriminator
+// convention (one model, a naming decision at the UI layer).
+model DebitNoteItem {
+  id                 String  @id @default(cuid())
+  debitNoteId        String
+  productId          String?
+  serviceDescription String?
+  serviceCategoryId  String?
+  quantity           Float   @default(1)
+  unitPrice          Float
+  taxRate            Float   @default(0)
+  taxAmount          Float   @default(0)
+  lineTotal          Float
+
+  debitNote       DebitNote        @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  serviceCategory ExpenseCategory? @relation(fields: [serviceCategoryId], references: [id])
+
+  @@index([debitNoteId])
+  @@index([serviceCategoryId])
+}
+
+// Editable billing/invoice template system — the phase's own named "wow
+// factor" item. print.service.ts's generateInvoiceHtml is refactored to
+// drive one shared HTML skeleton off this config via token substitution,
+// rather than duplicating its full generator once per starter template.
+model InvoiceTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  // Structured config: logo position, accent color, which optional fields
+  // show (PO number/e-way bill/notes/bank details), footer text — kept as
+  // JSON rather than one column per option, same reasoning as
+  // PricingScheme.slabBreakpoints, so new options never need a migration.
+  configJson String
+  isSystem   Boolean  @default(false) // seeded starter templates (Classic/Modern/Minimal/GST-detailed)
+  isDefault  Boolean  @default(false) // the one BusinessProfile falls back to when an Invoice has no per-invoice override
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([isDefault])
 }

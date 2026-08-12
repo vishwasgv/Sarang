@@ -20,6 +20,11 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'inventory', group: 'universal', title: 'Inventory' },
   { slug: 'customers-suppliers', group: 'universal', title: 'Customers & Suppliers' },
   { slug: 'bills-purchases', group: 'universal', title: 'Bills & Payments Made' },
+  // Phase 63 — Sales-Side Completion & Pricing Infrastructure. Placed right
+  // after bills-purchases, mirroring that chapter's own position relative
+  // to Billing (the purchase-side and sales-side "beyond the basic
+  // transaction" chapters sit next to each other).
+  { slug: 'sales-orders-pricing', group: 'universal', title: 'Sales Orders & Pricing' },
   // Phase 62 — Banking, Ledger & Compliance Backbone. Placed right after
   // bills-purchases, matching that chapter's own precedent of sitting
   // between the transaction-recording chapters and Reports.

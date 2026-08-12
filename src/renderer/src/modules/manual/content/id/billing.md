@@ -20,6 +20,8 @@ Lebih suka mengklik daripada mengetik sepenuhnya? Klik ikon kisi di sebelah kota
 
 Di tengah transaksi, perlu melayani pelanggan lain tanpa kehilangan keranjang saat ini? Klik **Tahan Penjualan** untuk menahannya sementara dan mulai dari awal; **Lanjutkan Penjualan** menampilkan keranjang-keranjang yang ditahan untuk dilanjutkan persis dari titik terakhir. **MRP** sebuah produk, ketika diatur lebih tinggi daripada harga jualnya, ditampilkan sebagai harga referensi yang dicoret di samping harga sebenarnya dalam hasil pencarian.
 
+Ketika item yang ditambahkan ke keranjang memenuhi syarat untuk **skema harga** yang aktif (Beli-X-Dapat-Y-Gratis atau diskon volume), sebuah bilah saran yang bisa ditutup muncul dengan tombol **Terapkan** — mengkliknya menambahkan baris gratis atau mengatur diskon baris tersebut secara otomatis. Tidak ada yang berubah sampai Anda mengklik Terapkan.
+
 ## Riwayat dan detail faktur
 
 **Invoice List** (`/billing`, melalui tampilan daftar faktur) menampilkan setiap faktur beserta pelanggannya, jumlah item, total, saldo terutang, dan status pembayaran (BELUM LUNAS / SEBAGIAN / LUNAS / DIBATALKAN). Cari berdasarkan nomor faktur atau pelanggan, filter berdasarkan rentang tanggal atau status Aktif/Dibatalkan.
@@ -40,11 +42,21 @@ Membuka sebuah faktur menampilkan seluruh baris item, rincian pajak, dan riwayat
 
 Sebuah quotation dimulai sebagai **Draf** dan bisa menjadi **Sent**, **Diterima**, atau **Kedaluwarsa**. Setelah pelanggan menyetujuinya, klik **Ubah menjadi Faktur** — ini membuat faktur sungguhan dari item-item quotation tersebut dan menandai quotation sebagai Accepted. Quotation yang sudah dikonversi menampilkan tautan ke faktur hasilnya, bukan tombol konversi. Quotation bisa dicetak dalam lebar A4 atau struk, dan dihapus selama belum dikonversi.
 
+Sebuah quotation juga bisa memiliki kolom **Perjanjian Retainer** (Biaya Tetap, Paket Jam, atau Berdasarkan Deliverable) — ketika diatur, quotation yang diterima menampilkan tombol **Ubah menjadi Retainer**, yang mengubah quotation menjadi proyek layanan berkelanjutan.
+
 ## Credit Notes dan Debit Notes
 
 **Nota Kredit** (`/billing/credit-notes`) mencatat uang yang harus dikembalikan *kepada* pelanggan — biasanya untuk retur, kelebihan tagih, atau penyesuaian goodwill. Buat satu dengan alasan dan jumlah, opsional dikaitkan dengan pelanggan dan/atau faktur asli. Mengaitkannya dengan pelanggan otomatis mengkredit buku besar mereka, mengurangi jumlah yang mereka utang kepada Anda.
 
-**Nota Debit** (`/billing/debit-notes`) adalah padanannya dari sisi pemasok — uang yang harus dikembalikan pemasok kepada Anda, misalnya retur stok yang dibeli atau koreksi tagihan. Mengaitkan debit note dengan pemasok mendebit buku besar mereka, mengurangi jumlah yang Anda utang kepada mereka. Baik credit note maupun debit note bisa opsional merujuk ke faktur atau pesanan pembelian yang terkait, bisa diedit atau dihapus, dan dicetak dalam lebar A4 atau struk.
+**Nota Debit** (`/billing/debit-notes`) adalah padanannya dari sisi pemasok — uang yang harus dikembalikan pemasok kepada Anda, misalnya retur stok yang dibeli atau koreksi tagihan. Mengaitkan debit note dengan pemasok mendebit buku besar mereka, mengurangi jumlah yang Anda utang kepada mereka. Baik credit note maupun debit note bisa opsional merujuk ke faktur atau pesanan pembelian yang terkait, bisa diedit atau dihapus, dan dicetak dalam lebar A4 atau struk. Saat membuat, Anda bisa mencentang **Rincikan nota ini** untuk memasukkan baris item produk/layanan sungguhan alih-alih jumlah sederhana.
+
+## Template Faktur
+
+Bagian **Template Faktur** di Pengaturan mengontrol tampilan faktur, quotation, dan dokumen lain Anda saat dicetak. Pilih dari template yang tersedia, klik **Jadikan Default** pada salah satunya, atau buat template kustom Anda sendiri dengan menyesuaikan warna dan tata letak.
+
+## Nota Pengiriman
+
+Dari layar detail faktur, mengklik **Buat Nota Pengiriman** membuat surat jalan dengan item faktur yang sudah terisi otomatis — berguna untuk dikirim bersama pelanggan saat barang dikirim. Ini tersedia bahkan jika modul Logistik tidak diaktifkan.
 
 ## Membagikan dokumen via WhatsApp dan Email
 

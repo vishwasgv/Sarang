@@ -20,6 +20,8 @@ Prefer clicking over typing entirely? Click the grid icon next to the search box
 
 Mid-sale, need to help another customer without losing the current cart? Click **Hold Sale** to park it and start fresh; **Resume Sale** brings up your held carts to pick back up exactly where you left off. A product's **MRP**, when set higher than its selling price, shows as a struck-through reference price next to the real price in the search results.
 
+If a product or category in the cart qualifies for an active **Pricing Scheme** (see the Sales Orders & Pricing chapter), a dismissible offer banner appears above the totals — "Add 2 more Widget free" or "10% off Notebooks" — with an **Apply** button. Applying a buy-X-get-Y-free offer adds a free line automatically; applying a discount offer sets that line's discount for you. Both are only ever suggestions you choose to apply — nothing changes in the cart on its own.
+
 ## Invoice history and detail
 
 **Invoice List** (`/billing`, via the invoice list view) shows every invoice with its customer, item count, total, outstanding balance, and payment status (UNPAID / PARTIAL / PAID / CANCELLED). Search by invoice number or customer, filter by date range or by Active/Cancelled status.
@@ -40,11 +42,23 @@ Opening an invoice shows its full line items, tax breakdown, and payment history
 
 A quotation starts as **Draft** and can be **Sent**, **Accepted**, or **Expired**. Once a customer agrees to it, click **Convert to Invoice** — this creates a real invoice from the quotation's items and marks the quotation Accepted. A quotation that has already been converted shows a link to its resulting invoice instead of the convert button. Quotations can be printed at A4 or receipt width, and deleted as long as they haven't been converted.
 
+If a quotation is for an ongoing retainer engagement rather than a one-time sale, set its **Retainer Engagement** field (Fixed Fee, Hourly Bucket, or Deliverable-Based) when creating it. A quotation marked this way shows a **Convert to Retainer** button instead of (or alongside) Convert to Invoice — accepting it creates a recurring Retainer Agreement (the same kind you'd otherwise set up directly from Retainers, if your business type has that screen) rather than a single invoice.
+
 ## Credit Notes and Debit Notes
 
 **Credit Notes** (`/billing/credit-notes`) record money owed *back to* a customer — typically for a return, an overcharge, or a goodwill adjustment. Create one with a reason and amount, optionally linked to a customer and/or the original invoice. Linking it to a customer automatically credits their ledger, reducing what they owe you.
 
 **Debit Notes** (`/billing/debit-notes`) are the supplier-side equivalent — money a supplier owes you back, for example a return of purchased stock or a billing correction. Linking a debit note to a supplier debits their ledger, reducing what you owe them. Both credit and debit notes can optionally reference the invoice or purchase order they relate to, can be edited or deleted, and print at A4 or receipt width.
+
+When creating either one, tick **Itemize this credit/debit note** to build the amount from real line items (a product or a free-text service, quantity, price, tax) instead of typing a single number — useful when the credit or debit covers specific returned or disputed items rather than a flat adjustment. The amount field becomes read-only and totals automatically once you switch to itemized mode. Itemization is only available when creating a new note; editing an existing one always uses the plain amount field.
+
+## Invoice Templates
+
+**Settings → Invoice Templates** lets you choose the accent color, footer text, and layout density (Comfortable or Compact) used whenever an invoice, quotation, or other document is printed. Four starter templates (Classic, Modern, Minimal, GST Detailed) come built in — Classic is the default and matches Sarang's original look exactly, so an install that never touches this screen prints exactly as it always has. Click **Set as Default** on any template to make it the one used everywhere, or **New Template** to create your own with a custom accent color and footer message (e.g. "Thank you for your business!"). Only your own custom templates can be edited or deleted — the four starters are fixed.
+
+## Delivery Notes
+
+Open any invoice and click **Create Delivery Note** to generate a dispatch document for that sale — the items, quantities, and customer are carried over automatically. This works for any business, independent of whether the Logistics module is turned on; if Logistics *is* enabled, the delivery note also appears alongside your regular Delivery Challans.
 
 ## Sharing documents via WhatsApp and Email
 

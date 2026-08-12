@@ -3,6 +3,7 @@ import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { billingService } from '../../services/billing.service'
 import { printService } from '../../services/print.service'
+import { invoiceTemplateService } from '../../services/invoice-template.service'
 import { exportToPdf } from '../../services/export.service'
 import { heldSaleService } from '../../services/held-sale.service'
 import { formatAmount as formatAmountLocaleAware } from '../../services/currency.service'
@@ -117,9 +118,11 @@ export function register(handle: HandleFn): void {
     const printType = (printTypeSetting?.settingValue ?? 'A4') as 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM'
     const isReceipt = printType === 'THERMAL_80MM' || printType === 'THERMAL_58MM'
     const paperWidth = printType === 'THERMAL_58MM' ? '58mm' : '80mm'
+    const invoiceForTemplate = invoiceRes.data as { invoiceTemplateId?: string | null }
+    const templateConfig = isReceipt ? null : await invoiceTemplateService.resolveTemplateConfig(invoiceForTemplate.invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
     const html = isReceipt
       ? await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth)
-      : await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1])
+      : await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], templateConfig)
     const tmpPath = join(app.getPath('temp'), `sarang_inv_${Date.now()}.html`)
     await writeFile(tmpPath, html, 'utf-8')
     return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
@@ -175,7 +178,8 @@ export function register(handle: HandleFn): void {
     const invoiceRes = await billingService.getInvoice(invoiceId)
     if (!invoiceRes.success) return invoiceRes
     const profile = await getPrisma().businessProfile.findFirst()
-    const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1])
+    const previewTemplateConfig = await invoiceTemplateService.resolveTemplateConfig((invoiceRes.data as { invoiceTemplateId?: string | null }).invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
+    const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], previewTemplateConfig)
     return { success: true, data: html }
   })
 
@@ -189,7 +193,8 @@ export function register(handle: HandleFn): void {
     const invoiceRes = await billingService.getInvoice(invoiceId)
     if (!invoiceRes.success) return invoiceRes
     const profile = await getPrisma().businessProfile.findFirst()
-    const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1])
+    const exportTemplateConfig = await invoiceTemplateService.resolveTemplateConfig((invoiceRes.data as { invoiceTemplateId?: string | null }).invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
+    const html = await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], exportTemplateConfig)
     const invoiceNumber = (invoiceRes.data as { invoiceNumber: string }).invoiceNumber
     const result = await exportToPdf({ html, filename: `Invoice-${invoiceNumber}.pdf` })
     return { success: true, data: result }

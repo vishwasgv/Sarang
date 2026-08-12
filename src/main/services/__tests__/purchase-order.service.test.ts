@@ -59,6 +59,10 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     // Phase 61 — receivePO writes one cost-history row per received
     // product line (see purchase-order.service.ts's receivePO).
     productCostHistory: { create: vi.fn().mockResolvedValue({}) },
+    // Phase 63 — approvePO's new submitForApproval call. null = no active
+    // workflow configured = requiresApproval:false = zero behavior change,
+    // same convention sales-order.service.test.ts's own makeDb established.
+    approvalWorkflow: { findFirst: vi.fn().mockResolvedValue(null) },
     ...overrides
   } as Record<string, any>
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
@@ -117,6 +121,43 @@ describe('purchaseOrderService.createPO', () => {
 
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('SUP-001')
+  })
+
+  it('Phase 63 — rejects a non-existent drop-ship customer', async () => {
+    const db = makeDb()
+    db.customer = { findUnique: vi.fn().mockResolvedValue(null) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.createPO({ ...basePayload, dropShipToCustomerId: 'ghost' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('CUST-001')
+  })
+
+  it('Phase 63 — rejects a non-existent source Sales Order', async () => {
+    const db = makeDb()
+    db.customer = { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) }
+    db.salesOrder = { findUnique: vi.fn().mockResolvedValue(null) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.createPO({ ...basePayload, dropShipToCustomerId: 'cust-1', sourceSalesOrderId: 'ghost' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('SO-001')
+  })
+
+  it('Phase 63 — persists dropShipToCustomerId/sourceSalesOrderId when both are valid', async () => {
+    const db = makeDb()
+    db.customer = { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) }
+    db.salesOrder = { findUnique: vi.fn().mockResolvedValue({ id: 'so-1' }) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.createPO({ ...basePayload, dropShipToCustomerId: 'cust-1', sourceSalesOrderId: 'so-1' })
+
+    expect(result.success).toBe(true)
+    const createCall = vi.mocked(db.purchaseOrder.create).mock.calls[0][0] as { data: { dropShipToCustomerId: string; sourceSalesOrderId: string } }
+    expect(createCall.data.dropShipToCustomerId).toBe('cust-1')
+    expect(createCall.data.sourceSalesOrderId).toBe('so-1')
   })
 
   it('rejects service products from PO with PRD-006', async () => {
@@ -198,6 +239,11 @@ describe('purchaseOrderService.approvePO', () => {
   })
 
   it('reads the current status inside the transaction (no read-then-write race)', async () => {
+    // Phase 63 — approvePO now reads status once BEFORE the transaction too
+    // (to decide whether an ApprovalWorkflow branch applies, mirroring
+    // confirmSalesOrder's identical pattern) — the race-safety guarantee
+    // this test actually cares about is the LAST findUnique (the one
+    // guarding the real write), so it checks that one specifically.
     const db = makeDb()
     db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(makePO({ status: 'DRAFT' }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -205,8 +251,9 @@ describe('purchaseOrderService.approvePO', () => {
     await purchaseOrderService.approvePO('po-1')
 
     const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
-    const findCallOrder = vi.mocked(db.purchaseOrder.findUnique).mock.invocationCallOrder[0]
-    expect(txCallOrder).toBeLessThan(findCallOrder)
+    const findCallOrders = vi.mocked(db.purchaseOrder.findUnique).mock.invocationCallOrder
+    const lastFindCallOrder = findCallOrders[findCallOrders.length - 1]
+    expect(txCallOrder).toBeLessThan(lastFindCallOrder)
   })
 
   it('rejects approval when PO is not in DRAFT status', async () => {
@@ -218,6 +265,60 @@ describe('purchaseOrderService.approvePO', () => {
 
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('PO-002')
+  })
+
+  // Phase 63 — multi-level approval workflows, mirroring
+  // sales-order.service.test.ts's own identical coverage for confirmSalesOrder.
+  it('moves to PENDING_APPROVAL instead of APPROVED when the amount qualifies for an active workflow', async () => {
+    const db = makeDb({
+      approvalWorkflow: { findFirst: vi.fn().mockResolvedValue({ id: 'wf-1', documentType: 'PURCHASE_ORDER', isActive: true, steps: [{ id: 'step-1', minAmountThreshold: 500 }] }) },
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue(makePO({ status: 'DRAFT', totalAmount: 1180 })), update: vi.fn().mockResolvedValue(makePO({ status: 'PENDING_APPROVAL' })) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await purchaseOrderService.approvePO('po-1')
+
+    expect(res.success).toBe(true)
+    expect((res as any).data.status).toBe('PENDING_APPROVAL')
+  })
+
+  it('rejects approving while still PENDING_APPROVAL and no step has approved yet', async () => {
+    const db = makeDb({
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue(makePO({ status: 'PENDING_APPROVAL' })) },
+      approvalInstance: { findFirst: vi.fn().mockResolvedValue({ id: 'inst-1', status: 'PENDING' }) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await purchaseOrderService.approvePO('po-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PO-006')
+  })
+
+  it('rejects approving a Purchase Order that was rejected during approval', async () => {
+    const db = makeDb({
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue(makePO({ status: 'PENDING_APPROVAL' })) },
+      approvalInstance: { findFirst: vi.fn().mockResolvedValue({ id: 'inst-1', status: 'REJECTED' }) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await purchaseOrderService.approvePO('po-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PO-007')
+  })
+
+  it('finishes DRAFT→APPROVED once the ApprovalInstance has reached APPROVED', async () => {
+    const db = makeDb({
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue(makePO({ status: 'PENDING_APPROVAL' })), update: vi.fn().mockResolvedValue(makePO({ status: 'APPROVED' })) },
+      approvalInstance: { findFirst: vi.fn().mockResolvedValue({ id: 'inst-1', status: 'APPROVED' }) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await purchaseOrderService.approvePO('po-1')
+
+    expect(res.success).toBe(true)
+    expect((res as any).data.status).toBe('APPROVED')
   })
 })
 

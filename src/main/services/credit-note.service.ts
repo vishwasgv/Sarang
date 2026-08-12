@@ -2,12 +2,23 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { generateSequenceNumber } from './sequence.service'
+import { calculateLineTotal, sumCurrency } from './currency.service'
+
+export interface CreditNoteItemPayload {
+  productId?: string
+  serviceDescription?: string
+  serviceCategoryId?: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+}
 
 export interface CreateCreditNotePayload {
   customerId?: string
   invoiceId?: string
   reason: string
-  amount: number
+  amount?: number
+  items?: CreditNoteItemPayload[]
   notes?: string
 }
 
@@ -28,6 +39,13 @@ export const creditNoteService = {
       if (!inv) return { success: false, error: { code: 'INV-001', message: 'Invoice not found.' } }
     }
 
+    // Phase 63 — Account-based line items. When items are provided, amount
+    // is always the computed sum of the lines, never trusted from whatever
+    // the caller separately sent — same "server recomputes, never trusts a
+    // parallel scalar" discipline as Expense's own mileage amount.
+    const lineRows = payload.items?.map(item => ({ item, ...calculateLineTotal(item.quantity, item.unitPrice, 0, item.taxRate) })) ?? null
+    const computedAmount = lineRows ? sumCurrency(lineRows.map(r => r.lineTotal)) : payload.amount!
+
     const cn = await db.$transaction(async (tx) => {
       // Number generation must happen inside the same transaction as the
       // insert — see sequence.service.ts's header comment for why a plain
@@ -46,11 +64,25 @@ export const creditNoteService = {
           customerId: payload.customerId ?? null,
           invoiceId: payload.invoiceId ?? null,
           reason: payload.reason,
-          amount: payload.amount,
+          amount: computedAmount,
           notes: payload.notes ?? null,
-          createdBy: userId
+          createdBy: userId,
+          ...(lineRows && {
+            items: {
+              create: lineRows.map(({ item, taxAmount, lineTotal }) => ({
+                productId: item.productId || null,
+                serviceDescription: item.serviceDescription || null,
+                serviceCategoryId: item.serviceCategoryId || null,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                taxRate: item.taxRate,
+                taxAmount,
+                lineTotal
+              }))
+            }
+          })
         },
-        include: { customer: true, invoice: true }
+        include: { customer: true, invoice: true, items: true }
       })
 
       // Update customer ledger and outstanding balance via the shared ledger
@@ -63,7 +95,7 @@ export const creditNoteService = {
           referenceType: 'CREDIT_NOTE',
           referenceId: created.id,
           debitAmount: 0,
-          creditAmount: payload.amount,
+          creditAmount: computedAmount,
           remarks: `Credit Note ${creditNoteNumber}: ${payload.reason}`
         }, tx)
       }
@@ -86,7 +118,7 @@ export const creditNoteService = {
           select: { balanceAmount: true, paymentStatus: true }
         })
         if (currentInvoice.balanceAmount > 0) {
-          const appliedToInvoice = Math.min(currentInvoice.balanceAmount, payload.amount)
+          const appliedToInvoice = Math.min(currentInvoice.balanceAmount, computedAmount)
           const newBalance = currentInvoice.balanceAmount - appliedToInvoice
           await tx.invoice.update({
             where: { id: payload.invoiceId },
@@ -115,7 +147,7 @@ export const creditNoteService = {
     const [creditNotes, total] = await Promise.all([
       db.creditNote.findMany({
         where,
-        include: { customer: true, invoice: true },
+        include: { customer: true, invoice: true, items: true },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit
@@ -129,7 +161,7 @@ export const creditNoteService = {
     const db = getPrisma()
     const cn = await db.creditNote.findUnique({
       where: { id },
-      include: { customer: true, invoice: true }
+      include: { customer: true, invoice: true, items: true }
     })
     if (!cn) return { success: false, error: { code: 'CN-001', message: 'Credit note not found.' } }
     return { success: true, data: cn }
@@ -178,7 +210,7 @@ export const creditNoteService = {
           ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
           ...(payload.notes !== undefined ? { notes: payload.notes } : {})
         },
-        include: { customer: true, invoice: true }
+        include: { customer: true, invoice: true, items: true }
       })
 
       if (ledgerAffected) {

@@ -23,6 +23,11 @@ export const CreatePOSchema = z.object({
   items: z.array(POItemSchema).min(1, 'At least one item is required'),
   // Phase 62 — Reverse Charge Mechanism, same meaning as Bill's own.
   isReverseCharge: z.boolean().default(false),
+  // Phase 63 — drop-shipment: deliver directly to a customer's address
+  // instead of the business's own location. Narrower cut than a full
+  // pass-through-inventory feature — see PurchaseOrder's own schema comment.
+  dropShipToCustomerId: z.string().min(1).optional(),
+  sourceSalesOrderId: z.string().min(1).optional(),
 })
 
 export const CancelPOSchema = z.object({

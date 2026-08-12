@@ -2,12 +2,27 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { generateSequenceNumber } from './sequence.service'
+import { calculateLineTotal, sumCurrency } from './currency.service'
 
+export interface DebitNoteItemPayload {
+  productId?: string
+  serviceDescription?: string
+  serviceCategoryId?: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+}
+
+// Phase 63 — relabeled "Vendor Credit" in every user-facing string; kept as
+// the existing DebitNote model/service internally, matching this codebase's
+// own customerKind-style discriminator convention (a naming decision at the
+// UI layer, not a second model).
 export interface CreateDebitNotePayload {
   supplierId?: string
   purchaseOrderId?: string
   reason: string
-  amount: number
+  amount?: number
+  items?: DebitNoteItemPayload[]
   notes?: string
 }
 
@@ -28,6 +43,12 @@ export const debitNoteService = {
       if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
     }
 
+    // Phase 63 — Account-based line items. Same "server recomputes, never
+    // trusts a parallel scalar" discipline as credit-note.service.ts's own
+    // identical change.
+    const lineRows = payload.items?.map(item => ({ item, ...calculateLineTotal(item.quantity, item.unitPrice, 0, item.taxRate) })) ?? null
+    const computedAmount = lineRows ? sumCurrency(lineRows.map(r => r.lineTotal)) : payload.amount!
+
     const dn = await db.$transaction(async (tx) => {
       // Number generation must happen inside the same transaction as the
       // insert — see sequence.service.ts's header comment for why a plain
@@ -46,11 +67,25 @@ export const debitNoteService = {
           supplierId: payload.supplierId ?? null,
           purchaseOrderId: payload.purchaseOrderId ?? null,
           reason: payload.reason,
-          amount: payload.amount,
+          amount: computedAmount,
           notes: payload.notes ?? null,
-          createdBy: userId
+          createdBy: userId,
+          ...(lineRows && {
+            items: {
+              create: lineRows.map(({ item, taxAmount, lineTotal }) => ({
+                productId: item.productId || null,
+                serviceDescription: item.serviceDescription || null,
+                serviceCategoryId: item.serviceCategoryId || null,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                taxRate: item.taxRate,
+                taxAmount,
+                lineTotal
+              }))
+            }
+          })
         },
-        include: { supplier: true, purchaseOrder: true }
+        include: { supplier: true, purchaseOrder: true, items: true }
       })
 
       // Debit note reduces what we owe the supplier — via the shared ledger
@@ -60,7 +95,7 @@ export const debitNoteService = {
           supplierId: payload.supplierId,
           referenceType: 'DEBIT_NOTE',
           referenceId: created.id,
-          debitAmount: payload.amount,
+          debitAmount: computedAmount,
           creditAmount: 0,
           remarks: `Debit Note ${debitNoteNumber}: ${payload.reason}`
         }, tx)
@@ -83,7 +118,7 @@ export const debitNoteService = {
     const [debitNotes, total] = await Promise.all([
       db.debitNote.findMany({
         where,
-        include: { supplier: true, purchaseOrder: true },
+        include: { supplier: true, purchaseOrder: true, items: true },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit
@@ -97,7 +132,7 @@ export const debitNoteService = {
     const db = getPrisma()
     const dn = await db.debitNote.findUnique({
       where: { id },
-      include: { supplier: true, purchaseOrder: true }
+      include: { supplier: true, purchaseOrder: true, items: true }
     })
     if (!dn) return { success: false, error: { code: 'DN-001', message: 'Debit note not found.' } }
     return { success: true, data: dn }
@@ -136,7 +171,7 @@ export const debitNoteService = {
           ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
           ...(payload.notes !== undefined ? { notes: payload.notes } : {})
         },
-        include: { supplier: true, purchaseOrder: true }
+        include: { supplier: true, purchaseOrder: true, items: true }
       })
 
       if (ledgerAffected) {

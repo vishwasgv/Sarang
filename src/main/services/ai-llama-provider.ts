@@ -59,6 +59,9 @@ export const INTENT_TEMPLATE_NAMES = [
   'documents.openQuotationsValue', 'documents.quotationConversionRate', 'documents.overduePurchaseOrders',
   // Phase 62 — Banking, Ledger & Compliance Backbone's 4 required intents.
   'ledger.bankBalance', 'ledger.unreconciledTransactions', 'credit.customerOverdueInterest', 'ledger.fixedAssetDepreciationThisYear',
+  // Phase 63 — Sales-Side Completion & Pricing Infrastructure's 5 required
+  // intents. See ai-query.service.ts's TEMPLATE_CATALOG for the full set.
+  'salesOrders.createForCustomer', 'pricing.priceListForCustomer', 'pricing.schemeCostThisMonth', 'invoiceTemplate.switch', 'approvals.pendingApproval',
   'out_of_scope'
 ] as const
 
@@ -82,7 +85,10 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   meta: 'meta',
   // Phase 62 — Banking, Ledger & Compliance Backbone's own static category
   // (not 'vertical' — these are universal, not gated to specific BusinessTypes).
-  ledger: 'ledger'
+  ledger: 'ledger',
+  // Phase 63 — Sales-Side Completion & Pricing Infrastructure's own static
+  // categories (also universal, not gated to specific BusinessTypes).
+  salesOrders: 'salesOrders', pricing: 'pricing', invoiceTemplate: 'invoiceTemplate', approvals: 'approvals'
 }
 
 function categoryFor(template: string): string {

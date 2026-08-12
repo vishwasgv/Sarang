@@ -120,6 +120,14 @@ const SECTIONS: SettingsSection[] = [
     status: 'available'
   },
   {
+    id: 'invoiceTemplates',
+    label: 'Invoice Templates',
+    description: 'Choose the accent color, footer text, and layout density used when printing invoices and other documents',
+    icon: <Printer size={18} />,
+    permission: 'invoiceTemplates.view',
+    status: 'available'
+  },
+  {
     id: 'security',
     label: 'Security',
     description: 'Change your password',
@@ -280,6 +288,7 @@ export function SettingsScreen() {
         {activeSection === 'appearance' && <AppearanceSection />}
         {activeSection === 'businessFeatures' && <BusinessFeaturesSection />}
         {activeSection === 'barcode' && <BarcodeSection />}
+        {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}
         {activeSection === 'security' && <SecuritySection />}
         {activeSection === 'tutorial' && <TutorialSection />}
@@ -2158,6 +2167,233 @@ function BusinessFeaturesSection() {
 // defaults OFF for every business type (see TEMPLATE_DEFAULTS in
 // industry-template.service.ts) — this section is how an owner opts in; nothing
 // here changes anyone's workflow until they turn it on themselves.
+interface InvoiceTemplateRow {
+  id: string
+  name: string
+  isSystem: boolean
+  isDefault: boolean
+  config: { accentColor?: string; footerText?: string; density?: 'comfortable' | 'compact' }
+}
+
+// Phase 63 — the phase's own named "wow factor" item. A thin visual layer
+// over print.service.ts's single shared HTML skeleton (accent color/footer
+// text/density only) — see invoice-template.service.ts's own comment.
+function InvoiceTemplatesSection() {
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { hasPermission } = useAuthStore()
+  const canManage = hasPermission('invoiceTemplates.manage')
+
+  const [templates, setTemplates] = useState<InvoiceTemplateRow[]>([])
+  const [businessDefaultId, setBusinessDefaultId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editTarget, setEditTarget] = useState<InvoiceTemplateRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<InvoiceTemplateRow | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
+
+  const [formName, setFormName] = useState('')
+  const [formAccentColor, setFormAccentColor] = useState('#00AEEF')
+  const [formFooterText, setFormFooterText] = useState('')
+  const [formDensity, setFormDensity] = useState<'comfortable' | 'compact'>('comfortable')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [tRes, pRes] = await Promise.all([
+        window.api.invoiceTemplates.list(),
+        window.api.businessProfile.get()
+      ])
+      if (tRes.success) setTemplates((tRes.data as InvoiceTemplateRow[]) ?? [])
+      else toastError('Error', tRes.error?.message ?? 'Could not load invoice templates.')
+      if (pRes.success) setBusinessDefaultId((pRes.data as { defaultInvoiceTemplateId: string | null }).defaultInvoiceTemplateId ?? null)
+    } catch {
+      toastError('Error', 'Could not load invoice templates.')
+    } finally {
+      setLoading(false)
+    }
+  }, [toastError])
+
+  useEffect(() => { load() }, [load])
+
+  function openCreate() {
+    setEditTarget(null)
+    setFormName('')
+    setFormAccentColor('#00AEEF')
+    setFormFooterText('')
+    setFormDensity('comfortable')
+    setShowForm(true)
+  }
+
+  function openEdit(tpl: InvoiceTemplateRow) {
+    setEditTarget(tpl)
+    setFormName(tpl.name)
+    setFormAccentColor(tpl.config.accentColor ?? '#00AEEF')
+    setFormFooterText(tpl.config.footerText ?? '')
+    setFormDensity(tpl.config.density ?? 'comfortable')
+    setShowForm(true)
+  }
+
+  async function handleSave() {
+    if (!formName.trim()) { toastError('Missing Name', 'Enter a template name.'); return }
+    setSaving(true)
+    try {
+      const config = { accentColor: formAccentColor, footerText: formFooterText || undefined, density: formDensity }
+      const res = editTarget
+        ? await window.api.invoiceTemplates.update({ id: editTarget.id, name: formName.trim(), config })
+        : await window.api.invoiceTemplates.create({ name: formName.trim(), config })
+      if (res.success) {
+        toastSuccess(editTarget ? 'Template Updated' : 'Template Created', formName.trim())
+        setShowForm(false)
+        load()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not save template.')
+      }
+    } catch {
+      toastError('Error', 'Could not save template.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSetDefault(tpl: InvoiceTemplateRow) {
+    setSettingDefaultId(tpl.id)
+    try {
+      const res = await window.api.invoiceTemplates.setBusinessDefault({ id: tpl.id })
+      if (res.success) {
+        setBusinessDefaultId(tpl.id)
+        toastSuccess('Default Template Set', tpl.name)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not set default template.')
+      }
+    } catch {
+      toastError('Error', 'Could not set default template.')
+    } finally {
+      setSettingDefaultId(null)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    try {
+      const res = await window.api.invoiceTemplates.delete(deleteTarget.id)
+      if (res.success) { toastSuccess('Template Deleted', deleteTarget.name); load() }
+      else toastError('Error', res.error?.message ?? 'Could not delete template.')
+    } catch {
+      toastError('Error', 'Could not delete template.')
+    } finally {
+      setDeleteTarget(null)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-dark dark:text-slate-100">Invoice Templates</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">The starred template is used by default for every printed invoice, quotation, and other document.</p>
+        </div>
+        {canManage && (
+          <Button size="sm" onClick={openCreate}><Plus size={14} className="me-1.5" /> New Template</Button>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {templates.map(tpl => {
+            const isBusinessDefault = businessDefaultId ? businessDefaultId === tpl.id : tpl.isDefault
+            return (
+              <Card key={tpl.id} padding="lg" className={cn('space-y-3', isBusinessDefault && 'ring-2 ring-brand')}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full border border-slate-200 dark:border-slate-700 shrink-0" style={{ backgroundColor: tpl.config.accentColor ?? '#00AEEF' }} />
+                    <div>
+                      <p className="text-sm font-semibold text-dark dark:text-slate-100">{tpl.name}</p>
+                      <p className="text-xs text-slate-400">{tpl.isSystem ? 'Starter' : 'Custom'} · {tpl.config.density === 'compact' ? 'Compact' : 'Comfortable'}</p>
+                    </div>
+                  </div>
+                  {isBusinessDefault && <Badge variant="brand" size="sm"><Star size={11} className="me-1 inline" />Default</Badge>}
+                </div>
+                {tpl.config.footerText && <p className="text-xs text-slate-400 italic line-clamp-2">"{tpl.config.footerText}"</p>}
+                {canManage && (
+                  <div className="flex items-center gap-3 pt-1">
+                    {!isBusinessDefault && (
+                      <button onClick={() => handleSetDefault(tpl)} disabled={settingDefaultId === tpl.id}
+                        className="text-xs font-semibold text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
+                        Set as Default
+                      </button>
+                    )}
+                    {!tpl.isSystem && (
+                      <>
+                        <button onClick={() => openEdit(tpl)} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">Edit</button>
+                        <button onClick={() => setDeleteTarget(tpl)} className="text-xs font-semibold text-danger hover:text-danger/80 transition-colors">Delete</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="font-semibold text-gray-900 dark:text-slate-100">{editTarget ? 'Edit Template' : 'New Template'}</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Template Name</label>
+                <input value={formName} onChange={e => setFormName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={formAccentColor} onChange={e => setFormAccentColor(e.target.value)} className="w-10 h-10 rounded border border-gray-300 dark:border-slate-600" />
+                  <input value={formAccentColor} onChange={e => setFormAccentColor(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                </div>
+              </div>
+              <Select label="Layout Density" value={formDensity} onChange={e => setFormDensity(e.target.value as 'comfortable' | 'compact')}>
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </Select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Footer Text (optional)</label>
+                <textarea value={formFooterText} onChange={e => setFormFooterText(e.target.value)} rows={2}
+                  placeholder="e.g. Thank you for your business!"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
+              <button onClick={handleSave} disabled={saving || !formName.trim()}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {saving ? 'Saving...' : editTarget ? 'Update Template' : 'Create Template'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Template"
+        message={`Delete "${deleteTarget?.name}"? Invoices already printed with it are unaffected.`}
+        confirmLabel="Delete"
+      />
+    </div>
+  )
+}
+
 function BarcodeSection() {
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()

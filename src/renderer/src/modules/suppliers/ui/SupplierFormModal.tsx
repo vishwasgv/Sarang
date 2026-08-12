@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
+import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 
 const schema = z.object({
@@ -24,7 +25,11 @@ const schema = z.object({
   // Onboarding-only — a one-time debit posted at creation, never editable
   // afterward (see supplier.service.ts's createSupplier). Coerced from the
   // text input's string value.
-  openingBalance: z.coerce.number().min(0, 'Cannot be negative').optional()
+  openingBalance: z.coerce.number().min(0, 'Cannot be negative').optional(),
+  // Phase 63 — Price List assignment (real gap found+fixed during live
+  // verification: the backend field/validation/service already accepted
+  // this, but no UI anywhere ever let a user actually set it).
+  priceListId: z.string().optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -35,6 +40,7 @@ interface Supplier {
   taxNumber?: string | null; notes?: string | null
   bankAccountNumber?: string | null; bankIfscCode?: string | null; bankName?: string | null; panNumber?: string | null
   openingBalance?: number
+  priceListId?: string | null
 }
 
 interface SupplierFormModalProps {
@@ -51,6 +57,14 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema)
   })
+  const [priceLists, setPriceLists] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    if (!open) return
+    window.api.priceLists.list({ appliesTo: 'SUPPLIER', isActive: true }).then((res) => {
+      if (res.success) setPriceLists((res.data as Array<{ id: string; name: string }>) ?? [])
+    })
+  }, [open])
 
   useEffect(() => {
     if (open) {
@@ -68,7 +82,8 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         bankIfscCode: supplier?.bankIfscCode ?? '',
         bankName: supplier?.bankName ?? '',
         panNumber: supplier?.panNumber ?? '',
-        openingBalance: supplier?.openingBalance ?? 0
+        openingBalance: supplier?.openingBalance ?? 0,
+        priceListId: supplier?.priceListId ?? ''
       })
     }
   }, [open, supplier, reset])
@@ -76,7 +91,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
   async function onSubmit(values: FormValues) {
     try {
       const { openingBalance, ...rest } = values
-      const payload = { ...rest, email: values.email || undefined }
+      const payload = { ...rest, email: values.email || undefined, priceListId: values.priceListId || undefined }
       const response = isEdit
         ? await window.api.suppliers.update({ id: supplier!.id, ...payload })
         : await window.api.suppliers.create({ ...payload, openingBalance: openingBalance ?? 0 })
@@ -124,6 +139,14 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
           <Input label="Country" placeholder="India" {...register('country')} />
         </div>
         <Input label="Tax Number" placeholder="GST / PAN / VAT" {...register('taxNumber')} />
+        {priceLists.length > 0 && (
+          <Select label="Price List" {...register('priceListId')}>
+            <option value="">None — normal purchase price</option>
+            {priceLists.map((pl) => (
+              <option key={pl.id} value={pl.id}>{pl.name}</option>
+            ))}
+          </Select>
+        )}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">Bank & Compliance Details</p>
           <div className="grid grid-cols-2 gap-4 mb-4">

@@ -264,3 +264,43 @@ describe('service-project.service — Marketing Agency campaign fields (F.13)', 
     expect(project.adSpendBudget).toBeNull()
   })
 })
+
+// Phase 63 — billingMethod drives generateInvoiceForServiceProject's own
+// branching (time-entry.service.ts), but create/update never actually
+// accepted the field until now — a real gap caught while building the UI
+// select for it, not a hypothetical.
+describe('service-project.service — billingMethod (Phase 63)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createServiceProject persists an explicit billingMethod', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createServiceProject({ clientId: 'cust-1', projectName: 'Retainer Support', billingMethod: 'HOURLY' })
+
+    expect(res.success).toBe(true)
+    const call = vi.mocked(db.serviceProject.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.billingMethod).toBe('HOURLY')
+    expect((res as { data: { billingMethod: unknown } }).data.billingMethod).toBe('HOURLY')
+  })
+
+  it('createServiceProject defaults billingMethod to FIXED_COST when omitted', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createServiceProject({ clientId: 'cust-1', projectName: 'Office Fitout' })
+
+    const call = vi.mocked(db.serviceProject.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.billingMethod).toBe('FIXED_COST')
+  })
+
+  it('updateServiceProject passes billingMethod through to the update call', async () => {
+    const db = makeMockDb(makeProject())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateServiceProject({ id: 'proj-1', billingMethod: 'DAILY_PER_TASK' })
+
+    const call = vi.mocked(db.serviceProject.update).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.billingMethod).toBe('DAILY_PER_TASK')
+  })
+})

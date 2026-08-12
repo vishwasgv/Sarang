@@ -28,6 +28,8 @@ export const CreateSupplierSchema = z.object({
   taxNumber: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
   openingBalance: z.number().min(0, 'Opening balance cannot be negative').default(0),
+  // Phase 63 — formal Price List assignment (vendor-specific pricing).
+  priceListId: z.string().min(1).optional(),
   ...supplierBankFields,
   ...supplierMsmeFields
 })
@@ -43,6 +45,7 @@ export const UpdateSupplierSchema = z.object({
   country: z.string().max(100).optional(),
   taxNumber: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
+  priceListId: z.string().min(1).optional(),
   ...supplierBankFields,
   ...supplierMsmeFields
 })

@@ -4,9 +4,11 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
+vi.mock('../retainer.service', () => ({ createRetainer: vi.fn(), generateInvoiceForRetainer: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { getLicenseState } from '../license.service'
+import { createRetainer, generateInvoiceForRetainer } from '../retainer.service'
 import { quotationService } from '../quotation.service'
 
 const EXISTING_NUMBER = 'QT-00003'
@@ -116,6 +118,10 @@ describe('quotationService.convertToInvoice — float precision fix', () => {
       invoiceItem: { create: vi.fn().mockResolvedValue({}) },
       quotation: { update: vi.fn().mockResolvedValue({}) },
       setting: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
+      // Phase 63 gap-fix — convertToInvoice now posts a real JournalEntry
+      // via billing.service.ts's exported postInvoiceJournalEntry.
+      chartOfAccounts: { findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET', isActive: true }) },
+      journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findMany: vi.fn().mockResolvedValue([]) },
     }
     const db: Record<string, any> = {
       quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
@@ -280,5 +286,91 @@ describe('quotationService.convertToInvoice — license gate', () => {
 
     expect((res as { error?: { code: string } }).error?.code).not.toBe('LIC-002')
     expect(db.__findUnique).toHaveBeenCalled()
+  })
+})
+
+// Phase 63 — Estimate → auto-create Retainer Invoice on accept.
+describe('quotationService.convertToRetainer', () => {
+  function makeRetainerDb(overrides: Record<string, unknown> = {}) {
+    return {
+      quotation: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE',
+          status: 'DRAFT', totalAmount: 15000, notes: null
+        }),
+        update: vi.fn().mockResolvedValue({})
+      },
+      retainerAgreement: { findFirst: vi.fn().mockResolvedValue(null) },
+      ...overrides
+    }
+  }
+
+  it('rejects a quotation with no retainerType set', async () => {
+    const db = makeRetainerDb({ quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', retainerType: null, status: 'DRAFT', customerId: 'cust-1' }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-004')
+  })
+
+  it('rejects an already-accepted quotation', async () => {
+    const db = makeRetainerDb({ quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', retainerType: 'FIXED_FEE', status: 'ACCEPTED', customerId: 'cust-1' }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-002')
+  })
+
+  it('rejects a retainer-type quotation with no real customer (walk-in only)', async () => {
+    const db = makeRetainerDb({ quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', retainerType: 'FIXED_FEE', status: 'DRAFT', customerId: null }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-005')
+  })
+
+  it('creates a new RetainerAgreement using the quotation totalAmount, when the customer has no active one', async () => {
+    const db = makeRetainerDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(createRetainer).mockResolvedValue({ success: true, data: { id: 'ret-1' } } as never)
+    vi.mocked(generateInvoiceForRetainer).mockResolvedValue({ success: true, data: { invoiceId: 'inv-1', period: '2026-08' } } as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(createRetainer).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'cust-1', retainerType: 'FIXED_FEE', monthlyAmount: 15000 }))
+    expect(generateInvoiceForRetainer).toHaveBeenCalledWith('ret-1')
+    expect(db.quotation.update).toHaveBeenCalledWith({ where: { id: 'qt-1' }, data: { status: 'ACCEPTED' } })
+  })
+
+  it('reuses the customer\'s existing active RetainerAgreement instead of creating a duplicate', async () => {
+    const db = makeRetainerDb({ retainerAgreement: { findFirst: vi.fn().mockResolvedValue({ id: 'ret-existing', status: 'ACTIVE' }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(generateInvoiceForRetainer).mockResolvedValue({ success: true, data: { invoiceId: 'inv-2', period: '2026-08' } } as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(createRetainer).not.toHaveBeenCalled()
+    expect(generateInvoiceForRetainer).toHaveBeenCalledWith('ret-existing')
+  })
+
+  it('surfaces a real generation failure (e.g. already invoiced this period) instead of silently succeeding', async () => {
+    const db = makeRetainerDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(createRetainer).mockResolvedValue({ success: true, data: { id: 'ret-1' } } as never)
+    vi.mocked(generateInvoiceForRetainer).mockResolvedValue({ success: false, error: { code: 'RT30-006', message: 'Already invoiced for this period.' } } as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RT30-006')
+    expect(db.quotation.update).not.toHaveBeenCalled()
   })
 })

@@ -108,6 +108,59 @@ describe('creditNoteService.create', () => {
 
     expect((res as { data: { creditNoteNumber: string } }).data.creditNoteNumber).toBe('CN-00001')
   })
+
+  // Section 5.4's own explicit required coverage: a pre-Phase-63 (no items)
+  // record must keep using its own plain `amount` field untouched by the
+  // new sum-of-lines logic — `computedAmount = lineRows ? sum(...) :
+  // payload.amount!` in the real code falls back to the scalar exactly when
+  // no items are given, same as every credit/debit note created before this
+  // phase.
+  it('uses the plain amount field untouched when no items are given (legacy shape)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', reason: 'Goodwill adjustment', amount: 750 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { amount: number } }).data.amount).toBe(750)
+  })
+})
+
+// Phase 63 — Account-based line items. amount is always the computed sum of
+// the lines, never trusted from a separately-sent scalar.
+describe('creditNoteService.create — Phase 63 line items', () => {
+  it('computes amount as the sum of line totals, ignoring any separately-sent amount', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({
+      customerId: 'cust-1', reason: 'Return of goods', amount: 999999,
+      items: [
+        { productId: 'prod-1', quantity: 2, unitPrice: 100, taxRate: 18 },
+        { serviceDescription: 'Restocking fee', quantity: 1, unitPrice: 50, taxRate: 0 }
+      ]
+    } as never, 'user-1')
+
+    expect(res.success).toBe(true)
+    // 2*100*1.18 + 1*50*1.0 = 236 + 50 = 286
+    expect((res as { data: { amount: number } }).data.amount).toBeCloseTo(286)
+    const createCall = db.__txClient.creditNote.create.mock.calls[0][0] as { data: { items: { create: Array<{ productId: string | null; serviceDescription: string | null }> } } }
+    expect(createCall.data.items.create).toHaveLength(2)
+    expect(createCall.data.items.create[0].productId).toBe('prod-1')
+    expect(createCall.data.items.create[1].serviceDescription).toBe('Restocking fee')
+  })
+
+  it('posts the computed line-item sum to the customer ledger, not a stray amount', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await creditNoteService.create({
+      customerId: 'cust-1', reason: 'Return of goods',
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 100, taxRate: 0 }]
+    } as never, 'user-1')
+
+    expect(db.__ledgerCreateCalls[0]).toMatchObject({ creditAmount: 100, debitAmount: 0 })
+  })
 })
 
 // Real bug found live (2026-07-28 core-commerce audit): a credit note linked

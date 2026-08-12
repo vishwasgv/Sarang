@@ -17,7 +17,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock,
+  BookText, Wallet, Lock, ShieldCheck, Gift,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -173,7 +173,13 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Payroll', i18nKey: 'nav.payroll', path: '/hr/payroll', icon: Banknote, permissionKey: 'hr.view' },
   { label: 'Products', i18nKey: 'nav.products', path: '/products', icon: Package, permissionKey: 'products.view' },
   { label: 'Inventory', i18nKey: 'nav.inventory', path: '/inventory', icon: Warehouse, permissionKey: 'inventory.view' },
+  // Phase 63 — Sales Orders, the mirror image of Purchase Orders on the sales side.
+  { label: 'Sales Orders', i18nKey: 'nav.salesOrders', path: '/sales-orders', icon: ClipboardList, permissionKey: 'salesOrders.view' },
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },
+  { label: 'Price Lists', i18nKey: 'nav.priceLists', path: '/pricing/price-lists', icon: Tag, permissionKey: 'priceLists.view' },
+  { label: 'Pricing Schemes', i18nKey: 'nav.pricingSchemes', path: '/pricing/schemes', icon: Gift, permissionKey: 'pricingSchemes.view' },
+  { label: 'Recurring Profiles', i18nKey: 'nav.recurringProfiles', path: '/recurring-profiles', icon: Repeat, permissionKey: 'recurringProfiles.view' },
+  { label: 'Approval Workflows', i18nKey: 'nav.approvalWorkflows', path: '/approval-workflows', icon: ShieldCheck, permissionKey: 'approvalWorkflows.view' },
   // Phase 61 — Bills (AP: what we owe a supplier) + Payments Made.
   { label: 'Bills', i18nKey: 'bills.title', path: '/bills', icon: Receipt, permissionKey: 'bills.view' },
   { label: 'Payments Made', i18nKey: 'supplierPayments.title', path: '/supplier-payments', icon: Banknote, permissionKey: 'supplierPayments.view' },

@@ -5,7 +5,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listTimeEntries, createTimeEntry, updateTimeEntry, generateTimeEntryInvoice } from '../time-entry.service'
+import { listTimeEntries, createTimeEntry, updateTimeEntry, generateTimeEntryInvoice, generateInvoiceForServiceProject } from '../time-entry.service'
 
 // Regression coverage for the Phase 28 re-audit finding: TimeEntry.hours/
 // ratePerHour/amount are Prisma Decimal fields — Electron's IPC can't
@@ -289,5 +289,80 @@ describe('time-entry.service — generateTimeEntryInvoice', () => {
     // Claimed, then released — never finalized with isBilled:true.
     expect(db.timeEntry.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isBilled: true }) }))
     expect(db.timeEntry.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['entry-1'] } }, data: { invoiceId: null } })
+  })
+})
+
+// Phase 63 — ServiceProject.billingMethod-aware invoicing.
+describe('generateInvoiceForServiceProject', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeProjectDb(overrides: Record<string, unknown> = {}) {
+    const db: Record<string, any> = {
+      serviceProject: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'sp-1', clientId: 'cust-1', projectName: 'Website Revamp', billingMethod: 'FIXED_COST', totalContractValue: new FakeDecimal(50000)
+        })
+      },
+      product: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'prod-svc', hsnCode: '998311' }),
+        create: vi.fn().mockResolvedValue({ id: 'prod-svc-new' })
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      timeEntry: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      ...overrides
+    }
+    return db
+  }
+
+  it('returns an error for a non-existent service project', async () => {
+    const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await generateInvoiceForServiceProject({ serviceProjectId: 'ghost' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SP-001')
+  })
+
+  it('FIXED_COST bills the full contract value as a single line, quantity 1', async () => {
+    const db = makeProjectDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+    const res = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1' })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ quantity: number; unitPrice: number }> }
+    expect(createCall.items[0]).toMatchObject({ quantity: 1, unitPrice: 50000 })
+  })
+
+  it('HOURLY requires explicit timeEntryIds and delegates to generateTimeEntryInvoice', async () => {
+    const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue({ id: 'sp-1', clientId: 'cust-1', projectName: 'Retainer Work', billingMethod: 'HOURLY', totalContractValue: null }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const resNoEntries = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1' })
+    expect(resNoEntries.success).toBe(false)
+    expect((resNoEntries as { error: { code: string } }).error.code).toBe('SP-002')
+  })
+
+  it('a DAILY_* method requires an explicit dayCount, and bills contractValue × dayCount', async () => {
+    const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue({ id: 'sp-1', clientId: 'cust-1', projectName: 'Consulting Sprint', billingMethod: 'DAILY_PER_PROJECT', totalContractValue: new FakeDecimal(3000) }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-2' } } as never)
+
+    const resNoDayCount = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1' })
+    expect(resNoDayCount.success).toBe(false)
+    expect((resNoDayCount as { error: { code: string } }).error.code).toBe('SP-004')
+
+    const res = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1', dayCount: 5 })
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(billingService.createInvoice).mock.calls[0][0] as { items: Array<{ quantity: number; unitPrice: number }> }
+    expect(createCall.items[0]).toMatchObject({ quantity: 5, unitPrice: 3000 })
+  })
+
+  it('rejects a FIXED_COST project with no contract value set', async () => {
+    const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue({ id: 'sp-1', clientId: 'cust-1', projectName: 'No Value Set', billingMethod: 'FIXED_COST', totalContractValue: null }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SP-003')
   })
 })

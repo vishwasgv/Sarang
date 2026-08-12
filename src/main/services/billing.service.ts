@@ -31,7 +31,18 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // subtotal/discount/rounding and risking a mismatch). COGS/inventory-value
 // posting is deliberately NOT included — that depends on the valuation
 // method Phase 64 has not yet chosen, and is flagged there, not guessed here.
-async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: string; invoiceNumber: string; totalAmount: number; taxAmount: number }, receivesCashNow: boolean): Promise<void> {
+// Exported (not just used internally by createInvoice below) — Phase 63
+// found a real gap during its own build: every OTHER programmatic
+// invoice-creation path in this codebase (quotationService.convertToInvoice,
+// salesOrderService.createInvoiceFromSalesOrder, and this phase's own new
+// recurring-profile.service.ts) built a real Invoice with real revenue but
+// never posted a JournalEntry for it — a genuine, pre-existing violation of
+// Phase 62's own "every real transaction posts to the GL" invariant, not
+// something this phase invented. All three now call this directly with
+// receivesCashNow=false (they're all always CREDIT-shaped — none of them
+// collect payment at creation time) instead of leaving Trial Balance
+// silently short of real revenue.
+export async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: string; invoiceNumber: string; totalAmount: number; taxAmount: number }, receivesCashNow: boolean): Promise<void> {
   if (invoice.totalAmount <= 0) return
   const [debitAccount, salesAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode(receivesCashNow ? '1000' : '1100', tx),
@@ -268,6 +279,7 @@ export const billingService = {
       jewelleryMakingCharge: number | null; jewelleryHallmarkNumber: string | null
       prescriptionPatientName: string | null; prescriptionDoctorName: string | null
       prescriptionDate: Date | null
+      isFreeOfCost: boolean; schemeId: string | null
     }
     const validatedItems: ValidatedItem[] = []
 
@@ -355,12 +367,19 @@ export const billingService = {
         }
       }
 
-      const effectiveTaxRate = (customerTaxExempt || isCompositionScheme) ? 0 : (item.taxRate ?? product.taxRate ?? 0)
-      const lineDiscount = item.discountAmount ?? 0
+      // Phase 63 — zero-value/free-of-cost billing: a FOC line's price is
+      // forced to 0 here, server-side, regardless of what unitPrice the
+      // client sent — the client can only flag a line as qualifying, never
+      // set its own "free" price. Quantity/product stay real (still deducts
+      // stock, still appears on Sales Register with zero revenue).
+      const isFreeOfCost = item.isFreeOfCost === true
+      const effectiveUnitPrice = isFreeOfCost ? 0 : item.unitPrice
+      const effectiveTaxRate = (customerTaxExempt || isCompositionScheme || isFreeOfCost) ? 0 : (item.taxRate ?? product.taxRate ?? 0)
+      const lineDiscount = isFreeOfCost ? 0 : (item.discountAmount ?? 0)
       // Decimal-safe: subtotal/discount/tax/total are computed once via
       // Prisma.Decimal (see currency.service.ts) instead of chained float
       // arithmetic, so per-line rounding error can't creep into lineTax.
-      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscount, effectiveTaxRate, currencyDecimals)
+      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, effectiveUnitPrice, lineDiscount, effectiveTaxRate, currencyDecimals)
       const lineTaxable = roundCurrency(lineSubtotal - lineDiscount, currencyDecimals)
 
       validatedItems.push({
@@ -370,12 +389,14 @@ export const billingService = {
         hsnCode: product.hsnCode ?? null,
         productType: product.productType,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        unitPrice: effectiveUnitPrice,
         discountAmount: lineDiscount,
         taxRate: effectiveTaxRate,
         lineTaxable,
         lineTax,
         lineTotal,
+        isFreeOfCost,
+        schemeId: item.schemeId ?? null,
         variantId: item.variantId ?? null,
         variantInfo: item.variantInfo ?? null,
         serialId: item.serialId ?? null,
@@ -603,7 +624,9 @@ export const billingService = {
               jewelleryHallmarkNumber: item.jewelleryHallmarkNumber,
               prescriptionPatientName: item.prescriptionPatientName,
               prescriptionDoctorName: item.prescriptionDoctorName,
-              prescriptionDate: item.prescriptionDate
+              prescriptionDate: item.prescriptionDate,
+              isFreeOfCost: item.isFreeOfCost,
+              schemeId: item.schemeId
             }
           })
         }

@@ -1,0 +1,33 @@
+# Commandes de vente et tarification
+
+## Commandes de vente
+
+Une **Commande de vente** (`/sales-orders`) est un engagement à vendre — le reflet côté vente d'un bon de commande. Utilisez-la lorsqu'un client a confirmé vouloir quelque chose mais que vous ne le facturez pas encore : les marchandises ne sont pas prêtes à être expédiées, le service n'a pas commencé, ou vous attendez un acompte. Une commande de vente ne touche jamais vos comptes comme le ferait une facture — rien n'est facturé et aucune écriture comptable n'est enregistrée tant que vous n'avez pas réellement créé une facture à partir d'elle.
+
+Créez-en une avec **Nouvelle commande de vente** : choisissez un client (ou ajoutez-en un sans quitter le formulaire), une date attendue facultative, et des lignes d'articles — chacune un produit réel ou un service en texte libre, le même sélecteur produit-ou-service déjà utilisé par Facturation et les bons de commande.
+
+La commande de vente passe par **Brouillon → Confirmée → Partiellement facturée → Facturée**, ou peut être **Annulée** (avec un motif) à n'importe quelle étape avant d'être entièrement facturée. Cliquez sur **Confirmer la commande** pour la verrouiller. Depuis une commande confirmée, cliquez sur **Créer une facture** — vous n'avez pas besoin de facturer toute la commande d'un coup : un écran de facturation partielle vous permet de choisir exactement combien facturer de chaque ligne maintenant, en laissant le reste pour plus tard. L'écran de détail de la commande conserve une liste à jour de chaque facture créée à partir d'elle, afin que vous puissiez toujours voir quelle part de la commande d'origine a réellement été facturée.
+
+## Listes de prix
+
+Les **Listes de prix** (`/pricing/price-lists`) vous permettent de configurer une tarification par palier de quantité pour un client ou un fournisseur — par exemple, un client grossiste paie moins par unité lorsqu'il achète 50 unités ou plus d'un article. Créez une liste de prix, choisissez si elle s'applique aux clients ou aux fournisseurs, puis utilisez **Gérer les paliers** pour configurer la grille de lignes {produit, quantité minimale, prix}. Attribuez une liste de prix à un client ou un fournisseur spécifique depuis sa propre fiche.
+
+Lors de la détermination du prix d'une ligne pour un client ou fournisseur avec une liste de prix attribuée, Sarang détermine automatiquement le prix : le palier le mieux adapté de la liste de prix l'emporte en premier, puis revient au prix par classe de client (l'approche plus étroite et plus ancienne que certaines entreprises utilisent déjà) si aucun ne s'applique, et enfin au prix de vente ou de revient normal du produit si aucun des deux ne s'applique. Vous n'avez jamais à réfléchir à ce qui est « actif » — le plus spécifique pour ce client ou fournisseur l'emporte.
+
+## Schémas de prix
+
+Les **Schémas de prix** (`/pricing/schemes`) sont des offres promotionnelles évaluées automatiquement au moment du paiement : **Achetez X Obtenez Y Gratuit** (par ex. achetez 2, obtenez 1 gratuit) et **Remise sur volume** (par ex. 10 % de remise pour 5+ unités, 15 % pour 10+, avec autant de paliers que vous le souhaitez). Créez un schéma, limitez-le à un produit ou à toute une catégorie, définissez sa règle, et fournissez éventuellement une date de début et de fin pour une offre à durée limitée.
+
+Au moment du paiement, l'ajout au panier d'un produit ou d'une quantité éligible affiche une bannière d'offre pouvant être ignorée avec un bouton **Appliquer** — appliquer une offre Achetez-X-Obtenez-Y-Gratuit ajoute la ligne gratuite pour vous ; appliquer une offre de remise définit automatiquement la remise de cette ligne. Ce ne sont toujours que des suggestions : rien n'est appliqué tant que vous n'avez pas cliqué sur Appliquer, et cela est vérifié indépendamment par rapport aux règles réelles et actuelles du schéma lors de la création de la facture finale — on ne peut jamais tromper un schéma pour réduire le prix d'une facture.
+
+## Profils récurrents
+
+Les **Profils récurrents** (`/recurring-profiles`) génèrent une facture, une facture fournisseur ou une dépense selon un calendrier récurrent — hebdomadaire, mensuel, trimestriel ou annuel — afin que vous n'ayez pas à recréer manuellement le même document chaque période. Créez-en un en choisissant le type de document, en remplissant les mêmes détails que vous saisiriez une fois dans une facture/facture fournisseur/dépense, et en définissant la récurrence, la date de début et une date de fin facultative.
+
+Sarang vérifie automatiquement les profils en retard pendant que l'application est ouverte (environ une fois par heure) et crée silencieusement le document — vous n'obtiendrez jamais de doublon pour une période, même si l'application était fermée au moment où la période est arrivée, car la vérification suivante le détectera. Cliquez sur **Suspendre** pour arrêter de générer un profil sans le supprimer, ou **Reprendre** pour le réactiver. La suppression d'un profil n'arrête que la génération *future* — les documents déjà créés restent exactement tels quels.
+
+## Flux d'approbation
+
+Les **Flux d'approbation** (`/approval-workflows`, généralement configurés par un administrateur) exigent une approbation lorsque le montant total d'une commande de vente ou d'un bon de commande dépasse un seuil que vous définissez — utile lorsque plusieurs personnes dans une entreprise peuvent s'engager à une vente ou un achat. Un flux de travail contient une ou plusieurs **étapes**, chacune spécifiant un approbateur (par rôle, par ex. « Manager », ou par personne spécifique) et le montant minimum de commande qui déclenche cette étape ; une étape est silencieusement ignorée si le montant de la commande n'atteint pas son seuil.
+
+Lorsqu'aucun flux de travail n'est configuré — la valeur par défaut pour chaque installation — les commandes de vente et bons de commande sont confirmés immédiatement comme avant ; cette fonctionnalité est entièrement facultative. Une fois qu'un flux de travail est actif, confirmer une commande éligible la fait passer à **Approbation en attente** au lieu de la confirmer immédiatement, et un panneau d'approbation apparaît directement sur l'écran de détail de la commande, listant chaque étape et qui doit agir. L'approbation ou le rejet se fait depuis ce même panneau — rejeter une seule étape rejette toute la commande, mais une commande entièrement approuvée termine automatiquement la confirmation. Un flux de travail sans historique d'approbation peut encore être supprimé directement ; un flux déjà utilisé doit plutôt être désactivé, ce qui préserve son historique mais l'empêche de s'appliquer aux nouvelles commandes.

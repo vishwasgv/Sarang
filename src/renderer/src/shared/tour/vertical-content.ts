@@ -140,7 +140,15 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/hr/employees', key: 'hrEmployees' },
   { path: '/hr/attendance', key: 'hrAttendance' },
   { path: '/hr/leave', key: 'hrLeave' },
-  { path: '/hr/payroll', key: 'hrPayroll' }
+  { path: '/hr/payroll', key: 'hrPayroll' },
+  // Phase 63 — Section 5.3's required flagship Tutorial entries: the new
+  // sales-side and pricing-infrastructure screens an owner is most likely
+  // to open without knowing what to do first.
+  { path: '/sales-orders', key: 'salesOrders' },
+  { path: '/pricing/price-lists', key: 'priceLists' },
+  { path: '/pricing/schemes', key: 'pricingSchemes' },
+  { path: '/recurring-profiles', key: 'recurringProfiles' },
+  { path: '/approval-workflows', key: 'approvalWorkflows' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(

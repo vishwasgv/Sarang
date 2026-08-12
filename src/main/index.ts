@@ -15,6 +15,7 @@ import { ensureFieldOrderServerState, stopFieldOrderServer } from './server/fiel
 import { ensureTokenQueueServerState, stopTokenQueueServer } from './server/token-queue-server'
 import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-window'
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
+import { recurringProfileService } from './services/recurring-profile.service'
 import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
 import { shutdownAi } from './services/ai-query.service'
@@ -342,11 +343,16 @@ app.whenReady().then(async () => {
   evaluateNotificationQueue().catch(() => {})
   scanPaymentOverdueNotifications().catch(() => {})
   generateComplianceTasks().catch(() => {})
+  // Phase 63 — Recurring Invoices/Bills/Expenses, same on-demand evaluation
+  // shape as everything else in this block (no real cron exists in this
+  // codebase — see recurring-profile.service.ts's own header comment).
+  recurringProfileService.generateDueRecurringDocuments().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})
     evaluateNotificationQueue().catch(() => {})
     scanPaymentOverdueNotifications().catch(() => {})
     generateComplianceTasks().catch(() => {})
+    recurringProfileService.generateDueRecurringDocuments().catch(() => {})
   }, 60 * 60 * 1000)
 
   // Usage-metrics tick — shorter cadence than the hour-ly evaluators above

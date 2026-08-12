@@ -20,6 +20,8 @@ Vous préférez cliquer plutôt que taper ? Cliquez sur l'icône de grille à c�
 
 En pleine vente, besoin d'aider un autre client sans perdre le panier en cours ? Cliquez sur **Mettre la vente en attente** pour le mettre de côté et repartir de zéro ; **Reprendre la vente** affiche vos paniers en attente pour reprendre exactement là où vous vous étiez arrêté. Le **MRP** d'un produit, lorsqu'il est défini plus haut que son prix de vente, s'affiche comme un prix de référence barré à côté du prix réel dans les résultats de recherche.
 
+Lorsqu'un article ajouté au panier est éligible à un **schéma de prix** actif (Achetez-X-Obtenez-Y-Gratuit ou remise sur volume), une bannière de suggestion pouvant être ignorée s'affiche avec un bouton **Appliquer** — cliquer dessus ajoute une ligne gratuite ou définit automatiquement la remise de ligne. Rien ne change tant que vous n'avez pas cliqué sur Appliquer.
+
 ## Historique et détail des factures
 
 La **liste des factures** (`/billing`, via la vue liste des factures) affiche chaque facture avec son client, le nombre d'articles, le total, le solde dû et le statut de paiement (IMPAYÉ / PARTIEL / PAYÉ / ANNULÉ). Recherchez par numéro de facture ou par client, filtrez par plage de dates ou par statut Actif/Annulé.
@@ -40,11 +42,21 @@ Les **Devis** (`/billing/quotations`) sont des estimations de prix non contractu
 
 Une Quotation démarre au statut **Brouillon** et peut passer à **Envoyée**, **Acceptée**, ou **Expirée**. Une fois que le client l'accepte, cliquez sur **Convertir en Facture** — cela crée une véritable facture à partir des articles de la Quotation et marque la Quotation comme Acceptée. Une Quotation déjà convertie affiche un lien vers la facture résultante à la place du bouton de conversion. Les Quotations peuvent être imprimées au format A4 ou largeur reçu, et supprimées tant qu'elles n'ont pas été converties.
 
+Une Quotation peut aussi avoir un champ **Engagement de Retenue** (Honoraires Fixes, Forfait d'Heures, ou Basé sur Livrables) — lorsqu'il est défini, une Quotation acceptée affiche un bouton **Convertir en Retenue**, qui transforme la Quotation en un projet de service continu.
+
 ## Credit Notes et Debit Notes
 
 Les **Avoirs** (`/billing/credit-notes`) enregistrent une somme due *en retour* à un client — typiquement pour un retour, un trop-perçu, ou un geste commercial. Créez-en une avec un motif et un montant, optionnellement liée à un client et/ou à la facture d'origine. La lier à un client crédite automatiquement son grand livre, réduisant ce qu'il vous doit.
 
-Les **Notes de Débit** (`/billing/debit-notes`) sont l'équivalent côté fournisseur : une somme qu'un fournisseur vous doit en retour, par exemple un retour de stock acheté ou une correction de facturation. Lier une Debit Note à un fournisseur débite son grand livre, réduisant ce que vous lui devez. Les Credit Notes et Debit Notes peuvent toutes deux référencer facultativement la facture ou le bon de commande auquel elles se rapportent, peuvent être modifiées ou supprimées, et s'impriment au format A4 ou largeur reçu.
+Les **Notes de Débit** (`/billing/debit-notes`) sont l'équivalent côté fournisseur : une somme qu'un fournisseur vous doit en retour, par exemple un retour de stock acheté ou une correction de facturation. Lier une Debit Note à un fournisseur débite son grand livre, réduisant ce que vous lui devez. Les Credit Notes et Debit Notes peuvent toutes deux référencer facultativement la facture ou le bon de commande auquel elles se rapportent, peuvent être modifiées ou supprimées, et s'impriment au format A4 ou largeur reçu. Lors de la création, cochez **Détailler cette note** pour saisir de véritables lignes d'articles produit/service au lieu d'un simple montant.
+
+## Modèles de facture
+
+La section **Modèles de facture** des Paramètres contrôle l'apparence de vos factures, Quotations et autres documents à l'impression. Choisissez parmi les modèles disponibles, cliquez sur **Définir par défaut** sur l'un d'eux, ou créez votre propre modèle personnalisé en ajustant les couleurs et la mise en page.
+
+## Bons de livraison
+
+Depuis l'écran de détail d'une facture, cliquer sur **Créer un bon de livraison** génère un bon de livraison avec les articles de la facture déjà remplis — utile à envoyer avec le client lors de l'expédition des marchandises. Ceci est disponible même si le module Logistique n'est pas activé.
 
 ## Partager des documents par WhatsApp et E-mail
 

@@ -44,6 +44,7 @@ interface ServiceProject {
   projectType: string
   stage: string | null
   status: string
+  billingMethod: string
   totalContractValue: number | null
   startDate: string | null
   expectedEndDate: string | null
@@ -143,6 +144,10 @@ const PROJECT_TYPES = [
   'GENERAL', 'RESIDENTIAL', 'COMMERCIAL', 'RENOVATION',
   'PRODUCT_BUILD', 'FEATURE_DEVELOPMENT', 'MAINTENANCE_RETAINER', 'CONSULTING', 'MARKETING_CAMPAIGN',
 ]
+// Phase 63 — how generateInvoiceForServiceProject bills this project.
+// HOURLY routes through the existing time-entry billing flow; the other 3
+// bill a single computed line (see time-entry.service.ts's own comment).
+const BILLING_METHODS = ['FIXED_COST', 'HOURLY', 'DAILY_PER_TASK', 'DAILY_PER_PROJECT', 'DAILY_PER_USER']
 // Marketing Agency depth (marketing_campaigns module) — free-text, not a
 // fixed enum, same convention as everything else on this generic form.
 const MARKETING_CHANNELS = ['Google Ads', 'Meta Ads', 'SEO', 'Email', 'Social Media', 'Content', 'Influencer', 'Other']
@@ -157,7 +162,7 @@ const CONTENT_STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 
 export default function ProjectsScreen(): React.ReactElement {
   const isMarketingAgency = useIndustryStore((s) => s.isModuleEnabled('marketing_campaigns'))
   const isSoftwareAgency = useIndustryStore((s) => s.isModuleEnabled('issues'))
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [projects, setProjects]   = useState<ServiceProject[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -201,6 +206,13 @@ export default function ProjectsScreen(): React.ReactElement {
   const [pType, setPType]             = useState('GENERAL')
   const [pStage, setPStage]           = useState('')
   const [pStatus, setPStatus]         = useState('ACTIVE')
+  const [pBillingMethod, setPBillingMethod] = useState<'FIXED_COST' | 'HOURLY' | 'DAILY_PER_TASK' | 'DAILY_PER_PROJECT' | 'DAILY_PER_USER'>('FIXED_COST')
+
+  // Phase 63 — generate a single computed invoice for FIXED_COST/DAILY_*
+  // projects (HOURLY bills through the existing time-entry flow instead).
+  const [invoiceProject, setInvoiceProject] = useState<ServiceProject | null>(null)
+  const [dayCountInput, setDayCountInput] = useState('')
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [pContractValue, setPContractValue] = useState('')
   const [pStartDate, setPStartDate]   = useState('')
   const [pEndDate, setPEndDate]       = useState('')
@@ -473,7 +485,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
 
   function resetPForm(): void {
     setPClientId(''); setPName(''); setPType('GENERAL'); setPStage('')
-    setPStatus('ACTIVE'); setPContractValue(''); setPStartDate('')
+    setPStatus('ACTIVE'); setPBillingMethod('FIXED_COST'); setPContractValue(''); setPStartDate('')
     setPEndDate(''); setPAssignedToId(''); setPNotes('')
     setPTargetChannel(''); setPDeliverableType(''); setPAdSpendBudget('')
   }
@@ -483,7 +495,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
   function openEditProject(p: ServiceProject): void {
     setEditProject(p)
     setPClientId(p.clientId); setPName(p.projectName); setPType(p.projectType)
-    setPStage(p.stage ?? ''); setPStatus(p.status)
+    setPStage(p.stage ?? ''); setPStatus(p.status); setPBillingMethod((p.billingMethod ?? 'FIXED_COST') as typeof pBillingMethod)
     setPContractValue(p.totalContractValue != null ? String(p.totalContractValue) : '')
     setPStartDate(p.startDate ? p.startDate.slice(0, 10) : '')
     setPEndDate(p.expectedEndDate ? p.expectedEndDate.slice(0, 10) : '')
@@ -505,6 +517,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
           projectType:        pType,
           stage:              pStage || null,
           status:             pStatus,
+          billingMethod:      pBillingMethod,
           totalContractValue: pContractValue ? Number(pContractValue) : null,
           startDate:          pStartDate || null,
           expectedEndDate:    pEndDate || null,
@@ -521,6 +534,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
           projectType:        pType,
           stage:              pStage || undefined,
           status:             pStatus,
+          billingMethod:      pBillingMethod,
           totalContractValue: pContractValue ? Number(pContractValue) : undefined,
           startDate:          pStartDate || undefined,
           expectedEndDate:    pEndDate || undefined,
@@ -537,6 +551,40 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
       toastError('Error', 'Could not save project.')
     } finally {
       setPSaving(false)
+    }
+  }
+
+  function openGenerateInvoice(p: ServiceProject): void {
+    if (!p.totalContractValue || p.totalContractValue <= 0) {
+      toastError('No Contract Value', 'Set a total contract value on this project before generating an invoice.')
+      return
+    }
+    setDayCountInput('')
+    setInvoiceProject(p)
+  }
+
+  async function handleGenerateProjectInvoice(): Promise<void> {
+    if (!invoiceProject) return
+    const needsDayCount = invoiceProject.billingMethod !== 'FIXED_COST'
+    const dayCount = needsDayCount ? Number(dayCountInput) : undefined
+    if (needsDayCount && (!dayCount || dayCount <= 0)) {
+      toastError('Enter Days', 'Enter the number of days to bill.')
+      return
+    }
+    setGeneratingInvoice(true)
+    try {
+      const res = await api.serviceProject.generateInvoice({ serviceProjectId: invoiceProject.id, dayCount })
+      if (res.success) {
+        toastSuccess('Invoice Generated', `Invoice created for ${invoiceProject.projectName}.`)
+        setInvoiceProject(null)
+        loadAll()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not generate invoice.')
+      }
+    } catch {
+      toastError('Error', 'Could not generate invoice.')
+    } finally {
+      setGeneratingInvoice(false)
     }
   }
 
@@ -821,6 +869,26 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                           <span>Content</span>
                         </button>
                       </>
+                    )}
+                    {p.billingMethod !== 'HOURLY' && (
+                      // Real bug found+fixed 2026-08-12: this shares its row
+                      // with the pre-existing per-milestone "Generate
+                      // Invoice" button below (title="Generate Invoice",
+                      // line ~927) — an identical title on two genuinely
+                      // different actions (bill the whole project's
+                      // contract value vs. bill one milestone) is a real
+                      // ambiguity for a user hovering either button, not
+                      // just an automated-test selector collision (caught
+                      // live: suite 23's own E2E test clicked this one
+                      // instead of the milestone's, via a `.first()`
+                      // locator matching both). Disambiguated, not renamed
+                      // away from — the milestone button's own title is
+                      // untouched.
+                      <button onClick={() => openGenerateInvoice(p)} title="Generate Project Invoice"
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Invoice</span>
+                      </button>
                     )}
                     <button onClick={() => openEditProject(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded dark:text-slate-500">
                       <Edit2 className="w-4 h-4" />
@@ -1151,6 +1219,12 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                 </Select>
               </div>
               <div>
+                <Select label="Billing Method" value={pBillingMethod} onChange={(e) => setPBillingMethod(e.target.value as typeof pBillingMethod)}>
+                  {BILLING_METHODS.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
+                </Select>
+                <p className="text-xs text-gray-400 mt-1">HOURLY bills logged time entries; the others bill the contract value below as one line (daily methods ask how many days when you invoice).</p>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Stage (optional)</label>
                 <input value={pStage} onChange={(e) => setPStage(e.target.value)}
                   placeholder="e.g. DESIGN, CONSTRUCTION, SCHEMATIC..."
@@ -1218,6 +1292,38 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
               <button onClick={handleSaveProject} disabled={pSaving || !pClientId || !pName.trim()}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {pSaving ? 'Saving...' : editProject ? 'Update Project' : 'Create Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Generate Invoice Modal (FIXED_COST / DAILY_*) ───────────────────── */}
+      {invoiceProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="font-semibold text-gray-900 dark:text-slate-100">Generate Invoice</h2>
+              <button onClick={() => setInvoiceProject(null)} className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-600 dark:text-slate-300">{invoiceProject.projectName}</p>
+              {invoiceProject.billingMethod === 'FIXED_COST' ? (
+                <p className="text-sm text-gray-500 dark:text-slate-400">Bills the full contract value ({fmtAmount(invoiceProject.totalContractValue)}) as one invoice.</p>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Number of Days to Bill</label>
+                  <input type="number" min="1" value={dayCountInput} onChange={(e) => setDayCountInput(e.target.value)} autoFocus
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                  <p className="text-xs text-gray-400 mt-1">{fmtAmount(invoiceProject.totalContractValue)} per day × days entered above.</p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => setInvoiceProject(null)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
+              <button onClick={handleGenerateProjectInvoice} disabled={generatingInvoice}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {generatingInvoice ? 'Generating...' : 'Generate Invoice'}
               </button>
             </div>
           </div>

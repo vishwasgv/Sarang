@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark as ChequeIcon, RefreshCw, Plus } from 'lucide-react'
+import { Landmark as ChequeIcon, RefreshCw, Plus, BookOpen } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
@@ -17,6 +17,7 @@ interface Pdc {
   status: string; remarks: string | null; bankAccountId: string
 }
 interface BankAccount { id: string; accountName: string; accountType: string }
+interface ChequeBook { id: string; bankAccountId: string; startNumber: number; endNumber: number; nextNumber: number; isActive: boolean }
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'info'> = {
   PENDING: 'info', DEPOSITED: 'warning', CLEARED: 'success', BOUNCED: 'danger', CANCELLED: 'neutral'
@@ -35,6 +36,7 @@ export function PostDatedChequesScreen() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [showChequeBooks, setShowChequeBooks] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,6 +81,7 @@ export function PostDatedChequesScreen() {
             <button onClick={load} className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand transition-colors">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
+            {canManage && <Button size="sm" variant="secondary" icon={<BookOpen size={14} />} onClick={() => setShowChequeBooks(true)}>{t('accounting.postDatedCheques.chequeBooks')}</Button>}
             {canManage && <Button size="sm" icon={<Plus size={14} />} onClick={() => setShowCreate(true)}>{t('accounting.postDatedCheques.newCheque')}</Button>}
           </div>
         </div>
@@ -144,7 +147,108 @@ export function PostDatedChequesScreen() {
       {showCreate && (
         <CreatePdcModal bankAccounts={bankAccounts} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load() }} />
       )}
+      {showChequeBooks && (
+        <ChequeBooksModal bankAccounts={bankAccounts} onClose={() => setShowChequeBooks(false)} />
+      )}
     </div>
+  )
+}
+
+function ChequeBooksModal({ bankAccounts, onClose }: { bankAccounts: BankAccount[]; onClose: () => void }) {
+  const { t } = useTranslation()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
+  const [books, setBooks] = useState<ChequeBook[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ bankAccountId: '', startNumber: '', endNumber: '' })
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await window.api.chequeBooks.list()
+      if (res.success && res.data) setBooks(res.data as ChequeBook[])
+    } catch {
+      toastError(t('common.error'), t('accounting.chequeBooks.couldNotLoad'))
+    } finally { setLoading(false) }
+  }, [toastError, t])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleCreate() {
+    const start = parseInt(form.startNumber, 10)
+    const end = parseInt(form.endNumber, 10)
+    if (!form.bankAccountId || !Number.isFinite(start) || !Number.isFinite(end)) {
+      toastError(t('accounting.postDatedCheques.missingFields'), t('accounting.chequeBooks.fieldsRequired')); return
+    }
+    setSaving(true)
+    try {
+      const res = await window.api.chequeBooks.create({ bankAccountId: form.bankAccountId, startNumber: start, endNumber: end })
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.chequeBooks.couldNotCreate')); return }
+      toastSuccess(t('accounting.chequeBooks.created'), `${start}-${end}`)
+      setForm({ bankAccountId: '', startNumber: '', endNumber: '' })
+      load()
+    } catch {
+      toastError(t('common.error'), t('accounting.chequeBooks.couldNotCreate'))
+    } finally { setSaving(false) }
+  }
+
+  async function toggleActive(book: ChequeBook) {
+    const res = await window.api.chequeBooks.setActive({ id: book.id, isActive: !book.isActive })
+    if (res.success) load()
+    else toastError(t('common.error'), res.error?.message ?? t('accounting.chequeBooks.couldNotUpdate'))
+  }
+
+  const accountName = (id: string) => bankAccounts.find((a) => a.id === id)?.accountName ?? id
+
+  return (
+    <Modal open onClose={onClose} title={t('accounting.chequeBooks.title')} size="md">
+      <div className="space-y-5">
+        <div className="grid grid-cols-4 gap-3 items-end">
+          <div className="col-span-2">
+            <Select label={t('accounting.postDatedCheques.bankAccountLabel')} value={form.bankAccountId} onChange={(e) => setForm((f) => ({ ...f, bankAccountId: e.target.value }))}>
+              <option value="">{t('accounting.postDatedCheques.selectEllipsis')}</option>
+              {bankAccounts.filter((a) => a.accountType === 'BANK').map((a) => <option key={a.id} value={a.id}>{a.accountName}</option>)}
+            </Select>
+          </div>
+          <Input label={t('accounting.chequeBooks.startNumber')} type="number" value={form.startNumber} onChange={(e) => setForm((f) => ({ ...f, startNumber: e.target.value }))} />
+          <Input label={t('accounting.chequeBooks.endNumber')} type="number" value={form.endNumber} onChange={(e) => setForm((f) => ({ ...f, endNumber: e.target.value }))} />
+        </div>
+        <Button size="sm" onClick={handleCreate} loading={saving}>{t('accounting.chequeBooks.addBook')}</Button>
+
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+          {loading ? (
+            <SkeletonTable rows={2} cols={4} />
+          ) : books.length === 0 ? (
+            <p className="text-sm text-slate-400">{t('accounting.chequeBooks.noBooksYet')}</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-start px-2 py-2 text-xs font-semibold text-slate-500 uppercase">{t('accounting.postDatedCheques.bankAccountLabel')}</th>
+                  <th className="text-center px-2 py-2 text-xs font-semibold text-slate-500 uppercase">{t('accounting.chequeBooks.range')}</th>
+                  <th className="text-center px-2 py-2 text-xs font-semibold text-slate-500 uppercase">{t('accounting.chequeBooks.next')}</th>
+                  <th className="px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {books.map((b) => (
+                  <tr key={b.id} className="border-b border-slate-50 dark:border-slate-800">
+                    <td className="px-2 py-2">{accountName(b.bankAccountId)}</td>
+                    <td className="px-2 py-2 text-center font-mono text-xs">{b.startNumber}-{b.endNumber}</td>
+                    <td className="px-2 py-2 text-center font-mono text-xs">{b.nextNumber > b.endNumber ? t('accounting.chequeBooks.exhausted') : b.nextNumber}</td>
+                    <td className="px-2 py-2 text-end">
+                      <button onClick={() => toggleActive(b)} className="text-xs font-semibold text-brand hover:underline">
+                        {b.isActive ? t('accounting.chequeBooks.deactivate') : t('accounting.chequeBooks.activate')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -152,20 +256,36 @@ function CreatePdcModal({ bankAccounts, onClose, onSaved }: { bankAccounts: Bank
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [form, setForm] = useState({ bankAccountId: '', chequeNumber: '', direction: 'RECEIVED', dueDate: '', amount: '', remarks: '' })
+  const [useChequeBook, setUseChequeBook] = useState(false)
+  const [nextChequeNumber, setNextChequeNumber] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Only relevant for ISSUED cheques — a RECEIVED cheque's number comes from
+  // the payer's own cheque book, not ours.
+  useEffect(() => {
+    setUseChequeBook(false)
+    setNextChequeNumber(null)
+    if (form.direction !== 'ISSUED' || !form.bankAccountId) return
+    window.api.chequeBooks.getNextNumber(form.bankAccountId).then((res) => {
+      if (res.success) setNextChequeNumber((res.data as { chequeNumber: string } | null)?.chequeNumber ?? null)
+    })
+  }, [form.direction, form.bankAccountId])
+
   async function handleSave() {
-    if (!form.bankAccountId || !form.chequeNumber.trim() || !form.dueDate || !form.amount) {
+    if (!form.bankAccountId || (!useChequeBook && !form.chequeNumber.trim()) || !form.dueDate || !form.amount) {
       toastError(t('accounting.postDatedCheques.missingFields'), t('accounting.postDatedCheques.fieldsRequired')); return
     }
     setSaving(true)
     try {
       const res = await window.api.postDatedCheques.create({
-        bankAccountId: form.bankAccountId, chequeNumber: form.chequeNumber.trim(), direction: form.direction,
+        bankAccountId: form.bankAccountId,
+        chequeNumber: useChequeBook ? undefined : form.chequeNumber.trim(),
+        useChequeBook: useChequeBook || undefined,
+        direction: form.direction,
         dueDate: form.dueDate, amount: parseFloat(form.amount), remarks: form.remarks.trim() || undefined
       })
       if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.postDatedCheques.couldNotCreate')); return }
-      toastSuccess(t('accounting.postDatedCheques.chequeRecorded'), form.chequeNumber.trim())
+      toastSuccess(t('accounting.postDatedCheques.chequeRecorded'), useChequeBook ? String((res.data as { chequeNumber: string })?.chequeNumber ?? '') : form.chequeNumber.trim())
       onSaved()
     } catch {
       toastError(t('common.error'), t('accounting.postDatedCheques.couldNotCreate'))
@@ -188,7 +308,16 @@ function CreatePdcModal({ bankAccounts, onClose, onSaved }: { bankAccounts: Bank
           <option value="RECEIVED">{t('accounting.postDatedCheques.receivedFromCustomer')}</option>
           <option value="ISSUED">{t('accounting.postDatedCheques.issuedToSupplier')}</option>
         </Select>
-        <Input label={t('accounting.postDatedCheques.chequeNumberLabel')} value={form.chequeNumber} onChange={(e) => setForm((f) => ({ ...f, chequeNumber: e.target.value }))} />
+        {form.direction === 'ISSUED' && nextChequeNumber && (
+          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+            <input type="checkbox" checked={useChequeBook} onChange={(e) => setUseChequeBook(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+            {t('accounting.chequeBooks.useNextNumber', { number: nextChequeNumber })}
+          </label>
+        )}
+        {!useChequeBook && (
+          <Input label={t('accounting.postDatedCheques.chequeNumberLabel')} value={form.chequeNumber} onChange={(e) => setForm((f) => ({ ...f, chequeNumber: e.target.value }))} />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('accounting.postDatedCheques.colDueDate')}</label>
