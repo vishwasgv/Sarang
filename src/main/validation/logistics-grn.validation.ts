@@ -12,6 +12,14 @@ const GRNItemSchema = z.object({
   batchNumber: z.string().max(100).optional(),
   expiryDate: z.string().optional(),
   notes: z.string().max(500).optional(),
+  // Phase 64 — floating/variable unit-of-measure conversion (fixed-ratio
+  // case too, per Section 6.1 item 7 — PO/GRN receiving previously ignored
+  // sellByPack/unitsPerPack entirely). The nominal purchase-unit quantity
+  // received (e.g. "3 bags") — receivedQty above stays the real, measured
+  // stocking-unit quantity, so this line's own effective conversion factor
+  // is receivedQty ÷ purchaseUnitQty, never assumed to equal the product's
+  // own default unitsPerPack ratio.
+  purchaseUnitQty: z.number().positive('Purchase unit quantity must be greater than zero').optional(),
 })
 
 export const CreateGRNSchema = z.object({

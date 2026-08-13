@@ -118,6 +118,10 @@ export interface IpcChannels {
     listCustomerClassPrices: (payload?: { productId?: string }) => Promise<ApiResponse>
     upsertCustomerClassPrice: (payload: { productId: string; customerClass: string; price: number }) => Promise<ApiResponse>
     deleteCustomerClassPrice: (payload: string) => Promise<ApiResponse>
+    // Phase 64 — composite items/kits
+    getKitComponents: (kitProductId: string) => Promise<ApiResponse>
+    setKitComponents: (payload: { kitProductId: string; components: Array<{ componentProductId: string; quantity: number }> }) => Promise<ApiResponse>
+    clearKit: (kitProductId: string) => Promise<ApiResponse>
   }
   categories: {
     list: () => Promise<ApiResponse>
@@ -132,6 +136,17 @@ export interface IpcChannels {
     adjustStock: (payload: unknown) => Promise<ApiResponse>
     getMovements: (payload?: { productId?: string; movementType?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     getInventoryValue: () => Promise<ApiResponse>
+    // Phase 64 — multi-location stock
+    transferStock: (payload: { productId: string; quantity: number; fromLocationId: string; toLocationId: string; reason?: string }) => Promise<ApiResponse>
+    getStockByLocation: (productId: string) => Promise<ApiResponse>
+  }
+  // Phase 64 — Location management. Additive: a single-location install
+  // never needs this beyond `list` returning its one seeded default row.
+  locations: {
+    list: () => Promise<ApiResponse>
+    hasMultipleLocations: () => Promise<ApiResponse<boolean>>
+    create: (payload: { name: string; address?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; name?: string; address?: string; isActive?: boolean }) => Promise<ApiResponse>
   }
   customers: {
     list: (payload?: { page?: number; limit?: number }) => Promise<ApiResponse>
@@ -168,6 +183,10 @@ export interface IpcChannels {
     // load-bearing for Debit Note printing specifically and left untouched.
     print: (id: string) => Promise<ApiResponse>
     exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
+    // Phase 64 — landed cost, addable any time before the PO's first receipt.
+    listLandedCosts: (purchaseOrderId: string) => Promise<ApiResponse>
+    addLandedCost: (payload: { purchaseOrderId: string; costType: string; amount: number; allocationMethod?: 'BY_VALUE' | 'BY_QUANTITY' }) => Promise<ApiResponse>
+    removeLandedCost: (id: string) => Promise<ApiResponse>
   }
   // Phase 61 — Bills (AP: what we owe a supplier) and Payments Made against
   // a specific Bill, mirroring purchaseOrders/payments' own shapes.
@@ -670,9 +689,15 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { productId: string; plannedQty: number; notes?: string }) => Promise<ApiResponse>
     start: (payload: { id: string }) => Promise<ApiResponse>
-    // Phase 58 §2 — scrapQty/laborCost folded into produced-unit cost basis
+    // Phase 58 §2 — scrapQty/laborCost folded into produced-unit cost basis.
+    // Phase 64 — laborCost here is now only a fallback for an order with no
+    // itemized ProductionLaborEntry rows; addLaborEntry/removeLaborEntry
+    // below are the real entry point.
     complete: (payload: { id: string; producedQty: number; scrapQty?: number; laborCost?: number; notes?: string }) => Promise<ApiResponse>
     cancel: (payload: { id: string; notes?: string }) => Promise<ApiResponse>
+    // Phase 64 — job costing
+    addLaborEntry: (payload: { productionOrderId: string; workerName: string; hoursWorked: number; ratePerHour: number }) => Promise<ApiResponse>
+    removeLaborEntry: (id: string) => Promise<ApiResponse>
   }
   workOrders: {
     list: (payload: { productionOrderId: string }) => Promise<ApiResponse>
@@ -1502,8 +1527,11 @@ export interface IpcChannels {
   logisticsGrn: {
     list: (payload?: { status?: string; supplierId?: string; fromDate?: string; toDate?: string; offset?: number; limit?: number }) => Promise<ApiResponse>
     get: (payload: string) => Promise<ApiResponse>
-    create: (payload: { supplierId?: string; supplierName: string; purchaseOrderId?: string; shipmentId?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string; items: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string }> }) => Promise<ApiResponse>
-    update: (payload: { id: string; status?: string; supplierName?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string; items?: Array<{ itemName: string; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; notes?: string }> }) => Promise<ApiResponse>
+    // Phase 64 — purchaseUnitQty: the nominal purchase-unit quantity
+    // (e.g. "3 bags"), for products using floating/fixed pack conversion —
+    // receivedQty stays the real, measured stocking-unit quantity.
+    create: (payload: { supplierId?: string; supplierName: string; purchaseOrderId?: string; shipmentId?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string; items: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string; purchaseUnitQty?: number }> }) => Promise<ApiResponse>
+    update: (payload: { id: string; status?: string; supplierName?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string; items?: Array<{ itemName: string; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; notes?: string; purchaseUnitQty?: number }> }) => Promise<ApiResponse>
     post: (payload: string) => Promise<ApiResponse>
     reverse: (payload: string) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>

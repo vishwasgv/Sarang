@@ -4,11 +4,16 @@ import {
   createProductionOrder,
   startProductionOrder,
   completeProductionOrder,
-  cancelProductionOrder
+  cancelProductionOrder,
+  addProductionLaborEntry,
+  removeProductionLaborEntry
 } from '../../services/production-order.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateProductionOrderSchema, ProductionOrderIdSchema, CompleteProductionOrderSchema, CancelProductionOrderSchema } from '../../validation/production.validation'
+import {
+  CreateProductionOrderSchema, ProductionOrderIdSchema, CompleteProductionOrderSchema, CancelProductionOrderSchema,
+  AddProductionLaborEntrySchema, ProductionLaborEntryIdSchema
+} from '../../validation/production.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -50,5 +55,20 @@ export function register(handle: HandleFn): void {
     const parsed = CancelProductionOrderSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return cancelProductionOrder(parsed.data, getCurrentSession()?.userId)
+  })
+
+  // Phase 64 — job costing
+  handle('production:addLaborEntry', async (payload) => {
+    const deny = await requirePermission('inventory.manage'); if (deny) return deny
+    const parsed = AddProductionLaborEntrySchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return addProductionLaborEntry(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('production:removeLaborEntry', async (payload) => {
+    const deny = await requirePermission('inventory.manage'); if (deny) return deny
+    const parsed = ProductionLaborEntryIdSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return removeProductionLaborEntry(parsed.data.id, getCurrentSession()?.userId)
   })
 }

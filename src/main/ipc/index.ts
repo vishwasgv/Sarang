@@ -13,6 +13,7 @@ import { register as registerCustomers } from './handlers/customers.handler'
 import { register as registerSuppliers } from './handlers/suppliers.handler'
 import { register as registerProducts } from './handlers/products.handler'
 import { register as registerInventory } from './handlers/inventory.handler'
+import { register as registerLocations } from './handlers/locations.handler'
 import { register as registerPurchaseOrders } from './handlers/purchase-orders.handler'
 import { register as registerBills } from './handlers/bills.handler'
 import { register as registerSalesOrders } from './handlers/sales-order.handler'
@@ -191,6 +192,7 @@ export function registerAllIpcHandlers(): void {
   registerSuppliers(h)
   registerProducts(h)
   registerInventory(h)
+  registerLocations(h)
   registerPurchaseOrders(h)
   registerBills(h)
   registerSalesOrders(h)

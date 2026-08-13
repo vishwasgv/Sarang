@@ -34,6 +34,12 @@ function toRecord(r: any) {
       itemName: i.itemName, orderedQty: i.orderedQty, receivedQty: i.receivedQty,
       rejectedQty: i.rejectedQty, unit: i.unit, unitCost: i.unitCost, totalCost: i.totalCost,
       batchNumber: i.batchNumber, expiryDate: i.expiryDate?.toISOString() ?? null, notes: i.notes,
+      // Phase 64 — floating/variable UoM: the nominal purchase-unit
+      // quantity, when the product uses it. This line's own effective
+      // conversion factor is receivedQty ÷ purchaseUnitQty, computed at
+      // display time (not stored) since it's a pure derived value.
+      purchaseUnitQty: i.purchaseUnitQty ?? null,
+      effectiveConversionFactor: i.purchaseUnitQty ? roundCurrency(i.receivedQty / i.purchaseUnitQty) : null,
     })),
   }
 }
@@ -76,7 +82,7 @@ export async function getGRN(id: string) {
 export async function createGRN(payload: {
   supplierId?: string; supplierName: string; purchaseOrderId?: string; shipmentId?: string
   invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string
-  items: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string }>
+  items: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string; purchaseUnitQty?: number }>
 }, userId?: string) {
   try {
     const db = getPrisma()
@@ -109,6 +115,7 @@ export async function createGRN(payload: {
               batchNumber: i.batchNumber ?? null,
               expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
               notes: i.notes ?? null,
+              purchaseUnitQty: i.purchaseUnitQty ?? null,
             }))
           }
         },
@@ -124,7 +131,7 @@ export async function createGRN(payload: {
 
 export async function updateGRN(payload: {
   id: string; status?: string; supplierName?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string
-  items?: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string }>
+  items?: Array<{ productId?: string; rawMaterialId?: string; itemName: string; orderedQty?: number; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; expiryDate?: string; notes?: string; purchaseUnitQty?: number }>
 }, userId?: string) {
   try {
     const db = getPrisma()
@@ -175,6 +182,7 @@ export async function updateGRN(payload: {
                 batchNumber: i.batchNumber ?? null,
                 expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
                 notes: i.notes ?? null,
+                purchaseUnitQty: i.purchaseUnitQty ?? null,
               }))
             }
           }),
@@ -282,9 +290,17 @@ export async function postGRN(id: string, userId?: string) {
           // RULE I001/I007 — route through the same path PO receipt uses so a
           // movement record and a correct weighted average cost are always
           // produced, no matter which "receive stock" workflow was used.
+          // Phase 64 gap fix: GRN posting previously never appended a
+          // ProductCostHistory row at all (only PO-receive and Bill
+          // creation did) — real, previously-undisclosed gap found during
+          // Phase 64's grounding check, meaning FIFO valuation's own layer
+          // data was silently incomplete for any business using the GRN
+          // flow. The costHistory param closes it, same call shape as
+          // purchase-order.service.ts's own PO-receive path.
           await inventoryService.addStockTx(
             tx, item.productId, acceptedQty, item.unitCost,
-            `Received via GRN ${grn.grnNumber}`, 'GOODS_RECEIPT_NOTE', grn.id, userId
+            `Received via GRN ${grn.grnNumber}`, 'GOODS_RECEIPT_NOTE', grn.id, userId,
+            { sourceType: 'GOODS_RECEIPT_NOTE', sourceId: grn.id }
           )
 
           // A GRN line already captures batchNumber/expiryDate when the

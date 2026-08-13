@@ -46,6 +46,10 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     taxConfiguration: { findMany: vi.fn().mockResolvedValue([]) },
     businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
     product: { findMany: vi.fn().mockResolvedValue([]) },
+    // Phase 64 — getProductCostsBatch() (valuation.service) reads this for
+    // every report that resolves product cost; empty default is safe for
+    // every report test that doesn't itself deal in product cost lines.
+    inventory: { findMany: vi.fn().mockResolvedValue([]) },
     customer: { findMany: vi.fn().mockResolvedValue([]) },
     customerLedger: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
     supplier: { findMany: vi.fn().mockResolvedValue([]) },
@@ -1385,11 +1389,25 @@ describe('reportService.generateBloodStockReport', () => {
 // ─── Profit & Loss Statement (fresh-audit fix, 2026-07-12) ─────────────────────
 
 describe('reportService.generateProfitAndLossReport', () => {
+  // Phase 64 — invoice items now carry only productId (getProductCostsBatch
+  // resolves cost separately), not a nested product.costPrice selection —
+  // see report.service.ts's own generateProfitAndLossReport.
   function makePLInvoice(overrides: Record<string, unknown> = {}) {
     return {
       totalAmount: 1000, invoiceType: 'SALE',
-      items: [{ quantity: 2, product: { costPrice: 100 } }],
+      items: [{ quantity: 2, productId: 'prod-1' }],
       ...overrides,
+    }
+  }
+
+  // Every test below resolves 'prod-1' to cost 100 via the default
+  // WEIGHTED_AVERAGE method with no Inventory row (falls back to
+  // costPrice), matching the flat cost every one of these tests assumes.
+  function makeCostDb(overrides: Record<string, unknown> = {}) {
+    return {
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', costPrice: 100, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([]) },
+      ...overrides
     }
   }
 
@@ -1397,6 +1415,7 @@ describe('reportService.generateProfitAndLossReport', () => {
     const db = makeDb({
       invoice: { findMany: vi.fn().mockResolvedValue([makePLInvoice()]) },
       expense: { findMany: vi.fn().mockResolvedValue([]) },
+      ...makeCostDb(),
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -1416,6 +1435,7 @@ describe('reportService.generateProfitAndLossReport', () => {
         { amount: 50, category: { categoryName: 'Rent' } },
         { amount: 30, category: { categoryName: 'Utilities' } },
       ]) },
+      ...makeCostDb(),
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -1433,9 +1453,10 @@ describe('reportService.generateProfitAndLossReport', () => {
     const db = makeDb({
       invoice: { findMany: vi.fn().mockResolvedValue([
         makePLInvoice(), // SALE: revenue +1000, cogs +200
-        makePLInvoice({ invoiceType: 'RETURN', totalAmount: -400, items: [{ quantity: 1, product: { costPrice: 100 } }] }), // RETURN: revenue -400, cogs -100
+        makePLInvoice({ invoiceType: 'RETURN', totalAmount: -400, items: [{ quantity: 1, productId: 'prod-1' }] }), // RETURN: revenue -400, cogs -100
       ]) },
       expense: { findMany: vi.fn().mockResolvedValue([]) },
+      ...makeCostDb(),
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -1457,6 +1478,56 @@ describe('reportService.generateProfitAndLossReport', () => {
     expect(result.summary.grossMarginPercent).toBe(0)
     expect(result.summary.netMarginPercent).toBe(0)
     expect(result.summary.netProfit).toBe(-50)
+  })
+})
+
+// Phase 64 — first-ever dedicated coverage for this function; it had zero
+// unit tests before this phase touched its cost-resolution math (was
+// m.product.costPrice, now getProductCostsBatch()).
+describe('reportService.generateFoodCostReport', () => {
+  function makeIngredientMovement(overrides: Record<string, unknown> = {}) {
+    return {
+      productId: 'ing-1', quantity: -3,
+      remarks: 'Ingredient deduction for KOT KOT-001',
+      product: { productName: 'Tomato', unit: 'KG' },
+      ...overrides
+    }
+  }
+
+  it('aggregates ingredient usage by product and computes cost via getProductCostsBatch, not the static costPrice', async () => {
+    const db = makeDb({
+      inventoryMovement: { findMany: vi.fn().mockResolvedValue([makeIngredientMovement()]) },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'ing-1', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'ing-1', averageCost: 8, quantity: 50 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFoodCostReport()
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].totalQuantityUsed).toBe(3)
+    // 8 (live averageCost), not 5 (static costPrice) — the exact bug this phase closed.
+    expect(result.rows[0].costPrice).toBe(8)
+    expect(result.rows[0].totalCost).toBe(24)
+    expect(result.totalCost).toBe(24)
+  })
+
+  it('sums multiple deduction movements for the same ingredient into one row', async () => {
+    const db = makeDb({
+      inventoryMovement: { findMany: vi.fn().mockResolvedValue([
+        makeIngredientMovement({ quantity: -2 }),
+        makeIngredientMovement({ quantity: -1 }),
+      ]) },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'ing-1', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'ing-1', averageCost: 10, quantity: 50 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFoodCostReport()
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].totalQuantityUsed).toBe(3)
+    expect(result.rows[0].totalCost).toBe(30)
   })
 })
 

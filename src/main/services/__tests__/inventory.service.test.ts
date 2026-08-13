@@ -21,7 +21,14 @@ function makeTx() {
       update: vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 120 })),
       findUnique: vi.fn().mockResolvedValue(makeInventoryRecord())
     },
-    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) }
+    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) },
+    // Phase 64 — applyLocationDeltaTx (inventory.service's internal helper,
+    // called from every stock-mutating path) resolves the default Location
+    // and upserts a LocationStock row inside the same transaction.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+    locationStock: { upsert: vi.fn().mockResolvedValue({}) },
+    product: { findUnique: vi.fn().mockResolvedValue({ id: 'prod-1' }) },
+    supplier: { findUnique: vi.fn().mockResolvedValue({ id: 'sup-1', supplierName: 'ACME' }) }
   }
 }
 
@@ -281,5 +288,118 @@ describe('inventoryService.getInventoryValue', () => {
     const result = await inventoryService.getInventoryValue()
 
     expect(result.success).toBe(true)
+  })
+})
+
+// Phase 64 — real transferStock() replacing the former INV-010 stub. A
+// transfer only ever moves quantity between two LocationStock rows — it
+// must never touch the aggregate Inventory.quantity, since a transfer
+// can't change how much of a product a business owns in total.
+describe('inventoryService.transferStock', () => {
+  function makeTransferTx(fromStockQty = 10) {
+    return {
+      product: { findUnique: vi.fn().mockResolvedValue({ id: 'prod-1' }) },
+      location: {
+        findUnique: vi.fn(async ({ where }: { where: { id: string } }) =>
+          where.id === 'loc-a' ? { id: 'loc-a', name: 'Warehouse' } : where.id === 'loc-b' ? { id: 'loc-b', name: 'Retail Counter' } : null
+        )
+      },
+      locationStock: {
+        findUnique: vi.fn().mockResolvedValue({ productId: 'prod-1', locationId: 'loc-a', quantity: fromStockQty }),
+        upsert: vi.fn().mockResolvedValue({})
+      },
+      inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) },
+      // getAllowNegative reads this outside the transaction (its own $transaction-free
+      // getPrisma() call), but transferStock's own allowNegative check happens inside
+      // the tx callback via the shared getAllowNegative() helper reading db.setting —
+      // since getPrisma() is mocked to always return the same db object, tx.setting
+      // isn't actually consulted separately; setting lives on the outer db mock below.
+      setting: { findUnique: vi.fn().mockResolvedValue(null) }
+    }
+  }
+
+  function makeTransferDb(fromStockQty = 10) {
+    const tx = makeTransferTx(fromStockQty)
+    return {
+      setting: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx)),
+      _tx: tx
+    }
+  }
+
+  it('moves quantity between two LocationStock rows and writes linked TRANSFER_OUT/TRANSFER_IN movements', async () => {
+    const db = makeTransferDb(10)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await inventoryService.transferStock(
+      { productId: 'prod-1', quantity: 4, fromLocationId: 'loc-a', toLocationId: 'loc-b' }, 'user-1'
+    )
+
+    expect(result.success).toBe(true)
+    expect(db._tx.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-1', locationId: 'loc-a' } },
+      update: { quantity: { increment: -4 } }
+    }))
+    expect(db._tx.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-1', locationId: 'loc-b' } },
+      update: { quantity: { increment: 4 } }
+    }))
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movementType: 'TRANSFER_OUT', quantity: -4, locationId: 'loc-a' })
+    }))
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movementType: 'TRANSFER_IN', quantity: 4, locationId: 'loc-b' })
+    }))
+  })
+
+  it('never touches the aggregate Inventory table at all', async () => {
+    const db = makeTransferDb(10) as Record<string, any>
+    db.inventory = { update: vi.fn(), findUnique: vi.fn() }
+    db._tx.inventory = { update: vi.fn(), findUnique: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.transferStock({ productId: 'prod-1', quantity: 4, fromLocationId: 'loc-a', toLocationId: 'loc-b' })
+
+    expect(db._tx.inventory.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a transfer exceeding the source location\'s own available stock', async () => {
+    const db = makeTransferDb(2) // only 2 available at loc-a
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await inventoryService.transferStock({ productId: 'prod-1', quantity: 5, fromLocationId: 'loc-a', toLocationId: 'loc-b' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('INV-002')
+  })
+
+  it('rejects a zero or negative transfer quantity', async () => {
+    const db = makeTransferDb(10)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await inventoryService.transferStock({ productId: 'prod-1', quantity: 0, fromLocationId: 'loc-a', toLocationId: 'loc-b' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('INV-011')
+  })
+
+  it('rejects transferring a location to itself', async () => {
+    const db = makeTransferDb(10)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await inventoryService.transferStock({ productId: 'prod-1', quantity: 3, fromLocationId: 'loc-a', toLocationId: 'loc-a' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('INV-012')
+  })
+
+  it('rejects a transfer to/from a location that does not exist', async () => {
+    const db = makeTransferDb(10)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await inventoryService.transferStock({ productId: 'prod-1', quantity: 3, fromLocationId: 'loc-a', toLocationId: 'loc-missing' })
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('LOC-002')
   })
 })

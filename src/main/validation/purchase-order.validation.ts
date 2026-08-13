@@ -35,5 +35,14 @@ export const CancelPOSchema = z.object({
   reason: z.string().min(1, 'Cancellation reason is required').max(500),
 })
 
+// Phase 64 — landed cost, addable to a PO any time before its first receipt.
+export const AddLandedCostSchema = z.object({
+  purchaseOrderId: z.string().min(1, 'Purchase order ID is required'),
+  costType: z.string().min(1).max(30),
+  amount: z.number().positive('Amount must be greater than zero'),
+  allocationMethod: z.enum(['BY_VALUE', 'BY_QUANTITY']).default('BY_VALUE'),
+})
+
 export type CreatePOPayload = z.infer<typeof CreatePOSchema>
 export type CancelPOPayload = z.infer<typeof CancelPOSchema>
+export type AddLandedCostPayload = z.infer<typeof AddLandedCostSchema>

@@ -3,6 +3,7 @@ import { isModuleEnabled } from './industry-template.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { getLicenseState, LICENSE_WARNING_AFTER_DAYS, LICENSE_EXPIRES_AFTER_DAYS } from './license.service'
 import { checkForUpdatesIfDue } from './update-check.service'
+import { getProductCostsBatch } from './valuation.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -113,22 +114,32 @@ async function computeProfit(dateFrom: Date, dateTo: Date): Promise<number> {
       where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: dateFrom, lte: dateTo } },
       select: {
         totalAmount: true, invoiceType: true,
-        items: { select: { quantity: true, product: { select: { costPrice: true } } } }
+        items: { select: { quantity: true, productId: true } }
       }
     }),
     db.expense.aggregate({ where: { expenseDate: { gte: dateFrom, lte: dateTo } }, _sum: { amount: true } })
   ])
 
+  // Phase 64 — was `it.product.costPrice` (the static, hand-edited field),
+  // a real stale-cost bug named explicitly in PHASE_61_ROADMAP_MASTER_PROMPT.md
+  // Section 6's own grounding check: this silently diverged from the
+  // Inventory screen's live Inventory.averageCost the moment a product was
+  // bought more than once at different prices. getProductCostsBatch()
+  // resolves through each product's own selected valuationMethod instead —
+  // the same single source of truth the P&L and Food Cost reports now use.
+  const productIds = invoices.flatMap(inv => inv.items.map(it => it.productId))
+  const costs = await getProductCostsBatch(productIds)
+
   const revenue = invoices.reduce((s, inv) => s + inv.totalAmount, 0)
   // A RETURN invoice stores its line items' quantity as POSITIVE (returns.service.ts
   // uses it to increment inventory back) — only totalAmount/lineTotal are negative.
-  // Summing quantity * costPrice without checking invoiceType double-punishes
+  // Summing quantity * cost without checking invoiceType double-punishes
   // profit on a return: revenue already drops by the sale price via totalAmount,
   // and COGS must drop by the cost price too (the goods came back into stock),
   // not rise again as if a second sale had happened.
   const cogs = invoices.reduce((s, inv) => {
     const sign = inv.invoiceType === 'RETURN' ? -1 : 1
-    return s + inv.items.reduce((si, it) => si + sign * it.quantity * it.product.costPrice, 0)
+    return s + inv.items.reduce((si, it) => si + sign * it.quantity * (costs.get(it.productId) ?? 0), 0)
   }, 0)
   const expenses = expAgg._sum.amount ?? 0
 

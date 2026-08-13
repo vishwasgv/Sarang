@@ -59,6 +59,10 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     // Phase 61 — receivePO writes one cost-history row per received
     // product line (see purchase-order.service.ts's receivePO).
     productCostHistory: { create: vi.fn().mockResolvedValue({}) },
+    // Phase 64 — receivePO looks these up (getLandedCostPerUnitForPO) before
+    // computing each line's effective unit cost. Empty by default -> zero
+    // behavior change for every test that doesn't explicitly add one.
+    landedCostAllocation: { findMany: vi.fn().mockResolvedValue([]) },
     // Phase 63 — approvePO's new submitForApproval call. null = no active
     // workflow configured = requiresApproval:false = zero behavior change,
     // same convention sales-order.service.test.ts's own makeDb established.
@@ -368,6 +372,29 @@ describe('purchaseOrderService.receivePO', () => {
     )
   })
 
+  // Phase 64 — landed cost genuinely raises the received goods' cost basis,
+  // not just a disconnected Expense line.
+  it('folds an allocated landed cost into the effective unit cost passed to addStockTx', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(
+      makePO({ status: 'APPROVED', totalAmount: 1180, items: [{ id: 'poi-1', productId: 'prod-1', quantity: 10, unitCost: 100 }] })
+    )
+    // A single ₹200 freight allocation, BY_VALUE, on the only line -> full
+    // 200 share -> 20 per unit -> effective unit cost 100 + 20 = 120.
+    db.landedCostAllocation.findMany = vi.fn().mockResolvedValue([{ amount: 200, allocationMethod: 'BY_VALUE' }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const { inventoryService } = await import('../inventory.service')
+
+    const result = await purchaseOrderService.receivePO('po-1', 'user-1')
+
+    expect(result.success).toBe(true)
+    expect(inventoryService.addStockTx).toHaveBeenCalledWith(
+      db, 'prod-1', 10, 120, expect.any(String), 'PURCHASE_ORDER', 'po-1', 'user-1',
+      { sourceType: 'PURCHASE_ORDER', sourceId: 'po-1' }
+    )
+  })
+
   it('preserves the specific error code when a step inside the transaction throws', async () => {
     const db = makeDb()
     db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(
@@ -457,7 +484,18 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
       inventory: { findMany: vi.fn().mockResolvedValue(inventoryRows) },
       purchaseOrderItem: { findMany: vi.fn().mockResolvedValue(openItems) },
       supplier: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => suppliers[where.id] ?? null) },
-      product: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => products[where.id] ?? null) },
+      // Phase 64 — getProductCostsBatch() (valuation.service) reads
+      // product.findMany + inventory.findMany to resolve each product's
+      // real cost; these test rows have no valuationMethod set, so the
+      // resolver's WEIGHTED_AVERAGE default falls through to costPrice
+      // (inventory.averageCost is undefined on these fixture rows), same
+      // value generateReorderDraftPOs used before this phase.
+      product: {
+        findUnique: vi.fn(async ({ where }: { where: { id: string } }) => products[where.id] ?? null),
+        findMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
+          Object.values(products).filter((p: any) => where.id.in.includes(p.id))
+        )
+      },
       setting: {
         findUnique: vi.fn(async () => settingRow),
         update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),

@@ -17,6 +17,17 @@ const BillItemSchema = z.object({
   message: 'Each line must be either a product or a service description.'
 })
 
+// Phase 64 — landed cost (freight/duty/handling), entered inline at Bill
+// creation time rather than added after the fact — a Bill posts everything
+// (including its own ProductCostHistory rows) in one atomic step, unlike a
+// Purchase Order's staged receive, so there's no "before receiving starts"
+// window to add it in later (see landed-cost.service.ts's own module doc).
+const BillLandedCostSchema = z.object({
+  costType: z.string().min(1).max(30),
+  amount: z.number().positive('Amount must be greater than zero'),
+  allocationMethod: z.enum(['BY_VALUE', 'BY_QUANTITY']).default('BY_VALUE'),
+})
+
 export const CreateBillSchema = z.object({
   supplierId: z.string().min(1, 'Supplier is required'),
   purchaseOrderId: z.string().optional(),
@@ -27,6 +38,7 @@ export const CreateBillSchema = z.object({
   // Phase 62 — Reverse Charge Mechanism: GST liability shifts to the
   // business receiving the supply.
   isReverseCharge: z.boolean().default(false),
+  landedCosts: z.array(BillLandedCostSchema).optional(),
 })
 
 export const VoidBillSchema = z.object({

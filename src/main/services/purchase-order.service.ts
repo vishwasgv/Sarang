@@ -8,6 +8,8 @@ import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
 import { approvalWorkflowService } from './approval-workflow.service'
+import { getProductCostsBatch } from './valuation.service'
+import { getLandedCostPerUnitForPO } from './landed-cost.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreatePOPayload } from '../validation/purchase-order.validation'
 
@@ -187,11 +189,18 @@ export const purchaseOrderService = {
     const toOrder = withSupplier.filter(inv => !alreadyOpen.has(inv.product.id))
     const skippedAlreadyOnOpenPO = withSupplier.length - toOrder.length
 
+    // Phase 64 — was inv.product.costPrice (the static, hand-edited field);
+    // a draft PO's suggested unitCost is still just a starting point the
+    // buyer reviews before approving, but it should reflect the product's
+    // own real, currently-resolved cost, same as every other consumer of
+    // this figure, not silently diverge from it.
+    const costs = await getProductCostsBatch(toOrder.map(inv => inv.product.id))
+
     const bySupplier = new Map<string, Array<{ productId: string; quantity: number; unitCost: number; taxRate: number }>>()
     for (const inv of toOrder) {
       const supplierId = inv.product.defaultSupplierId!
       const list = bySupplier.get(supplierId) ?? []
-      list.push({ productId: inv.product.id, quantity: inv.reorderQuantity, unitCost: inv.product.costPrice, taxRate: inv.product.taxRate })
+      list.push({ productId: inv.product.id, quantity: inv.reorderQuantity, unitCost: costs.get(inv.product.id) ?? inv.product.costPrice, taxRate: inv.product.taxRate })
       bySupplier.set(supplierId, list)
     }
 
@@ -333,35 +342,41 @@ export const purchaseOrderService = {
           throw new ServiceError('PO-003', `PO must be APPROVED before receiving. Current status: ${po.status}.`)
         }
 
+        // Phase 64 — landed cost (freight/duty/handling) allocated
+        // proportionally across this PO's own product lines, folded into
+        // the effective unit cost BEFORE it feeds Inventory.averageCost/
+        // ProductCostHistory — this is what makes a landed-cost-bearing
+        // purchase genuinely raise the received goods' cost basis, not
+        // just sit as a disconnected Expense line. Empty map (every
+        // pre-Phase-64 PO, and any PO with no landed cost entered) means
+        // every line's effectiveUnitCost equals its own unitCost exactly —
+        // zero behavior change for the common case.
+        const productLines = po.items.filter((item): item is typeof item & { productId: string } => item.productId !== null)
+        const landedCostPerUnit = await getLandedCostPerUnitForPO(
+          tx, po.id, productLines.map(item => ({ productId: item.productId, quantity: item.quantity, unitCost: item.unitCost }))
+        )
+
         // Update inventory for each PO item — average cost recalculated.
         // Phase 61 — a service line (productId null) has no stock to
         // receive, same reasoning as GRN's own receiving logic.
-        for (const item of po.items) {
-          if (!item.productId) continue
+        for (const item of productLines) {
+          const effectiveUnitCost = item.unitCost + (landedCostPerUnit.get(item.productId) ?? 0)
+          // Phase 64 — the ProductCostHistory row ("from where the goods are
+          // being bought, at what price," same raw material bill.service.ts's
+          // createBill writes for a billed product line) is now written by
+          // addStockTx itself via the costHistory param, the single place
+          // both it and Inventory.averageCost update together.
           await inventoryService.addStockTx(
             tx,
             item.productId,
             item.quantity,
-            item.unitCost,
+            effectiveUnitCost,
             `Received from PO ${po.poNumber}`,
             'PURCHASE_ORDER',
             po.id,
-            userId
+            userId,
+            { sourceType: 'PURCHASE_ORDER', sourceId: po.id }
           )
-          // "From where the goods are being bought, at what price" — one
-          // cost history row per product line, same as bill.service.ts's
-          // createBill writes for a billed product line. Purely additive:
-          // does not touch Inventory.averageCost, which addStockTx above
-          // already maintains.
-          await tx.productCostHistory.create({
-            data: {
-              productId: item.productId,
-              unitCost: item.unitCost,
-              quantity: item.quantity,
-              sourceType: 'PURCHASE_ORDER',
-              sourceId: po.id
-            }
-          })
         }
 
         // Add supplier ledger entry via supplier-ledger service — we owe supplier po.totalAmount

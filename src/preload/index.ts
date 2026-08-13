@@ -59,7 +59,10 @@ const api: IpcChannels = {
     resolveCustomerPrice: (p) => invoke('products:resolveCustomerPrice', p),
     listCustomerClassPrices: (p) => invoke('products:listCustomerClassPrices', p),
     upsertCustomerClassPrice: (p) => invoke('products:upsertCustomerClassPrice', p),
-    deleteCustomerClassPrice: (p) => invoke('products:deleteCustomerClassPrice', p)
+    deleteCustomerClassPrice: (p) => invoke('products:deleteCustomerClassPrice', p),
+    getKitComponents: (kitProductId) => invoke('products:getKitComponents', kitProductId),
+    setKitComponents: (p) => invoke('products:setKitComponents', p),
+    clearKit: (kitProductId) => invoke('products:clearKit', kitProductId)
   },
   categories: {
     list: () => invoke('categories:list'),
@@ -73,7 +76,15 @@ const api: IpcChannels = {
     addStock: (p) => invoke('inventory:addStock', p),
     adjustStock: (p) => invoke('inventory:adjustStock', p),
     getMovements: (p) => invoke('inventory:getMovements', p),
-    getInventoryValue: () => invoke('inventory:getInventoryValue')
+    getInventoryValue: () => invoke('inventory:getInventoryValue'),
+    transferStock: (p) => invoke('inventory:transferStock', p),
+    getStockByLocation: (productId) => invoke('inventory:getStockByLocation', productId)
+  },
+  locations: {
+    list: () => invoke('locations:list'),
+    hasMultipleLocations: () => invoke('locations:hasMultipleLocations'),
+    create: (p) => invoke('locations:create', p),
+    update: (p) => invoke('locations:update', p)
   },
   customers: {
     list: (p) => invoke('customers:list', p),
@@ -104,7 +115,10 @@ const api: IpcChannels = {
     cancel: (p) => invoke('purchaseOrders:cancel', p),
     generateReorderDraftPOs: () => invoke('purchaseOrders:generateReorderDraftPOs'),
     print: (id) => invoke('purchaseOrders:print', id),
-    exportPdf: (id) => invoke('purchaseOrders:exportPdf', id)
+    exportPdf: (id) => invoke('purchaseOrders:exportPdf', id),
+    listLandedCosts: (purchaseOrderId) => invoke('purchaseOrders:listLandedCosts', purchaseOrderId),
+    addLandedCost: (p) => invoke('purchaseOrders:addLandedCost', p),
+    removeLandedCost: (id) => invoke('purchaseOrders:removeLandedCost', id)
   },
   bills: {
     list: (p) => invoke('bills:list', p),
@@ -523,6 +537,8 @@ const api: IpcChannels = {
     start: (p) => invoke('production:start', p),
     complete: (p) => invoke('production:complete', p),
     cancel: (p) => invoke('production:cancel', p),
+    addLaborEntry: (p) => invoke('production:addLaborEntry', p),
+    removeLaborEntry: (id) => invoke('production:removeLaborEntry', id)
   },
   workOrders: {
     list: (p) => invoke('workOrders:list', p),

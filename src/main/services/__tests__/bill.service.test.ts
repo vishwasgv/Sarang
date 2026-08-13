@@ -222,6 +222,49 @@ describe('billService.createBill', () => {
     }))
   })
 
+  // Phase 64 — landed cost, entered inline at creation, folds into the
+  // ProductCostHistory unitCost without ever touching Inventory (Bill still
+  // doesn't affect stock).
+  it('folds an inline landed cost into each product line\'s ProductCostHistory unitCost and records a real LandedCostAllocation row', async () => {
+    const db = makeDb({ landedCostAllocation: { create: vi.fn().mockResolvedValue({}) } })
+    db.bill.create = vi.fn().mockResolvedValue({
+      ...makeBill(),
+      supplier: makeSupplier(),
+      items: [{ id: 'bi-1', productId: 'prod-1', unitCost: 100, quantity: 10 }]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billService.createBill({
+      supplierId: 'sup-1', items: [productItem], isReverseCharge: false,
+      landedCosts: [{ costType: 'FREIGHT', amount: 200, allocationMethod: 'BY_VALUE' }]
+    })
+
+    // Single line -> gets the full 200 share -> 20/unit -> 100 + 20 = 120
+    expect(db.productCostHistory.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ productId: 'prod-1', unitCost: 120 })
+    }))
+    expect(db.landedCostAllocation.create).toHaveBeenCalledWith({
+      data: { billId: 'bill-1', costType: 'FREIGHT', amount: 200, allocationMethod: 'BY_VALUE' }
+    })
+  })
+
+  it('leaves ProductCostHistory unitCost unchanged when no landedCosts are passed (every pre-Phase-64 caller)', async () => {
+    const db = makeDb({ landedCostAllocation: { create: vi.fn() } })
+    db.bill.create = vi.fn().mockResolvedValue({
+      ...makeBill(),
+      supplier: makeSupplier(),
+      items: [{ id: 'bi-1', productId: 'prod-1', unitCost: 100, quantity: 10 }]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billService.createBill({ supplierId: 'sup-1', items: [productItem], isReverseCharge: false })
+
+    expect(db.productCostHistory.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ productId: 'prod-1', unitCost: 100 })
+    }))
+    expect(db.landedCostAllocation.create).not.toHaveBeenCalled()
+  })
+
   // Phase 61 Section 3.4 — explicit ask: "purchase-price-history
   // append-not-overwrite logic". ProductCostHistory has no unique
   // constraint on productId and every write is a plain create() (never an

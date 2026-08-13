@@ -37,7 +37,11 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0)
     },
-    product: { count: vi.fn().mockResolvedValue(0) },
+    // Phase 64 — getProductCostsBatch() (valuation.service, called by
+    // computeProfit) reads this; empty default is safe for every test whose
+    // invoice fixtures carry no items (the batch resolver early-returns on
+    // an empty product id list without querying).
+    product: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
     supplier: { count: vi.fn().mockResolvedValue(0) },
     purchaseOrder: { aggregate: vi.fn().mockResolvedValue({ _sum: { totalAmount: 0 } }) },
     invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
@@ -58,18 +62,22 @@ beforeEach(() => vi.clearAllMocks())
 // ─── computeProfit / getEstimatedProfit (GAP 6.1) ───────────────────────────
 
 describe('getEstimatedProfit', () => {
-  it('subtracts COGS (quantity x product.costPrice) from revenue, not just expenses', async () => {
+  it('subtracts COGS (quantity x resolved product cost) from revenue, not just expenses', async () => {
     const db = makeDb()
     db.invoice.findMany = vi.fn().mockResolvedValue([
       {
         totalAmount: 1000,
         items: [
-          { quantity: 2, product: { costPrice: 100 } }, // COGS 200
-          { quantity: 1, product: { costPrice: 50 } }    // COGS 50
+          { quantity: 2, productId: 'p1' }, // COGS 200
+          { quantity: 1, productId: 'p2' }  // COGS 50
         ]
       }
     ])
     db.expense.aggregate = vi.fn().mockResolvedValue({ _sum: { amount: 100 } })
+    db.product.findMany = vi.fn().mockResolvedValue([
+      { id: 'p1', costPrice: 100, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null },
+      { id: 'p2', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }
+    ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const profit = await getEstimatedProfit(new Date('2026-01-01'), new Date('2026-01-31'))
@@ -96,10 +104,13 @@ describe('getEstimatedProfit', () => {
   it('subtracts COGS for a RETURN invoice instead of adding it again', async () => {
     const db = makeDb()
     db.invoice.findMany = vi.fn().mockResolvedValue([
-      { totalAmount: 1000, invoiceType: 'RETAIL', items: [{ quantity: 2, product: { costPrice: 100 } }] }, // revenue 1000, COGS +200
-      { totalAmount: -300, invoiceType: 'RETURN', items: [{ quantity: 1, product: { costPrice: 100 } }] }  // revenue -300, COGS -100
+      { totalAmount: 1000, invoiceType: 'RETAIL', items: [{ quantity: 2, productId: 'p1' }] }, // revenue 1000, COGS +200
+      { totalAmount: -300, invoiceType: 'RETURN', items: [{ quantity: 1, productId: 'p1' }] }  // revenue -300, COGS -100
     ])
     db.expense.aggregate = vi.fn().mockResolvedValue({ _sum: { amount: 0 } })
+    db.product.findMany = vi.fn().mockResolvedValue([
+      { id: 'p1', costPrice: 100, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }
+    ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const profit = await getEstimatedProfit(new Date('2026-01-01'), new Date('2026-01-31'))
@@ -562,9 +573,12 @@ describe('getDashboardKpis', () => {
     const { getDashboardKpis, getPrisma: freshGetPrisma } = await freshImport()
     const db = makeDb()
     db.invoice.findMany = vi.fn().mockResolvedValue([
-      { totalAmount: 1000, items: [{ quantity: 4, product: { costPrice: 100 } }] } // COGS 400
+      { totalAmount: 1000, items: [{ quantity: 4, productId: 'p1' }] } // COGS 400
     ])
     db.expense.aggregate = vi.fn().mockResolvedValue({ _sum: { amount: 50 } })
+    db.product.findMany = vi.fn().mockResolvedValue([
+      { id: 'p1', costPrice: 100, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }
+    ])
     vi.mocked(freshGetPrisma).mockReturnValue(db as never)
 
     const kpis = await getDashboardKpis()

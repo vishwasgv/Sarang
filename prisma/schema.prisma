@@ -56,6 +56,12 @@ model BusinessProfile {
   // existing settings-row shape better than being the first ever added).
   // Null means "use the system default" (InvoiceTemplate.isDefault=true).
   defaultInvoiceTemplateId  String?
+  // Phase 64 — job-costing overhead allocation, applied at production-order
+  // completion time. Null basis means overhead allocation is disabled
+  // (ProductionOrder.overheadCost stays 0), matching creditInterestEnabled's
+  // own "off by default, no existing install silently affected" precedent.
+  overheadAllocationBasis   String? // PER_LABOR_HOUR | PER_UNIT_PRODUCED | null (disabled)
+  overheadAllocationRate    Float     @default(0)
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 }
@@ -262,6 +268,33 @@ model Product {
   makingChargeType  String? // 'FIXED' | 'PER_GRAM' | 'PERCENTAGE'
   makingChargeValue Float?
 
+  // Phase 64 — selectable stock valuation method. Default WEIGHTED_AVERAGE
+  // matches what Inventory.averageCost already computes today for every
+  // existing product — this field formalizes an existing implicit default
+  // as an explicit, user-visible setting, not a behavior change on upgrade.
+  // FIFO/STANDARD_COST are resolved by getProductCost() in
+  // valuation.service.ts, never by re-deriving cost math at each call site.
+  valuationMethod String @default("WEIGHTED_AVERAGE") // WEIGHTED_AVERAGE | FIFO | STANDARD_COST
+  // Only meaningful when valuationMethod == STANDARD_COST — a manually-set,
+  // period-stable cost that never auto-updates from a purchase; purchases
+  // still append to ProductCostHistory for variance reporting either way.
+  standardCost    Float?
+
+  // Phase 64 — composite items/kits. A kit product carries its own
+  // sellingPrice (not necessarily the sum of its components) and zero
+  // standalone stock of its own — see KitComponent below. Enforced at
+  // validation, not the DB: a kit cannot itself be a component of another
+  // kit (one level deep only).
+  isKit Boolean @default(false)
+
+  // Phase 64 — floating/variable unit-of-measure conversion, meaningful
+  // only alongside sellByPack above. When true, GRNItem.receivedQty is the
+  // real measured stocking-unit quantity entered by receiving staff (not
+  // auto-computed from the fixed unitsPerPack ratio), since the actual
+  // yield of a purchase-unit lot can genuinely vary batch to batch (e.g. a
+  // nominal "50kg bag" that actually weighs 49.2kg this delivery).
+  floatingUnitConversion Boolean @default(false)
+
   category                  ProductCategory?          @relation(fields: [categoryId], references: [id])
   defaultSupplier           Supplier?                 @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id], onDelete: SetNull)
   inventory                 Inventory?
@@ -292,11 +325,34 @@ model Product {
   pricingSchemes            PricingScheme[] // Phase 63
   creditNoteItems           CreditNoteItem[] // Phase 63
   debitNoteItems            DebitNoteItem[] // Phase 63
+  locationStock             LocationStock[] // Phase 64
+  kitComponents             KitComponent[]            @relation("KitParent") // Phase 64 — this product's own components, when isKit=true
+  usedInKits                KitComponent[]            @relation("KitComponentProduct") // Phase 64 — kits that include this product as a component
 
   @@index([productName])
   @@index([isActive])
   @@index([categoryId])
   @@index([defaultSupplierId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 64: COMPOSITE ITEMS / KITS
+// ─────────────────────────────────────────────────────────────────────────────
+// One level deep only (enforced in kit.service.ts, not the DB — a kit's own
+// component cannot itself be a kit) — mirrors BillOfMaterialItem's own
+// "enforced in the service layer, not a DB constraint" precedent for a
+// similar mutual-exclusivity rule.
+model KitComponent {
+  id                 String @id @default(cuid())
+  kitProductId       String
+  componentProductId String
+  quantity           Float
+
+  kitProduct       Product @relation("KitParent", fields: [kitProductId], references: [id], onDelete: Cascade)
+  componentProduct Product @relation("KitComponentProduct", fields: [componentProductId], references: [id])
+
+  @@index([kitProductId])
+  @@index([componentProductId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -638,13 +694,62 @@ model InventoryMovement {
   remarks       String?
   createdById   String?
   createdAt     DateTime @default(now())
+  // Phase 64 — which Location this movement happened at. Nullable, only
+  // ever populated once a business has more than the seeded default
+  // Location — every pre-Phase-64 movement and every movement on a
+  // single-location install stays null, zero behavior change.
+  locationId    String?
 
-  product   Product @relation(fields: [productId], references: [id])
-  createdBy User?   @relation("MovementCreatedBy", fields: [createdById], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+  createdBy User?     @relation("MovementCreatedBy", fields: [createdById], references: [id])
+  location  Location? @relation(fields: [locationId], references: [id])
 
   @@index([productId])
   @@index([movementType])
   @@index([createdAt])
+  @@index([locationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 64: MULTI-LOCATION STOCK
+// ─────────────────────────────────────────────────────────────────────────────
+// Deliberately additive, not a rework of Inventory's own one-row-per-product
+// shape — see PHASE_61_ROADMAP_MASTER_PROMPT.md Section 6.1 item 2 for the
+// full reasoning. Inventory.quantity remains the single aggregate total
+// every existing call site already reads unchanged; LocationStock is purely
+// a breakdown of that same total across Locations, kept in sync by the
+// service layer, never a second source of truth for the aggregate.
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  // Every install's first Location is seeded isDefault=true ("Main") and
+  // re-parents all pre-existing stock to it on migration — addStockTx/
+  // reduceStockTx fall back to this Location whenever no locationId is
+  // passed, so a single-location business never sees a location picker.
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stock     LocationStock[]
+  movements InventoryMovement[]
+
+  @@index([isActive])
+}
+
+model LocationStock {
+  id         String   @id @default(cuid())
+  productId  String
+  locationId String
+  quantity   Float    @default(0)
+  updatedAt  DateTime @updatedAt
+
+  product  Product  @relation(fields: [productId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId])
+  @@index([locationId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -876,14 +981,15 @@ model PurchaseOrder {
   dropShipToCustomerId String?
   sourceSalesOrderId   String? // the SalesOrder this drop-ship PO is fulfilling, if any
 
-  supplier           Supplier            @relation(fields: [supplierId], references: [id])
-  dropShipToCustomer Customer?           @relation("DropShipCustomer", fields: [dropShipToCustomerId], references: [id])
-  sourceSalesOrder   SalesOrder?         @relation("DropShipSalesOrder", fields: [sourceSalesOrderId], references: [id])
+  supplier           Supplier               @relation(fields: [supplierId], references: [id])
+  dropShipToCustomer Customer?              @relation("DropShipCustomer", fields: [dropShipToCustomerId], references: [id])
+  sourceSalesOrder   SalesOrder?            @relation("DropShipSalesOrder", fields: [sourceSalesOrderId], references: [id])
   approvalInstance   ApprovalInstance?
   items              PurchaseOrderItem[]
   debitNotes         DebitNote[]
-  grns               GoodsReceiptNote[]  @relation("GRNPurchaseOrder")
+  grns               GoodsReceiptNote[]     @relation("GRNPurchaseOrder")
   bills              Bill[] // Phase 61 — a Bill can optionally be raised against this PO
+  landedCosts        LandedCostAllocation[] // Phase 64
 }
 
 model PurchaseOrderItem {
@@ -943,16 +1049,40 @@ model Bill {
   // Phase 62 — Reverse Charge Mechanism, same meaning as PurchaseOrder's own.
   isReverseCharge Boolean   @default(false)
 
-  supplier      Supplier          @relation(fields: [supplierId], references: [id])
-  purchaseOrder PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
-  createdBy     User?             @relation("BillCreatedBy", fields: [createdById], references: [id])
+  supplier      Supplier               @relation(fields: [supplierId], references: [id])
+  purchaseOrder PurchaseOrder?         @relation(fields: [purchaseOrderId], references: [id])
+  createdBy     User?                  @relation("BillCreatedBy", fields: [createdById], references: [id])
   items         BillItem[]
   payments      SupplierPayment[]
+  landedCosts   LandedCostAllocation[] // Phase 64
 
   @@index([supplierId])
   @@index([purchaseOrderId])
   @@index([status])
   @@index([billDate])
+}
+
+// Phase 64 — freight/duty/handling entered once per document, allocated
+// proportionally across that document's line items directly into
+// ProductCostHistory's recorded unitCost for the matching receipt, so a
+// landed-cost-bearing purchase genuinely raises the received goods' cost
+// basis instead of sitting as a disconnected, unlinked Expense line
+// (confirmed in the grounding check: Expense has no purchaseOrderId/billId
+// link at all). Exactly one of purchaseOrderId/billId is set.
+model LandedCostAllocation {
+  id               String   @id @default(cuid())
+  purchaseOrderId  String?
+  billId           String?
+  costType         String // FREIGHT | DUTY | HANDLING | OTHER
+  amount           Float
+  allocationMethod String   @default("BY_VALUE") // BY_VALUE | BY_QUANTITY
+  createdAt        DateTime @default(now())
+
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  bill          Bill?          @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+  @@index([billId])
 }
 
 // Same Product-or-service-line duality as PurchaseOrderItem above, for the
@@ -1021,15 +1151,22 @@ model SupplierPayment {
 // unaffected), but every PO/Bill line that touches a product now also
 // appends here instead of that being the only record — closes "no visible
 // history of what a product actually cost across its last five purchases."
-// sourceId deliberately isn't a hard FK (it can point to either a
-// PurchaseOrderItem.id or a BillItem.id, two different tables) — sourceType
-// disambiguates which.
+// sourceId deliberately isn't a hard FK (it can point to a
+// PurchaseOrderItem.id/BillItem.id/GoodsReceiptNote.id/ProductionOrder.id
+// across four different tables) — sourceType disambiguates which. Phase 64
+// closed two real completeness gaps: GRN posting never appended a row at
+// all (addStockTx's own costHistory param now covers PURCHASE_ORDER,
+// GOODS_RECEIPT_NOTE, and BILL uniformly), and a completed ProductionOrder
+// never recorded its own real produced-unit cost as a layer
+// (PRODUCTION_ORDER) — this table is the layer source getProductCost()'s
+// FIFO method (valuation.service.ts) reads, so a stock-in path that never
+// wrote here made FIFO valuation silently incomplete.
 model ProductCostHistory {
   id         String   @id @default(cuid())
   productId  String
   unitCost   Float
   quantity   Float
-  sourceType String // 'PURCHASE_ORDER' | 'BILL'
+  sourceType String // 'PURCHASE_ORDER' | 'BILL' | 'GOODS_RECEIPT_NOTE' | 'PRODUCTION_ORDER'
   sourceId   String
   recordedAt DateTime @default(now())
 
@@ -2014,7 +2151,17 @@ model ProductionOrder {
   // material cost (see completeProductionOrder), instead of every
   // manufactured good silently carrying a material-only cost that never
   // reflected the labor that went into making it.
+  // Phase 64 — superseded as the entry point by real itemized
+  // ProductionLaborEntry rows below; this field is now a computed,
+  // backward-compatible sum-of-entries (same "computed field for legacy
+  // reads" pattern Phase 63 used for CreditNote.amount), not hand-entered
+  // directly once at least one labor entry exists.
   laborCost     Float     @default(0)
+  // Phase 64 — overhead allocated at completion time from BusinessProfile's
+  // overheadAllocationRate/Basis, folded into the produced unit's cost
+  // basis alongside material + labor. Zero for every pre-Phase-64
+  // production order and for any business that never configures a rate.
+  overheadCost  Float     @default(0)
   status        String    @default("DRAFT")
   startDate     DateTime?
   completedDate DateTime?
@@ -2027,10 +2174,29 @@ model ProductionOrder {
   bom           BillOfMaterial            @relation(fields: [bomId], references: [id])
   materialUsage ProductionMaterialUsage[]
   workOrders    WorkOrder[]
+  laborEntries  ProductionLaborEntry[]
 
   @@index([status])
   @@index([productId])
   @@index([createdAt])
+}
+
+// Phase 64 — real itemized labor per production run, superseding
+// ProductionOrder.laborCost's single flat guess. One row per worker/shift;
+// amount is computed (hoursWorked * ratePerHour) and stored at write time
+// for a stable historical record even if a worker's rate later changes.
+model ProductionLaborEntry {
+  id                String   @id @default(cuid())
+  productionOrderId String
+  workerName        String
+  hoursWorked       Float
+  ratePerHour       Float
+  amount            Float
+  createdAt         DateTime @default(now())
+
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  @@index([productionOrderId])
 }
 
 model ProductionMaterialUsage {
@@ -5249,20 +5415,27 @@ model GoodsReceiptNote {
 }
 
 model GRNItem {
-  id            String    @id @default(cuid())
-  grnId         String
-  productId     String?
-  rawMaterialId String?
-  itemName      String
-  orderedQty    Float?
-  receivedQty   Float
-  rejectedQty   Float     @default(0)
-  unit          String    @default("PCS")
-  unitCost      Float     @default(0)
-  totalCost     Float     @default(0)
-  batchNumber   String?
-  expiryDate    DateTime?
-  notes         String?
+  id              String    @id @default(cuid())
+  grnId           String
+  productId       String?
+  rawMaterialId   String?
+  itemName        String
+  orderedQty      Float?
+  receivedQty     Float
+  rejectedQty     Float     @default(0)
+  unit            String    @default("PCS")
+  unitCost        Float     @default(0)
+  totalCost       Float     @default(0)
+  batchNumber     String?
+  expiryDate      DateTime?
+  notes           String?
+  // Phase 64 — floating/variable UoM conversion (Product.floatingUnitConversion).
+  // The nominal purchase-unit quantity received (e.g. "3 bags") — receivedQty
+  // remains the real, measured stocking-unit quantity (e.g. "147.6 kg"), so
+  // this batch's own effective conversion factor is receivedQty ÷
+  // purchaseUnitQty, never assumed to equal Product.unitsPerPack. Null for
+  // every product that doesn't use floating conversion.
+  purchaseUnitQty Float?
 
   grn GoodsReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
 

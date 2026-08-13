@@ -584,6 +584,101 @@ describe('billingService.createInvoice — Phase 63 zero-value/free-of-cost bill
   })
 })
 
+// Phase 64 — composite items/kits: one clean invoice line at the kit's own
+// price, real stock deductions against its underlying components.
+describe('billingService.createInvoice — Phase 64 composite items/kits', () => {
+  function makeKitProduct(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'kit-1', productName: 'Diwali Hamper', sku: 'KIT-001', hsnCode: null,
+      productType: 'STANDARD', taxRate: 0, isActive: true, isKit: true,
+      inventory: { quantity: 0 },
+      kitComponents: [
+        { quantity: 2, componentProduct: { id: 'comp-1', productName: 'Sweets Box', inventory: { quantity: 50 } } },
+        { quantity: 1, componentProduct: { id: 'comp-2', productName: 'Candle Set', inventory: { quantity: 10 } } }
+      ],
+      ...overrides
+    }
+  }
+
+  it('deducts real component stock (scaled by kit quantity sold), never the kit\'s own (nonexistent) stock', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct())
+    db.kitComponent = { findMany: vi.fn().mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 2 },
+      { componentProductId: 'comp-2', quantity: 1 }
+    ]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 3, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(true)
+    // 3 kits sold * 2 per kit = 6 of comp-1, * 1 per kit = 3 of comp-2 — never 'kit-1' itself.
+    expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
+      expect.anything(), 'comp-1', 6, expect.any(String), 'INVOICE', expect.any(String), undefined
+    )
+    expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
+      expect.anything(), 'comp-2', 3, expect.any(String), 'INVOICE', expect.any(String), undefined
+    )
+    expect(vi.mocked(inventoryService.reduceStockTx)).not.toHaveBeenCalledWith(
+      expect.anything(), 'kit-1', expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything()
+    )
+  })
+
+  it('shows exactly one invoice line for the kit at its own price, not one per component', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct())
+    db.kitComponent = { findMany: vi.fn().mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 2 },
+      { componentProductId: 'comp-2', quantity: 1 }
+    ]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 1, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(db.invoiceItem.create).toHaveBeenCalledTimes(1)
+    const itemCreateCall = db.invoiceItem.create.mock.calls[0][0] as { data: { productId: string; unitPrice: number } }
+    expect(itemCreateCall.data.productId).toBe('kit-1')
+    expect(itemCreateCall.data.unitPrice).toBe(500)
+  })
+
+  it('rejects a kit sale when a real component is short of stock', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct({
+      kitComponents: [{ quantity: 2, componentProduct: { id: 'comp-1', productName: 'Sweets Box', inventory: { quantity: 3 } } }]
+    }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 5 kits * 2 per kit = 10 needed, only 3 available.
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 5, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error?: { code?: string } }).error?.code).toBe('KIT-006')
+  })
+
+  it('rejects selling a kit with zero configured components', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct({ kitComponents: [] }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 1, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error?: { code?: string } }).error?.code).toBe('KIT-001')
+  })
+})
+
 // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture. A prescription-
 // flagged product must never be sold without a patient + doctor name
 // captured on the line — enforced server-side, never trusting the UI alone.

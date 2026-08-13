@@ -23,6 +23,17 @@ export const CancelProductionOrderSchema = z.object({
   notes: z.string().optional(),
 })
 
+// Phase 64 — job costing: real itemized labor per production run.
+export const AddProductionLaborEntrySchema = z.object({
+  productionOrderId: z.string().min(1, 'Production order ID is required'),
+  workerName: z.string().min(1, 'Worker name is required').max(120),
+  hoursWorked: z.number().positive('Hours worked must be greater than zero').finite(),
+  ratePerHour: z.number().min(0, 'Rate per hour cannot be negative').finite(),
+})
+
+export const ProductionLaborEntryIdSchema = z.object({ id: z.string().min(1, 'Labor entry ID is required') })
+
 export type CreateProductionOrderPayload = z.infer<typeof CreateProductionOrderSchema>
 export type CompleteProductionOrderPayload = z.infer<typeof CompleteProductionOrderSchema>
 export type CancelProductionOrderPayload = z.infer<typeof CancelProductionOrderSchema>
+export type AddProductionLaborEntryPayload = z.infer<typeof AddProductionLaborEntrySchema>

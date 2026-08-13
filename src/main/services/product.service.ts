@@ -165,6 +165,9 @@ export async function createProduct(payload: CreateProductPayload): Promise<ApiR
           sellByPack: payload.sellByPack ?? false,
           packUnit: payload.sellByPack ? payload.packUnit : null,
           unitsPerPack: payload.sellByPack ? payload.unitsPerPack : null,
+          // Phase 64 — meaningful only alongside sellByPack, same guard the
+          // validation layer's own refinePackBilling already enforces.
+          floatingUnitConversion: payload.sellByPack ? (payload.floatingUnitConversion ?? false) : false,
           barcodeSource: payload.barcode ? 'MANUAL' : null,
           isRentable: payload.isRentable ?? false,
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,
@@ -287,6 +290,9 @@ export async function updateProduct(payload: UpdateProductPayload): Promise<ApiR
           sellByPack: payload.sellByPack ?? false,
           packUnit: payload.sellByPack ? payload.packUnit : null,
           unitsPerPack: payload.sellByPack ? payload.unitsPerPack : null,
+          // Phase 64 — meaningful only alongside sellByPack, same guard the
+          // validation layer's own refinePackBilling already enforces.
+          floatingUnitConversion: payload.sellByPack ? (payload.floatingUnitConversion ?? false) : false,
           barcodeSource: payload.barcode && payload.barcode !== existing.barcode ? 'MANUAL' : existing.barcodeSource,
           isRentable: payload.isRentable ?? false,
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,

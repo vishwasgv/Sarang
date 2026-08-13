@@ -8,6 +8,7 @@ import { generateSequenceNumber } from './sequence.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
+import { allocateLandedCostAcrossLines } from './landed-cost.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreateBillPayload } from '../validation/bill.validation'
 
@@ -176,6 +177,30 @@ export const billService = {
           }
         })
 
+        // Phase 64 — landed cost, entered inline (see bill.validation.ts's
+        // own comment for why a Bill can't add it after the fact the way a
+        // PO can). Computed once per product line here, then folded into
+        // that line's own ProductCostHistory unitCost below — never touches
+        // Inventory (Bill still doesn't affect stock, unchanged).
+        const productItems = created.items.filter(row => row.productId)
+        const landedCostPerItemId = new Map<string, number>()
+        if (payload.landedCosts && payload.landedCosts.length > 0 && productItems.length > 0) {
+          const perLineTotal = new Array(productItems.length).fill(0)
+          for (const lc of payload.landedCosts) {
+            const shares = allocateLandedCostAcrossLines(
+              lc.amount, lc.allocationMethod,
+              productItems.map(row => ({ value: row.quantity * row.unitCost, quantity: row.quantity }))
+            )
+            shares.forEach((s, i) => { perLineTotal[i] += s })
+            await tx.landedCostAllocation.create({
+              data: { billId: created.id, costType: lc.costType, amount: lc.amount, allocationMethod: lc.allocationMethod }
+            })
+          }
+          productItems.forEach((row, i) => {
+            landedCostPerItemId.set(row.id, row.quantity > 0 ? perLineTotal[i] / row.quantity : 0)
+          })
+        }
+
         // "From where the goods are being bought, at what price" — one cost
         // history row per product line, the raw material for a future
         // Purchases-by-Item / cost-trend report. Purely additive: does not
@@ -183,10 +208,11 @@ export const billService = {
         // addStockTx's job, driven off PO receiving, not billing).
         for (const row of created.items) {
           if (!row.productId) continue
+          const effectiveUnitCost = row.unitCost + (landedCostPerItemId.get(row.id) ?? 0)
           await tx.productCostHistory.create({
             data: {
               productId: row.productId,
-              unitCost: row.unitCost,
+              unitCost: effectiveUnitCost,
               quantity: row.quantity,
               sourceType: 'BILL',
               sourceId: created.id

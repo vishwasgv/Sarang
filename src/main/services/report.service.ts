@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { getProductCostsBatch } from './valuation.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -914,7 +915,7 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
   const [invoices, expenses] = await Promise.all([
     db.invoice.findMany({
       where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: from, lte: to } },
-      select: { totalAmount: true, invoiceType: true, items: { select: { quantity: true, product: { select: { costPrice: true } } } } }
+      select: { totalAmount: true, invoiceType: true, items: { select: { quantity: true, productId: true } } }
     }),
     db.expense.findMany({
       where: { expenseDate: { gte: from, lte: to } },
@@ -922,15 +923,22 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
     })
   ])
 
+  // Phase 64 — was `it.product.costPrice` (the static, hand-edited field),
+  // the same stale-cost gap fixed in analytics.service.ts's computeProfit()
+  // — getProductCostsBatch() resolves through each product's own selected
+  // valuationMethod, matching the Inventory screen's live figure instead of
+  // silently diverging from it.
+  const costs = await getProductCostsBatch(invoices.flatMap(inv => inv.items.map(it => it.productId)))
+
   const revenue = sumCurrency(invoices.map(inv => inv.totalAmount))
   // Same RETURN-invoice sign correction as analytics.service.ts's
   // computeProfit(): a return's item quantities are stored positive (used to
-  // restock inventory), so summing quantity*costPrice unconditionally would
+  // restock inventory), so summing quantity*cost unconditionally would
   // double-punish profit — revenue already dropped via totalAmount, COGS
   // must drop too (the goods came back into stock), not rise as a second sale.
   const cogs = sumCurrency(invoices.flatMap((inv) => {
     const sign = inv.invoiceType === 'RETURN' ? -1 : 1
-    return inv.items.map((it) => sign * it.quantity * it.product.costPrice)
+    return inv.items.map((it) => sign * it.quantity * (costs.get(it.productId) ?? 0))
   }))
   const grossProfit = roundCurrency(revenue - cogs)
 
@@ -1210,16 +1218,20 @@ async function generateFoodCostReport(params?: { dateFrom?: string; dateTo?: str
       ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
     },
     include: {
-      product: { select: { productName: true, unit: true, costPrice: true } }
+      product: { select: { productName: true, unit: true } }
     }
   })
+
+  // Phase 64 — was `m.product.costPrice` (the static, hand-edited field),
+  // the same stale-cost gap fixed for the Dashboard/P&L above.
+  const costs = await getProductCostsBatch(movements.map(m => m.productId))
 
   // Aggregate by product
   const byProduct = new Map<string, FoodCostReportRow>()
   for (const m of movements) {
     const key = m.productId
     const used = Math.abs(m.quantity)
-    const cost = m.product.costPrice ?? 0
+    const cost = costs.get(m.productId) ?? 0
     if (byProduct.has(key)) {
       const existing = byProduct.get(key)!
       existing.totalQuantityUsed += used

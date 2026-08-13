@@ -121,6 +121,57 @@ describe('createGRN — float-precision rounding', () => {
   })
 })
 
+// Phase 64 — floating/variable UoM conversion: the nominal purchase-unit
+// quantity is persisted separately from the real, measured receivedQty, and
+// the effective per-batch conversion factor is derived at read time.
+describe('createGRN / toRecord — Phase 64 floating UoM (purchaseUnitQty)', () => {
+  function makeFloatingUomDb() {
+    const db = {
+      goodsReceiptNote: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({
+            ...data, id: 'grn-new', receivedDate: new Date(), createdAt: new Date(), updatedAt: new Date(),
+            items: (data.items as { create: Array<Record<string, unknown>> }).create.map((i, idx) => ({ ...i, id: `gi-${idx}` }))
+          })
+        ),
+      },
+    } as Record<string, any>
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    return db
+  }
+
+  it('persists purchaseUnitQty alongside the real measured receivedQty', async () => {
+    const db = makeFloatingUomDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Nominal "3 bags" (purchaseUnitQty), but the real weighed amount received is 147.6kg.
+    const result = await createGRN({
+      supplierName: 'Grain Co', items: [{ itemName: 'Wheat', receivedQty: 147.6, purchaseUnitQty: 3, unitCost: 20 }]
+    })
+
+    expect(result.success).toBe(true)
+    const createCall = db.goodsReceiptNote.create.mock.calls[0][0]
+    expect(createCall.data.items.create[0].purchaseUnitQty).toBe(3)
+    expect(createCall.data.items.create[0].receivedQty).toBe(147.6)
+    // Effective conversion factor for this real batch: 147.6 / 3 = 49.2, not the
+    // nominal 50kg/bag a fixed-ratio product would otherwise assume.
+    expect((result.data as { items: Array<{ effectiveConversionFactor: number | null }> }).items[0].effectiveConversionFactor).toBe(49.2)
+  })
+
+  it('leaves purchaseUnitQty/effectiveConversionFactor null for an ordinary product that never uses floating conversion', async () => {
+    const db = makeFloatingUomDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await createGRN({ supplierName: 'ACME', items: [{ itemName: 'Widget', receivedQty: 10, unitCost: 5 }] })
+
+    expect(result.success).toBe(true)
+    const item = (result.data as { items: Array<{ purchaseUnitQty: number | null; effectiveConversionFactor: number | null }> }).items[0]
+    expect(item.purchaseUnitQty).toBeNull()
+    expect(item.effectiveConversionFactor).toBeNull()
+  })
+})
+
 describe('postGRN', () => {
   it('creates a movement record (via addStockTx) and a supplier ledger debit', async () => {
     const db = makeDb()
@@ -130,7 +181,8 @@ describe('postGRN', () => {
 
     expect(result.success).toBe(true)
     expect(inventoryService.addStockTx).toHaveBeenCalledWith(
-      db, 'prod-1', 10, 100, expect.stringContaining('GRN-00001'), 'GOODS_RECEIPT_NOTE', 'grn-1', 'user-1'
+      db, 'prod-1', 10, 100, expect.stringContaining('GRN-00001'), 'GOODS_RECEIPT_NOTE', 'grn-1', 'user-1',
+      { sourceType: 'GOODS_RECEIPT_NOTE', sourceId: 'grn-1' }
     )
     expect(supplierLedgerService.addEntry).toHaveBeenCalledWith(
       expect.objectContaining({ supplierId: 'sup-1', debitAmount: 1000, referenceType: 'GOODS_RECEIPT_NOTE' }),
@@ -232,7 +284,8 @@ describe('postGRN', () => {
 
     expect(result.success).toBe(true)
     expect(inventoryService.addStockTx).toHaveBeenCalledWith(
-      db, 'prod-1', 80, 100, expect.stringContaining('GRN-00001'), 'GOODS_RECEIPT_NOTE', 'grn-1', 'user-1'
+      db, 'prod-1', 80, 100, expect.stringContaining('GRN-00001'), 'GOODS_RECEIPT_NOTE', 'grn-1', 'user-1',
+      { sourceType: 'GOODS_RECEIPT_NOTE', sourceId: 'grn-1' }
     )
   })
 

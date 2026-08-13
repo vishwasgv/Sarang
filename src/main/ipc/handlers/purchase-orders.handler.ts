@@ -2,12 +2,13 @@ import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { purchaseOrderService } from '../../services/purchase-order.service'
+import { landedCostService } from '../../services/landed-cost.service'
 import { printService } from '../../services/print.service'
 import { exportToPdf } from '../../services/export.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
-import { CreatePOSchema, CancelPOSchema } from '../../validation/purchase-order.validation'
+import { CreatePOSchema, CancelPOSchema, AddLandedCostSchema } from '../../validation/purchase-order.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -61,6 +62,26 @@ export function register(handle: HandleFn): void {
   handle('purchaseOrders:generateReorderDraftPOs', async () => {
     const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
     return purchaseOrderService.generateReorderDraftPOs(getCurrentSession()?.userId)
+  })
+
+  // Phase 64 — landed cost, same trust tier as creating/editing the PO itself.
+  handle('purchaseOrders:listLandedCosts', async (purchaseOrderId) => {
+    const deny = await requirePermission('purchaseOrders.view'); if (deny) return deny
+    const bad = validateId(purchaseOrderId, 'purchase order ID'); if (bad) return bad
+    return landedCostService.listForPurchaseOrder(purchaseOrderId as string)
+  })
+
+  handle('purchaseOrders:addLandedCost', async (payload) => {
+    const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
+    const parsed = AddLandedCostSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return landedCostService.addAllocation(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('purchaseOrders:removeLandedCost', async (id) => {
+    const deny = await requirePermission('purchaseOrders.create'); if (deny) return deny
+    const bad = validateId(id, 'landed cost allocation ID'); if (bad) return bad
+    return landedCostService.removeAllocation(id as string, getCurrentSession()?.userId)
   })
 
   // Share feature (docs/FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md Section 4):

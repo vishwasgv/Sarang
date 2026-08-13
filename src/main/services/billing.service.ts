@@ -15,6 +15,7 @@ import { getLicenseState } from './license.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
+import { explodeKitComponentsTx } from './kit.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
@@ -280,13 +281,20 @@ export const billingService = {
       prescriptionPatientName: string | null; prescriptionDoctorName: string | null
       prescriptionDate: Date | null
       isFreeOfCost: boolean; schemeId: string | null
+      // Phase 64 — composite items/kits. The invoice still shows this as
+      // ONE line at the kit's own price; real component stock deductions
+      // happen separately at write time (see the deduction loop below).
+      isKit: boolean
     }
     const validatedItems: ValidatedItem[] = []
 
     for (const item of payload.items) {
       const product = await db.product.findUnique({
         where: { id: item.productId },
-        include: { inventory: true }
+        // Phase 64 — kitComponents included so a kit line can validate each
+        // real component's own stock here, instead of the (meaningless for
+        // a kit) direct product.inventory check below.
+        include: { inventory: true, kitComponents: { include: { componentProduct: { include: { inventory: true } } } } }
       })
       if (!product) return { success: false, error: { code: 'PRD-001', message: `Product not found.` } }
       if (!product.isActive) return { success: false, error: { code: 'PRD-005', message: `Product "${product.productName}" is archived and cannot be sold.` } }
@@ -324,8 +332,27 @@ export const billingService = {
         }
       }
 
+      // Phase 64 — a kit product carries zero standalone stock of its own
+      // (its own Inventory row, if any, is never incremented) — checking it
+      // directly the way a normal STANDARD product is checked below would
+      // always show "insufficient stock" and block every kit sale. Instead,
+      // check each real component's own availability, scaled by how many
+      // kits this line sells.
+      if (product.isKit) {
+        if (product.kitComponents.length === 0) {
+          return { success: false, error: { code: 'KIT-001', message: `"${product.productName}" is a kit with no components configured — cannot be sold.` } }
+        }
+        for (const kc of product.kitComponents) {
+          const requiredQty = kc.quantity * item.quantity
+          const availableQty = kc.componentProduct.inventory?.quantity ?? 0
+          if (!allowNegative && availableQty < requiredQty) {
+            return { success: false, error: { code: 'KIT-006', message: `Insufficient stock for "${kc.componentProduct.productName}" (a component of "${product.productName}"). Available: ${availableQty}, required: ${requiredQty}.` } }
+          }
+        }
+      }
+
       // Check inventory for STANDARD products (SERVICE and AREA_BASED skip inventory)
-      if (product.productType === 'STANDARD') {
+      if (product.productType === 'STANDARD' && !product.isKit) {
         const qty = product.inventory?.quantity ?? 0
         if (!allowNegative && qty < item.quantity) {
           return { success: false, error: { code: 'INV-002', message: `Insufficient stock for "${product.productName}". Available: ${qty}, required: ${item.quantity}.` } }
@@ -397,6 +424,7 @@ export const billingService = {
         lineTotal,
         isFreeOfCost,
         schemeId: item.schemeId ?? null,
+        isKit: product.isKit,
         variantId: item.variantId ?? null,
         variantInfo: item.variantInfo ?? null,
         serialId: item.serialId ?? null,
@@ -633,6 +661,21 @@ export const billingService = {
 
         // Deduct inventory for STANDARD products (RULE I001 — movement created inside reduceStockTx)
         for (const item of validatedItems) {
+          // Phase 64 — a kit line deducts real stock from each of its
+          // components (re-read fresh here, not the pre-transaction
+          // validation snapshot, so a concurrent kit-definition edit can't
+          // open a TOCTOU gap) while the invoice itself still shows just
+          // the one kit line created above, at the kit's own price.
+          if (item.isKit) {
+            const componentLines = await explodeKitComponentsTx(tx, item.productId, item.quantity)
+            for (const comp of componentLines) {
+              await inventoryService.reduceStockTx(
+                tx, comp.componentProductId, comp.quantity,
+                `Invoice ${invoiceNumber} (component of kit "${item.productName}")`, 'INVOICE', inv.id, userId
+              )
+            }
+            continue
+          }
           if (item.productType === 'STANDARD') {
             await inventoryService.reduceStockTx(
               tx, item.productId, item.quantity,

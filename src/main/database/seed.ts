@@ -63,6 +63,14 @@ const PERMISSIONS = [
   // hit once before for billing.view/billing.create (see note below): every
   // one of those routes was unreachable by any role, including Admin.
   { permissionKey: 'inventory.manage', permissionName: 'Manage Manufacturing (Raw Materials, BOM, Production Orders, Dispatch)' },
+  // Phase 64 — multi-location stock. transferStock is Manager-tier (a
+  // routine day-to-day action for the multi-location minority), matching
+  // inventory.adjustStock's own trust tier; locations.manage (creating/
+  // deactivating a Location, a structural setup action) is Admin-only,
+  // matching Transaction Locking's own established convention.
+  { permissionKey: 'inventory.transferStock', permissionName: 'Transfer Stock Between Locations' },
+  { permissionKey: 'locations.view', permissionName: 'View Locations' },
+  { permissionKey: 'locations.manage', permissionName: 'Create & Manage Locations' },
   // Billing
   { permissionKey: 'billing.createInvoice', permissionName: 'Create Invoice' },
   { permissionKey: 'billing.editDraftInvoice', permissionName: 'Edit Draft Invoice' },
@@ -528,7 +536,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'customers.view', 'customers.create', 'customers.update', 'customers.archive', 'customers.viewLedger', 'customers.modifyCreditLimit',
     'suppliers.view', 'suppliers.create', 'suppliers.update', 'suppliers.archive', 'suppliers.viewLedger', 'suppliers.recordPayment',
     'products.view', 'products.create', 'products.update', 'products.archive', 'products.modifyPricing', 'products.printLabels',
-    'inventory.view', 'inventory.addStock', 'inventory.adjustStock', 'inventory.viewMovements', 'inventory.valuation', 'inventory.manage',
+    'inventory.view', 'inventory.addStock', 'inventory.adjustStock', 'inventory.viewMovements', 'inventory.valuation', 'inventory.manage', 'inventory.transferStock',
+    // locations.manage (creating/deactivating a Location) stays Admin-only —
+    // not granted here, see the permission definitions' own comment above.
+    'locations.view',
     'billing.createInvoice', 'billing.editDraftInvoice', 'billing.cancelInvoice', 'billing.printInvoice', 'billing.view', 'billing.create', 'billing.void',
     'payments.record', 'payments.reverse', 'payments.view',
     'expenses.view', 'expenses.create', 'expenses.modify',

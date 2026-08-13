@@ -48,10 +48,20 @@ function refineLooseBilling<T extends { sellByWeight?: boolean; weightUnit?: str
 const packBillingFields = {
   sellByPack: z.boolean().default(false),
   packUnit: z.string().max(20).optional().nullable(),
-  unitsPerPack: z.number().positive('Units per pack must be greater than zero').optional().nullable()
+  unitsPerPack: z.number().positive('Units per pack must be greater than zero').optional().nullable(),
+  // Phase 64 — floating/variable UoM conversion. Meaningful only alongside
+  // sellByPack — distinct from unitsPerPack's own fixed ratio: when true,
+  // GRN receiving lets the actual measured stocking-unit quantity differ
+  // from unitsPerPack × packs received (e.g. a nominal "50kg bag" that
+  // actually weighs 49.2kg this delivery). Deliberately .optional() not
+  // .default(false) — same reasoning as isRentable's own comment below:
+  // .default() makes z.infer's Payload type non-optional, forcing every
+  // existing test/call site to start passing this explicitly.
+  // product.service.ts already falls back to `?? false` wherever it's read.
+  floatingUnitConversion: z.boolean().optional()
 }
 
-function refinePackBilling<T extends { sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null }>(
+function refinePackBilling<T extends { sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null; floatingUnitConversion?: boolean }>(
   data: T,
   ctx: z.RefinementCtx
 ): void {
@@ -62,6 +72,8 @@ function refinePackBilling<T extends { sellByPack?: boolean; packUnit?: string |
     if (data.unitsPerPack === null || data.unitsPerPack === undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['unitsPerPack'], message: `Set how many ${data.packUnit || 'pack'} units convert to 1 base unit.` })
     }
+  } else if (data.floatingUnitConversion) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['floatingUnitConversion'], message: 'Floating unit conversion requires pack-based billing to be enabled first.' })
   }
 }
 

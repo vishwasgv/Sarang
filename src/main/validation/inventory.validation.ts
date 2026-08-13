@@ -25,5 +25,15 @@ export const AdjustStockSchema = z.object({
   unitCost: z.number().min(0).optional(),
 })
 
+// Phase 64 — multi-location stock transfer.
+export const TransferStockSchema = z.object({
+  productId: z.string().min(1, 'Product ID is required'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  fromLocationId: z.string().min(1, 'Source location is required'),
+  toLocationId: z.string().min(1, 'Destination location is required'),
+  reason: z.string().max(255).optional(),
+})
+
 export type AddStockPayload = z.infer<typeof AddStockSchema>
 export type AdjustStockPayload = z.infer<typeof AdjustStockSchema>
+export type TransferStockPayload = z.infer<typeof TransferStockSchema>

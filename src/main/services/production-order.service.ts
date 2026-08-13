@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { ServiceError } from '../errors/service-error'
+import { applyLocationDeltaTx } from './inventory.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -16,13 +17,31 @@ export interface ProductionOrderRecord {
   // Phase 58 §2 — units attempted but failed QC/rejected, consumed
   // material+labor but added zero inventory value.
   scrapQty: number
+  // Phase 64 — computed from the sum of this order's own ProductionLaborEntry
+  // rows once any exist; falls back to a direct payload.laborCost for any
+  // order that never itemizes labor, matching every pre-Phase-64 caller.
   laborCost: number
+  // Phase 64 — allocated at completion time from BusinessProfile's
+  // overheadAllocationBasis/Rate; 0 for every order on a business that
+  // never configures overhead allocation.
+  overheadCost: number
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   startDate: string | null
   completedDate: string | null
   notes: string | null
   totalMaterialCost: number
   materialUsage: MaterialUsageRecord[]
+  laborEntries: ProductionLaborEntryRecord[]
+  createdAt: string
+}
+
+// Phase 64 — real itemized labor, superseding a single flat guessed number.
+export interface ProductionLaborEntryRecord {
+  id: string
+  workerName: string
+  hoursWorked: number
+  ratePerHour: number
+  amount: number
   createdAt: string
 }
 
@@ -53,7 +72,8 @@ const ORDER_INCLUDE = {
       componentProduct: { select: { productName: true, costPrice: true } },
       batchConsumption: { include: { rawMaterialBatch: { select: { batchNumber: true } } } }
     }
-  }
+  },
+  laborEntries: { orderBy: { createdAt: 'asc' } }
 } as const
 
 export async function listProductionOrders(payload?: {
@@ -320,40 +340,64 @@ export async function completeProductionOrder(payload: {
   // spent, zero inventory value added). Optional, defaults to 0 (unchanged
   // behavior for every existing caller that doesn't pass it).
   scrapQty?: number
-  // Phase 58 §2 — folded into the produced unit's cost basis alongside
-  // material cost. Optional, defaults to 0.
+  // Phase 58 §2 — a direct flat labor cost. Phase 64: only used as a
+  // fallback for an order with zero itemized ProductionLaborEntry rows —
+  // once any exist, their own real sum is server-derived and this is
+  // ignored, the same "server independently re-derives and enforces"
+  // discipline Phase 63 established for FOC line pricing.
   laborCost?: number
   notes?: string
 }, userId?: string): Promise<{ success: boolean; data?: ProductionOrderRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const order = await db.productionOrder.findUnique({
-      where: { id: payload.id },
-      include: {
-        product: { select: { productName: true } },
-        materialUsage: { include: { rawMaterial: { select: { unitCost: true } }, componentProduct: { include: { inventory: true } } } }
-      }
-    })
+    const [order, laborEntries, businessProfile] = await Promise.all([
+      db.productionOrder.findUnique({
+        where: { id: payload.id },
+        include: {
+          product: { select: { productName: true } },
+          materialUsage: { include: { rawMaterial: { select: { unitCost: true } }, componentProduct: { include: { inventory: true } } } }
+        }
+      }),
+      db.productionLaborEntry.findMany({ where: { productionOrderId: payload.id } }),
+      db.businessProfile.findFirst({ select: { overheadAllocationBasis: true, overheadAllocationRate: true } })
+    ])
     if (!order) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
     if (order.status !== 'IN_PROGRESS') return { success: false, error: { code: 'PO-010', message: `Cannot complete: order is ${order.status}.` } }
     if (payload.producedQty <= 0) return { success: false, error: { code: 'PO-011', message: 'Produced quantity must be greater than 0.' } }
     const scrapQty = Math.max(0, payload.scrapQty ?? 0)
-    const laborCost = Math.max(0, payload.laborCost ?? 0)
+    // Phase 64 — real itemized labor, once any entries exist, wins over a
+    // direct flat payload.laborCost (which stays as the only path for an
+    // order that never itemizes, e.g. every pre-Phase-64 caller).
+    const totalLaborHours = laborEntries.reduce((sum, e) => sum + e.hoursWorked, 0)
+    const laborCost = laborEntries.length > 0
+      ? laborEntries.reduce((sum, e) => sum + e.amount, 0)
+      : Math.max(0, payload.laborCost ?? 0)
+
+    // Phase 64 — overhead allocation, disabled (0) unless the business has
+    // configured a basis. PER_LABOR_HOUR allocates against itemized hours
+    // only — a completion with no itemized labor has no hours to allocate
+    // against, correctly yielding 0, not a guess.
+    let overheadCost = 0
+    if (businessProfile?.overheadAllocationBasis === 'PER_LABOR_HOUR') {
+      overheadCost = totalLaborHours * (businessProfile.overheadAllocationRate ?? 0)
+    } else if (businessProfile?.overheadAllocationBasis === 'PER_UNIT_PRODUCED') {
+      overheadCost = payload.producedQty * (businessProfile.overheadAllocationRate ?? 0)
+    }
 
     // Cost basis for the finished good comes from the raw materials AND
     // component products actually consumed (quantityActual, set to
-    // quantityPlanned when the order was started) plus labor cost — all
-    // spread across producedQty only (not producedQty+scrapQty): a scrapped
-    // unit still consumed real material and labor, but adds zero inventory
-    // value, so its cost is absorbed into the good units' unit cost, same
-    // "the batch's real cost lands on what actually sold/shipped" reasoning
-    // this codebase already applies to weighted-average inventory costing
-    // elsewhere.
+    // quantityPlanned when the order was started) plus labor cost plus any
+    // allocated overhead — all spread across producedQty only (not
+    // producedQty+scrapQty): a scrapped unit still consumed real material,
+    // labor, and overhead time, but adds zero inventory value, so its cost
+    // is absorbed into the good units' unit cost, same "the batch's real
+    // cost lands on what actually sold/shipped" reasoning this codebase
+    // already applies to weighted-average inventory costing elsewhere.
     const totalMaterialCost = order.materialUsage.reduce((sum, u) => {
       const unitCost = u.rawMaterial?.unitCost ?? u.componentProduct?.inventory?.averageCost ?? 0
       return sum + u.quantityActual * unitCost
     }, 0)
-    const totalCost = totalMaterialCost + laborCost
+    const totalCost = totalMaterialCost + laborCost + overheadCost
     const producedUnitCost = totalCost / payload.producedQty
 
     const result = await db.$transaction(async (tx) => {
@@ -375,6 +419,7 @@ export async function completeProductionOrder(payload: {
           producedQty: payload.producedQty,
           scrapQty,
           laborCost,
+          overheadCost,
           completedDate: new Date(),
           ...(payload.notes ? { notes: payload.notes } : {})
         }
@@ -414,6 +459,22 @@ export async function completeProductionOrder(payload: {
           createdById: userId ?? null
         }
       })
+
+      // Phase 64 gap fix (found while touching this exact block for job
+      // costing, not a new item on its own): this path updates Inventory
+      // directly rather than through addStockTx, so it previously never
+      // appended a ProductCostHistory row (a finished good's own real
+      // production cost was invisible to FIFO valuation) and never kept
+      // LocationStock in sync with the aggregate (Item 2's own invariant).
+      // Both closed here, additively, without touching the inventory
+      // update logic above.
+      await tx.productCostHistory.create({
+        data: {
+          productId: order.productId, unitCost: producedUnitCost, quantity: payload.producedQty,
+          sourceType: 'PRODUCTION_ORDER', sourceId: order.id
+        }
+      })
+      await applyLocationDeltaTx(tx, order.productId, payload.producedQty)
 
       // The claim above already applied every field change atomically —
       // just re-fetch the full record (with its includes) for the response.
@@ -522,6 +583,65 @@ export async function cancelProductionOrder(payload: {
   }
 }
 
+// Phase 64 — job costing: real itemized labor per production run,
+// superseding a single flat guessed number. Addable while the order is
+// DRAFT or IN_PROGRESS (mirrors when material usage is still adjustable);
+// blocked once COMPLETED/CANCELLED since completeProductionOrder has
+// already read and locked in the labor sum for that order's cost basis.
+export async function addProductionLaborEntry(payload: {
+  productionOrderId: string
+  workerName: string
+  hoursWorked: number
+  ratePerHour: number
+}, userId?: string): Promise<{ success: boolean; data?: ProductionLaborEntryRecord; error?: { code: string; message: string } }> {
+  try {
+    if (payload.hoursWorked <= 0) return { success: false, error: { code: 'PO-015', message: 'Hours worked must be greater than 0.' } }
+    if (payload.ratePerHour < 0) return { success: false, error: { code: 'PO-015', message: 'Rate per hour cannot be negative.' } }
+    if (!payload.workerName.trim()) return { success: false, error: { code: 'PO-015', message: 'Worker name is required.' } }
+
+    const db = getPrisma()
+    const order = await db.productionOrder.findUnique({ where: { id: payload.productionOrderId }, select: { status: true } })
+    if (!order) return { success: false, error: { code: 'PO-002', message: 'Production order not found.' } }
+    if (order.status !== 'DRAFT' && order.status !== 'IN_PROGRESS') {
+      return { success: false, error: { code: 'PO-016', message: `Cannot add a labor entry: order is ${order.status}.` } }
+    }
+
+    const amount = payload.hoursWorked * payload.ratePerHour
+    const created = await db.productionLaborEntry.create({
+      data: {
+        productionOrderId: payload.productionOrderId,
+        workerName: payload.workerName.trim(),
+        hoursWorked: payload.hoursWorked,
+        ratePerHour: payload.ratePerHour,
+        amount
+      }
+    })
+    await logAction(userId, 'PRODUCTION_LABOR_ENTRY_ADDED', 'ProductionOrder', payload.productionOrderId, undefined, created)
+    return {
+      success: true,
+      data: { id: created.id, workerName: created.workerName, hoursWorked: created.hoursWorked, ratePerHour: created.ratePerHour, amount: created.amount, createdAt: created.createdAt.toISOString() }
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to add labor entry.' } }
+  }
+}
+
+export async function removeProductionLaborEntry(id: string, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const entry = await db.productionLaborEntry.findUnique({ where: { id }, include: { productionOrder: { select: { status: true } } } })
+    if (!entry) return { success: false, error: { code: 'PO-017', message: 'Labor entry not found.' } }
+    if (entry.productionOrder.status !== 'DRAFT' && entry.productionOrder.status !== 'IN_PROGRESS') {
+      return { success: false, error: { code: 'PO-016', message: `Cannot remove a labor entry: order is ${entry.productionOrder.status}.` } }
+    }
+    await db.productionLaborEntry.delete({ where: { id } })
+    await logAction(userId, 'PRODUCTION_LABOR_ENTRY_REMOVED', 'ProductionOrder', entry.productionOrderId, entry)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to remove labor entry.' } }
+  }
+}
+
 type OrderRow = {
   id: string
   orderNumber: string
@@ -531,6 +651,7 @@ type OrderRow = {
   producedQty: number
   scrapQty: number
   laborCost: number
+  overheadCost: number
   status: string
   startDate: Date | null
   completedDate: Date | null
@@ -547,6 +668,7 @@ type OrderRow = {
     componentProduct: { productName: string; costPrice: number } | null
     batchConsumption: Array<{ rawMaterialBatchId: string; quantityConsumed: number; rawMaterialBatch: { batchNumber: string } }>
   }>
+  laborEntries: Array<{ id: string; workerName: string; hoursWorked: number; ratePerHour: number; amount: number; createdAt: Date }>
 }
 
 function toRecord(o: OrderRow): ProductionOrderRecord {
@@ -573,12 +695,17 @@ function toRecord(o: OrderRow): ProductionOrderRecord {
     producedQty: o.producedQty,
     scrapQty: o.scrapQty,
     laborCost: o.laborCost,
+    overheadCost: o.overheadCost,
     status: o.status as ProductionOrderRecord['status'],
     startDate: o.startDate?.toISOString() ?? null,
     completedDate: o.completedDate?.toISOString() ?? null,
     notes: o.notes,
     totalMaterialCost,
     materialUsage,
+    laborEntries: o.laborEntries.map(e => ({
+      id: e.id, workerName: e.workerName, hoursWorked: e.hoursWorked,
+      ratePerHour: e.ratePerHour, amount: e.amount, createdAt: e.createdAt.toISOString()
+    })),
     createdAt: o.createdAt.toISOString()
   }
 }

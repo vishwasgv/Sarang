@@ -4,7 +4,10 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { completeProductionOrder, startProductionOrder, cancelProductionOrder } from '../production-order.service'
+import {
+  completeProductionOrder, startProductionOrder, cancelProductionOrder,
+  addProductionLaborEntry, removeProductionLaborEntry
+} from '../production-order.service'
 
 const IN_PROGRESS_ORDER = {
   id: 'po-1',
@@ -18,8 +21,9 @@ const IN_PROGRESS_ORDER = {
   materialUsage: [
     { id: 'mu-1', rawMaterialId: 'rm-1', componentProductId: null, quantityPlanned: 20, quantityActual: 20, rawMaterial: { unitCost: 5 }, componentProduct: null, batchConsumption: [] }, // 100
     { id: 'mu-2', rawMaterialId: 'rm-2', componentProductId: null, quantityPlanned: 5, quantityActual: 5, rawMaterial: { unitCost: 10 }, componentProduct: null, batchConsumption: [] }   // 50
-  ]
+  ],
   // total material cost = 150
+  laborEntries: []
 }
 
 function makeDb(existingInventory: { quantity: number; averageCost: number } | null) {
@@ -52,12 +56,26 @@ function makeDb(existingInventory: { quantity: number; averageCost: number } | n
         completedDate: new Date(),
         notes: null,
         createdAt: new Date(),
-        materialUsage: IN_PROGRESS_ORDER.materialUsage.map(u => ({ ...u, rawMaterial: { name: 'x', unit: 'kg', unitCost: u.rawMaterial.unitCost } }))
+        materialUsage: IN_PROGRESS_ORDER.materialUsage.map(u => ({ ...u, rawMaterial: { name: 'x', unit: 'kg', unitCost: u.rawMaterial.unitCost } })),
+        laborEntries: []
       })
-    }
+    },
+    // Phase 64 — completeProductionOrder now also appends a ProductCostHistory
+    // row and keeps LocationStock in sync (applyLocationDeltaTx, which reads
+    // the default Location) for the same reasons GRN posting needed the same
+    // fix in Item 1.
+    productCostHistory: { create: vi.fn().mockResolvedValue({}) },
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+    locationStock: { upsert: vi.fn().mockResolvedValue({}) }
   }
   return {
     productionOrder: { findUnique: vi.fn().mockResolvedValue(IN_PROGRESS_ORDER) },
+    // Phase 64 — job costing: completeProductionOrder reads these fresh
+    // (outside the transaction, alongside the order itself) to resolve real
+    // itemized labor + overhead allocation. Empty/disabled defaults
+    // preserve every pre-Phase-64 test's exact expected math.
+    productionLaborEntry: { findMany: vi.fn().mockResolvedValue([]) },
+    businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient)),
     __txClient: txClient,
     __inventoryState: () => inventoryState
@@ -188,8 +206,9 @@ describe('startProductionOrder — Phase 58 §2 multi-level BOM component consum
     }
     const order = {
       id: 'po-2', orderNumber: 'PROD-00002', productId: 'prod-finished', bomId: 'bom-1',
-      plannedQty: 10, producedQty: 0, scrapQty: 0, laborCost: 0, status: 'DRAFT',
-      startDate: null, completedDate: null, notes: null, createdAt: new Date(), materialUsage
+      plannedQty: 10, producedQty: 0, scrapQty: 0, laborCost: 0, overheadCost: 0, status: 'DRAFT',
+      startDate: null, completedDate: null, notes: null, createdAt: new Date(), materialUsage,
+      laborEntries: []
     }
     const txClient: Record<string, any> = {
       // Regression for a real TOCTOU stock race found 2026-07-22:
@@ -408,5 +427,175 @@ describe('cancelProductionOrder — Phase 58 §2 restores component-product stoc
     expect(txClient.rawMaterialBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-old' }, data: { quantityRemaining: { increment: 5 } } })
     expect(txClient.rawMaterialBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-new' }, data: { quantityRemaining: { increment: 3 } } })
     expect(txClient.productionMaterialBatchConsumption.deleteMany).toHaveBeenCalledWith({ where: { productionMaterialUsageId: 'mu-1' } })
+  })
+})
+
+// Phase 64 — job costing: real itemized labor, superseding a single flat
+// guessed laborCost number.
+describe('addProductionLaborEntry / removeProductionLaborEntry', () => {
+  it('computes amount as hoursWorked * ratePerHour and persists a real entry', async () => {
+    const db = {
+      productionOrder: { findUnique: vi.fn().mockResolvedValue({ status: 'IN_PROGRESS' }) },
+      productionLaborEntry: {
+        create: vi.fn().mockResolvedValue({
+          id: 'ple-1', workerName: 'Rita', hoursWorked: 4, ratePerHour: 150, amount: 600, createdAt: new Date('2026-08-13')
+        })
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await addProductionLaborEntry({ productionOrderId: 'po-1', workerName: 'Rita', hoursWorked: 4, ratePerHour: 150 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.productionLaborEntry.create).toHaveBeenCalledWith({
+      data: { productionOrderId: 'po-1', workerName: 'Rita', hoursWorked: 4, ratePerHour: 150, amount: 600 }
+    })
+    expect(res.data?.amount).toBe(600)
+  })
+
+  it('rejects adding a labor entry to a COMPLETED order', async () => {
+    const db = { productionOrder: { findUnique: vi.fn().mockResolvedValue({ status: 'COMPLETED' }) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await addProductionLaborEntry({ productionOrderId: 'po-1', workerName: 'Rita', hoursWorked: 4, ratePerHour: 150 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PO-016')
+  })
+
+  it('rejects zero/negative hours or a negative rate', async () => {
+    vi.mocked(getPrisma).mockReturnValue({} as never)
+
+    const zeroHours = await addProductionLaborEntry({ productionOrderId: 'po-1', workerName: 'Rita', hoursWorked: 0, ratePerHour: 150 })
+    expect(zeroHours.success).toBe(false)
+
+    const negRate = await addProductionLaborEntry({ productionOrderId: 'po-1', workerName: 'Rita', hoursWorked: 4, ratePerHour: -1 })
+    expect(negRate.success).toBe(false)
+  })
+
+  it('removes a labor entry from a DRAFT/IN_PROGRESS order', async () => {
+    const db = {
+      productionLaborEntry: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'ple-1', productionOrderId: 'po-1', productionOrder: { status: 'IN_PROGRESS' } }),
+        delete: vi.fn().mockResolvedValue({})
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await removeProductionLaborEntry('ple-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.productionLaborEntry.delete).toHaveBeenCalledWith({ where: { id: 'ple-1' } })
+  })
+
+  it('rejects removing a labor entry from a COMPLETED order', async () => {
+    const db = {
+      productionLaborEntry: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'ple-1', productionOrderId: 'po-1', productionOrder: { status: 'COMPLETED' } }),
+        delete: vi.fn()
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await removeProductionLaborEntry('ple-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PO-016')
+    expect(db.productionLaborEntry.delete).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 64 — job costing: itemized labor + overhead allocation folded into
+// the produced unit's cost basis at completion, superseding a flat guess.
+describe('completeProductionOrder — Phase 64 job costing (itemized labor + overhead)', () => {
+  it('uses the real sum of itemized ProductionLaborEntry rows, ignoring any client-passed laborCost, once entries exist', async () => {
+    // total material cost 150 + itemized labor sum 220 (100+120) = 370 / 10 = 37
+    const db = makeDb(null)
+    db.productionLaborEntry.findMany = vi.fn().mockResolvedValue([
+      { hoursWorked: 2, ratePerHour: 50, amount: 100 },
+      { hoursWorked: 3, ratePerHour: 40, amount: 120 }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Client tries to pass a fabricated laborCost of 9999 — must be ignored once real entries exist.
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10, laborCost: 9999 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ laborCost: 220 })
+    }))
+    expect(db.__txClient.inventory.create).toHaveBeenCalledWith({ data: { productId: 'prod-finished-1', quantity: 10, averageCost: 37 } })
+  })
+
+  it('falls back to the direct payload.laborCost when the order has zero itemized entries (every pre-Phase-64 caller)', async () => {
+    const db = makeDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10, laborCost: 50 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ laborCost: 50 })
+    }))
+  })
+
+  it('allocates overhead PER_LABOR_HOUR against real itemized hours, zero when there are no itemized entries', async () => {
+    // 5 total hours * rate 20/hr = 100 overhead. Material 150 + labor 220 + overhead 100 = 470 / 10 = 47
+    const db = makeDb(null)
+    db.productionLaborEntry.findMany = vi.fn().mockResolvedValue([
+      { hoursWorked: 2, ratePerHour: 50, amount: 100 },
+      { hoursWorked: 3, ratePerHour: 40, amount: 120 }
+    ])
+    db.businessProfile.findFirst = vi.fn().mockResolvedValue({ overheadAllocationBasis: 'PER_LABOR_HOUR', overheadAllocationRate: 20 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ overheadCost: 100 })
+    }))
+    expect(db.__txClient.inventory.create).toHaveBeenCalledWith({ data: { productId: 'prod-finished-1', quantity: 10, averageCost: 47 } })
+  })
+
+  it('allocates overhead PER_UNIT_PRODUCED against producedQty regardless of labor entries', async () => {
+    // 10 units * rate 5/unit = 50 overhead. Material 150 + labor 0 + overhead 50 = 200 / 10 = 20
+    const db = makeDb(null)
+    db.businessProfile.findFirst = vi.fn().mockResolvedValue({ overheadAllocationBasis: 'PER_UNIT_PRODUCED', overheadAllocationRate: 5 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ overheadCost: 50 })
+    }))
+    expect(db.__txClient.inventory.create).toHaveBeenCalledWith({ data: { productId: 'prod-finished-1', quantity: 10, averageCost: 20 } })
+  })
+
+  it('overhead stays 0 when the business has never configured an allocation basis', async () => {
+    const db = makeDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.productionOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ overheadCost: 0 })
+    }))
+  })
+
+  it('appends a ProductCostHistory row and keeps LocationStock in sync on completion (the same Item 1/2 invariants)', async () => {
+    const db = makeDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await completeProductionOrder({ id: 'po-1', producedQty: 10 }, 'user-1')
+
+    expect(db.__txClient.productCostHistory.create).toHaveBeenCalledWith({
+      data: { productId: 'prod-finished-1', unitCost: 15, quantity: 10, sourceType: 'PRODUCTION_ORDER', sourceId: 'po-1' }
+    })
+    expect(db.__txClient.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-finished-1', locationId: 'loc-main' } }
+    }))
   })
 })

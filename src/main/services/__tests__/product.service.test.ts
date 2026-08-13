@@ -150,6 +150,38 @@ describe('productService.createProduct', () => {
     )
   })
 
+  // Phase 64 — floating/variable UoM conversion, meaningful only alongside sellByPack.
+  it('persists Product.floatingUnitConversion when sellByPack is true', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await productService.createProduct({
+      productName: 'Grain Bag', productType: 'STANDARD', sellByWeight: false, sellByPack: true,
+      packUnit: 'BAG', unitsPerPack: 50, floatingUnitConversion: true,
+      costPrice: 1, sellingPrice: 2, unit: 'KG', taxRate: 0,
+      reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
+    })
+
+    expect(db._tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ sellByPack: true, floatingUnitConversion: true }) })
+    )
+  })
+
+  it('forces floatingUnitConversion false when sellByPack is false, even if the client sent true', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await productService.createProduct({
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, floatingUnitConversion: true,
+      costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
+      reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
+    })
+
+    expect(db._tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ sellByPack: false, floatingUnitConversion: false }) })
+    )
+  })
+
   it('persists Product.hsnCode (Phase 54F.17 — was captured nowhere despite being read by GST reports)', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

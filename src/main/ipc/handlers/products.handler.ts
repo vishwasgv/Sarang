@@ -1,7 +1,9 @@
 import * as productService from '../../services/product.service'
 import * as categoryService from '../../services/category.service'
 import * as barcodeService from '../../services/barcode.service'
+import { kitService } from '../../services/kit.service'
 import { requirePermission } from '../permission-guard'
+import { getCurrentSession } from '../../services/auth.service'
 import {
   CreateProductSchema,
   UpdateProductSchema,
@@ -159,5 +161,27 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.modifyPricing'); if (deny) return deny
     const bad = validateId(id, 'price ID'); if (bad) return bad
     return productService.deleteCustomerClassPrice(id as string)
+  })
+
+  // Phase 64 — composite items/kits, same trust tier as editing the product itself.
+  handle('products:getKitComponents', async (kitProductId) => {
+    const deny = await requirePermission('products.view'); if (deny) return deny
+    const bad = validateId(kitProductId, 'kit product ID'); if (bad) return bad
+    return kitService.getComponents(kitProductId as string)
+  })
+
+  handle('products:setKitComponents', async (payload) => {
+    const deny = await requirePermission('products.update'); if (deny) return deny
+    const p = payload as { kitProductId?: string; components?: Array<{ componentProductId: string; quantity: number }> }
+    if (!p?.kitProductId || !Array.isArray(p.components)) {
+      return { success: false, error: { code: 'VAL-001', message: 'kitProductId and components are required.' } }
+    }
+    return kitService.setComponents({ kitProductId: p.kitProductId, components: p.components }, getCurrentSession()?.userId)
+  })
+
+  handle('products:clearKit', async (kitProductId) => {
+    const deny = await requirePermission('products.update'); if (deny) return deny
+    const bad = validateId(kitProductId, 'kit product ID'); if (bad) return bad
+    return kitService.clearKit(kitProductId as string, getCurrentSession()?.userId)
   })
 }

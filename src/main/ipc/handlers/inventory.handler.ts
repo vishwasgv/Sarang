@@ -1,7 +1,8 @@
 import { inventoryService } from '../../services/inventory.service'
+import { locationService } from '../../services/location.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { AddStockSchema, AdjustStockSchema } from '../../validation/inventory.validation'
+import { AddStockSchema, AdjustStockSchema, TransferStockSchema } from '../../validation/inventory.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -46,5 +47,19 @@ export function register(handle: HandleFn): void {
   handle('inventory:getInventoryValue', async () => {
     const deny = await requirePermission('inventory.valuation'); if (deny) return deny
     return inventoryService.getInventoryValue()
+  })
+
+  // Phase 64 — multi-location stock
+  handle('inventory:transferStock', async (payload) => {
+    const deny = await requirePermission('inventory.transferStock'); if (deny) return deny
+    const parsed = TransferStockSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return inventoryService.transferStock(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('inventory:getStockByLocation', async (productId) => {
+    const deny = await requirePermission('inventory.view'); if (deny) return deny
+    const bad = validateId(productId, 'product ID'); if (bad) return bad
+    return locationService.getStockByLocation(productId as string)
   })
 }
