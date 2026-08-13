@@ -14,7 +14,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
   const db = {
     product: {
       findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: false }),
-      findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget', isActive: true, isKit: false }])
+      findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget', isActive: true, isKit: false, productType: 'STANDARD' }])
     },
     kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx)),
@@ -39,7 +39,7 @@ describe('kitService.setComponents', () => {
   })
 
   it('does not re-flip isKit when the product is already a kit (idempotent)', async () => {
-    const db = makeDb({ product: { findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: true }), findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget', isActive: true, isKit: false }]) } })
+    const db = makeDb({ product: { findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: true }), findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget', isActive: true, isKit: false, productType: 'STANDARD' }]) } })
     await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 2 }] })
     expect(db.__tx.product.update).not.toHaveBeenCalled()
   })
@@ -93,6 +93,17 @@ describe('kitService.setComponents', () => {
     const result = await kitService.setComponents({ kitProductId: 'missing', components: [{ componentProductId: 'p1', quantity: 1 }] })
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('PRD-001')
+  })
+
+  // Real gap found via live UI testing, not code review: a SERVICE product
+  // has no Inventory row at all (product.service.ts only creates one for
+  // STANDARD), so accepting one as a kit component would save successfully
+  // but crash the very first time the kit is actually sold.
+  it('rejects a SERVICE-type component — it has no stock to ever deduct', async () => {
+    makeDb({ product: { findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: false }), findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Driving Lesson', isActive: true, isKit: false, productType: 'SERVICE' }]) } })
+    const result = await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 1 }] })
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('KIT-007')
   })
 })
 

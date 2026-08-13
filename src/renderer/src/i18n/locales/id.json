@@ -11,6 +11,7 @@
     "priceLists": "Daftar Harga",
     "pricingSchemes": "Skema Harga",
     "recurringProfiles": "Profil Berulang",
+    "locations": "Lokasi",
     "approvalWorkflows": "Alur Persetujuan",
     "expenses": "Pengeluaran",
     "reports": "Laporan",
@@ -57,6 +58,7 @@
     "delete": "Hapus",
     "edit": "Edit",
     "add": "Tambah",
+    "remove": "Hapus",
     "search": "Cari",
     "loading": "Memuat…",
     "noData": "Tidak ada data",
@@ -632,6 +634,21 @@
     "orderDetails": "Detail Pesanan",
     "dropShipTo": "Kirim Langsung Ke",
     "dropShipHint": "Kirim langsung ke pelanggan ini alih-alih ke lokasi Anda sendiri",
+    "landedCost": {
+      "title": "Biaya Landed",
+      "add": "Tambah Biaya Landed",
+      "typeLabel": "Jenis",
+      "amount": "Jumlah",
+      "allocate": "Alokasikan",
+      "byValue": "Berdasarkan nilai baris",
+      "byQuantity": "Berdasarkan jumlah",
+      "type": {
+        "FREIGHT": "Ongkos Kirim",
+        "DUTY": "Bea Masuk",
+        "HANDLING": "Penanganan",
+        "OTHER": "Lainnya"
+      }
+    },
     "expectedBy": "Diharapkan Pada",
     "orderItems": "Item Pesanan",
     "unitCost": "Biaya Satuan",
@@ -967,7 +984,20 @@
     "msmeBadge": "MSME",
     "msmeDueDateNote": "Tanggal jatuh tempo hukum 45 hari (UU MSME Samadhaan)",
     "reverseCharge": "Pembebanan Terbalik (RCM)",
-    "reverseChargeNote": "PPN pada tagihan ini dinilai sendiri dan dibayarkan langsung ke pemerintah, bukan ke pemasok — jumlah yang harus dibayar ke pemasok tidak termasuk pajak."
+    "reverseChargeNote": "PPN pada tagihan ini dinilai sendiri dan dibayarkan langsung ke pemerintah, bukan ke pemasok — jumlah yang harus dibayar ke pemasok tidak termasuk pajak.",
+    "landedCost": {
+      "title": "Biaya Landed (opsional)",
+      "add": "Tambah Biaya Landed",
+      "amount": "Jumlah",
+      "byValue": "Berdasarkan nilai baris",
+      "byQuantity": "Berdasarkan jumlah",
+      "type": {
+        "FREIGHT": "Ongkos Kirim",
+        "DUTY": "Bea Masuk",
+        "HANDLING": "Penanganan",
+        "OTHER": "Lainnya"
+      }
+    }
   },
   "salesOrders": {
     "title": "Pesanan Penjualan",
@@ -1113,6 +1143,36 @@
     "couldNotCreate": "Profil berulang tidak dapat dibuat.",
     "couldNotSave": "Perubahan tidak dapat disimpan.",
     "couldNotDelete": "Profil berulang tidak dapat dihapus."
+  },
+  "locations": {
+    "title": "Lokasi",
+    "subtitle": "{{count}} lokasi — tempat stok secara fisik berada, untuk bisnis yang mengelola lebih dari satu tempat penyimpanan",
+    "name": "Nama",
+    "address": "Alamat",
+    "default": "Default",
+    "newLocation": "Lokasi Baru",
+    "editLocation": "Edit Lokasi",
+    "namePlaceholder": "mis. Gudang Utama, Konter Ritel",
+    "addressPlaceholder": "Opsional",
+    "nameRequired": "Nama lokasi wajib diisi.",
+    "defaultCannotDeactivate": "Lokasi default tidak dapat dinonaktifkan — setiap pergerakan stok yang tidak menyebutkan lokasi tertentu akan diarahkan ke sini.",
+    "couldNotLoad": "Lokasi tidak dapat dimuat.",
+    "couldNotSave": "Lokasi ini tidak dapat disimpan.",
+    "transferStock": "Transfer Stok",
+    "product": "Produk",
+    "searchProduct": "Cari produk…",
+    "noProductsFound": "Tidak ada produk yang ditemukan.",
+    "fromLocation": "Dari Lokasi",
+    "toLocation": "Ke Lokasi",
+    "quantity": "Jumlah",
+    "reason": "Alasan",
+    "reasonPlaceholder": "Opsional — alasan stok ini dipindahkan",
+    "selectProduct": "Pilih produk untuk ditransfer.",
+    "selectBothLocations": "Pilih lokasi asal dan tujuan.",
+    "sameLocationError": "Lokasi asal dan tujuan harus berbeda.",
+    "quantityMustBePositive": "Jumlah harus lebih besar dari nol.",
+    "couldNotTransfer": "Stok tidak dapat ditransfer.",
+    "stockTransferred": "Stok berhasil ditransfer."
   },
   "approvalWorkflows": {
     "title": "Alur Persetujuan",
@@ -2240,9 +2300,9 @@
       "customersTitle": "Pelanggan",
       "customersBody": "Setiap pelanggan yang pernah Anda tagih ada di sini, lengkap dengan riwayat pembelian dan pembayarannya.",
       "productsTitle": "Produk",
-      "productsBody": "Tambahkan dan kelola semua yang Anda jual di sini — harga, tarif pajak, dan stok, semua dalam satu layar.",
+      "productsBody": "Tambahkan dan kelola semua yang Anda jual di sini — harga, tarif pajak, dan stok, semua dalam satu layar. Atur metode valuasi (Rata-Rata Tertimbang, FIFO, atau Biaya Standar) dan ubah produk menjadi Kit yang terdiri dari produk lain, dari formulir yang sama.",
       "inventoryTitle": "Inventaris",
-      "inventoryBody": "Lacak tingkat stok dan lihat setiap pergerakan stok — penjualan, pembelian, dan penyesuaian manual — dalam satu tempat.",
+      "inventoryBody": "Lacak tingkat stok dan lihat setiap pergerakan stok — penjualan, pembelian, dan penyesuaian manual — dalam satu tempat. Saat stok turun di bawah level pemesanan ulangnya, buat draf Pesanan Pembelian langsung dari sini.",
       "reportsTitle": "Laporan",
       "reportsBody": "Penjualan, inventaris, tunggakan, laba rugi, ringkasan GST/HSN, dan lainnya — semua dibuat secara instan dari data asli Anda. Klik beberapa ubin laporan berbeda untuk melihat tampilan masing-masing.",
       "settingsTitle": "Pengaturan",
@@ -2676,6 +2736,10 @@
       "approvalWorkflows": {
         "title": "Alur Kerja Persetujuan",
         "body": "Wajibkan persetujuan sebelum pesanan penjualan atau pembelian besar dikonfirmasi — atur ambang batas dan pemberi persetujuan, dan Sarang menahan pesanan apa pun di atas jumlah itu untuk persetujuan alih-alih langsung mengonfirmasinya."
+      },
+      "locations": {
+        "title": "Lokasi",
+        "body": "Jika Anda menyimpan stok di lebih dari satu tempat, tambahkan lokasi kedua di sini dan coba Transfer Stok — semuanya dimulai dari satu lokasi default hingga Anda benar-benar menambahkan lokasi lain."
       }
     }
   },
@@ -2878,6 +2942,19 @@
     "markAsQcStep": "Titik pemeriksaan QC",
     "scrapQtyLabel": "Jml Sisa / Ditolak",
     "laborCostLabel": "Biaya Tenaga Kerja",
+    "labor": {
+      "title": "Entri Tenaga Kerja",
+      "add": "+ Tambah Entri Tenaga Kerja",
+      "noEntriesHint": "Belum ada entri tenaga kerja — akan menggunakan Biaya Tenaga Kerja yang dimasukkan saat penyelesaian.",
+      "workerName": "Nama Pekerja",
+      "hours": "Jam",
+      "hoursAt": "jam @",
+      "hourAbbrev": "jam",
+      "ratePerHour": "Tarif/Jam",
+      "workerNameRequired": "Nama pekerja wajib diisi.",
+      "hoursRequired": "Jam kerja harus lebih besar dari nol.",
+      "rateInvalid": "Tarif per jam tidak boleh negatif."
+    },
     "batchNumber": "Nomor Lot",
     "receiveBatch": "Terima Lot",
     "receiveBatchTitle": "Terima Lot Bahan Baku",
@@ -3451,6 +3528,8 @@
       "rejectedQty": "Ditolak",
       "costLabel": "Biaya ({{symbol}})",
       "batch": "Batch",
+      "purchaseUnitQty": "Jumlah Unit Pembelian (mis. karung)",
+      "purchaseUnitQtyHint": "Jumlah nominal paket/karung yang diterima — 'Diterima' di atas tetap merupakan jumlah aktual yang diukur, yang dapat berbeda dari rasio tetap.",
       "createGRNBtn": "Buat GRN",
       "postConfirm": "Posting GRN ini? Ini akan memperbarui inventori dan tidak dapat dibatalkan.",
       "reverseConfirm": "Batalkan GRN {{number}}? Ini akan menghapus stok yang ditambahkan dan mengkredit buku besar pemasok. Hanya mungkin jika stok tersebut belum digunakan.",

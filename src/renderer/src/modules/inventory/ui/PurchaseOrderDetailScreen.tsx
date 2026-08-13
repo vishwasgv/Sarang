@@ -16,8 +16,26 @@ import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
-interface POItem { id: string; quantity: number; unitCost: number; taxRate: number; total: number; product: Product }
+// Real bug found via live UI testing, not code review: Phase 61's PO
+// product-or-service line duality (PurchaseOrderItem.productId is
+// nullable — a service line has serviceDescription instead) means
+// `product` can genuinely be null here, but every render site below
+// assumed it was always present — a real crash (ErrorBoundary triggered)
+// on any PO carrying even one service line, not a rare edge case.
+interface POItem {
+  id: string; quantity: number; unitCost: number; taxRate: number; total: number
+  product: Product | null
+  serviceDescription?: string | null
+  serviceCategory?: { id: string; categoryName: string } | null
+}
 interface DropShipCustomer { id: string; customerName: string; address?: string | null; city?: string | null; state?: string | null; phone?: string | null }
+// Phase 64 — landed cost (freight/duty/handling), allocated proportionally
+// across this PO's own product lines. Addable any time before the PO's
+// first receipt — landedCostService.addAllocation itself enforces the same
+// gate server-side (RECEIVED/PARTIAL_RECEIVED blocks it), since
+// ProductCostHistory is append-only and never retroactively rewritten.
+interface LandedCostAllocation { id: string; costType: string; amount: number; allocationMethod: 'BY_VALUE' | 'BY_QUANTITY' }
+const LANDED_COST_TYPES = ['FREIGHT', 'DUTY', 'HANDLING', 'OTHER'] as const
 interface PurchaseOrder {
   id: string; poNumber: string; status: string
   orderDate: string; expectedDate?: string | null; notes?: string | null
@@ -60,6 +78,15 @@ export function PurchaseOrderDetailScreen() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
+  // Phase 64 — landed cost
+  const [landedCosts, setLandedCosts] = useState<LandedCostAllocation[]>([])
+  const [showAddLandedCost, setShowAddLandedCost] = useState(false)
+  const [landedCostType, setLandedCostType] = useState<typeof LANDED_COST_TYPES[number]>('FREIGHT')
+  const [landedCostAmount, setLandedCostAmount] = useState('')
+  const [landedCostMethod, setLandedCostMethod] = useState<'BY_VALUE' | 'BY_QUANTITY'>('BY_VALUE')
+  const [savingLandedCost, setSavingLandedCost] = useState(false)
+  const canManageLandedCost = hasPermission('purchaseOrders.create')
+
   const canApprove = hasPermission('purchaseOrders.approve')
   const canReceive = hasPermission('purchaseOrders.receive')
   const canCancel = hasPermission('purchaseOrders.cancel')
@@ -89,6 +116,48 @@ export function PurchaseOrderDetailScreen() {
   }, [id, toastError])
 
   useEffect(() => { loadPO() }, [loadPO])
+
+  const loadLandedCosts = useCallback(async () => {
+    if (!id) return
+    try {
+      const res = await window.api.purchaseOrders.listLandedCosts(id)
+      if (res.success && res.data) setLandedCosts(res.data as LandedCostAllocation[])
+    } catch {
+      // Non-critical — the PO itself already loaded; a landed-cost load
+      // failure shouldn't block viewing the PO.
+    }
+  }, [id])
+
+  useEffect(() => { loadLandedCosts() }, [loadLandedCosts])
+
+  async function handleAddLandedCost() {
+    if (!po) return
+    const amount = parseFloat(landedCostAmount)
+    if (!amount || amount <= 0) { toastError('Error', 'Amount must be greater than zero.'); return }
+    setSavingLandedCost(true)
+    try {
+      const res = await window.api.purchaseOrders.addLandedCost({ purchaseOrderId: po.id, costType: landedCostType, amount, allocationMethod: landedCostMethod })
+      if (!res.success) { toastError('Error', res.error?.message ?? 'Could not add landed cost.'); return }
+      toastSuccess('Landed Cost Added', '')
+      setLandedCostAmount('')
+      setShowAddLandedCost(false)
+      loadLandedCosts()
+    } catch {
+      toastError('Error', 'Could not add landed cost.')
+    } finally {
+      setSavingLandedCost(false)
+    }
+  }
+
+  async function handleRemoveLandedCost(allocationId: string) {
+    try {
+      const res = await window.api.purchaseOrders.removeLandedCost(allocationId)
+      if (!res.success) { toastError('Error', res.error?.message ?? 'Could not remove landed cost.'); return }
+      loadLandedCosts()
+    } catch {
+      toastError('Error', 'Could not remove landed cost.')
+    }
+  }
 
   async function handleApprove() {
     if (!po) return
@@ -337,16 +406,17 @@ export function PurchaseOrderDetailScreen() {
               {po.items.map((item) => (
                 <tr key={item.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-5 py-3">
-                    <p className="font-medium text-dark dark:text-slate-100">{item.product.productName}</p>
-                    {item.product.sku && <p className="text-xs text-slate-400">SKU: {item.product.sku}</p>}
+                    <p className="font-medium text-dark dark:text-slate-100">{item.product?.productName ?? item.serviceDescription ?? '—'}</p>
+                    {item.product?.sku && <p className="text-xs text-slate-400">SKU: {item.product.sku}</p>}
+                    {!item.product && item.serviceCategory && <p className="text-xs text-slate-400">{item.serviceCategory.categoryName}</p>}
                   </td>
-                  <td className="px-5 py-3 text-end text-slate-700 dark:text-slate-300">{item.quantity} {item.product.unit}</td>
+                  <td className="px-5 py-3 text-end text-slate-700 dark:text-slate-300">{item.quantity} {item.product?.unit ?? ''}</td>
                   <td className="px-5 py-3 text-end text-slate-700 dark:text-slate-300">{formatCurrency(item.unitCost)}</td>
                   <td className="px-5 py-3 text-end text-slate-500 dark:text-slate-400">{item.taxRate > 0 ? `${item.taxRate}%` : '—'}</td>
                   <td className="px-5 py-3 text-end font-medium text-dark dark:text-slate-100">{formatCurrency(item.total)}</td>
                   {po.status === 'RECEIVED' && (
                     <td className="px-5 py-3 text-end text-success font-medium">
-                      {item.product.inventory?.quantity ?? '—'} {item.product.unit}
+                      {item.product ? <>{item.product.inventory?.quantity ?? '—'} {item.product.unit}</> : '—'}
                     </td>
                   )}
                 </tr>
@@ -373,6 +443,65 @@ export function PurchaseOrderDetailScreen() {
           </div>
         </div>
       </Card>
+
+      {/* Phase 64 — landed cost (freight/duty/handling), allocated
+          proportionally across the line items above into their real cost
+          basis, not a disconnected Expense line. Only addable/removable
+          before the PO's first receipt — the server enforces this too. */}
+      {(landedCosts.length > 0 || (canManageLandedCost && (po.status === 'DRAFT' || po.status === 'PENDING_APPROVAL' || po.status === 'APPROVED'))) && (
+        <Card padding="none">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('purchaseOrders.landedCost.title')}</p>
+            {canManageLandedCost && (po.status === 'DRAFT' || po.status === 'PENDING_APPROVAL' || po.status === 'APPROVED') && !showAddLandedCost && (
+              <button onClick={() => setShowAddLandedCost(true)} className="text-xs font-semibold text-brand hover:underline">+ {t('purchaseOrders.landedCost.add')}</button>
+            )}
+          </div>
+          {landedCosts.length > 0 && (
+            <div className="px-5 py-3 space-y-2">
+              {landedCosts.map((lc) => (
+                <div key={lc.id} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {t(`purchaseOrders.landedCost.type.${lc.costType}`)}{' '}
+                    <span className="text-xs text-slate-400">({lc.allocationMethod === 'BY_VALUE' ? t('purchaseOrders.landedCost.byValue') : t('purchaseOrders.landedCost.byQuantity')})</span>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-dark dark:text-slate-100">{formatCurrency(lc.amount)}</span>
+                    {canManageLandedCost && (po.status === 'DRAFT' || po.status === 'PENDING_APPROVAL' || po.status === 'APPROVED') && (
+                      <button onClick={() => handleRemoveLandedCost(lc.id)} className="text-xs text-danger hover:underline">{t('common.remove')}</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {showAddLandedCost && (
+            <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('purchaseOrders.landedCost.typeLabel')}</label>
+                <select value={landedCostType} onChange={(e) => setLandedCostType(e.target.value as typeof LANDED_COST_TYPES[number])} className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                  {LANDED_COST_TYPES.map(ct => <option key={ct} value={ct}>{t(`purchaseOrders.landedCost.type.${ct}`)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('purchaseOrders.landedCost.amount')}</label>
+                <input type="number" min="0" step="0.01" value={landedCostAmount} onChange={(e) => setLandedCostAmount(e.target.value)}
+                  className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('purchaseOrders.landedCost.allocate')}</label>
+                <select value={landedCostMethod} onChange={(e) => setLandedCostMethod(e.target.value as 'BY_VALUE' | 'BY_QUANTITY')} className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                  <option value="BY_VALUE">{t('purchaseOrders.landedCost.byValue')}</option>
+                  <option value="BY_QUANTITY">{t('purchaseOrders.landedCost.byQuantity')}</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleAddLandedCost} loading={savingLandedCost}>{t('common.add')}</Button>
+                <Button variant="secondary" size="sm" onClick={() => { setShowAddLandedCost(false); setLandedCostAmount('') }}>{t('common.cancel')}</Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Cancel dialog with reason */}
       <Modal

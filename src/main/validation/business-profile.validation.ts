@@ -31,7 +31,14 @@ export const BusinessProfileUpdateSchema = z.object({
   timezone: z.string().max(100).optional(),
   clinicSpecialty: z.string().max(100).nullable().optional(),
   // Phase 58 §2 — Pharmacy regulatory identifier
-  drugLicenseNumber: z.string().max(100).nullable().optional()
+  drugLicenseNumber: z.string().max(100).nullable().optional(),
+  // Phase 64 — job costing overhead allocation, applied at production-order
+  // completion (production-order.service.ts's completeProductionOrder). Real
+  // gap found via a fresh Phase 64 audit: the backend read these fields but
+  // no update path ever accepted them, so a business had no way to actually
+  // set a non-zero rate short of direct DB access.
+  overheadAllocationBasis: z.enum(['PER_LABOR_HOUR', 'PER_UNIT_PRODUCED']).nullable().optional(),
+  overheadAllocationRate: z.number().min(0, 'Overhead rate cannot be negative').optional()
 })
 
 export type BusinessProfileUpdatePayload = z.infer<typeof BusinessProfileUpdateSchema>

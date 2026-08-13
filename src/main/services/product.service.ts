@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { ServiceError } from '../errors/service-error'
+import { applyLocationDeltaTx } from './inventory.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateProductPayload, UpdateProductPayload } from '../validation/product.validation'
 
@@ -204,6 +205,15 @@ export async function createProduct(payload: CreateProductPayload): Promise<ApiR
               createdById: getCurrentSession()?.userId ?? null
             }
           })
+          // Phase 64 — real gap found via live UAT (a fresh product's opening
+          // quantity landed in Inventory.quantity but never in LocationStock,
+          // since this path writes Inventory directly instead of going
+          // through addStockTx). Left transferStock() reporting "Available: 0"
+          // at the default location for a product that visibly had real
+          // stock. applyLocationDeltaTx is the same sync helper every other
+          // direct-Inventory-mutation call site (e.g. completeProductionOrder)
+          // already uses for exactly this reason.
+          await applyLocationDeltaTx(tx, p.id, openingQuantity)
         }
       }
 

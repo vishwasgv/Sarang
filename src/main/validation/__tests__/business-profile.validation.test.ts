@@ -46,4 +46,27 @@ describe('BusinessProfileUpdateSchema', () => {
     const result = BusinessProfileUpdateSchema.safeParse({})
     expect(result.success).toBe(true)
   })
+
+  // Phase 64 — real gap fix: production-order.service.ts's completeProductionOrder
+  // already reads overheadAllocationBasis/Rate, but no update path accepted them
+  // until this schema addition.
+  it('accepts a valid overhead allocation payload', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ overheadAllocationBasis: 'PER_LABOR_HOUR', overheadAllocationRate: 40 })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts null overheadAllocationBasis (turning overhead allocation off)', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ overheadAllocationBasis: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects an invalid overheadAllocationBasis value', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ overheadAllocationBasis: 'PER_WEEK' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a negative overheadAllocationRate', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ overheadAllocationRate: -5 })
+    expect(result.success).toBe(false)
+  })
 })

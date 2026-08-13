@@ -18,6 +18,10 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   // Universal features — apply to every business type
   { slug: 'billing', group: 'universal', title: 'Billing & Documents' },
   { slug: 'inventory', group: 'universal', title: 'Inventory' },
+  // Phase 64 — Inventory & Costing Depth. Placed right after Inventory,
+  // mirroring sales-orders-pricing's own precedent of sitting next to the
+  // base chapter it extends.
+  { slug: 'inventory-valuation-locations', group: 'universal', title: 'Inventory Valuation & Multi-Location Stock' },
   { slug: 'customers-suppliers', group: 'universal', title: 'Customers & Suppliers' },
   { slug: 'bills-purchases', group: 'universal', title: 'Bills & Payments Made' },
   // Phase 63 — Sales-Side Completion & Pricing Infrastructure. Placed right

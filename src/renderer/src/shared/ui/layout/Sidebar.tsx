@@ -17,7 +17,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock, ShieldCheck, Gift,
+  BookText, Wallet, Lock, ShieldCheck, Gift, MapPin,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -173,6 +173,9 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Payroll', i18nKey: 'nav.payroll', path: '/hr/payroll', icon: Banknote, permissionKey: 'hr.view' },
   { label: 'Products', i18nKey: 'nav.products', path: '/products', icon: Package, permissionKey: 'products.view' },
   { label: 'Inventory', i18nKey: 'nav.inventory', path: '/inventory', icon: Warehouse, permissionKey: 'inventory.view' },
+  // Phase 64 — multi-location stock. Always in the nav (not module-gated) —
+  // a single-location install just sees one row and never needs to act on it.
+  { label: 'Locations', i18nKey: 'nav.locations', path: '/locations', icon: MapPin, permissionKey: 'locations.view' },
   // Phase 63 — Sales Orders, the mirror image of Purchase Orders on the sales side.
   { label: 'Sales Orders', i18nKey: 'nav.salesOrders', path: '/sales-orders', icon: ClipboardList, permissionKey: 'salesOrders.view' },
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },

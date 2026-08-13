@@ -62,6 +62,9 @@ export const INTENT_TEMPLATE_NAMES = [
   // Phase 63 — Sales-Side Completion & Pricing Infrastructure's 5 required
   // intents. See ai-query.service.ts's TEMPLATE_CATALOG for the full set.
   'salesOrders.createForCustomer', 'pricing.priceListForCustomer', 'pricing.schemeCostThisMonth', 'invoiceTemplate.switch', 'approvals.pendingApproval',
+  // Phase 64 — Inventory & Costing Depth's 5 required intents. See
+  // ai-query.service.ts's TEMPLATE_CATALOG for the full set.
+  'inventory.productCostBasis', 'inventory.reorderDraftPreview', 'purchasing.landedCostForPurchase', 'kits.components', 'locations.stockAtLocation',
   'out_of_scope'
 ] as const
 
@@ -88,7 +91,10 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   ledger: 'ledger',
   // Phase 63 — Sales-Side Completion & Pricing Infrastructure's own static
   // categories (also universal, not gated to specific BusinessTypes).
-  salesOrders: 'salesOrders', pricing: 'pricing', invoiceTemplate: 'invoiceTemplate', approvals: 'approvals'
+  salesOrders: 'salesOrders', pricing: 'pricing', invoiceTemplate: 'invoiceTemplate', approvals: 'approvals',
+  // Phase 64 — Inventory & Costing Depth's own static categories (also
+  // universal, not gated to specific BusinessTypes).
+  purchasing: 'purchasing', kits: 'kits', locations: 'locations'
 }
 
 function categoryFor(template: string): string {

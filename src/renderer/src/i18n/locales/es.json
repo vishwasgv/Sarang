@@ -11,6 +11,7 @@
     "priceLists": "Listas de Precios",
     "pricingSchemes": "Esquemas de Precios",
     "recurringProfiles": "Perfiles Recurrentes",
+    "locations": "Ubicaciones",
     "approvalWorkflows": "Flujos de Aprobación",
     "expenses": "Gastos",
     "reports": "Informes",
@@ -58,6 +59,7 @@
     "delete": "Eliminar",
     "edit": "Editar",
     "add": "Agregar",
+    "remove": "Quitar",
     "search": "Buscar",
     "inStock": "en stock",
     "loading": "Cargando…",
@@ -632,6 +634,21 @@
     "orderDetails": "Detalles de la Orden",
     "dropShipTo": "Envío Directo A",
     "dropShipHint": "Entregar directamente a este cliente en lugar de tu propia ubicación",
+    "landedCost": {
+      "title": "Costos de Desembarque",
+      "add": "Agregar Costo de Desembarque",
+      "typeLabel": "Tipo",
+      "amount": "Importe",
+      "allocate": "Asignar",
+      "byValue": "Por valor de línea",
+      "byQuantity": "Por cantidad",
+      "type": {
+        "FREIGHT": "Flete",
+        "DUTY": "Arancel",
+        "HANDLING": "Manejo",
+        "OTHER": "Otro"
+      }
+    },
     "expectedBy": "Esperado Para",
     "orderItems": "Artículos de la Orden",
     "unitCost": "Costo Unitario",
@@ -967,7 +984,20 @@
     "msmeBadge": "MSME",
     "msmeDueDateNote": "Fecha de vencimiento legal de 45 días (Ley MSME Samadhaan)",
     "reverseCharge": "Inversión del sujeto pasivo (RCM)",
-    "reverseChargeNote": "El GST de esta factura se autoliquida y se paga directamente al gobierno, no al proveedor — el importe a pagar al proveedor no incluye impuestos."
+    "reverseChargeNote": "El GST de esta factura se autoliquida y se paga directamente al gobierno, no al proveedor — el importe a pagar al proveedor no incluye impuestos.",
+    "landedCost": {
+      "title": "Costos de Desembarque (opcional)",
+      "add": "Agregar Costo de Desembarque",
+      "amount": "Importe",
+      "byValue": "Por valor de línea",
+      "byQuantity": "Por cantidad",
+      "type": {
+        "FREIGHT": "Flete",
+        "DUTY": "Arancel",
+        "HANDLING": "Manejo",
+        "OTHER": "Otro"
+      }
+    }
   },
   "salesOrders": {
     "title": "Órdenes de Venta",
@@ -1113,6 +1143,36 @@
     "couldNotCreate": "No se pudo crear el perfil recurrente.",
     "couldNotSave": "No se pudieron guardar los cambios.",
     "couldNotDelete": "No se pudo eliminar el perfil recurrente."
+  },
+  "locations": {
+    "title": "Ubicaciones",
+    "subtitle": "{{count}} ubicaciones — dónde está físicamente el stock, para empresas que gestionan más de un punto de almacenamiento",
+    "name": "Nombre",
+    "address": "Dirección",
+    "default": "Predeterminada",
+    "newLocation": "Nueva Ubicación",
+    "editLocation": "Editar Ubicación",
+    "namePlaceholder": "ej. Almacén Principal, Mostrador de Venta",
+    "addressPlaceholder": "Opcional",
+    "nameRequired": "El nombre de la ubicación es obligatorio.",
+    "defaultCannotDeactivate": "No se puede desactivar la ubicación predeterminada — todo movimiento de stock que no especifique una ubicación concreta se dirige a esta.",
+    "couldNotLoad": "No se pudieron cargar las ubicaciones.",
+    "couldNotSave": "No se pudo guardar esta ubicación.",
+    "transferStock": "Transferir Stock",
+    "product": "Producto",
+    "searchProduct": "Buscar producto…",
+    "noProductsFound": "No se encontraron productos.",
+    "fromLocation": "Desde Ubicación",
+    "toLocation": "A Ubicación",
+    "quantity": "Cantidad",
+    "reason": "Motivo",
+    "reasonPlaceholder": "Opcional — por qué se mueve este stock",
+    "selectProduct": "Seleccione un producto para transferir.",
+    "selectBothLocations": "Seleccione tanto la ubicación de origen como la de destino.",
+    "sameLocationError": "Las ubicaciones de origen y destino deben ser distintas.",
+    "quantityMustBePositive": "La cantidad debe ser mayor que cero.",
+    "couldNotTransfer": "No se pudo transferir el stock.",
+    "stockTransferred": "Stock transferido."
   },
   "approvalWorkflows": {
     "title": "Flujos de Aprobación",
@@ -2415,9 +2475,9 @@
       "customersTitle": "Clientes",
       "customersBody": "Cada cliente al que le hayas facturado alguna vez está aquí, con su historial completo de compras y pagos.",
       "productsTitle": "Productos",
-      "productsBody": "Agrega y gestiona todo lo que vendes aquí — precio, tasa de impuesto y stock, todo en una sola pantalla.",
+      "productsBody": "Agrega y gestiona todo lo que vendes aquí — precio, tasa de impuesto y stock, todo en una sola pantalla. Configura un método de valoración (Promedio Ponderado, FIFO, o Costo Estándar) y convierte un producto en un Kit hecho de otros productos, desde el mismo formulario.",
       "inventoryTitle": "Inventario",
-      "inventoryBody": "Controla los niveles de stock y ve cada movimiento de stock — ventas, compras y ajustes manuales — en un solo lugar.",
+      "inventoryBody": "Controla los niveles de stock y ve cada movimiento de stock — ventas, compras y ajustes manuales — en un solo lugar. Cuando el stock caiga por debajo de su nivel de reorden, genera una Orden de Compra en borrador directamente desde aquí.",
       "reportsTitle": "Informes",
       "reportsBody": "Ventas, inventario, saldos pendientes, pérdidas y ganancias, resúmenes de GST/HSN, y más — todo generado al instante desde tus datos reales. Haz clic en algunos informes distintos para ver cómo se ve cada uno.",
       "settingsTitle": "Configuración",
@@ -2851,6 +2911,10 @@
       "approvalWorkflows": {
         "title": "Flujos de Aprobación",
         "body": "Exija autorización antes de confirmar una orden de venta o compra grande — establezca un umbral y un aprobador, y Sarang retiene cualquier orden que supere ese monto para aprobación en lugar de confirmarla de inmediato."
+      },
+      "locations": {
+        "title": "Ubicaciones",
+        "body": "Si almacenas stock en más de un lugar, agrega una segunda ubicación aquí e intenta una Transferencia de Stock — todo comienza en una sola ubicación predeterminada hasta que realmente agregues otra."
       }
     }
   },
@@ -3053,6 +3117,19 @@
     "markAsQcStep": "Punto de control de calidad",
     "scrapQtyLabel": "Cantidad de Desecho / Rechazo",
     "laborCostLabel": "Costo de Mano de Obra",
+    "labor": {
+      "title": "Entradas de Mano de Obra",
+      "add": "+ Agregar Entrada de Mano de Obra",
+      "noEntriesHint": "Aún no hay entradas de mano de obra — se usará el Costo de Mano de Obra ingresado al completar.",
+      "workerName": "Nombre del Trabajador",
+      "hours": "Horas",
+      "hoursAt": "hrs @",
+      "hourAbbrev": "hr",
+      "ratePerHour": "Tarifa/Hora",
+      "workerNameRequired": "El nombre del trabajador es obligatorio.",
+      "hoursRequired": "Las horas trabajadas deben ser mayores que cero.",
+      "rateInvalid": "La tarifa por hora no puede ser negativa."
+    },
     "batchNumber": "Número de Lote",
     "receiveBatch": "Recibir Lote",
     "receiveBatchTitle": "Recibir Lote de Material Prima",
@@ -3626,6 +3703,8 @@
       "rejectedQty": "Rechaz.",
       "costLabel": "Costo ({{symbol}})",
       "batch": "Lote",
+      "purchaseUnitQty": "Cantidad de Unidad de Compra (ej. sacos)",
+      "purchaseUnitQtyHint": "Paquetes/sacos nominales recibidos — 'Rcvd' arriba sigue siendo la cantidad real medida, que puede diferir de la proporción fija.",
       "createGRNBtn": "Crear GRN",
       "postConfirm": "¿Contabilizar este GRN? Esto actualizará el inventario y no se puede deshacer.",
       "reverseConfirm": "¿Revertir GRN {{number}}? Esto eliminará el stock que agregó y acreditará al proveedor en su libro contable. Solo es posible si ese stock no ha sido utilizado.",

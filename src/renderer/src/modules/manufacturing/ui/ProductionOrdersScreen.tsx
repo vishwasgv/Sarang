@@ -39,6 +39,18 @@ interface MaterialUsage {
   batchConsumption: Array<{ batchId: string; batchNumber: string; quantityConsumed: number }>
 }
 
+// Phase 64 — real itemized labor, superseding the flat laborCost guess
+// below (which now stays as a computed sum-of-entries once any exist, or a
+// direct fallback for an order that never itemizes).
+interface ProductionLaborEntry {
+  id: string
+  workerName: string
+  hoursWorked: number
+  ratePerHour: number
+  amount: number
+  createdAt: string
+}
+
 interface ProductionOrder {
   id: string
   orderNumber: string
@@ -49,6 +61,9 @@ interface ProductionOrder {
   // Phase 58 §2 — scrap/reject tracking + labor costing
   scrapQty: number
   laborCost: number
+  // Phase 64 — job costing
+  overheadCost: number
+  laborEntries: ProductionLaborEntry[]
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   startDate: string | null
   completedDate: string | null
@@ -148,6 +163,13 @@ export function ProductionOrdersScreen() {
 
   // Start-order confirmation
   const [startTarget, setStartTarget] = useState<ProductionOrder | null>(null)
+
+  // Phase 64 — job costing: itemized labor entries, added while DRAFT/IN_PROGRESS.
+  const [showAddLabor, setShowAddLabor] = useState(false)
+  const [laborWorkerName, setLaborWorkerName] = useState('')
+  const [laborHours, setLaborHours] = useState('')
+  const [laborRate, setLaborRate] = useState('')
+  const [savingLabor, setSavingLabor] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -285,6 +307,38 @@ export function ProductionOrdersScreen() {
       // fetch failed instead of silently showing stale/partial data.
       setDetailOrder(order)
       setWorkOrders([])
+      toastError(t('common.error'), t('common.error'))
+    }
+  }
+
+  // Phase 64 — job costing
+  async function handleAddLaborEntry() {
+    if (!detailOrder) return
+    const hours = parseFloat(laborHours)
+    const rate = parseFloat(laborRate)
+    if (!laborWorkerName.trim()) { toastError(t('common.error'), t('manufacturing.labor.workerNameRequired')); return }
+    if (!hours || hours <= 0) { toastError(t('common.error'), t('manufacturing.labor.hoursRequired')); return }
+    if (rate < 0 || Number.isNaN(rate)) { toastError(t('common.error'), t('manufacturing.labor.rateInvalid')); return }
+    setSavingLabor(true)
+    try {
+      const res = await api.production.addLaborEntry({ productionOrderId: detailOrder.id, workerName: laborWorkerName.trim(), hoursWorked: hours, ratePerHour: rate })
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      setLaborWorkerName(''); setLaborHours(''); setLaborRate(''); setShowAddLabor(false)
+      await openDetail(detailOrder)
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setSavingLabor(false)
+    }
+  }
+
+  async function handleRemoveLaborEntry(entryId: string) {
+    if (!detailOrder) return
+    try {
+      const res = await api.production.removeLaborEntry(entryId)
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      await openDetail(detailOrder)
+    } catch {
       toastError(t('common.error'), t('common.error'))
     }
   }
@@ -624,6 +678,68 @@ export function ProductionOrdersScreen() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* Phase 64 — job costing: real itemized labor per production
+                  run, superseding a single flat guessed number. Addable
+                  while DRAFT/IN_PROGRESS only — completion locks in the sum. */}
+              {(detailOrder.laborEntries.length > 0 || detailOrder.status === 'DRAFT' || detailOrder.status === 'IN_PROGRESS') && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      {t('manufacturing.labor.title')}
+                      {detailOrder.laborEntries.length > 0 && ` — ${formatCurrency(detailOrder.laborEntries.reduce((s, e) => s + e.amount, 0))}`}
+                    </h3>
+                    {(detailOrder.status === 'DRAFT' || detailOrder.status === 'IN_PROGRESS') && !showAddLabor && (
+                      <button onClick={() => setShowAddLabor(true)} className="text-xs text-brand hover:underline">{t('manufacturing.labor.add')}</button>
+                    )}
+                  </div>
+                  {detailOrder.laborEntries.length === 0 ? (
+                    <p className="text-xs text-text-secondary py-3 text-center border border-dashed border-border rounded-xl">
+                      {t('manufacturing.labor.noEntriesHint')}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailOrder.laborEntries.map(e => (
+                        <div key={e.id} className="flex items-center justify-between p-3 rounded-xl border border-border bg-surface text-sm">
+                          <div>
+                            <p className="font-medium text-text-primary">{e.workerName}</p>
+                            <p className="text-xs text-text-secondary">{formatNumber(e.hoursWorked, { maximumFractionDigits: 2 })} {t('manufacturing.labor.hoursAt')} {formatCurrency(e.ratePerHour)}/{t('manufacturing.labor.hourAbbrev')}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold text-text-primary">{formatCurrency(e.amount)}</span>
+                            {(detailOrder.status === 'DRAFT' || detailOrder.status === 'IN_PROGRESS') && (
+                              <button onClick={() => handleRemoveLaborEntry(e.id)} className="text-xs text-danger hover:underline">{t('common.remove')}</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showAddLabor && (
+                    <div className="mt-2 p-3 rounded-xl border border-border bg-surface grid grid-cols-4 gap-2 items-end">
+                      <div>
+                        <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.labor.workerName')}</label>
+                        <input value={laborWorkerName} onChange={(e) => setLaborWorkerName(e.target.value)}
+                          className="w-full h-8 px-2 rounded border border-border text-sm bg-surface" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.labor.hours')}</label>
+                        <input type="number" min="0" step="0.25" value={laborHours} onChange={(e) => setLaborHours(e.target.value)}
+                          className="w-full h-8 px-2 rounded border border-border text-sm bg-surface" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.labor.ratePerHour')}</label>
+                        <input type="number" min="0" step="0.01" value={laborRate} onChange={(e) => setLaborRate(e.target.value)}
+                          className="w-full h-8 px-2 rounded border border-border text-sm bg-surface" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={handleAddLaborEntry} disabled={savingLabor} className="h-8 px-3 rounded-lg bg-brand text-white text-xs font-semibold disabled:opacity-50">{t('common.add')}</button>
+                        <button onClick={() => { setShowAddLabor(false); setLaborWorkerName(''); setLaborHours(''); setLaborRate('') }} className="h-8 px-3 rounded-lg border border-border text-xs font-semibold text-text-secondary">{t('common.cancel')}</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

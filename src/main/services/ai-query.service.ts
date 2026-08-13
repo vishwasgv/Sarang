@@ -34,6 +34,10 @@ import { creditInterestService } from './credit-interest.service'
 import { salesOrderService } from './sales-order.service'
 import { priceListService } from './price-list.service'
 import { invoiceTemplateService } from './invoice-template.service'
+import { getProductCost } from './valuation.service'
+import { locationService } from './location.service'
+import { kitService } from './kit.service'
+import { landedCostService } from './landed-cost.service'
 import { formatAmountForSpeech, refreshAiNumberFormat } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
@@ -291,7 +295,16 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'pricing.priceListForCustomer', patterns: [/price list for/i, /what'?s on.*price list/i, /(price list|pricing).*(assigned|applies)/i] },
   { template: 'pricing.schemeCostThisMonth', patterns: [/free.?[- ]?scheme.*cost/i, /scheme.*cost/i, /(free of cost|foc).*(cost|value|given)/i] },
   { template: 'invoiceTemplate.switch', patterns: [/switch.*invoice template/i, /(change|which).*invoice template/i, /invoice templates?\b/i] },
-  { template: 'approvals.pendingApproval', patterns: [/what'?s (still )?pending approval/i, /still pending approval/i, /awaiting approval/i, /orders?.*pending approval/i] }
+  { template: 'approvals.pendingApproval', patterns: [/what'?s (still )?pending approval/i, /still pending approval/i, /awaiting approval/i, /orders?.*pending approval/i] },
+  // Phase 64 — Section 6.3's 5 required Ask Sarang AI intents, given
+  // deterministic fast-path coverage the same way every other "must answer"
+  // example in this file already gets it. Placed after every pre-existing
+  // pattern so an older, more specific phrasing keeps winning.
+  { template: 'inventory.productCostBasis', patterns: [/cost basis/i, /current cost/i, /what.*(does|did).*cost me/i] },
+  { template: 'inventory.reorderDraftPreview', patterns: [/generate.*(pos?|purchase orders?).*reorder/i, /(pos?|purchase orders?).*below reorder/i, /reorder.*level.*(pos?|purchase orders?)/i] },
+  { template: 'purchasing.landedCostForPurchase', patterns: [/freight.*add.*cost/i, /landed cost/i, /what.*(freight|duty|shipping).*add/i] },
+  { template: 'kits.components', patterns: [/what'?s in.*kit/i, /kit.*(made of|components?|contains?)/i, /components?.*(of|in).*kit/i] },
+  { template: 'locations.stockAtLocation', patterns: [/stock at/i, /how much.*(stock|inventory).*at/i, /what'?s at.*(location|warehouse|branch)/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -304,7 +317,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals', 'purchasing', 'kits', 'locations'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -2056,6 +2069,126 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
           ...purchaseOrders.slice(0, 5).map((o) => `Purchase Order ${o.poNumber} — ${o.supplier.supplierName}`)
         ],
         isEmpty: total === 0
+      }
+    }
+  },
+  // Phase 64 — Section 6.3's 5 required Ask Sarang AI intents.
+  'inventory.productCostBasis': {
+    category: 'inventory',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const product = await db.product.findFirst({
+        where: { isActive: true, OR: [{ productName: { contains: term } }, { sku: { contains: term } }] },
+        select: { id: true, productName: true, sku: true, unit: true, valuationMethod: true }
+      })
+      if (!product) return { headline: '', details: [], isEmpty: true }
+      const cost = await getProductCost(product.id)
+      const methodLabel = product.valuationMethod === 'FIFO'
+        ? 'FIFO'
+        : product.valuationMethod === 'STANDARD_COST'
+          ? 'Standard Cost'
+          : 'Weighted Average'
+      return {
+        headline: `${product.productName}${product.sku ? ` (${product.sku})` : ''}'s current cost basis is ${formatAmountForSpeech(cost, sym)} per ${product.unit}`,
+        details: [`Valuation method: ${methodLabel}`],
+        isEmpty: false
+      }
+    }
+  },
+  // "generate POs for everything below reorder level" — action-phrased, but
+  // this AI is architecturally 100% read-only (see the salesOrders/
+  // invoiceTemplate precedents above). Mirrors generateReorderDraftPOs's own
+  // due-item filter (reorderLevel/reorderQuantity set, quantity <= reorderLevel,
+  // product active) for real data instead of guessing, without mutating.
+  'inventory.reorderDraftPreview': {
+    category: 'inventory',
+    async execute(_params, sym) {
+      const db = getPrisma()
+      const lowStock = await db.inventory.findMany({
+        where: { reorderLevel: { gt: 0 }, reorderQuantity: { gt: 0 } },
+        include: { product: { select: { productName: true, isActive: true, defaultSupplier: { select: { supplierName: true } } } } }
+      })
+      const due = lowStock.filter((inv) => inv.quantity <= inv.reorderLevel && inv.product.isActive)
+      return {
+        headline: due.length > 0
+          ? `Open Inventory and click "Generate Reorder POs" to create these — I can't create records myself, but ${due.length} product${due.length === 1 ? ' is' : 's are'} below its reorder level right now`
+          : 'Nothing is below its reorder level right now — no reorder POs are due.',
+        details: due.slice(0, 10).map((inv) => `${inv.product.productName}: ${inv.quantity} in stock${inv.product.defaultSupplier ? ` (${inv.product.defaultSupplier.supplierName})` : ' (no default supplier set)'}`),
+        isEmpty: due.length === 0
+      }
+    }
+  },
+  // "what did freight add to this purchase's cost" rarely names a specific
+  // PO number in real speech — falls back to the most recent PO that
+  // actually has a landed cost recorded, named explicitly in the answer so
+  // it's never ambiguous which purchase the figure is about.
+  'purchasing.landedCostForPurchase': {
+    category: 'purchasing',
+    async execute(params, sym) {
+      const db = getPrisma()
+      const term = params.searchTerm as string | undefined
+      const po = term
+        ? await db.purchaseOrder.findFirst({ where: { poNumber: { contains: term } }, orderBy: { createdAt: 'desc' } })
+        : await db.purchaseOrder.findFirst({ where: { landedCosts: { some: {} } }, orderBy: { createdAt: 'desc' } })
+      if (!po) return { headline: '', details: [], isEmpty: true }
+      const lcRes = await landedCostService.listForPurchaseOrder(po.id)
+      const allocations = (lcRes.data as Array<{ costType: string; amount: number }> | undefined) ?? []
+      const total = allocations.reduce((s, a) => s + a.amount, 0)
+      return {
+        headline: allocations.length > 0
+          ? `Purchase Order ${po.poNumber} has ${formatAmountForSpeech(total, sym)} in landed costs added across its line items`
+          : `Purchase Order ${po.poNumber} has no landed costs recorded.`,
+        details: allocations.map((a) => `${a.costType}: ${formatAmountForSpeech(a.amount, sym)}`),
+        isEmpty: allocations.length === 0
+      }
+    }
+  },
+  'kits.components': {
+    category: 'kits',
+    async execute(params, _sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const product = await db.product.findFirst({
+        where: { isActive: true, OR: [{ productName: { contains: term } }, { sku: { contains: term } }] },
+        select: { id: true, productName: true, isKit: true }
+      })
+      if (!product) return { headline: '', details: [], isEmpty: true }
+      if (!product.isKit) {
+        return { headline: `${product.productName} isn't set up as a Kit.`, details: [], isEmpty: true }
+      }
+      const compRes = await kitService.getComponents(product.id)
+      const components = (compRes.data as Array<{ quantity: number; componentProduct: { productName: string; unit: string } }> | undefined) ?? []
+      return {
+        headline: `${product.productName} is a kit made of ${components.length} component${components.length === 1 ? '' : 's'}`,
+        details: components.map((c) => `${c.componentProduct.productName}: ${c.quantity} ${c.componentProduct.unit}`),
+        isEmpty: components.length === 0
+      }
+    }
+  },
+  'locations.stockAtLocation': {
+    category: 'locations',
+    async execute(params, _sym) {
+      const term = params.searchTerm as string | undefined
+      const locRes = await locationService.list()
+      const locations = (locRes.data as Array<{ id: string; name: string; isDefault: boolean }> | undefined) ?? []
+      const location = term
+        ? locations.find((l) => l.name.toLowerCase().includes(term.toLowerCase()))
+        : locations.find((l) => l.isDefault)
+      if (!location) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const rows = await db.locationStock.findMany({
+        where: { locationId: location.id, quantity: { gt: 0 } },
+        include: { product: { select: { productName: true, unit: true } } },
+        orderBy: { quantity: 'desc' },
+        take: 10
+      })
+      return {
+        headline: `${location.name} has ${rows.length} product${rows.length === 1 ? '' : 's'} in stock`,
+        details: rows.map((r) => `${r.product.productName}: ${r.quantity} ${r.product.unit}`),
+        isEmpty: rows.length === 0
       }
     }
   }

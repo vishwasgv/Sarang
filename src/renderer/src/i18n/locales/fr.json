@@ -11,6 +11,7 @@
     "priceLists": "Listes de Prix",
     "pricingSchemes": "Barèmes de Prix",
     "recurringProfiles": "Profils Récurrents",
+    "locations": "Emplacements",
     "approvalWorkflows": "Flux d'Approbation",
     "expenses": "Dépenses",
     "reports": "Rapports",
@@ -57,6 +58,7 @@
     "delete": "Supprimer",
     "edit": "Modifier",
     "add": "Ajouter",
+    "remove": "Retirer",
     "search": "Rechercher",
     "loading": "Chargement…",
     "noData": "Aucune donnée",
@@ -632,6 +634,21 @@
     "orderDetails": "Détails de la Commande",
     "dropShipTo": "Livraison Directe À",
     "dropShipHint": "Livrer directement à ce client au lieu de votre propre emplacement",
+    "landedCost": {
+      "title": "Coûts d'Approche",
+      "add": "Ajouter un Coût d'Approche",
+      "typeLabel": "Type",
+      "amount": "Montant",
+      "allocate": "Répartir",
+      "byValue": "Par valeur de ligne",
+      "byQuantity": "Par quantité",
+      "type": {
+        "FREIGHT": "Fret",
+        "DUTY": "Droits de douane",
+        "HANDLING": "Manutention",
+        "OTHER": "Autre"
+      }
+    },
     "expectedBy": "Attendu le",
     "orderItems": "Articles de la Commande",
     "unitCost": "Coût Unitaire",
@@ -967,7 +984,20 @@
     "msmeBadge": "MSME",
     "msmeDueDateNote": "Date d'échéance légale de 45 jours (loi MSME Samadhaan)",
     "reverseCharge": "Autoliquidation (RCM)",
-    "reverseChargeNote": "La TPS de cette facture est autoliquidée et payée directement à l'État, et non au fournisseur — le montant dû au fournisseur exclut la taxe."
+    "reverseChargeNote": "La TPS de cette facture est autoliquidée et payée directement à l'État, et non au fournisseur — le montant dû au fournisseur exclut la taxe.",
+    "landedCost": {
+      "title": "Coûts d'Approche (facultatif)",
+      "add": "Ajouter un Coût d'Approche",
+      "amount": "Montant",
+      "byValue": "Par valeur de ligne",
+      "byQuantity": "Par quantité",
+      "type": {
+        "FREIGHT": "Fret",
+        "DUTY": "Droits de douane",
+        "HANDLING": "Manutention",
+        "OTHER": "Autre"
+      }
+    }
   },
   "salesOrders": {
     "title": "Commandes Clients",
@@ -1113,6 +1143,36 @@
     "couldNotCreate": "Impossible de créer le profil récurrent.",
     "couldNotSave": "Impossible d'enregistrer les modifications.",
     "couldNotDelete": "Impossible de supprimer le profil récurrent."
+  },
+  "locations": {
+    "title": "Emplacements",
+    "subtitle": "{{count}} emplacements — où se trouve physiquement le stock, pour les entreprises gérant plus d'un lieu de stockage",
+    "name": "Nom",
+    "address": "Adresse",
+    "default": "Par défaut",
+    "newLocation": "Nouvel Emplacement",
+    "editLocation": "Modifier l'Emplacement",
+    "namePlaceholder": "ex. Entrepôt Principal, Comptoir de Vente",
+    "addressPlaceholder": "Facultatif",
+    "nameRequired": "Le nom de l'emplacement est obligatoire.",
+    "defaultCannotDeactivate": "Impossible de désactiver l'emplacement par défaut — tout mouvement de stock qui ne précise pas d'emplacement spécifique y est dirigé.",
+    "couldNotLoad": "Impossible de charger les emplacements.",
+    "couldNotSave": "Impossible d'enregistrer cet emplacement.",
+    "transferStock": "Transférer le Stock",
+    "product": "Produit",
+    "searchProduct": "Rechercher un produit…",
+    "noProductsFound": "Aucun produit trouvé.",
+    "fromLocation": "Depuis l'Emplacement",
+    "toLocation": "Vers l'Emplacement",
+    "quantity": "Quantité",
+    "reason": "Motif",
+    "reasonPlaceholder": "Facultatif — pourquoi ce stock est déplacé",
+    "selectProduct": "Sélectionnez un produit à transférer.",
+    "selectBothLocations": "Sélectionnez à la fois l'emplacement source et l'emplacement de destination.",
+    "sameLocationError": "Les emplacements source et destination doivent être différents.",
+    "quantityMustBePositive": "La quantité doit être supérieure à zéro.",
+    "couldNotTransfer": "Impossible de transférer le stock.",
+    "stockTransferred": "Stock transféré."
   },
   "approvalWorkflows": {
     "title": "Flux d'Approbation",
@@ -2240,9 +2300,9 @@
       "customersTitle": "Clients",
       "customersBody": "Chaque client que vous avez déjà facturé se trouve ici, avec son historique complet d'achats et de paiements.",
       "productsTitle": "Produits",
-      "productsBody": "Ajoutez et gérez tout ce que vous vendez ici — prix, taux de taxe et stock, le tout sur un seul écran.",
+      "productsBody": "Ajoutez et gérez tout ce que vous vendez ici — prix, taux de taxe et stock, le tout sur un seul écran. Définissez une méthode de valorisation (Moyenne Pondérée, FIFO, ou Coût Standard) et transformez un produit en Kit composé d'autres produits, depuis le même formulaire.",
       "inventoryTitle": "Inventaire",
-      "inventoryBody": "Suivez les niveaux de stock et consultez chaque mouvement de stock — ventes, achats et ajustements manuels — au même endroit.",
+      "inventoryBody": "Suivez les niveaux de stock et consultez chaque mouvement de stock — ventes, achats et ajustements manuels — au même endroit. Lorsque le stock passe sous son seuil de réapprovisionnement, générez une Commande d'Achat en brouillon directement depuis ici.",
       "reportsTitle": "Rapports",
       "reportsBody": "Ventes, inventaire, impayés, pertes et profits, synthèses GST/HSN, et plus encore — tout est généré instantanément à partir de vos données réelles. Cliquez sur quelques rapports différents pour voir à quoi ils ressemblent.",
       "settingsTitle": "Paramètres",
@@ -2676,6 +2736,10 @@
       "approvalWorkflows": {
         "title": "Flux d'Approbation",
         "body": "Exigez une autorisation avant qu'une grande commande de vente ou d'achat ne soit confirmée — définissez un seuil et un approbateur, et Sarang retient toute commande dépassant ce montant pour approbation au lieu de la confirmer immédiatement."
+      },
+      "locations": {
+        "title": "Emplacements",
+        "body": "Si vous stockez des marchandises à plus d'un endroit, ajoutez un deuxième emplacement ici et essayez un Transfert de Stock — tout démarre dans un seul emplacement par défaut tant que vous n'en ajoutez pas réellement un autre."
       }
     }
   },
@@ -2878,6 +2942,19 @@
     "markAsQcStep": "Point de contrôle qualité",
     "scrapQtyLabel": "Qté Rebut / Rejetée",
     "laborCostLabel": "Coût de Main-d'œuvre",
+    "labor": {
+      "title": "Entrées de Main-d'œuvre",
+      "add": "+ Ajouter une Entrée de Main-d'œuvre",
+      "noEntriesHint": "Aucune entrée de main-d'œuvre pour l'instant — utilisera le Coût de Main-d'œuvre saisi à l'achèvement.",
+      "workerName": "Nom de l'Ouvrier",
+      "hours": "Heures",
+      "hoursAt": "h @",
+      "hourAbbrev": "h",
+      "ratePerHour": "Taux/Heure",
+      "workerNameRequired": "Le nom de l'ouvrier est obligatoire.",
+      "hoursRequired": "Les heures travaillées doivent être supérieures à zéro.",
+      "rateInvalid": "Le taux horaire ne peut pas être négatif."
+    },
     "batchNumber": "Numéro de Lot",
     "receiveBatch": "Réceptionner un Lot",
     "receiveBatchTitle": "Réceptionner un Lot de Matière Première",
@@ -3451,6 +3528,8 @@
       "rejectedQty": "Rejeté",
       "costLabel": "Coût ({{symbol}})",
       "batch": "Lot",
+      "purchaseUnitQty": "Qté Unité d'Achat (ex. sacs)",
+      "purchaseUnitQtyHint": "Colis/sacs nominaux reçus — le champ « Reçu » ci-dessus reste la quantité réellement mesurée, qui peut différer du ratio fixe.",
       "createGRNBtn": "Créer le GRN",
       "postConfirm": "Comptabiliser ce GRN ? Cela mettra à jour l'inventaire et est irréversible.",
       "reverseConfirm": "Annuler le GRN {{number}} ? Cela retirera le stock ajouté et créditera le compte du fournisseur. Possible uniquement si ce stock n'a pas encore été utilisé.",

@@ -45,7 +45,7 @@ export const kitService = {
 
     const componentProducts = await db.product.findMany({
       where: { id: { in: [...uniqueIds] } },
-      select: { id: true, productName: true, isActive: true, isKit: true }
+      select: { id: true, productName: true, isActive: true, isKit: true, productType: true }
     })
     if (componentProducts.length !== uniqueIds.size) {
       return { success: false, error: { code: 'PRD-001', message: 'One or more component products were not found.' } }
@@ -56,6 +56,14 @@ export const kitService = {
     // (real, disclosed scope cut, see Section 6.1 item 5).
     const nestedKit = componentProducts.find(p => p.isKit)
     if (nestedKit) return { success: false, error: { code: 'KIT-005', message: `"${nestedKit.productName}" is itself a kit — a kit cannot include another kit as a component.` } }
+    // Real gap found via live UI testing (not assumed): a SERVICE-type
+    // product has no Inventory row at all (product.service.ts only creates
+    // one for productType STANDARD), so accepting one here would save
+    // successfully but crash at sale time — billing.service.ts's
+    // explodeKitComponentsTx deduction loop calls reduceStockTx against a
+    // component that has no stock to reduce.
+    const nonStandard = componentProducts.find(p => p.productType !== 'STANDARD')
+    if (nonStandard) return { success: false, error: { code: 'KIT-007', message: `"${nonStandard.productName}" is a service, not a stocked product — only physical (STANDARD) products can be kit components.` } }
 
     await db.$transaction(async (tx) => {
       await tx.kitComponent.deleteMany({ where: { kitProductId: payload.kitProductId } })

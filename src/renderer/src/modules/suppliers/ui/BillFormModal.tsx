@@ -121,6 +121,14 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
+  // Phase 64 — landed cost (freight/duty/handling), entered inline at
+  // creation only — a Bill posts everything (including its own
+  // ProductCostHistory rows) in one atomic step, unlike a Purchase Order's
+  // staged receive, so there's no "add it later" window the way a PO has
+  // (see bill.validation.ts's own comment). Local state, not RHF-registered
+  // — same "variable-length array doesn't fit the flat-field model"
+  // reasoning this codebase already applies to rentalRates/payroll deductions.
+  const [landedCostRows, setLandedCostRows] = useState<{ costType: string; amount: string; allocationMethod: 'BY_VALUE' | 'BY_QUANTITY' }[]>([])
 
   const emptyItem = { lineType: 'PRODUCT' as const, productId: '', serviceDescription: '', serviceCategoryId: '', quantity: 1, unitCost: 0, discountAmount: 0, taxRate: 0 }
 
@@ -145,6 +153,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
   useEffect(() => {
     if (!open) return
     reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, items: [emptyItem] })
+    setLandedCostRows([])
     async function loadOptions() {
       setLoadingData(true)
       try {
@@ -192,8 +201,21 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
   const subtotal = watchedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0), 0)
   const totalAmount = watchedItems.reduce((sum, item) => sum + lineTotal(item), 0)
 
+  function addLandedCostRow() {
+    setLandedCostRows(prev => [...prev, { costType: 'FREIGHT', amount: '', allocationMethod: 'BY_VALUE' }])
+  }
+  function updateLandedCostRow(index: number, patch: Partial<{ costType: string; amount: string; allocationMethod: 'BY_VALUE' | 'BY_QUANTITY' }>) {
+    setLandedCostRows(prev => prev.map((r, i) => i === index ? { ...r, ...patch } : r))
+  }
+  function removeLandedCostRow(index: number) {
+    setLandedCostRows(prev => prev.filter((_, i) => i !== index))
+  }
+
   async function onSubmit(values: FormValues) {
     try {
+      const validLandedCosts = landedCostRows
+        .filter(r => parseFloat(r.amount) > 0)
+        .map(r => ({ costType: r.costType, amount: parseFloat(r.amount), allocationMethod: r.allocationMethod }))
       const payload = {
         supplierId: values.supplierId,
         billDate: values.billDate || undefined,
@@ -208,7 +230,8 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
           unitCost: item.unitCost,
           discountAmount: item.discountAmount ?? 0,
           taxRate: item.taxRate ?? 0
-        }))
+        })),
+        landedCosts: validLandedCosts.length > 0 ? validLandedCosts : undefined
       }
       const res = await window.api.bills.create(payload)
       if (res.success) {
@@ -351,6 +374,35 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
           {watch('isReverseCharge') && (
             <p className="text-xs text-slate-500 dark:text-slate-400 -mt-3">{t('bills.reverseChargeNote')}</p>
           )}
+
+          {/* Phase 64 — landed cost, entered inline (see the state comment
+              above for why a Bill can't add this after the fact the way a
+              PO can). Allocated proportionally across the product lines
+              above into their real ProductCostHistory unit cost. */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">{t('bills.landedCost.title')}</label>
+              <button type="button" onClick={addLandedCostRow} className="flex items-center gap-1 text-xs text-brand hover:underline">
+                <Plus size={12} /> {t('bills.landedCost.add')}
+              </button>
+            </div>
+            {landedCostRows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                <select value={row.costType} onChange={(e) => updateLandedCostRow(i, { costType: e.target.value })}
+                  className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                  {['FREIGHT', 'DUTY', 'HANDLING', 'OTHER'].map(ct => <option key={ct} value={ct}>{t(`bills.landedCost.type.${ct}`)}</option>)}
+                </select>
+                <input type="number" min="0" step="0.01" placeholder={t('bills.landedCost.amount')} value={row.amount} onChange={(e) => updateLandedCostRow(i, { amount: e.target.value })}
+                  className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
+                <select value={row.allocationMethod} onChange={(e) => updateLandedCostRow(i, { allocationMethod: e.target.value as 'BY_VALUE' | 'BY_QUANTITY' })}
+                  className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                  <option value="BY_VALUE">{t('bills.landedCost.byValue')}</option>
+                  <option value="BY_QUANTITY">{t('bills.landedCost.byQuantity')}</option>
+                </select>
+                <button type="button" onClick={() => removeLandedCostRow(i)} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
 
           <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300">

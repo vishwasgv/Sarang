@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ImagePlus, X, Barcode as BarcodeIcon } from 'lucide-react'
+import { ImagePlus, X, Barcode as BarcodeIcon, Search, Plus } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -46,6 +46,12 @@ const schema = z.object({
   sellByPack: z.boolean().default(false),
   packUnit: z.string().max(20).optional(),
   unitsPerPack: z.coerce.number().positive().optional(),
+  // Phase 64 — floating/variable UoM conversion, meaningful only alongside
+  // sellByPack. Distinct from unitsPerPack's own fixed ratio.
+  floatingUnitConversion: z.boolean().default(false),
+  // Phase 64 — selectable stock valuation method.
+  valuationMethod: z.enum(['WEIGHTED_AVERAGE', 'FIFO', 'STANDARD_COST']).default('WEIGHTED_AVERAGE'),
+  standardCost: z.coerce.number().min(0).optional(),
   // Phase 48: apparel gender, surfaced only when variant_tracking is on.
   gender: z.enum(['MENS', 'WOMENS', 'UNISEX']).optional(),
   // Phase 54G: rental. rentalRates (an array of {basis, amount} pairs) is
@@ -95,6 +101,10 @@ interface Product {
   id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
   sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null
+  // Phase 64
+  floatingUnitConversion?: boolean
+  valuationMethod?: string; standardCost?: number | null
+  isKit?: boolean
   gender?: string | null
   isPrescriptionRequired?: boolean; defaultSupplierId?: string | null
   expiryAlertLeadDays?: number | null
@@ -105,6 +115,68 @@ interface Product {
 }
 
 const RATE_BASIS_OPTIONS = ['HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'] as const
+
+// Phase 64 — composite items/kits. A lightweight search-dropdown picker,
+// mirroring PriceListsScreen.tsx's own TierProductPicker pattern (same
+// per-file-local convention this codebase already uses rather than a
+// shared component) — a plain <select> would be unusable against a
+// catalog of hundreds of products.
+interface PickableProduct { id: string; productName: string; sku?: string | null }
+function KitComponentProductPicker({ products, value, onChange }: {
+  products: PickableProduct[]
+  value: string
+  onChange: (productId: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const selected = products.find(p => p.id === value)
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const results = query.trim()
+    ? products.filter(p =>
+        p.productName.toLowerCase().includes(query.toLowerCase()) ||
+        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 50)
+    : products.slice(0, 50)
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <div className="relative">
+        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <input
+          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
+          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
+          onFocus={() => { setQuery(''); setOpen(true) }}
+          placeholder="Search a product…"
+          className="w-full h-9 ps-6 pe-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
+        />
+      </div>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+          {results.length === 0 && <div className="px-3 py-2 text-xs text-slate-400">No products found.</div>}
+          {results.map(p => (
+            <button
+              type="button"
+              key={p.id}
+              onClick={() => { onChange(p.id); setOpen(false) }}
+              className="w-full text-start px-3 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+            >
+              {p.productName}{p.sku ? <span className="text-slate-400 text-xs"> ({p.sku})</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface ProductFormModalProps {
   open: boolean
@@ -150,10 +222,19 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   // field (a product may genuinely need a one-off rate not in the list) —
   // it adds a one-click way to apply any currently configured rate.
   const [taxConfigs, setTaxConfigs] = useState<{ id: string; taxName: string; rate: number; isDefault: boolean }[]>([])
+  // Phase 64 — composite items/kits. Managed as its own save action
+  // (window.api.products.setKitComponents), separate from the main product
+  // update — a kit needs a real productId to attach components to, and
+  // components aren't a flat field react-hook-form's model fits well
+  // (same reasoning rentalRates above already established).
+  const [kitEnabled, setKitEnabled] = useState(false)
+  const [kitRows, setKitRows] = useState<{ componentProductId: string; quantity: number }[]>([])
+  const [kitCandidates, setKitCandidates] = useState<PickableProduct[]>([])
+  const [savingKit, setSavingKit] = useState(false)
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false }
+    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
   })
   const { businessType } = useIndustryStore()
   const isPharmacy = businessType === 'PHARMACY'
@@ -166,10 +247,72 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     }
   }, [open])
 
+  // Phase 64 — composite items/kits: candidate list (excludes this product
+  // itself and any product that's already a kit — one level deep only, per
+  // Section 6.1 item 5) + this product's own existing components, if any.
+  useEffect(() => {
+    if (open && isEdit && product) {
+      setKitEnabled(product.isKit ?? false)
+      Promise.all([
+        window.api.products.list({ isActive: true, limit: 1000 }),
+        window.api.products.getKitComponents(product.id)
+      ]).then(([productsRes, componentsRes]) => {
+        if (productsRes.success && productsRes.data) {
+          const all = (productsRes.data as { products: Array<PickableProduct & { id: string; isKit?: boolean; productType?: string }> }).products ?? []
+          // A SERVICE product has no Inventory row to deduct from — real gap
+          // found via live UI testing, now also enforced server-side in
+          // kit.service.ts's own setComponents (KIT-007). Filtered here too
+          // so the picker never even offers an invalid choice.
+          setKitCandidates(all.filter(p => p.id !== product.id && !p.isKit && p.productType === 'STANDARD'))
+        }
+        if (componentsRes.success && componentsRes.data) {
+          const rows = componentsRes.data as Array<{ componentProductId: string; quantity: number }>
+          setKitRows(rows.map(r => ({ componentProductId: r.componentProductId, quantity: r.quantity })))
+        }
+      }).catch(() => {})
+    } else {
+      setKitEnabled(false)
+      setKitRows([])
+      setKitCandidates([])
+    }
+  }, [open, isEdit, product])
+
+  function addKitRow() {
+    setKitRows(prev => [...prev, { componentProductId: '', quantity: 1 }])
+  }
+  function updateKitRow(index: number, patch: Partial<{ componentProductId: string; quantity: number }>) {
+    setKitRows(prev => prev.map((r, i) => i === index ? { ...r, ...patch } : r))
+  }
+  function removeKitRow(index: number) {
+    setKitRows(prev => prev.filter((_, i) => i !== index))
+  }
+
+  async function saveKitComponents() {
+    if (!product) return
+    const valid = kitRows.filter(r => r.componentProductId && r.quantity > 0)
+    setSavingKit(true)
+    try {
+      const res = valid.length > 0
+        ? await window.api.products.setKitComponents({ kitProductId: product.id, components: valid })
+        : await window.api.products.clearKit(product.id)
+      if (res.success) {
+        toastSuccess('Kit Updated', valid.length > 0 ? 'Kit components saved.' : 'This product is no longer a kit.')
+        onSaved()
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not save kit components.')
+      }
+    } catch {
+      toastError('Error', 'Could not save kit components.')
+    } finally {
+      setSavingKit(false)
+    }
+  }
+
   const productType = watch('productType')
   const imagePath = watch('imagePath')
   const sellByWeight = watch('sellByWeight')
   const sellByPack = watch('sellByPack')
+  const valuationMethod = watch('valuationMethod')
   const currentBarcode = watch('barcode')
   const isRentable = watch('isRentable')
   const rentalTrackingType = watch('rentalTrackingType')
@@ -225,6 +368,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           sellByPack: product.sellByPack ?? false,
           packUnit: product.packUnit ?? undefined,
           unitsPerPack: product.unitsPerPack ?? undefined,
+          floatingUnitConversion: product.floatingUnitConversion ?? false,
+          valuationMethod: (product.valuationMethod as FormValues['valuationMethod']) ?? 'WEIGHTED_AVERAGE',
+          standardCost: product.standardCost ?? undefined,
           gender: (product.gender as FormValues['gender']) ?? undefined,
           isRentable: product.isRentable ?? false,
           rentalTrackingType: (product.rentalTrackingType as FormValues['rentalTrackingType']) ?? undefined,
@@ -239,7 +385,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         })
         setRateLines(product.rentalRates ?? [])
       } else {
-        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false })
+        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
         setRateLines([])
       }
     }
@@ -450,9 +596,84 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             </label>
             <p className="text-xs text-slate-400 mt-1 ms-6">e.g. a box of 50 screws — stock stays tracked in the unit above, this just converts pack quantity to pieces when receiving stock.</p>
             {sellByPack && (
-              <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
-                <Input label="Pack Unit *" placeholder="e.g. BOX, CARTON" {...register('packUnit')} error={errors.packUnit?.message} />
-                <Input label="Units per Pack *" type="number" step="1" min="1" placeholder="e.g. 50" {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
+              <div className="mt-3 ms-6 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Pack Unit *" placeholder="e.g. BOX, CARTON" {...register('packUnit')} error={errors.packUnit?.message} />
+                  <Input label="Units per Pack *" type="number" step="1" min="1" placeholder="e.g. 50" {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
+                </div>
+                {/* Phase 64 — floating/variable UoM: the actual yield of a purchase
+                    lot can vary (a nominal 50kg bag that weighs 49.2kg this
+                    delivery) — distinct from the fixed ratio above. */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" {...register('floatingUnitConversion')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                  <span className="text-sm text-slate-700 dark:text-slate-200">The actual conversion can vary per delivery (e.g. real weighed quantity, not always exactly {watch('unitsPerPack') || 'N'} per pack)</span>
+                </label>
+                <p className="text-xs text-slate-400 ms-6">When on, receiving a shipment (GRN) lets you enter the real measured quantity received instead of assuming the fixed ratio above.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Phase 64 — selectable stock valuation method. Weighted Average
+            (the default) matches what this app already computes live for
+            every product; FIFO/Standard Cost are real alternatives. */}
+        {productType === 'STANDARD' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Select label="Stock Valuation Method" {...register('valuationMethod')}>
+                <option value="WEIGHTED_AVERAGE">Weighted Average (default)</option>
+                <option value="FIFO">FIFO (First In, First Out)</option>
+                <option value="STANDARD_COST">Standard Cost (manually set)</option>
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">Controls how this product's cost is calculated for profit reports and inventory valuation.</p>
+            </div>
+            {valuationMethod === 'STANDARD_COST' && (
+              <Input label="Standard Cost" type="number" step="0.01" min="0" placeholder="Falls back to Cost Price if left blank" {...register('standardCost')} error={errors.standardCost?.message} />
+            )}
+          </div>
+        )}
+
+        {/* Phase 64 — composite items/kits. Only meaningful for an existing
+            product (a kit's components attach to a real productId), managed
+            as its own save action separate from the main form submit — see
+            saveKitComponents above. */}
+        {isEdit && productType === 'STANDARD' && (
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={kitEnabled} onChange={(e) => {
+                setKitEnabled(e.target.checked)
+                if (e.target.checked && kitRows.length === 0) setKitRows([{ componentProductId: '', quantity: 1 }])
+              }} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">This is a kit — bundle other products together as one sellable item</span>
+            </label>
+            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. a "Diwali Hamper" made of 5 individual products. This product carries its own price above; selling it deducts real stock from each component below, one level deep only.</p>
+            {kitEnabled && (
+              <div className="mt-3 ms-6 space-y-2">
+                {kitRows.map((row, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <KitComponentProductPicker
+                        products={kitCandidates}
+                        value={row.componentProductId}
+                        onChange={(id) => updateKitRow(i, { componentProductId: id })}
+                      />
+                    </div>
+                    <input
+                      type="number" min="1" step="1" value={row.quantity}
+                      onChange={(e) => updateKitRow(i, { quantity: Number(e.target.value) })}
+                      className="w-20 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                    />
+                    <button type="button" onClick={() => removeKitRow(i)} className="text-slate-300 hover:text-danger"><X size={16} /></button>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-1">
+                  <button type="button" onClick={addKitRow} className="flex items-center gap-1 text-xs text-brand hover:underline">
+                    <Plus size={12} /> Add component
+                  </button>
+                  <Button type="button" variant="secondary" size="sm" onClick={saveKitComponents} loading={savingKit}>
+                    Save Kit Components
+                  </Button>
+                </div>
               </div>
             )}
           </div>

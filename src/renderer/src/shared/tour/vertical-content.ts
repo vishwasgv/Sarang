@@ -148,7 +148,15 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/pricing/price-lists', key: 'priceLists' },
   { path: '/pricing/schemes', key: 'pricingSchemes' },
   { path: '/recurring-profiles', key: 'recurringProfiles' },
-  { path: '/approval-workflows', key: 'approvalWorkflows' }
+  { path: '/approval-workflows', key: 'approvalWorkflows' },
+  // Phase 64 — Inventory & Costing Depth. Locations is the one genuinely new
+  // NAV_ITEMS path this phase adds; the valuation-method/kit-builder and
+  // reorder-level-auto-PO items live inside the already-toured universal
+  // Products/Inventory screens instead of getting their own unreachable
+  // entries (those paths are in UNIVERSAL_PATHS, so a VERTICAL_CONTENT entry
+  // targeting them would never be used) — those two got a sentence appended
+  // to tour.universal.productsBody/inventoryBody instead.
+  { path: '/locations', key: 'locations' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(

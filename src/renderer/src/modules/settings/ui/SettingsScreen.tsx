@@ -308,6 +308,8 @@ interface BPProfile {
   enableDocumentWatermark?: boolean | null
   clinicSpecialty?: string | null
   drugLicenseNumber?: string | null
+  overheadAllocationBasis?: string | null
+  overheadAllocationRate?: number | null
 }
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
@@ -331,7 +333,9 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     showLogoOnDashboard: profile?.showLogoOnDashboard ?? false,
     enableDocumentWatermark: profile?.enableDocumentWatermark ?? false,
     clinicSpecialty: profile?.clinicSpecialty ?? '',
-    drugLicenseNumber: profile?.drugLicenseNumber ?? ''
+    drugLicenseNumber: profile?.drugLicenseNumber ?? '',
+    overheadAllocationBasis: profile?.overheadAllocationBasis ?? '',
+    overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0)
   })
   const setProfile = useBusinessStore((s) => s.setProfile)
   const { error: toastError, success: toastSuccess } = useNotificationStore()
@@ -354,7 +358,9 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
       showLogoOnDashboard: profile?.showLogoOnDashboard ?? false,
       enableDocumentWatermark: profile?.enableDocumentWatermark ?? false,
       clinicSpecialty: profile?.clinicSpecialty ?? '',
-      drugLicenseNumber: profile?.drugLicenseNumber ?? ''
+      drugLicenseNumber: profile?.drugLicenseNumber ?? '',
+      overheadAllocationBasis: profile?.overheadAllocationBasis ?? '',
+      overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0)
     })
     setError(null)
     setEditing(true)
@@ -395,7 +401,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         showLogoOnDashboard: form.showLogoOnDashboard,
         enableDocumentWatermark: form.enableDocumentWatermark,
         ...(profile?.businessType === 'SPECIALIST_CLINIC' ? { clinicSpecialty: form.clinicSpecialty.trim() || null } : {}),
-        ...(profile?.businessType === 'PHARMACY' ? { drugLicenseNumber: form.drugLicenseNumber.trim() || null } : {})
+        ...(profile?.businessType === 'PHARMACY' ? { drugLicenseNumber: form.drugLicenseNumber.trim() || null } : {}),
+        ...(profile?.businessType === 'MANUFACTURING' ? {
+          overheadAllocationBasis: form.overheadAllocationBasis || null,
+          overheadAllocationRate: form.overheadAllocationBasis ? (parseFloat(form.overheadAllocationRate) || 0) : 0
+        } : {})
       })
       if (res.success) {
         const freshRes = await window.api.businessProfile.get()
@@ -490,6 +500,27 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
                   placeholder="e.g. 20B / 21B license number" className={inputCls} />
               </div>
             )}
+            {profile?.businessType === 'MANUFACTURING' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Overhead Allocation</label>
+                  <Select value={form.overheadAllocationBasis} onChange={e => setForm(f => ({ ...f, overheadAllocationBasis: e.target.value }))}>
+                    <option value="">Off — production cost is material + labor only</option>
+                    <option value="PER_LABOR_HOUR">Per labor hour</option>
+                    <option value="PER_UNIT_PRODUCED">Per unit produced</option>
+                  </Select>
+                </div>
+                {form.overheadAllocationBasis && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Overhead Rate ({form.overheadAllocationBasis === 'PER_LABOR_HOUR' ? 'per hour' : 'per unit'})
+                    </label>
+                    <input type="number" min="0" step="0.01" value={form.overheadAllocationRate}
+                      onChange={e => setForm(f => ({ ...f, overheadAllocationRate: e.target.value }))} className={inputCls} />
+                  </div>
+                )}
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} />
@@ -553,6 +584,10 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             { label: 'Owner Name', value: profile?.ownerName },
             ...(profile?.businessType === 'SPECIALIST_CLINIC' ? [{ label: 'Specialty', value: profile?.clinicSpecialty }] : []),
             ...(profile?.businessType === 'PHARMACY' ? [{ label: 'Drug License Number', value: profile?.drugLicenseNumber }] : []),
+            ...(profile?.businessType === 'MANUFACTURING' && profile?.overheadAllocationBasis ? [{
+              label: 'Overhead Allocation',
+              value: `${profile.overheadAllocationBasis === 'PER_LABOR_HOUR' ? 'Per labor hour' : 'Per unit produced'} — ${profile.overheadAllocationRate}`
+            }] : []),
             { label: 'Country', value: profile?.country },
             { label: 'Currency', value: profile?.currencyCode ? `${profile.currencySymbol} (${profile.currencyCode})` : undefined },
             { label: 'Tax Model', value: profile?.taxModel },

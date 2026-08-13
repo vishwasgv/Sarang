@@ -14,6 +14,8 @@ interface GRNItem {
   id: string; productId: string | null; rawMaterialId: string | null; itemName: string
   orderedQty: number | null; receivedQty: number; rejectedQty: number; unit: string
   unitCost: number; totalCost: number; batchNumber: string | null; expiryDate: string | null; notes: string | null
+  // Phase 64 — floating/variable UoM conversion.
+  purchaseUnitQty: number | null; effectiveConversionFactor: number | null
 }
 
 interface GRN {
@@ -24,7 +26,13 @@ interface GRN {
   createdAt: string; updatedAt: string; items: GRNItem[]
 }
 
-interface ProductOption { id: string; productName: string; sku?: string | null; unit: string; costPrice: number; productType: string }
+interface ProductOption {
+  id: string; productName: string; sku?: string | null; unit: string; costPrice: number; productType: string
+  // Phase 64 — a floating-conversion product lets receiving staff enter the
+  // real measured quantity directly, rather than trusting the fixed
+  // unitsPerPack ratio for this specific delivery.
+  sellByPack?: boolean; floatingUnitConversion?: boolean; unitsPerPack?: number | null; packUnit?: string | null
+}
 interface SupplierOption { id: string; supplierName: string; supplierCode?: string }
 interface POOption { id: string; poNumber: string; status: string; supplier: { id: string; supplierName: string } }
 interface POItemDetail { productId: string; quantity: number; receivedQty: number; unitCost: number; product: { productName: string; unit: string } }
@@ -36,7 +44,7 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'danger'> 
   REVERSED: 'danger',
 }
 
-const EMPTY_ITEM = { productId: '', itemName: '', receivedQty: '', rejectedQty: '', unit: 'PCS', unitCost: '', batchNumber: '', notes: '', orderedHint: '' }
+const EMPTY_ITEM = { productId: '', itemName: '', receivedQty: '', rejectedQty: '', unit: 'PCS', unitCost: '', batchNumber: '', notes: '', orderedHint: '', purchaseUnitQty: '' }
 
 export default function GRNScreen() {
   const { t } = useTranslation()
@@ -205,6 +213,7 @@ export default function GRNScreen() {
           rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
           unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
           batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
+          purchaseUnitQty: i.purchaseUnitQty ? parseFloat(i.purchaseUnitQty) : undefined,
         }))
       })
       if (res.success) {
@@ -273,6 +282,7 @@ export default function GRNScreen() {
       unit: i.unit, unitCost: i.unitCost?.toString() ?? '',
       batchNumber: i.batchNumber ?? '', notes: i.notes ?? '',
       orderedHint: i.orderedQty ? t('logistics.grn.orderedHintShort', { qty: i.orderedQty, unit: i.unit }) : '',
+      purchaseUnitQty: i.purchaseUnitQty?.toString() ?? '',
     })))
     setEditId(g.id); setEditError(null)
   }
@@ -315,6 +325,7 @@ export default function GRNScreen() {
           rejectedQty: i.rejectedQty ? parseFloat(i.rejectedQty) : 0,
           unit: i.unit, unitCost: i.unitCost ? parseFloat(i.unitCost) : 0,
           batchNumber: i.batchNumber || undefined, notes: i.notes || undefined,
+          purchaseUnitQty: i.purchaseUnitQty ? parseFloat(i.purchaseUnitQty) : undefined,
         })),
       })
       if (res.success) { setEditId(null); load() }
@@ -484,6 +495,16 @@ export default function GRNScreen() {
                     <input value={item.batchNumber} onChange={e => updateEditItem(idx, 'batchNumber', e.target.value)} placeholder={t('logistics.grn.batch')} className="col-span-2 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
                     <button onClick={() => removeEditItem(idx)} className="col-span-1 text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
                   </div>
+                  {/* Phase 64 — floating/variable UoM: shown only for a product
+                      with floatingUnitConversion on. receivedQty above stays
+                      the real measured stocking-unit quantity; this is just
+                      the nominal purchase-unit count for traceability. */}
+                  {products.find(p => p.id === item.productId)?.floatingUnitConversion && (
+                    <div className="flex items-center gap-2">
+                      <input type="number" min="0" step="0.01" value={item.purchaseUnitQty} onChange={e => updateEditItem(idx, 'purchaseUnitQty', e.target.value)} placeholder={t('logistics.grn.purchaseUnitQty')} className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
+                      <span className="text-xs text-gray-400">{t('logistics.grn.purchaseUnitQtyHint')}</span>
+                    </div>
+                  )}
                   <input value={item.notes} onChange={e => updateEditItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
                 </div>
               ))}
@@ -560,6 +581,16 @@ export default function GRNScreen() {
                     <input value={item.batchNumber} onChange={e => updateItem(idx, 'batchNumber', e.target.value)} placeholder={t('logistics.grn.batch')} className="col-span-2 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
                     <button onClick={() => removeItem(idx)} className="col-span-1 text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
                   </div>
+                  {/* Phase 64 — floating/variable UoM: shown only for a product
+                      with floatingUnitConversion on. receivedQty above stays
+                      the real measured stocking-unit quantity; this is just
+                      the nominal purchase-unit count for traceability. */}
+                  {products.find(p => p.id === item.productId)?.floatingUnitConversion && (
+                    <div className="flex items-center gap-2">
+                      <input type="number" min="0" step="0.01" value={item.purchaseUnitQty} onChange={e => updateItem(idx, 'purchaseUnitQty', e.target.value)} placeholder={t('logistics.grn.purchaseUnitQty')} className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
+                      <span className="text-xs text-gray-400">{t('logistics.grn.purchaseUnitQtyHint')}</span>
+                    </div>
+                  )}
                   <input value={item.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
                 </div>
               ))}

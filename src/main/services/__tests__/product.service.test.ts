@@ -27,7 +27,10 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       update: vi.fn().mockResolvedValue(makeProduct())
     },
     inventory: { create: vi.fn().mockResolvedValue({ id: 'inv-1', quantity: 0 }) },
-    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) }
+    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) },
+    // Phase 64 — applyLocationDeltaTx (opening-quantity fix below) reads this.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc_main_default' }) },
+    locationStock: { upsert: vi.fn().mockResolvedValue({}) }
   }
   return {
     product: {
@@ -247,17 +250,44 @@ describe('productService.createProduct', () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    await productService.createProduct({
+    const result = await productService.createProduct({
       productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 25
     })
 
+    expect(result.success).toBe(true)
     expect(db._tx.inventory.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ quantity: 25, averageCost: 50 }) })
     )
     expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADDITION', quantity: 25, referenceType: 'OPENING_STOCK' }) })
+    )
+  })
+
+  // Real bug found via live E2E UAT (2026-08-13, Phase 64 audit): opening
+  // stock landed in Inventory.quantity but never in LocationStock, since
+  // this path writes Inventory directly rather than through addStockTx —
+  // transferStock() then saw "Available: 0" at the default location for a
+  // product that visibly had real stock. This test would have caught it;
+  // the original test above never asserted `result.success`, so the mock's
+  // missing `tx.locationStock` masked the crash inside the outer try/catch.
+  it('syncs LocationStock to the default location when opening stock is given (regression guard)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.createProduct({
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
+      reorderLevel: 10, reorderQuantity: 50, openingQuantity: 25
+    })
+
+    expect(result.success).toBe(true)
+    expect(db._tx.locationStock.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { productId_locationId: { productId: 'prod-1', locationId: 'loc_main_default' } },
+        create: expect.objectContaining({ quantity: 25 })
+      })
     )
   })
 

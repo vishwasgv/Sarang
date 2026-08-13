@@ -992,3 +992,97 @@ describe('askQuestion — Phase 63 Sales Orders/Pricing AI intents', () => {
     expect(res.data?.answer).toContain('PO-009')
   })
 })
+
+describe('askQuestion — Phase 64 Inventory & Costing Depth AI intents', () => {
+  it('answers "what\'s Widget\'s current cost basis" via the fast-path, resolving through getProductCost', async () => {
+    const db = makeMockDb()
+    db.product = {
+      findFirst: vi.fn().mockResolvedValue({ id: 'p-1', productName: 'Widget', sku: 'WID-1', unit: 'PCS', valuationMethod: 'WEIGHTED_AVERAGE' }),
+      findMany: vi.fn().mockResolvedValue([{ id: 'p-1', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }])
+    }
+    db.inventory = { findMany: vi.fn().mockResolvedValue([{ productId: 'p-1', averageCost: 62.5, quantity: 10 }]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's Widget's current cost basis?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('inventory.productCostBasis')
+    expect(res.data?.answer).toContain('Widget')
+    expect(res.data?.answer).toContain('₹62.50')
+    expect(res.data?.answer).toContain('Weighted Average')
+  })
+
+  it('answers "generate POs for everything below reorder level" — points to the button, never claims to have created one', async () => {
+    const db = makeMockDb()
+    db.inventory = {
+      findMany: vi.fn().mockResolvedValue([
+        { quantity: 2, reorderLevel: 5, product: { productName: 'Widget', isActive: true, defaultSupplier: { supplierName: 'Acme Supplies' } } }
+      ])
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Generate POs for everything below reorder level')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('inventory.reorderDraftPreview')
+    expect(res.data?.answer).toContain('Generate Reorder POs')
+    expect(res.data?.answer).toContain('Widget')
+    expect(res.data?.answer).toContain('Acme Supplies')
+  })
+
+  it('answers "what did freight add to this purchase\'s cost" via the fast-path, falling back to the most recent PO with a landed cost', async () => {
+    const db = makeMockDb()
+    db.purchaseOrder = { findFirst: vi.fn().mockResolvedValue({ id: 'po-1', poNumber: 'PO-1042' }) }
+    db.landedCostAllocation = { findMany: vi.fn().mockResolvedValue([{ costType: 'FREIGHT', amount: 500 }]) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What did freight add to this purchase's cost?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('purchasing.landedCostForPurchase')
+    expect(res.data?.answer).toContain('PO-1042')
+    expect(res.data?.answer).toContain('₹500.00')
+  })
+
+  it('answers "what\'s in this kit" via the fast-path, listing real components', async () => {
+    const db = makeMockDb()
+    db.product = { findFirst: vi.fn().mockResolvedValue({ id: 'kit-1', productName: 'Diwali Hamper', isKit: true }) }
+    db.kitComponent = {
+      findMany: vi.fn().mockResolvedValue([
+        { quantity: 2, componentProduct: { productName: 'Candle', unit: 'PCS' } },
+        { quantity: 1, componentProduct: { productName: 'Sweet Box', unit: 'PCS' } }
+      ])
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's in the Diwali Hamper kit?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('kits.components')
+    expect(res.data?.answer).toContain('Diwali Hamper')
+    expect(res.data?.answer).toContain('Candle')
+    expect(res.data?.answer).toContain('Sweet Box')
+  })
+
+  it('answers "show me stock at Warehouse" via the fast-path, resolving the named location', async () => {
+    const db = makeMockDb()
+    db.location = { findMany: vi.fn().mockResolvedValue([{ id: 'loc-1', name: 'Main', isDefault: true }, { id: 'loc-2', name: 'Warehouse', isDefault: false }]) }
+    db.locationStock = {
+      findMany: vi.fn().mockResolvedValue([{ quantity: 20, product: { productName: 'Widget', unit: 'PCS' } }])
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Show me stock at Warehouse')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('locations.stockAtLocation')
+    expect(res.data?.answer).toContain('Warehouse')
+    expect(res.data?.answer).toContain('Widget')
+    expect(db.locationStock.findMany.mock.calls[0][0].where.locationId).toBe('loc-2')
+  })
+})
