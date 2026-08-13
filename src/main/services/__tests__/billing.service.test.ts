@@ -107,6 +107,32 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+describe('billingService.createInvoice — Phase 65 Reporting Tags / Cost & Profit Centres', () => {
+  it('passes costCentreId through to the created invoice row and every posted GL line', async () => {
+    const db = makeMockDb()
+    db.invoice.create = vi.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-2024-000001', paidAmount: 0, totalAmount: 200, taxAmount: 0, costCentreId: 'cc-branch-1' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, costCentreId: 'cc-branch-1' })
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { costCentreId: string | null } }
+    expect(invoiceCreateCall.data.costCentreId).toBe('cc-branch-1')
+    const journalCreateCall = vi.mocked(db.journalEntry.create).mock.calls[0][0] as { data: { lines: { create: Array<{ costCentreId: string | null }> } } }
+    expect(journalCreateCall.data.lines.create.every((l) => l.costCentreId === 'cc-branch-1')).toBe(true)
+  })
+
+  it('leaves costCentreId null when the invoice is not tagged (zero behavior change for the common case)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await billingService.createInvoice(basePayload)
+
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { costCentreId: string | null } }
+    expect(invoiceCreateCall.data.costCentreId).toBeNull()
+  })
+})
+
 describe('billingService.createInvoice — Phase 59 license enforcement', () => {
   it('blocks a new invoice when the free year has genuinely expired on a still-TRIAL key', async () => {
     const db = makeMockDb()

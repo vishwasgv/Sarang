@@ -65,6 +65,9 @@ export const INTENT_TEMPLATE_NAMES = [
   // Phase 64 — Inventory & Costing Depth's 5 required intents. See
   // ai-query.service.ts's TEMPLATE_CATALOG for the full set.
   'inventory.productCostBasis', 'inventory.reorderDraftPreview', 'purchasing.landedCostForPurchase', 'kits.components', 'locations.stockAtLocation',
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance's 5 required
+  // intents. See ai-query.service.ts's TEMPLATE_CATALOG for the full set.
+  'costCentres.performanceThisMonth', 'budgets.varianceCheck', 'cashFlow.projectionNextMonth', 'payments.slowestPayingCustomers', 'payroll.statutoryLiabilityThisMonth',
   'out_of_scope'
 ] as const
 
@@ -94,7 +97,10 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   salesOrders: 'salesOrders', pricing: 'pricing', invoiceTemplate: 'invoiceTemplate', approvals: 'approvals',
   // Phase 64 — Inventory & Costing Depth's own static categories (also
   // universal, not gated to specific BusinessTypes).
-  purchasing: 'purchasing', kits: 'kits', locations: 'locations'
+  purchasing: 'purchasing', kits: 'kits', locations: 'locations',
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance's own static
+  // categories (also universal, not gated to specific BusinessTypes).
+  costCentres: 'costCentres', budgets: 'budgets', cashFlow: 'cashFlow', payments: 'payments', payroll: 'payroll'
 }
 
 function categoryFor(template: string): string {

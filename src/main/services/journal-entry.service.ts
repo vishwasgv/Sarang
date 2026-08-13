@@ -9,7 +9,10 @@ import type { CreateJournalEntryPayload } from '../validation/journal-entry.vali
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
-type EntryLine = { accountId: string; bankAccountId?: string | null; debitAmount: number; creditAmount: number; remarks?: string | null }
+// Phase 65 — costCentreId is optional and purely additive: every existing
+// caller that never sets it produces the exact same JournalEntryLine rows
+// as before this phase (costCentreId stays null).
+type EntryLine = { accountId: string; bankAccountId?: string | null; costCentreId?: string | null; debitAmount: number; creditAmount: number; remarks?: string | null }
 
 async function generateEntryNumber(tx: TxClient): Promise<string> {
   return generateSequenceNumber(
@@ -67,7 +70,7 @@ async function postSystemEntryTx(
       narration: params.narration || null,
       sourceType: params.sourceType,
       sourceId: params.sourceId ?? null,
-      lines: { create: params.lines.map((l) => ({ accountId: l.accountId, bankAccountId: l.bankAccountId ?? null, debitAmount: l.debitAmount, creditAmount: l.creditAmount, remarks: l.remarks || null })) }
+      lines: { create: params.lines.map((l) => ({ accountId: l.accountId, bankAccountId: l.bankAccountId ?? null, costCentreId: l.costCentreId ?? null, debitAmount: l.debitAmount, creditAmount: l.creditAmount, remarks: l.remarks || null })) }
     }
   })
   await applyBankBalanceDeltas(tx, params.lines)
@@ -143,6 +146,7 @@ export const journalEntryService = {
               create: payload.lines.map((l) => ({
                 accountId: l.accountId,
                 bankAccountId: l.bankAccountId ?? null,
+                costCentreId: l.costCentreId ?? null,
                 debitAmount: l.debitAmount,
                 creditAmount: l.creditAmount,
                 remarks: l.remarks || null

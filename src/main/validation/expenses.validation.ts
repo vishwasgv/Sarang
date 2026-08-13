@@ -22,6 +22,8 @@ export const CreateExpenseSchema = z.object({
   // separate tax line), but feeds GSTR-3B Table 3.1(d)'s real disclosure —
   // was schema-only until now, unsettable by any real caller.
   isReverseCharge: z.boolean().default(false),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId: z.string().min(1).optional(),
 })
 
 export const UpdateExpenseSchema = z.object({
@@ -37,6 +39,8 @@ export const UpdateExpenseSchema = z.object({
   mileageRatePerKm: z.number().finite().min(0).optional(),
   billableCustomerId: z.string().min(1).optional(),
   isReverseCharge: z.boolean().optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId: z.string().min(1).optional(),
 })
 
 export const CreateExpenseCategorySchema = z.object({

@@ -130,6 +130,59 @@ describe('journalEntryService.createJournalEntry', () => {
     // Debit on an ASSET (bank) line increases the running balance.
     expect(db.bankAccount.update).toHaveBeenCalledWith({ where: { id: 'bank-1' }, data: { currentBalance: { increment: 1000 } } })
   })
+
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. costCentreId is
+  // optional and purely additive — a manual entry can tag its lines the
+  // same as every automated posting now can.
+  it('threads an optional costCentreId through to the created lines', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await journalEntryService.createJournalEntry({
+      lines: [
+        { accountId: 'coa-cash', costCentreId: 'cc-1', debitAmount: 1000, creditAmount: 0 },
+        { accountId: 'coa-sales', costCentreId: 'cc-1', debitAmount: 0, creditAmount: 1000 },
+      ],
+    })
+
+    const createCall = vi.mocked(db.journalEntry.create).mock.calls[0][0] as { data: { lines: { create: Array<{ accountId: string; costCentreId: string | null }> } } }
+    const lines = createCall.data.lines.create
+    expect(lines.every((l) => l.costCentreId === 'cc-1')).toBe(true)
+  })
+
+  it('defaults costCentreId to null when a line does not specify one (zero behavior change for every pre-Phase-65 caller)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await journalEntryService.createJournalEntry({
+      lines: [
+        { accountId: 'coa-cash', debitAmount: 1000, creditAmount: 0 },
+        { accountId: 'coa-sales', debitAmount: 0, creditAmount: 1000 },
+      ],
+    })
+
+    const createCall = vi.mocked(db.journalEntry.create).mock.calls[0][0] as { data: { lines: { create: Array<{ costCentreId: string | null }> } } }
+    expect(createCall.data.lines.create.every((l) => l.costCentreId === null)).toBe(true)
+  })
+})
+
+describe('journalEntryService.postSystemEntry', () => {
+  it('threads costCentreId through to the created lines for a system posting (e.g. an invoice/bill/expense)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await journalEntryService.postSystemEntry(db as never, {
+      sourceType: 'INVOICE',
+      sourceId: 'inv-1',
+      lines: [
+        { accountId: 'coa-cash', costCentreId: 'cc-branch-1', debitAmount: 1000, creditAmount: 0 },
+        { accountId: 'coa-sales', costCentreId: 'cc-branch-1', debitAmount: 0, creditAmount: 1000 },
+      ],
+    })
+
+    const createCall = vi.mocked(db.journalEntry.create).mock.calls[0][0] as { data: { lines: { create: Array<{ costCentreId: string | null }> } } }
+    expect(createCall.data.lines.create.every((l) => l.costCentreId === 'cc-branch-1')).toBe(true)
+  })
 })
 
 describe('journalEntryService.reverseJournalEntry', () => {

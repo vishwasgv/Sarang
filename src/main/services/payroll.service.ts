@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { getMonthlySummaries } from './hr.service'
 import type { Allowance } from './hr.service'
 import { roundCurrency } from './currency.service'
+import { postExpenseJournalEntry } from './expense.service'
 
 // Deliberately owner-configurable deductions (name+amount pairs), not computed
 // statutory formulas — see PHASE_54F_16_TECHNICAL_SPEC.md Section 1 for why.
@@ -73,7 +74,7 @@ function serializeRecord(row: {
   }
 }
 
-const includeEmployee = { employee: { select: { fullName: true } } } as const
+const includeEmployee = { employee: { select: { fullName: true, costCentreId: true } } } as const
 
 export async function listPayrollForPeriod(payload: { year: number; month: number }): Result<{ records: SalaryPaymentRecord[] }> {
   try {
@@ -221,8 +222,18 @@ export async function markSalaryPaid(payload: { id: string; paymentMethod: strin
           expenseDate: paidDate,
           paymentMethod: payload.paymentMethod || 'CASH',
           createdById: payload.userId ?? null,
+          // Phase 65 — Reporting Tags / Cost & Profit Centres.
+          costCentreId: existing.employee.costCentreId,
         },
       })
+      // Phase 65 — real, previously-undisclosed gap found in this phase's
+      // own grounding check: this Expense row was created directly against
+      // the Prisma client, bypassing expense.service.ts's createExpense()
+      // (the function that actually posts to the GL). A paid salary landed
+      // in the Expense Report/P&L but never touched JournalEntry/
+      // JournalEntryLine — invisible in the Trial Balance. Every other
+      // Expense in this codebase posts; salary must too.
+      await postExpenseJournalEntry(tx, { expenseId: expense.id, expenseName: expense.expenseName, amount: expense.amount, costCentreId: expense.costCentreId })
 
       const updated = await tx.salaryPayment.update({
         where: { id: payload.id },
@@ -248,5 +259,50 @@ export async function getSalaryPayment(id: string): Result<SalaryPaymentRecord> 
     return { success: true, data: serializeRecord(row) }
   } catch (e) {
     return { success: false, error: { code: 'PAY-009', message: e instanceof Error ? e.message : 'Could not load payroll record.' } }
+  }
+}
+
+// Phase 65 — statutory PF/ESI/Professional Tax deduction SUGGESTIONS.
+// Deliberately NOT a hardcoded government formula/rate table — see
+// BusinessProfile.statutoryPfPercent's own schema comment for why this
+// project made that call twice now (PHASE_54F_16_TECHNICAL_SPEC.md
+// originally, reaffirmed for this exact feature per the founder's own
+// 2026-08-13 confirmation). This function ONLY computes and returns
+// candidate DeductionLine entries from the business's own configured
+// rates — it never writes anything. The caller (updateSalaryPayment, via
+// the real UI) still requires an explicit save, exactly like every other
+// hand-typed deduction line already does. A rate left unconfigured
+// (null/0) simply produces no suggestion for that head, rather than a
+// misleading ₹0 line implying "nothing owed."
+export async function suggestStatutoryDeductions(payload: { salaryPaymentId: string }): Result<{ suggestions: DeductionLine[] }> {
+  try {
+    const db = getPrisma()
+    const record = await db.salaryPayment.findUnique({ where: { id: payload.salaryPaymentId } })
+    if (!record) return { success: false, error: { code: 'PAY-004', message: 'Payroll record not found.' } }
+
+    const profile = await db.businessProfile.findFirst({
+      select: { statutoryPfPercent: true, statutoryEsiPercent: true, statutoryEsiWageCeiling: true, statutoryProfessionalTax: true }
+    })
+    if (!profile) return { success: true, data: { suggestions: [] } }
+
+    const suggestions: DeductionLine[] = []
+    const basic = record.basicSalary
+
+    if (profile.statutoryPfPercent && profile.statutoryPfPercent > 0) {
+      suggestions.push({ name: 'PF', amount: roundCurrency(basic * (profile.statutoryPfPercent / 100)) })
+    }
+    // ESI has a real-world wage-ceiling eligibility rule: above the
+    // configured ceiling, ESI doesn't apply at all, not a smaller amount.
+    if (profile.statutoryEsiPercent && profile.statutoryEsiPercent > 0) {
+      const underCeiling = !profile.statutoryEsiWageCeiling || basic <= profile.statutoryEsiWageCeiling
+      if (underCeiling) suggestions.push({ name: 'ESI', amount: roundCurrency(basic * (profile.statutoryEsiPercent / 100)) })
+    }
+    if (profile.statutoryProfessionalTax && profile.statutoryProfessionalTax > 0) {
+      suggestions.push({ name: 'Professional Tax', amount: roundCurrency(profile.statutoryProfessionalTax) })
+    }
+
+    return { success: true, data: { suggestions } }
+  } catch (e) {
+    return { success: false, error: { code: 'PAY-010', message: e instanceof Error ? e.message : 'Could not compute statutory deduction suggestions.' } }
   }
 }

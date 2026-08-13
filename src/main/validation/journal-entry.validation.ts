@@ -8,6 +8,9 @@ import { z } from 'zod'
 const JournalEntryLineSchema = z.object({
   accountId: z.string().min(1, 'Account is required'),
   bankAccountId: z.string().min(1).optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres, optional on a manual
+  // entry the same as on every automated posting.
+  costCentreId: z.string().min(1).optional(),
   debitAmount: z.number().min(0).default(0),
   creditAmount: z.number().min(0).default(0),
   remarks: z.string().max(300).optional(),

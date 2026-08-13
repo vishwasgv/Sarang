@@ -25,6 +25,8 @@ import { SalesOrderDetailScreen } from '@modules/sales-orders/ui/SalesOrderDetai
 import { PriceListsScreen } from '@modules/pricing/ui/PriceListsScreen'
 import { RecurringProfilesScreen } from '@modules/recurring/ui/RecurringProfilesScreen'
 import { LocationsScreen } from '@modules/locations/ui/LocationsScreen'
+import { CostCentresScreen } from '@modules/cost-centres/ui/CostCentresScreen'
+import { BudgetsScreen } from '@modules/budgets/ui/BudgetsScreen'
 import { ApprovalWorkflowsScreen } from '@modules/approvals/ui/ApprovalWorkflowsScreen'
 import { PricingSchemesScreen } from '@modules/pricing/ui/PricingSchemesScreen'
 import { SupplierPaymentsScreen } from '@modules/suppliers/ui/SupplierPaymentsScreen'
@@ -295,6 +297,9 @@ export function AppRouter() {
         <Route path="/pricing/price-lists" element={<ProtectedRoute permission="priceLists.view"><PriceListsScreen /></ProtectedRoute>} />
         <Route path="/recurring-profiles" element={<ProtectedRoute permission="recurringProfiles.view"><RecurringProfilesScreen /></ProtectedRoute>} />
         <Route path="/locations" element={<ProtectedRoute permission="locations.view"><LocationsScreen /></ProtectedRoute>} />
+        {/* Phase 65 — Cost Centres, Budgets & Payroll Compliance */}
+        <Route path="/cost-centres" element={<ProtectedRoute permission="costCentres.view"><CostCentresScreen /></ProtectedRoute>} />
+        <Route path="/budgets" element={<ProtectedRoute permission="budgets.view"><BudgetsScreen /></ProtectedRoute>} />
         <Route path="/approval-workflows" element={<ProtectedRoute permission="approvalWorkflows.view"><ApprovalWorkflowsScreen /></ProtectedRoute>} />
         <Route path="/pricing/schemes" element={<ProtectedRoute permission="pricingSchemes.view"><PricingSchemesScreen /></ProtectedRoute>} />
         <Route path="/supplier-payments" element={<ProtectedRoute permission="supplierPayments.view"><SupplierPaymentsScreen /></ProtectedRoute>} />

@@ -34,7 +34,12 @@ vi.mock('../report.service', () => ({
     generateProfitAndLossReport: vi.fn(),
     generateProductionReport: vi.fn(),
     generatePurchasesByItemReport: vi.fn(),
-    generatePurchaseRegisterReport: vi.fn()
+    generatePurchaseRegisterReport: vi.fn(),
+    generateCostCentreTreemapReport: vi.fn(),
+    generateBudgetVsActualReport: vi.fn(),
+    generateCashFlowProjection: vi.fn(),
+    generatePaymentPerformanceReport: vi.fn(),
+    generateStatutoryComplianceSummaryReport: vi.fn()
   }
 }))
 vi.mock('../analytics.service', () => ({
@@ -624,7 +629,7 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
 
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('meta.capabilities')
-    expect(res.data?.answer).toMatch(/sales, inventory, customers, suppliers, credit, finance, staff, and documents/i)
+    expect(res.data?.answer).toMatch(/sales, inventory, customers, suppliers, credit, finance and banking, staff and payroll, purchasing, cost centres and budgets, and documents/i)
     expect(res.data?.answer).toMatch(/legal, tax, medical, investment, or compliance/i)
     expect(classifySpy).not.toHaveBeenCalled()
   })
@@ -1084,5 +1089,99 @@ describe('askQuestion — Phase 64 Inventory & Costing Depth AI intents', () => 
     expect(res.data?.answer).toContain('Warehouse')
     expect(res.data?.answer).toContain('Widget')
     expect(db.locationStock.findMany.mock.calls[0][0].where.locationId).toBe('loc-2')
+  })
+})
+
+describe('askQuestion — Phase 65 Cost Centres, Budgets & Payroll Compliance AI intents', () => {
+  it('answers "how is Downtown doing this month" via the fast-path, reusing the treemap report\'s own data', async () => {
+    const db = makeMockDb()
+    db.costCentre = { findFirst: vi.fn().mockResolvedValue({ id: 'cc-1', name: 'Downtown', isActive: true }) }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(reportService.generateCostCentreTreemapReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-13',
+      rows: [{ costCentreId: 'cc-1', costCentreName: 'Downtown', revenue: 50000, expense: 30000, margin: 20000 }],
+      untaggedRevenue: 0, untaggedExpense: 0
+    })
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('How is Downtown doing this month?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('costCentres.performanceThisMonth')
+    expect(res.data?.answer).toContain('Downtown')
+    expect(res.data?.answer).toContain('₹20,000.00')
+  })
+
+  it('answers "am I over budget on Marketing" via the fast-path, reusing the budget-vs-actual report\'s own data', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(reportService.generateBudgetVsActualReport).mockResolvedValue({
+      periodYear: 2026, periodMonth: 8,
+      rows: [{ budgetId: 'bud-1', costCentreId: 'cc-1', costCentreName: 'Marketing', accountId: null, accountName: null, budgeted: 50000, actual: 62000, variance: -12000 }]
+    })
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Am I over budget on Marketing?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('budgets.varianceCheck')
+    expect(res.data?.answer).toContain('Yes')
+    expect(res.data?.answer).toContain('Marketing')
+  })
+
+  it('answers "what\'s my projected cash flow next month" via the fast-path, reusing the cash-flow projection report', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const today = new Date().toISOString().slice(0, 10)
+    const future = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)
+    vi.mocked(reportService.generateCashFlowProjection).mockResolvedValue({
+      asOf: today, daysBack: 1, daysForward: 30,
+      days: [
+        { date: today, actualNet: 0, projectedNet: 0 },
+        { date: future, actualNet: null, projectedNet: 10000 }
+      ]
+    })
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's my projected cash flow next month?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('cashFlow.projectionNextMonth')
+    expect(res.data?.answer).toContain('₹10,000.00')
+  })
+
+  it('answers "which customers are slowest to pay" via the fast-path, reusing the payment performance report', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(reportService.generatePaymentPerformanceReport).mockResolvedValue({
+      dateFrom: '2026-05-13', dateTo: '2026-08-13',
+      rows: [{ customerId: 'cust-1', customerName: 'Slow Traders', paidInvoiceCount: 3, avgDaysToPay: 52, outstandingInvoiceCount: 0, outstandingAmount: 0 }],
+      overallAvgDaysToPay: 52
+    })
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('Which customers are slowest to pay?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('payments.slowestPayingCustomers')
+    expect(res.data?.answer).toContain('Slow Traders')
+    expect(res.data?.answer).toContain('52')
+  })
+
+  it('answers "what\'s my PF liability this month" via the fast-path, reusing the statutory compliance summary report', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(reportService.generateStatutoryComplianceSummaryReport).mockResolvedValue({
+      periodYear: 2026, periodMonth: 8,
+      rows: [{ name: 'PF', totalAmount: 2400, employeeCount: 2 }],
+      totalEmployees: 2
+    })
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion("What's my PF liability this month?")
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('payroll.statutoryLiabilityThisMonth')
+    expect(res.data?.answer).toContain('₹2,400.00')
   })
 })

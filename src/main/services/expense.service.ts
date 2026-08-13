@@ -9,18 +9,24 @@ import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.ser
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
 // Phase 62 — GL auto-posting: an expense is money going straight out.
-// Debit Operating Expenses / Credit Cash & Bank.
-async function postExpenseJournalEntry(tx: TxClient, params: { expenseId: string; expenseName: string; amount: number }): Promise<void> {
+// Debit Operating Expenses / Credit Cash & Bank. Exported (not just used
+// internally by createExpense/updateExpense below) — same reuse rationale
+// billing.service.ts's postInvoiceJournalEntry already documents for
+// itself: payroll.service.ts's markSalaryPaid creates a real Expense row
+// directly (not through createExpense) and needs this same posting logic
+// rather than a second, divergent copy of it.
+export async function postExpenseJournalEntry(tx: TxClient, params: { expenseId: string; expenseName: string; amount: number; costCentreId?: string | null }): Promise<void> {
   if (params.amount <= 0) return
   const [expenseAccount, cashAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode('6000', tx),
     chartOfAccountsService.getSystemAccountByCode('1000', tx)
   ])
+  const costCentreId = params.costCentreId ?? null
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'EXPENSE', sourceId: params.expenseId, narration: `Expense: ${params.expenseName}`,
     lines: [
-      { accountId: expenseAccount.id, bankAccountId: null, debitAmount: params.amount, creditAmount: 0 },
-      { accountId: cashAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: params.amount }
+      { accountId: expenseAccount.id, bankAccountId: null, costCentreId, debitAmount: params.amount, creditAmount: 0 },
+      { accountId: cashAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: params.amount }
     ]
   })
 }
@@ -75,6 +81,8 @@ export interface ExpensePayload {
   mileageRatePerKm?: number
   billableCustomerId?: string
   isReverseCharge?: boolean
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId?: string
 }
 
 export interface UpdateExpensePayload extends ExpensePayload {
@@ -159,12 +167,14 @@ export async function createExpense(payload: ExpensePayload, userId?: string) {
           mileageKm: payload.mileageKm ?? null,
           mileageRatePerKm: payload.mileageRatePerKm ?? null,
           billableCustomerId: payload.billableCustomerId ?? null,
-          isReverseCharge: payload.isReverseCharge ?? false
+          isReverseCharge: payload.isReverseCharge ?? false,
+          // Phase 65 — Reporting Tags / Cost & Profit Centres.
+          costCentreId: payload.costCentreId ?? null
         },
         include: { category: { select: { id: true, categoryName: true } } }
       })
       // Phase 62 — GL auto-posting.
-      await postExpenseJournalEntry(tx, { expenseId: created.id, expenseName: created.expenseName, amount: created.amount })
+      await postExpenseJournalEntry(tx, { expenseId: created.id, expenseName: created.expenseName, amount: created.amount, costCentreId: created.costCentreId })
       return created
     })
 
@@ -219,7 +229,9 @@ export async function updateExpense(payload: UpdateExpensePayload, userId?: stri
           mileageKm: payload.mileageKm ?? null,
           mileageRatePerKm: payload.mileageRatePerKm ?? null,
           billableCustomerId: payload.billableCustomerId ?? null,
-          isReverseCharge: payload.isReverseCharge ?? existing.isReverseCharge
+          isReverseCharge: payload.isReverseCharge ?? existing.isReverseCharge,
+          // Phase 65 — Reporting Tags / Cost & Profit Centres.
+          costCentreId: payload.costCentreId !== undefined ? payload.costCentreId : existing.costCentreId
         },
         include: { category: { select: { id: true, categoryName: true } } }
       })
@@ -229,7 +241,7 @@ export async function updateExpense(payload: UpdateExpensePayload, userId?: stri
       // matches this codebase's "nothing financial is silently mutated"
       // stance already established for every other reversal in this phase.
       await reverseEntryBySourceTx(tx, 'EXPENSE', existing.id, 'Expense edited', userId)
-      await postExpenseJournalEntry(tx, { expenseId: updated.id, expenseName: updated.expenseName, amount: updated.amount })
+      await postExpenseJournalEntry(tx, { expenseId: updated.id, expenseName: updated.expenseName, amount: updated.amount, costCentreId: updated.costCentreId })
       return updated
     })
 

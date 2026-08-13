@@ -34,6 +34,7 @@ const schema = z.object({
   dueDate: z.string().optional(),
   notes: z.string().max(500).optional(),
   isReverseCharge: z.boolean().default(false),
+  costCentreId: z.string().optional(),
   items: z.array(itemSchema).min(1, 'Add at least one item')
 })
 
@@ -42,6 +43,7 @@ type FormValues = z.infer<typeof schema>
 interface Supplier { id: string; supplierName: string; supplierCode: string }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; productType: string; costPrice: number }
 interface ExpenseCategory { id: string; categoryName: string }
+interface CostCentre { id: string; name: string }
 
 interface BillFormModalProps {
   open: boolean
@@ -119,6 +121,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
+  const [costCentres, setCostCentres] = useState<CostCentre[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
   // Phase 64 — landed cost (freight/duty/handling), entered inline at
@@ -134,7 +137,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
 
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, items: [emptyItem] }
+    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, costCentreId: '', items: [emptyItem] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -152,21 +155,23 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
 
   useEffect(() => {
     if (!open) return
-    reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, items: [emptyItem] })
+    reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, costCentreId: '', items: [emptyItem] })
     setLandedCostRows([])
     async function loadOptions() {
       setLoadingData(true)
       try {
-        const [, pRes, cRes] = await Promise.all([
+        const [, pRes, cRes, ccRes] = await Promise.all([
           loadSuppliers(),
           window.api.products.list({ isActive: true, limit: 500 }),
-          window.api.expenses.listCategories()
+          window.api.expenses.listCategories(),
+          window.api.costCentres.list()
         ])
         if (pRes.success) {
           const d = pRes.data as { products: Product[] }
           setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
         }
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
+        if (ccRes.success) setCostCentres((ccRes.data as CostCentre[]) ?? [])
       } catch {
         toastError(t('common.error'), t('common.error'))
       } finally {
@@ -222,6 +227,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
         dueDate: values.dueDate || undefined,
         notes: values.notes || undefined,
         isReverseCharge: values.isReverseCharge,
+        costCentreId: values.costCentreId || undefined,
         items: values.items.map(item => ({
           productId: item.lineType === 'PRODUCT' ? item.productId : undefined,
           serviceDescription: item.lineType === 'SERVICE' ? item.serviceDescription : undefined,
@@ -373,6 +379,16 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
           </label>
           {watch('isReverseCharge') && (
             <p className="text-xs text-slate-500 dark:text-slate-400 -mt-3">{t('bills.reverseChargeNote')}</p>
+          )}
+
+          {costCentres.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('costCentres.title')}</label>
+              <select {...register('costCentreId')} className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                <option value="">{t('costCentres.none')}</option>
+                {costCentres.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
+              </select>
+            </div>
           )}
 
           {/* Phase 64 — landed cost, entered inline (see the state comment

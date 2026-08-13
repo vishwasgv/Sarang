@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../blood-bank.service', () => ({ getBloodStock: vi.fn() }))
@@ -1712,6 +1712,417 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(byAccount['1000 — Cash & Bank'].debit).toBe(300) // the pre-dateFrom posting still counts
     expect(byAccount['4000 — Sales Revenue'].credit).toBe(300) // the post-dateTo posting is excluded
     expect(result.balanced).toBe(true)
+  })
+})
+
+// ─── Cost Centre Treemap P&L (Phase 65) ────────────────────────────────────
+
+describe('reportService.generateCostCentreTreemapReport', () => {
+  const REVENUE = { accountType: 'INCOME' }
+  const EXPENSE = { accountType: 'EXPENSE' }
+  const ASSET = { accountType: 'ASSET' }
+
+  it('computes revenue/expense/margin per cost centre from real tagged JournalEntryLine rows — unlike Trial Balance, this is a PERIOD sum (bounded by dateFrom too), not cumulative-as-of', async () => {
+    const db = makeDb({
+      costCentre: { findMany: vi.fn().mockResolvedValue([{ id: 'cc-1', name: 'Downtown Branch' }, { id: 'cc-2', name: 'Uptown Branch' }]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', debitAmount: 0, creditAmount: 5000, account: REVENUE },
+        { costCentreId: 'cc-1', debitAmount: 2000, creditAmount: 0, account: EXPENSE },
+        { costCentreId: 'cc-2', debitAmount: 0, creditAmount: 3000, account: REVENUE },
+        { costCentreId: 'cc-2', debitAmount: 4000, creditAmount: 0, account: EXPENSE }, // running at a loss
+        { costCentreId: 'cc-1', debitAmount: 1000, creditAmount: 0, account: ASSET }, // non-P&L line, ignored
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCostCentreTreemapReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const byId = Object.fromEntries(result.rows.map(r => [r.costCentreId, r]))
+    expect(byId['cc-1']).toMatchObject({ costCentreName: 'Downtown Branch', revenue: 5000, expense: 2000, margin: 3000 })
+    expect(byId['cc-2']).toMatchObject({ costCentreName: 'Uptown Branch', revenue: 3000, expense: 4000, margin: -1000 })
+  })
+
+  it('buckets untagged revenue/expense separately instead of silently dropping them', async () => {
+    const db = makeDb({
+      costCentre: { findMany: vi.fn().mockResolvedValue([{ id: 'cc-1', name: 'Downtown Branch' }]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', debitAmount: 0, creditAmount: 1000, account: REVENUE },
+        { costCentreId: null, debitAmount: 0, creditAmount: 500, account: REVENUE },
+        { costCentreId: null, debitAmount: 200, creditAmount: 0, account: EXPENSE },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCostCentreTreemapReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.untaggedRevenue).toBe(500)
+    expect(result.untaggedExpense).toBe(200)
+    expect(result.rows).toHaveLength(1)
+  })
+
+  it('omits a cost centre nobody has tagged anything against yet, rather than padding with a zero rectangle', async () => {
+    const db = makeDb({
+      costCentre: { findMany: vi.fn().mockResolvedValue([{ id: 'cc-1', name: 'Downtown Branch' }, { id: 'cc-empty', name: 'Never Used' }]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', debitAmount: 0, creditAmount: 1000, account: REVENUE },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCostCentreTreemapReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map(r => r.costCentreId)).toEqual(['cc-1'])
+  })
+
+  it('returns zero rows for a fresh install with no cost centres and no GL postings', async () => {
+    const db = makeDb({ costCentre: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCostCentreTreemapReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toHaveLength(0)
+    expect(result.untaggedRevenue).toBe(0)
+    expect(result.untaggedExpense).toBe(0)
+  })
+})
+
+// ─── Budget vs. Actual (Phase 65) ──────────────────────────────────────────
+
+describe('reportService.generateBudgetVsActualReport', () => {
+  const REVENUE = { accountType: 'INCOME' }
+  const EXPENSE = { accountType: 'EXPENSE' }
+
+  it('computes actual spend for a whole-cost-centre budget (no accountId) by summing all EXPENSE lines in scope', async () => {
+    const db = makeDb({
+      budget: { findMany: vi.fn().mockResolvedValue([
+        { id: 'bud-1', costCentreId: 'cc-1', accountId: null, periodYear: 2026, periodMonth: 8, amount: 50000, costCentre: { id: 'cc-1', name: 'Marketing' }, account: null },
+      ]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', accountId: 'coa-6000', debitAmount: 62000, creditAmount: 0, account: EXPENSE },
+        { costCentreId: 'cc-1', accountId: 'coa-4000', debitAmount: 0, creditAmount: 10000, account: REVENUE }, // revenue on this centre, ignored for a whole-centre spend budget
+        { costCentreId: 'cc-2', accountId: 'coa-6000', debitAmount: 5000, creditAmount: 0, account: EXPENSE }, // different cost centre, out of scope
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBudgetVsActualReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ budgeted: 50000, actual: 62000, variance: -12000 })
+  })
+
+  it('computes actual for a specific-account budget by matching both costCentreId and accountId', async () => {
+    const db = makeDb({
+      budget: { findMany: vi.fn().mockResolvedValue([
+        { id: 'bud-1', costCentreId: 'cc-1', accountId: 'coa-6000', periodYear: 2026, periodMonth: 8, amount: 20000, costCentre: { id: 'cc-1', name: 'Marketing' }, account: { id: 'coa-6000', accountName: 'Operating Expenses', accountType: 'EXPENSE' } },
+      ]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', accountId: 'coa-6000', debitAmount: 15000, creditAmount: 0, account: EXPENSE },
+        { costCentreId: 'cc-1', accountId: 'coa-6100', debitAmount: 9000, creditAmount: 0, account: EXPENSE }, // different account, out of scope
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBudgetVsActualReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows[0]).toMatchObject({ budgeted: 20000, actual: 15000, variance: 5000 })
+  })
+
+  it('honestly reports ₹0 actual for a budget whose scope has never had a single tagged transaction', async () => {
+    const db = makeDb({
+      budget: { findMany: vi.fn().mockResolvedValue([
+        { id: 'bud-1', costCentreId: 'cc-never-used', accountId: null, periodYear: 2026, periodMonth: 8, amount: 10000, costCentre: { id: 'cc-never-used', name: 'Unused' }, account: null },
+      ]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBudgetVsActualReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows[0]).toMatchObject({ budgeted: 10000, actual: 0, variance: 10000 })
+  })
+
+  it('computes a company-wide budget (no costCentreId, no accountId) across all EXPENSE lines regardless of cost centre', async () => {
+    const db = makeDb({
+      budget: { findMany: vi.fn().mockResolvedValue([
+        { id: 'bud-1', costCentreId: null, accountId: null, periodYear: 2026, periodMonth: 8, amount: 100000, costCentre: null, account: null },
+      ]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', accountId: 'coa-6000', debitAmount: 40000, creditAmount: 0, account: EXPENSE },
+        { costCentreId: 'cc-2', accountId: 'coa-6000', debitAmount: 30000, creditAmount: 0, account: EXPENSE },
+        { costCentreId: null, accountId: 'coa-6000', debitAmount: 5000, creditAmount: 0, account: EXPENSE },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBudgetVsActualReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows[0].actual).toBe(75000)
+  })
+
+  it('returns zero rows for a period with no budgets set, without querying JournalEntryLine at all', async () => {
+    const db = makeDb({ budget: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBudgetVsActualReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows).toHaveLength(0)
+    expect(db.journalEntryLine.findMany).not.toHaveBeenCalled()
+  })
+})
+
+// ─── Statutory (PF/ESI/PT) Summary Report (Phase 65) ───────────────────────
+
+describe('reportService.generateStatutoryComplianceSummaryReport', () => {
+  it('sums deduction amounts across all employees for the period, grouped by deduction name', async () => {
+    const db = makeDb({
+      salaryPayment: { findMany: vi.fn().mockResolvedValue([
+        { deductions: JSON.stringify([{ name: 'PF', amount: 2400 }, { name: 'ESI', amount: 150 }]) },
+        { deductions: JSON.stringify([{ name: 'PF', amount: 1800 }]) },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStatutoryComplianceSummaryReport({ periodYear: 2026, periodMonth: 8 })
+
+    const byName = Object.fromEntries(result.rows.map(r => [r.name, r]))
+    expect(byName.PF).toMatchObject({ totalAmount: 4200, employeeCount: 2 })
+    expect(byName.ESI).toMatchObject({ totalAmount: 150, employeeCount: 1 })
+    expect(result.totalEmployees).toBe(2)
+  })
+
+  it('ignores a malformed/legacy deductions field instead of throwing', async () => {
+    const db = makeDb({
+      salaryPayment: { findMany: vi.fn().mockResolvedValue([
+        { deductions: 'not valid json' },
+        { deductions: JSON.stringify([{ name: 'PF', amount: 1000 }]) },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStatutoryComplianceSummaryReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows).toEqual([{ name: 'PF', totalAmount: 1000, employeeCount: 1 }])
+  })
+
+  it('returns zero rows when no payroll exists for the period', async () => {
+    const db = makeDb({ salaryPayment: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStatutoryComplianceSummaryReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows).toHaveLength(0)
+    expect(result.totalEmployees).toBe(0)
+  })
+
+  it('sorts rows by total amount descending', async () => {
+    const db = makeDb({
+      salaryPayment: { findMany: vi.fn().mockResolvedValue([
+        { deductions: JSON.stringify([{ name: 'Professional Tax', amount: 200 }, { name: 'PF', amount: 5000 }]) },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStatutoryComplianceSummaryReport({ periodYear: 2026, periodMonth: 8 })
+
+    expect(result.rows.map(r => r.name)).toEqual(['PF', 'Professional Tax'])
+  })
+})
+
+// ─── Cash-Flow Projection (Phase 65) ───────────────────────────────────────
+
+describe('reportService.generateCashFlowProjection', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 13)) // 2026-08-13, a Thursday
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('produces one bucket per day across daysBack + today + daysForward, with actual/projected only on the correct side', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 5 })
+
+    expect(result.days).toHaveLength(11)
+    expect(result.asOf).toBe('2026-08-13')
+    const past = result.days.find(d => d.date === '2026-08-10')!
+    expect(past.actualNet).not.toBeNull()
+    expect(past.projectedNet).toBeNull()
+    const future = result.days.find(d => d.date === '2026-08-16')!
+    expect(future.projectedNet).not.toBeNull()
+    expect(future.actualNet).toBeNull()
+    const seam = result.days.find(d => d.date === '2026-08-13')!
+    expect(seam.actualNet).not.toBeNull()
+    expect(seam.projectedNet).not.toBeNull()
+  })
+
+  it('nets real Payment (in) against Expense and SupplierPayment (out) per day for actuals', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      payment: { findMany: vi.fn().mockResolvedValue([{ amount: 10000, paymentDate: new Date(2026, 7, 12) }]) },
+      expense: { findMany: vi.fn().mockResolvedValue([{ amount: 3000, expenseDate: new Date(2026, 7, 12) }]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([{ amount: 2000, paymentDate: new Date(2026, 7, 12) }]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 5 })
+
+    const day = result.days.find(d => d.date === '2026-08-12')!
+    expect(day.actualNet).toBe(5000)
+  })
+
+  it('adds an open Invoice balance to its dueDate bucket and subtracts an open Bill balance from its own', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([{ balanceAmount: 8000, dueDate: new Date(2026, 7, 18) }]) },
+      bill: { findMany: vi.fn().mockResolvedValue([{ balanceAmount: 3000, dueDate: new Date(2026, 7, 18) }]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 10 })
+
+    const day = result.days.find(d => d.date === '2026-08-18')!
+    expect(day.projectedNet).toBe(5000)
+  })
+
+  it('forecasts an active EXPENSE recurring profile on its threshold day within the window', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([{
+        cadence: 'MONTHLY', dayOfPeriod: 20, startDate: new Date(2026, 0, 1), endDate: null,
+        lastGeneratedPeriod: null, payloadJson: JSON.stringify({ amount: 5000, expenseName: 'Rent' })
+      }]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 10 })
+
+    const day = result.days.find(d => d.date === '2026-08-20')!
+    expect(day.projectedNet).toBe(-5000)
+  })
+
+  it('skips a recurring profile whose current period has already been generated', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([{
+        cadence: 'MONTHLY', dayOfPeriod: 20, startDate: new Date(2026, 0, 1), endDate: null,
+        lastGeneratedPeriod: '2026-08', payloadJson: JSON.stringify({ amount: 5000, expenseName: 'Rent' })
+      }]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 10 })
+
+    const day = result.days.find(d => d.date === '2026-08-20')!
+    expect(day.projectedNet).toBe(0)
+  })
+
+  it('does not throw on a malformed recurring-profile payload snapshot', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([{
+        cadence: 'MONTHLY', dayOfPeriod: 20, startDate: new Date(2026, 0, 1), endDate: null,
+        lastGeneratedPeriod: null, payloadJson: 'not valid json'
+      }]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await expect(reportService.generateCashFlowProjection({ daysBack: 5, daysForward: 10 })).resolves.toBeDefined()
+  })
+
+  it('defaults to a 30/30 day window when no params are given', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      bill: { findMany: vi.fn().mockResolvedValue([]) },
+      supplierPayment: { findMany: vi.fn().mockResolvedValue([]) },
+      recurringProfile: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCashFlowProjection({})
+
+    expect(result.daysBack).toBe(30)
+    expect(result.daysForward).toBe(30)
+    expect(result.days).toHaveLength(61)
+  })
+})
+
+// ─── Payment Performance Report (Phase 65) ─────────────────────────────────
+
+describe('reportService.generatePaymentPerformanceReport', () => {
+  it('computes days-to-pay from invoiceDate to the LAST payment, not the first, for a multi-partial-payment invoice', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([
+        {
+          invoiceDate: new Date(2026, 6, 1), balanceAmount: 0, customerId: 'cust-1',
+          customer: { customerName: 'Acme Traders' },
+          payments: [{ paymentDate: new Date(2026, 6, 5) }, { paymentDate: new Date(2026, 6, 11) }]
+        }
+      ]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePaymentPerformanceReport({ dateFrom: '2026-07-01', dateTo: '2026-07-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ customerId: 'cust-1', customerName: 'Acme Traders', paidInvoiceCount: 1, avgDaysToPay: 10 })
+    expect(result.overallAvgDaysToPay).toBe(10)
+  })
+
+  it('routes a still-outstanding invoice to outstandingAmount instead of the days-to-pay average', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([
+        { invoiceDate: new Date(2026, 6, 1), balanceAmount: 4000, customerId: 'cust-1', customer: { customerName: 'Acme Traders' }, payments: [] }
+      ]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePaymentPerformanceReport({ dateFrom: '2026-07-01', dateTo: '2026-07-31' })
+
+    expect(result.rows[0]).toMatchObject({ paidInvoiceCount: 0, avgDaysToPay: null, outstandingInvoiceCount: 1, outstandingAmount: 4000 })
+    expect(result.overallAvgDaysToPay).toBeNull()
+  })
+
+  it('computes overallAvgDaysToPay from the flat list of invoices, not an average of per-customer averages', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([
+        { invoiceDate: new Date(2026, 6, 1), balanceAmount: 0, customerId: 'cust-1', customer: { customerName: 'Small Customer' }, payments: [{ paymentDate: new Date(2026, 6, 21) }] }, // 20 days
+        { invoiceDate: new Date(2026, 6, 1), balanceAmount: 0, customerId: 'cust-2', customer: { customerName: 'Big Customer' }, payments: [{ paymentDate: new Date(2026, 6, 3) }] }, // 2 days
+        { invoiceDate: new Date(2026, 6, 5), balanceAmount: 0, customerId: 'cust-2', customer: { customerName: 'Big Customer' }, payments: [{ paymentDate: new Date(2026, 6, 7) }] }, // 2 days
+        { invoiceDate: new Date(2026, 6, 10), balanceAmount: 0, customerId: 'cust-2', customer: { customerName: 'Big Customer' }, payments: [{ paymentDate: new Date(2026, 6, 12) }] } // 2 days
+      ]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePaymentPerformanceReport({ dateFrom: '2026-07-01', dateTo: '2026-07-31' })
+
+    // (20 + 2 + 2 + 2) / 4 = 6.5 — NOT (20 + 2) / 2 = 11, which is what averaging per-customer averages would give.
+    expect(result.overallAvgDaysToPay).toBe(6.5)
+  })
+
+  it('returns zero rows when no invoices exist for the period', async () => {
+    const db = makeDb({ invoice: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePaymentPerformanceReport({ dateFrom: '2026-07-01', dateTo: '2026-07-31' })
+
+    expect(result.rows).toHaveLength(0)
+    expect(result.overallAvgDaysToPay).toBeNull()
   })
 })
 

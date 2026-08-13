@@ -6,11 +6,17 @@ vi.mock('../hr.service', async () => {
   const actual = await vi.importActual<typeof import('../hr.service')>('../hr.service')
   return { ...actual, getMonthlySummaries: vi.fn(), getEmployee: vi.fn() }
 })
+// Phase 65 — markSalaryPaid now calls this (the real GL-posting fix); mocked
+// here since the txClient fixtures below don't carry the chartOfAccounts/
+// journalEntry shape postExpenseJournalEntry's real implementation needs.
+vi.mock('../expense.service', () => ({ postExpenseJournalEntry: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
 import { getMonthlySummaries } from '../hr.service'
+import { postExpenseJournalEntry } from '../expense.service'
 import {
-  generatePayrollForPeriod, updateSalaryPayment, markSalaryPaid, listPayrollForPeriod, getSalaryPayment
+  generatePayrollForPeriod, updateSalaryPayment, markSalaryPaid, listPayrollForPeriod, getSalaryPayment,
+  suggestStatutoryDeductions
 } from '../payroll.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -86,7 +92,7 @@ function makeExistingRecord(overrides: Partial<{ status: string; grossSalary: nu
     deductions: overrides.deductions ?? '[]', totalDeductions: 0, netPayable: overrides.grossSalary ?? 20000,
     status: overrides.status ?? 'DRAFT', paidDate: null, paymentMethod: null, expenseId: null, notes: null,
     createdAt: new Date(), updatedAt: new Date(),
-    employee: { fullName: 'Test Employee' },
+    employee: { fullName: 'Test Employee', costCentreId: null as string | null },
   }
 }
 
@@ -207,6 +213,38 @@ describe('markSalaryPaid', () => {
     expect(updateCall.data.expenseId).toBe('exp-1')
   })
 
+  // Phase 65 — real, previously-undisclosed bug found via a fresh grounding
+  // check: this Expense row was created directly against the tx client,
+  // bypassing expense.service.ts's own GL-posting logic entirely. A paid
+  // salary landed in the Expense Report/P&L but never touched the ledger —
+  // invisible in the Trial Balance. Fixed by explicitly calling
+  // postExpenseJournalEntry, same as every other Expense in the app.
+  it('posts the salary expense to the GL via postExpenseJournalEntry (regression guard for the never-posted bug)', async () => {
+    const existing = makeExistingRecord({ grossSalary: 20000 })
+    const db = makeMarkPaidDb(existing)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await markSalaryPaid({ id: 'sp-1', paymentMethod: 'BANK_TRANSFER', userId: 'user-1' })
+
+    expect(res.success).toBe(true)
+    expect(postExpenseJournalEntry).toHaveBeenCalledOnce()
+    const call = vi.mocked(postExpenseJournalEntry).mock.calls[0][1]
+    expect(call.expenseId).toBe('exp-1')
+    expect(call.amount).toBe(existing.netPayable)
+  })
+
+  it('tags the posted GL entry with the employee\'s own cost centre when one is assigned', async () => {
+    const existing = makeExistingRecord({ grossSalary: 20000 })
+    existing.employee = { fullName: 'Test Employee', costCentreId: 'cc-1' }
+    const db = makeMarkPaidDb(existing)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await markSalaryPaid({ id: 'sp-1', paymentMethod: 'CASH' })
+
+    const call = vi.mocked(postExpenseJournalEntry).mock.calls[0][1]
+    expect(call.costCentreId).toBe('cc-1')
+  })
+
   it('creates the Salary expense category if it does not already exist (self-healing, matches seedDefaultData convention)', async () => {
     const existing = makeExistingRecord()
     const db = makeMarkPaidDb(existing, false)
@@ -262,5 +300,92 @@ describe('listPayrollForPeriod / getSalaryPayment', () => {
 
     expect(res.success).toBe(false)
     expect(res.error?.code).toBe('PAY-004')
+  })
+})
+
+// Phase 65 — statutory PF/ESI/PT deduction SUGGESTIONS. Deliberately not a
+// hardcoded government formula — every case below asserts this function
+// only ever RETURNS candidate lines, never writes anything (no update/create
+// call exists in any of these mocks at all, on purpose).
+describe('suggestStatutoryDeductions', () => {
+  function makeRecord(overrides: Record<string, unknown> = {}) {
+    return { id: 'sp-1', basicSalary: 20000, ...overrides }
+  }
+
+  it('suggests PF and ESI from configured percentages against basic salary', async () => {
+    const db = {
+      salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeRecord({ basicSalary: 20000 })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ statutoryPfPercent: 12, statutoryEsiPercent: 0.75, statutoryEsiWageCeiling: 21000, statutoryProfessionalTax: null }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await suggestStatutoryDeductions({ salaryPaymentId: 'sp-1' })
+
+    expect(res.success).toBe(true)
+    expect(res.data?.suggestions).toEqual(expect.arrayContaining([
+      { name: 'PF', amount: 2400 },
+      { name: 'ESI', amount: 150 },
+    ]))
+  })
+
+  it('does not suggest ESI at all once basic salary exceeds the configured wage ceiling (real-world eligibility rule, not a smaller amount)', async () => {
+    const db = {
+      salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeRecord({ basicSalary: 30000 })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ statutoryPfPercent: null, statutoryEsiPercent: 0.75, statutoryEsiWageCeiling: 21000, statutoryProfessionalTax: null }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await suggestStatutoryDeductions({ salaryPaymentId: 'sp-1' })
+
+    expect(res.data?.suggestions.find((s) => s.name === 'ESI')).toBeUndefined()
+  })
+
+  it('suggests a flat Professional Tax amount when configured', async () => {
+    const db = {
+      salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeRecord()) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ statutoryPfPercent: null, statutoryEsiPercent: null, statutoryEsiWageCeiling: null, statutoryProfessionalTax: 200 }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await suggestStatutoryDeductions({ salaryPaymentId: 'sp-1' })
+
+    expect(res.data?.suggestions).toEqual([{ name: 'Professional Tax', amount: 200 }])
+  })
+
+  it('returns zero suggestions when no statutory rates are configured (fresh install, no behavior change)', async () => {
+    const db = {
+      salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeRecord()) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ statutoryPfPercent: null, statutoryEsiPercent: null, statutoryEsiWageCeiling: null, statutoryProfessionalTax: null }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await suggestStatutoryDeductions({ salaryPaymentId: 'sp-1' })
+
+    expect(res.data?.suggestions).toEqual([])
+  })
+
+  it('returns a not-found error for a missing payroll record', async () => {
+    const db = { salaryPayment: { findUnique: vi.fn().mockResolvedValue(null) }, businessProfile: { findFirst: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await suggestStatutoryDeductions({ salaryPaymentId: 'missing' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('PAY-004')
+  })
+
+  it('never writes anything — no salaryPayment.update/create call exists in any suggestion scenario', async () => {
+    const update = vi.fn()
+    const create = vi.fn()
+    const db = {
+      salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeRecord()), update, create },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ statutoryPfPercent: 12, statutoryEsiPercent: null, statutoryEsiWageCeiling: null, statutoryProfessionalTax: null }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await suggestStatutoryDeductions({ salaryPaymentId: 'sp-1' })
+
+    expect(update).not.toHaveBeenCalled()
+    expect(create).not.toHaveBeenCalled()
   })
 })

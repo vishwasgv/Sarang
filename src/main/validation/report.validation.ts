@@ -23,6 +23,30 @@ export const CashBookReportSchema = DateRangeSchema.extend({
 
 export const TrialBalanceReportSchema = DateRangeSchema
 
+// Phase 65 — Reporting Tags / Cost & Profit Centres.
+export const CostCentreTreemapReportSchema = DateRangeSchema
+
+// Phase 65 — Budget vs. Actual. A single-month report (matches Budget's own
+// monthly granularity), not a date range.
+export const BudgetVsActualReportSchema = z.object({
+  periodYear: z.number().int().min(2000).max(2100),
+  periodMonth: z.number().int().min(1).max(12)
+})
+
+// Phase 65 — Statutory (PF/ESI/PT) Summary Report, same monthly granularity
+// as payroll itself.
+export const StatutoryComplianceSummaryReportSchema = BudgetVsActualReportSchema
+
+// Phase 65 — Cash-Flow Projection. Both bounds optional (service applies
+// 30/30 defaults) — a rolling window around "today," not a fixed date range.
+export const CashFlowProjectionReportSchema = z.object({
+  daysBack: z.number().int().min(1).max(180).optional(),
+  daysForward: z.number().int().min(1).max(180).optional()
+}).optional()
+
+// Phase 65 — Payment Performance Report.
+export const PaymentPerformanceReportSchema = DateRangeSchema
+
 export const GSTR1Schema = DateRangeSchema
 
 export const ExpenseReportSchema = DateRangeSchema.extend({

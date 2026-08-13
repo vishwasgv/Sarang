@@ -12,6 +12,8 @@
     "pricingSchemes": "Pricing Schemes",
     "recurringProfiles": "Recurring Profiles",
     "locations": "Locations",
+    "costCentres": "Cost Centres",
+    "budgets": "Budgets",
     "approvalWorkflows": "Approval Workflows",
     "expenses": "Expenses",
     "reports": "Reports",
@@ -1174,6 +1176,47 @@
     "couldNotTransfer": "Could not transfer stock.",
     "stockTransferred": "Stock transferred."
   },
+  "costCentres": {
+    "title": "Cost Centres",
+    "subtitle": "{{count}} cost centres — tag invoices, bills, expenses and employees to see profit/spend by department, branch or project",
+    "name": "Name",
+    "code": "Code",
+    "newCostCentre": "New Cost Centre",
+    "editCostCentre": "Edit Cost Centre",
+    "namePlaceholder": "e.g. Marketing, Downtown Branch, Project Alpha",
+    "codePlaceholder": "Optional short code",
+    "nameRequired": "Cost centre name is required.",
+    "couldNotLoad": "Could not load cost centres.",
+    "couldNotSave": "Could not save this cost centre.",
+    "none": "None",
+    "empty": {
+      "title": "No cost centres yet",
+      "body": "Create your first cost centre to start tagging invoices, bills, expenses and employees — then see a real profit/spend breakdown by department, branch or project."
+    }
+  },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Plan a monthly figure per cost centre or account, then compare it against real spend",
+    "newBudget": "New Budget",
+    "editBudget": "Edit Budget",
+    "scope": "Scope",
+    "budgeted": "Budgeted",
+    "actual": "Actual",
+    "variance": "Variance",
+    "amount": "Amount",
+    "account": "Account",
+    "wholeCompany": "Whole Company",
+    "allAccounts": "All Expense Accounts",
+    "periodLabel": "Period: {{period}}",
+    "amountMustBePositive": "Budget amount must be greater than zero.",
+    "couldNotLoad": "Could not load budgets.",
+    "couldNotSave": "Could not save this budget.",
+    "couldNotDelete": "Could not delete this budget.",
+    "empty": {
+      "title": "No budgets set for this month",
+      "body": "Set a budget for a cost centre, a specific account, or the whole company — then come back at month-end to see how real spend compared."
+    }
+  },
   "approvalWorkflows": {
     "title": "Approval Workflows",
     "subtitle": "{{count}} workflows — require sign-off on Sales Orders and Purchase Orders above a set amount",
@@ -1358,6 +1401,26 @@
       "apAging": {
         "label": "AP Aging Summary",
         "description": "What you owe each supplier, bucketed by how overdue it is"
+      },
+      "costCentreTreemap": {
+        "label": "Cost Centre P&L",
+        "description": "Real revenue, expense and margin per cost centre, from every tagged invoice, bill and expense"
+      },
+      "budgetVsActual": {
+        "label": "Budget vs. Actual",
+        "description": "This month's budgeted figures next to real spend, per cost centre and account"
+      },
+      "statutoryComplianceSummary": {
+        "label": "Statutory Compliance Summary",
+        "description": "This month's total employer liability per statutory deduction head (PF, ESI, Professional Tax)"
+      },
+      "cashFlowProjection": {
+        "label": "Cash-Flow Projection",
+        "description": "Real cash movement for the past month, plus what's due and forecasted for the month ahead"
+      },
+      "paymentPerformance": {
+        "label": "Payment Performance",
+        "description": "How many days customers actually take to pay in full, ranked by customer"
       },
       "expenses": {
         "label": "Expense Report",
@@ -1668,6 +1731,7 @@
       "d90plusShort": "90+"
     },
     "section": {
+      "untaggedNote": "Untagged: {{revenue}} revenue and {{expense}} expense from transactions with no cost centre set.",
       "topDiscountedProducts": "Top Discounted Products",
       "discountDetails": "Discount Details",
       "spendByVendor": "Spend by Vendor",
@@ -1735,6 +1799,7 @@
       "complianceTaskDetails": "Compliance Task Details"
     },
     "empty": {
+      "noData": "No records found for this period.",
       "discounts": "No discounts or bargained prices given in this date range.",
       "invoices": "No invoices in this date range.",
       "products": "No products found.",
@@ -1795,6 +1860,15 @@
       "account": "Account",
       "in": "In",
       "out": "Out",
+      "margin": "Margin",
+      "deductionName": "Deduction",
+      "totalAmount": "Total Amount",
+      "employeeCount": "Employees",
+      "actual": "Actual",
+      "projected": "Projected",
+      "paidInvoiceCount": "Invoices Paid",
+      "avgDaysToPay": "Avg. Days to Pay",
+      "outstandingInvoiceCount": "Invoices Outstanding",
       "sku": "SKU",
       "product": "Product",
       "category": "Category",
@@ -2596,7 +2670,9 @@
       "pricingSchemes": { "title": "Pricing Schemes", "body": "Set up a Buy-X-Get-Y-Free or volume-discount offer — try one and watch it suggest itself automatically in the cart the moment a qualifying item is added." },
       "recurringProfiles": { "title": "Recurring Profiles", "body": "Set up an invoice, bill, or expense to repeat on a schedule — weekly, monthly, or yearly — so you never have to recreate the same document by hand again." },
       "approvalWorkflows": { "title": "Approval Workflows", "body": "Require sign-off before a large sales or purchase order is confirmed — set a threshold and an approver, and Sarang holds any order over that amount for approval instead of confirming it immediately." },
-      "locations": { "title": "Locations", "body": "If you store stock in more than one place, add a second location here and try a Transfer Stock — everything still starts in one default location until you actually add another." }
+      "locations": { "title": "Locations", "body": "If you store stock in more than one place, add a second location here and try a Transfer Stock — everything still starts in one default location until you actually add another." },
+      "costCentres": { "title": "Cost Centres", "body": "Create a cost centre for a department, branch, or project, then pick it on your next invoice, bill, or expense — see the profit and spend it drove on the Cost Centre P&L report." },
+      "budgets": { "title": "Budgets", "body": "Set a monthly budget for a cost centre, a specific account, or the whole company, then check back after the month to see how real spend compared." }
     }
   },
   "manufacturing": {
@@ -3076,7 +3152,9 @@
     "paid": "Paid",
     "noDeductions": "No deductions added.",
     "netPay": "Net Pay",
-    "payslipDeductionDisclaimer": "Sarang does not calculate PF/ESI/Professional Tax/TDS amounts — enter the figures your accountant provides.",
+    "suggestStatutoryDeductions": "Suggest from statutory rates",
+    "statutoryNoRatesConfigured": "No statutory rates are configured yet — set them in Settings first.",
+    "payslipDeductionDisclaimer": "Sarang never applies official government PF/ESI/Professional Tax/TDS rules automatically — \"Suggest from statutory rates\" only pre-fills from the rates you've entered in Settings, and every line here is yours to review, edit or remove before saving.",
     "confirmMarkPaid": "Mark this salary as paid? This creates an expense record and locks the payslip from further edits.",
     "attendance": "Attendance",
     "attendanceDesc": "Mark daily attendance for all employees.",

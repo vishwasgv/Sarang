@@ -183,6 +183,10 @@ export function BillingScreen() {
   // Phase 61 — lives on Invoice directly, independent of the opt-in
   // Logistics module (which only tracks it at shipment level).
   const [ewayBillNumber, setEwayBillNumber] = useState('')
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Self-hides when zero
+  // cost centres exist yet, same convention as Price List's own picker.
+  const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
+  const [costCentreId, setCostCentreId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   // Discount mode per item: 'amount' (₹) or 'percent' (%)
   // 'finalPrice' — bargained/negotiated pricing (very common in Indian retail,
@@ -233,6 +237,13 @@ export function BillingScreen() {
   const [customerResults, setCustomerResults] = useState<Customer[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const customerDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Phase 65 — load once; self-hides in the JSX below when empty.
+  useEffect(() => {
+    window.api.costCentres.list().then((res) => {
+      if (res.success && res.data) setCostCentres(res.data as { id: string; name: string }[])
+    }).catch(() => {})
+  }, [])
 
   // Customer quick-add
   const [showQuickAdd, setShowQuickAdd] = useState(false)
@@ -985,6 +996,7 @@ export function BillingScreen() {
         notes: notes.trim() || undefined,
         referenceNumber: referenceNumber.trim() || undefined,
         ewayBillNumber: ewayBillNumber.trim() || undefined,
+        costCentreId: costCentreId || undefined,
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
@@ -1724,6 +1736,24 @@ export function BillingScreen() {
               className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
             />
           </div>
+
+          {/* Phase 65 — Cost Centre tag. Self-hidden until at least one
+              cost centre exists, matching the Price List picker's own
+              precedent, so this never appears as confusing empty-dropdown
+              clutter on an install that hasn't opted into the feature. */}
+          {costCentres.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('costCentres.title')}</p>
+              <select
+                value={costCentreId}
+                onChange={e => setCostCentreId(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+              >
+                <option value="">{t('costCentres.none')}</option>
+                {costCentres.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Notes */}
           <div>

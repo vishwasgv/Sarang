@@ -20,7 +20,9 @@ Semua ini didorong langsung oleh catatan Kehadiran karyawan tersebut untuk bulan
 
 Ketuk baris karyawan mana pun untuk membuka slip gajinya. Ini menampilkan Gaji Pokok dan setiap baris Tunjangan yang membentuk Gaji Kotor. Selama slip gaji masih berstatus **Draf**, Anda dapat menambahkan **Potongan** — sebuah nama dan jumlah (PF, ESI, Pajak Profesi, dan TDS muncul sebagai tombol tambah-cepat satu ketuk kapan pun model pajak usaha Anda diatur ke GST) — dan menghapus potongan apa pun yang telah Anda tambahkan, dengan total **Gaji Bersih** di bagian bawah dihitung ulang secara langsung seiring Anda melakukannya. Ketuk **Simpan** untuk mencatat perubahan Anda pada daftar potongan.
 
-Penafian yang ditampilkan di bawah daftar potongan sungguh layak dibaca: Sarang menghitung gaji kotor dan menjumlahkan potongan yang Anda masukkan, tetapi tidak menghitung jumlah statutori PF/ESI/TDS untuk Anda — angka-angka itu perlu berasal dari akuntan Anda sendiri atau aturan penggajian Anda, dimasukkan di sini sebagai baris potongan biasa.
+Penafian yang ditampilkan di bawah daftar potongan sungguh layak dibaca: Sarang tidak pernah menerapkan aturan resmi pemerintah untuk PF/ESI/Pajak Profesi secara otomatis — angka-angka itu perlu berasal dari akuntan Anda sendiri atau aturan penggajian Anda, dimasukkan di sini sebagai baris potongan biasa.
+
+Jika Anda telah memasukkan % PF, % ESI (dengan batas upah opsional), dan jumlah Pajak Profesi Anda sendiri di **Settings → Business Profile**, tautan **Sarankan dari tarif statuter** akan muncul di samping judul Potongan. Mengetuknya akan mengisi terlebih dahulu baris potongan yang dihitung dari tarif yang Anda konfigurasi sendiri terhadap Gaji Pokok karyawan tersebut — ini menggantikan baris apa pun yang sudah ada dengan nama yang sama, jadi menjalankannya lagi setelah Anda mengubah tarif tidak akan meninggalkan duplikat — tetapi ini tidak pernah tersimpan dengan sendirinya; Anda tetap harus meninjau setiap baris yang disarankan dan mengetuk **Simpan** sendiri. Biarkan sebuah tarif kosong di Settings dan pos statutori itu tidak akan pernah disarankan.
 
 ## Menandai slip gaji sebagai dibayar
 

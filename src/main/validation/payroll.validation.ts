@@ -20,6 +20,12 @@ export const MarkSalaryPaidSchema = z.object({
   paidDate: z.string().optional(),
 })
 
+// Phase 65 — statutory PF/ESI/PT deduction suggestions (never auto-applied).
+export const SuggestStatutoryDeductionsSchema = z.object({
+  salaryPaymentId: z.string().min(1, 'Payroll record ID is required'),
+})
+
 export type PayrollPeriodPayload = z.infer<typeof PayrollPeriodSchema>
 export type UpdateDeductionsPayload = z.infer<typeof UpdateDeductionsSchema>
 export type MarkSalaryPaidPayload = z.infer<typeof MarkSalaryPaidSchema>
+export type SuggestStatutoryDeductionsPayload = z.infer<typeof SuggestStatutoryDeductionsSchema>

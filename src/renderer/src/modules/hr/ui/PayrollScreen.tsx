@@ -49,6 +49,7 @@ export function PayrollScreen() {
   const [newDeductionName, setNewDeductionName] = useState('')
   const [newDeductionAmount, setNewDeductionAmount] = useState('')
   const [saving, setSaving] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
   const [markingPaid, setMarkingPaid] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false)
@@ -109,6 +110,36 @@ export function PayrollScreen() {
 
   function removeDeductionLine(index: number) {
     setDraftDeductions(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Phase 65 — suggest-and-review, never auto-saves. Pre-fills the SAME
+  // editable deduction-line editor the owner already uses by hand — a
+  // suggested line replaces any existing line of the same name (so
+  // re-running it after editing a rate doesn't create a duplicate), and
+  // still requires the owner's own explicit Save below to take effect.
+  async function handleSuggestStatutory() {
+    if (!selected) return
+    setSuggesting(true)
+    try {
+      const res = await api.payroll.suggestStatutoryDeductions({ salaryPaymentId: selected.id })
+      if (res.success && res.data) {
+        const { suggestions } = res.data as { suggestions: DeductionLine[] }
+        if (suggestions.length === 0) {
+          toastError(t('hr.statutoryNoRatesConfigured'))
+          return
+        }
+        setDraftDeductions(prev => [
+          ...prev.filter(d => !suggestions.some(s => s.name === d.name)),
+          ...suggestions
+        ])
+      } else {
+        toastError(res.error?.message ?? t('hr.actionFailed'))
+      }
+    } catch {
+      toastError(t('hr.actionFailed'))
+    } finally {
+      setSuggesting(false)
+    }
   }
 
   async function handleSaveDeductions() {
@@ -263,7 +294,14 @@ export function PayrollScreen() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t('hr.deductions')}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('hr.deductions')}</p>
+                  {selected.status === 'DRAFT' && (
+                    <button onClick={handleSuggestStatutory} disabled={suggesting} className="text-xs font-semibold text-brand hover:underline disabled:opacity-50">
+                      {suggesting ? '…' : t('hr.suggestStatutoryDeductions')}
+                    </button>
+                  )}
+                </div>
                 {selected.status === 'DRAFT' && taxModel === 'GST' && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {QUICK_ADD_NAMES.map(name => (

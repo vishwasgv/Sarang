@@ -310,6 +310,10 @@ interface BPProfile {
   drugLicenseNumber?: string | null
   overheadAllocationBasis?: string | null
   overheadAllocationRate?: number | null
+  statutoryPfPercent?: number | null
+  statutoryEsiPercent?: number | null
+  statutoryEsiWageCeiling?: number | null
+  statutoryProfessionalTax?: number | null
 }
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
@@ -335,7 +339,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     clinicSpecialty: profile?.clinicSpecialty ?? '',
     drugLicenseNumber: profile?.drugLicenseNumber ?? '',
     overheadAllocationBasis: profile?.overheadAllocationBasis ?? '',
-    overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0)
+    overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0),
+    statutoryPfPercent: profile?.statutoryPfPercent != null ? String(profile.statutoryPfPercent) : '',
+    statutoryEsiPercent: profile?.statutoryEsiPercent != null ? String(profile.statutoryEsiPercent) : '',
+    statutoryEsiWageCeiling: profile?.statutoryEsiWageCeiling != null ? String(profile.statutoryEsiWageCeiling) : '',
+    statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : ''
   })
   const setProfile = useBusinessStore((s) => s.setProfile)
   const { error: toastError, success: toastSuccess } = useNotificationStore()
@@ -360,7 +368,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
       clinicSpecialty: profile?.clinicSpecialty ?? '',
       drugLicenseNumber: profile?.drugLicenseNumber ?? '',
       overheadAllocationBasis: profile?.overheadAllocationBasis ?? '',
-      overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0)
+      overheadAllocationRate: String(profile?.overheadAllocationRate ?? 0),
+      statutoryPfPercent: profile?.statutoryPfPercent != null ? String(profile.statutoryPfPercent) : '',
+      statutoryEsiPercent: profile?.statutoryEsiPercent != null ? String(profile.statutoryEsiPercent) : '',
+      statutoryEsiWageCeiling: profile?.statutoryEsiWageCeiling != null ? String(profile.statutoryEsiWageCeiling) : '',
+      statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : ''
     })
     setError(null)
     setEditing(true)
@@ -405,7 +417,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         ...(profile?.businessType === 'MANUFACTURING' ? {
           overheadAllocationBasis: form.overheadAllocationBasis || null,
           overheadAllocationRate: form.overheadAllocationBasis ? (parseFloat(form.overheadAllocationRate) || 0) : 0
-        } : {})
+        } : {}),
+        statutoryPfPercent: form.statutoryPfPercent.trim() ? parseFloat(form.statutoryPfPercent) : null,
+        statutoryEsiPercent: form.statutoryEsiPercent.trim() ? parseFloat(form.statutoryEsiPercent) : null,
+        statutoryEsiWageCeiling: form.statutoryEsiWageCeiling.trim() ? parseFloat(form.statutoryEsiWageCeiling) : null,
+        statutoryProfessionalTax: form.statutoryProfessionalTax.trim() ? parseFloat(form.statutoryProfessionalTax) : null
       })
       if (res.success) {
         const freshRes = await window.api.businessProfile.get()
@@ -521,6 +537,32 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
                 )}
               </>
             )}
+            {/* Phase 65 — owner-entered rates only, never a hardcoded
+                government table (see payroll.service.ts's
+                suggestStatutoryDeductions for why). Left blank = that
+                statutory head is never suggested. Not businessType-gated —
+                unlike Manufacturing overhead, any business with employees
+                can use Payroll. */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PF Rate (% of Basic Salary)</label>
+              <input type="number" min="0" max="100" step="0.01" value={form.statutoryPfPercent}
+                onChange={e => setForm(f => ({ ...f, statutoryPfPercent: e.target.value }))} placeholder="e.g. 12" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ESI Rate (% of Basic Salary)</label>
+              <input type="number" min="0" max="100" step="0.01" value={form.statutoryEsiPercent}
+                onChange={e => setForm(f => ({ ...f, statutoryEsiPercent: e.target.value }))} placeholder="e.g. 0.75" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ESI Wage Ceiling</label>
+              <input type="number" min="0" step="0.01" value={form.statutoryEsiWageCeiling}
+                onChange={e => setForm(f => ({ ...f, statutoryEsiWageCeiling: e.target.value }))} placeholder="Leave blank for no ceiling" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Professional Tax (flat amount)</label>
+              <input type="number" min="0" step="0.01" value={form.statutoryProfessionalTax}
+                onChange={e => setForm(f => ({ ...f, statutoryProfessionalTax: e.target.value }))} placeholder="e.g. 200" className={inputCls} />
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} />
@@ -587,6 +629,14 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             ...(profile?.businessType === 'MANUFACTURING' && profile?.overheadAllocationBasis ? [{
               label: 'Overhead Allocation',
               value: `${profile.overheadAllocationBasis === 'PER_LABOR_HOUR' ? 'Per labor hour' : 'Per unit produced'} — ${profile.overheadAllocationRate}`
+            }] : []),
+            ...(profile?.statutoryPfPercent || profile?.statutoryEsiPercent || profile?.statutoryProfessionalTax ? [{
+              label: 'Statutory Rates',
+              value: [
+                profile?.statutoryPfPercent ? `PF ${profile.statutoryPfPercent}%` : null,
+                profile?.statutoryEsiPercent ? `ESI ${profile.statutoryEsiPercent}%` : null,
+                profile?.statutoryProfessionalTax ? `PT ${profile.statutoryProfessionalTax}` : null
+              ].filter(Boolean).join(' · ')
             }] : []),
             { label: 'Country', value: profile?.country },
             { label: 'Currency', value: profile?.currencyCode ? `${profile.currencySymbol} (${profile.currencyCode})` : undefined },

@@ -38,7 +38,16 @@ export const BusinessProfileUpdateSchema = z.object({
   // no update path ever accepted them, so a business had no way to actually
   // set a non-zero rate short of direct DB access.
   overheadAllocationBasis: z.enum(['PER_LABOR_HOUR', 'PER_UNIT_PRODUCED']).nullable().optional(),
-  overheadAllocationRate: z.number().min(0, 'Overhead rate cannot be negative').optional()
+  overheadAllocationRate: z.number().min(0, 'Overhead rate cannot be negative').optional(),
+  // Phase 65 — statutory PF/ESI/Professional Tax suggest-and-review engine
+  // (payroll.service.ts's suggestStatutoryDeductions). Owner-entered rates
+  // only, never a hardcoded government table — see that function's own
+  // comment for why. All optional/nullable; unset means the suggestion
+  // engine returns nothing for that head.
+  statutoryPfPercent: z.number().min(0).max(100).nullable().optional(),
+  statutoryEsiPercent: z.number().min(0).max(100).nullable().optional(),
+  statutoryEsiWageCeiling: z.number().min(0).nullable().optional(),
+  statutoryProfessionalTax: z.number().min(0).nullable().optional()
 })
 
 export type BusinessProfileUpdatePayload = z.infer<typeof BusinessProfileUpdateSchema>

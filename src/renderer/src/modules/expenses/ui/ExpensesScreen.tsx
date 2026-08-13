@@ -22,6 +22,7 @@ interface Expense {
   createdBy?: { fullName: string } | null
   supplierId?: string | null; mileageKm?: number | null; mileageRatePerKm?: number | null
   billableCustomerId?: string | null; isReverseCharge?: boolean
+  costCentreId?: string | null
 }
 interface SupplierOption { id: string; supplierName: string }
 interface CustomerOption { id: string; customerName: string }
@@ -50,6 +51,7 @@ export function ExpensesScreen() {
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([])
   const [customers, setCustomers] = useState<CustomerOption[]>([])
+  const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -65,7 +67,7 @@ export function ExpensesScreen() {
   const [editExpense, setEditExpense] = useState<Expense | null>(null)
   const [formData, setFormData] = useState({
     categoryId: '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false
+    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: ''
   })
   const [formSaving, setFormSaving] = useState(false)
 
@@ -103,13 +105,16 @@ export function ExpensesScreen() {
     window.api.customers.list({ limit: 200 }).then((res: any) => {
       if (res.success) setCustomers(((res.data as { customers: CustomerOption[] })?.customers) ?? [])
     }).catch(() => {})
+    window.api.costCentres.list().then((res: any) => {
+      if (res.success) setCostCentres((res.data as { id: string; name: string }[]) ?? [])
+    }).catch(() => {})
   }, [toastError, t])
 
   function openCreate() {
     setEditExpense(null)
     setFormData({
       categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false
+      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: ''
     })
     setFormOpen(true)
   }
@@ -129,7 +134,8 @@ export function ExpensesScreen() {
       isMileage,
       mileageKm: isMileage ? String(exp.mileageKm) : '',
       mileageRatePerKm: isMileage ? String(exp.mileageRatePerKm) : '',
-      isReverseCharge: exp.isReverseCharge ?? false
+      isReverseCharge: exp.isReverseCharge ?? false,
+      costCentreId: exp.costCentreId ?? ''
     })
     setFormOpen(true)
   }
@@ -153,6 +159,7 @@ export function ExpensesScreen() {
         remarks: formData.remarks.trim() || undefined,
         supplierId: formData.supplierId || undefined,
         billableCustomerId: formData.billableCustomerId || undefined,
+        costCentreId: formData.costCentreId || undefined,
         mileageKm: km && km > 0 ? km : undefined,
         mileageRatePerKm: rate != null && !Number.isNaN(rate) ? rate : undefined,
         isReverseCharge: formData.isReverseCharge
@@ -402,6 +409,13 @@ export function ExpensesScreen() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.customerName}</option>)}
               </Select>
             </div>
+
+            {costCentres.length > 0 && (
+              <Select label={t('costCentres.title')} value={formData.costCentreId} onChange={e => setFormData(d => ({ ...d, costCentreId: e.target.value }))}>
+                <option value="">{t('costCentres.none')}</option>
+                {costCentres.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
+              </Select>
+            )}
 
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={formData.isReverseCharge} onChange={e => setFormData(d => ({ ...d, isReverseCharge: e.target.checked }))} className="w-4 h-4 rounded accent-brand" />

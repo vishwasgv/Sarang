@@ -75,6 +75,8 @@ export const CreateInvoiceSchema = z.object({
   // validate e-way bills itself (that's the government e-way bill portal's
   // job), it just records the number for the printed invoice/GSTR1 export.
   ewayBillNumber: z.string().max(50).optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId: z.string().min(1).optional(),
 })
 
 export const CancelInvoiceSchema = z.object({

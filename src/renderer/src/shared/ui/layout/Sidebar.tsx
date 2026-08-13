@@ -17,7 +17,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock, ShieldCheck, Gift, MapPin,
+  BookText, Wallet, Lock, ShieldCheck, Gift, MapPin, Building2, PiggyBank,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -176,6 +176,11 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 64 — multi-location stock. Always in the nav (not module-gated) —
   // a single-location install just sees one row and never needs to act on it.
   { label: 'Locations', i18nKey: 'nav.locations', path: '/locations', icon: MapPin, permissionKey: 'locations.view' },
+  // Phase 65 — Reporting Tags / Cost & Profit Centres + Budgets. Always in
+  // the nav (not module-gated), same reasoning as Locations above — invisible
+  // in practice until an owner creates at least one cost centre/budget.
+  { label: 'Cost Centres', i18nKey: 'nav.costCentres', path: '/cost-centres', icon: Building2, permissionKey: 'costCentres.view' },
+  { label: 'Budgets', i18nKey: 'nav.budgets', path: '/budgets', icon: PiggyBank, permissionKey: 'budgets.view' },
   // Phase 63 — Sales Orders, the mirror image of Purchase Orders on the sales side.
   { label: 'Sales Orders', i18nKey: 'nav.salesOrders', path: '/sales-orders', icon: ClipboardList, permissionKey: 'salesOrders.view' },
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },

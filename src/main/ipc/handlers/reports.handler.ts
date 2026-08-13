@@ -4,7 +4,7 @@ import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
   OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
-  CashBookReportSchema, TrialBalanceReportSchema
+  CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -111,6 +111,60 @@ export function register(handle: HandleFn): void {
     const parsed = TrialBalanceReportSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateTrialBalanceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Same profit-adjacent
+  // trust boundary as reports:profitAndLoss/reports:trialBalance — a
+  // per-cost-centre margin breakdown is exactly the kind of figure those
+  // two are already gated to protect.
+  handle('reports:costCentreTreemap', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = CostCentreTreemapReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCostCentreTreemapReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 65 — Budget vs. Actual. budgets.view (not analytics.viewProfit) —
+  // a budget comparison is a planning tool, matching Budget's own
+  // Manager-tier permission, not the stricter Admin-adjacent profit-report gate.
+  handle('reports:budgetVsActual', async (payload) => {
+    const deny = await requirePermission('budgets.view'); if (deny) return deny
+    const parsed = BudgetVsActualReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateBudgetVsActualReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 65 — Statutory Summary Report. hr.view — same visibility tier as
+  // payroll:listForPeriod, since this is derived from the same data.
+  handle('reports:statutoryComplianceSummary', async (payload) => {
+    const deny = await requirePermission('hr.view'); if (deny) return deny
+    const parsed = StatutoryComplianceSummaryReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateStatutoryComplianceSummaryReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 65 — Cash-Flow Projection. Same profit-adjacent trust boundary as
+  // reports:costCentreTreemap — a forward-looking funds picture is exactly
+  // the kind of figure analytics.viewProfit already exists to gate.
+  handle('reports:cashFlowProjection', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = CashFlowProjectionReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCashFlowProjection(parsed.data ?? {})
+    return { success: true, data }
+  })
+
+  // Phase 65 — Payment Performance Report. reports.outstanding — same
+  // receivables/collections trust boundary as reports:outstanding/apAging.
+  handle('reports:paymentPerformance', async (payload) => {
+    const deny = await requirePermission('reports.outstanding'); if (deny) return deny
+    const parsed = PaymentPerformanceReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePaymentPerformanceReport(parsed.data)
     return { success: true, data }
   })
 

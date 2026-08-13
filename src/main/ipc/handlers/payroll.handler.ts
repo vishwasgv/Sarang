@@ -2,14 +2,15 @@ import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import {
-  listPayrollForPeriod, generatePayrollForPeriod, updateSalaryPayment, markSalaryPaid, getSalaryPayment
+  listPayrollForPeriod, generatePayrollForPeriod, updateSalaryPayment, markSalaryPaid, getSalaryPayment,
+  suggestStatutoryDeductions
 } from '../../services/payroll.service'
 import { getEmployee } from '../../services/hr.service'
 import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
-import { PayrollPeriodSchema, UpdateDeductionsSchema, MarkSalaryPaidSchema } from '../../validation/payroll.validation'
+import { PayrollPeriodSchema, UpdateDeductionsSchema, MarkSalaryPaidSchema, SuggestStatutoryDeductionsSchema } from '../../validation/payroll.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -33,6 +34,17 @@ export function register(handle: HandleFn): void {
     const parsed = UpdateDeductionsSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateSalaryPayment(parsed.data)
+  })
+
+  // Phase 65 — statutory PF/ESI/PT deduction suggestions. Same hr.manage
+  // gate as updateDeductions/markPaid — this only computes candidates, the
+  // real save still goes through updateDeductions same as any other
+  // hand-typed line.
+  handle('payroll:suggestStatutoryDeductions', async (payload) => {
+    const deny = await requirePermission('hr.manage'); if (deny) return deny
+    const parsed = SuggestStatutoryDeductionsSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return suggestStatutoryDeductions(parsed.data)
   })
 
   handle('payroll:markPaid', async (payload) => {

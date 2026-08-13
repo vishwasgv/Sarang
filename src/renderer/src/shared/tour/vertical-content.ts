@@ -156,7 +156,13 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   // entries (those paths are in UNIVERSAL_PATHS, so a VERTICAL_CONTENT entry
   // targeting them would never be used) — those two got a sentence appended
   // to tour.universal.productsBody/inventoryBody instead.
-  { path: '/locations', key: 'locations' }
+  { path: '/locations', key: 'locations' },
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance. Both are
+  // genuinely new NAV_ITEMS paths (same reasoning as Locations above); the
+  // 4 new report screens live inside the already-toured universal Reports
+  // screen instead of getting their own entries.
+  { path: '/cost-centres', key: 'costCentres' },
+  { path: '/budgets', key: 'budgets' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(

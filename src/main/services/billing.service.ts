@@ -43,20 +43,25 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // receivesCashNow=false (they're all always CREDIT-shaped — none of them
 // collect payment at creation time) instead of leaving Trial Balance
 // silently short of real revenue.
-export async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: string; invoiceNumber: string; totalAmount: number; taxAmount: number }, receivesCashNow: boolean): Promise<void> {
+export async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: string; invoiceNumber: string; totalAmount: number; taxAmount: number; costCentreId?: string | null }, receivesCashNow: boolean): Promise<void> {
   if (invoice.totalAmount <= 0) return
   const [debitAccount, salesAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode(receivesCashNow ? '1000' : '1100', tx),
     chartOfAccountsService.getSystemAccountByCode('4000', tx)
   ])
+  // Phase 65 — every line from this invoice is tagged with the same cost
+  // centre (not just the revenue line) so a straightforward "sum lines
+  // where costCentreId = X" query is correct regardless of which line a
+  // report cares about, without special-casing account types.
+  const costCentreId = invoice.costCentreId ?? null
   const revenueAmount = roundCurrency(invoice.totalAmount - invoice.taxAmount)
-  const lines = [{ accountId: debitAccount.id, bankAccountId: null, debitAmount: invoice.totalAmount, creditAmount: 0 }]
+  const lines = [{ accountId: debitAccount.id, bankAccountId: null, costCentreId, debitAmount: invoice.totalAmount, creditAmount: 0 }]
   if (invoice.taxAmount > 0) {
     const taxAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
-    lines.push({ accountId: salesAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: revenueAmount })
-    lines.push({ accountId: taxAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: invoice.taxAmount })
+    lines.push({ accountId: salesAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: revenueAmount })
+    lines.push({ accountId: taxAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: invoice.taxAmount })
   } else {
-    lines.push({ accountId: salesAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: revenueAmount })
+    lines.push({ accountId: salesAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: revenueAmount })
   }
   await journalEntryService.postSystemEntry(tx, { sourceType: 'INVOICE', sourceId: invoice.id, narration: `Invoice ${invoice.invoiceNumber}`, lines })
 }
@@ -578,7 +583,9 @@ export const billingService = {
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
               : (payload.notes ?? null),
             createdById: userId ?? null,
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+            // Phase 65 — Reporting Tags / Cost & Profit Centres.
+            costCentreId: payload.costCentreId ?? null
           }
         })
 
@@ -1160,6 +1167,9 @@ export const billingService = {
               buyerState: original.buyerState,
               tableId: original.tableId,
               splitFromInvoiceId: original.id,
+              // Phase 65 — a split invoice inherits its parent's cost centre,
+              // same as every other snapshot field on this create call.
+              costCentreId: original.costCentreId,
               notes: `Split from ${original.invoiceNumber}`,
               createdById: userId ?? null,
               status: 'ACTIVE'

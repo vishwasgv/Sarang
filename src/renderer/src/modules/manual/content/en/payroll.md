@@ -20,7 +20,9 @@ All of this is driven directly by that employee's Attendance records for the mon
 
 Tap any employee's row to open their payslip. It shows the Basic Salary and each Allowance line building up to the Gross Salary. While a payslip is still in **Draft** status, you can add **Deductions** — a name and an amount (PF, ESI, Professional Tax, and TDS appear as one-tap quick-add buttons whenever your business's tax model is set to GST) — and remove any deduction you've added, with the **Net Pay** total at the bottom recalculating live as you go. Tap **Save** to record your changes to the deduction list.
 
-The disclaimer shown under the deduction list is a real one worth reading: Sarang computes gross pay and totals deductions you enter, but it does not calculate statutory PF/ESI/TDS amounts for you — those figures need to come from your own accountant or payroll rules, entered here as plain deduction lines.
+The disclaimer shown under the deduction list is a real one worth reading: Sarang never applies official government PF/ESI/Professional Tax rules automatically — those figures need to come from your own accountant or payroll rules, entered here as plain deduction lines.
+
+If you've entered your own PF %, ESI % (with an optional wage ceiling), and Professional Tax amount in **Settings → Business Profile**, a **Suggest from statutory rates** link appears next to the Deductions header. Tapping it pre-fills deduction lines computed from your own configured rates against that employee's Basic Salary — it replaces any existing line with the same name, so running it again after you've changed a rate doesn't leave a duplicate behind — but it never saves on its own; you still review each suggested line and tap **Save** yourself. Leave a rate blank in Settings and that statutory head is simply never suggested.
 
 ## Marking a payslip paid
 

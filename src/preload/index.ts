@@ -86,6 +86,18 @@ const api: IpcChannels = {
     create: (p) => invoke('locations:create', p),
     update: (p) => invoke('locations:update', p)
   },
+  costCentres: {
+    list: () => invoke('costCentres:list'),
+    hasAny: () => invoke('costCentres:hasAny'),
+    create: (p) => invoke('costCentres:create', p),
+    update: (p) => invoke('costCentres:update', p)
+  },
+  budgets: {
+    list: (p) => invoke('budgets:list', p),
+    create: (p) => invoke('budgets:create', p),
+    update: (p) => invoke('budgets:update', p),
+    delete: (p) => invoke('budgets:delete', p)
+  },
   customers: {
     list: (p) => invoke('customers:list', p),
     listOutstanding: () => invoke('customers:listOutstanding'),
@@ -291,6 +303,11 @@ const api: IpcChannels = {
     profitAndLoss: (p) => invoke('reports:profitAndLoss', p),
     cashBook: (p) => invoke('reports:cashBook', p),
     trialBalance: (p) => invoke('reports:trialBalance', p),
+    costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
+    budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
+    statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),
+    cashFlowProjection: (p) => invoke('reports:cashFlowProjection', p),
+    paymentPerformance: (p) => invoke('reports:paymentPerformance', p),
     customerLedger: (p) => invoke('reports:customerLedger', p),
     supplierLedger: (p) => invoke('reports:supplierLedger', p),
     audit: (p) => invoke('reports:audit', p),
@@ -620,6 +637,7 @@ const api: IpcChannels = {
     updateDeductions: (p) => invoke('payroll:updateDeductions', p),
     markPaid: (p) => invoke('payroll:markPaid', p),
     print: (p) => invoke('payroll:print', p),
+    suggestStatutoryDeductions: (p) => invoke('payroll:suggestStatutoryDeductions', p),
   },
   rental: {
     checkAvailability: (p) => invoke('rental:checkAvailability', p),

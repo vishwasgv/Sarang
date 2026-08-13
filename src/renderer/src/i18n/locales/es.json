@@ -50,7 +50,9 @@
     "deliveryChallan": "Albarán de Entrega",
     "freightLedger": "Libro de Fletes",
     "logisticsAnalytics": "Análisis de Logística",
-    "tailoring": "Sastrería"
+    "tailoring": "Sastrería",
+    "costCentres": "Centros de Costo",
+    "budgets": "Presupuestos"
   },
   "common": {
     "of": "de",
@@ -1117,7 +1119,13 @@
     "dayOfWeekLabel": "Día de la Semana",
     "dayOfPeriodLabel": "Día del Período",
     "dayOfMonth": "día {{day}}",
-    "mon": "Lun", "tue": "Mar", "wed": "Mié", "thu": "Jue", "fri": "Vie", "sat": "Sáb", "sun": "Dom",
+    "mon": "Lun",
+    "tue": "Mar",
+    "wed": "Mié",
+    "thu": "Jue",
+    "fri": "Vie",
+    "sat": "Sáb",
+    "sun": "Dom",
     "docType": {
       "INVOICE": "Factura",
       "BILL": "Factura",
@@ -1534,6 +1542,26 @@
       "prescriptionDrugSales": {
         "label": "Ventas de Medicamentos Recetados",
         "description": "Registro de ventas de medicamentos de venta exclusiva con receta (Lista H/H1), con nombres de paciente y médico."
+      },
+      "costCentreTreemap": {
+        "label": "P&G por Centro de Costo",
+        "description": "Ingresos, gastos y margen reales por centro de costo, de cada factura, cuenta por pagar y gasto etiquetado"
+      },
+      "statutoryComplianceSummary": {
+        "label": "Resumen de Cumplimiento Legal",
+        "description": "Responsabilidad total del empleador este mes por cada rubro de deducción legal (PF, ESI, Impuesto Profesional)"
+      },
+      "cashFlowProjection": {
+        "label": "Proyección de Flujo de Caja",
+        "description": "Movimiento de caja real del último mes, más lo que vence y se proyecta para el próximo mes"
+      },
+      "paymentPerformance": {
+        "label": "Rendimiento de Pagos",
+        "description": "Cuántos días tardan realmente los clientes en pagar por completo, clasificado por cliente"
+      },
+      "budgetVsActual": {
+        "label": "Presupuesto vs. Real",
+        "description": "Las cifras presupuestadas de este mes junto al gasto real, por centro de costo y cuenta"
       }
     },
     "summary": {
@@ -1732,7 +1760,8 @@
       "salesByHour": "Ventas por Hora del Día",
       "testScoreDetails": "Detalles de Calificaciones",
       "byStudent": "Por Estudiante",
-      "complianceTaskDetails": "Detalles de Tareas de Cumplimiento"
+      "complianceTaskDetails": "Detalles de Tareas de Cumplimiento",
+      "untaggedNote": "Sin etiquetar: {{revenue}} de ingresos y {{expense}} de gastos de transacciones sin centro de costo asignado."
     },
     "empty": {
       "discounts": "No se otorgaron descuentos ni precios negociados en este rango de fechas.",
@@ -1779,7 +1808,8 @@
       "variants": "No se encontraron variantes de producto.",
       "testScores": "Aún no se han registrado calificaciones de pruebas.",
       "complianceTasks": "No hay tareas de cumplimiento pendientes o vencidas.",
-      "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas."
+      "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas.",
+      "noData": "No se encontraron registros para este período."
     },
     "col": {
       "invoiceNo": "N.º Factura",
@@ -1944,7 +1974,16 @@
       "dueDate": "Fecha de Vencimiento",
       "daysUntilDue": "Días para Vencer",
       "priority": "Prioridad",
-      "projectTitle": "Título del Proyecto"
+      "projectTitle": "Título del Proyecto",
+      "margin": "Margen",
+      "deductionName": "Deducción",
+      "totalAmount": "Monto Total",
+      "employeeCount": "Empleados",
+      "actual": "Real",
+      "projected": "Proyectado",
+      "paidInvoiceCount": "Facturas Pagadas",
+      "avgDaysToPay": "Días Prom. de Pago",
+      "outstandingInvoiceCount": "Facturas Pendientes"
     },
     "val": {
       "walkIn": "Cliente Ocasional",
@@ -2915,6 +2954,14 @@
       "locations": {
         "title": "Ubicaciones",
         "body": "Si almacenas stock en más de un lugar, agrega una segunda ubicación aquí e intenta una Transferencia de Stock — todo comienza en una sola ubicación predeterminada hasta que realmente agregues otra."
+      },
+      "costCentres": {
+        "title": "Centros de Costo",
+        "body": "Cree un centro de costo para un departamento, sucursal o proyecto, y luego selecciónelo en su próxima factura, cuenta por pagar o gasto — vea el beneficio y el gasto que generó en el informe de P&G por Centro de Costo."
+      },
+      "budgets": {
+        "title": "Presupuestos",
+        "body": "Defina un presupuesto mensual para un centro de costo, una cuenta específica o toda la empresa, y luego, después del mes, compruebe cómo se comparó el gasto real."
       }
     }
   },
@@ -3455,7 +3502,9 @@
     "leaveTypePlaceholder": "ej. Licencia de Maternidad",
     "leaveBalance": "Saldo de Permisos",
     "used": "Usado",
-    "remaining": "Restante"
+    "remaining": "Restante",
+    "suggestStatutoryDeductions": "Sugerir según tasas legales",
+    "statutoryNoRatesConfigured": "Aún no se han configurado tasas legales — configúrelas primero en Ajustes."
   },
   "quotations": {
     "title": "Cotizaciones",
@@ -4218,6 +4267,47 @@
       "removed": "Eliminado",
       "removedMessage": "Precio eliminado.",
       "couldNotRemove": "No se pudo eliminar el precio."
+    }
+  },
+  "costCentres": {
+    "title": "Centros de Costo",
+    "subtitle": "{{count}} centros de costo — etiquete facturas, cuentas por pagar, gastos y empleados para ver ganancias/gastos por departamento, sucursal o proyecto",
+    "name": "Nombre",
+    "code": "Código",
+    "newCostCentre": "Nuevo Centro de Costo",
+    "editCostCentre": "Editar Centro de Costo",
+    "namePlaceholder": "p. ej. Marketing, Sucursal Centro, Proyecto Alfa",
+    "codePlaceholder": "Código corto opcional",
+    "nameRequired": "El nombre del centro de costo es obligatorio.",
+    "couldNotLoad": "No se pudieron cargar los centros de costo.",
+    "couldNotSave": "No se pudo guardar este centro de costo.",
+    "none": "Ninguno",
+    "empty": {
+      "title": "Aún no hay centros de costo",
+      "body": "Cree su primer centro de costo para empezar a etiquetar facturas, cuentas por pagar, gastos y empleados — luego vea un desglose real de ganancias/gastos por departamento, sucursal o proyecto."
+    }
+  },
+  "budgets": {
+    "title": "Presupuestos",
+    "subtitle": "Planifique una cifra mensual por centro de costo o cuenta, y luego compárela con el gasto real",
+    "newBudget": "Nuevo Presupuesto",
+    "editBudget": "Editar Presupuesto",
+    "scope": "Alcance",
+    "budgeted": "Presupuestado",
+    "actual": "Real",
+    "variance": "Varianza",
+    "amount": "Monto",
+    "account": "Cuenta",
+    "wholeCompany": "Toda la Empresa",
+    "allAccounts": "Todas las Cuentas de Gastos",
+    "periodLabel": "Período: {{period}}",
+    "amountMustBePositive": "El monto del presupuesto debe ser mayor que cero.",
+    "couldNotLoad": "No se pudieron cargar los presupuestos.",
+    "couldNotSave": "No se pudo guardar este presupuesto.",
+    "couldNotDelete": "No se pudo eliminar este presupuesto.",
+    "empty": {
+      "title": "No hay presupuesto para este mes",
+      "body": "Defina un presupuesto para un centro de costo, una cuenta específica o toda la empresa — luego, a fin de mes, vea cómo se comparó el gasto real."
     }
   }
 }

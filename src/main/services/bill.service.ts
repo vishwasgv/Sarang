@@ -29,20 +29,22 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // rather than silently folded into AP. Total debit (expense recognized)
 // still equals totalAmount + taxAmount either way, so this balances by
 // construction.
-async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean }): Promise<void> {
+async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean; costCentreId?: string | null }): Promise<void> {
   const grossExpense = roundCurrency(bill.totalAmount + (bill.isReverseCharge ? bill.taxAmount : 0))
   if (grossExpense <= 0) return
   const [expenseAccount, apAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode('6000', tx),
     chartOfAccountsService.getSystemAccountByCode('2000', tx)
   ])
-  const lines = [{ accountId: expenseAccount.id, bankAccountId: null, debitAmount: grossExpense, creditAmount: 0 }]
+  // Phase 65 — same "tag every line" convention as postInvoiceJournalEntry.
+  const costCentreId = bill.costCentreId ?? null
+  const lines = [{ accountId: expenseAccount.id, bankAccountId: null, costCentreId, debitAmount: grossExpense, creditAmount: 0 }]
   if (bill.isReverseCharge && bill.taxAmount > 0) {
     const taxPayableAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
-    lines.push({ accountId: apAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: bill.totalAmount })
-    lines.push({ accountId: taxPayableAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: bill.taxAmount })
+    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.totalAmount })
+    lines.push({ accountId: taxPayableAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.taxAmount })
   } else {
-    lines.push({ accountId: apAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: bill.totalAmount })
+    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.totalAmount })
   }
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'BILL', sourceId: bill.id, narration: `Bill ${bill.billNumber}`,
@@ -150,6 +152,8 @@ export const billService = {
             paidAmount: 0,
             balanceAmount: totalAmount,
             isReverseCharge: payload.isReverseCharge,
+            // Phase 65 — Reporting Tags / Cost & Profit Centres.
+            costCentreId: payload.costCentreId || null,
             notes: payload.notes || null,
             createdById: userId ?? null,
             items: {

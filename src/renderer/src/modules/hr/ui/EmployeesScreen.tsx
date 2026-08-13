@@ -26,6 +26,7 @@ interface Employee {
   basicSalary: number
   allowances: { name: string; amount: number }[]
   notes: string | null
+  costCentreId?: string | null
 }
 
 const EMPLOYEE_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'DAILY_WAGE']
@@ -47,6 +48,7 @@ export function EmployeesScreen() {
   const hasServiceCatalog = useIndustryStore((s) => s.isModuleEnabled('service_catalog'))
   const [serviceCatalog, setServiceCatalog] = useState<{ id: string; serviceName: string }[]>([])
   const [skillIds, setSkillIds] = useState<string[]>([])
+  const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -62,7 +64,8 @@ export function EmployeesScreen() {
     department: '', designation: '', employeeType: 'FULL_TIME',
     joinDate: toLocalISODate(new Date()),
     salaryType: 'MONTHLY', basicSalary: '', notes: '',
-    allowances: [] as { name: string; amount: number }[]
+    allowances: [] as { name: string; amount: number }[],
+    costCentreId: ''
   })
   const [newAllowanceName, setNewAllowanceName] = useState('')
   const [newAllowanceAmount, setNewAllowanceAmount] = useState('')
@@ -93,6 +96,12 @@ export function EmployeesScreen() {
     })
   }, [hasServiceCatalog])
 
+  useEffect(() => {
+    api.costCentres.list().then((res) => {
+      if (res.success && res.data) setCostCentres(res.data as { id: string; name: string }[])
+    }).catch(() => {})
+  }, [])
+
   const visible = employees.filter(e =>
     e.fullName.toLowerCase().includes(search.toLowerCase()) ||
     (e.employeeNumber ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -107,7 +116,7 @@ export function EmployeesScreen() {
       department: '', designation: '', employeeType: 'FULL_TIME',
       joinDate: toLocalISODate(new Date()),
       salaryType: 'MONTHLY', basicSalary: '', notes: '',
-      allowances: []
+      allowances: [], costCentreId: ''
     })
     setSkillIds([])
     setNewAllowanceName('')
@@ -129,7 +138,8 @@ export function EmployeesScreen() {
       salaryType: e.salaryType,
       basicSalary: e.basicSalary.toString(),
       notes: e.notes ?? '',
-      allowances: [...e.allowances]
+      allowances: [...e.allowances],
+      costCentreId: e.costCentreId ?? ''
     })
     setSkillIds([])
     if (hasServiceCatalog) {
@@ -170,7 +180,8 @@ export function EmployeesScreen() {
         salaryType: form.salaryType,
         basicSalary: parseFloat(form.basicSalary) || 0,
         allowances: form.allowances,
-        notes: form.notes.trim() || undefined
+        notes: form.notes.trim() || undefined,
+        costCentreId: form.costCentreId || undefined
       }
       const res = editing
         ? await api.hr.updateEmployee({ id: editing.id, ...payload })
@@ -332,6 +343,12 @@ export function EmployeesScreen() {
                   <input type="date" value={form.joinDate} onChange={e => setForm(f => ({ ...f, joinDate: e.target.value }))}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-dark dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
+                {costCentres.length > 0 && (
+                  <Select label={t('costCentres.title')} value={form.costCentreId} onChange={e => setForm(f => ({ ...f, costCentreId: e.target.value }))}>
+                    <option value="">{t('costCentres.none')}</option>
+                    {costCentres.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
+                  </Select>
+                )}
               </div>
 
               {/* Salary Reference */}

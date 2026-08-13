@@ -24,6 +24,7 @@ export interface EmployeeRecord {
   basicSalary: number
   allowances: Allowance[]
   notes: string | null
+  costCentreId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -109,6 +110,7 @@ function toEmployee(e: any): EmployeeRecord {
     basicSalary: e.basicSalary,
     allowances: parseAllowances(e.allowances),
     notes: e.notes ?? null,
+    costCentreId: e.costCentreId ?? null,
     createdAt: new Date(e.createdAt).toISOString(),
     updatedAt: new Date(e.updatedAt).toISOString()
   }
@@ -181,6 +183,7 @@ export async function createEmployee(payload: {
   basicSalary?: number
   allowances?: Allowance[]
   notes?: string
+  costCentreId?: string
 }): Result<EmployeeRecord> {
   try {
     const prisma = getPrisma()
@@ -197,7 +200,9 @@ export async function createEmployee(payload: {
         salaryType: payload.salaryType ?? 'MONTHLY',
         basicSalary: payload.basicSalary ?? 0,
         allowances: JSON.stringify(payload.allowances ?? []),
-        notes: payload.notes?.trim() || null
+        notes: payload.notes?.trim() || null,
+        // Phase 65 — Reporting Tags / Cost & Profit Centres.
+        costCentreId: payload.costCentreId || null
       }
     })
     return { success: true, data: toEmployee(e) }
@@ -224,6 +229,7 @@ export async function updateEmployee(payload: {
   basicSalary?: number
   allowances?: Allowance[]
   notes?: string
+  costCentreId?: string | null
 }): Result<EmployeeRecord> {
   try {
     const prisma = getPrisma()
@@ -242,6 +248,8 @@ export async function updateEmployee(payload: {
     if (payload.basicSalary !== undefined) data.basicSalary = payload.basicSalary
     if (payload.allowances !== undefined) data.allowances = JSON.stringify(payload.allowances)
     if (payload.notes !== undefined) data.notes = payload.notes?.trim() || null
+    // Phase 65 — Reporting Tags / Cost & Profit Centres.
+    if (payload.costCentreId !== undefined) data.costCentreId = payload.costCentreId || null
 
     const e = await prisma.employee.update({ where: { id: payload.id }, data })
     return { success: true, data: toEmployee(e) }

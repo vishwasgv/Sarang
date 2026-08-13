@@ -50,7 +50,9 @@
     "freightLedger": "Buku Besar Ongkir",
     "logisticsAnalytics": "Analitik Logistik",
     "tailoring": "Penjahitan",
-    "manual": "Manual"
+    "manual": "Manual",
+    "costCentres": "Pusat Biaya",
+    "budgets": "Anggaran"
   },
   "common": {
     "save": "Simpan",
@@ -1117,7 +1119,13 @@
     "dayOfWeekLabel": "Hari dalam Minggu",
     "dayOfPeriodLabel": "Hari dalam Periode",
     "dayOfMonth": "hari ke-{{day}}",
-    "mon": "Sen", "tue": "Sel", "wed": "Rab", "thu": "Kam", "fri": "Jum", "sat": "Sab", "sun": "Min",
+    "mon": "Sen",
+    "tue": "Sel",
+    "wed": "Rab",
+    "thu": "Kam",
+    "fri": "Jum",
+    "sat": "Sab",
+    "sun": "Min",
     "docType": {
       "INVOICE": "Faktur",
       "BILL": "Faktur",
@@ -1534,6 +1542,26 @@
       "siteVisitLog": {
         "label": "Log Kunjungan Lokasi",
         "description": "Setiap kunjungan lokasi yang tercatat berdasarkan jenis — untuk Insinyur Sipil"
+      },
+      "costCentreTreemap": {
+        "label": "Laba Rugi Pusat Biaya",
+        "description": "Pendapatan, pengeluaran, dan margin aktual per pusat biaya, dari setiap faktur, tagihan, dan pengeluaran yang diberi tag"
+      },
+      "statutoryComplianceSummary": {
+        "label": "Ringkasan Kepatuhan Statuter",
+        "description": "Total kewajiban pemberi kerja bulan ini untuk setiap pos potongan statuter (PF, ESI, Pajak Profesi)"
+      },
+      "cashFlowProjection": {
+        "label": "Proyeksi Arus Kas",
+        "description": "Pergerakan kas aktual bulan lalu, ditambah yang jatuh tempo dan diproyeksikan untuk bulan mendatang"
+      },
+      "paymentPerformance": {
+        "label": "Kinerja Pembayaran",
+        "description": "Berapa hari pelanggan benar-benar membutuhkan waktu untuk membayar lunas, diurutkan berdasarkan pelanggan"
+      },
+      "budgetVsActual": {
+        "label": "Anggaran vs. Aktual",
+        "description": "Angka yang dianggarkan bulan ini berdampingan dengan pengeluaran aktual, per pusat biaya dan akun"
       }
     },
     "summary": {
@@ -1732,7 +1760,8 @@
       "spendByVendor": "Pengeluaran per Vendor",
       "spendByItem": "Pengeluaran per Barang",
       "purchaseDetails": "Detail Pembelian",
-      "apAgingByVendor": "Umur Hutang per Vendor"
+      "apAgingByVendor": "Umur Hutang per Vendor",
+      "untaggedNote": "Tidak diberi tag: {{revenue}} pendapatan dan {{expense}} pengeluaran dari transaksi tanpa pusat biaya yang ditetapkan."
     },
     "empty": {
       "invoices": "Tidak ada faktur dalam rentang tanggal ini.",
@@ -1779,7 +1808,8 @@
       "eventBookings": "Tidak ada pemesanan acara dalam rentang tanggal ini.",
       "placements": "Tidak ada penempatan dalam rentang tanggal ini.",
       "drawingRegister": "Tidak ada revisi gambar dalam rentang tanggal ini.",
-      "siteVisitLog": "Tidak ada kunjungan lokasi dalam rentang tanggal ini."
+      "siteVisitLog": "Tidak ada kunjungan lokasi dalam rentang tanggal ini.",
+      "noData": "Tidak ada catatan yang ditemukan untuk periode ini."
     },
     "col": {
       "invoiceNo": "No. Faktur",
@@ -1944,7 +1974,16 @@
       "lineGross": "Total Harga Daftar",
       "discountGiven": "Diskon Diberikan",
       "discountPercent": "% Diskon",
-      "projectTitle": "Judul Proyek"
+      "projectTitle": "Judul Proyek",
+      "margin": "Margin",
+      "deductionName": "Potongan",
+      "totalAmount": "Jumlah Total",
+      "employeeCount": "Karyawan",
+      "actual": "Aktual",
+      "projected": "Diproyeksikan",
+      "paidInvoiceCount": "Faktur Dibayar",
+      "avgDaysToPay": "Rata-rata Hari Pembayaran",
+      "outstandingInvoiceCount": "Faktur Belum Dibayar"
     },
     "val": {
       "walkIn": "Pelanggan Langsung",
@@ -2740,6 +2779,14 @@
       "locations": {
         "title": "Lokasi",
         "body": "Jika Anda menyimpan stok di lebih dari satu tempat, tambahkan lokasi kedua di sini dan coba Transfer Stok — semuanya dimulai dari satu lokasi default hingga Anda benar-benar menambahkan lokasi lain."
+      },
+      "costCentres": {
+        "title": "Pusat Biaya",
+        "body": "Buat pusat biaya untuk suatu departemen, cabang, atau proyek, lalu pilih pada faktur, tagihan, atau pengeluaran Anda berikutnya — lihat laba dan pengeluaran yang dihasilkannya pada laporan Laba Rugi Pusat Biaya."
+      },
+      "budgets": {
+        "title": "Anggaran",
+        "body": "Tetapkan anggaran bulanan untuk pusat biaya, akun tertentu, atau seluruh perusahaan, lalu periksa setelah bulan berjalan bagaimana pengeluaran aktual dibandingkan."
       }
     }
   },
@@ -3280,7 +3327,9 @@
     "noDeductions": "Belum ada potongan yang ditambahkan.",
     "netPay": "Gaji Bersih",
     "payslipDeductionDisclaimer": "Sarang tidak menghitung jumlah PF/ESI/Pajak Profesi/TDS — masukkan angka yang diberikan oleh akuntan Anda.",
-    "confirmMarkPaid": "Tandai gaji ini sebagai sudah dibayar? Ini akan membuat catatan pengeluaran dan mengunci slip gaji dari pengeditan lebih lanjut."
+    "confirmMarkPaid": "Tandai gaji ini sebagai sudah dibayar? Ini akan membuat catatan pengeluaran dan mengunci slip gaji dari pengeditan lebih lanjut.",
+    "suggestStatutoryDeductions": "Sarankan dari tarif statuter",
+    "statutoryNoRatesConfigured": "Belum ada tarif statuter yang dikonfigurasi — atur dulu di Pengaturan."
   },
   "quotations": {
     "title": "Penawaran",
@@ -4219,5 +4268,46 @@
     "print": "Cetak",
     "performDailyCloseConfirm": "Lakukan tutup harian? Ini akan menandai semua meja terisi sebagai tersedia dan mencatat ringkasan penutupan.",
     "scanToOrder": "Pindai untuk melihat menu dan memesan"
+  },
+  "costCentres": {
+    "title": "Pusat Biaya",
+    "subtitle": "{{count}} pusat biaya — beri tag pada faktur, tagihan, pengeluaran, dan karyawan untuk melihat laba/pengeluaran per departemen, cabang, atau proyek",
+    "name": "Nama",
+    "code": "Kode",
+    "newCostCentre": "Pusat Biaya Baru",
+    "editCostCentre": "Edit Pusat Biaya",
+    "namePlaceholder": "mis. Pemasaran, Cabang Pusat Kota, Proyek Alfa",
+    "codePlaceholder": "Kode singkat opsional",
+    "nameRequired": "Nama pusat biaya wajib diisi.",
+    "couldNotLoad": "Tidak dapat memuat pusat biaya.",
+    "couldNotSave": "Tidak dapat menyimpan pusat biaya ini.",
+    "none": "Tidak ada",
+    "empty": {
+      "title": "Belum ada pusat biaya",
+      "body": "Buat pusat biaya pertama Anda untuk mulai memberi tag pada faktur, tagihan, pengeluaran, dan karyawan — lalu lihat rincian laba/pengeluaran nyata per departemen, cabang, atau proyek."
+    }
+  },
+  "budgets": {
+    "title": "Anggaran",
+    "subtitle": "Rencanakan angka bulanan per pusat biaya atau akun, lalu bandingkan dengan pengeluaran aktual",
+    "newBudget": "Anggaran Baru",
+    "editBudget": "Edit Anggaran",
+    "scope": "Cakupan",
+    "budgeted": "Dianggarkan",
+    "actual": "Aktual",
+    "variance": "Selisih",
+    "amount": "Jumlah",
+    "account": "Akun",
+    "wholeCompany": "Seluruh Perusahaan",
+    "allAccounts": "Semua Akun Pengeluaran",
+    "periodLabel": "Periode: {{period}}",
+    "amountMustBePositive": "Jumlah anggaran harus lebih besar dari nol.",
+    "couldNotLoad": "Tidak dapat memuat anggaran.",
+    "couldNotSave": "Tidak dapat menyimpan anggaran ini.",
+    "couldNotDelete": "Tidak dapat menghapus anggaran ini.",
+    "empty": {
+      "title": "Belum ada anggaran untuk bulan ini",
+      "body": "Tetapkan anggaran untuk pusat biaya, akun tertentu, atau seluruh perusahaan — lalu kembali di akhir bulan untuk melihat bagaimana pengeluaran aktual dibandingkan."
+    }
   }
 }

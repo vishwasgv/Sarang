@@ -18,6 +18,10 @@ export const CreateEmployeeSchema = z.object({
   basicSalary: z.number().finite().nonnegative('Basic salary cannot be negative').optional(),
   allowances: z.array(AllowanceSchema).optional(),
   notes: z.string().max(2000).optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. This employee's
+  // salary cost is attributed to this centre when their SalaryPayment is
+  // posted to the GL.
+  costCentreId: z.string().min(1).optional(),
 })
 
 export const UpdateEmployeeSchema = z.object({
@@ -36,6 +40,8 @@ export const UpdateEmployeeSchema = z.object({
   basicSalary: z.number().finite().nonnegative('Basic salary cannot be negative').optional(),
   allowances: z.array(AllowanceSchema).optional(),
   notes: z.string().max(2000).optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId: z.string().min(1).nullable().optional(),
 })
 
 export const DeactivateEmployeeSchema = z.object({

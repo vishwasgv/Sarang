@@ -71,6 +71,17 @@ const PERMISSIONS = [
   { permissionKey: 'inventory.transferStock', permissionName: 'Transfer Stock Between Locations' },
   { permissionKey: 'locations.view', permissionName: 'View Locations' },
   { permissionKey: 'locations.manage', permissionName: 'Create & Manage Locations' },
+  // Phase 65 — Reporting Tags / Cost & Profit Centres, and Budgets. Same
+  // view/manage split and same Admin-only-manage rationale as Locations
+  // just above (a structural setup action, not a routine daily one).
+  // Budgets are Manager-tier for both view AND manage — unlike a Cost
+  // Centre (a one-time structural tag), setting/adjusting a monthly budget
+  // is itself a routine planning task, matching inventory.adjustStock's
+  // own Manager-tier trust level.
+  { permissionKey: 'costCentres.view', permissionName: 'View Cost Centres' },
+  { permissionKey: 'costCentres.manage', permissionName: 'Create & Manage Cost Centres' },
+  { permissionKey: 'budgets.view', permissionName: 'View Budgets' },
+  { permissionKey: 'budgets.manage', permissionName: 'Create & Manage Budgets' },
   // Billing
   { permissionKey: 'billing.createInvoice', permissionName: 'Create Invoice' },
   { permissionKey: 'billing.editDraftInvoice', permissionName: 'Edit Draft Invoice' },
@@ -537,9 +548,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'suppliers.view', 'suppliers.create', 'suppliers.update', 'suppliers.archive', 'suppliers.viewLedger', 'suppliers.recordPayment',
     'products.view', 'products.create', 'products.update', 'products.archive', 'products.modifyPricing', 'products.printLabels',
     'inventory.view', 'inventory.addStock', 'inventory.adjustStock', 'inventory.viewMovements', 'inventory.valuation', 'inventory.manage', 'inventory.transferStock',
-    // locations.manage (creating/deactivating a Location) stays Admin-only —
-    // not granted here, see the permission definitions' own comment above.
+    // locations.manage/costCentres.manage (structural setup actions) stay
+    // Admin-only — not granted here, see the permission definitions' own
+    // comment above.
     'locations.view',
+    'costCentres.view', 'budgets.view', 'budgets.manage',
     'billing.createInvoice', 'billing.editDraftInvoice', 'billing.cancelInvoice', 'billing.printInvoice', 'billing.view', 'billing.create', 'billing.void',
     'payments.record', 'payments.reverse', 'payments.view',
     'expenses.view', 'expenses.create', 'expenses.modify',

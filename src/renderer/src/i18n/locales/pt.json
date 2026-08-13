@@ -50,7 +50,9 @@
     "freightLedger": "Livro de Fretes",
     "logisticsAnalytics": "Análise de Logística",
     "tailoring": "Alfaiataria",
-    "manual": "Manual"
+    "manual": "Manual",
+    "costCentres": "Centros de Custo",
+    "budgets": "Orçamentos"
   },
   "common": {
     "save": "Salvar",
@@ -1117,7 +1119,13 @@
     "dayOfWeekLabel": "Dia da Semana",
     "dayOfPeriodLabel": "Dia do Período",
     "dayOfMonth": "dia {{day}}",
-    "mon": "Seg", "tue": "Ter", "wed": "Qua", "thu": "Qui", "fri": "Sex", "sat": "Sáb", "sun": "Dom",
+    "mon": "Seg",
+    "tue": "Ter",
+    "wed": "Qua",
+    "thu": "Qui",
+    "fri": "Sex",
+    "sat": "Sáb",
+    "sun": "Dom",
     "docType": {
       "INVOICE": "Fatura",
       "BILL": "Fatura",
@@ -1534,6 +1542,26 @@
       "siteVisitLog": {
         "label": "Registro de Visitas ao Local",
         "description": "Cada visita ao local registrada por tipo — para Engenheiros Civis"
+      },
+      "costCentreTreemap": {
+        "label": "DRE por Centro de Custo",
+        "description": "Receita, despesa e margem reais por centro de custo, de cada fatura, conta a pagar e despesa marcada"
+      },
+      "statutoryComplianceSummary": {
+        "label": "Resumo de Conformidade Estatutária",
+        "description": "Responsabilidade total do empregador neste mês por cada rubrica de dedução estatutária (PF, ESI, Imposto Profissional)"
+      },
+      "cashFlowProjection": {
+        "label": "Projeção de Fluxo de Caixa",
+        "description": "Movimento de caixa real do mês passado, além do que está previsto e projetado para o próximo mês"
+      },
+      "paymentPerformance": {
+        "label": "Desempenho de Pagamento",
+        "description": "Quantos dias os clientes realmente levam para pagar integralmente, classificados por cliente"
+      },
+      "budgetVsActual": {
+        "label": "Orçamento vs. Real",
+        "description": "Os valores orçados deste mês ao lado do gasto real, por centro de custo e conta"
       }
     },
     "summary": {
@@ -1732,7 +1760,8 @@
       "spendByVendor": "Gasto por Fornecedor",
       "spendByItem": "Gasto por Item",
       "purchaseDetails": "Detalhes da Compra",
-      "apAgingByVendor": "Antiguidade de Contas a Pagar por Fornecedor"
+      "apAgingByVendor": "Antiguidade de Contas a Pagar por Fornecedor",
+      "untaggedNote": "Não marcado: {{revenue}} de receita e {{expense}} de despesa de transações sem centro de custo definido."
     },
     "empty": {
       "invoices": "Nenhuma fatura neste intervalo de datas.",
@@ -1779,7 +1808,8 @@
       "eventBookings": "Nenhuma reserva de evento neste intervalo de datas.",
       "placements": "Nenhuma colocação neste intervalo de datas.",
       "drawingRegister": "Nenhuma revisão de desenho neste intervalo de datas.",
-      "siteVisitLog": "Nenhuma visita ao local neste intervalo de datas."
+      "siteVisitLog": "Nenhuma visita ao local neste intervalo de datas.",
+      "noData": "Nenhum registro encontrado para este período."
     },
     "col": {
       "invoiceNo": "N.º Fatura",
@@ -1944,7 +1974,16 @@
       "lineGross": "Total pelo Preço de Tabela",
       "discountGiven": "Desconto Concedido",
       "discountPercent": "Desconto %",
-      "projectTitle": "Título do Projeto"
+      "projectTitle": "Título do Projeto",
+      "margin": "Margem",
+      "deductionName": "Dedução",
+      "totalAmount": "Valor Total",
+      "employeeCount": "Funcionários",
+      "actual": "Real",
+      "projected": "Projetado",
+      "paidInvoiceCount": "Faturas Pagas",
+      "avgDaysToPay": "Dias Médios para Pagamento",
+      "outstandingInvoiceCount": "Faturas Pendentes"
     },
     "val": {
       "walkIn": "Cliente Ocasional",
@@ -2740,6 +2779,14 @@
       "locations": {
         "title": "Localizações",
         "body": "Se você armazena estoque em mais de um lugar, adicione uma segunda localização aqui e experimente uma Transferência de Estoque — tudo começa em uma única localização padrão até que você realmente adicione outra."
+      },
+      "costCentres": {
+        "title": "Centros de Custo",
+        "body": "Crie um centro de custo para um departamento, filial ou projeto, depois selecione-o na próxima fatura, conta a pagar ou despesa — veja o lucro e o gasto que ele gerou no relatório DRE por Centro de Custo."
+      },
+      "budgets": {
+        "title": "Orçamentos",
+        "body": "Defina um orçamento mensal para um centro de custo, uma conta específica ou a empresa inteira, depois confira após o mês como o gasto real se comparou."
       }
     }
   },
@@ -3280,7 +3327,9 @@
     "noDeductions": "Nenhuma dedução adicionada.",
     "netPay": "Salário Líquido",
     "payslipDeductionDisclaimer": "O Sarang não calcula os valores de PF/ESI/Imposto Profissional/TDS — insira os valores fornecidos pelo seu contador.",
-    "confirmMarkPaid": "Marcar este salário como pago? Isso cria um registro de despesa e bloqueia o contracheque contra novas edições."
+    "confirmMarkPaid": "Marcar este salário como pago? Isso cria um registro de despesa e bloqueia o contracheque contra novas edições.",
+    "suggestStatutoryDeductions": "Sugerir a partir de taxas estatutárias",
+    "statutoryNoRatesConfigured": "Nenhuma taxa estatutária configurada ainda — configure-as primeiro em Configurações."
   },
   "quotations": {
     "title": "Orçamentos",
@@ -4219,5 +4268,46 @@
     "print": "Imprimir",
     "performDailyCloseConfirm": "Realizar o fechamento diário? Isso marcará todas as mesas ocupadas como disponíveis e registrará um resumo de fechamento.",
     "scanToOrder": "Escaneie para ver o cardápio e fazer seu pedido"
+  },
+  "costCentres": {
+    "title": "Centros de Custo",
+    "subtitle": "{{count}} centros de custo — marque faturas, contas a pagar, despesas e funcionários para ver lucro/gasto por departamento, filial ou projeto",
+    "name": "Nome",
+    "code": "Código",
+    "newCostCentre": "Novo Centro de Custo",
+    "editCostCentre": "Editar Centro de Custo",
+    "namePlaceholder": "ex. Marketing, Filial Centro, Projeto Alfa",
+    "codePlaceholder": "Código curto opcional",
+    "nameRequired": "O nome do centro de custo é obrigatório.",
+    "couldNotLoad": "Não foi possível carregar os centros de custo.",
+    "couldNotSave": "Não foi possível salvar este centro de custo.",
+    "none": "Nenhum",
+    "empty": {
+      "title": "Ainda não há centros de custo",
+      "body": "Crie seu primeiro centro de custo para começar a marcar faturas, contas a pagar, despesas e funcionários — depois veja um detalhamento real de lucro/gasto por departamento, filial ou projeto."
+    }
+  },
+  "budgets": {
+    "title": "Orçamentos",
+    "subtitle": "Planeje um valor mensal por centro de custo ou conta, depois compare com o gasto real",
+    "newBudget": "Novo Orçamento",
+    "editBudget": "Editar Orçamento",
+    "scope": "Escopo",
+    "budgeted": "Orçado",
+    "actual": "Real",
+    "variance": "Variação",
+    "amount": "Valor",
+    "account": "Conta",
+    "wholeCompany": "Empresa Inteira",
+    "allAccounts": "Todas as Contas de Despesas",
+    "periodLabel": "Período: {{period}}",
+    "amountMustBePositive": "O valor do orçamento deve ser maior que zero.",
+    "couldNotLoad": "Não foi possível carregar os orçamentos.",
+    "couldNotSave": "Não foi possível salvar este orçamento.",
+    "couldNotDelete": "Não foi possível excluir este orçamento.",
+    "empty": {
+      "title": "Nenhum orçamento definido para este mês",
+      "body": "Defina um orçamento para um centro de custo, uma conta específica ou a empresa inteira — depois volte no final do mês para ver como o gasto real se comparou."
+    }
   }
 }

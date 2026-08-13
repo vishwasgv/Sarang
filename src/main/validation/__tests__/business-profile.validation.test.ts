@@ -69,4 +69,29 @@ describe('BusinessProfileUpdateSchema', () => {
     const result = BusinessProfileUpdateSchema.safeParse({ overheadAllocationRate: -5 })
     expect(result.success).toBe(false)
   })
+
+  // Phase 65 — same real-gap class as the overhead fields above:
+  // payroll.service.ts's suggestStatutoryDeductions already reads these
+  // fields, but no update path accepted them until this schema addition.
+  it('accepts a valid statutory rates payload', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({
+      statutoryPfPercent: 12, statutoryEsiPercent: 0.75, statutoryEsiWageCeiling: 21000, statutoryProfessionalTax: 200
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts null statutory rate fields (turning a statutory head off)', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ statutoryPfPercent: null, statutoryEsiWageCeiling: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a statutoryPfPercent above 100', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ statutoryPfPercent: 150 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a negative statutoryProfessionalTax', () => {
+    const result = BusinessProfileUpdateSchema.safeParse({ statutoryProfessionalTax: -10 })
+    expect(result.success).toBe(false)
+  })
 })

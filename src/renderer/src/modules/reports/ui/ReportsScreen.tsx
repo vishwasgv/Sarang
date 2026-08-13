@@ -7,10 +7,11 @@ import {
   Activity, UserCheck, Award, QrCode, PackageSearch, FlaskConical, Droplet,
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp,
   Briefcase, Wrench, BedDouble, FolderOpen,
-  Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins
+  Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins,
+  PieChart, ShieldCheck, LineChart, Clock, Target
 } from 'lucide-react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap
 } from 'recharts'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
@@ -18,7 +19,7 @@ import { useBusinessStore } from '@app/store/business.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDate } from '@shared/utils/locale.util'
+import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { Select } from '@shared/ui/atoms/Select'
@@ -88,6 +89,22 @@ interface ProfitAndLossReport {
 
 interface CashBookEntry { date: string; description: string; type: 'IN' | 'OUT'; paymentMethod: string; amount: number; runningBalance: number }
 interface CashBookReport { dateFrom: string; dateTo: string; openingBalance: number; entries: CashBookEntry[]; totalIn: number; totalOut: number; closingBalance: number }
+
+// Phase 65 — Cost Centres, Budgets & Payroll Compliance
+interface CostCentreTreemapRow { costCentreId: string; costCentreName: string; revenue: number; expense: number; margin: number }
+interface CostCentreTreemapReport { dateFrom: string; dateTo: string; rows: CostCentreTreemapRow[]; untaggedRevenue: number; untaggedExpense: number }
+
+interface BudgetVsActualRow { budgetId: string; costCentreId: string | null; costCentreName: string | null; accountId: string | null; accountName: string | null; budgeted: number; actual: number; variance: number }
+interface BudgetVsActualReport { periodYear: number; periodMonth: number; rows: BudgetVsActualRow[] }
+
+interface StatutorySummaryRow { name: string; totalAmount: number; employeeCount: number }
+interface StatutoryComplianceSummaryReport { periodYear: number; periodMonth: number; rows: StatutorySummaryRow[]; totalEmployees: number }
+
+interface CashFlowDayBucket { date: string; actualNet: number | null; projectedNet: number | null }
+interface CashFlowProjectionReport { asOf: string; daysBack: number; daysForward: number; days: CashFlowDayBucket[] }
+
+interface PaymentPerformanceRow { customerId: string; customerName: string; paidInvoiceCount: number; avgDaysToPay: number | null; outstandingInvoiceCount: number; outstandingAmount: number }
+interface PaymentPerformanceReport { dateFrom: string; dateTo: string; rows: PaymentPerformanceRow[]; overallAvgDaysToPay: number | null }
 
 interface TrialBalanceRow { account: string; debit: number; credit: number }
 interface TrialBalanceReport { dateFrom: string; dateTo: string; asOf: string; rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number; balanced: boolean }
@@ -331,6 +348,8 @@ type ReportType =
   | 'hotelOccupancy' | 'hotelGuestRegister'
   // Phase 61 — Purchase-side reports (Section 3.1 item 5)
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance
+  | 'costCentreTreemap' | 'budgetVsActual' | 'statutoryComplianceSummary' | 'cashFlowProjection' | 'paymentPerformance'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -359,6 +378,19 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'purchasesByVendor', icon: <Truck size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'purchasesByItem', icon: <Package size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'apAging', icon: <AlertCircle size={18} />, category: 'suppliers', requiresDateRange: false, permission: 'reports.outstanding' },
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance. budgetVsActual
+  // deliberately lives on its own BudgetsScreen (/budgets) instead of here —
+  // it pairs naturally with Budget create/edit, unlike these four which have
+  // no dedicated management screen of their own.
+  { id: 'costCentreTreemap', icon: <PieChart size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  // Budget vs Actual also lives inline on the Budgets screen (/budgets, next
+  // to Budget create/edit) — this entry is the spec's own explicit "shares
+  // the Reports screen's report-picker pattern" requirement, not a
+  // duplicate; same generateBudgetVsActualReport backend either way.
+  { id: 'budgetVsActual', icon: <Target size={18} />, category: 'finance', requiresDateRange: true, permission: 'budgets.view' },
+  { id: 'statutoryComplianceSummary', icon: <ShieldCheck size={18} />, category: 'finance', requiresDateRange: true, permission: 'hr.view' },
+  { id: 'cashFlowProjection', icon: <LineChart size={18} />, category: 'finance', requiresDateRange: false, permission: 'analytics.viewProfit' },
+  { id: 'paymentPerformance', icon: <Clock size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.outstanding' },
   { id: 'expenses', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'profitAndLoss', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashBook', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
@@ -636,6 +668,28 @@ export function ReportsScreen() {
           break
         case 'apAging':
           res = await window.api.reports.apAging()
+          break
+        case 'costCentreTreemap':
+          res = await window.api.reports.costCentreTreemap({ dateFrom, dateTo })
+          break
+        case 'budgetVsActual': {
+          const [y, m] = (dateTo || toLocalISODate(new Date())).split('-').map(Number)
+          res = await window.api.reports.budgetVsActual({ periodYear: y, periodMonth: m })
+          break
+        }
+        case 'statutoryComplianceSummary': {
+          // Reuses the date-range picker's own "to" date to pick the month —
+          // this report is inherently monthly (matches payroll's own
+          // granularity), not a real date range.
+          const [y, m] = (dateTo || toLocalISODate(new Date())).split('-').map(Number)
+          res = await window.api.reports.statutoryComplianceSummary({ periodYear: y, periodMonth: m })
+          break
+        }
+        case 'cashFlowProjection':
+          res = await window.api.reports.cashFlowProjection({})
+          break
+        case 'paymentPerformance':
+          res = await window.api.reports.paymentPerformance({ dateFrom, dateTo })
           break
         case 'batchExpiry':
           res = await window.api.reports.batchExpiry()
@@ -1001,6 +1055,41 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.supplier'), t('common.phone'), t('reports.col.payable'), t('reports.aging.current'), t('reports.aging.d1to30Short'), t('reports.aging.d31to60Short'), t('reports.aging.d61to90Short'), t('reports.aging.d90plusShort')],
           rows: d.rows.map(r => [r.supplierName, r.phone ?? '', r.outstanding, r.aging.current, r.aging.days1to30, r.aging.days31to60, r.aging.days61to90, r.aging.days90plus])
+        }
+      }
+      case 'costCentreTreemap': {
+        const d = reportData as CostCentreTreemapReport
+        return {
+          headers: [t('costCentres.title'), `${t('reports.summary.totalRevenue')} (${currencySymbol})`, `${t('reports.col.expense')} (${currencySymbol})`, `${t('reports.col.margin')} (${currencySymbol})`],
+          rows: d.rows.map(r => [r.costCentreName, r.revenue, r.expense, r.margin])
+        }
+      }
+      case 'budgetVsActual': {
+        const d = reportData as BudgetVsActualReport
+        return {
+          headers: [t('budgets.scope'), `${t('budgets.budgeted')} (${currencySymbol})`, `${t('budgets.actual')} (${currencySymbol})`, `${t('budgets.variance')} (${currencySymbol})`],
+          rows: d.rows.map(r => [`${r.costCentreName ?? t('budgets.wholeCompany')}${r.accountName ? ` / ${r.accountName}` : ''}`, r.budgeted, r.actual, r.variance])
+        }
+      }
+      case 'statutoryComplianceSummary': {
+        const d = reportData as StatutoryComplianceSummaryReport
+        return {
+          headers: [t('reports.col.deductionName'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.employeeCount')],
+          rows: d.rows.map(r => [r.name, r.totalAmount, r.employeeCount])
+        }
+      }
+      case 'cashFlowProjection': {
+        const d = reportData as CashFlowProjectionReport
+        return {
+          headers: [t('common.date'), `${t('reports.col.actual')} (${currencySymbol})`, `${t('reports.col.projected')} (${currencySymbol})`],
+          rows: d.days.map(b => [b.date, b.actualNet ?? '', b.projectedNet ?? ''])
+        }
+      }
+      case 'paymentPerformance': {
+        const d = reportData as PaymentPerformanceReport
+        return {
+          headers: [t('reports.col.customer'), t('reports.col.paidInvoiceCount'), t('reports.col.avgDaysToPay'), t('reports.col.outstandingInvoiceCount'), `${t('reports.col.outstanding')} (${currencySymbol})`],
+          rows: d.rows.map(r => [r.customerName, r.paidInvoiceCount, r.avgDaysToPay ?? '', r.outstandingInvoiceCount, r.outstandingAmount])
         }
       }
       case 'batchExpiry': {
@@ -1494,6 +1583,49 @@ export function ReportsScreen() {
         return [
           { label: t('reports.summary.supplierPayables'), value: fmt(d.summary.totalOutstanding) },
           { label: t('reports.col.count'), value: String(d.summary.count) }
+        ]
+      }
+      case 'costCentreTreemap': {
+        const d = reportData as CostCentreTreemapReport
+        const totalRevenue = d.rows.reduce((s, r) => s + r.revenue, 0)
+        const totalExpense = d.rows.reduce((s, r) => s + r.expense, 0)
+        return [
+          { label: t('reports.summary.totalRevenue'), value: fmt(totalRevenue) },
+          { label: t('reports.col.expense'), value: fmt(totalExpense) },
+          { label: t('reports.col.margin'), value: fmt(totalRevenue - totalExpense) }
+        ]
+      }
+      case 'budgetVsActual': {
+        const d = reportData as BudgetVsActualReport
+        const totalBudgeted = d.rows.reduce((s, r) => s + r.budgeted, 0)
+        const totalActual = d.rows.reduce((s, r) => s + r.actual, 0)
+        return [
+          { label: t('budgets.budgeted'), value: fmt(totalBudgeted) },
+          { label: t('budgets.actual'), value: fmt(totalActual) },
+          { label: t('budgets.variance'), value: fmt(totalBudgeted - totalActual) }
+        ]
+      }
+      case 'statutoryComplianceSummary': {
+        const d = reportData as StatutoryComplianceSummaryReport
+        return [
+          { label: t('reports.col.totalAmount'), value: fmt(d.rows.reduce((s, r) => s + r.totalAmount, 0)) },
+          { label: t('nav.employees'), value: String(d.totalEmployees) }
+        ]
+      }
+      case 'cashFlowProjection': {
+        const d = reportData as CashFlowProjectionReport
+        const totalActual = d.days.reduce((s, b) => s + (b.actualNet ?? 0), 0)
+        const totalProjected = d.days.reduce((s, b) => s + (b.projectedNet ?? 0), 0)
+        return [
+          { label: t('reports.col.actual'), value: fmt(totalActual) },
+          { label: t('reports.col.projected'), value: fmt(totalProjected) }
+        ]
+      }
+      case 'paymentPerformance': {
+        const d = reportData as PaymentPerformanceReport
+        return [
+          { label: t('reports.col.avgDaysToPay'), value: d.overallAvgDaysToPay != null ? String(d.overallAvgDaysToPay) : '—' },
+          { label: t('reports.col.outstanding'), value: fmt(d.rows.reduce((s, r) => s + r.outstandingAmount, 0)) }
         ]
       }
       case 'batchExpiry': {
@@ -2376,6 +2508,11 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'purchasesByVendor': return <PurchasesByVendorView data={data as PurchasesByVendorReport} fmt={fmt} />
     case 'purchasesByItem': return <PurchasesByItemView data={data as PurchasesByItemReport} fmt={fmt} />
     case 'apAging': return <ApAgingView data={data as ApAgingReport} fmt={fmt} />
+    case 'costCentreTreemap': return <CostCentreTreemapView data={data as CostCentreTreemapReport} fmt={fmt} />
+    case 'budgetVsActual': return <BudgetVsActualView data={data as BudgetVsActualReport} fmt={fmt} />
+    case 'statutoryComplianceSummary': return <StatutoryComplianceSummaryView data={data as StatutoryComplianceSummaryReport} fmt={fmt} />
+    case 'cashFlowProjection': return <CashFlowProjectionView data={data as CashFlowProjectionReport} fmt={fmt} />
+    case 'paymentPerformance': return <PaymentPerformanceView data={data as PaymentPerformanceReport} fmt={fmt} />
     case 'batchExpiry': return <BatchExpiryView data={data as BatchExpiryReport} fmt={fmt} />
     case 'labThroughput': return <LabThroughputView data={data as LabThroughputReport} />
     case 'bloodStock': return <BloodStockView data={data as BloodStockReport} />
@@ -3443,6 +3580,194 @@ function ApAgingView({ data, fmt }: { data: ApAgingReport; fmt: (n: number) => s
           fmt(r.aging.current), fmt(r.aging.days1to30), fmt(r.aging.days31to60), fmt(r.aging.days61to90), fmt(r.aging.days90plus)
         ])}
         emptyText={t('reports.empty.supplierOutstanding')}
+      />
+    </div>
+  )
+}
+
+// ─── Budget vs. Actual (Phase 65) ──────────────────────────────────────────
+
+function BudgetVsActualView({ data, fmt }: { data: BudgetVsActualReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalBudgeted = data.rows.reduce((s, r) => s + r.budgeted, 0)
+  const totalActual = data.rows.reduce((s, r) => s + r.actual, 0)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('budgets.budgeted'), value: fmt(totalBudgeted) },
+        { label: t('budgets.actual'), value: fmt(totalActual) },
+        { label: t('budgets.variance'), value: fmt(totalBudgeted - totalActual) }
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('budgets.title')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(180, data.rows.length * 44)}>
+            <BarChart
+              data={data.rows.map(r => ({ name: r.costCentreName ?? t('budgets.wholeCompany'), budgeted: r.budgeted, actual: r.actual }))}
+              layout="vertical" barCategoryGap="30%"
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="name" tick={CHART_TICK} tickLine={false} axisLine={false} width={130} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="budgeted" name={t('budgets.budgeted')} fill="#94A3B8" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="actual" name={t('budgets.actual')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('budgets.scope'), t('budgets.budgeted'), t('budgets.actual'), t('budgets.variance')]}
+        rows={data.rows.map(r => [
+          `${r.costCentreName ?? t('budgets.wholeCompany')}${r.accountName ? ` / ${r.accountName}` : ''}`,
+          fmt(r.budgeted), fmt(r.actual), fmt(r.variance)
+        ])}
+        emptyText={t('budgets.empty.title')}
+      />
+    </div>
+  )
+}
+
+// ─── Cost Centre Treemap (Phase 65) ────────────────────────────────────────
+
+// Real recharts Treemap — one rectangle per cost centre, sized by revenue,
+// colored by margin (green if healthy, red if the centre is running at a
+// loss), per this report's own spec. recharts injects x/y/width/height/name
+// plus every custom field passed on each data node (margin here).
+interface TreemapContentProps {
+  x?: number; y?: number; width?: number; height?: number
+  name?: string; margin?: number; fmt: (n: number) => string
+}
+function TreemapCell({ x = 0, y = 0, width = 0, height = 0, name, margin = 0, fmt }: TreemapContentProps) {
+  const fill = margin >= 0 ? STATUS_COLORS.success : STATUS_COLORS.danger
+  const showLabel = width > 60 && height > 32
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={0.85} stroke="#fff" strokeWidth={2} />
+      {showLabel && (
+        <>
+          <text x={x + 8} y={y + 18} fontSize={12} fontWeight={600} fill="#fff">{name}</text>
+          <text x={x + 8} y={y + 34} fontSize={11} fill="#fff" fillOpacity={0.9}>{fmt(margin)}</text>
+        </>
+      )}
+    </g>
+  )
+}
+
+function CostCentreTreemapView({ data, fmt }: { data: CostCentreTreemapReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalRevenue = data.rows.reduce((s, r) => s + r.revenue, 0)
+  const totalExpense = data.rows.reduce((s, r) => s + r.expense, 0)
+  const treemapData = data.rows.map(r => ({ name: r.costCentreName, revenue: Math.max(r.revenue, 1), margin: r.margin }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: fmt(totalRevenue) },
+        { label: t('reports.col.expense'), value: fmt(totalExpense) },
+        { label: t('reports.col.margin'), value: fmt(totalRevenue - totalExpense) }
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('costCentres.title')}</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <Treemap
+              data={treemapData}
+              dataKey="revenue"
+              stroke="#fff"
+              isAnimationActive={false}
+              content={<TreemapCell fmt={fmt} />}
+            >
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, n: string, p: { payload?: { margin?: number } }) => [n === 'revenue' ? fmt(v) : fmt(p?.payload?.margin ?? 0), n === 'revenue' ? t('reports.summary.totalRevenue') : t('reports.col.margin')]} />
+            </Treemap>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('costCentres.title'), `${t('reports.summary.totalRevenue')}`, t('reports.col.expense'), t('reports.col.margin')]}
+        rows={data.rows.map(r => [r.costCentreName, fmt(r.revenue), fmt(r.expense), fmt(r.margin)])}
+        emptyText={t('reports.empty.noData')}
+      />
+      {(data.untaggedRevenue !== 0 || data.untaggedExpense !== 0) && (
+        <p className="text-xs text-slate-400">{t('reports.section.untaggedNote', { revenue: fmt(data.untaggedRevenue), expense: fmt(data.untaggedExpense) })}</p>
+      )}
+    </div>
+  )
+}
+
+// ─── Statutory Compliance Summary (Phase 65) ───────────────────────────────
+
+function StatutoryComplianceSummaryView({ data, fmt }: { data: StatutoryComplianceSummaryReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalAmount = data.rows.reduce((s, r) => s + r.totalAmount, 0)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.totalAmount'), value: fmt(totalAmount) },
+        { label: t('nav.employees'), value: String(data.totalEmployees) }
+      ]} />
+      <DataTable
+        headers={[t('reports.col.deductionName'), t('reports.col.totalAmount'), t('reports.col.employeeCount')]}
+        rows={data.rows.map(r => [r.name, fmt(r.totalAmount), String(r.employeeCount)])}
+        emptyText={t('reports.empty.noData')}
+      />
+    </div>
+  )
+}
+
+// ─── Cash-Flow Projection (Phase 65) ───────────────────────────────────────
+
+function CashFlowProjectionView({ data, fmt }: { data: CashFlowProjectionReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalActual = data.days.reduce((s, b) => s + (b.actualNet ?? 0), 0)
+  const totalProjected = data.days.reduce((s, b) => s + (b.projectedNet ?? 0), 0)
+  const chartData = data.days.map(b => ({ label: b.date.slice(5), actual: b.actualNet, projected: b.projectedNet }))
+  const todayLabel = data.asOf.slice(5)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.actual'), value: fmt(totalActual) },
+        { label: t('reports.col.projected'), value: fmt(totalProjected) }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.cashFlowProjection.label')}</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <ReferenceLine x={todayLabel} stroke="#64748B" strokeDasharray="2 2" label={{ value: t('common.today'), position: 'top', fontSize: 10, fill: '#64748B' }} />
+            <Area type="monotone" dataKey="actual" name={t('reports.col.actual')} stroke={STATUS_COLORS.brand} fill={STATUS_COLORS.brand} fillOpacity={0.15} connectNulls={false} />
+            <Area type="monotone" dataKey="projected" name={t('reports.col.projected')} stroke={STATUS_COLORS.warning} fill={STATUS_COLORS.warning} fillOpacity={0.1} strokeDasharray="5 4" connectNulls={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <DataTable
+        headers={[t('common.date'), t('reports.col.actual'), t('reports.col.projected')]}
+        rows={data.days.map(b => [formatDate(b.date), b.actualNet != null ? fmt(b.actualNet) : '—', b.projectedNet != null ? fmt(b.projectedNet) : '—'])}
+        emptyText={t('reports.empty.noData')}
+      />
+    </div>
+  )
+}
+
+// ─── Payment Performance (Phase 65) ────────────────────────────────────────
+
+function PaymentPerformanceView({ data, fmt }: { data: PaymentPerformanceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalOutstanding = data.rows.reduce((s, r) => s + r.outstandingAmount, 0)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.avgDaysToPay'), value: data.overallAvgDaysToPay != null ? String(data.overallAvgDaysToPay) : '—' },
+        { label: t('reports.col.outstanding'), value: fmt(totalOutstanding) }
+      ]} />
+      <DataTable
+        headers={[t('reports.col.customer'), t('reports.col.paidInvoiceCount'), t('reports.col.avgDaysToPay'), t('reports.col.outstandingInvoiceCount'), t('reports.col.outstanding')]}
+        rows={data.rows.map(r => [r.customerName, String(r.paidInvoiceCount), r.avgDaysToPay != null ? String(r.avgDaysToPay) : '—', String(r.outstandingInvoiceCount), fmt(r.outstandingAmount)])}
+        emptyText={t('reports.empty.noData')}
       />
     </div>
   )

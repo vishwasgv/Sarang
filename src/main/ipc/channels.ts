@@ -148,6 +148,21 @@ export interface IpcChannels {
     create: (payload: { name: string; address?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; name?: string; address?: string; isActive?: boolean }) => Promise<ApiResponse>
   }
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Additive: an install
+  // that never creates one never sees a picker anywhere (hasAny gates it).
+  costCentres: {
+    list: () => Promise<ApiResponse>
+    hasAny: () => Promise<ApiResponse<boolean>>
+    create: (payload: { name: string; code?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; name?: string; code?: string; isActive?: boolean }) => Promise<ApiResponse>
+  }
+  // Phase 65 — Budget vs. Actual.
+  budgets: {
+    list: (payload?: { periodYear?: number; periodMonth?: number; costCentreId?: string }) => Promise<ApiResponse>
+    create: (payload: { costCentreId?: string; accountId?: string; periodYear: number; periodMonth: number; amount: number; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; amount?: number; notes?: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
   customers: {
     list: (payload?: { page?: number; limit?: number }) => Promise<ApiResponse>
     listOutstanding: () => Promise<ApiResponse>
@@ -364,6 +379,11 @@ export interface IpcChannels {
     profitAndLoss: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     cashBook: (payload: { dateFrom: string; dateTo: string; paymentMethod?: string }) => Promise<ApiResponse>
     trialBalance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
+    statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
+    cashFlowProjection: (payload?: { daysBack?: number; daysForward?: number }) => Promise<ApiResponse>
+    paymentPerformance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     customerLedger: (payload: unknown) => Promise<ApiResponse>
     supplierLedger: (payload: unknown) => Promise<ApiResponse>
     audit: (payload?: unknown) => Promise<ApiResponse>
@@ -780,6 +800,8 @@ export interface IpcChannels {
     updateDeductions: (payload: { id: string; deductions: { name: string; amount: number }[]; notes?: string }) => Promise<ApiResponse>
     markPaid: (payload: { id: string; paymentMethod: string; paidDate?: string }) => Promise<ApiResponse>
     print: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 65 — statutory PF/ESI/PT deduction suggestions (never auto-applied).
+    suggestStatutoryDeductions: (payload: { salaryPaymentId: string }) => Promise<ApiResponse<{ suggestions: { name: string; amount: number }[] }>>
   }
   rental: {
     checkAvailability: (payload: { productId: string; startDateTime: string; endDateTime: string; quantity?: number; excludeBookingId?: string }) => Promise<ApiResponse>

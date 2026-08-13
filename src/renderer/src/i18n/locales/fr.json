@@ -50,7 +50,9 @@
     "freightLedger": "Registre de Fret",
     "logisticsAnalytics": "Analyses Logistiques",
     "tailoring": "Couture",
-    "manual": "Manuel"
+    "manual": "Manuel",
+    "costCentres": "Centres de Coûts",
+    "budgets": "Budgets"
   },
   "common": {
     "save": "Enregistrer",
@@ -1117,7 +1119,13 @@
     "dayOfWeekLabel": "Jour de la Semaine",
     "dayOfPeriodLabel": "Jour de la Période",
     "dayOfMonth": "jour {{day}}",
-    "mon": "Lun", "tue": "Mar", "wed": "Mer", "thu": "Jeu", "fri": "Ven", "sat": "Sam", "sun": "Dim",
+    "mon": "Lun",
+    "tue": "Mar",
+    "wed": "Mer",
+    "thu": "Jeu",
+    "fri": "Ven",
+    "sat": "Sam",
+    "sun": "Dim",
     "docType": {
       "INVOICE": "Facture",
       "BILL": "Facture",
@@ -1534,6 +1542,26 @@
       "siteVisitLog": {
         "label": "Journal des Visites de Chantier",
         "description": "Toutes les visites de chantier enregistrées par type — pour les Ingénieurs Civils"
+      },
+      "costCentreTreemap": {
+        "label": "Résultat par Centre de Coûts",
+        "description": "Revenus, dépenses et marge réels par centre de coûts, à partir de chaque facture, note de frais et dépense étiquetée"
+      },
+      "statutoryComplianceSummary": {
+        "label": "Résumé de Conformité Statutaire",
+        "description": "Responsabilité totale de l'employeur ce mois-ci pour chaque poste de retenue statutaire (PF, ESI, Taxe Professionnelle)"
+      },
+      "cashFlowProjection": {
+        "label": "Projection de Trésorerie",
+        "description": "Mouvement de trésorerie réel du mois écoulé, plus ce qui est dû et prévu pour le mois à venir"
+      },
+      "paymentPerformance": {
+        "label": "Performance de Paiement",
+        "description": "Combien de jours les clients mettent réellement à payer intégralement, classés par client"
+      },
+      "budgetVsActual": {
+        "label": "Budget vs. Réel",
+        "description": "Les chiffres budgétés de ce mois à côté des dépenses réelles, par centre de coûts et compte"
       }
     },
     "summary": {
@@ -1732,7 +1760,8 @@
       "spendByVendor": "Dépenses par Fournisseur",
       "spendByItem": "Dépenses par Article",
       "purchaseDetails": "Détails des Achats",
-      "apAgingByVendor": "Ancienneté des Comptes Fournisseurs par Fournisseur"
+      "apAgingByVendor": "Ancienneté des Comptes Fournisseurs par Fournisseur",
+      "untaggedNote": "Non étiqueté : {{revenue}} de revenus et {{expense}} de dépenses provenant de transactions sans centre de coûts défini."
     },
     "empty": {
       "invoices": "Aucune facture dans cette plage de dates.",
@@ -1779,7 +1808,8 @@
       "eventBookings": "Aucune réservation d'événement dans cette période.",
       "placements": "Aucun placement dans cette période.",
       "drawingRegister": "Aucune révision de plan dans cette période.",
-      "siteVisitLog": "Aucune visite de chantier dans cette période."
+      "siteVisitLog": "Aucune visite de chantier dans cette période.",
+      "noData": "Aucun enregistrement trouvé pour cette période."
     },
     "col": {
       "invoiceNo": "N° Facture",
@@ -1944,7 +1974,16 @@
       "lineGross": "Total Prix Catalogue",
       "discountGiven": "Remise Accordée",
       "discountPercent": "% Remise",
-      "projectTitle": "Titre du Projet"
+      "projectTitle": "Titre du Projet",
+      "margin": "Marge",
+      "deductionName": "Retenue",
+      "totalAmount": "Montant Total",
+      "employeeCount": "Employés",
+      "actual": "Réel",
+      "projected": "Prévu",
+      "paidInvoiceCount": "Factures Payées",
+      "avgDaysToPay": "Jours Moy. de Paiement",
+      "outstandingInvoiceCount": "Factures en Attente"
     },
     "val": {
       "walkIn": "Client de Passage",
@@ -2740,6 +2779,14 @@
       "locations": {
         "title": "Emplacements",
         "body": "Si vous stockez des marchandises à plus d'un endroit, ajoutez un deuxième emplacement ici et essayez un Transfert de Stock — tout démarre dans un seul emplacement par défaut tant que vous n'en ajoutez pas réellement un autre."
+      },
+      "costCentres": {
+        "title": "Centres de Coûts",
+        "body": "Créez un centre de coûts pour un service, une agence ou un projet, puis sélectionnez-le sur votre prochaine facture, note de frais ou dépense — consultez le profit et les dépenses qu'il a générés dans le rapport Résultat par Centre de Coûts."
+      },
+      "budgets": {
+        "title": "Budgets",
+        "body": "Définissez un budget mensuel pour un centre de coûts, un compte spécifique ou toute l'entreprise, puis vérifiez après le mois comment les dépenses réelles se sont comparées."
       }
     }
   },
@@ -3280,7 +3327,9 @@
     "noDeductions": "Aucune retenue ajoutée.",
     "netPay": "Salaire Net",
     "payslipDeductionDisclaimer": "Sarang ne calcule pas les montants PF/ESI/Taxe Professionnelle/TDS — saisissez les chiffres fournis par votre comptable.",
-    "confirmMarkPaid": "Marquer ce salaire comme payé ? Cela crée une dépense et verrouille le bulletin de paie contre toute modification ultérieure."
+    "confirmMarkPaid": "Marquer ce salaire comme payé ? Cela crée une dépense et verrouille le bulletin de paie contre toute modification ultérieure.",
+    "suggestStatutoryDeductions": "Suggérer selon les taux statutaires",
+    "statutoryNoRatesConfigured": "Aucun taux statutaire n'est encore configuré — configurez-les d'abord dans les Paramètres."
   },
   "quotations": {
     "title": "Devis",
@@ -4219,5 +4268,46 @@
     "print": "Imprimer",
     "performDailyCloseConfirm": "Effectuer la clôture journalière ? Toutes les tables occupées seront marquées comme disponibles et un résumé de clôture sera enregistré.",
     "scanToOrder": "Scannez pour voir le menu et passer votre commande"
+  },
+  "costCentres": {
+    "title": "Centres de Coûts",
+    "subtitle": "{{count}} centres de coûts — étiquetez factures, notes de frais, dépenses et employés pour voir le profit/les dépenses par service, agence ou projet",
+    "name": "Nom",
+    "code": "Code",
+    "newCostCentre": "Nouveau Centre de Coûts",
+    "editCostCentre": "Modifier le Centre de Coûts",
+    "namePlaceholder": "ex. Marketing, Agence Centre-ville, Projet Alpha",
+    "codePlaceholder": "Code court facultatif",
+    "nameRequired": "Le nom du centre de coûts est requis.",
+    "couldNotLoad": "Impossible de charger les centres de coûts.",
+    "couldNotSave": "Impossible d'enregistrer ce centre de coûts.",
+    "none": "Aucun",
+    "empty": {
+      "title": "Aucun centre de coûts pour l'instant",
+      "body": "Créez votre premier centre de coûts pour commencer à étiqueter factures, notes de frais, dépenses et employés — puis consultez une véritable ventilation du profit/des dépenses par service, agence ou projet."
+    }
+  },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Planifiez un montant mensuel par centre de coûts ou compte, puis comparez-le aux dépenses réelles",
+    "newBudget": "Nouveau Budget",
+    "editBudget": "Modifier le Budget",
+    "scope": "Portée",
+    "budgeted": "Budgété",
+    "actual": "Réel",
+    "variance": "Écart",
+    "amount": "Montant",
+    "account": "Compte",
+    "wholeCompany": "Toute l'Entreprise",
+    "allAccounts": "Tous les Comptes de Dépenses",
+    "periodLabel": "Période : {{period}}",
+    "amountMustBePositive": "Le montant du budget doit être supérieur à zéro.",
+    "couldNotLoad": "Impossible de charger les budgets.",
+    "couldNotSave": "Impossible d'enregistrer ce budget.",
+    "couldNotDelete": "Impossible de supprimer ce budget.",
+    "empty": {
+      "title": "Aucun budget défini pour ce mois",
+      "body": "Définissez un budget pour un centre de coûts, un compte spécifique ou toute l'entreprise — puis revenez en fin de mois pour voir comment les dépenses réelles se sont comparées."
+    }
   }
 }

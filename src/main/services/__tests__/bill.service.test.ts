@@ -102,6 +102,21 @@ describe('billService.createBill', () => {
     expect((res as { error: { code: string } }).error.code).toBe('SUP-004')
   })
 
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  it('passes costCentreId through to the created bill row and every posted GL line', async () => {
+    const db = makeDb()
+    db.bill.create = vi.fn().mockResolvedValue({ ...makeBill(), costCentreId: 'cc-branch-1', supplier: makeSupplier(), items: [{ id: 'bi-1', productId: 'prod-1', unitCost: 100, quantity: 10 }] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billService.createBill({ supplierId: 'sup-1', items: [productItem], isReverseCharge: false, costCentreId: 'cc-branch-1' })
+
+    expect(res.success).toBe(true)
+    const billCreateCall = vi.mocked(db.bill.create).mock.calls[0][0] as { data: { costCentreId: string | null } }
+    expect(billCreateCall.data.costCentreId).toBe('cc-branch-1')
+    const journalCreateCall = vi.mocked(db.journalEntry.create).mock.calls[0][0] as { data: { lines: { create: Array<{ costCentreId: string | null }> } } }
+    expect(journalCreateCall.data.lines.create.every((l) => l.costCentreId === 'cc-branch-1')).toBe(true)
+  })
+
   it('accepts a mixed product + free-text service line and posts a supplier ledger debit', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)

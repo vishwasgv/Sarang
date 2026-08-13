@@ -143,6 +143,32 @@ describe('expense.service — expenseDate across the IPC boundary and timezone-c
     expect(res.success).toBe(true)
     expect(typeof (res.data as { expenseDate: unknown }).expenseDate).toBe('string')
   })
+
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  it('passes costCentreId through to the created expense row and every posted GL line', async () => {
+    const db = makeDb()
+    db.expense.create = vi.fn().mockResolvedValue(makeExpenseRow({ costCentreId: 'cc-branch-1' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createExpense({ categoryId: 'cat-1', expenseName: 'July rent', amount: 5000, costCentreId: 'cc-branch-1' })
+
+    expect(res.success).toBe(true)
+    const createCall = db.expense.create.mock.calls[0][0]
+    expect(createCall.data.costCentreId).toBe('cc-branch-1')
+    const jeArgs = db.journalEntry.create.mock.calls[0][0]
+    const lines = jeArgs.data.lines.create as Array<{ costCentreId: string | null }>
+    expect(lines.every((l) => l.costCentreId === 'cc-branch-1')).toBe(true)
+  })
+
+  it('leaves costCentreId null when the expense is not tagged (zero behavior change for the common case)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createExpense({ categoryId: 'cat-1', expenseName: 'July rent', amount: 5000 })
+
+    const createCall = db.expense.create.mock.calls[0][0]
+    expect(createCall.data.costCentreId).toBeNull()
+  })
 })
 
 // Fresh-audit fix (2026-07-28): getExpenseSummary used to sum with raw

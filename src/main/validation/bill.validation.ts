@@ -39,6 +39,8 @@ export const CreateBillSchema = z.object({
   // business receiving the supply.
   isReverseCharge: z.boolean().default(false),
   landedCosts: z.array(BillLandedCostSchema).optional(),
+  // Phase 65 — Reporting Tags / Cost & Profit Centres.
+  costCentreId: z.string().min(1).optional(),
 })
 
 export const VoidBillSchema = z.object({

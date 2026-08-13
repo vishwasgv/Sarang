@@ -304,7 +304,15 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'inventory.reorderDraftPreview', patterns: [/generate.*(pos?|purchase orders?).*reorder/i, /(pos?|purchase orders?).*below reorder/i, /reorder.*level.*(pos?|purchase orders?)/i] },
   { template: 'purchasing.landedCostForPurchase', patterns: [/freight.*add.*cost/i, /landed cost/i, /what.*(freight|duty|shipping).*add/i] },
   { template: 'kits.components', patterns: [/what'?s in.*kit/i, /kit.*(made of|components?|contains?)/i, /components?.*(of|in).*kit/i] },
-  { template: 'locations.stockAtLocation', patterns: [/stock at/i, /how much.*(stock|inventory).*at/i, /what'?s at.*(location|warehouse|branch)/i] }
+  { template: 'locations.stockAtLocation', patterns: [/stock at/i, /how much.*(stock|inventory).*at/i, /what'?s at.*(location|warehouse|branch)/i] },
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance's 5 required
+  // intents (Section 7.3), given deterministic fast-path coverage the same
+  // way every other "must answer" example in this file already gets it.
+  { template: 'costCentres.performanceThisMonth', patterns: [/how is.*(doing|performing).*this month/i, /(profit|margin|performance).*this month/i] },
+  { template: 'budgets.varianceCheck', patterns: [/over budget/i, /under budget/i, /am i.*budget/i, /budget.*(variance|vs\.? actual)/i] },
+  { template: 'cashFlow.projectionNextMonth', patterns: [/projected cash flow/i, /cash flow.*next month/i, /how.*(cash|funds?).*look/i] },
+  { template: 'payments.slowestPayingCustomers', patterns: [/slowest.*(to pay|paying)/i, /(customers?|clients?).*slow.*pay/i, /who.*takes?.*longest.*pay/i] },
+  { template: 'payroll.statutoryLiabilityThisMonth', patterns: [/(pf|esi).*liability/i, /statutory.*liability/i, /how much.*(pf|esi).*this month/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -317,7 +325,7 @@ function tryFastPathClassify(question: string, availableTemplates: readonly stri
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals', 'purchasing', 'kits', 'locations'])
+const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals', 'purchasing', 'kits', 'locations', 'costCentres', 'budgets', 'cashFlow', 'payments', 'payroll'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -845,9 +853,15 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
     category: 'meta',
     async execute(_params, _sym) {
       return {
-        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, finance, staff, and documents like quotations, purchase orders, and bills — plus questions specific to your business type',
+        headline: 'I can answer questions about your own business records — sales, inventory, customers, suppliers, credit, finance and banking, staff and payroll, purchasing, cost centres and budgets, and documents like quotations, purchase orders, and bills — plus questions specific to your business type',
         details: [
           'Examples: "What were today\'s sales?", "What\'s low on stock?", "Who owes me money?", "What do I owe suppliers?", "What am I spending the most on?", "What\'s our profit this month?"',
+          // Phase 62-65 — banking/ledger, sales orders/pricing/purchasing, and
+          // cost centres/budgets/cash-flow/payment-performance were all real
+          // categories the AI could already answer, but this description
+          // never mentioned any of them since the last time it was updated —
+          // a real, pre-existing gap across 4 phases, closed here.
+          'I can also cover bank balances and reconciliation, sales orders and price lists, cost centres and budgets, cash-flow projections, and who\'s slow to pay — e.g. "how is Downtown doing this month?" or "which customers are slowest to pay?"',
           'I can also look up one specific invoice, customer, supplier, or product by name or number — e.g. "Look up invoice INV-2026-000123"',
           "I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records",
           'Ask "how do I..." or "where is..." a feature and I\'ll point you to the right Manual chapter',
@@ -2189,6 +2203,111 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
         headline: `${location.name} has ${rows.length} product${rows.length === 1 ? '' : 's'} in stock`,
         details: rows.map((r) => `${r.product.productName}: ${r.quantity} ${r.product.unit}`),
         isEmpty: rows.length === 0
+      }
+    }
+  },
+  // "how is [cost centre] doing this month" — reuses the exact treemap data
+  // the Cost Centre P&L report itself shows, so the spoken answer and the
+  // report screen can never disagree.
+  'costCentres.performanceThisMonth': {
+    category: 'costCentres',
+    async execute(params, sym) {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const costCentre = await db.costCentre.findFirst({ where: { isActive: true, name: { contains: term } } })
+      if (!costCentre) return { headline: '', details: [], isEmpty: true }
+      const now = new Date()
+      const dateFrom = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = toLocalISODate(now)
+      const report = await reportService.generateCostCentreTreemapReport({ dateFrom, dateTo })
+      const row = report.rows.find((r) => r.costCentreId === costCentre.id)
+      if (!row) return { headline: `${costCentre.name} has had no tagged revenue or expense yet this month.`, details: [], isEmpty: true }
+      return {
+        headline: `${costCentre.name} has made ${formatAmountForSpeech(row.margin, sym)} margin so far this month`,
+        details: [
+          `Revenue: ${formatAmountForSpeech(row.revenue, sym)}`,
+          `Expense: ${formatAmountForSpeech(row.expense, sym)}`
+        ],
+        isEmpty: false
+      }
+    }
+  },
+  // "am I over budget on [account/cost centre]" — matches the search term
+  // against either a budget row's cost centre name or account name, since a
+  // real spoken question rarely distinguishes which one it means.
+  'budgets.varianceCheck': {
+    category: 'budgets',
+    async execute(params, sym) {
+      const term = (params.searchTerm as string | undefined)?.toLowerCase()
+      const now = new Date()
+      const report = await reportService.generateBudgetVsActualReport({ periodYear: now.getFullYear(), periodMonth: now.getMonth() + 1 })
+      const rows = term
+        ? report.rows.filter((r) => (r.costCentreName?.toLowerCase().includes(term)) || (r.accountName?.toLowerCase().includes(term)))
+        : report.rows
+      if (rows.length === 0) return { headline: '', details: [], isEmpty: true }
+      const overBudget = rows.filter((r) => r.variance < 0)
+      return {
+        headline: overBudget.length > 0
+          ? `Yes — ${overBudget.length} of ${rows.length} matching budget${rows.length === 1 ? '' : 's'} ${overBudget.length === 1 ? 'is' : 'are'} over this month`
+          : `No — every matching budget is within limit this month`,
+        details: rows.map((r) => `${r.costCentreName ?? 'Whole Company'}${r.accountName ? ` / ${r.accountName}` : ''}: budgeted ${formatAmountForSpeech(r.budgeted, sym)}, actual ${formatAmountForSpeech(r.actual, sym)}`),
+        isEmpty: false
+      }
+    }
+  },
+  // "what's my projected cash flow next month" — sums only the FUTURE
+  // half of the same actuals/projected split the Cash-Flow Projection
+  // report itself renders, and calls out the lowest single day as an early
+  // warning rather than just a flat total.
+  'cashFlow.projectionNextMonth': {
+    category: 'cashFlow',
+    async execute(_params, sym) {
+      const report = await reportService.generateCashFlowProjection({ daysBack: 1, daysForward: 30 })
+      const future = report.days.filter((d) => d.projectedNet !== null && d.date > report.asOf)
+      if (future.length === 0) return { headline: '', details: [], isEmpty: true }
+      const total = future.reduce((s, d) => s + (d.projectedNet ?? 0), 0)
+      const worst = future.reduce((min, d) => (d.projectedNet! < (min.projectedNet ?? Infinity) ? d : min), future[0])
+      return {
+        headline: `Projected net cash for the next 30 days is ${formatAmountForSpeech(total, sym)}`,
+        details: worst.projectedNet! < 0 ? [`Lowest single day: ${worst.date} at ${formatAmountForSpeech(worst.projectedNet!, sym)}`] : [],
+        isEmpty: false
+      }
+    }
+  },
+  // "which customers are slowest to pay" — reuses the Payment Performance
+  // report's own days-to-pay derivation (last payment that zeroed the
+  // balance), over a fixed trailing 90-day window since a spoken question
+  // rarely names an explicit date range.
+  'payments.slowestPayingCustomers': {
+    category: 'payments',
+    async execute(_params, _sym) {
+      const now = new Date()
+      const dateFrom = toLocalISODate(new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()))
+      const dateTo = toLocalISODate(now)
+      const report = await reportService.generatePaymentPerformanceReport({ dateFrom, dateTo })
+      const ranked = report.rows.filter((r) => r.avgDaysToPay !== null).slice(0, 5)
+      if (ranked.length === 0) return { headline: '', details: [], isEmpty: true }
+      return {
+        headline: `${ranked[0].customerName} is the slowest payer over the last 90 days, averaging ${ranked[0].avgDaysToPay} days to pay in full`,
+        details: ranked.map((r) => `${r.customerName}: ${r.avgDaysToPay} days average`),
+        isEmpty: false
+      }
+    }
+  },
+  // "what's my PF/ESI liability this month" — sums the same SalaryPayment
+  // deduction data the Statutory Compliance Summary report itself totals.
+  'payroll.statutoryLiabilityThisMonth': {
+    category: 'payroll',
+    async execute(_params, sym) {
+      const now = new Date()
+      const report = await reportService.generateStatutoryComplianceSummaryReport({ periodYear: now.getFullYear(), periodMonth: now.getMonth() + 1 })
+      if (report.rows.length === 0) return { headline: '', details: [], isEmpty: true }
+      const total = report.rows.reduce((s, r) => s + r.totalAmount, 0)
+      return {
+        headline: `Total statutory liability this month is ${formatAmountForSpeech(total, sym)} across ${report.totalEmployees} employee${report.totalEmployees === 1 ? '' : 's'}`,
+        details: report.rows.map((r) => `${r.name}: ${formatAmountForSpeech(r.totalAmount, sym)}`),
+        isEmpty: false
       }
     }
   }

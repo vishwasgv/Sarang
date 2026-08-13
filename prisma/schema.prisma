@@ -62,6 +62,19 @@ model BusinessProfile {
   // own "off by default, no existing install silently affected" precedent.
   overheadAllocationBasis   String? // PER_LABOR_HOUR | PER_UNIT_PRODUCED | null (disabled)
   overheadAllocationRate    Float     @default(0)
+  // Phase 65 — statutory payroll deduction SUGGESTIONS (never auto-applied,
+  // see payroll.service.ts's suggestStatutoryDeductions). Deliberately
+  // owner-configured, not a hardcoded government rate table — same
+  // rationale PHASE_54F_16_TECHNICAL_SPEC.md already recorded for
+  // SalaryPayment.deductions itself: PF wage ceilings/ESI thresholds/PT
+  // slabs change with government notifications this app has no channel to
+  // track, so a wrong silently-trusted number is worse than one the owner
+  // must configure and review. All null/0 by default — no existing install
+  // sees any behavior change until the owner opts in from Settings.
+  statutoryPfPercent        Float?
+  statutoryEsiPercent       Float?
+  statutoryEsiWageCeiling   Float?
+  statutoryProfessionalTax  Float?
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 }
@@ -93,6 +106,7 @@ model User {
   billsCreated             Bill[]              @relation("BillCreatedBy") // Phase 61
   supplierPayments         SupplierPayment[]   @relation("SupplierPaymentRecordedBy") // Phase 61
   journalEntriesCreated    JournalEntry[]      @relation("JournalEntryCreatedBy") // Phase 62
+  budgetsCreated           Budget[]            @relation("BudgetCreatedBy") // Phase 65
   stockMovements           InventoryMovement[] @relation("MovementCreatedBy")
   assignedProjects         Project[]           @relation("ProjectAssignedTo")
   assignedTickets          ServiceTicket[]     @relation("TicketAssignedTo")
@@ -1048,10 +1062,15 @@ model Bill {
   updatedAt       DateTime  @updatedAt
   // Phase 62 — Reverse Charge Mechanism, same meaning as PurchaseOrder's own.
   isReverseCharge Boolean   @default(false)
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Flows into the
+  // JournalEntryLine rows this bill's own GL posting creates. Null (the
+  // default) behaves exactly as before this phase.
+  costCentreId    String?
 
   supplier      Supplier               @relation(fields: [supplierId], references: [id])
   purchaseOrder PurchaseOrder?         @relation(fields: [purchaseOrderId], references: [id])
   createdBy     User?                  @relation("BillCreatedBy", fields: [createdById], references: [id])
+  costCentre    CostCentre?            @relation(fields: [costCentreId], references: [id])
   items         BillItem[]
   payments      SupplierPayment[]
   landedCosts   LandedCostAllocation[] // Phase 64
@@ -1060,6 +1079,7 @@ model Bill {
   @@index([purchaseOrderId])
   @@index([status])
   @@index([billDate])
+  @@index([costCentreId])
 }
 
 // Phase 64 — freight/duty/handling entered once per document, allocated
@@ -1256,6 +1276,7 @@ model ChartOfAccounts {
   parent       ChartOfAccounts?   @relation("AccountHierarchy", fields: [parentId], references: [id])
   children     ChartOfAccounts[]  @relation("AccountHierarchy")
   journalLines JournalEntryLine[]
+  budgets      Budget[] // Phase 65
 
   @@index([accountType])
   @@index([parentId])
@@ -1291,6 +1312,14 @@ model JournalEntryLine {
   // bank charges, a reconciled deposit) — lets bank-account running balances
   // stay in sync from Journal postings, not just from Payment/Expense rows.
   bankAccountId  String?
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Set from the source
+  // document's own costCentreId (Invoice/Bill/Expense/Employee) at posting
+  // time via postSystemEntryTx's EntryLine — this is the one point every
+  // GL-affecting call site already funnels through, so tagging here covers
+  // every source document without touching four separate posting sites'
+  // own line-building logic beyond passing the tag through. Null (the
+  // default) behaves exactly as before this phase.
+  costCentreId   String?
   debitAmount    Float   @default(0)
   creditAmount   Float   @default(0)
   remarks        String?
@@ -1298,10 +1327,12 @@ model JournalEntryLine {
   journalEntry JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      ChartOfAccounts @relation(fields: [accountId], references: [id])
   bankAccount  BankAccount?    @relation(fields: [bankAccountId], references: [id])
+  costCentre   CostCentre?     @relation(fields: [costCentreId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
   @@index([bankAccountId])
+  @@index([costCentreId])
 }
 
 model PostDatedCheque {
@@ -1446,10 +1477,16 @@ model Invoice {
   // Phase 63 — per-invoice template override; falls back to
   // BusinessProfile's own default when null.
   invoiceTemplateId  String?
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Flows into the
+  // JournalEntryLine rows postInvoiceJournalEntry() creates, so the treemap
+  // P&L report can attribute this invoice's revenue to a branch/division/
+  // project. Null (the default) behaves exactly as before this phase.
+  costCentreId       String?
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  costCentre       CostCentre?       @relation(fields: [costCentreId], references: [id])
   customer         Customer?         @relation(fields: [customerId], references: [id])
   createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   items            InvoiceItem[]
@@ -1478,6 +1515,7 @@ model Invoice {
   @@index([originalInvoiceId])
   @@index([tableId])
   @@index([splitFromInvoiceId])
+  @@index([costCentreId])
 }
 
 model InvoiceItem {
@@ -1601,17 +1639,25 @@ model Expense {
   billableCustomerId String? // set to re-bill this expense through to a customer/project — closes the "billable expense pass-through" gap
   // Phase 62 — Reverse Charge Mechanism, same meaning as Bill/PurchaseOrder's own.
   isReverseCharge    Boolean  @default(false)
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. Flows into the
+  // JournalEntryLine rows this expense's own GL posting creates. Null (the
+  // default) behaves exactly as before this phase. A salary-driven Expense
+  // (see SalaryPayment) inherits its cost centre from the employee's own
+  // CostCentre rather than being set here directly.
+  costCentreId       String?
 
   category         ExpenseCategory @relation(fields: [categoryId], references: [id])
   createdBy        User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
   supplier         Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   billableCustomer Customer?       @relation("ExpenseBillableCustomer", fields: [billableCustomerId], references: [id], onDelete: SetNull)
+  costCentre       CostCentre?     @relation(fields: [costCentreId], references: [id])
   salaryPayment    SalaryPayment?
 
   @@index([categoryId])
   @@index([expenseDate])
   @@index([supplierId])
   @@index([billableCustomerId])
+  @@index([costCentreId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2542,7 +2588,14 @@ model Employee {
   maxAppointmentsPerDay   Int?
 
   primaryLocationId String? // Phase 36 — reserved for V2 multi-location (not populated in V1)
+  // Phase 65 — Reporting Tags / Cost & Profit Centres. This employee's
+  // salary cost is attributed to this centre when their SalaryPayment is
+  // posted to the GL (see payroll.service.ts's markSalaryPaid fix). Null
+  // (the default) behaves exactly as before this phase — an untagged
+  // payroll expense, same as today.
+  costCentreId      String?
 
+  costCentre                CostCentre?               @relation(fields: [costCentreId], references: [id])
   attendances               Attendance[]
   leaveRequests             LeaveRequest[]
   appointments              Appointment[]             @relation("AppointmentProvider")
@@ -2586,6 +2639,7 @@ model Employee {
 
   @@index([isActive])
   @@index([department])
+  @@index([costCentreId])
 }
 
 model Attendance {
@@ -5902,4 +5956,62 @@ model InvoiceTemplate {
   invoices Invoice[]
 
   @@index([isDefault])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 65 — COST CENTRES, BUDGETS & PAYROLL COMPLIANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A flat tag list (division/branch/project), deliberately not a hierarchy
+// like ChartOfAccounts — most small businesses think of their branches/
+// projects as a plain list, not a tree, and this solves a different problem
+// (segmenting revenue/expense, not classifying account types). Optional on
+// every source document it's added to — an install that never creates a
+// second CostCentre sees zero behavior change anywhere.
+model CostCentre {
+  id        String   @id @default(cuid())
+  name      String
+  code      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices          Invoice[]
+  bills             Bill[]
+  expenses          Expense[]
+  employees         Employee[]
+  journalEntryLines JournalEntryLine[]
+  budgets           Budget[]
+
+  @@index([isActive])
+}
+
+// Budget vs. Actual. costCentreId/accountId are both nullable and
+// independent — null costCentreId means a company-wide budget line, null
+// accountId means a whole-cost-centre budget not broken down by account.
+// No DB-level uniqueness on the (costCentreId, accountId, period) triplet
+// deliberately — SQLite treats NULL as distinct in a unique index (multiple
+// NULLs allowed), which would let duplicate company-wide rows slip past a
+// DB constraint anyway; budget.service.ts checks for an existing exact-scope
+// row itself instead, the same "validate in the service layer, not the
+// schema" choice this codebase already makes elsewhere for optional-FK cases.
+model Budget {
+  id           String   @id @default(cuid())
+  costCentreId String?
+  accountId    String?
+  periodYear   Int
+  periodMonth  Int
+  amount       Float
+  notes        String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  costCentre CostCentre?      @relation(fields: [costCentreId], references: [id])
+  account    ChartOfAccounts? @relation(fields: [accountId], references: [id])
+  createdBy  User?            @relation("BudgetCreatedBy", fields: [createdById], references: [id])
+
+  @@index([costCentreId])
+  @@index([accountId])
+  @@index([periodYear, periodMonth])
 }

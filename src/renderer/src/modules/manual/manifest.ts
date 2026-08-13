@@ -35,6 +35,11 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'banking-reconciliation', group: 'universal', title: 'Banking & Reconciliation' },
   { slug: 'ledger-journal-entries', group: 'universal', title: 'Ledger & Journal Entries' },
   { slug: 'fixed-assets-year-end-close', group: 'universal', title: 'Fixed Assets & Year-End Close' },
+  // Phase 65 — Cost Centres, Budgets & Payroll Compliance. Placed right
+  // before Reports, mirroring how this chapter's own content is mostly new
+  // report screens plus the two management screens (Cost Centres, Budgets)
+  // that feed them.
+  { slug: 'cost-centres-budgets-cashflow', group: 'universal', title: 'Cost Centres, Budgets & Cash Flow' },
   { slug: 'reports', group: 'universal', title: 'Reports' },
   { slug: 'settings', group: 'universal', title: 'Settings & Business Profile' },
   { slug: 'backup-restore', group: 'universal', title: 'Backup & Restore' },

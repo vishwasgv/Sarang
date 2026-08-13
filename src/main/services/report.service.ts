@@ -1145,6 +1145,339 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Reporting Tags / Cost & Profit Centres: treemap P&L
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CostCentreTreemapRow { costCentreId: string; costCentreName: string; revenue: number; expense: number; margin: number }
+export interface CostCentreTreemapReport { dateFrom: string; dateTo: string; rows: CostCentreTreemapRow[]; untaggedRevenue: number; untaggedExpense: number }
+
+// Reads real JournalEntryLine.costCentreId data — automatically accurate for
+// every transaction retroactively tagged, since it's the same GL every
+// other financial report already reads from (not a separate, driftable
+// computation). Revenue nets credit-debit on INCOME-type accounts (revenue
+// is credited); expense nets debit-credit on EXPENSE-type accounts —
+// mirrors generateProfitAndLossReport's own sign conventions. Aggregated in
+// JS rather than a Prisma groupBy because the two account types need
+// opposite netting directions in the same pass — SQLite/Prisma has no
+// portable "sum with a conditional sign" groupBy shape, and a reporting
+// query over one business's JournalEntryLine rows is not hot-path volume.
+async function generateCostCentreTreemapReport(params: { dateFrom: string; dateTo: string }): Promise<CostCentreTreemapReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const [costCentres, lines] = await Promise.all([
+    db.costCentre.findMany({ where: { isActive: true } }),
+    db.journalEntryLine.findMany({
+      where: { journalEntry: { entryDate: { gte: from, lte: to } } },
+      select: { costCentreId: true, debitAmount: true, creditAmount: true, account: { select: { accountType: true } } }
+    })
+  ])
+
+  const revenueByCentre = new Map<string, number>()
+  const expenseByCentre = new Map<string, number>()
+  let untaggedRevenue = 0
+  let untaggedExpense = 0
+
+  for (const line of lines) {
+    if (line.account.accountType === 'INCOME') {
+      const net = line.creditAmount - line.debitAmount
+      if (line.costCentreId) revenueByCentre.set(line.costCentreId, (revenueByCentre.get(line.costCentreId) ?? 0) + net)
+      else untaggedRevenue += net
+    } else if (line.account.accountType === 'EXPENSE') {
+      const net = line.debitAmount - line.creditAmount
+      if (line.costCentreId) expenseByCentre.set(line.costCentreId, (expenseByCentre.get(line.costCentreId) ?? 0) + net)
+      else untaggedExpense += net
+    }
+  }
+
+  const rows: CostCentreTreemapRow[] = costCentres.map((cc) => {
+    const revenue = roundCurrency(revenueByCentre.get(cc.id) ?? 0)
+    const expense = roundCurrency(expenseByCentre.get(cc.id) ?? 0)
+    return { costCentreId: cc.id, costCentreName: cc.name, revenue, expense, margin: roundCurrency(revenue - expense) }
+  }).filter((r) => r.revenue !== 0 || r.expense !== 0) // a cost centre nobody has tagged anything against yet — omit, don't pad with a zero rectangle
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    untaggedRevenue: roundCurrency(untaggedRevenue), untaggedExpense: roundCurrency(untaggedExpense)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Budget vs. Actual
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface BudgetVsActualRow {
+  budgetId: string; costCentreId: string | null; costCentreName: string | null
+  accountId: string | null; accountName: string | null
+  budgeted: number; actual: number; variance: number
+}
+export interface BudgetVsActualReport { periodYear: number; periodMonth: number; rows: BudgetVsActualRow[] }
+
+// "Actual" is computed the same way generateCostCentreTreemapReport computes
+// revenue/expense — real JournalEntryLine data for the same month, filtered
+// by the SAME (costCentreId, accountId) scope the budget row itself names —
+// so a budget set against a cost centre that's never had a single tagged
+// transaction honestly reports ₹0 actual, never a silent gap. When a
+// budget's accountId is null (a whole-cost-centre budget, not broken down
+// by account — see Budget's own schema comment), actual sums every
+// EXPENSE-type line in scope, matching this report's real-world use
+// ("budget vs. real spend"), not revenue.
+async function generateBudgetVsActualReport(params: { periodYear: number; periodMonth: number }): Promise<BudgetVsActualReport> {
+  const db = getPrisma()
+  const from = new Date(params.periodYear, params.periodMonth - 1, 1)
+  const to = new Date(params.periodYear, params.periodMonth, 0, 23, 59, 59, 999)
+
+  const budgets = await db.budget.findMany({
+    where: { periodYear: params.periodYear, periodMonth: params.periodMonth },
+    include: { costCentre: { select: { id: true, name: true } }, account: { select: { id: true, accountName: true, accountType: true } } }
+  })
+  if (budgets.length === 0) return { periodYear: params.periodYear, periodMonth: params.periodMonth, rows: [] }
+
+  const lines = await db.journalEntryLine.findMany({
+    where: { journalEntry: { entryDate: { gte: from, lte: to } } },
+    select: { costCentreId: true, accountId: true, debitAmount: true, creditAmount: true, account: { select: { accountType: true } } }
+  })
+
+  const rows: BudgetVsActualRow[] = budgets.map((b) => {
+    let actual = 0
+    for (const line of lines) {
+      if (b.costCentreId !== null && line.costCentreId !== b.costCentreId) continue
+      if (b.accountId !== null) {
+        if (line.accountId !== b.accountId) continue
+        actual += b.account!.accountType === 'INCOME' ? (line.creditAmount - line.debitAmount) : (line.debitAmount - line.creditAmount)
+      } else {
+        if (line.account.accountType !== 'EXPENSE') continue
+        actual += line.debitAmount - line.creditAmount
+      }
+    }
+    actual = roundCurrency(actual)
+    return {
+      budgetId: b.id, costCentreId: b.costCentreId, costCentreName: b.costCentre?.name ?? null,
+      accountId: b.accountId, accountName: b.account?.accountName ?? null,
+      budgeted: b.amount, actual, variance: roundCurrency(b.amount - actual)
+    }
+  })
+
+  return { periodYear: params.periodYear, periodMonth: params.periodMonth, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Statutory (PF/ESI/Professional Tax) Summary Report
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StatutorySummaryRow { name: string; totalAmount: number; employeeCount: number }
+export interface StatutoryComplianceSummaryReport { periodYear: number; periodMonth: number; rows: StatutorySummaryRow[]; totalEmployees: number }
+
+// A real, honest deliverable for "return generation" — this period's total
+// employer liability per statutory head (PF/ESI/Professional Tax/anything
+// else the owner named a deduction line), not e-filing-ready government
+// return XML/forms. Building real per-state/per-scheme return formats would
+// need this app to track a moving target (form/schema changes with every
+// government notification) it has no channel to keep current — the exact
+// fragility this whole feature's suggest-and-review design already exists
+// to avoid. Sums SalaryPayment.deductions (the same JSON [{name,amount}]
+// shape every payslip already stores) grouped by deduction name — works
+// for suggested AND hand-typed lines alike, since both end up in the same field.
+async function generateStatutoryComplianceSummaryReport(params: { periodYear: number; periodMonth: number }): Promise<StatutoryComplianceSummaryReport> {
+  const db = getPrisma()
+  const payments = await db.salaryPayment.findMany({
+    where: { periodYear: params.periodYear, periodMonth: params.periodMonth },
+    select: { deductions: true }
+  })
+
+  const totalByName = new Map<string, number>()
+  const employeesByName = new Map<string, Set<number>>()
+  payments.forEach((p, idx) => {
+    let lines: Array<{ name: string; amount: number }> = []
+    try {
+      const parsed = JSON.parse(p.deductions)
+      if (Array.isArray(parsed)) lines = parsed
+    } catch { /* malformed/legacy row — skip, matches payroll.service.ts's own parseLines fallback */ }
+    for (const line of lines) {
+      if (!line.name || !(line.amount > 0)) continue
+      totalByName.set(line.name, (totalByName.get(line.name) ?? 0) + line.amount)
+      if (!employeesByName.has(line.name)) employeesByName.set(line.name, new Set())
+      employeesByName.get(line.name)!.add(idx)
+    }
+  })
+
+  const rows: StatutorySummaryRow[] = [...totalByName.entries()]
+    .map(([name, totalAmount]) => ({ name, totalAmount: roundCurrency(totalAmount), employeeCount: employeesByName.get(name)?.size ?? 0 }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+
+  return { periodYear: params.periodYear, periodMonth: params.periodMonth, rows, totalEmployees: payments.length }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Cash-Flow / Funds-Flow Projection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CashFlowDayBucket { date: string; actualNet: number | null; projectedNet: number | null }
+export interface CashFlowProjectionReport { asOf: string; daysBack: number; daysForward: number; days: CashFlowDayBucket[] }
+
+function addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r }
+
+// Actuals (past, solid line): real cash movement from the three transactional
+// tables that already ARE the source of truth for money in/out — Payment
+// (customer money in), Expense + SupplierPayment (money out). Deliberately
+// NOT read from JournalEntryLine.bankAccountId — that field is only ever set
+// on entries explicitly linked to a specific named BankAccount (e.g. manual
+// bank-linked JEs), while ordinary Payment/Expense/Bill postings tag their
+// cash line with the generic "Cash & Bank" ledger account instead, so
+// bankAccountId alone would silently miss most real transaction volume.
+//
+// Projected (future, dashed line): open Invoice/Bill balances against their
+// own dueDate (a firm, owner-set expected date — undated ones are skipped
+// rather than guessed at), plus forecasted EXPENSE-type RecurringProfile
+// occurrences within the window. INVOICE/BILL recurring profiles are
+// deliberately NOT forecasted here — their payloadJson only snapshots line
+// items, and re-deriving a future total would mean re-running full
+// tax/discount computation on a stale snapshot, which risks a confidently
+// wrong number being worse than the honest gap of omitting it (EXPENSE
+// profiles snapshot a flat `amount` field, so no such risk there).
+async function generateCashFlowProjection(params: { daysBack?: number; daysForward?: number }): Promise<CashFlowProjectionReport> {
+  const db = getPrisma()
+  const daysBack = params.daysBack ?? 30
+  const daysForward = params.daysForward ?? 30
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const rangeStart = addDays(today, -daysBack)
+  const rangeEnd = addDays(today, daysForward)
+  const rangeEndOfDay = new Date(rangeEnd); rangeEndOfDay.setHours(23, 59, 59, 999)
+
+  const buckets = new Map<string, CashFlowDayBucket>()
+  for (let n = -daysBack; n <= daysForward; n++) {
+    const date = toLocalISODate(addDays(today, n))
+    buckets.set(date, { date, actualNet: n <= 0 ? 0 : null, projectedNet: n >= 0 ? 0 : null })
+  }
+  // Today itself carries both an actual (what already happened today) and a
+  // projected (what's still due today) figure — the seam where the two lines meet.
+
+  const [payments, expenses, supplierPayments] = await Promise.all([
+    db.payment.findMany({ where: { paymentDate: { gte: rangeStart, lte: today }, isReversed: false }, select: { amount: true, paymentDate: true } }),
+    db.expense.findMany({ where: { expenseDate: { gte: rangeStart, lte: today } }, select: { amount: true, expenseDate: true } }),
+    db.supplierPayment.findMany({ where: { paymentDate: { gte: rangeStart, lte: today }, isReversed: false }, select: { amount: true, paymentDate: true } })
+  ])
+  for (const p of payments) {
+    const b = buckets.get(toLocalISODate(p.paymentDate)); if (b) b.actualNet = (b.actualNet ?? 0) + p.amount
+  }
+  for (const e of expenses) {
+    const b = buckets.get(toLocalISODate(e.expenseDate)); if (b) b.actualNet = (b.actualNet ?? 0) - e.amount
+  }
+  for (const sp of supplierPayments) {
+    const b = buckets.get(toLocalISODate(sp.paymentDate)); if (b) b.actualNet = (b.actualNet ?? 0) - sp.amount
+  }
+
+  const [openInvoices, openBills, recurringExpenseProfiles] = await Promise.all([
+    db.invoice.findMany({
+      where: { balanceAmount: { gt: 0 }, status: { not: 'CANCELLED' }, dueDate: { gte: today, lte: rangeEndOfDay } },
+      select: { balanceAmount: true, dueDate: true }
+    }),
+    db.bill.findMany({
+      where: { balanceAmount: { gt: 0 }, status: { not: 'VOID' }, dueDate: { gte: today, lte: rangeEndOfDay } },
+      select: { balanceAmount: true, dueDate: true }
+    }),
+    db.recurringProfile.findMany({
+      where: { documentType: 'EXPENSE', active: true, startDate: { lte: rangeEndOfDay } }
+    })
+  ])
+  for (const inv of openInvoices) {
+    const b = buckets.get(toLocalISODate(inv.dueDate!)); if (b) b.projectedNet = (b.projectedNet ?? 0) + inv.balanceAmount
+  }
+  for (const bill of openBills) {
+    const b = buckets.get(toLocalISODate(bill.dueDate!)); if (b) b.projectedNet = (b.projectedNet ?? 0) - bill.balanceAmount
+  }
+
+  const { getPeriodInfo } = await import('./recurring-profile.service')
+  for (let n = 0; n <= daysForward; n++) {
+    const day = addDays(today, n)
+    for (const profile of recurringExpenseProfiles) {
+      if (profile.startDate > day) continue
+      if (profile.endDate && profile.endDate < day) continue
+      const { periodKey, thresholdDate } = getPeriodInfo(profile.cadence, profile.dayOfPeriod, day)
+      if (toLocalISODate(thresholdDate) !== toLocalISODate(day)) continue
+      if (profile.lastGeneratedPeriod === periodKey) continue
+      let amount = 0
+      try { amount = JSON.parse(profile.payloadJson).amount ?? 0 } catch { /* malformed snapshot — skip */ }
+      if (amount <= 0) continue
+      const b = buckets.get(toLocalISODate(day)); if (b) b.projectedNet = (b.projectedNet ?? 0) - amount
+    }
+  }
+
+  const days = [...buckets.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((b) => ({ date: b.date, actualNet: b.actualNet !== null ? roundCurrency(b.actualNet) : null, projectedNet: b.projectedNet !== null ? roundCurrency(b.projectedNet) : null }))
+
+  return { asOf: toLocalISODate(today), daysBack, daysForward, days }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Payment Performance Report
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PaymentPerformanceRow {
+  customerId: string; customerName: string
+  paidInvoiceCount: number; avgDaysToPay: number | null
+  outstandingInvoiceCount: number; outstandingAmount: number
+}
+export interface PaymentPerformanceReport { dateFrom: string; dateTo: string; rows: PaymentPerformanceRow[]; overallAvgDaysToPay: number | null }
+
+// Days-to-pay's "clock stops" the moment an invoice is FULLY settled — the
+// date of its LAST payment (max paymentDate among its own non-reversed
+// payments), not the first partial one, since a customer who pays in three
+// installments hasn't actually finished paying until the third lands. An
+// invoice still carrying a balance contributes to outstandingAmount instead
+// of skewing the average with a payment cycle that hasn't finished yet.
+// overallAvgDaysToPay is computed from the flat list of every paid invoice's
+// own days-to-pay, not an average of per-customer averages — averaging
+// averages would silently over-weight a customer with one invoice against
+// one with fifty.
+async function generatePaymentPerformanceReport(params: { dateFrom: string; dateTo: string }): Promise<PaymentPerformanceReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const invoices = await db.invoice.findMany({
+    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' }, customerId: { not: null } },
+    select: {
+      invoiceDate: true, balanceAmount: true, customerId: true,
+      customer: { select: { customerName: true } },
+      payments: { where: { isReversed: false }, select: { paymentDate: true } }
+    }
+  })
+
+  const byCustomer = new Map<string, { customerName: string; daysList: number[]; outstandingCount: number; outstandingAmount: number }>()
+  const allDays: number[] = []
+  for (const inv of invoices) {
+    if (!inv.customerId) continue
+    const entry = byCustomer.get(inv.customerId) ?? { customerName: inv.customer?.customerName ?? 'Unknown', daysList: [], outstandingCount: 0, outstandingAmount: 0 }
+    if (inv.balanceAmount <= 0 && inv.payments.length > 0) {
+      const lastPaymentDate = inv.payments.reduce((max, p) => (p.paymentDate > max ? p.paymentDate : max), inv.payments[0].paymentDate)
+      const days = Math.max(0, Math.floor((lastPaymentDate.getTime() - inv.invoiceDate.getTime()) / 86400000))
+      entry.daysList.push(days)
+      allDays.push(days)
+    } else if (inv.balanceAmount > 0) {
+      entry.outstandingCount += 1
+      entry.outstandingAmount += inv.balanceAmount
+    }
+    byCustomer.set(inv.customerId, entry)
+  }
+
+  const rows: PaymentPerformanceRow[] = [...byCustomer.entries()].map(([customerId, e]) => ({
+    customerId, customerName: e.customerName,
+    paidInvoiceCount: e.daysList.length,
+    avgDaysToPay: e.daysList.length > 0 ? roundCurrency(e.daysList.reduce((a, b) => a + b, 0) / e.daysList.length) : null,
+    outstandingInvoiceCount: e.outstandingCount, outstandingAmount: roundCurrency(e.outstandingAmount)
+  })).sort((a, b) => (b.avgDaysToPay ?? -1) - (a.avgDaysToPay ?? -1))
+
+  const overallAvgDaysToPay = allDays.length > 0 ? roundCurrency(allDays.reduce((a, b) => a + b, 0) / allDays.length) : null
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows, overallAvgDaysToPay }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Audit Report (Admin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3528,6 +3861,11 @@ export const reportService = {
   generateProfitAndLossReport,
   generateCashBookReport,
   generateTrialBalanceReport,
+  generateCostCentreTreemapReport,
+  generateBudgetVsActualReport,
+  generateStatutoryComplianceSummaryReport,
+  generateCashFlowProjection,
+  generatePaymentPerformanceReport,
   generateAuditReport,
   generateFoodCostReport,
   generateGSTR1,
