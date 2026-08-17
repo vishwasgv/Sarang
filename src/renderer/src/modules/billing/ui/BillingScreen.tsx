@@ -11,6 +11,7 @@ import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { splitTaxLines } from '@shared/utils/tax.util'
+import { CustomFieldsEditor } from '@shared/ui/molecules/CustomFieldsEditor'
 
 interface Product {
   id: string; productName: string; sku?: string | null; barcode?: string | null
@@ -187,6 +188,11 @@ export function BillingScreen() {
   // cost centres exist yet, same convention as Price List's own picker.
   const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
   const [costCentreId, setCostCentreId] = useState('')
+  // Phase 66 — Custom Fields. Invoices have no generic edit path (they're
+  // effectively immutable post-creation), so this is create-only, always
+  // starting empty — unlike Customer/Supplier/Product forms there is no
+  // existing record to populate values from.
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
   const [submitting, setSubmitting] = useState(false)
   // Discount mode per item: 'amount' (₹) or 'percent' (%)
   // 'finalPrice' — bargained/negotiated pricing (very common in Indian retail,
@@ -997,6 +1003,7 @@ export function BillingScreen() {
         referenceNumber: referenceNumber.trim() || undefined,
         ewayBillNumber: ewayBillNumber.trim() || undefined,
         costCentreId: costCentreId || undefined,
+        customFields: customFieldValues,
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
@@ -1754,6 +1761,8 @@ export function BillingScreen() {
               </select>
             </div>
           )}
+
+          <CustomFieldsEditor entityType="INVOICE" values={customFieldValues} onChange={setCustomFieldValues} />
 
           {/* Notes */}
           <div>

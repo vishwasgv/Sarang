@@ -156,6 +156,12 @@ export interface IpcChannels {
     create: (payload: { name: string; code?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; name?: string; code?: string; isActive?: boolean }) => Promise<ApiResponse>
   }
+  // Phase 66 — Custom Fields.
+  customFields: {
+    list: (payload?: { entityType?: string; activeOnly?: boolean }) => Promise<ApiResponse>
+    create: (payload: { entityType: string; fieldName: string; fieldType: string; selectOptions?: string[]; displayOrder?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; fieldName?: string; selectOptions?: string[]; isActive?: boolean; displayOrder?: number }) => Promise<ApiResponse>
+  }
   // Phase 65 — Budget vs. Actual.
   budgets: {
     list: (payload?: { periodYear?: number; periodMonth?: number; costCentreId?: string }) => Promise<ApiResponse>
@@ -465,6 +471,7 @@ export interface IpcChannels {
     getTopOutstanding: (payload: { limit: number }) => Promise<ApiResponse>
     getTopCategories: (payload: { limit: number }) => Promise<ApiResponse>
     getEstimatedProfit: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    getVerticalSpotlightKpis: (payload: { businessType: string }) => Promise<ApiResponse>
   }
   import: {
     parseFile: (payload: { module: ImportModule }) => Promise<ApiResponse<ImportParseFileResult>>

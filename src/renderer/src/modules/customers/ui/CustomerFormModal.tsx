@@ -8,6 +8,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
+import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
 
 const schema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
@@ -53,6 +54,7 @@ interface Customer {
   companyRegistrationNumber?: string | null; contactPersonName?: string | null
   idProofType?: string | null; idProofNumber?: string | null
   priceListId?: string | null
+  customFields?: string | null
 }
 
 interface CustomerFormModalProps {
@@ -79,6 +81,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
   const taxExempt = watch('taxExempt')
   const customerKind = watch('customerKind')
   const [priceLists, setPriceLists] = useState<Array<{ id: string; name: string }>>([])
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
 
   useEffect(() => {
     if (!open) return
@@ -110,12 +113,13 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         idProofNumber: customer?.idProofNumber ?? '',
         priceListId: customer?.priceListId ?? ''
       })
+      setCustomFieldValues(parseCustomFields(customer?.customFields))
     }
   }, [open, customer, reset])
 
   async function onSubmit(values: FormValues) {
     try {
-      const payload = { ...values, email: values.email || undefined, priceListId: values.priceListId || undefined }
+      const payload = { ...values, email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
       const response = isEdit
         ? await window.api.customers.update({ id: customer!.id, ...payload })
         : await window.api.customers.create(payload)
@@ -218,6 +222,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           <textarea {...register('notes')} rows={2} placeholder="Optional notes…"
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400" />
         </div>
+        <CustomFieldsEditor entityType="CUSTOMER" values={customFieldValues} onChange={setCustomFieldValues} />
       </form>
     </Modal>
   )

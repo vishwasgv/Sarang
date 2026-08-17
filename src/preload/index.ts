@@ -92,6 +92,11 @@ const api: IpcChannels = {
     create: (p) => invoke('costCentres:create', p),
     update: (p) => invoke('costCentres:update', p)
   },
+  customFields: {
+    list: (p) => invoke('customFields:list', p),
+    create: (p) => invoke('customFields:create', p),
+    update: (p) => invoke('customFields:update', p)
+  },
   budgets: {
     list: (p) => invoke('budgets:list', p),
     create: (p) => invoke('budgets:create', p),
@@ -368,7 +373,8 @@ const api: IpcChannels = {
     getDashboardAlerts: () => invoke('analytics:getDashboardAlerts'),
     getTopOutstanding: (p) => invoke('analytics:getTopOutstanding', p),
     getTopCategories: (p) => invoke('analytics:getTopCategories', p),
-    getEstimatedProfit: (p) => invoke('analytics:getEstimatedProfit', p)
+    getEstimatedProfit: (p) => invoke('analytics:getEstimatedProfit', p),
+    getVerticalSpotlightKpis: (p) => invoke('analytics:getVerticalSpotlightKpis', p)
   },
   import: {
     parseFile: (p) => invoke('import:parseFile', p),

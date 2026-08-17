@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CustomFieldValuesSchema } from './custom-field.validation'
 
 // Phase 61 — an expense can optionally be tied to a Supplier (e.g. a
 // professional-fee invoice paid outside the Bill/PO flow), carry a
@@ -24,6 +25,7 @@ export const CreateExpenseSchema = z.object({
   isReverseCharge: z.boolean().default(false),
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
 })
 
 export const UpdateExpenseSchema = z.object({
@@ -41,6 +43,7 @@ export const UpdateExpenseSchema = z.object({
   isReverseCharge: z.boolean().optional(),
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
 })
 
 export const CreateExpenseCategorySchema = z.object({

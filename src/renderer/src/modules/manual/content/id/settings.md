@@ -63,3 +63,18 @@ Tiga bagian lainnya berada dalam menu Settings yang sama tetapi dibahas di bab m
 ## About
 
 **Settings → About** menampilkan nomor versi terpasang Anda dan pernyataan transparansi Sarang. Sarang bekerja sepenuhnya offline untuk setiap fitur bisnis inti — penagihan, inventaris, pelanggan, laporan — dengan tiga pengecualian terbatas yang diungkapkan secara jelas, yang tidak satu pun pernah menyertakan data bisnis Anda dan tidak satu pun pernah menghalangi aplikasi jika Anda sedang offline: pemeriksaan pembaruan perangkat lunak (hanya versi aplikasi Anda), pemeriksaan status lisensi opsional sekali sehari (hanya versi terenkripsi satu arah dari kunci lisensi Anda), dan sinyal durasi penggunaan harian anonim (berapa menit aplikasi dibuka, terkait dengan kunci terenkripsi yang sama, tidak pernah sesuatu yang mengidentifikasi Anda atau bisnis Anda). Lihat **Settings → About → Privacy & Data** untuk gambaran lengkap.
+
+## Bidang Kustom
+
+**Settings → Bidang Kustom** memungkinkan Anda menambahkan bidang Anda sendiri — yang tidak dilacak Sarang secara bawaan — ke **Faktur**, **Pelanggan**, **Pemasok**, **Produk**, atau **Pengeluaran**. Berguna untuk hal-hal khusus sesuai cara Anda menjalankan bisnis: sumber rujukan pelanggan, lokasi rak produk, hari pengiriman yang disukai pemasok.
+
+Pilih jenis entitas di atas (Faktur, Pelanggan, Pemasok, Produk, atau Pengeluaran), lalu klik **Bidang Baru** dan berikan:
+
+- Sebuah **nama** (mis. "Sumber Rujukan").
+- Sebuah **jenis** — **Teks**, **Angka**, **Tanggal**, atau **Daftar Dropdown**. Untuk dropdown, tambahkan daftar pilihan yang Anda inginkan (mis. "Datang Langsung", "Rujukan", "Iklan Online"). Jenis tidak dapat diubah setelah bidang dibuat — nonaktifkan dan buat yang baru jika Anda memerlukan jenis yang berbeda.
+
+Setelah dibuat, bidang tersebut otomatis muncul di setiap formulir buat/edit untuk jenis entitas itu — misalnya, bidang Pelanggan muncul di formulir Tambah/Edit Pelanggan. Jika suatu jenis entitas memiliki nol bidang kustom, formulirnya tidak menampilkan apa pun tambahan — fitur ini tetap sepenuhnya tidak terlihat sampai Anda mengaktifkannya.
+
+**Menonaktifkan** bidang (alih-alih menghapusnya) menyembunyikannya dari formulir baru tetapi menjaga setiap nilai yang sudah tercatat di dalamnya tetap sepenuhnya dapat dibaca pada catatan yang memilikinya — tidak ada yang hilang. **Mengaktifkannya** kembali membawanya kembali ke formulir baru.
+
+Nilai bidang kustom dimasukkan per catatan, langsung pada formulir catatan itu sendiri, dan disimpan bersama semua hal lain pada catatan tersebut.

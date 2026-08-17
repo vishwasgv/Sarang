@@ -35,4 +35,21 @@ O painel inferior esquerdo lista as ações mais recentes registradas em todo o 
 
 ## Destaque do Setor
 
-Um pequeno cartão abaixo de Ações Rápidas se adapta ao seu tipo de negócio, mostrando duas ou três das métricas mais relevantes para ele — por exemplo, um Restaurante vê a receita de hoje, ingredientes com estoque baixo e mesas ocupadas; um negócio de Joalheria vê a cotação de metal de hoje e as cotações configuradas; um Distribuidor vê valores pendentes e fornecedores ativos. Um negócio de Varejo geral vê sua categoria mais vendida e itens com estoque baixo. Qualquer tipo de negócio sem um destaque dedicado recorre à visão de Varejo.
+Um pequeno cartão abaixo de Ações Rápidas se adapta ao seu tipo de negócio, mostrando de dois a quatro números que esse ramo realmente verifica todos os dias — não um conjunto genérico de indicadores. Agora cada tipo de negócio tem seu próprio cartão real; nenhum recorre a um padrão estilo Varejo. Alguns exemplos:
+
+- **Academia/Estúdio** — associações vencendo esta semana e este mês, e seu número de associações ativas, com link direto para a tela de Associações.
+- **Advogado** — casos abertos e audiências agendadas nos próximos 7 dias.
+- **Estúdio Fotográfico** — sessões futuras, sessões agendadas este mês, e entregas aguardando edição.
+- **Autoescola** — alunos com exame nos próximos 14 dias, e quantos estão com poucas sessões restantes no pacote.
+- **Clínica Médica/Odontológica/Fisioterapia/Veterinária, Salão de Beleza, Gestão de Eventos, Alfaiataria/Boutique, Controle de Pragas** — agendamentos deste mês, taxa de conclusão, e faltas/cancelamentos.
+- **Serviço, Consultor, Arquiteto, Engenheiro Civil, Agência de Marketing, Agência de Software, Imobiliária** — projetos ativos, concluídos este mês, e valor total dos contratos.
+- **Hotel/Pousada** — quartos ocupados, taxa de ocupação, e quartos disponíveis.
+- **Laboratório de Diagnóstico** — pedidos de exames este mês, pendentes, e entregues.
+- **Instituto de Ensino** — mensalidades pendentes, alunos com mensalidades pendentes, e valor recebido este mês.
+- **Escritório de Contabilidade / Secretaria Empresarial** — tarefas de conformidade abertas, quantas estão atrasadas, e quantas vencem esta semana.
+- **Oficina / Centro de Serviço Automotivo** — ordens de serviço este mês, pendentes, e entregues.
+- **Agência de Recrutamento** — candidatos ativos, vagas abertas, e contratações este mês.
+- **Restaurante, Joalheria, Ferragens/Vidro/Compensado, Distribuidor/Atacado** — mantêm seus cartões já existentes (receita de hoje e ocupação de mesas; cotações de metal; saldo pendente de clientes e valor do estoque; valores pendentes e número de fornecedores).
+- **Um negócio geral sem correspondência mais próxima** — número de notas fiscais de hoje e saldo total pendente: ainda assim números reais dos seus próprios dados, não um espaço reservado.
+
+O primeiro item de cada cartão leva diretamente à tela que ele resume.

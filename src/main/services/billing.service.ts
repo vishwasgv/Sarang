@@ -13,6 +13,7 @@ import { SequenceContendedError } from './sequence.service'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
 import { getLicenseState } from './license.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
+import { serializeCustomFieldValues } from './custom-field.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { explodeKitComponentsTx } from './kit.service'
@@ -585,7 +586,9 @@ export const billingService = {
             createdById: userId ?? null,
             status: 'ACTIVE',
             // Phase 65 — Reporting Tags / Cost & Profit Centres.
-            costCentreId: payload.costCentreId ?? null
+            costCentreId: payload.costCentreId ?? null,
+            // Phase 66 — Custom Fields.
+            customFields: serializeCustomFieldValues(payload.customFields)
           }
         })
 

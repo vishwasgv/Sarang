@@ -65,3 +65,18 @@ Three more sections live in this same Settings menu but are covered in their own
 ## About
 
 **Settings → About** shows your installed version number and Sarang's transparency statement. Sarang works fully offline for every core business feature — billing, inventory, customers, reports — with three narrow, disclosed exceptions, none of which ever include your business data and none of which block the app if you're offline: a software-update check (your app version only), an optional once-a-day license-status check (a one-way scrambled version of your license key only), and an anonymous daily usage-duration signal (minutes the app was open, tied to that same scrambled key, never anything that identifies you or your business). See **Settings → About → Privacy & Data** for the full picture.
+
+## Custom Fields
+
+**Settings → Custom Fields** lets you add your own fields — ones Sarang doesn't track out of the box — to **Invoices**, **Customers**, **Suppliers**, **Products**, or **Expenses**. Useful for things specific to how you run your business: a customer's referral source, a product's shelf location, a supplier's preferred delivery day.
+
+Pick the entity type at the top (Invoices, Customers, Suppliers, Products, or Expenses), then click **New Field** and give it:
+
+- A **name** (e.g. "Referral Source").
+- A **type** — **Text**, **Number**, **Date**, or **Dropdown List**. For a dropdown, add the list of choices you want (e.g. "Walk-in", "Referral", "Online Ad"). The type can't be changed after the field is created — deactivate it and create a new one instead if you need a different type.
+
+Once created, the field appears automatically on every create/edit form for that entity type — for example, a Customer field shows up on the Add/Edit Customer form. If an entity type has zero custom fields defined, its forms show nothing extra at all — the feature stays completely out of the way until you opt in.
+
+**Deactivating** a field (rather than deleting it) hides it from new forms but keeps every value already recorded against it fully readable on the records that have it — nothing is lost. **Activating** it again brings it back on new forms.
+
+Custom field values are entered per record, right on that record's own form, and saved along with everything else on that record.

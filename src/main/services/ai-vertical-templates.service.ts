@@ -41,6 +41,8 @@ import { getUpcomingVaccinations } from './vaccination.service'
 import { listRecalls } from './recall-record.service'
 import { getCarJobCardKPIs } from './car-job-card.service'
 import { getFeeKPIs } from './coaching-fee.service'
+import { getUpcomingTestsAndLowBalanceKPIs } from './driving.service'
+import { getExpiringMemberships } from './membership.service'
 
 interface TemplateResult { headline: string; details: string[]; isEmpty: boolean }
 
@@ -71,7 +73,9 @@ function thisMonthRange(params: Record<string, unknown>): { dateFrom: string; da
 // Business types sharing the appointments-based service foundation (Phase
 // 22) — appointment utilisation and client retention are meaningful
 // questions for any of them.
-const APPOINTMENT_BASED_TYPES = new Set([
+// Phase 66 — exported so dashboard-spotlight.service.ts can reuse the exact
+// same type groupings rather than maintaining a second, driftable copy.
+export const APPOINTMENT_BASED_TYPES = new Set([
   'VET_CLINIC', 'GP_CLINIC', 'SPECIALIST_CLINIC', 'DENTAL_CLINIC', 'PHYSIO_CLINIC',
   'BEAUTY_SALON', 'GYM_STUDIO', 'DRIVING_SCHOOL', 'LAWYER', 'PHOTO_STUDIO',
   'EVENT_MANAGEMENT', 'TAILOR_BOUTIQUE', 'PEST_CONTROL'
@@ -79,7 +83,7 @@ const APPOINTMENT_BASED_TYPES = new Set([
 // Of those, only Beauty Salon and Gym Studio use the staff_commission module.
 const COMMISSION_BASED_TYPES = new Set(['BEAUTY_SALON', 'GYM_STUDIO'])
 // Business types with a real project/engagement workflow (service_projects).
-const PROJECT_BASED_TYPES = new Set([
+export const PROJECT_BASED_TYPES = new Set([
   'SERVICE', 'CONSULTANT', 'INDEPENDENT_CONSULTANT', 'ARCHITECT', 'CIVIL_ENGINEER',
   'MARKETING_AGENCY', 'SOFTWARE_AGENCY', 'REAL_ESTATE'
 ])
@@ -141,9 +145,9 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     if (COMMISSION_BASED_TYPES.has(businessType)) templates.push('service.commission')
     // AI expansion, 2026-07 — same "one extra vertical-specific template"
     // pattern as PROJECT_BASED_TYPES above. GP_CLINIC/SPECIALIST_CLINIC/
-    // PHYSIO_CLINIC/BEAUTY_SALON/GYM_STUDIO get no extra — not part of the
-    // audited 18-business-type gap list, and the shared appointment/
-    // retention pair already covers their real questions.
+    // PHYSIO_CLINIC/BEAUTY_SALON get no extra — not part of the audited
+    // 18-business-type gap list, and the shared appointment/retention pair
+    // already covers their real questions.
     if (businessType === 'LAWYER') templates.push('legal.openCasesAndHearings', 'service.unbilledTimeValue')
     if (businessType === 'PHOTO_STUDIO') templates.push('photography.upcomingShoots')
     if (businessType === 'EVENT_MANAGEMENT') templates.push('events.upcoming')
@@ -152,6 +156,12 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     if (businessType === 'PEST_CONTROL') templates.push('pestControl.contractsDueForRenewal')
     if (businessType === 'VET_CLINIC') templates.push('vet.vaccinationsDue')
     if (businessType === 'DENTAL_CLINIC') templates.push('dental.recallsDue')
+    // Phase 66 — the Dashboard spotlight card for GYM_STUDIO now surfaces
+    // expiring-membership counts (getExpiringMemberships, same function the
+    // dedicated Memberships screen's own "Expiring Soon" tab calls) — per
+    // Section 1.2's "any new report gets a matching AI query pattern" rule,
+    // this needs a matching AI intent too, not just a Dashboard card.
+    if (businessType === 'GYM_STUDIO') templates.push('gym.membershipsExpiring')
     return templates
   }
   if (LOGISTICS_BASED_TYPES.has(businessType)) return ['logistics.summary']
@@ -372,6 +382,22 @@ export async function executeVerticalTemplate(template: string, params: Record<s
     // the full audit and the two documented gaps (Marketing Agency ad-spend
     // and any pipeline-stage model beyond Candidate.status) this batch ran
     // into and worked around honestly rather than inventing data.
+    // Phase 66 — reuses the SAME getExpiringMemberships() the Dashboard
+    // spotlight card and the Memberships screen's own "Expiring Soon" tab
+    // both already call, not a parallel computation.
+    case 'gym.membershipsExpiring': {
+      const [weekRes, monthRes] = await Promise.all([
+        getExpiringMemberships(7),
+        getExpiringMemberships(30)
+      ])
+      const week = weekRes.data ?? []
+      const month = monthRes.data ?? []
+      return {
+        headline: `${week.length} memberships expiring in the next 7 days, ${month.length} in the next 30 days`,
+        details: week.slice(0, 10).map((m) => `${m.client.customerName} — ${m.plan.planName}, expires ${toLocalISODate(new Date(m.endDate))}`),
+        isEmpty: month.length === 0
+      }
+    }
     case 'legal.openCasesAndHearings': {
       const now = new Date()
       const weekLater = new Date(now); weekLater.setDate(weekLater.getDate() + 7)
@@ -466,18 +492,13 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       }
     }
     case 'driving.upcomingTestsAndLowBalance': {
-      const db = getPrisma()
-      const now = new Date()
-      const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() + 14)
-      const [tests, enrollments] = await Promise.all([
-        db.drivingTest.findMany({ where: { result: 'PENDING', testDate: { gte: now, lte: cutoff } }, select: { testType: true, testDate: true, learner: { select: { customerName: true } } } }),
-        db.drivingPackageEnrollment.findMany({ select: { sessionsUsed: true, learner: { select: { customerName: true } }, package: { select: { totalSessions: true } } } })
-      ])
-      const lowBalance = enrollments.filter((e) => e.package.totalSessions - e.sessionsUsed <= 2 && e.package.totalSessions - e.sessionsUsed > 0)
+      const res = await getUpcomingTestsAndLowBalanceKPIs()
+      if (!res.data) return { headline: '', details: [], isEmpty: true }
+      const { upcomingTests, lowBalanceCount } = res.data
       return {
-        headline: `${tests.length} learners have a test scheduled in the next 14 days, ${lowBalance.length} are low on package sessions`,
-        details: tests.slice(0, 5).map((t) => `${t.learner.customerName} — ${t.testType}, ${toLocalISODate(t.testDate)}`),
-        isEmpty: tests.length === 0 && lowBalance.length === 0
+        headline: `${upcomingTests.length} learners have a test scheduled in the next 14 days, ${lowBalanceCount} are low on package sessions`,
+        details: upcomingTests.slice(0, 5).map((t) => `${t.learner.customerName} — ${t.testType}, ${toLocalISODate(t.testDate)}`),
+        isEmpty: upcomingTests.length === 0 && lowBalanceCount === 0
       }
     }
     case 'tailoring.ordersDueThisWeek': {

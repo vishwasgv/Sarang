@@ -35,4 +35,21 @@ The bottom-left panel lists your most recent recorded actions across the system 
 
 ## Industry Spotlight
 
-A small card beneath Quick Actions adapts to your business type, showing two or three of the metrics most relevant to it — for example a Restaurant sees today's revenue, low-stock ingredients, and tables occupied; a Jewellery business sees today's metal rate and configured rates; a Distributor sees outstanding dues and active suppliers. A general Retail business sees its top-selling category and low-stock items. Any business type without a dedicated spotlight falls back to the Retail view.
+A small card beneath Quick Actions adapts to your business type, showing the two to four numbers that trade actually checks every day — not a generic set of tiles. Every business type now has its own real card; none fall back to a Retail-shaped default. A few examples:
+
+- **Gym/Studio** — memberships expiring this week and this month, and your active membership count, linking straight to the Memberships screen.
+- **Lawyer** — open cases and hearings scheduled in the next 7 days.
+- **Photo Studio** — upcoming shoots, shoots scheduled this month, and deliveries still awaiting editing.
+- **Driving School** — learners with a test in the next 14 days, and how many are running low on package sessions.
+- **Doctor/Dental/Physio/Vet Clinic, Beauty Salon, Event Management, Tailor/Boutique, Pest Control** — appointments this month, completion rate, and no-shows/cancellations.
+- **Service, Consultant, Architect, Civil Engineer, Marketing Agency, Software Agency, Real Estate** — active projects, completed this month, and total contract value.
+- **Hotel/Lodge** — rooms occupied, occupancy rate, and rooms available.
+- **Diagnostic Lab** — test orders this month, pending, and delivered.
+- **Coaching Institute** — fees due, students with pending fees, and amount received this month.
+- **CA Firm / Company Secretary** — open compliance tasks, how many are overdue, and how many are due this week.
+- **Repair / Car Service Center** — job cards this month, pending, and delivered.
+- **Placement Agency** — active candidates, open job orders, and placements this month.
+- **Restaurant, Jewellery, Hardware/Glass/Plywood, Distributor/Wholesale** — keep their own longer-standing cards (today's revenue and table occupancy; metal rates; customer outstanding and inventory value; outstanding dues and supplier count).
+- **A general business with no closer match** — today's invoice count and total outstanding balance: still real numbers pulled from your own data, not a placeholder.
+
+Each card's first item links straight to the screen it summarizes.

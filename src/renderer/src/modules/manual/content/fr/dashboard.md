@@ -35,4 +35,21 @@ Le panneau en bas à gauche liste vos actions enregistrées les plus récentes �
 
 ## Coup de projecteur sectoriel
 
-Une petite carte sous Actions rapides s'adapte à votre type d'entreprise, montrant deux ou trois des indicateurs les plus pertinents pour celle-ci — par exemple un Restaurant voit le chiffre d'affaires du jour, les ingrédients en stock faible, et les tables occupées ; une Bijouterie voit le cours du métal du jour et les taux configurés ; un Distributeur voit les créances en cours et les fournisseurs actifs. Une entreprise de Détail générale voit sa catégorie la plus vendue et les articles en stock faible. Tout type d'entreprise sans coup de projecteur dédié se replie sur la vue Détail.
+Une petite carte sous Actions rapides s'adapte à votre type d'entreprise, montrant deux à quatre chiffres réellement consultés chaque jour dans ce métier — pas un ensemble générique de tuiles. Chaque type d'entreprise a désormais sa propre carte réelle ; aucun ne revient à une vue par défaut façon Détail. Quelques exemples :
+
+- **Salle de sport/Studio** — abonnements expirant cette semaine et ce mois-ci, et votre nombre d'abonnements actifs, avec un lien direct vers l'écran Abonnements.
+- **Avocat** — dossiers ouverts et audiences programmées dans les 7 prochains jours.
+- **Studio photo** — séances à venir, séances programmées ce mois-ci, et livraisons en attente de montage.
+- **Auto-école** — élèves ayant un examen dans les 14 prochains jours, et combien ont peu de séances restantes sur leur forfait.
+- **Clinique médicale/dentaire/kinésithérapie/vétérinaire, Salon de beauté, Gestion d'événements, Couture/Boutique, Lutte antiparasitaire** — rendez-vous de ce mois-ci, taux de complétion, et absences/annulations.
+- **Service, Consultant, Architecte, Ingénieur civil, Agence marketing, Agence logicielle, Immobilier** — projets actifs, terminés ce mois-ci, et valeur totale des contrats.
+- **Hôtel/Auberge** — chambres occupées, taux d'occupation, et chambres disponibles.
+- **Laboratoire d'analyses** — commandes d'analyses ce mois-ci, en attente, et livrées.
+- **Institut de formation** — frais dus, élèves avec frais en attente, et montant reçu ce mois-ci.
+- **Cabinet d'expertise comptable / Secrétariat d'entreprise** — tâches de conformité ouvertes, combien sont en retard, et combien sont dues cette semaine.
+- **Réparation / Centre de service automobile** — fiches de travail ce mois-ci, en attente, et livrées.
+- **Agence de placement** — candidats actifs, offres d'emploi ouvertes, et placements ce mois-ci.
+- **Restaurant, Bijouterie, Quincaillerie/Verre/Contreplaqué, Distributeur/Grossiste** — conservent leurs cartes déjà existantes (chiffre d'affaires du jour et occupation des tables ; cours des métaux ; créances clients et valeur du stock ; créances en cours et nombre de fournisseurs).
+- **Une entreprise générale sans correspondance plus proche** — nombre de factures du jour et solde total en attente : toujours des chiffres réels issus de vos propres données, pas un espace réservé.
+
+Le premier élément de chaque carte renvoie directement à l'écran qu'il résume.

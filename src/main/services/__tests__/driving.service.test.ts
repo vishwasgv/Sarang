@@ -20,6 +20,7 @@ import {
   logVehicleMaintenance,
   createDrivingTest,
   getInstructorPassRates,
+  getUpcomingTestsAndLowBalanceKPIs,
 } from '../driving.service'
 
 // Regression coverage for the Phase 27 re-audit finding: createDrivingSession
@@ -823,5 +824,48 @@ describe('driving.service — getInstructorPassRates', () => {
     expect(db.drivingTest.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { instructorId: { not: null }, result: { in: ['PASSED', 'FAILED'] } },
     }))
+  })
+})
+
+// Phase 66 — extracted from ai-vertical-templates.service.ts's own
+// 'driving.upcomingTestsAndLowBalance' AI template case so the Dashboard
+// spotlight card can call the exact same function instead of a duplicated
+// inline query.
+describe('driving.service — getUpcomingTestsAndLowBalanceKPIs', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns tests scheduled within 14 days and enrollments with 1-2 sessions remaining', async () => {
+    const db = {
+      drivingTest: {
+        findMany: vi.fn().mockResolvedValue([
+          { testType: 'LMV', testDate: new Date(), learner: { customerName: 'Learner A' } },
+        ]),
+      },
+      drivingPackageEnrollment: {
+        findMany: vi.fn().mockResolvedValue([
+          { sessionsUsed: 8, learner: { customerName: 'Learner A' }, package: { totalSessions: 10 } }, // 2 left — low
+          { sessionsUsed: 9, learner: { customerName: 'Learner B' }, package: { totalSessions: 10 } }, // 1 left — low
+          { sessionsUsed: 5, learner: { customerName: 'Learner C' }, package: { totalSessions: 10 } }, // 5 left — not low
+          { sessionsUsed: 10, learner: { customerName: 'Learner D' }, package: { totalSessions: 10 } }, // 0 left — already finished, excluded
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getUpcomingTestsAndLowBalanceKPIs()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { upcomingTests: unknown[]; lowBalanceCount: number } }).data
+    expect(data.upcomingTests).toHaveLength(1)
+    expect(data.lowBalanceCount).toBe(2)
+  })
+
+  it('returns a graceful error instead of throwing when the query fails', async () => {
+    vi.mocked(getPrisma).mockImplementation(() => { throw new Error('DB unavailable') })
+
+    const res = await getUpcomingTestsAndLowBalanceKPIs()
+
+    expect(res.success).toBe(false)
+    expect(res.error?.message).toBe('DB unavailable')
   })
 })

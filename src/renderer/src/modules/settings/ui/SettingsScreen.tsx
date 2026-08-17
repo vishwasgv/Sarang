@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
   Info, Shield, Plus, Edit2, Trash2, Check, X, Star, Layers, RefreshCw, Globe, Moon, Printer,
-  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode, GraduationCap
+  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode, GraduationCap, ListPlus
 } from 'lucide-react'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useTranslation } from 'react-i18next'
@@ -158,6 +158,14 @@ const SECTIONS: SettingsSection[] = [
     description: 'Revisit the guided walkthrough anytime — nothing you do there is saved',
     icon: <GraduationCap size={18} />,
     status: 'available'
+  },
+  {
+    id: 'customFields',
+    label: 'Custom Fields',
+    description: 'Add your own fields to invoices, customers, suppliers, products, or expenses',
+    icon: <ListPlus size={18} />,
+    permission: 'settings.modify',
+    status: 'available'
   }
 ]
 
@@ -208,6 +216,190 @@ function TutorialSection() {
         <ChevronRight size={18} className="ms-auto" />
       </button>
       <TutorialStartModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
+    </div>
+  )
+}
+
+// Phase 66 — Custom Fields. Definitions are scoped to one of 5 core entity
+// types; the actual inline value editor lives on each entity's own
+// create/edit form (self-hiding until at least one definition exists for
+// that entity type — see e.g. ExpensesScreen.tsx's own costCentres picker
+// for the same "zero footprint until opted in" precedent from Phase 65).
+interface CustomFieldDefinition {
+  id: string; entityType: string; fieldName: string; fieldType: string
+  selectOptions: string[] | null; isActive: boolean; displayOrder: number
+}
+
+const CUSTOM_FIELD_ENTITY_TYPES = ['INVOICE', 'CUSTOMER', 'SUPPLIER', 'PRODUCT', 'EXPENSE'] as const
+const CUSTOM_FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'SELECT'] as const
+
+function CustomFieldsSection() {
+  const { t } = useTranslation()
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const [entityType, setEntityType] = useState<typeof CUSTOM_FIELD_ENTITY_TYPES[number]>('CUSTOMER')
+  const [fields, setFields] = useState<CustomFieldDefinition[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editTarget, setEditTarget] = useState<CustomFieldDefinition | null>(null)
+  const [form, setForm] = useState({ fieldName: '', fieldType: 'TEXT' as typeof CUSTOM_FIELD_TYPES[number], selectOptions: [''] })
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.customFields.list({ entityType })
+      if (res.success && res.data) setFields(res.data as CustomFieldDefinition[])
+      else toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotLoad'))
+    } catch {
+      toastError(t('common.error'), t('customFields.couldNotLoad'))
+    } finally {
+      setLoading(false)
+    }
+  }, [entityType, toastError, t])
+
+  useEffect(() => { load() }, [load])
+
+  function openCreate() {
+    setEditTarget(null)
+    setForm({ fieldName: '', fieldType: 'TEXT', selectOptions: [''] })
+    setShowModal(true)
+  }
+
+  function openEdit(field: CustomFieldDefinition) {
+    setEditTarget(field)
+    setForm({ fieldName: field.fieldName, fieldType: field.fieldType as typeof CUSTOM_FIELD_TYPES[number], selectOptions: field.selectOptions?.length ? field.selectOptions : [''] })
+    setShowModal(true)
+  }
+
+  async function handleSave() {
+    if (!form.fieldName.trim()) { toastError(t('common.error'), t('customFields.nameRequired')); return }
+    const cleanOptions = form.selectOptions.map(o => o.trim()).filter(Boolean)
+    if (form.fieldType === 'SELECT' && cleanOptions.length === 0) { toastError(t('common.error'), t('customFields.optionsRequired')); return }
+    setSaving(true)
+    try {
+      const res = editTarget
+        ? await api.customFields.update({ id: editTarget.id, fieldName: form.fieldName.trim(), selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
+        : await api.customFields.create({ entityType, fieldName: form.fieldName.trim(), fieldType: form.fieldType, selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotSave')); return }
+      toastSuccess(t('common.saveChanges'), '')
+      setShowModal(false)
+      load()
+    } catch {
+      toastError(t('common.error'), t('customFields.couldNotSave'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleActive(field: CustomFieldDefinition) {
+    const res = await api.customFields.update({ id: field.id, isActive: !field.isActive })
+    if (res.success) load()
+    else toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotSave'))
+  }
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div>
+        <h3 className="text-base font-semibold text-dark dark:text-slate-100">{t('customFields.title')}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('customFields.subtitle')}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {CUSTOM_FIELD_ENTITY_TYPES.map((et) => (
+          <button
+            key={et}
+            onClick={() => setEntityType(et)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
+              entityType === et
+                ? 'bg-brand text-white border-brand'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand'
+            )}
+          >
+            {t(`customFields.entity.${et}`)}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-end">
+        <Button size="sm" icon={<Plus size={14} />} onClick={openCreate}>{t('customFields.newField')}</Button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">{t('common.loading')}</p>
+      ) : fields.length === 0 ? (
+        <div className="text-center py-10">
+          <ListPlus size={32} className="mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('customFields.empty', { entity: t(`customFields.entity.${entityType}`) })}</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {fields.map((field) => (
+            <Card key={field.id} padding="sm" className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-dark dark:text-slate-100">{field.fieldName}</span>
+                  <Badge variant="neutral" size="sm">{t(`customFields.type.${field.fieldType}`)}</Badge>
+                  {!field.isActive && <Badge variant="warning" size="sm">{t('common.inactive')}</Badge>}
+                </div>
+                {field.selectOptions && field.selectOptions.length > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">{field.selectOptions.join(', ')}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => openEdit(field)} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">{t('common.edit')}</button>
+                <button onClick={() => toggleActive(field)} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                  {field.isActive ? t('customFields.deactivate') : t('customFields.activate')}
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-dark dark:text-slate-100">{editTarget ? t('customFields.editField') : t('customFields.newField')}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customFields.fieldName')} *</label>
+                <input value={form.fieldName} onChange={e => setForm(f => ({ ...f, fieldName: e.target.value }))}
+                  className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+              </div>
+              {!editTarget && (
+                <Select label={t('customFields.fieldType')} value={form.fieldType} onChange={e => setForm(f => ({ ...f, fieldType: e.target.value as typeof CUSTOM_FIELD_TYPES[number] }))}>
+                  {CUSTOM_FIELD_TYPES.map(ft => <option key={ft} value={ft}>{t(`customFields.type.${ft}`)}</option>)}
+                </Select>
+              )}
+              {(editTarget ? editTarget.fieldType === 'SELECT' : form.fieldType === 'SELECT') && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customFields.options')}</label>
+                  <div className="space-y-2">
+                    {form.selectOptions.map((opt, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input value={opt} onChange={e => setForm(f => ({ ...f, selectOptions: f.selectOptions.map((o, idx) => idx === i ? e.target.value : o) }))}
+                          className="flex-1 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100" />
+                        {form.selectOptions.length > 1 && (
+                          <button onClick={() => setForm(f => ({ ...f, selectOptions: f.selectOptions.filter((_, idx) => idx !== i) }))} className="text-slate-300 hover:text-danger"><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => setForm(f => ({ ...f, selectOptions: [...f.selectOptions, ''] }))} className="text-xs font-semibold text-brand hover:underline">{t('customFields.addOption')}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} disabled={saving}>{t('common.cancel')}</Button>
+              <Button size="sm" onClick={handleSave} loading={saving}>{t('common.saveChanges')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -292,6 +484,7 @@ export function SettingsScreen() {
         {activeSection === 'aiAssistant' && <AiAssistantSection />}
         {activeSection === 'security' && <SecuritySection />}
         {activeSection === 'tutorial' && <TutorialSection />}
+        {activeSection === 'customFields' && <CustomFieldsSection />}
       </div>
     </div>
   )

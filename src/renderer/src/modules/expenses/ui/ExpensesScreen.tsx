@@ -13,6 +13,7 @@ import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
+import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
 
 interface ExpenseCategory { id: string; categoryName: string }
 interface Expense {
@@ -23,6 +24,7 @@ interface Expense {
   supplierId?: string | null; mileageKm?: number | null; mileageRatePerKm?: number | null
   billableCustomerId?: string | null; isReverseCharge?: boolean
   costCentreId?: string | null
+  customFields?: string | null
 }
 interface SupplierOption { id: string; supplierName: string }
 interface CustomerOption { id: string; customerName: string }
@@ -67,7 +69,8 @@ export function ExpensesScreen() {
   const [editExpense, setEditExpense] = useState<Expense | null>(null)
   const [formData, setFormData] = useState({
     categoryId: '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: ''
+    supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: '',
+    customFields: {} as Record<string, string | number>
   })
   const [formSaving, setFormSaving] = useState(false)
 
@@ -114,7 +117,8 @@ export function ExpensesScreen() {
     setEditExpense(null)
     setFormData({
       categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
-      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: ''
+      supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: '',
+      customFields: {}
     })
     setFormOpen(true)
   }
@@ -135,7 +139,8 @@ export function ExpensesScreen() {
       mileageKm: isMileage ? String(exp.mileageKm) : '',
       mileageRatePerKm: isMileage ? String(exp.mileageRatePerKm) : '',
       isReverseCharge: exp.isReverseCharge ?? false,
-      costCentreId: exp.costCentreId ?? ''
+      costCentreId: exp.costCentreId ?? '',
+      customFields: parseCustomFields(exp.customFields)
     })
     setFormOpen(true)
   }
@@ -162,7 +167,8 @@ export function ExpensesScreen() {
         costCentreId: formData.costCentreId || undefined,
         mileageKm: km && km > 0 ? km : undefined,
         mileageRatePerKm: rate != null && !Number.isNaN(rate) ? rate : undefined,
-        isReverseCharge: formData.isReverseCharge
+        isReverseCharge: formData.isReverseCharge,
+        customFields: formData.customFields
       }
       const res = editExpense
         ? await window.api.expenses.update({ id: editExpense.id, ...payload })
@@ -416,6 +422,8 @@ export function ExpensesScreen() {
                 {costCentres.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
               </Select>
             )}
+
+            <CustomFieldsEditor entityType="EXPENSE" values={formData.customFields} onChange={(v) => setFormData(d => ({ ...d, customFields: v }))} />
 
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={formData.isReverseCharge} onChange={e => setFormData(d => ({ ...d, isReverseCharge: e.target.checked }))} className="w-4 h-4 rounded accent-brand" />

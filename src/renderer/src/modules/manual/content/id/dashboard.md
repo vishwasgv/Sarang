@@ -35,4 +35,21 @@ Panel kiri-bawah mendaftar tindakan tercatat terbaru Anda di seluruh sistem (sia
 
 ## Sorotan Industri
 
-Sebuah kartu kecil di bawah Tindakan Cepat menyesuaikan dengan jenis bisnis Anda, menampilkan dua atau tiga metrik yang paling relevan untuknya — misalnya bisnis Restaurant melihat pendapatan hari ini, bahan stok-rendah, dan meja yang terisi; bisnis Jewellery melihat harga logam hari ini dan tarif yang dikonfigurasi; sebuah Distributor melihat tagihan tertunggak dan pemasok aktif. Bisnis Retail umum melihat kategori terlaris dan item stok-rendahnya. Jenis bisnis mana pun tanpa sorotan khusus akan kembali ke tampilan Retail.
+Sebuah kartu kecil di bawah Tindakan Cepat menyesuaikan dengan jenis bisnis Anda, menampilkan dua hingga empat angka yang benar-benar dicek setiap hari oleh bisnis tersebut — bukan sekumpulan ubin generik. Kini setiap jenis bisnis memiliki kartu nyatanya sendiri; tidak ada yang kembali ke tampilan default seperti Retail. Beberapa contoh:
+
+- **Gym/Studio** — keanggotaan yang berakhir minggu ini dan bulan ini, serta jumlah keanggotaan aktif Anda, tertaut langsung ke layar Keanggotaan.
+- **Pengacara** — kasus terbuka dan sidang yang dijadwalkan dalam 7 hari ke depan.
+- **Studio Foto** — sesi foto mendatang, sesi yang dijadwalkan bulan ini, dan pengiriman yang menunggu penyuntingan.
+- **Sekolah Mengemudi** — peserta didik dengan ujian dalam 14 hari ke depan, dan berapa banyak yang sesi paketnya menipis.
+- **Klinik Dokter/Gigi/Fisioterapi/Hewan, Salon Kecantikan, Manajemen Acara, Penjahit/Butik, Pengendalian Hama** — janji temu bulan ini, tingkat penyelesaian, dan ketidakhadiran/pembatalan.
+- **Jasa, Konsultan, Arsitek, Insinyur Sipil, Agensi Pemasaran, Agensi Perangkat Lunak, Real Estat** — proyek aktif, selesai bulan ini, dan total nilai kontrak.
+- **Hotel/Penginapan** — kamar terisi, tingkat hunian, dan kamar tersedia.
+- **Laboratorium Diagnostik** — pesanan tes bulan ini, tertunda, dan terkirim.
+- **Lembaga Bimbingan Belajar** — biaya tertunggak, siswa dengan biaya tertunda, dan jumlah diterima bulan ini.
+- **Kantor Akuntan Publik / Sekretaris Perusahaan** — tugas kepatuhan terbuka, berapa yang terlambat, dan berapa yang jatuh tempo minggu ini.
+- **Bengkel / Pusat Servis Mobil** — kartu pekerjaan bulan ini, tertunda, dan terkirim.
+- **Agensi Penempatan Kerja** — kandidat aktif, lowongan kerja terbuka, dan penempatan bulan ini.
+- **Restoran, Perhiasan, Perkakas/Kaca/Kayu Lapis, Distributor/Grosir** — mempertahankan kartu lamanya (pendapatan hari ini dan hunian meja; harga logam; tunggakan pelanggan dan nilai inventaris; tagihan tertunggak dan jumlah pemasok).
+- **Bisnis umum tanpa kecocokan yang lebih dekat** — jumlah faktur hari ini dan total saldo tertunggak: tetap angka nyata dari data Anda sendiri, bukan placeholder.
+
+Item pertama setiap kartu tertaut langsung ke layar yang diringkasnya.

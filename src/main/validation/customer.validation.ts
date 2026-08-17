@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CustomFieldValuesSchema } from './custom-field.validation'
 
 // Phase 61 — Individual vs Business customer distinction (a real field-note
 // gap: a distributor/B2B seller's customer is a company, not a person, and
@@ -31,6 +32,7 @@ export const CreateCustomerSchema = z.object({
   notes: z.string().max(500).optional(),
   // Phase 63 — formal Price List assignment, additive alongside customerClass.
   priceListId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
   ...customerKindFields
 })
 
@@ -55,6 +57,7 @@ export const UpdateCustomerSchema = z.object({
   notes: z.string().max(500).optional(),
   // Phase 63 — formal Price List assignment, additive alongside customerClass.
   priceListId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
   ...customerKindFields
 })
 

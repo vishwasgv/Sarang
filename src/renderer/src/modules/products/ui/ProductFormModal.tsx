@@ -9,6 +9,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
+import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
 
 const schema = z.object({
   productName: z.string().min(1, 'Product name is required').max(200),
@@ -112,6 +113,7 @@ interface Product {
   metalType?: string | null; purity?: string | null; hallmarkNumber?: string | null
   grossWeight?: number | null; stoneWeight?: number | null; netWeight?: number | null
   makingChargeType?: string | null; makingChargeValue?: number | null
+  customFields?: string | null
 }
 
 const RATE_BASIS_OPTIONS = ['HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'] as const
@@ -231,6 +233,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   const [kitRows, setKitRows] = useState<{ componentProductId: string; quantity: number }[]>([])
   const [kitCandidates, setKitCandidates] = useState<PickableProduct[]>([])
   const [savingKit, setSavingKit] = useState(false)
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -384,9 +387,11 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           makingChargeValue: product.makingChargeValue ?? undefined,
         })
         setRateLines(product.rentalRates ?? [])
+        setCustomFieldValues(parseCustomFields(product.customFields))
       } else {
         reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
         setRateLines([])
+        setCustomFieldValues({})
       }
     }
   }, [open, product, reset])
@@ -427,7 +432,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
   async function onSubmit(values: FormValues) {
     try {
-      const payload = { ...values, rentalRates: values.isRentable ? rateLines : [] }
+      const payload = { ...values, rentalRates: values.isRentable ? rateLines : [], customFields: customFieldValues }
       const response = isEdit
         ? await window.api.products.update({ id: product!.id, ...payload })
         : await window.api.products.create(payload)
@@ -850,6 +855,8 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <textarea {...register('description')} rows={2} placeholder="Optional product description…"
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400" />
         </div>
+
+        <CustomFieldsEditor entityType="PRODUCT" values={customFieldValues} onChange={setCustomFieldValues} />
       </form>
     </Modal>
   )

@@ -10,7 +10,8 @@ import {
 import {
   TrendingUp, TrendingDown, ShoppingCart, Package, Users, Truck,
   DollarSign, AlertTriangle, RefreshCw, AlertCircle, CheckCircle, X,
-  Utensils, Store, HardHat, Layers, Activity, Zap, Gem, Sparkles
+  Utensils, Store, HardHat, Layers, Activity, Zap, Gem, Sparkles,
+  CalendarCheck, Briefcase, BedDouble, FlaskConical, GraduationCap, ClipboardCheck, Wrench, UsersRound, Building2, Dumbbell, Scale, Camera, Car
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
@@ -29,6 +30,24 @@ interface ActivityItem { id: string; action: string; entityType: string | null; 
 interface DashboardAlert { type: string; message: string; severity: 'warning' | 'danger' }
 interface TopOutstanding { customerId: string; customerName: string; outstanding: number }
 interface TopCategory { categoryName: string; revenue: number; itemsSold: number }
+// Phase 66 — Per-Vertical Dashboards. Local duplicate of
+// dashboard-spotlight.service.ts's own type (avoids cross-boundary imports
+// from main, same convention this file's other interfaces already follow).
+type VerticalSpotlightData =
+  | { kind: 'membership'; expiringThisWeek: number; expiringThisMonth: number; activeCount: number }
+  | { kind: 'legal'; openCases: number; upcomingHearings: number }
+  | { kind: 'photography'; upcoming: number; thisMonth: number; deliveriesPending: number }
+  | { kind: 'driving'; upcomingTests: number; lowBalanceCount: number }
+  | { kind: 'appointment'; total: number; completionRate: number; noShow: number; cancelled: number }
+  | { kind: 'project'; totalProjects: number; active: number; completed: number; totalContractValue: number }
+  | { kind: 'hotel'; occupied: number; totalRooms: number; occupancyPercent: number; available: number }
+  | { kind: 'lab'; totalOrders: number; pendingCount: number; delivered: number }
+  | { kind: 'coaching'; totalDue: number; pendingCount: number; totalReceived: number }
+  | { kind: 'compliance'; totalOpen: number; overdueCount: number; dueThisWeekCount: number }
+  | { kind: 'jobCards'; totalJobs: number; pending: number; delivered: number }
+  | { kind: 'placement'; activeCandidates: number; openJobOrders: number; placementsThisMonth: number; revenueThisMonth: number }
+  | { kind: 'general'; invoicesToday: number; outstanding: number }
+  | { kind: 'none' }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -97,6 +116,7 @@ export function DashboardScreen() {
   const [todayReturns, setTodayReturns] = useState<{ count: number; totalRefunded: number } | null>(null)
   const [expiryAlertCount, setExpiryAlertCount] = useState<{ expiring: number; expired: number } | null>(null)
   const [topCategories, setTopCategories] = useState<TopCategory[]>([])
+  const [verticalSpotlight, setVerticalSpotlight] = useState<VerticalSpotlightData | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [alerts, setAlerts] = useState<DashboardAlert[]>([])
   const [period, setPeriod] = useState<Period>('30d')
@@ -277,6 +297,19 @@ export function DashboardScreen() {
     : []
 
   const bizType = profile?.businessType ?? 'RETAIL'
+
+  // Phase 66 — Per-Vertical Dashboards. A dedicated effect (not folded into
+  // loadAll above) since it depends on bizType, which loadAll's own
+  // useCallback doesn't currently reference — keeps this additive rather
+  // than touching that already-sensitive, every-business-type-hits-it
+  // callback's dependency chain.
+  useEffect(() => {
+    let cancelled = false
+    api.analytics.getVerticalSpotlightKpis({ businessType: bizType }).then((res) => {
+      if (!cancelled && res.success) setVerticalSpotlight((res.data as VerticalSpotlightData) ?? null)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [bizType])
 
   return (
     <div className="p-6 space-y-5 max-w-screen-2xl mx-auto">
@@ -759,7 +792,7 @@ export function DashboardScreen() {
             </div>
           </div>
 
-          <IndustrySpotlight bizType={bizType} kpis={kpis} fmt={fmt} topCategories={topCategories} canViewRevenue={canViewRevenue} canViewInventory={canViewInventory} />
+          <IndustrySpotlight bizType={bizType} kpis={kpis} fmt={fmt} topCategories={topCategories} canViewRevenue={canViewRevenue} canViewInventory={canViewInventory} spotlight={verticalSpotlight} />
         </div>
       </div>
 
@@ -872,7 +905,7 @@ const KpiCard = memo(function KpiCard({ card, index }: { card: KpiCardData; inde
 // ─────────────────────────────────────────────────────────────────────────────
 
 function IndustrySpotlight({
-  bizType, kpis, fmt, topCategories, canViewRevenue, canViewInventory
+  bizType, kpis, fmt, topCategories, canViewRevenue, canViewInventory, spotlight
 }: {
   bizType: string
   kpis: DashboardKpis | null
@@ -880,9 +913,11 @@ function IndustrySpotlight({
   topCategories: TopCategory[]
   canViewRevenue: boolean
   canViewInventory: boolean
+  spotlight: VerticalSpotlightData | null
 }) {
   const type = bizType.toUpperCase()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   // Fresh-audit fix (2026-07-12) — Jewellery previously had zero dashboard
   // presence, unlike every other vertical with a Focus card here. Called
@@ -954,6 +989,207 @@ function IndustrySpotlight({
           { label: 'Outstanding Dues', value: kpis ? fmt(kpis.outstanding) : '—' },
           { label: 'This Week Sales', value: kpis && canViewRevenue ? fmt(kpis.weekSales) : '—' },
           { label: 'Active Suppliers', value: kpis ? String(kpis.supplierCount) : '—' }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  // Phase 66 — Per-Vertical Dashboards. Every branch below reads `spotlight`,
+  // pre-resolved server-side by dashboard-spotlight.service.ts's own
+  // businessType grouping (the same APPOINTMENT_BASED_TYPES/
+  // PROJECT_BASED_TYPES sets ai-vertical-templates.service.ts already
+  // defines) — the renderer never re-derives which group a type belongs to,
+  // just narrows on `spotlight.kind`.
+  if (spotlight?.kind === 'membership') {
+    return (
+      <SpotlightCard
+        icon={<Dumbbell size={14} />}
+        title={t('dashboard.spotlight.membershipTitle')}
+        items={[
+          { label: t('dashboard.spotlight.expiringThisWeek'), value: String(spotlight.expiringThisWeek), onClick: '/gym/memberships' },
+          { label: t('dashboard.spotlight.expiringThisMonth'), value: String(spotlight.expiringThisMonth) },
+          { label: t('dashboard.spotlight.activeMemberships'), value: String(spotlight.activeCount) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'legal') {
+    return (
+      <SpotlightCard
+        icon={<Scale size={14} />}
+        title={t('dashboard.spotlight.legalTitle')}
+        items={[
+          { label: t('dashboard.spotlight.openCases'), value: String(spotlight.openCases), onClick: '/legal/cases' },
+          { label: t('dashboard.spotlight.upcomingHearings'), value: String(spotlight.upcomingHearings), onClick: '/legal/cases' }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'photography') {
+    return (
+      <SpotlightCard
+        icon={<Camera size={14} />}
+        title={t('dashboard.spotlight.photographyTitle')}
+        items={[
+          { label: t('dashboard.spotlight.upcomingShoots'), value: String(spotlight.upcoming), onClick: '/photo/shoots' },
+          { label: t('dashboard.spotlight.scheduledThisMonth'), value: String(spotlight.thisMonth) },
+          { label: t('dashboard.spotlight.awaitingDelivery'), value: String(spotlight.deliveriesPending) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'driving') {
+    return (
+      <SpotlightCard
+        icon={<Car size={14} />}
+        title={t('dashboard.spotlight.drivingTitle')}
+        items={[
+          { label: t('dashboard.spotlight.upcomingTests'), value: String(spotlight.upcomingTests), onClick: '/driving/learners' },
+          { label: t('dashboard.spotlight.lowSessionBalance'), value: String(spotlight.lowBalanceCount) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'appointment') {
+    return (
+      <SpotlightCard
+        icon={<CalendarCheck size={14} />}
+        title={t('dashboard.spotlight.appointmentTitle')}
+        items={[
+          { label: t('dashboard.spotlight.appointmentsThisMonth'), value: String(spotlight.total), onClick: '/appointments' },
+          { label: t('dashboard.spotlight.completionRate'), value: `${spotlight.completionRate.toFixed(0)}%` },
+          { label: t('dashboard.spotlight.noShowsCancelled'), value: String(spotlight.noShow + spotlight.cancelled) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'project') {
+    return (
+      <SpotlightCard
+        icon={<Briefcase size={14} />}
+        title={t('dashboard.spotlight.projectTitle')}
+        items={[
+          { label: t('dashboard.spotlight.activeProjects'), value: String(spotlight.active), onClick: '/service/service-projects' },
+          { label: t('dashboard.spotlight.completedThisMonth'), value: String(spotlight.completed) },
+          { label: t('dashboard.spotlight.contractValue'), value: fmt(spotlight.totalContractValue) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'hotel') {
+    return (
+      <SpotlightCard
+        icon={<BedDouble size={14} />}
+        title={t('dashboard.spotlight.hotelTitle')}
+        items={[
+          { label: t('dashboard.spotlight.roomsOccupied'), value: `${spotlight.occupied}/${spotlight.totalRooms}`, onClick: '/hotel/rooms' },
+          { label: t('dashboard.spotlight.occupancyRate'), value: `${spotlight.occupancyPercent.toFixed(0)}%` },
+          { label: t('dashboard.spotlight.available'), value: String(spotlight.available) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'lab') {
+    return (
+      <SpotlightCard
+        icon={<FlaskConical size={14} />}
+        title={t('dashboard.spotlight.labTitle')}
+        items={[
+          { label: t('dashboard.spotlight.testOrdersThisMonth'), value: String(spotlight.totalOrders), onClick: '/lab/orders' },
+          { label: t('dashboard.spotlight.pending'), value: String(spotlight.pendingCount) },
+          { label: t('dashboard.spotlight.delivered'), value: String(spotlight.delivered) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'coaching') {
+    return (
+      <SpotlightCard
+        icon={<GraduationCap size={14} />}
+        title={t('dashboard.spotlight.coachingTitle')}
+        items={[
+          { label: t('dashboard.spotlight.feesDue'), value: fmt(spotlight.totalDue), onClick: '/coaching/fees' },
+          { label: t('dashboard.spotlight.studentsPending'), value: String(spotlight.pendingCount) },
+          { label: t('dashboard.spotlight.receivedThisMonth'), value: fmt(spotlight.totalReceived) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'compliance') {
+    return (
+      <SpotlightCard
+        icon={<ClipboardCheck size={14} />}
+        title={t('dashboard.spotlight.complianceTitle')}
+        items={[
+          { label: t('dashboard.spotlight.openTasks'), value: String(spotlight.totalOpen), onClick: '/ca-cs/compliance' },
+          { label: t('dashboard.spotlight.overdue'), value: String(spotlight.overdueCount) },
+          { label: t('dashboard.spotlight.dueThisWeek'), value: String(spotlight.dueThisWeekCount) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'jobCards') {
+    // CAR_SERVICE_CENTER and REPAIR share the same backend report but each
+    // has its own dedicated job-card screen.
+    const jobCardsRoute = type === 'CAR_SERVICE_CENTER' ? '/carservice/jobs' : '/service/job-cards'
+    return (
+      <SpotlightCard
+        icon={<Wrench size={14} />}
+        title={t('dashboard.spotlight.jobCardsTitle')}
+        items={[
+          { label: t('dashboard.spotlight.jobsThisMonth'), value: String(spotlight.totalJobs), onClick: jobCardsRoute },
+          { label: t('dashboard.spotlight.pending'), value: String(spotlight.pending) },
+          { label: t('dashboard.spotlight.delivered'), value: String(spotlight.delivered) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'placement') {
+    return (
+      <SpotlightCard
+        icon={<UsersRound size={14} />}
+        title={t('dashboard.spotlight.placementTitle')}
+        items={[
+          { label: t('dashboard.spotlight.activeCandidates'), value: String(spotlight.activeCandidates), onClick: '/placement/candidates' },
+          { label: t('dashboard.spotlight.openJobOrders'), value: String(spotlight.openJobOrders) },
+          { label: t('dashboard.spotlight.placementsThisMonth'), value: String(spotlight.placementsThisMonth) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'general') {
+    return (
+      <SpotlightCard
+        icon={<Building2 size={14} />}
+        title={t('dashboard.spotlight.generalTitle')}
+        items={[
+          { label: t('dashboard.spotlight.invoicesToday'), value: String(spotlight.invoicesToday), onClick: '/billing' },
+          { label: t('dashboard.spotlight.outstanding'), value: fmt(spotlight.outstanding), onClick: '/customers' }
         ]}
         navigate={navigate}
       />

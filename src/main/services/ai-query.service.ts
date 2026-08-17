@@ -863,6 +863,13 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
           // a real, pre-existing gap across 4 phases, closed here.
           'I can also cover bank balances and reconciliation, sales orders and price lists, cost centres and budgets, cash-flow projections, and who\'s slow to pay — e.g. "how is Downtown doing this month?" or "which customers are slowest to pay?"',
           'I can also look up one specific invoice, customer, supplier, or product by name or number — e.g. "Look up invoice INV-2026-000123"',
+          // Phase 66 — Custom Fields is a Settings-level, opt-in mechanism
+          // (add your own fields to invoices/customers/suppliers/products/
+          // expenses) rather than a business-record query with a natural
+          // "question" shape, so it gets a capability-disclosure mention per
+          // Section 1.2's "any new feature gets its capability disclosed"
+          // rule, not a dedicated query template.
+          'If you\'ve added your own Custom Fields (Settings → Custom Fields) to track something specific to your business, those values live on the record itself — open the record to see them',
           "I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records",
           'Ask "how do I..." or "where is..." a feature and I\'ll point you to the right Manual chapter',
           'I only understand English right now, and everything I answer stays on this device — nothing is ever sent anywhere'

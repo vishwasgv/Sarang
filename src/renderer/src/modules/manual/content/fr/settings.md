@@ -63,3 +63,18 @@ Trois autres sections figurent dans ce même menu Paramètres mais sont couverte
 ## À propos
 
 **Paramètres → À propos** affiche votre numéro de version installée et la déclaration de transparence de Sarang. Sarang fonctionne entièrement hors ligne pour chaque fonctionnalité métier essentielle — facturation, inventaire, clients, rapports — avec trois exceptions limitées et divulguées, dont aucune n'inclut jamais vos données d'activité et dont aucune ne bloque l'application si vous êtes hors ligne : une vérification des mises à jour logicielles (uniquement la version de votre application), une vérification optionnelle du statut de licence une fois par jour (uniquement une version brouillée à sens unique de votre clé de licence), et un signal anonyme quotidien de durée d'utilisation (le nombre de minutes pendant lesquelles l'application a été ouverte, lié à cette même clé brouillée, jamais rien qui vous identifie, vous ou votre activité). Consultez **Paramètres → À propos → Confidentialité et Données** pour voir le tableau complet.
+
+## Champs Personnalisés
+
+**Paramètres → Champs Personnalisés** vous permet d'ajouter vos propres champs — que Sarang ne suit pas nativement — aux **Factures**, **Clients**, **Fournisseurs**, **Produits**, ou **Dépenses**. Utile pour des éléments propres à la façon dont vous gérez votre entreprise : la source de référence d'un client, l'emplacement en rayon d'un produit, le jour de livraison préféré d'un fournisseur.
+
+Choisissez le type d'entité en haut (Factures, Clients, Fournisseurs, Produits, ou Dépenses), puis cliquez sur **Nouveau champ** et indiquez :
+
+- Un **nom** (p. ex. « Source de référence »).
+- Un **type** — **Texte**, **Nombre**, **Date**, ou **Liste déroulante**. Pour une liste déroulante, ajoutez la liste de choix souhaitée (p. ex. « Passage spontané », « Référence », « Publicité en ligne »). Le type ne peut plus être changé après la création du champ — désactivez-le et créez-en un nouveau si vous avez besoin d'un type différent.
+
+Une fois créé, le champ apparaît automatiquement sur chaque formulaire de création/modification de ce type d'entité — par exemple, un champ Client apparaît sur le formulaire Ajouter/Modifier un client. Si un type d'entité n'a aucun champ personnalisé défini, ses formulaires n'affichent rien de plus — la fonctionnalité reste totalement invisible tant que vous ne l'activez pas.
+
+**Désactiver** un champ (plutôt que le supprimer) le masque des nouveaux formulaires mais garde chaque valeur déjà enregistrée entièrement lisible sur les enregistrements qui la possèdent — rien n'est perdu. Le **réactiver** le fait réapparaître sur les nouveaux formulaires.
+
+Les valeurs des champs personnalisés sont saisies par enregistrement, directement sur le formulaire de cet enregistrement, et enregistrées avec le reste de ses informations.

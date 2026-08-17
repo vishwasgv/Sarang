@@ -5,6 +5,7 @@ import { sumCurrency, roundCurrency } from './currency.service'
 import { assertNotLocked } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
+import { serializeCustomFieldValues } from './custom-field.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -83,6 +84,8 @@ export interface ExpensePayload {
   isReverseCharge?: boolean
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId?: string
+  // Phase 66 — Custom Fields.
+  customFields?: Record<string, string | number>
 }
 
 export interface UpdateExpensePayload extends ExpensePayload {
@@ -169,7 +172,9 @@ export async function createExpense(payload: ExpensePayload, userId?: string) {
           billableCustomerId: payload.billableCustomerId ?? null,
           isReverseCharge: payload.isReverseCharge ?? false,
           // Phase 65 — Reporting Tags / Cost & Profit Centres.
-          costCentreId: payload.costCentreId ?? null
+          costCentreId: payload.costCentreId ?? null,
+          // Phase 66 — Custom Fields.
+          customFields: serializeCustomFieldValues(payload.customFields)
         },
         include: { category: { select: { id: true, categoryName: true } } }
       })
@@ -231,7 +236,9 @@ export async function updateExpense(payload: UpdateExpensePayload, userId?: stri
           billableCustomerId: payload.billableCustomerId ?? null,
           isReverseCharge: payload.isReverseCharge ?? existing.isReverseCharge,
           // Phase 65 — Reporting Tags / Cost & Profit Centres.
-          costCentreId: payload.costCentreId !== undefined ? payload.costCentreId : existing.costCentreId
+          costCentreId: payload.costCentreId !== undefined ? payload.costCentreId : existing.costCentreId,
+          // Phase 66 — Custom Fields.
+          customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
         },
         include: { category: { select: { id: true, categoryName: true } } }
       })

@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { ServiceError } from '../errors/service-error'
 import { applyLocationDeltaTx } from './inventory.service'
+import { serializeCustomFieldValues } from './custom-field.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateProductPayload, UpdateProductPayload } from '../validation/product.validation'
 
@@ -174,6 +175,7 @@ export async function createProduct(payload: CreateProductPayload): Promise<ApiR
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,
           rentalRates: JSON.stringify(payload.isRentable ? payload.rentalRates ?? [] : []),
           rentalSecurityDeposit: payload.isRentable ? payload.rentalSecurityDeposit ?? null : null,
+          customFields: serializeCustomFieldValues(payload.customFields),
           ...jewelleryFieldsFor(payload),
         }
       })
@@ -308,6 +310,7 @@ export async function updateProduct(payload: UpdateProductPayload): Promise<ApiR
           rentalTrackingType: payload.isRentable ? payload.rentalTrackingType ?? null : null,
           rentalRates: JSON.stringify(payload.isRentable ? payload.rentalRates ?? [] : []),
           rentalSecurityDeposit: payload.isRentable ? payload.rentalSecurityDeposit ?? null : null,
+          customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields,
           ...jewelleryFieldsFor(payload),
         }
       })

@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { supplierLedgerService } from './supplier-ledger.service'
+import { serializeCustomFieldValues } from './custom-field.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateSupplierPayload, UpdateSupplierPayload } from '../validation/supplier.validation'
 
@@ -141,7 +142,8 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
           openingBalance: payload.openingBalance ?? 0,
           isMsmeRegistered: payload.isMsmeRegistered ?? false,
           msmeCategory: payload.msmeCategory ?? null,
-          priceListId: payload.priceListId || null
+          priceListId: payload.priceListId || null,
+          customFields: serializeCustomFieldValues(payload.customFields)
         }
       })
 
@@ -199,7 +201,8 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
         panNumber: payload.panNumber?.trim() || null,
         isMsmeRegistered: payload.isMsmeRegistered ?? false,
         msmeCategory: payload.msmeCategory ?? null,
-        priceListId: payload.priceListId ?? existing.priceListId
+        priceListId: payload.priceListId ?? existing.priceListId,
+        customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
       }
     })
 

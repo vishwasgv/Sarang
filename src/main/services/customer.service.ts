@@ -4,6 +4,7 @@ import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { toLocalDateOnlyIso } from '../utils/date.util'
+import { serializeCustomFieldValues } from './custom-field.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateCustomerPayload, UpdateCustomerPayload } from '../validation/customer.validation'
 
@@ -196,7 +197,8 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           contactPersonName: payload.contactPersonName?.trim() || null,
           idProofType: payload.idProofType?.trim() || null,
           idProofNumber: payload.idProofNumber?.trim() || null,
-          priceListId: payload.priceListId || null
+          priceListId: payload.priceListId || null,
+          customFields: serializeCustomFieldValues(payload.customFields)
         }
       })
     })
@@ -241,7 +243,8 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         contactPersonName: payload.contactPersonName?.trim() || null,
         idProofType: payload.idProofType?.trim() || null,
         idProofNumber: payload.idProofNumber?.trim() || null,
-        priceListId: payload.priceListId ?? existing.priceListId
+        priceListId: payload.priceListId ?? existing.priceListId,
+        customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
       }
     })
 

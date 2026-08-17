@@ -63,3 +63,18 @@ Tres secciones más viven en este mismo menú de Configuración pero se cubren e
 ## Acerca de
 
 **Configuración → Acerca de** muestra su número de versión instalado y la declaración de transparencia de Sarang. Sarang funciona completamente sin conexión para cada función empresarial principal — facturación, inventario, clientes, informes — con tres excepciones limitadas y reveladas, ninguna de las cuales incluye jamás sus datos de negocio y ninguna de las cuales bloquea la aplicación si está sin conexión: una comprobación de actualizaciones de software (solo la versión de su aplicación), una comprobación opcional del estado de la licencia una vez al día (solo una versión codificada de un solo sentido de su clave de licencia), y una señal anónima diaria de duración de uso (minutos que la aplicación estuvo abierta, vinculada a esa misma clave codificada, nunca nada que le identifique a usted o a su negocio). Consulte **Configuración → Acerca de → Privacidad y Datos** para ver el panorama completo.
+
+## Campos Personalizados
+
+**Configuración → Campos Personalizados** le permite agregar sus propios campos — que Sarang no rastrea de fábrica — a **Facturas**, **Clientes**, **Proveedores**, **Productos**, o **Gastos**. Útil para cosas específicas de cómo maneja su negocio: el origen de referencia de un cliente, la ubicación en estantería de un producto, el día de entrega preferido de un proveedor.
+
+Elija el tipo de entidad arriba (Facturas, Clientes, Proveedores, Productos, o Gastos), luego haga clic en **Nuevo Campo** y proporcione:
+
+- Un **nombre** (p. ej. "Origen de Referencia").
+- Un **tipo** — **Texto**, **Número**, **Fecha**, o **Lista Desplegable**. Para una lista desplegable, agregue las opciones que desee (p. ej. "Presencial", "Referencia", "Anuncio en Línea"). El tipo no se puede cambiar después de crear el campo — desactívelo y cree uno nuevo si necesita un tipo diferente.
+
+Una vez creado, el campo aparece automáticamente en cada formulario de creación/edición de ese tipo de entidad — por ejemplo, un campo de Cliente aparece en el formulario de Agregar/Editar Cliente. Si un tipo de entidad tiene cero campos personalizados, sus formularios no muestran nada adicional — la función permanece completamente fuera del camino hasta que la active.
+
+**Desactivar** un campo (en lugar de eliminarlo) lo oculta de los formularios nuevos pero mantiene cada valor ya registrado en él completamente legible en los registros que lo tienen — nada se pierde. **Activarlo** de nuevo lo devuelve a los formularios nuevos.
+
+Los valores de los campos personalizados se ingresan por registro, directamente en el propio formulario de ese registro, y se guardan junto con todo lo demás en ese registro.

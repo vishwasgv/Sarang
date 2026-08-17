@@ -63,3 +63,18 @@ Mais três seções ficam neste mesmo menu de Configurações, mas são cobertas
 ## About
 
 **Configurações → About** mostra o número da versão instalada e a declaração de transparência do Sarang. O Sarang funciona totalmente offline para cada função essencial do negócio — faturamento, estoque, clientes, relatórios — com três exceções limitadas e divulgadas, nenhuma das quais inclui seus dados de negócio, e nenhuma das quais bloqueia o aplicativo se você estiver offline: uma verificação de atualização de software (apenas a versão do seu aplicativo), uma verificação opcional do status da licença uma vez por dia (apenas uma versão embaralhada de mão única da sua chave de licença), e um sinal anônimo diário de duração de uso (quantos minutos o aplicativo ficou aberto, vinculado a essa mesma chave embaralhada, nunca nada que identifique você ou seu negócio). Consulte **Configurações → About → Privacy & Data** para ver o quadro completo.
+
+## Campos Personalizados
+
+**Configurações → Campos Personalizados** permite adicionar seus próprios campos — que o Sarang não rastreia por padrão — a **Notas Fiscais**, **Clientes**, **Fornecedores**, **Produtos**, ou **Despesas**. Útil para coisas específicas de como você conduz seu negócio: a origem de indicação de um cliente, a localização na prateleira de um produto, o dia de entrega preferido de um fornecedor.
+
+Escolha o tipo de entidade no topo (Notas Fiscais, Clientes, Fornecedores, Produtos, ou Despesas), depois clique em **Novo Campo** e forneça:
+
+- Um **nome** (ex.: "Origem de Indicação").
+- Um **tipo** — **Texto**, **Número**, **Data**, ou **Lista Suspensa**. Para uma lista suspensa, adicione a lista de opções desejada (ex.: "Passante", "Indicação", "Anúncio Online"). O tipo não pode ser alterado após a criação do campo — desative-o e crie um novo se precisar de um tipo diferente.
+
+Depois de criado, o campo aparece automaticamente em cada formulário de criação/edição desse tipo de entidade — por exemplo, um campo de Cliente aparece no formulário Adicionar/Editar Cliente. Se um tipo de entidade tiver zero campos personalizados, seus formulários não mostram nada extra — o recurso permanece totalmente fora do caminho até você optar por usá-lo.
+
+**Desativar** um campo (em vez de excluí-lo) o oculta dos novos formulários, mas mantém todo valor já registrado nele totalmente legível nos registros que o possuem — nada se perde. **Ativá-lo** novamente o traz de volta aos novos formulários.
+
+Os valores dos campos personalizados são inseridos por registro, diretamente no próprio formulário desse registro, e salvos junto com tudo mais nesse registro.

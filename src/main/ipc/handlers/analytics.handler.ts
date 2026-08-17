@@ -1,4 +1,5 @@
 import * as analyticsService from '../../services/analytics.service'
+import { getVerticalSpotlightKpis } from '../../services/dashboard-spotlight.service'
 import { requirePermission, hasPermission } from '../permission-guard'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -101,5 +102,15 @@ export function register(handle: HandleFn): void {
     const dateTo = new Date(new Date(p.dateTo + 'T00:00:00').setHours(23, 59, 59, 999))
     const data = await analyticsService.getEstimatedProfit(dateFrom, dateTo)
     return { success: true, data }
+  })
+
+  // Phase 66 — Per-Vertical Dashboards. Same base permission as the rest of
+  // the Dashboard's own KPI grid — no extra redaction needed since these are
+  // all count/status aggregates, not revenue/profit figures.
+  handle('analytics:getVerticalSpotlightKpis', async (payload) => {
+    const deny = await requirePermission('analytics.viewDashboard'); if (deny) return deny
+    const p = (payload ?? {}) as { businessType?: string }
+    if (!p.businessType) return { success: false, error: { code: 'VAL-001', message: 'businessType is required' } }
+    return getVerticalSpotlightKpis(p.businessType)
   })
 }

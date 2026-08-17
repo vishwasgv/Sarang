@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CustomFieldValuesSchema } from './custom-field.validation'
 
 // Phase 61 — vendor record depth: bank details for making a payment, PAN for
 // TDS/1099-equivalent compliance paperwork, and an opening balance for
@@ -30,6 +31,7 @@ export const CreateSupplierSchema = z.object({
   openingBalance: z.number().min(0, 'Opening balance cannot be negative').default(0),
   // Phase 63 — formal Price List assignment (vendor-specific pricing).
   priceListId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
   ...supplierBankFields,
   ...supplierMsmeFields
 })
@@ -46,6 +48,7 @@ export const UpdateSupplierSchema = z.object({
   taxNumber: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
   priceListId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
   ...supplierBankFields,
   ...supplierMsmeFields
 })

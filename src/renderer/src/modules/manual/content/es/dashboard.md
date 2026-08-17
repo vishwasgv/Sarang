@@ -35,4 +35,21 @@ El panel inferior izquierdo lista sus acciones registradas más recientes en tod
 
 ## Destacado de la Industria
 
-Una pequeña tarjeta debajo de Acciones Rápidas se adapta a su tipo de negocio, mostrando dos o tres de las métricas más relevantes para él — por ejemplo, un Restaurante ve los ingresos de hoy, los ingredientes con stock bajo y las mesas ocupadas; un negocio de Joyería ve la tarifa de metal de hoy y las tarifas configuradas; un Distribuidor ve las deudas pendientes y los proveedores activos. Un negocio Minorista general ve su categoría más vendida y los artículos con stock bajo. Cualquier tipo de negocio sin un destacado dedicado recurre a la vista de Minorista.
+Una pequeña tarjeta debajo de Acciones Rápidas se adapta a su tipo de negocio, mostrando de dos a cuatro números que ese rubro realmente consulta cada día — no un conjunto genérico de indicadores. Ahora cada tipo de negocio tiene su propia tarjeta real; ninguno recurre a una vista tipo Minorista por defecto. Algunos ejemplos:
+
+- **Gimnasio/Estudio** — membresías que vencen esta semana y este mes, y su número de membresías activas, con enlace directo a la pantalla de Membresías.
+- **Abogado** — casos abiertos y audiencias programadas en los próximos 7 días.
+- **Estudio Fotográfico** — próximas sesiones, sesiones programadas este mes, y entregas pendientes de edición.
+- **Autoescuela** — alumnos con examen en los próximos 14 días, y cuántos tienen pocas sesiones restantes en su paquete.
+- **Clínica Médica/Dental/Fisioterapia/Veterinaria, Salón de Belleza, Gestión de Eventos, Sastrería/Boutique, Control de Plagas** — citas de este mes, tasa de finalización, e inasistencias/cancelaciones.
+- **Servicio, Consultor, Arquitecto, Ingeniero Civil, Agencia de Marketing, Agencia de Software, Bienes Raíces** — proyectos activos, completados este mes, y valor total de contratos.
+- **Hotel/Alojamiento** — habitaciones ocupadas, tasa de ocupación, y habitaciones disponibles.
+- **Laboratorio de Diagnóstico** — órdenes de análisis este mes, pendientes, y entregados.
+- **Instituto de Formación** — cuotas pendientes, alumnos con cuotas pendientes, e importe recibido este mes.
+- **Despacho Contable / Secretaría Corporativa** — tareas de cumplimiento abiertas, cuántas están vencidas, y cuántas vencen esta semana.
+- **Taller / Centro de Servicio Automotriz** — órdenes de trabajo este mes, pendientes, y entregadas.
+- **Agencia de Colocación** — candidatos activos, órdenes de trabajo abiertas, y colocaciones este mes.
+- **Restaurante, Joyería, Ferretería/Vidrio/Madera, Distribuidor/Mayorista** — mantienen sus tarjetas ya existentes (ingresos de hoy y ocupación de mesas; tarifas de metal; saldo pendiente de clientes y valor de inventario; deudas pendientes y número de proveedores).
+- **Un negocio general sin una coincidencia más cercana** — número de facturas de hoy y saldo total pendiente: aun así, números reales de sus propios datos, no un marcador de posición.
+
+El primer elemento de cada tarjeta enlaza directamente a la pantalla que resume.

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { validateEAN13 } from '../services/barcode.service'
+import { CustomFieldValuesSchema } from './custom-field.validation'
 
 const PRODUCT_TYPE = z.enum(['STANDARD', 'SERVICE', 'AREA_BASED']).default('STANDARD')
 const WEIGHT_UNIT = z.enum(['kg', 'g', 'L', 'mL'])
@@ -164,6 +165,7 @@ export const CreateProductSchema = z
     // it, same "generic field, motivated by one vertical" precedent as
     // defaultSupplierId.
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
+    customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
     ...packBillingFields,
@@ -195,6 +197,7 @@ export const UpdateProductSchema = z
     gender: GENDER,
     isPrescriptionRequired: z.boolean().optional(),
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
+    customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
     ...packBillingFields,

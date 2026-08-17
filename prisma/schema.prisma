@@ -309,6 +309,9 @@ model Product {
   // nominal "50kg bag" that actually weighs 49.2kg this delivery).
   floatingUnitConversion Boolean @default(false)
 
+  // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
+  customFields String?
+
   category                  ProductCategory?          @relation(fields: [categoryId], references: [id])
   defaultSupplier           Supplier?                 @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id], onDelete: SetNull)
   inventory                 Inventory?
@@ -815,6 +818,8 @@ model Customer {
   // customerClass-based CustomerClassPrice (see PriceList's own model
   // comment for the resolution order between the two).
   priceListId               String?
+  // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
+  customFields              String?
 
   priceList                 PriceList?                    @relation(fields: [priceListId], references: [id])
   salesOrders               SalesOrder[] // Phase 63
@@ -933,6 +938,8 @@ model Supplier {
   msmeCategory      String? // MICRO | SMALL | MEDIUM
   // Phase 63 — formal Price List assignment (vendor-specific pricing).
   priceListId       String?
+  // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
+  customFields      String?
 
   priceList             PriceList?           @relation(fields: [priceListId], references: [id])
   recurringProfiles     RecurringProfile[] // Phase 63
@@ -1482,6 +1489,8 @@ model Invoice {
   // P&L report can attribute this invoice's revenue to a branch/division/
   // project. Null (the default) behaves exactly as before this phase.
   costCentreId       String?
+  // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
+  customFields       String?
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1645,6 +1654,12 @@ model Expense {
   // (see SalaryPayment) inherits its cost centre from the employee's own
   // CostCentre rather than being set here directly.
   costCentreId       String?
+  // Phase 66 — Custom Fields. JSON-string blob of {fieldId: value} pairs,
+  // same "String column holding JSON.stringify'd data" convention this
+  // codebase already uses (HeldSale.cartJson, RecurringProfile.payloadJson)
+  // since SQLite's Prisma provider has no native Json column type. Null
+  // (the default) behaves exactly as before this phase.
+  customFields       String?
 
   category         ExpenseCategory @relation(fields: [categoryId], references: [id])
   createdBy        User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
@@ -6014,4 +6029,34 @@ model Budget {
   @@index([costCentreId])
   @@index([accountId])
   @@index([periodYear, periodMonth])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 66 — PER-VERTICAL DASHBOARDS & CUSTOM FIELDS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A field definition, scoped to one of five core entity types (the ones the
+// original "Zoho comparison" gap named — not literally every model in this
+// schema). The actual VALUES live as a JSON-string blob on each entity's own
+// `customFields` column (see e.g. Expense.customFields's comment) rather
+// than a row-per-value EAV table — this codebase already has a real, proven
+// "String column holding JSON.stringify'd data" convention (HeldSale.cartJson,
+// RecurringProfile.payloadJson) and an EAV table would need N+1-prone joins
+// every one of those precedents deliberately avoided. Deactivating a
+// definition (isActive: false) hides it from the value editor going forward
+// but never touches already-recorded values sitting in old customFields
+// blobs — a field's own historical answers stay readable even after retirement.
+model CustomFieldDefinition {
+  id            String   @id @default(cuid())
+  entityType    String // INVOICE | CUSTOMER | SUPPLIER | PRODUCT | EXPENSE
+  fieldName     String
+  fieldType     String // TEXT | NUMBER | DATE | SELECT
+  selectOptions String? // JSON-string array, only meaningful when fieldType == SELECT
+  isActive      Boolean  @default(true)
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([entityType])
+  @@index([entityType, isActive])
 }

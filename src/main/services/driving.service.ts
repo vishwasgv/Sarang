@@ -814,6 +814,27 @@ export async function getInstructorPassRates() {
   }
 }
 
+// Phase 66 — extracted from ai-vertical-templates.service.ts's own
+// 'driving.upcomingTestsAndLowBalance' AI template case (which now calls
+// this instead of inlining the same query), so the Dashboard spotlight card
+// can reuse the identical function rather than a second, driftable copy.
+export async function getUpcomingTestsAndLowBalanceKPIs() {
+  try {
+    const db = getPrisma()
+    const now = new Date()
+    const cutoff = new Date(now)
+    cutoff.setDate(cutoff.getDate() + 14)
+    const [tests, enrollments] = await Promise.all([
+      db.drivingTest.findMany({ where: { result: 'PENDING', testDate: { gte: now, lte: cutoff } }, select: { testType: true, testDate: true, learner: { select: { customerName: true } } } }),
+      db.drivingPackageEnrollment.findMany({ select: { sessionsUsed: true, learner: { select: { customerName: true } }, package: { select: { totalSessions: true } } } })
+    ])
+    const lowBalance = enrollments.filter((e) => e.package.totalSessions - e.sessionsUsed <= 2 && e.package.totalSessions - e.sessionsUsed > 0)
+    return { success: true, data: { upcomingTests: tests, lowBalanceCount: lowBalance.length } }
+  } catch (err) {
+    return { success: false, error: { code: 'DT27-005', message: err instanceof Error ? err.message : 'Could not load upcoming tests and low-balance data.' } }
+  }
+}
+
 export async function createDrivingTest(payload: {
   learnerId: string
   testType: string

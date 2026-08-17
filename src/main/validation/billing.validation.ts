@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CustomFieldValuesSchema } from './custom-field.validation'
 
 const InvoiceItemSchema = z.object({
   productId: z.string().min(1, 'Product is required'),
@@ -77,6 +78,7 @@ export const CreateInvoiceSchema = z.object({
   ewayBillNumber: z.string().max(50).optional(),
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
+  customFields: CustomFieldValuesSchema,
 })
 
 export const CancelInvoiceSchema = z.object({
