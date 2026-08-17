@@ -192,6 +192,8 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'compliance.tasks', patterns: [/compliance\s+task/i, /(overdue|pending)\s+complian/i] },
   { template: 'repair.jobCards', patterns: [/job\s+cards?/i, /repair\s+jobs?/i] },
   { template: 'inventory.batchExpiry', patterns: [/(batch|expir)/i] },
+  // Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume" signature win.
+  { template: 'pharmacy.prescriptionVolumeByDoctor', patterns: [/prescription/i, /doctor.*(sales|volume|prescri)/i] },
   { template: 'service.projects', patterns: [/\bprojects?\b.*(status|active|going)/i, /how.*projects/i] },
   { template: 'service.appointmentUtilisation', patterns: [/appointments?\s+(this|today|utilisation|utilization)/i] },
   { template: 'service.clientRetention', patterns: [/client\s+retention/i, /(new|returning)\s+clients?/i] },

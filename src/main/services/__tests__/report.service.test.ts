@@ -1271,6 +1271,34 @@ describe('reportService.generateBatchExpiryReport', () => {
     expect(result.rows[0].bucket).toBe('safe')
     expect(result.summary.safeCount).toBe(1)
   })
+
+  // Phase 67 §9.1 — Pharmacy's "Expiry-risk value" signature win: every
+  // bucket now carries a real ₹ value (previously only `expired` did), and
+  // `atRiskValue` sums critical+warning only — expired stock is a sunk loss,
+  // not something still actionable, so it's deliberately excluded.
+  it('computes a real value per bucket and an atRiskValue excluding the expired (sunk-loss) bucket', async () => {
+    const db = {
+      productBatch: {
+        findMany: vi.fn().mockResolvedValue([
+          makeBatch({ expiryDate: new Date(Date.now() - 5 * 86400000), quantityRemaining: 4, unitCost: 25 }), // expired, value 100
+          makeBatch({ expiryDate: new Date(Date.now() + 3 * 86400000), quantityRemaining: 2, unitCost: 50 }), // critical, value 100
+          makeBatch({ expiryDate: new Date(Date.now() + 20 * 86400000), quantityRemaining: 3, unitCost: 10 }), // warning, value 30
+          makeBatch({ expiryDate: new Date(Date.now() + 200 * 86400000), quantityRemaining: 5, unitCost: 1000 }), // safe, value 5000
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBatchExpiryReport()
+
+    const byBucket = Object.fromEntries(result.buckets.map(b => [b.bucket, b.value]))
+    expect(byBucket.expired).toBe(100)
+    expect(byBucket.critical).toBe(100)
+    expect(byBucket.warning).toBe(30)
+    expect(byBucket.safe).toBe(5000)
+    expect(result.summary.expiredValue).toBe(100)
+    expect(result.summary.atRiskValue).toBe(130) // critical + warning, NOT safe or expired
+  })
 })
 
 // ─── Lab Test Throughput Report (Phase 54) ─────────────────────────────────────
@@ -3235,6 +3263,44 @@ describe('reportService.generatePrescriptionDrugSalesReport', () => {
     expect(result.summary.totalSales).toBe(2)
     expect(result.summary.missingPrescriptionDetails).toBe(1)
     expect(result.rows[1].patientName).toBeNull()
+  })
+
+  // Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume" signature
+  // win: extends this existing report with a doctor-grouped aggregation.
+  it('groups sales by doctor, sorted by sales count descending, excluding rows with no doctor name', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: null }, productName: 'Drug A', quantity: 1, prescriptionPatientName: 'P1', prescriptionDoctorName: 'Dr. Mehta', prescriptionDate: null, lineTotal: 100 },
+          { invoice: { invoiceNumber: 'INV-002', createdAt: new Date('2026-01-11'), customer: null }, productName: 'Drug B', quantity: 1, prescriptionPatientName: 'P2', prescriptionDoctorName: 'Dr. Mehta', prescriptionDate: null, lineTotal: 150 },
+          { invoice: { invoiceNumber: 'INV-003', createdAt: new Date('2026-01-12'), customer: null }, productName: 'Drug C', quantity: 1, prescriptionPatientName: 'P3', prescriptionDoctorName: 'Dr. Rao', prescriptionDate: null, lineTotal: 200 },
+          { invoice: { invoiceNumber: 'INV-004', createdAt: new Date('2026-01-13'), customer: null }, productName: 'Drug D', quantity: 1, prescriptionPatientName: null, prescriptionDoctorName: null, prescriptionDate: null, lineTotal: 999 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.byDoctor).toEqual([
+      { doctorName: 'Dr. Mehta', salesCount: 2, totalAmount: 250 },
+      { doctorName: 'Dr. Rao', salesCount: 1, totalAmount: 200 },
+    ])
+  })
+
+  it('returns an empty byDoctor array when no prescription sales have a doctor name', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: null }, productName: 'Drug A', quantity: 1, prescriptionPatientName: null, prescriptionDoctorName: null, prescriptionDate: null, lineTotal: 100 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.byDoctor).toEqual([])
   })
 
   it('returns a zero-value summary and empty rows when there are no prescription sales in range', async () => {

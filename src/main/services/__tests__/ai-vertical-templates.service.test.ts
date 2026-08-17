@@ -7,7 +7,7 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: {} }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn() } }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
 vi.mock('../roc-filing.service', () => ({ listROCFilings: vi.fn() }))
 vi.mock('../property.service', () => ({ getPropertyKPIs: vi.fn() }))
@@ -21,6 +21,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getActiveTemplate } from '../industry-template.service'
 import { getExpiringMemberships } from '../membership.service'
+import { reportService } from '../report.service'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from '../ai-vertical-templates.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -76,5 +77,56 @@ describe('ai-vertical-templates.service — gym.membershipsExpiring', () => {
     const result = await executeVerticalTemplate('gym.membershipsExpiring', {}, '₹')
 
     expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume" signature
+// win. Confirms the intent is registered for PHARMACY only (not
+// AGRI_INPUTS, which shares inventory.batchExpiry but not this one) and
+// reuses the SAME generatePrescriptionDrugSalesReport() the ReportsScreen's
+// own report calls, not a parallel computation.
+describe('ai-vertical-templates.service — pharmacy.prescriptionVolumeByDoctor', () => {
+  it('registers pharmacy.prescriptionVolumeByDoctor for PHARMACY alongside inventory.batchExpiry, but NOT for AGRI_INPUTS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'PHARMACY' } } as never)
+    const pharmacyNames = await getActiveVerticalTemplateNames()
+    expect(pharmacyNames).toContain('pharmacy.prescriptionVolumeByDoctor')
+    expect(pharmacyNames).toContain('inventory.batchExpiry')
+
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } } as never)
+    const agriNames = await getActiveVerticalTemplateNames()
+    expect(agriNames).not.toContain('pharmacy.prescriptionVolumeByDoctor')
+    expect(agriNames).toContain('inventory.batchExpiry')
+  })
+
+  it('executeVerticalTemplate answers with the top referring doctor and a per-doctor breakdown', async () => {
+    vi.mocked(reportService.generatePrescriptionDrugSalesReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-18',
+      summary: { totalSales: 3, totalAmount: 450, missingPrescriptionDetails: 0 },
+      byDoctor: [
+        { doctorName: 'Dr. Mehta', salesCount: 2, totalAmount: 250 },
+        { doctorName: 'Dr. Rao', salesCount: 1, totalAmount: 200 }
+      ],
+      rows: []
+    } as never)
+
+    const result = await executeVerticalTemplate('pharmacy.prescriptionVolumeByDoctor', {}, '₹')
+
+    expect(result.headline).toContain('Dr. Mehta')
+    expect(result.headline).toContain('2 sales')
+    expect(result.details).toEqual(['Dr. Mehta: 2 sales, ₹250.00', 'Dr. Rao: 1 sales, ₹200.00'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when no prescription sales have a doctor name yet', async () => {
+    vi.mocked(reportService.generatePrescriptionDrugSalesReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-18',
+      summary: { totalSales: 0, totalAmount: 0, missingPrescriptionDetails: 0 },
+      byDoctor: [], rows: []
+    } as never)
+
+    const result = await executeVerticalTemplate('pharmacy.prescriptionVolumeByDoctor', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No prescription sales recorded this period')
   })
 })

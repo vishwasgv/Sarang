@@ -18,6 +18,8 @@ vi.mock('../legal-case.service', () => ({ listLegalCases: vi.fn() }))
 vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
+vi.mock('../vaccination.service', () => ({ getUpcomingVaccinations: vi.fn() }))
+vi.mock('../recall-record.service', () => ({ listRecalls: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { reportService } from '../report.service'
@@ -29,6 +31,8 @@ import { listLegalCases } from '../legal-case.service'
 import { listHearings } from '../hearing.service'
 import { getShootKPIs } from '../shoot-booking.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from '../driving.service'
+import { getUpcomingVaccinations } from '../vaccination.service'
+import { listRecalls } from '../recall-record.service'
 import { getVerticalSpotlightKpis } from '../dashboard-spotlight.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -45,7 +49,12 @@ describe('getVerticalSpotlightKpis', () => {
       summary: { total: 42, completionRate: 80, noShow: 3, cancelled: 2 }
     } as never)
 
-    for (const type of ['VET_CLINIC', 'BEAUTY_SALON']) {
+    // VET_CLINIC/DENTAL_CLINIC/SPECIALIST_CLINIC/PHYSIO_CLINIC are technically
+    // APPOINTMENT_BASED_TYPES members but each now has its own dedicated
+    // branch (Phase 67 §9.1) — use EVENT_MANAGEMENT/BEAUTY_SALON here, the
+    // members with no special-cased branch, so this test still proves the
+    // generic fallback works for whoever's left in the set.
+    for (const type of ['EVENT_MANAGEMENT', 'BEAUTY_SALON']) {
       const res = await getVerticalSpotlightKpis(type)
       expect(res.success).toBe(true)
       expect(res.data).toEqual({ kind: 'appointment', total: 42, completionRate: 80, noShow: 3, cancelled: 2 })
@@ -128,6 +137,105 @@ describe('getVerticalSpotlightKpis', () => {
     const res = await getVerticalSpotlightKpis('DRIVING_SCHOOL')
 
     expect(res.data).toEqual({ kind: 'none' })
+  })
+
+  // Phase 67 §9.1 — clinical dashboard-spotlight fix. Vet/Dental/Specialist/
+  // Physio were all silently falling into the generic appointment branch
+  // above despite having real dedicated data — these 4 tests assert each
+  // now routes to its own branch AND explicitly assert the generic
+  // appointment report is never called, the same negative-assertion pattern
+  // Phase 66's own closing self-review established for this bug class.
+  it('routes VET_CLINIC to getUpcomingVaccinations + a compliance% aggregate (vaccination branch), not the generic appointment branch', async () => {
+    vi.mocked(getUpcomingVaccinations).mockResolvedValue({ success: true, data: [{ id: 'v1' }, { id: 'v2' }] } as never)
+    const db = {
+      vaccinationRecord: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([{ petId: 'p1' }, { petId: 'p2' }, { petId: 'p3' }, { petId: 'p4' }]) // scheduled (nextDueDate not null)
+          .mockResolvedValueOnce([{ petId: 'p1' }]) // overdue
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('VET_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'vaccination', dueThisWeek: 2, overdueCount: 1, compliancePercent: 75 })
+    expect(getUpcomingVaccinations).toHaveBeenCalledWith(7)
+    expect(reportService.generateAppointmentUtilisationReport).not.toHaveBeenCalled()
+  })
+
+  it('treats VET_CLINIC compliance as 100% when no pet has a scheduled vaccination yet', async () => {
+    vi.mocked(getUpcomingVaccinations).mockResolvedValue({ success: true, data: [] } as never)
+    const db = { vaccinationRecord: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('VET_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'vaccination', dueThisWeek: 0, overdueCount: 0, compliancePercent: 100 })
+  })
+
+  it('routes DENTAL_CLINIC to listRecalls (recall branch), not the generic appointment branch', async () => {
+    vi.mocked(listRecalls).mockImplementation(async (filters?: { overdueOnly?: boolean }) => {
+      if (filters?.overdueOnly) return { success: true, data: [{ id: 'r1' }] } as never
+      return { success: true, data: [{ id: 'r1' }, { id: 'r2' }, { id: 'r3' }] } as never
+    })
+
+    const res = await getVerticalSpotlightKpis('DENTAL_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'recall', overdueCount: 1, dueThisWeek: 3, dueThisMonth: 3 })
+    expect(listRecalls).toHaveBeenCalledWith({ overdueOnly: true })
+    expect(reportService.generateAppointmentUtilisationReport).not.toHaveBeenCalled()
+  })
+
+  it('routes SPECIALIST_CLINIC to a VisitNote.referredBy aggregate (referral branch), not the generic appointment branch', async () => {
+    const db = {
+      visitNote: {
+        findMany: vi.fn().mockResolvedValue([
+          { referredBy: 'Dr. Rao' }, { referredBy: 'Dr. Rao' }, { referredBy: 'Dr. Iyer' }
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('SPECIALIST_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'referral', totalReferredThisMonth: 3, topReferrerName: 'Dr. Rao', topReferrerCount: 2 })
+    expect(reportService.generateAppointmentUtilisationReport).not.toHaveBeenCalled()
+  })
+
+  it('returns a null top referrer for SPECIALIST_CLINIC when no referrals exist yet', async () => {
+    const db = { visitNote: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('SPECIALIST_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'referral', totalReferredThisMonth: 0, topReferrerName: null, topReferrerCount: 0 })
+  })
+
+  it('routes PHYSIO_CLINIC to a VisitNote.painScore/functionalScore aggregate (outcomeProgress branch), not the generic appointment branch', async () => {
+    const db = {
+      visitNote: {
+        findMany: vi.fn().mockResolvedValue([
+          { painScore: 6, functionalScore: 40 },
+          { painScore: 4, functionalScore: 55 },
+          { painScore: null, functionalScore: 60 }
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('PHYSIO_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'outcomeProgress', sessionsScoredThisMonth: 3, avgPainScore: 5, avgFunctionalScore: 51.7 })
+    expect(reportService.generateAppointmentUtilisationReport).not.toHaveBeenCalled()
+  })
+
+  it('returns null averages for PHYSIO_CLINIC when no session has a score recorded yet', async () => {
+    const db = { visitNote: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVerticalSpotlightKpis('PHYSIO_CLINIC')
+
+    expect(res.data).toEqual({ kind: 'outcomeProgress', sessionsScoredThisMonth: 0, avgPainScore: null, avgFunctionalScore: null })
   })
 
   it('routes every PROJECT_BASED_TYPES member to generateServiceProjectReport', async () => {
@@ -240,7 +348,7 @@ describe('getVerticalSpotlightKpis', () => {
   it('returns a graceful error instead of throwing when the underlying report function fails', async () => {
     vi.mocked(reportService.generateAppointmentUtilisationReport).mockRejectedValue(new Error('DB unavailable'))
 
-    const res = await getVerticalSpotlightKpis('VET_CLINIC')
+    const res = await getVerticalSpotlightKpis('EVENT_MANAGEMENT')
 
     expect(res.success).toBe(false)
     expect(res.error?.message).toBe('DB unavailable')

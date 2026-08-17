@@ -8,6 +8,8 @@ import { listLegalCases } from './legal-case.service'
 import { listHearings } from './hearing.service'
 import { getShootKPIs } from './shoot-booking.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from './driving.service'
+import { getUpcomingVaccinations } from './vaccination.service'
+import { listRecalls } from './recall-record.service'
 import { getPrisma } from '../database/db'
 import { APPOINTMENT_BASED_TYPES, PROJECT_BASED_TYPES } from './ai-vertical-templates.service'
 
@@ -33,6 +35,20 @@ export type VerticalSpotlightData =
   | { kind: 'jobCards'; totalJobs: number; pending: number; delivered: number }
   | { kind: 'placement'; activeCandidates: number; openJobOrders: number; placementsThisMonth: number; revenueThisMonth: number }
   | { kind: 'general'; invoicesToday: number; outstanding: number }
+  // Phase 67 §9.1 — clinical dashboard-spotlight fix. Vet/Dental/Specialist/
+  // Physio were all silently falling through to the generic
+  // APPOINTMENT_BASED_TYPES 'appointment' card despite each already having
+  // real, dedicated data (vaccination.service.ts, recall-record.service.ts,
+  // VisitNote.referredBy, VisitNote.painScore/functionalScore) — the exact
+  // same "reuse-ready but wired wrong" class Phase 66's own closing
+  // self-review found for Gym/Lawyer/Photo Studio/Driving School. GP_CLINIC
+  // is deliberately NOT included here yet — its chronic-condition recall
+  // needs new tagging schema (Section 9's own GREENFIELD item) before a
+  // dashboard branch can exist, unlike the other four which are pure reuse.
+  | { kind: 'vaccination'; dueThisWeek: number; overdueCount: number; compliancePercent: number }
+  | { kind: 'recall'; overdueCount: number; dueThisWeek: number; dueThisMonth: number }
+  | { kind: 'referral'; totalReferredThisMonth: number; topReferrerName: string | null; topReferrerCount: number }
+  | { kind: 'outcomeProgress'; sessionsScoredThisMonth: number; avgPainScore: number | null; avgFunctionalScore: number | null }
   | { kind: 'none' }
 
 function thisMonthRange(): { dateFrom: string; dateTo: string } {
@@ -105,6 +121,107 @@ export async function getVerticalSpotlightKpis(businessType: string): Promise<{ 
       const res = await getUpcomingTestsAndLowBalanceKPIs()
       if (!res.data) return { success: true, data: { kind: 'none' } }
       return { success: true, data: { kind: 'driving', upcomingTests: res.data.upcomingTests.length, lowBalanceCount: res.data.lowBalanceCount } }
+    }
+
+    // VET_CLINIC is an APPOINTMENT_BASED_TYPES member but already has a real,
+    // dedicated vaccination-due mechanism (vaccination.service.ts, also
+    // backing the vet.vaccinationsDue AI intent) — reuse it instead of the
+    // generic completion-rate card. Compliance% is computed over pets that
+    // have at least one scheduled next-due date (a pet with zero vaccination
+    // history isn't "non-compliant", it's simply unscheduled).
+    if (type === 'VET_CLINIC') {
+      const db = getPrisma()
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const weekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const [weekRes, scheduledPetIds, overduePetIds] = await Promise.all([
+        getUpcomingVaccinations(7),
+        db.vaccinationRecord.findMany({ where: { nextDueDate: { not: null } }, distinct: ['petId'], select: { petId: true } }),
+        db.vaccinationRecord.findMany({ where: { nextDueDate: { lt: today } }, distinct: ['petId'], select: { petId: true } })
+      ])
+      const scheduledCount = scheduledPetIds.length
+      const overdueCount = overduePetIds.length
+      const compliancePercent = scheduledCount > 0 ? Math.round(((scheduledCount - overdueCount) / scheduledCount) * 100) : 100
+      return {
+        success: true,
+        data: { kind: 'vaccination', dueThisWeek: weekRes.success ? (weekRes.data?.length ?? 0) : 0, overdueCount, compliancePercent }
+      }
+    }
+
+    // DENTAL_CLINIC already has a fully-built RecallRecord model + dedicated
+    // RecallListScreen (/dental/recalls) + AI intent (dental.recallsDue) —
+    // reuse listRecalls() rather than the generic appointment card.
+    if (type === 'DENTAL_CLINIC') {
+      const now = new Date()
+      const weekLater = new Date(now)
+      weekLater.setDate(weekLater.getDate() + 7)
+      const monthLater = new Date(now)
+      monthLater.setDate(monthLater.getDate() + 30)
+      const [overdueRes, weekRes, monthRes] = await Promise.all([
+        listRecalls({ overdueOnly: true }),
+        listRecalls({ dateFrom: toLocalISODate(now), dateTo: toLocalISODate(weekLater) }),
+        listRecalls({ dateFrom: toLocalISODate(now), dateTo: toLocalISODate(monthLater) })
+      ])
+      return {
+        success: true,
+        data: {
+          kind: 'recall',
+          overdueCount: overdueRes.success ? (overdueRes.data?.length ?? 0) : 0,
+          dueThisWeek: weekRes.success ? (weekRes.data?.length ?? 0) : 0,
+          dueThisMonth: monthRes.success ? (monthRes.data?.length ?? 0) : 0
+        }
+      }
+    }
+
+    // SPECIALIST_CLINIC — VisitNote.referredBy is a real, populated field
+    // (Phase 54F, distinct from the in-app Appointment.referredFromVisitNoteId
+    // routing) but had zero groupBy report anywhere before this phase. Small
+    // enough volume per clinic to aggregate in JS rather than a DB groupBy.
+    if (type === 'SPECIALIST_CLINIC') {
+      const db = getPrisma()
+      const { dateFrom, dateTo } = thisMonthRange()
+      const notes = await db.visitNote.findMany({
+        where: { referredBy: { not: null }, appointment: { scheduledDate: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } } },
+        select: { referredBy: true }
+      })
+      const counts = new Map<string, number>()
+      for (const n of notes) {
+        if (!n.referredBy) continue
+        counts.set(n.referredBy, (counts.get(n.referredBy) ?? 0) + 1)
+      }
+      let topReferrerName: string | null = null
+      let topReferrerCount = 0
+      for (const [name, count] of counts) {
+        if (count > topReferrerCount) { topReferrerName = name; topReferrerCount = count }
+      }
+      return {
+        success: true,
+        data: { kind: 'referral', totalReferredThisMonth: notes.length, topReferrerName, topReferrerCount }
+      }
+    }
+
+    // PHYSIO_CLINIC — VisitNote.painScore/functionalScore already exist
+    // (Phase 26/58) and getVitalsTrend() already trends them per-patient;
+    // this card is a fleet-wide summary, not a duplicate of that per-patient
+    // trend, so it's computed directly here rather than calling
+    // getVitalsTrend() in a loop.
+    if (type === 'PHYSIO_CLINIC') {
+      const db = getPrisma()
+      const { dateFrom, dateTo } = thisMonthRange()
+      const notes = await db.visitNote.findMany({
+        where: {
+          OR: [{ painScore: { not: null } }, { functionalScore: { not: null } }],
+          appointment: { scheduledDate: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } }
+        },
+        select: { painScore: true, functionalScore: true }
+      })
+      const painScores = notes.map(n => n.painScore).filter((v): v is number => v != null)
+      const functionalScores = notes.map(n => n.functionalScore).filter((v): v is number => v != null)
+      const avg = (arr: number[]): number | null => arr.length > 0 ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null
+      return {
+        success: true,
+        data: { kind: 'outcomeProgress', sessionsScoredThisMonth: notes.length, avgPainScore: avg(painScores), avgFunctionalScore: avg(functionalScores) }
+      }
     }
 
     if (APPOINTMENT_BASED_TYPES.has(type)) {

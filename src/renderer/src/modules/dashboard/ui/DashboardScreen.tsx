@@ -11,7 +11,8 @@ import {
   TrendingUp, TrendingDown, ShoppingCart, Package, Users, Truck,
   DollarSign, AlertTriangle, RefreshCw, AlertCircle, CheckCircle, X,
   Utensils, Store, HardHat, Layers, Activity, Zap, Gem, Sparkles,
-  CalendarCheck, Briefcase, BedDouble, FlaskConical, GraduationCap, ClipboardCheck, Wrench, UsersRound, Building2, Dumbbell, Scale, Camera, Car
+  CalendarCheck, Briefcase, BedDouble, FlaskConical, GraduationCap, ClipboardCheck, Wrench, UsersRound, Building2, Dumbbell, Scale, Camera, Car,
+  Syringe, BellRing, Share2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
@@ -47,6 +48,12 @@ type VerticalSpotlightData =
   | { kind: 'jobCards'; totalJobs: number; pending: number; delivered: number }
   | { kind: 'placement'; activeCandidates: number; openJobOrders: number; placementsThisMonth: number; revenueThisMonth: number }
   | { kind: 'general'; invoicesToday: number; outstanding: number }
+  // Phase 67 §9.1 — clinical dashboard-spotlight fix (see the matching
+  // comment in dashboard-spotlight.service.ts for why these 4 exist).
+  | { kind: 'vaccination'; dueThisWeek: number; overdueCount: number; compliancePercent: number }
+  | { kind: 'recall'; overdueCount: number; dueThisWeek: number; dueThisMonth: number }
+  | { kind: 'referral'; totalReferredThisMonth: number; topReferrerName: string | null; topReferrerCount: number }
+  | { kind: 'outcomeProgress'; sessionsScoredThisMonth: number; avgPainScore: number | null; avgFunctionalScore: number | null }
   | { kind: 'none' }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1176,6 +1183,68 @@ function IndustrySpotlight({
           { label: t('dashboard.spotlight.activeCandidates'), value: String(spotlight.activeCandidates), onClick: '/placement/candidates' },
           { label: t('dashboard.spotlight.openJobOrders'), value: String(spotlight.openJobOrders) },
           { label: t('dashboard.spotlight.placementsThisMonth'), value: String(spotlight.placementsThisMonth) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'vaccination') {
+    return (
+      <SpotlightCard
+        icon={<Syringe size={14} />}
+        title={t('dashboard.spotlight.vaccinationTitle')}
+        items={[
+          { label: t('dashboard.spotlight.dueThisWeek'), value: String(spotlight.dueThisWeek), onClick: '/vet/pets' },
+          { label: t('dashboard.spotlight.overdue'), value: String(spotlight.overdueCount) },
+          { label: t('dashboard.spotlight.compliance'), value: `${spotlight.compliancePercent}%` }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'recall') {
+    return (
+      <SpotlightCard
+        icon={<BellRing size={14} />}
+        title={t('dashboard.spotlight.recallTitle')}
+        items={[
+          { label: t('dashboard.spotlight.overdue'), value: String(spotlight.overdueCount), onClick: '/dental/recalls' },
+          { label: t('dashboard.spotlight.dueThisWeek'), value: String(spotlight.dueThisWeek) },
+          { label: t('dashboard.spotlight.dueThisMonth'), value: String(spotlight.dueThisMonth) }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'referral') {
+    return (
+      <SpotlightCard
+        icon={<Share2 size={14} />}
+        title={t('dashboard.spotlight.referralTitle')}
+        items={[
+          { label: t('dashboard.spotlight.referredThisMonth'), value: String(spotlight.totalReferredThisMonth), onClick: '/appointments' },
+          {
+            label: t('dashboard.spotlight.topReferrer'),
+            value: spotlight.topReferrerName ? `${spotlight.topReferrerName} (${spotlight.topReferrerCount})` : '—'
+          }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'outcomeProgress') {
+    return (
+      <SpotlightCard
+        icon={<Activity size={14} />}
+        title={t('dashboard.spotlight.outcomeProgressTitle')}
+        items={[
+          { label: t('dashboard.spotlight.sessionsScored'), value: String(spotlight.sessionsScoredThisMonth), onClick: '/appointments' },
+          { label: t('dashboard.spotlight.avgPainScore'), value: spotlight.avgPainScore != null ? String(spotlight.avgPainScore) : '—' },
+          { label: t('dashboard.spotlight.avgFunctionalScore'), value: spotlight.avgFunctionalScore != null ? String(spotlight.avgFunctionalScore) : '—' }
         ]}
         navigate={navigate}
       />

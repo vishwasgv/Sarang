@@ -2373,7 +2373,11 @@ async function generateOrderVolumeReport(params: { dateFrom: string; dateTo: str
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ExpiryBucketId = 'expired' | 'critical' | 'warning' | 'safe'
-export interface BatchExpiryBucket { bucket: ExpiryBucketId; label: string; count: number; quantityRemaining: number }
+// Phase 67 §9.1 — Pharmacy's "Expiry-risk value" signature-win report extends
+// this EXISTING bucket shape with a real ₹ value per bucket (previously only
+// the `expired` bucket had a matching summary figure) rather than building a
+// new report — see the master prompt's own corrected grounding note.
+export interface BatchExpiryBucket { bucket: ExpiryBucketId; label: string; count: number; quantityRemaining: number; value: number }
 export interface BatchExpiryRow {
   productName: string; batchNumber: string; expiryDate: string; daysToExpiry: number
   quantityRemaining: number; bucket: ExpiryBucketId; unitCost: number; supplierName: string | null
@@ -2381,7 +2385,7 @@ export interface BatchExpiryRow {
 
 export interface BatchExpiryReport {
   generatedAt: string
-  summary: { totalBatches: number; expiredCount: number; criticalCount: number; warningCount: number; safeCount: number; expiredValue: number }
+  summary: { totalBatches: number; expiredCount: number; criticalCount: number; warningCount: number; safeCount: number; expiredValue: number; atRiskValue: number }
   buckets: BatchExpiryBucket[]
   rows: BatchExpiryRow[]
 }
@@ -2421,10 +2425,19 @@ async function generateBatchExpiryReport(): Promise<BatchExpiryReport> {
   ]
   const buckets: BatchExpiryBucket[] = bucketDefs.map(d => {
     const inBucket = rows.filter(r => r.bucket === d.id)
-    return { bucket: d.id, label: d.label, count: inBucket.length, quantityRemaining: inBucket.reduce((s, r) => s + r.quantityRemaining, 0) }
+    return {
+      bucket: d.id, label: d.label, count: inBucket.length,
+      quantityRemaining: inBucket.reduce((s, r) => s + r.quantityRemaining, 0),
+      value: inBucket.reduce((s, r) => s + r.quantityRemaining * r.unitCost, 0),
+    }
   })
 
-  const expiredValue = rows.filter(r => r.bucket === 'expired').reduce((s, r) => s + r.quantityRemaining * r.unitCost, 0)
+  const expiredValue = buckets[0].value
+  // "At-risk" = money genuinely still recoverable if acted on now (expired
+  // stock is already a sunk loss, not a risk to act on) — critical + warning
+  // buckets only, matching the audit's own "₹ at risk by 30/60/90-day
+  // window" framing for the days still remaining to sell or return it.
+  const atRiskValue = buckets[1].value + buckets[2].value
 
   return {
     generatedAt: now.toISOString(),
@@ -2432,7 +2445,7 @@ async function generateBatchExpiryReport(): Promise<BatchExpiryReport> {
       totalBatches: rows.length,
       expiredCount: buckets[0].count, criticalCount: buckets[1].count,
       warningCount: buckets[2].count, safeCount: buckets[3].count,
-      expiredValue,
+      expiredValue, atRiskValue,
     },
     buckets, rows,
   }
@@ -3695,9 +3708,15 @@ export interface PrescriptionDrugSalesReportRow {
   patientName: string | null; doctorName: string | null; prescriptionDate: string | null
   customerName: string | null; lineTotal: number
 }
+// Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume" signature-win
+// report extends this EXISTING flat-table report with a doctor-grouped
+// aggregation rather than building a new report — see the master prompt's
+// own corrected grounding note.
+export interface PrescriptionDrugSalesByDoctor { doctorName: string; salesCount: number; totalAmount: number }
 export interface PrescriptionDrugSalesReport {
   dateFrom: string; dateTo: string
   summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }
+  byDoctor: PrescriptionDrugSalesByDoctor[]
   rows: PrescriptionDrugSalesReportRow[]
 }
 
@@ -3729,6 +3748,20 @@ async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; d
       // pre-existing row from before the flag/check existed, never a new gap.
       missingPrescriptionDetails: items.filter(i => !i.prescriptionPatientName || !i.prescriptionDoctorName).length,
     },
+    byDoctor: (() => {
+      const byDoctor = new Map<string, { salesCount: number; totalAmount: number }>()
+      for (const i of items) {
+        const name = i.prescriptionDoctorName
+        if (!name) continue
+        const existing = byDoctor.get(name) ?? { salesCount: 0, totalAmount: 0 }
+        existing.salesCount += 1
+        existing.totalAmount += i.lineTotal
+        byDoctor.set(name, existing)
+      }
+      return Array.from(byDoctor.entries())
+        .map(([doctorName, v]) => ({ doctorName, ...v }))
+        .sort((a, b) => b.salesCount - a.salesCount)
+    })(),
     rows: items.map(i => ({
       invoiceNumber: i.invoice.invoiceNumber, invoiceDate: toLocalISODate(i.invoice.createdAt),
       productName: i.productName, quantity: i.quantity,

@@ -6,13 +6,15 @@ Choosing **Pharmacy** as your business type turns on **batch tracking**, **expir
 
 Open **Batch Management** from the sidebar to record every batch of stock you receive: product, batch/lot number, quantity received, expiry date, an optional manufacturing date, unit cost, and which supplier it came from. Each batch tracks its own **remaining quantity** separately from what was originally received, and the list can be filtered to **All**, **Expiring Soon**, or **Expired**. Alert pills at the top of the screen flag how many batches are expiring within 30 days or already expired, so a stock check is never a surprise. You can edit a batch's expiry date, manufacturing date, remaining quantity, or cost later, or deactivate a batch once it's fully used up or written off.
 
+The **Batch Expiry** report (Reports → Batch Expiry) turns that same data into money: alongside how many batches sit in each expiry window, it now shows the real **₹ value at risk** in each bucket, so you can see at a glance not just "12 batches expiring soon" but exactly how much stock value that represents — and a separate "At-Risk Value" figure totals what's still recoverable (stock already expired is a sunk loss, not something a reorder or return can fix, so it's kept out of that total).
+
 ## How selling draws from batches
 
 You don't pick a batch manually at sale time — Billing draws from your batch stock automatically, oldest-expiring batch first (FIFO by expiry date), for any product that has batches recorded. If the only batch stock available to cover a sale has already expired, Sarang blocks the sale by default rather than silently letting expired stock go out the door — you'd need to record a new, valid batch, or (only if genuinely intended) turn on "Allow expired batch sale" in Settings to override this. Returns on a batch-tracked product restore the quantity back to the correct batch the same way, so remaining-quantity numbers stay accurate after a return.
 
 ## Schedule H/H1 prescription drugs
 
-Mark a product **Prescription Required** in its Product form, and Billing will require the patient's name and the prescribing doctor's name before it lets you add it to a cart — the sale simply cannot be completed without both, keeping you compliant with Schedule H/H1 record-keeping requirements. A dedicated **Prescription Drug Sales Register** report (Pharmacy only) lists every such sale with the captured patient/doctor details.
+Mark a product **Prescription Required** in its Product form, and Billing will require the patient's name and the prescribing doctor's name before it lets you add it to a cart — the sale simply cannot be completed without both, keeping you compliant with Schedule H/H1 record-keeping requirements. A dedicated **Prescription Drug Sales Register** report (Pharmacy only) lists every such sale with the captured patient/doctor details, and now opens with a **By Prescribing Doctor** chart above the register — which doctors are sending you the most prescription business this period, at a glance instead of scrolling the full register.
 
 ## Drug license number
 

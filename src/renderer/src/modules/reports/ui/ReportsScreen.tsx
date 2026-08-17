@@ -163,9 +163,10 @@ interface OrderVolumeRow { createdAt: string; tableLabel: string; status: string
 interface OrderVolumeReport { dateFrom: string; dateTo: string; summary: { totalOrders: number; accepted: number; rejected: number; pending: number; acceptanceRate: number }; byDay: OrderVolumeByDay[]; rows: OrderVolumeRow[] }
 
 type ExpiryBucketId = 'expired' | 'critical' | 'warning' | 'safe'
-interface BatchExpiryBucket { bucket: ExpiryBucketId; label: string; count: number; quantityRemaining: number }
+// Phase 67 §9.1 — `value` added (Pharmacy's "Expiry-risk value" signature win).
+interface BatchExpiryBucket { bucket: ExpiryBucketId; label: string; count: number; quantityRemaining: number; value: number }
 interface BatchExpiryRow { productName: string; batchNumber: string; expiryDate: string; daysToExpiry: number; quantityRemaining: number; bucket: ExpiryBucketId; unitCost: number; supplierName: string | null }
-interface BatchExpiryReport { generatedAt: string; summary: { totalBatches: number; expiredCount: number; criticalCount: number; warningCount: number; safeCount: number; expiredValue: number }; buckets: BatchExpiryBucket[]; rows: BatchExpiryRow[] }
+interface BatchExpiryReport { generatedAt: string; summary: { totalBatches: number; expiredCount: number; criticalCount: number; warningCount: number; safeCount: number; expiredValue: number; atRiskValue: number }; buckets: BatchExpiryBucket[]; rows: BatchExpiryRow[] }
 
 interface LabThroughputStage { status: string; label: string; count: number }
 interface LabThroughputRow { orderNumber: string; patientName: string; status: string; createdAt: string; reportedAt: string | null; turnaroundHours: number | null }
@@ -241,7 +242,9 @@ interface SiteVisitLogReport { dateFrom: string; dateTo: string; summary: { tota
 
 // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register
 interface PrescriptionDrugSalesRow { invoiceNumber: string; invoiceDate: string; productName: string; quantity: number; patientName: string | null; doctorName: string | null; prescriptionDate: string | null; customerName: string | null; lineTotal: number }
-interface PrescriptionDrugSalesReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }; rows: PrescriptionDrugSalesRow[] }
+// Phase 67 §9.1 — `byDoctor` added (Pharmacy's "Doctor-wise prescription volume" signature win).
+interface PrescriptionDrugSalesByDoctor { doctorName: string; salesCount: number; totalAmount: number }
+interface PrescriptionDrugSalesReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }; byDoctor: PrescriptionDrugSalesByDoctor[]; rows: PrescriptionDrugSalesRow[] }
 
 interface JobCardReportRow { jobNumber: string; title: string; customerName: string | null; status: string; priority: string; estimatedCost: number; actualCost: number; receivedDate: string; expectedDate: string | null; deliveredDate: string | null }
 interface JobCardReportByStatus { status: string; count: number }
@@ -3792,7 +3795,11 @@ function BatchExpiryView({ data, fmt }: { data: BatchExpiryReport; fmt: (n: numb
         { label: t('reports.summary.totalBatches'), value: String(s.totalBatches) },
         { label: t('reports.summary.expired'), value: String(s.expiredCount), sub: s.expiredValue > 0 ? fmt(s.expiredValue) : undefined },
         { label: t('reports.summary.expiringCritical'), value: String(s.criticalCount) },
-        { label: t('reports.summary.expiringWarning'), value: String(s.warningCount) }
+        { label: t('reports.summary.expiringWarning'), value: String(s.warningCount) },
+        // Phase 67 §9.1 — Pharmacy's "Expiry-risk value" signature win: money
+        // still recoverable if acted on now (excludes the already-expired
+        // bucket, a sunk loss rather than something actionable).
+        { label: t('reports.summary.atRiskValue'), value: fmt(s.atRiskValue) }
       ]} />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byBucket')}</h3>
@@ -3803,6 +3810,20 @@ function BatchExpiryView({ data, fmt }: { data: BatchExpiryReport; fmt: (n: numb
             <YAxis type="category" dataKey="name" tick={CHART_TICK} tickLine={false} axisLine={false} width={110} />
             <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
             <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              {chartData.map(b => <Cell key={b.bucket} fill={BUCKET_COLOR[b.bucket]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byBucketValue')}</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={chartData} layout="vertical" barCategoryGap="25%">
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+            <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} tickFormatter={fmt} />
+            <YAxis type="category" dataKey="name" tick={CHART_TICK} tickLine={false} axisLine={false} width={110} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
               {chartData.map(b => <Cell key={b.bucket} fill={BUCKET_COLOR[b.bucket]} />)}
             </Bar>
           </BarChart>
@@ -4413,21 +4434,43 @@ function SiteVisitLogReportView({ data }: { data: SiteVisitLogReport; fmt: (n: n
   )
 }
 
-// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register
+// Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register.
+// Phase 67 §9.1 — added the doctor-grouped bar chart (the "Doctor-wise
+// prescription volume" signature win) below the existing register table.
+// The 3 SummaryCards labels here were hardcoded English strings amid an
+// otherwise fully-t()-driven component (a real pre-existing inconsistency,
+// not this file's established baseline the way e.g. PurchaseOrderFormModal's
+// English-only baseline is) — fixed to real t() calls while directly
+// touching this component for the new chart, rather than adding a 4th
+// inconsistent label alongside them.
 function PrescriptionDrugSalesReportView({ data, fmt }: { data: PrescriptionDrugSalesReport; fmt: (n: number) => string }) {
   const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Sales', value: String(s.totalSales) },
+        { label: t('reports.summary.totalSales'), value: String(s.totalSales) },
         { label: t('common.amount'), value: fmt(s.totalAmount) },
-        { label: 'Missing Details', value: String(s.missingPrescriptionDetails) }
+        { label: t('reports.summary.missingDetails'), value: String(s.missingPrescriptionDetails) }
       ]} />
+      {data.byDoctor.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byDoctor')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(160, data.byDoctor.length * 36)}>
+            <BarChart data={data.byDoctor} layout="vertical" barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="doctorName" tick={CHART_TICK} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => name === 'totalAmount' ? fmt(v) : v} />
+              <Bar dataKey="salesCount" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       <div>
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Prescription Drug Sales Register</h3>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.prescriptionRegister')}</h3>
         <DataTable
-          headers={['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Rx Date', t('reports.col.customer'), t('common.amount')]}
+          headers={[t('reports.col.invoiceNo'), t('reports.col.invoiceDate'), t('reports.col.product'), t('reports.col.qty'), t('reports.col.patientName'), t('reports.col.doctorName'), t('reports.col.rxDate'), t('reports.col.customer'), t('common.amount')]}
           rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName ?? '—', r.doctorName ?? '—', r.prescriptionDate ?? '—', r.customerName ?? '—', fmt(r.lineTotal)])}
           emptyText={t('reports.empty.prescriptionDrugSales')}
         />

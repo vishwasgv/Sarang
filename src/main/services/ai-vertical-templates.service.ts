@@ -116,7 +116,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // has its own dedicated car-job-card.service.ts KPI function beyond the
     // generic repair job-card report REPAIR shares.
     case 'CAR_SERVICE_CENTER': return ['repair.jobCards', 'carService.vehiclesInService']
-    case 'PHARMACY': case 'AGRI_INPUTS': return ['inventory.batchExpiry']
+    // Phase 67 §9.1 — split PHARMACY off from AGRI_INPUTS (previously shared
+    // one array) so PHARMACY can carry its own extra intent; AGRI_INPUTS
+    // keeps only batch expiry, unchanged.
+    case 'PHARMACY': return ['inventory.batchExpiry', 'pharmacy.prescriptionVolumeByDoctor']
+    case 'AGRI_INPUTS': return ['inventory.batchExpiry']
     // Added 2026-07-13 alongside the RETAIL/GENERAL/PLACEMENT_AGENCY gap
     // review — getPlacementKPIs() (placement.service.ts) already existed
     // and fit the same reuse pattern as every other template here; there
@@ -311,8 +315,32 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       const r = await reportService.generateBatchExpiryReport()
       return {
         headline: `${r.summary.expiredCount} expired batches, ${r.summary.criticalCount} expiring very soon`,
-        details: [`Expiring soon (warning): ${r.summary.warningCount}`, `Safe: ${r.summary.safeCount}`, `Value already expired: ${formatAmountForSpeech(r.summary.expiredValue, sym)}`],
+        details: [
+          `Expiring soon (warning): ${r.summary.warningCount}`, `Safe: ${r.summary.safeCount}`,
+          `Value already expired: ${formatAmountForSpeech(r.summary.expiredValue, sym)}`,
+          // Phase 67 §9.1 — Pharmacy's "Expiry-risk value" signature win:
+          // money still recoverable if acted on now, distinct from the
+          // already-expired figure above (a sunk loss, not an action item).
+          `Value still at risk (expiring within 30 days): ${formatAmountForSpeech(r.summary.atRiskValue, sym)}`
+        ],
         isEmpty: r.summary.totalBatches === 0
+      }
+    }
+    // Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume"
+    // signature-win report. Genuinely new intent (PHARMACY previously had
+    // zero prescription-related AI coverage) reusing the SAME
+    // generatePrescriptionDrugSalesReport() the ReportsScreen's own
+    // Prescription Drug Sales report calls, not a parallel computation.
+    case 'pharmacy.prescriptionVolumeByDoctor': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generatePrescriptionDrugSalesReport({ dateFrom, dateTo })
+      const top = r.byDoctor[0]
+      return {
+        headline: top
+          ? `Dr. ${top.doctorName} drove the most prescription sales this period (${top.salesCount} sales, ${formatAmountForSpeech(top.totalAmount, sym)})`
+          : 'No prescription sales recorded this period',
+        details: r.byDoctor.slice(0, 5).map(d => `${d.doctorName}: ${d.salesCount} sales, ${formatAmountForSpeech(d.totalAmount, sym)}`),
+        isEmpty: r.byDoctor.length === 0
       }
     }
     case 'service.projects': {
