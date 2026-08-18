@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "દર્દી પરિણામ ફોકસ",
       "sessionsScored": "સ્કોર થયેલા સત્રો",
       "avgPainScore": "સરેરાશ પીડા સ્કોર",
-      "avgFunctionalScore": "સરેરાશ કાર્યાત્મક સ્કોર"
+      "avgFunctionalScore": "સરેરાશ કાર્યાત્મક સ્કોર",
+      "chronicRecallTitle": "ક્રોનિક રિકોલ ફોકસ"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "બજેટ વિરુદ્ધ વાસ્તવિક",
         "description": "આ મહિનાના બજેટ કરેલા આંકડા વાસ્તવિક ખર્ચ સાથે, દરેક ખર્ચ કેન્દ્ર અને ખાતા પ્રમાણે"
+      },
+      "chronicRecallCompliance": {
+        "label": "રિકોલ કમ્પ્લાયન્સ",
+        "description": "કેટલા ક્રોનિક કન્ડિશન રિકોલ સમયસર અનુસરવામાં આવ્યા, એકંદરે અને દરેક સ્થિતિ પ્રમાણે."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "કુલ આપેલ ડિસ્કાઉન્ટ",
       "discountedLines": "ડિસ્કાઉન્ટેડ / કુલ લાઇન",
       "discountIncidence": "ડિસ્કાઉન્ટ થયેલ લાઇન",
-      "avgDiscountPercent": "સરેરાશ ડિસ્કાઉન્ટ"
+      "avgDiscountPercent": "સરેરાશ ડિસ્કાઉન્ટ",
+      "recallsClosed": "બંધ થયેલ રિકોલ",
+      "compliancePercent": "કમ્પ્લાયન્સ %"
     },
     "aging": {
       "current": "વર્તમાન",
@@ -1868,7 +1875,8 @@
       "spendByItem": "વસ્તુ મુજબ ખર્ચ",
       "purchaseDetails": "ખરીદી વિગતો",
       "apAgingByVendor": "વિક્રેતા મુજબ દેય વયોમાન",
-      "untaggedNote": "ટેગ વગરનું: કોઈ ખર્ચ કેન્દ્ર સેટ ન કરેલા વ્યવહારોમાંથી {{revenue}} આવક અને {{expense}} ખર્ચ."
+      "untaggedNote": "ટેગ વગરનું: કોઈ ખર્ચ કેન્દ્ર સેટ ન કરેલા વ્યવહારોમાંથી {{revenue}} આવક અને {{expense}} ખર્ચ.",
+      "complianceByCondition": "સ્થિતિ પ્રમાણે કમ્પ્લાયન્સ"
     },
     "empty": {
       "invoices": "આ તારીખ શ્રેણીમાં કોઈ બિલ નથી.",
@@ -1917,7 +1925,8 @@
       "placements": "આ તારીખ શ્રેણીમાં કોઈ પ્લેસમેન્ટ નથી.",
       "drawingRegister": "આ તારીખ શ્રેણીમાં કોઈ ડ્રોઇંગ રિવિઝન નથી.",
       "siteVisitLog": "આ તારીખ શ્રેણીમાં કોઈ સાઇટ વિઝિટ નથી.",
-      "noData": "આ સમયગાળા માટે કોઈ રેકોર્ડ મળ્યો નથી."
+      "noData": "આ સમયગાળા માટે કોઈ રેકોર્ડ મળ્યો નથી.",
+      "chronicRecallCompliance": "આ તારીખ શ્રેણીમાં કોઈ રિકોલ સમયગાળો બંધ થયો નથી."
     },
     "col": {
       "invoiceNo": "બિલ #",
@@ -2097,7 +2106,11 @@
       "projected": "અંદાજિત",
       "paidInvoiceCount": "ચૂકવેલ ઇનવોઇસ",
       "avgDaysToPay": "ચુકવણી માટે સરેરાશ દિવસો",
-      "outstandingInvoiceCount": "બાકી ઇનવોઇસ"
+      "outstandingInvoiceCount": "બાકી ઇનવોઇસ",
+      "condition": "સ્થિતિ",
+      "recallsClosed": "બંધ થયેલ રિકોલ",
+      "onTime": "સમયસર",
+      "compliancePercent": "કમ્પ્લાયન્સ %"
     },
     "legend": {
       "schemeCost": "સ્કીમ ખર્ચ",

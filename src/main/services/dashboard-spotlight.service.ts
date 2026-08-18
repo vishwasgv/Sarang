@@ -10,6 +10,7 @@ import { getShootKPIs } from './shoot-booking.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from './driving.service'
 import { getUpcomingVaccinations } from './vaccination.service'
 import { listRecalls } from './recall-record.service'
+import { getChronicRecallDashboardCounts } from './chronic-condition-record.service'
 import { getPrisma } from '../database/db'
 import { APPOINTMENT_BASED_TYPES, PROJECT_BASED_TYPES } from './ai-vertical-templates.service'
 
@@ -41,14 +42,14 @@ export type VerticalSpotlightData =
   // real, dedicated data (vaccination.service.ts, recall-record.service.ts,
   // VisitNote.referredBy, VisitNote.painScore/functionalScore) — the exact
   // same "reuse-ready but wired wrong" class Phase 66's own closing
-  // self-review found for Gym/Lawyer/Photo Studio/Driving School. GP_CLINIC
-  // is deliberately NOT included here yet — its chronic-condition recall
-  // needs new tagging schema (Section 9's own GREENFIELD item) before a
-  // dashboard branch can exist, unlike the other four which are pure reuse.
+  // self-review found for Gym/Lawyer/Photo Studio/Driving School. GP_CLINIC's
+  // own chronic-condition recall (needed new tagging schema, Section 9's own
+  // GREENFIELD item) is closed out below via `chronicRecall`.
   | { kind: 'vaccination'; dueThisWeek: number; overdueCount: number; compliancePercent: number }
   | { kind: 'recall'; overdueCount: number; dueThisWeek: number; dueThisMonth: number }
   | { kind: 'referral'; totalReferredThisMonth: number; topReferrerName: string | null; topReferrerCount: number }
   | { kind: 'outcomeProgress'; sessionsScoredThisMonth: number; avgPainScore: number | null; avgFunctionalScore: number | null }
+  | { kind: 'chronicRecall'; overdueCount: number; dueThisWeek: number; compliancePercent: number | null }
   | { kind: 'none' }
 
 function thisMonthRange(): { dateFrom: string; dateTo: string } {
@@ -169,6 +170,23 @@ export async function getVerticalSpotlightKpis(businessType: string): Promise<{ 
           overdueCount: overdueRes.success ? (overdueRes.data?.length ?? 0) : 0,
           dueThisWeek: weekRes.success ? (weekRes.data?.length ?? 0) : 0,
           dueThisMonth: monthRes.success ? (monthRes.data?.length ?? 0) : 0
+        }
+      }
+    }
+
+    // GP_CLINIC — Phase 67 §9.1 item 19, GREENFIELD. Reuses the same
+    // dashboard-count aggregate the /clinical/chronic-recalls screen itself
+    // calls, matching every other reuse-vs-fresh-compute decision in this
+    // service (never a second, parallel computation of the same numbers).
+    if (type === 'GP_CLINIC') {
+      const res = await getChronicRecallDashboardCounts()
+      return {
+        success: true,
+        data: {
+          kind: 'chronicRecall',
+          overdueCount: res.success ? (res.data?.overdueCount ?? 0) : 0,
+          dueThisWeek: res.success ? (res.data?.dueThisWeek ?? 0) : 0,
+          compliancePercent: res.success ? (res.data?.compliancePercent ?? null) : null
         }
       }
     }

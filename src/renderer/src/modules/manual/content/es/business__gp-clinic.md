@@ -36,3 +36,16 @@ La pantalla de **Cola de turnos** gestiona a los pacientes sin cita previa del m
 - **Call Next** para llamar al próximo turno en espera.
 
 Cada turno en la lista se puede llamar, marcar como atendido, omitir o restablecer a en espera — la cola se reordena automáticamente en secciones de "Actualmente Llamado," "Esperando," y "Completado." Esto es completamente independiente de la lista de Appointments reservadas con anticipación — está hecho para la realidad de pacientes que simplemente llegan y esperan su turno.
+
+## Recordatorio de Condición Crónica
+
+Para pacientes con afecciones continuas — diabetes, hipertensión y similares — que necesitan seguimiento periódico sin importar si reservan una nueva cita, la pantalla **Chronic Recall** (en la barra lateral) le permite etiquetar a un paciente con una afección y un calendario de recordatorios, independiente de cualquier visita individual.
+
+- **Tag Condition** — elija al paciente, nombre la afección (se sugieren las comunes como Diabetes e Hipertensión, pero puede escribir cualquier afección), opcionalmente registre cuándo fue diagnosticada, y establezca la fecha de esta visita más la próxima fecha de recordatorio en la que quiere que vuelva.
+- La lista clasifica a cada paciente en seguimiento en **Overdue**, **Due Soon** (dentro de 7 días), **This Month**, y **Upcoming** — haga clic en cualquier paciente para registrar su visita de seguimiento real y establecer la próxima fecha de recordatorio, de la misma forma en que estableció la primera.
+- Cada vez que registra un seguimiento, Sarang registra silenciosamente si ocurrió en la fecha de recordatorio programada o antes. Con el tiempo esto construye un **porcentaje de cumplimiento** real — mostrado en la parte superior de la pantalla y en la tarjeta Chronic Recall de su Dashboard — indicando qué proporción de los recordatorios realmente se cumplen, no solo cuántos están programados.
+- Un paciente puede ser etiquetado con más de una afección a la vez (por ejemplo, diabetes e hipertensión juntas), cada una rastreada y recordada de forma independiente.
+
+Esto es independiente de la propia fecha de **Follow-up** única de la Nota de Consulta anterior — esa es para "que vuelva después de esta visita específica"; Chronic Recall es para "este paciente tiene una condición continua que necesito seguir revisando, visita tras visita."
+
+Esta misma cifra de cumplimiento también tiene su propio informe dedicado — abra **Reports → Recall Compliance**, elija un rango de fechas, y verá un indicador mostrando qué porcentaje de recordatorios cerrados en ese período se cumplieron a tiempo, además de un desglose por condición (para poder saber, por ejemplo, que sus recordatorios de diabetes están al 90% pero la hipertensión está fallando).

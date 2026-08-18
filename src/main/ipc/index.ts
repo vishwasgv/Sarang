@@ -87,6 +87,7 @@ import { register as registerToothRecords } from './handlers/tooth-record.handle
 import { register as registerProviderSkills } from './handlers/service-provider-skill.handler'
 import { register as registerTreatmentPlans } from './handlers/treatment-plan.handler'
 import { register as registerRecallRecords } from './handlers/recall-record.handler'
+import { register as registerChronicConditionRecords } from './handlers/chronic-condition-record.handler'
 // Phase 26 — Physiotherapy Clinic
 import { register as registerTreatmentPhases } from './handlers/treatment-phase.handler'
 import { register as registerExercisePrograms } from './handlers/exercise-program.handler'
@@ -263,6 +264,7 @@ export function registerAllIpcHandlers(): void {
   registerToothRecords(h)
   registerTreatmentPlans(h)
   registerRecallRecords(h)
+  registerChronicConditionRecords(h)
   // Phase 58 §2 — Beauty Salon
   registerProviderSkills(h)
   // Phase 26 — Physio

@@ -422,6 +422,7 @@ export interface IpcChannels {
     siteVisitLog: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     prescriptionDrugSales: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     schemeCostVsVolume: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    chronicRecallCompliance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     logistics: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     attendance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     production: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -1079,6 +1080,14 @@ export interface IpcChannels {
     get: (payload: { patientId: string }) => Promise<ApiResponse>
     list: (payload?: { overdueOnly?: boolean; dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     upsert: (payload: { patientId: string; recallType: string; lastVisitDate: string; nextRecallDate: string; notes?: string | null }) => Promise<ApiResponse>
+  }
+  // Phase 67 — GP Clinic: chronic-condition recall
+  chronicRecall: {
+    list: (payload?: { patientId?: string; activeOnly?: boolean; overdueOnly?: boolean }) => Promise<ApiResponse>
+    upsert: (payload: { id?: string; patientId: string; conditionName: string; diagnosedDate?: string | null; lastVisitDate: string; nextRecallDate: string; isActive?: boolean; notes?: string | null }) => Promise<ApiResponse>
+    deactivate: (payload: { id: string }) => Promise<ApiResponse>
+    dashboardCounts: () => Promise<ApiResponse>
+    complianceReport: (payload?: { months?: number }) => Promise<ApiResponse>
   }
   // Phase 23 — Veterinary
   pets: {

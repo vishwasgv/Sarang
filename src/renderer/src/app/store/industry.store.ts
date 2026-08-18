@@ -102,6 +102,9 @@ export type TemplateModule =
   // Phase 58 §2 — Agri Inputs combined consumables+equipment dashboard, an
   // AGRI_INPUTS default, see industry-template.service.ts's header comment.
   | 'agri_dashboard'
+  // Phase 67 — GP Clinic chronic-condition recall, a GP_CLINIC default, see
+  // industry-template.service.ts's header comment.
+  | 'chronic_recall'
 
 interface IndustryState {
   businessType: string

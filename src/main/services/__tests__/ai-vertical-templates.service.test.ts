@@ -15,6 +15,7 @@ vi.mock('../issue.service', () => ({ listIssues: vi.fn() }))
 vi.mock('../event-booking.service', () => ({ getEventKPIs: vi.fn() }))
 vi.mock('../vaccination.service', () => ({ getUpcomingVaccinations: vi.fn() }))
 vi.mock('../recall-record.service', () => ({ listRecalls: vi.fn() }))
+vi.mock('../chronic-condition-record.service', () => ({ listChronicConditions: vi.fn() }))
 vi.mock('../car-job-card.service', () => ({ getCarJobCardKPIs: vi.fn() }))
 vi.mock('../coaching-fee.service', () => ({ getFeeKPIs: vi.fn() }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
@@ -22,6 +23,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 import { getActiveTemplate } from '../industry-template.service'
 import { getExpiringMemberships } from '../membership.service'
 import { reportService } from '../report.service'
+import { listChronicConditions } from '../chronic-condition-record.service'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from '../ai-vertical-templates.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -171,5 +173,48 @@ describe('ai-vertical-templates.service — distributor.schemeCostVsVolume', () 
 
     expect(result.isEmpty).toBe(true)
     expect(result.headline).toBe('No pricing schemes ran this period')
+  })
+})
+
+// Phase 67 §9.1 item 19 — GP Clinic's Dashboard spotlight card now surfaces
+// chronic-condition recall data (dashboard-spotlight.service.ts's
+// `chronicRecall` kind). Per Section 1.2's "any new report gets a matching
+// AI query pattern" rule, this needs a matching intent too.
+describe('ai-vertical-templates.service — gp.chronicRecallsDue', () => {
+  it('registers gp.chronicRecallsDue for GP_CLINIC alongside the shared appointment templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GP_CLINIC' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['service.appointmentUtilisation', 'service.clientRetention', 'gp.chronicRecallsDue'])
+  })
+
+  it('executeVerticalTemplate answers with recalls due in the next 30 days, filtered from all active records', async () => {
+    const now = Date.now()
+    vi.mocked(listChronicConditions).mockResolvedValue({
+      success: true,
+      data: [
+        { nextRecallDate: new Date(now + 10 * 86400000), conditionName: 'Diabetes', patient: { customerName: 'Asha Rao' } },
+        { nextRecallDate: new Date(now + 20 * 86400000), conditionName: 'Hypertension', patient: { customerName: 'Vikram Shah' } },
+        { nextRecallDate: new Date(now + 60 * 86400000), conditionName: 'Diabetes', patient: { customerName: 'Not Due Yet' } },
+      ],
+    } as never)
+
+    const result = await executeVerticalTemplate('gp.chronicRecallsDue', {}, '₹')
+
+    expect(result.headline).toBe('2 chronic-condition recalls due in the next 30 days')
+    expect(result.details).toHaveLength(2)
+    expect(result.details[0]).toContain('Asha Rao')
+    expect(result.details[0]).toContain('Diabetes')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no chronic-condition recalls are due in the next 30 days', async () => {
+    vi.mocked(listChronicConditions).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('gp.chronicRecallsDue', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('0 chronic-condition recalls due in the next 30 days')
   })
 })

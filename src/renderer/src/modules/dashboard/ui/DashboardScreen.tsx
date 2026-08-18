@@ -12,7 +12,7 @@ import {
   DollarSign, AlertTriangle, RefreshCw, AlertCircle, CheckCircle, X,
   Utensils, Store, HardHat, Layers, Activity, Zap, Gem, Sparkles,
   CalendarCheck, Briefcase, BedDouble, FlaskConical, GraduationCap, ClipboardCheck, Wrench, UsersRound, Building2, Dumbbell, Scale, Camera, Car,
-  Syringe, BellRing, Share2
+  Syringe, BellRing, Share2, HeartPulse
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
@@ -54,6 +54,7 @@ type VerticalSpotlightData =
   | { kind: 'recall'; overdueCount: number; dueThisWeek: number; dueThisMonth: number }
   | { kind: 'referral'; totalReferredThisMonth: number; topReferrerName: string | null; topReferrerCount: number }
   | { kind: 'outcomeProgress'; sessionsScoredThisMonth: number; avgPainScore: number | null; avgFunctionalScore: number | null }
+  | { kind: 'chronicRecall'; overdueCount: number; dueThisWeek: number; compliancePercent: number | null }
   | { kind: 'none' }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1245,6 +1246,21 @@ function IndustrySpotlight({
           { label: t('dashboard.spotlight.sessionsScored'), value: String(spotlight.sessionsScoredThisMonth), onClick: '/appointments' },
           { label: t('dashboard.spotlight.avgPainScore'), value: spotlight.avgPainScore != null ? String(spotlight.avgPainScore) : '—' },
           { label: t('dashboard.spotlight.avgFunctionalScore'), value: spotlight.avgFunctionalScore != null ? String(spotlight.avgFunctionalScore) : '—' }
+        ]}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (spotlight?.kind === 'chronicRecall') {
+    return (
+      <SpotlightCard
+        icon={<HeartPulse size={14} />}
+        title={t('dashboard.spotlight.chronicRecallTitle')}
+        items={[
+          { label: t('dashboard.spotlight.overdue'), value: String(spotlight.overdueCount), onClick: '/clinical/chronic-recalls' },
+          { label: t('dashboard.spotlight.dueThisWeek'), value: String(spotlight.dueThisWeek) },
+          { label: t('dashboard.spotlight.compliance'), value: spotlight.compliancePercent != null ? `${spotlight.compliancePercent}%` : '—' }
         ]}
         navigate={navigate}
       />

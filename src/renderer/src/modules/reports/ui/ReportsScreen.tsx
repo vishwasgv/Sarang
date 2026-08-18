@@ -5,7 +5,7 @@ import {
   DollarSign, Shield, ChevronRight, Download, FileText,
   Table, RefreshCw, Calendar, HardDrive, Utensils,
   Activity, UserCheck, Award, QrCode, PackageSearch, FlaskConical, Droplet,
-  Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp,
+  Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp, HeartPulse,
   Briefcase, Wrench, BedDouble, FolderOpen,
   Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins,
   PieChart, ShieldCheck, LineChart, Clock, Target
@@ -257,6 +257,9 @@ interface SchemeCostVsVolumePoint { period: string; schemeCost: number; totalVol
 interface SchemeCostVsVolumeSchemeRow { schemeId: string; schemeName: string; ruleType: string; totalCost: number; focUnitsGiven: number }
 interface SchemeCostVsVolumeReport { dateFrom: string; dateTo: string; summary: { totalSchemeCost: number; totalFocUnitsGiven: number; activeSchemeCount: number; coveredProductCount: number }; byPeriod: SchemeCostVsVolumePoint[]; rows: SchemeCostVsVolumeSchemeRow[] }
 
+interface ChronicRecallComplianceByCondition { conditionName: string; total: number; onTime: number; percent: number }
+interface ChronicRecallComplianceReport { totalRecallsClosed: number; overallOnTime: number; overallPercent: number | null; byCondition: ChronicRecallComplianceByCondition[] }
+
 interface JobCardReportRow { jobNumber: string; title: string; customerName: string | null; status: string; priority: string; estimatedCost: number; actualCost: number; receivedDate: string; expectedDate: string | null; deliveredDate: string | null }
 interface JobCardReportByStatus { status: string; count: number }
 interface JobCardReport {
@@ -360,6 +363,7 @@ type ReportType =
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
   | 'schemeCostVsVolume'
+  | 'chronicRecallCompliance'
   | 'hotelOccupancy' | 'hotelGuestRegister'
   // Phase 61 — Purchase-side reports (Section 3.1 item 5)
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
@@ -458,6 +462,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // product volume, not a causal incrementality claim (see the report
   // function's own comment in report.service.ts for why).
   { id: 'schemeCostVsVolume', icon: <TrendingUp size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
+  // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
+  // followed up on time, over the picked date range (matches the recall
+  // PERIOD's scheduled date, not when the recall was tagged).
+  { id: 'chronicRecallCompliance', icon: <HeartPulse size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'chronic_recall' },
 ]
 
 const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel', 'distributor']
@@ -766,6 +774,9 @@ export function ReportsScreen() {
           break
         case 'schemeCostVsVolume':
           res = await window.api.reports.schemeCostVsVolume({ dateFrom, dateTo })
+          break
+        case 'chronicRecallCompliance':
+          res = await window.api.reports.chronicRecallCompliance({ dateFrom, dateTo })
           break
         case 'logistics':
           res = await window.api.reports.logistics({ dateFrom, dateTo })
@@ -1238,6 +1249,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.schemeName'), t('reports.col.ruleType'), t('reports.col.focUnitsGiven'), t('common.amount')],
           rows: d.rows.map(r => [r.schemeName, r.ruleType, r.focUnitsGiven, r.totalCost])
+        }
+      }
+      case 'chronicRecallCompliance': {
+        const d = reportData as ChronicRecallComplianceReport
+        return {
+          headers: [t('reports.col.condition'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')],
+          rows: d.byCondition.map(r => [r.conditionName, r.total, r.onTime, `${r.percent}%`])
         }
       }
       case 'siteVisitLog': {
@@ -1813,6 +1831,13 @@ export function ReportsScreen() {
           { label: t('reports.summary.totalSchemeCost'), value: fmt(d.summary.totalSchemeCost) },
           { label: t('reports.summary.focUnitsGiven'), value: String(d.summary.totalFocUnitsGiven) },
           { label: t('reports.summary.activeSchemes'), value: String(d.summary.activeSchemeCount) }
+        ]
+      }
+      case 'chronicRecallCompliance': {
+        const d = reportData as ChronicRecallComplianceReport
+        return [
+          { label: t('reports.summary.recallsClosed'), value: String(d.totalRecallsClosed) },
+          { label: t('reports.summary.compliancePercent'), value: d.overallPercent != null ? `${d.overallPercent}%` : '—' }
         ]
       }
       case 'logistics': {
@@ -2569,6 +2594,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'siteVisitLog': return <SiteVisitLogReportView data={data as SiteVisitLogReport} fmt={fmt} />
     case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
     case 'schemeCostVsVolume': return <SchemeCostVsVolumeView data={data as SchemeCostVsVolumeReport} fmt={fmt} />
+    case 'chronicRecallCompliance': return <ChronicRecallComplianceView data={data as ChronicRecallComplianceReport} />
     case 'logistics': return <LogisticsView data={data as LogisticsReport} fmt={fmt} />
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
@@ -4555,6 +4581,56 @@ function SchemeCostVsVolumeView({ data, fmt }: { data: SchemeCostVsVolumeReport;
           headers={[t('reports.col.schemeName'), t('reports.col.ruleType'), t('reports.col.focUnitsGiven'), t('common.amount')]}
           rows={data.rows.map(r => [r.schemeName, r.ruleType, r.focUnitsGiven, fmt(r.totalCost)])}
           emptyText={t('reports.empty.schemeCostVsVolume')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 19.2 — GP Clinic: Recall Compliance report ("gauge: %
+// followed up on time" per the roadmap's own spec wording). No gauge/radial
+// component exists anywhere in this codebase yet — a plain inline SVG ring is
+// self-contained for a single-use case, matching this project's own "no
+// abstraction beyond what's needed" convention rather than adding a shared
+// component for one caller.
+function ComplianceGauge({ percent }: { percent: number | null }) {
+  const radius = 54
+  const circumference = 2 * Math.PI * radius
+  const pct = percent ?? 0
+  const offset = circumference * (1 - pct / 100)
+  const color = percent == null ? '#cbd5e1' : percent >= 80 ? STATUS_COLORS.success : percent >= 50 ? STATUS_COLORS.warning : STATUS_COLORS.danger
+  return (
+    <svg width={140} height={140} viewBox="0 0 140 140">
+      <circle cx={70} cy={70} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={14} />
+      <circle
+        cx={70} cy={70} r={radius} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        transform="rotate(-90 70 70)"
+      />
+      <text x={70} y={68} textAnchor="middle" className="fill-dark dark:fill-slate-100" style={{ fontSize: 24, fontWeight: 700 }}>
+        {percent != null ? `${percent}%` : '—'}
+      </text>
+      <text x={70} y={88} textAnchor="middle" className="fill-slate-400" style={{ fontSize: 10 }}>on time</text>
+    </svg>
+  )
+}
+
+function ChronicRecallComplianceView({ data }: { data: ChronicRecallComplianceReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center gap-3">
+        <ComplianceGauge percent={data.overallPercent} />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {t('reports.summary.recallsClosed')}: {data.totalRecallsClosed}
+        </p>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByCondition')}</h3>
+        <DataTable
+          headers={[t('reports.col.condition'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')]}
+          rows={data.byCondition.map(r => [r.conditionName, r.total, r.onTime, `${r.percent}%`])}
+          emptyText={t('reports.empty.chronicRecallCompliance')}
         />
       </div>
     </div>

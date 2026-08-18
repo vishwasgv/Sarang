@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "Foco em Resultados do Paciente",
       "sessionsScored": "Sessões Avaliadas",
       "avgPainScore": "Pontuação Média de Dor",
-      "avgFunctionalScore": "Pontuação Funcional Média"
+      "avgFunctionalScore": "Pontuação Funcional Média",
+      "chronicRecallTitle": "Foco de Recall Crônico"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "Orçamento vs. Real",
         "description": "Os valores orçados deste mês ao lado do gasto real, por centro de custo e conta"
+      },
+      "chronicRecallCompliance": {
+        "label": "Conformidade de Lembretes",
+        "description": "Quantos lembretes de condição crônica foram seguidos no prazo, no geral e por condição."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "Total de Desconto Concedido",
       "discountedLines": "Itens com Desconto / Total de Itens",
       "discountIncidence": "Itens com Desconto",
-      "avgDiscountPercent": "Desconto Médio"
+      "avgDiscountPercent": "Desconto Médio",
+      "recallsClosed": "Lembretes Encerrados",
+      "compliancePercent": "Conformidade %"
     },
     "aging": {
       "current": "Em Dia",
@@ -1868,7 +1875,8 @@
       "spendByItem": "Gasto por Item",
       "purchaseDetails": "Detalhes da Compra",
       "apAgingByVendor": "Antiguidade de Contas a Pagar por Fornecedor",
-      "untaggedNote": "Não marcado: {{revenue}} de receita e {{expense}} de despesa de transações sem centro de custo definido."
+      "untaggedNote": "Não marcado: {{revenue}} de receita e {{expense}} de despesa de transações sem centro de custo definido.",
+      "complianceByCondition": "Conformidade por Condição"
     },
     "empty": {
       "invoices": "Nenhuma fatura neste intervalo de datas.",
@@ -1917,7 +1925,8 @@
       "placements": "Nenhuma colocação neste intervalo de datas.",
       "drawingRegister": "Nenhuma revisão de desenho neste intervalo de datas.",
       "siteVisitLog": "Nenhuma visita ao local neste intervalo de datas.",
-      "noData": "Nenhum registro encontrado para este período."
+      "noData": "Nenhum registro encontrado para este período.",
+      "chronicRecallCompliance": "Nenhum período de lembrete encerrado neste intervalo de datas."
     },
     "col": {
       "invoiceNo": "N.º Fatura",
@@ -2097,7 +2106,11 @@
       "projected": "Projetado",
       "paidInvoiceCount": "Faturas Pagas",
       "avgDaysToPay": "Dias Médios para Pagamento",
-      "outstandingInvoiceCount": "Faturas Pendentes"
+      "outstandingInvoiceCount": "Faturas Pendentes",
+      "condition": "Condição",
+      "recallsClosed": "Lembretes Encerrados",
+      "onTime": "No Prazo",
+      "compliancePercent": "Conformidade %"
     },
     "legend": {
       "schemeCost": "Custo do Esquema",

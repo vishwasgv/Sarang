@@ -36,3 +36,16 @@ A tela **Fila de senhas** gerencia pacientes sem hora marcada do mesmo dia sem p
 - **Call Next** para chamar a próxima senha em espera.
 
 Cada senha na lista pode ser chamada, marcada como atendida, pulada, ou redefinida para aguardando — a fila se reorganiza automaticamente em seções de "Atualmente Chamado," "Aguardando," e "Concluído." Isso é totalmente separado da lista Appointments pré-reservada — foi feito para a realidade de pacientes que simplesmente chegam e aguardam sua vez.
+
+## Lembrete de Condição Crônica
+
+Para pacientes com condições contínuas — diabetes, hipertensão e similares — que precisam de acompanhamento periódico independentemente de reservarem uma nova consulta, a tela **Chronic Recall** (na barra lateral) permite marcar um paciente com uma condição e um cronograma de lembrete, separado de qualquer visita única.
+
+- **Tag Condition** — selecione o paciente, nomeie a condição (condições comuns como Diabetes e Hypertension são sugeridas, mas você pode digitar qualquer condição), opcionalmente registre quando foi diagnosticada, e defina a data desta visita junto com a próxima data de lembrete que deseja que o paciente retorne.
+- A lista classifica cada paciente acompanhado em **Overdue**, **Due Soon** (dentro de 7 dias), **This Month**, e **Upcoming** — clique em qualquer paciente para registrar sua visita de acompanhamento real e definir a próxima data de lembrete, da mesma forma que você definiu a primeira.
+- Cada vez que você registra um acompanhamento, o Sarang silenciosamente registra se ele ocorreu na data de lembrete prevista ou antes. Com o tempo isso constrói uma **porcentagem de conformidade** real — exibida no topo da tela e no cartão Chronic Recall do seu Dashboard — indicando qual proporção dos lembretes está realmente sendo cumprida, não apenas quantos estão agendados.
+- Um paciente pode ser marcado com mais de uma condição ao mesmo tempo (por exemplo, diabetes e hipertensão juntas), cada uma acompanhada e lembrada de forma independente.
+
+Isso é separado da própria data de **Follow-up** única da Nota de Consulta acima — aquela é para "voltar após esta visita específica"; Chronic Recall é para "este paciente tem uma condição contínua que preciso continuar verificando, visita após visita."
+
+Esse mesmo número de conformidade também tem seu próprio relatório dedicado — abra **Reports → Recall Compliance**, escolha um intervalo de datas, e você verá um medidor mostrando qual porcentagem dos lembretes encerrados nesse período foram cumpridos no prazo, além de uma divisão por condição (para você saber, por exemplo, que seus lembretes de diabetes estão em 90% mas a hipertensão está caindo).

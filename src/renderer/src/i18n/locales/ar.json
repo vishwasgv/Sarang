@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "تركيز نتائج المريض",
       "sessionsScored": "الجلسات المُقيَّمة",
       "avgPainScore": "متوسط درجة الألم",
-      "avgFunctionalScore": "متوسط الدرجة الوظيفية"
+      "avgFunctionalScore": "متوسط الدرجة الوظيفية",
+      "chronicRecallTitle": "تركيز الاستدعاء المزمن"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "الميزانية مقابل الفعلي",
         "description": "أرقام هذا الشهر المخططة إلى جانب الإنفاق الفعلي، لكل مركز تكلفة وحساب"
+      },
+      "chronicRecallCompliance": {
+        "label": "الالتزام بالتذكير",
+        "description": "كم عدد تذكيرات الحالة المزمنة التي تمت متابعتها في الوقت المحدد، إجمالاً وحسب الحالة."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "إجمالي الخصم الممنوح",
       "discountedLines": "السطور المخصومة / الإجمالي",
       "discountIncidence": "عدد السطور المخصومة",
-      "avgDiscountPercent": "متوسط الخصم"
+      "avgDiscountPercent": "متوسط الخصم",
+      "recallsClosed": "التذكيرات المغلقة",
+      "compliancePercent": "نسبة الالتزام %"
     },
     "aging": {
       "current": "حالي",
@@ -1868,7 +1875,8 @@
       "spendByItem": "الإنفاق حسب الصنف",
       "purchaseDetails": "تفاصيل الشراء",
       "apAgingByVendor": "أعمار الذمم الدائنة حسب المورّد",
-      "untaggedNote": "غير موسوم: {{revenue}} إيرادات و {{expense}} مصروفات من معاملات بدون مركز تكلفة محدد."
+      "untaggedNote": "غير موسوم: {{revenue}} إيرادات و {{expense}} مصروفات من معاملات بدون مركز تكلفة محدد.",
+      "complianceByCondition": "الالتزام حسب الحالة"
     },
     "empty": {
       "invoices": "لا توجد فواتير في هذا النطاق الزمني.",
@@ -1917,7 +1925,8 @@
       "placements": "لا توجد عمليات توظيف في هذا النطاق الزمني.",
       "drawingRegister": "لا توجد مراجعات مخططات في هذا النطاق الزمني.",
       "siteVisitLog": "لا توجد زيارات موقع في هذا النطاق الزمني.",
-      "noData": "لم يتم العثور على سجلات لهذه الفترة."
+      "noData": "لم يتم العثور على سجلات لهذه الفترة.",
+      "chronicRecallCompliance": "لم يتم إغلاق أي فترة تذكير في هذا النطاق الزمني."
     },
     "col": {
       "invoiceNo": "رقم الفاتورة",
@@ -2097,7 +2106,11 @@
       "projected": "المتوقع",
       "paidInvoiceCount": "الفواتير المدفوعة",
       "avgDaysToPay": "متوسط أيام الدفع",
-      "outstandingInvoiceCount": "الفواتير المستحقة"
+      "outstandingInvoiceCount": "الفواتير المستحقة",
+      "condition": "الحالة",
+      "recallsClosed": "التذكيرات المغلقة",
+      "onTime": "في الوقت المحدد",
+      "compliancePercent": "نسبة الالتزام %"
     },
     "legend": {
       "schemeCost": "تكلفة الخطة",

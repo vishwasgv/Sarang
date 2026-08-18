@@ -3,6 +3,7 @@ import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { getProductCostsBatch } from './valuation.service'
+import { generateChronicRecallComplianceReport as generateChronicRecallComplianceReportImpl } from './chronic-condition-record.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -3912,6 +3913,19 @@ function weekStartKey(d: Date): string {
   return toLocalISODate(local)
 }
 
+// Phase 67 §9.1 item 19.2 (GP Clinic) — Recall Compliance report, feeding the
+// Reports screen's own date-range-picker convention. The real logic lives in
+// chronic-condition-record.service.ts (already unit-tested there, already
+// reused by the GP Clinic list screen's own header figure) — this is a thin
+// adapter unwrapping that function's `{success,data,error}` shape into the
+// bare object every other function in this file returns, matching this
+// file's own convention rather than duplicating the query.
+async function generateChronicRecallComplianceReport(params: { dateFrom: string; dateTo: string }) {
+  const res = await generateChronicRecallComplianceReportImpl(params)
+  if (!res.success || !res.data) throw new Error(res.error?.message ?? 'Could not generate chronic recall compliance report.')
+  return res.data
+}
+
 async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<SchemeCostVsVolumeReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
@@ -4071,4 +4085,5 @@ export const reportService = {
   generateSiteVisitLogReport,
   generatePrescriptionDrugSalesReport,
   generateSchemeCostVsVolumeReport,
+  generateChronicRecallComplianceReport,
 }

@@ -36,3 +36,16 @@ Layar **Antrean Token** mengelola pasien walk-in hari yang sama tanpa memerlukan
 - **Call Next** untuk memanggil token menunggu berikutnya.
 
 Setiap token dalam daftar dapat dipanggil, ditandai seen, dilewati, atau direset kembali ke waiting — antrean menyortir ulang dirinya sendiri secara otomatis ke bagian "Currently Called," "Waiting," dan "Completed." Ini sepenuhnya terpisah dari daftar Appointments yang dipesan sebelumnya — dibuat untuk realitas pasien yang sekadar datang dan menunggu giliran mereka.
+
+## Pengingat Kondisi Kronis
+
+Untuk pasien dengan kondisi berkelanjutan — diabetes, hipertensi, dan sejenisnya — yang memerlukan tindak lanjut berkala terlepas dari apakah mereka memesan janji temu baru, layar **Chronic Recall** (di sidebar) memungkinkan Anda menandai pasien dengan suatu kondisi dan jadwal pengingat, terpisah dari kunjungan tunggal mana pun.
+
+- **Tag Condition** — pilih pasien, beri nama kondisinya (kondisi umum seperti Diabetes dan Hypertension disarankan, tetapi Anda dapat mengetik kondisi apa pun), opsional catat kapan didiagnosis, dan tetapkan tanggal kunjungan ini beserta tanggal pengingat berikutnya yang Anda inginkan mereka kembali.
+- Daftar mengelompokkan setiap pasien yang dilacak ke dalam **Overdue**, **Due Soon** (dalam 7 hari), **This Month**, dan **Upcoming** — klik pasien mana pun untuk mencatat kunjungan tindak lanjut aktual mereka dan menetapkan tanggal pengingat berikutnya, dengan cara yang sama seperti Anda menetapkan yang pertama.
+- Setiap kali Anda mencatat tindak lanjut, Sarang diam-diam mencatat apakah itu terjadi pada atau sebelum tanggal pengingat yang jatuh tempo. Seiring waktu ini membangun **persentase kepatuhan** yang nyata — ditampilkan di bagian atas layar dan pada kartu Chronic Recall di Dashboard Anda — menunjukkan berapa persen pengingat yang benar-benar dipenuhi, bukan hanya berapa banyak yang dijadwalkan.
+- Seorang pasien dapat ditandai dengan lebih dari satu kondisi sekaligus (misalnya diabetes dan hipertensi bersamaan), masing-masing dilacak dan diingatkan secara independen.
+
+Ini terpisah dari tanggal **Follow-up** satu kali milik Catatan Konsultasi di atas — itu untuk "kembali setelah kunjungan spesifik ini"; Chronic Recall untuk "pasien ini memiliki kondisi berkelanjutan yang perlu terus saya periksa, kunjungan demi kunjungan."
+
+Angka kepatuhan yang sama juga memiliki laporan khususnya sendiri — buka **Reports → Recall Compliance**, pilih rentang tanggal, dan Anda akan melihat pengukur yang menunjukkan persentase pengingat yang ditutup dalam rentang tersebut dan ditepati tepat waktu, ditambah rincian per kondisi (sehingga Anda dapat mengetahui, misalnya, bahwa pengingat diabetes Anda berjalan di 90% tetapi hipertensi mulai menurun).

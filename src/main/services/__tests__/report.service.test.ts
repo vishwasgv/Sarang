@@ -3432,6 +3432,54 @@ describe('reportService.generateSchemeCostVsVolumeReport', () => {
   })
 })
 
+// Phase 67 §9.1 item 19.2 — GP Clinic Recall Compliance report. This is a
+// thin date-range adapter over chronic-condition-record.service.ts's own
+// generateChronicRecallComplianceReport (already unit-tested there against a
+// mocked `chronicRecallComplianceLog`) — these tests exercise it through the
+// SAME globally-mocked getPrisma() this file already uses for every other
+// report, confirming the adapter's unwrap/throw behavior end-to-end rather
+// than re-mocking the sibling service.
+describe('reportService.generateChronicRecallComplianceReport', () => {
+  it('unwraps the underlying service result into the bare shape every other report function returns', async () => {
+    const db = {
+      chronicRecallComplianceLog: {
+        findMany: vi.fn().mockResolvedValue([
+          { onTime: true, record: { conditionName: 'Diabetes' } },
+          { onTime: false, record: { conditionName: 'Diabetes' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateChronicRecallComplianceReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.totalRecallsClosed).toBe(2)
+    expect(result.overallPercent).toBe(50)
+    expect(result.byCondition).toEqual([{ conditionName: 'Diabetes', total: 2, onTime: 1, percent: 50 }])
+    // The adapter passed the date range through, not the trailing-months default
+    const callArgs = db.chronicRecallComplianceLog.findMany.mock.calls[0][0]
+    expect(callArgs.where.scheduledDate.gte).toEqual(new Date('2026-08-01'))
+  })
+
+  it('throws when the underlying service reports failure, so the IPC handler surfaces a real error instead of silently returning undefined', async () => {
+    const db = { chronicRecallComplianceLog: { findMany: vi.fn().mockRejectedValue(new Error('disk full')) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await expect(reportService.generateChronicRecallComplianceReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })).rejects.toThrow('disk full')
+  })
+
+  it('returns an honest empty result when no recall periods closed in range', async () => {
+    const db = { chronicRecallComplianceLog: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateChronicRecallComplianceReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.totalRecallsClosed).toBe(0)
+    expect(result.overallPercent).toBeNull()
+    expect(result.byCondition).toEqual([])
+  })
+})
+
 // ─── Discounts & Bargained Pricing Report ──────────────────────────────────────
 
 function makeDiscountInvoice(overrides: Record<string, unknown> = {}) {

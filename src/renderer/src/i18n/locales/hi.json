@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "मरीज़ परिणाम फोकस",
       "sessionsScored": "स्कोर किए गए सत्र",
       "avgPainScore": "औसत दर्द स्कोर",
-      "avgFunctionalScore": "औसत कार्यात्मक स्कोर"
+      "avgFunctionalScore": "औसत कार्यात्मक स्कोर",
+      "chronicRecallTitle": "क्रॉनिक रिकॉल फोकस"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "बजट बनाम वास्तविक",
         "description": "इस महीने के बजट किए गए आंकड़े वास्तविक खर्च के साथ, प्रति लागत केंद्र और खाता"
+      },
+      "chronicRecallCompliance": {
+        "label": "रिकॉल अनुपालन",
+        "description": "कितने क्रॉनिक कंडीशन रिकॉल समय पर पूरे किए गए, कुल मिलाकर और प्रत्येक स्थिति के अनुसार।"
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "कुल दी गई छूट",
       "discountedLines": "छूट वाली / कुल लाइनें",
       "discountIncidence": "छूट वाली लाइनें",
-      "avgDiscountPercent": "औसत छूट"
+      "avgDiscountPercent": "औसत छूट",
+      "recallsClosed": "बंद किए गए रिकॉल",
+      "compliancePercent": "अनुपालन %"
     },
     "aging": {
       "current": "वर्तमान",
@@ -1868,7 +1875,8 @@
       "spendByItem": "वस्तु अनुसार खर्च",
       "purchaseDetails": "खरीद विवरण",
       "apAgingByVendor": "विक्रेता अनुसार देय आयु",
-      "untaggedNote": "अनटैग्ड: बिना लागत केंद्र सेट किए लेनदेन से {{revenue}} राजस्व और {{expense}} व्यय।"
+      "untaggedNote": "अनटैग्ड: बिना लागत केंद्र सेट किए लेनदेन से {{revenue}} राजस्व और {{expense}} व्यय।",
+      "complianceByCondition": "स्थिति के अनुसार अनुपालन"
     },
     "empty": {
       "invoices": "इस तिथि सीमा में कोई बिल नहीं।",
@@ -1917,7 +1925,8 @@
       "placements": "इस दिनांक सीमा में कोई प्लेसमेंट नहीं।",
       "drawingRegister": "इस दिनांक सीमा में कोई ड्रॉइंग संशोधन नहीं।",
       "siteVisitLog": "इस दिनांक सीमा में कोई साइट विज़िट नहीं।",
-      "noData": "इस अवधि के लिए कोई रिकॉर्ड नहीं मिला।"
+      "noData": "इस अवधि के लिए कोई रिकॉर्ड नहीं मिला।",
+      "chronicRecallCompliance": "इस दिनांक सीमा में कोई रिकॉल अवधि समाप्त नहीं हुई।"
     },
     "col": {
       "invoiceNo": "बिल #",
@@ -2097,7 +2106,11 @@
       "projected": "अनुमानित",
       "paidInvoiceCount": "भुगतान किए गए इनवॉइस",
       "avgDaysToPay": "भुगतान में औसत दिन",
-      "outstandingInvoiceCount": "बकाया इनवॉइस"
+      "outstandingInvoiceCount": "बकाया इनवॉइस",
+      "condition": "स्थिति",
+      "recallsClosed": "बंद किए गए रिकॉल",
+      "onTime": "समय पर",
+      "compliancePercent": "अनुपालन %"
     },
     "legend": {
       "schemeCost": "स्कीम लागत",

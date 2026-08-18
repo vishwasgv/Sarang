@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "रुग्ण परिणाम फोकस",
       "sessionsScored": "स्कोअर केलेली सत्रे",
       "avgPainScore": "सरासरी वेदना स्कोअर",
-      "avgFunctionalScore": "सरासरी कार्यात्मक स्कोअर"
+      "avgFunctionalScore": "सरासरी कार्यात्मक स्कोअर",
+      "chronicRecallTitle": "जुनाट आजार स्मरण फोकस"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "अंदाजपत्रक विरुद्ध प्रत्यक्ष",
         "description": "या महिन्याचे अंदाजित आकडे प्रत्यक्ष खर्चासोबत, प्रत्येक खर्च केंद्र आणि खात्यानुसार"
+      },
+      "chronicRecallCompliance": {
+        "label": "स्मरण पालन",
+        "description": "किती जुनाट आजार स्मरणे वेळेवर पूर्ण झाली, एकूण आणि प्रत्येक आजारानुसार."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "दिलेली एकूण सवलत",
       "discountedLines": "सवलत दिलेल्या / एकूण ओळी",
       "discountIncidence": "सवलत दिलेल्या ओळी",
-      "avgDiscountPercent": "सरासरी सवलत"
+      "avgDiscountPercent": "सरासरी सवलत",
+      "recallsClosed": "बंद झालेली स्मरणे",
+      "compliancePercent": "पालन %"
     },
     "aging": {
       "current": "सध्याचे",
@@ -1868,7 +1875,8 @@
       "spendByItem": "वस्तूनुसार खर्च",
       "purchaseDetails": "खरेदी तपशील",
       "apAgingByVendor": "पुरवठादारानुसार देय वयोमान",
-      "untaggedNote": "टॅग न केलेले: कोणतेही खर्च केंद्र सेट न केलेल्या व्यवहारांमधून {{revenue}} उत्पन्न आणि {{expense}} खर्च."
+      "untaggedNote": "टॅग न केलेले: कोणतेही खर्च केंद्र सेट न केलेल्या व्यवहारांमधून {{revenue}} उत्पन्न आणि {{expense}} खर्च.",
+      "complianceByCondition": "आजारानुसार पालन"
     },
     "empty": {
       "invoices": "या तारीख श्रेणीत कोणतीही बिले नाहीत.",
@@ -1917,7 +1925,8 @@
       "placements": "या तारीख श्रेणीत कोणतीही प्लेसमेंट नाही.",
       "drawingRegister": "या तारीख श्रेणीत कोणतीही ड्रॉइंग सुधारणा नाही.",
       "siteVisitLog": "या तारीख श्रेणीत कोणतीही साइट भेट नाही.",
-      "noData": "या कालावधीसाठी कोणतीही नोंद आढळली नाही."
+      "noData": "या कालावधीसाठी कोणतीही नोंद आढळली नाही.",
+      "chronicRecallCompliance": "या तारीख श्रेणीत कोणतेही स्मरण कालावधी बंद झाले नाहीत."
     },
     "col": {
       "invoiceNo": "बिल #",
@@ -2097,7 +2106,11 @@
       "projected": "अंदाजित",
       "paidInvoiceCount": "भरलेले इनव्हॉइस",
       "avgDaysToPay": "पेमेंटसाठी सरासरी दिवस",
-      "outstandingInvoiceCount": "थकीत इनव्हॉइस"
+      "outstandingInvoiceCount": "थकीत इनव्हॉइस",
+      "condition": "स्थिती",
+      "recallsClosed": "बंद झालेली स्मरणे",
+      "onTime": "वेळेवर",
+      "compliancePercent": "पालन %"
     },
     "legend": {
       "schemeCost": "स्कीम खर्च",

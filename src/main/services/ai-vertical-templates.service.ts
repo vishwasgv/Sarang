@@ -39,6 +39,7 @@ import { getShootKPIs } from './shoot-booking.service'
 import { getEventKPIs } from './event-booking.service'
 import { getUpcomingVaccinations } from './vaccination.service'
 import { listRecalls } from './recall-record.service'
+import { listChronicConditions } from './chronic-condition-record.service'
 import { getCarJobCardKPIs } from './car-job-card.service'
 import { getFeeKPIs } from './coaching-fee.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from './driving.service'
@@ -171,6 +172,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // Section 1.2's "any new report gets a matching AI query pattern" rule,
     // this needs a matching AI intent too, not just a Dashboard card.
     if (businessType === 'GYM_STUDIO') templates.push('gym.membershipsExpiring')
+    // Phase 67 §9.1 item 19 — GP Clinic's own chronic-condition recall now
+    // has a real Dashboard spotlight card (dashboard-spotlight.service.ts's
+    // `chronicRecall` kind); per Section 1.2's "any new report gets a
+    // matching AI query pattern" rule, it needs a matching intent too.
+    if (businessType === 'GP_CLINIC') templates.push('gp.chronicRecallsDue')
     return templates
   }
   if (LOGISTICS_BASED_TYPES.has(businessType)) return ['logistics.summary']
@@ -598,6 +604,18 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       return {
         headline: `${items.length} patient recalls due in the next 30 days`,
         details: items.slice(0, 10).map((r) => `${r.patient.customerName} — due ${toLocalISODate(new Date(r.nextRecallDate))}`),
+        isEmpty: items.length === 0
+      }
+    }
+    case 'gp.chronicRecallsDue': {
+      const now = new Date()
+      const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() + 30)
+      const res = await listChronicConditions({ activeOnly: true })
+      const all = (res.data ?? []) as Array<{ nextRecallDate: Date; conditionName: string; patient: { customerName: string } }>
+      const items = all.filter((r) => new Date(r.nextRecallDate).getTime() <= cutoff.getTime())
+      return {
+        headline: `${items.length} chronic-condition recalls due in the next 30 days`,
+        details: items.slice(0, 10).map((r) => `${r.patient.customerName} (${r.conditionName}) — due ${toLocalISODate(new Date(r.nextRecallDate))}`),
         isEmpty: items.length === 0
       }
     }

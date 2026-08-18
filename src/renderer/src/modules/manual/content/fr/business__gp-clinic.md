@@ -36,3 +36,16 @@ L'écran **File de tickets** gère les patients sans rendez-vous du jour même s
 - **Call Next** pour appeler le prochain ticket en attente.
 
 Chaque ticket de la liste peut être appelé, marqué comme vu, ignoré, ou remis en attente — la file se retrie automatiquement en sections « Actuellement Appelé », « En attente », et « Terminé ». Ceci est entièrement séparé de la liste Appointments préréservée — c'est conçu pour la réalité des patients qui arrivent simplement et attendent leur tour.
+
+## Rappel de Condition Chronique
+
+Pour les patients ayant des affections continues — diabète, hypertension et similaires — nécessitant un suivi périodique, qu'ils réservent ou non un nouveau rendez-vous, l'écran **Chronic Recall** (dans la barre latérale) vous permet d'étiqueter un patient avec une affection et un calendrier de rappel, distinct de toute visite unique.
+
+- **Tag Condition** — choisissez le patient, nommez l'affection (des affections courantes comme Diabetes et Hypertension sont suggérées, mais vous pouvez saisir n'importe quelle affection), enregistrez éventuellement la date du diagnostic, et définissez la date de cette visite ainsi que la prochaine date de rappel souhaitée.
+- La liste classe chaque patient suivi en **Overdue**, **Due Soon** (dans les 7 jours), **This Month**, et **Upcoming** — cliquez sur un patient pour enregistrer sa visite de suivi réelle et définir la prochaine date de rappel, de la même manière que vous avez défini la première.
+- Chaque fois que vous enregistrez un suivi, Sarang note discrètement s'il a eu lieu à la date de rappel prévue ou avant. Au fil du temps, cela construit un véritable **pourcentage de conformité** — affiché en haut de l'écran et sur la carte Chronic Recall de votre Dashboard — indiquant quelle part des rappels est réellement respectée, pas seulement combien sont programmés.
+- Un patient peut être étiqueté avec plus d'une affection à la fois (par exemple diabète et hypertension ensemble), chacune suivie et rappelée indépendamment.
+
+Ceci est distinct de la propre date de **Follow-up** ponctuelle de la Note de Consultation ci-dessus — celle-ci sert à « faire revenir après cette visite précise » ; Chronic Recall sert à « ce patient a une affection continue que je dois continuer à vérifier, visite après visite ».
+
+Ce même chiffre de conformité a aussi son propre rapport dédié — ouvrez **Reports → Recall Compliance**, choisissez une plage de dates, et vous verrez une jauge indiquant le pourcentage de rappels clôturés dans cette période qui ont été respectés à temps, plus une répartition par affection (pour pouvoir constater, par exemple, que vos rappels diabète sont à 90 % mais que l'hypertension décroche).

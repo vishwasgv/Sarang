@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "Focus Résultats Patient",
       "sessionsScored": "Séances Évaluées",
       "avgPainScore": "Score de Douleur Moy.",
-      "avgFunctionalScore": "Score Fonctionnel Moy."
+      "avgFunctionalScore": "Score Fonctionnel Moy.",
+      "chronicRecallTitle": "Focus Rappel Chronique"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "Budget vs. Réel",
         "description": "Les chiffres budgétés de ce mois à côté des dépenses réelles, par centre de coûts et compte"
+      },
+      "chronicRecallCompliance": {
+        "label": "Conformité des Rappels",
+        "description": "Combien de rappels de condition chronique ont été suivis à temps, au global et par condition."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "Total des Remises Accordées",
       "discountedLines": "Lignes Remisées / Total",
       "discountIncidence": "Lignes Remisées",
-      "avgDiscountPercent": "Remise Moy."
+      "avgDiscountPercent": "Remise Moy.",
+      "recallsClosed": "Rappels Clôturés",
+      "compliancePercent": "Conformité %"
     },
     "aging": {
       "current": "Actuel",
@@ -1868,7 +1875,8 @@
       "spendByItem": "Dépenses par Article",
       "purchaseDetails": "Détails des Achats",
       "apAgingByVendor": "Ancienneté des Comptes Fournisseurs par Fournisseur",
-      "untaggedNote": "Non étiqueté : {{revenue}} de revenus et {{expense}} de dépenses provenant de transactions sans centre de coûts défini."
+      "untaggedNote": "Non étiqueté : {{revenue}} de revenus et {{expense}} de dépenses provenant de transactions sans centre de coûts défini.",
+      "complianceByCondition": "Conformité par Condition"
     },
     "empty": {
       "invoices": "Aucune facture dans cette plage de dates.",
@@ -1917,7 +1925,8 @@
       "placements": "Aucun placement dans cette période.",
       "drawingRegister": "Aucune révision de plan dans cette période.",
       "siteVisitLog": "Aucune visite de chantier dans cette période.",
-      "noData": "Aucun enregistrement trouvé pour cette période."
+      "noData": "Aucun enregistrement trouvé pour cette période.",
+      "chronicRecallCompliance": "Aucune période de rappel clôturée dans cette plage de dates."
     },
     "col": {
       "invoiceNo": "N° Facture",
@@ -2097,7 +2106,11 @@
       "projected": "Prévu",
       "paidInvoiceCount": "Factures Payées",
       "avgDaysToPay": "Jours Moy. de Paiement",
-      "outstandingInvoiceCount": "Factures en Attente"
+      "outstandingInvoiceCount": "Factures en Attente",
+      "condition": "Condition",
+      "recallsClosed": "Rappels Clôturés",
+      "onTime": "À Temps",
+      "compliancePercent": "Conformité %"
     },
     "legend": {
       "schemeCost": "Coût du Programme",

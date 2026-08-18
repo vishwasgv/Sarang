@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "Foco de Resultados del Paciente",
       "sessionsScored": "Sesiones Evaluadas",
       "avgPainScore": "Puntaje de Dolor Prom.",
-      "avgFunctionalScore": "Puntaje Funcional Prom."
+      "avgFunctionalScore": "Puntaje Funcional Prom.",
+      "chronicRecallTitle": "Enfoque de Recordatorio Crónico"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "Presupuesto vs. Real",
         "description": "Las cifras presupuestadas de este mes junto al gasto real, por centro de costo y cuenta"
+      },
+      "chronicRecallCompliance": {
+        "label": "Cumplimiento de Recordatorios",
+        "description": "Cuántos recordatorios de condición crónica se cumplieron a tiempo, en general y por condición."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalOpen": "Tareas Abiertas",
       "overdueCount": "Vencidas",
       "dueThisWeekCount": "Vence Esta Semana",
-      "clientCount": "Clientes"
+      "clientCount": "Clientes",
+      "recallsClosed": "Recordatorios Cerrados",
+      "compliancePercent": "Cumplimiento %"
     },
     "aging": {
       "current": "Al Día",
@@ -1868,7 +1875,8 @@
       "testScoreDetails": "Detalles de Calificaciones",
       "byStudent": "Por Estudiante",
       "complianceTaskDetails": "Detalles de Tareas de Cumplimiento",
-      "untaggedNote": "Sin etiquetar: {{revenue}} de ingresos y {{expense}} de gastos de transacciones sin centro de costo asignado."
+      "untaggedNote": "Sin etiquetar: {{revenue}} de ingresos y {{expense}} de gastos de transacciones sin centro de costo asignado.",
+      "complianceByCondition": "Cumplimiento por Condición"
     },
     "empty": {
       "discounts": "No se otorgaron descuentos ni precios negociados en este rango de fechas.",
@@ -1917,7 +1925,8 @@
       "complianceTasks": "No hay tareas de cumplimiento pendientes o vencidas.",
       "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas.",
       "schemeCostVsVolume": "Ningún esquema de precios estuvo activo en este rango de fechas.",
-      "noData": "No se encontraron registros para este período."
+      "noData": "No se encontraron registros para este período.",
+      "chronicRecallCompliance": "No se cerró ningún período de recordatorio en este rango de fechas."
     },
     "col": {
       "invoiceNo": "N.º Factura",
@@ -2097,7 +2106,11 @@
       "projected": "Proyectado",
       "paidInvoiceCount": "Facturas Pagadas",
       "avgDaysToPay": "Días Prom. de Pago",
-      "outstandingInvoiceCount": "Facturas Pendientes"
+      "outstandingInvoiceCount": "Facturas Pendientes",
+      "condition": "Condición",
+      "recallsClosed": "Recordatorios Cerrados",
+      "onTime": "A Tiempo",
+      "compliancePercent": "Cumplimiento %"
     },
     "legend": {
       "schemeCost": "Costo del Esquema",

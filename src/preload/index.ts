@@ -345,6 +345,7 @@ const api: IpcChannels = {
     siteVisitLog: (p) => invoke('reports:siteVisitLog', p),
     prescriptionDrugSales: (p) => invoke('reports:prescriptionDrugSales', p),
     schemeCostVsVolume: (p) => invoke('reports:schemeCostVsVolume', p),
+    chronicRecallCompliance: (p) => invoke('reports:chronicRecallCompliance', p),
     logistics: (p) => invoke('reports:logistics', p),
     attendance: (p) => invoke('reports:attendance', p),
     production: (p) => invoke('reports:production', p),
@@ -901,6 +902,14 @@ const api: IpcChannels = {
     get: (p: unknown) => invoke('recall:get', p),
     list: (p?: unknown) => invoke('recall:list', p),
     upsert: (p: unknown) => invoke('recall:upsert', p),
+  },
+  // Phase 67 — GP Clinic: chronic-condition recall
+  chronicRecall: {
+    list: (p?: unknown) => invoke('chronicRecall:list', p),
+    upsert: (p: unknown) => invoke('chronicRecall:upsert', p),
+    deactivate: (p: unknown) => invoke('chronicRecall:deactivate', p),
+    dashboardCounts: () => invoke('chronicRecall:dashboardCounts'),
+    complianceReport: (p?: unknown) => invoke('chronicRecall:complianceReport', p),
   },
   // Phase 23 — Veterinary
   pets: {

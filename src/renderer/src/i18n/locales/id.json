@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "Fokus Hasil Pasien",
       "sessionsScored": "Sesi Dinilai",
       "avgPainScore": "Skor Nyeri Rata-rata",
-      "avgFunctionalScore": "Skor Fungsional Rata-rata"
+      "avgFunctionalScore": "Skor Fungsional Rata-rata",
+      "chronicRecallTitle": "Fokus Pengingat Kronis"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "Anggaran vs. Aktual",
         "description": "Angka yang dianggarkan bulan ini berdampingan dengan pengeluaran aktual, per pusat biaya dan akun"
+      },
+      "chronicRecallCompliance": {
+        "label": "Kepatuhan Pengingat",
+        "description": "Berapa banyak pengingat kondisi kronis yang ditindaklanjuti tepat waktu, secara keseluruhan dan per kondisi."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "Total Diskon Diberikan",
       "discountedLines": "Baris Diskon / Total Baris",
       "discountIncidence": "Baris Didiskon",
-      "avgDiscountPercent": "Rata-rata Diskon"
+      "avgDiscountPercent": "Rata-rata Diskon",
+      "recallsClosed": "Pengingat Ditutup",
+      "compliancePercent": "Kepatuhan %"
     },
     "aging": {
       "current": "Terkini",
@@ -1868,7 +1875,8 @@
       "spendByItem": "Pengeluaran per Barang",
       "purchaseDetails": "Detail Pembelian",
       "apAgingByVendor": "Umur Hutang per Vendor",
-      "untaggedNote": "Tidak diberi tag: {{revenue}} pendapatan dan {{expense}} pengeluaran dari transaksi tanpa pusat biaya yang ditetapkan."
+      "untaggedNote": "Tidak diberi tag: {{revenue}} pendapatan dan {{expense}} pengeluaran dari transaksi tanpa pusat biaya yang ditetapkan.",
+      "complianceByCondition": "Kepatuhan per Kondisi"
     },
     "empty": {
       "invoices": "Tidak ada faktur dalam rentang tanggal ini.",
@@ -1917,7 +1925,8 @@
       "placements": "Tidak ada penempatan dalam rentang tanggal ini.",
       "drawingRegister": "Tidak ada revisi gambar dalam rentang tanggal ini.",
       "siteVisitLog": "Tidak ada kunjungan lokasi dalam rentang tanggal ini.",
-      "noData": "Tidak ada catatan yang ditemukan untuk periode ini."
+      "noData": "Tidak ada catatan yang ditemukan untuk periode ini.",
+      "chronicRecallCompliance": "Tidak ada periode pengingat yang ditutup dalam rentang tanggal ini."
     },
     "col": {
       "invoiceNo": "No. Faktur",
@@ -2097,7 +2106,11 @@
       "projected": "Diproyeksikan",
       "paidInvoiceCount": "Faktur Dibayar",
       "avgDaysToPay": "Rata-rata Hari Pembayaran",
-      "outstandingInvoiceCount": "Faktur Belum Dibayar"
+      "outstandingInvoiceCount": "Faktur Belum Dibayar",
+      "condition": "Kondisi",
+      "recallsClosed": "Pengingat Ditutup",
+      "onTime": "Tepat Waktu",
+      "compliancePercent": "Kepatuhan %"
     },
     "legend": {
       "schemeCost": "Biaya Skema",

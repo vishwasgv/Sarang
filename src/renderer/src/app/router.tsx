@@ -121,6 +121,7 @@ import { MetalExchangeScreen } from '@modules/jewellery/ui/MetalExchangeScreen'
 // Phase 25 — Dental
 import { DentalPatientScreen } from '@modules/service-business/ui/DentalPatientScreen'
 import { RecallListScreen } from '@modules/service-business/ui/RecallListScreen'
+import { ChronicRecallListScreen } from '@modules/service-business/ui/ChronicRecallListScreen'
 // Phase 26 — Physio
 import { PhysioPatientScreen } from '@modules/service-business/ui/PhysioPatientScreen'
 import { SessionPacksScreen } from '@modules/service-business/ui/SessionPacksScreen'
@@ -392,6 +393,7 @@ export function AppRouter() {
         {/* Phase 25 — Dental */}
         <Route path="/dental/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><DentalPatientScreen /></ProtectedRoute>} />
         <Route path="/dental/recalls" element={<ProtectedRoute permission="billing.view"><RecallListScreen /></ProtectedRoute>} />
+        <Route path="/clinical/chronic-recalls" element={<ProtectedRoute permission="billing.view"><ChronicRecallListScreen /></ProtectedRoute>} />
         {/* Phase 26 — Physio */}
         <Route path="/physio/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><PhysioPatientScreen /></ProtectedRoute>} />
         <Route path="/physio/session-packs" element={<ProtectedRoute permission="billing.view"><SessionPacksScreen /></ProtectedRoute>} />

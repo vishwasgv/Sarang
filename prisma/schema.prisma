@@ -842,6 +842,7 @@ model Customer {
   toothRecords              ToothRecord[] // Phase 25 — Dental
   treatmentPlans            TreatmentPlan[] // Phase 25 — Dental
   recallRecord              RecallRecord? // Phase 25 — Dental
+  chronicConditionRecords   ChronicConditionRecord[] // Phase 67 — GP Clinic
   treatmentPhases           TreatmentPhase[] // Phase 26 — Physio
   exercisePrograms          ExerciseProgram[] // Phase 26 — Physio
   sessionPacks              ClientSessionPack[] // Phase 26 — Physio
@@ -3526,6 +3527,52 @@ model RecallRecord {
   patient Customer @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([nextRecallDate])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 67 — GP CLINIC: CHRONIC-CONDITION RECALL
+// Section 9.1 item 19 (GREENFIELD). Deliberately a SEPARATE model from
+// RecallRecord above, not a reuse of it: RecallRecord.patientId is @unique
+// (Dental's one-hygiene-cycle-per-patient design), but a GP patient can carry
+// several independently-tracked chronic conditions (diabetes q3m, hypertension
+// q1m) at once. ChronicRecallComplianceLog exists because RecallRecord's own
+// upsert-overwrites-in-place design has no way to answer "was the LAST recall
+// actually met on time" after the fact — each upsert here first snapshots the
+// outcome of the recall period it's closing, before overwriting it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ChronicConditionRecord {
+  id             String    @id @default(cuid())
+  patientId      String
+  conditionName  String // free text — e.g. "Diabetes", "Hypertension"; GP conditions are too varied for a closed enum like Dental's recallType
+  diagnosedDate  DateTime?
+  lastVisitDate  DateTime
+  nextRecallDate DateTime
+  isActive       Boolean   @default(true) // condition resolved/no-longer-tracked — kept, not deleted, so compliance history survives
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient        Customer                     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  complianceLogs ChronicRecallComplianceLog[]
+
+  @@index([patientId])
+  @@index([nextRecallDate])
+  @@index([isActive])
+}
+
+model ChronicRecallComplianceLog {
+  id            String   @id @default(cuid())
+  recordId      String
+  scheduledDate DateTime // the nextRecallDate that was due
+  actualDate    DateTime // the date the follow-up actually happened (new lastVisitDate at upsert time)
+  onTime        Boolean // actualDate <= scheduledDate
+  createdAt     DateTime @default(now())
+
+  record ChronicConditionRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@index([scheduledDate])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

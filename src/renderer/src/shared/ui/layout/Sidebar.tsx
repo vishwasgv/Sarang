@@ -128,6 +128,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Old-Metal Exchange', path: '/jewellery/exchanges', icon: Repeat, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   // Phase 25 — Dental
   { label: 'Recall Schedule', path: '/dental/recalls', icon: Smile, permissionKey: 'billing.view', requiredModule: 'dental_recall' },
+  // Phase 67 — GP Clinic
+  { label: 'Chronic Recall', path: '/clinical/chronic-recalls', icon: Stethoscope, permissionKey: 'billing.view', requiredModule: 'chronic_recall' },
   // Phase 26 — Physio
   { label: 'Session Packs', path: '/physio/session-packs', icon: Package, permissionKey: 'billing.view', requiredModule: 'session_packs' },
   // Phase 27 — Salon, Gym, Driving School

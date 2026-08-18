@@ -36,3 +36,16 @@ The **Token Queue** screen manages same-day walk-in patients without needing a p
 - **Call Next** to call the next waiting token.
 
 Each token in the list can be called, marked seen, skipped, or reset back to waiting — the queue re-sorts itself into "Currently Called," "Waiting," and "Completed" sections automatically. This is entirely separate from the pre-booked Appointments list — it's built for the reality of patients who simply walk in and wait their turn.
+
+## Chronic Condition Recall
+
+For patients with ongoing conditions — diabetes, hypertension, and similar — that need periodic follow-up regardless of whether they book a fresh appointment, the **Chronic Recall** screen (in the sidebar) lets you tag a patient with a condition and a recall schedule, separate from any single visit.
+
+- **Tag Condition** — pick the patient, name the condition (common ones like Diabetes and Hypertension are suggested, but you can type any condition), optionally record when it was diagnosed, and set this visit's date plus the next recall date you want them back by.
+- The list bands every tracked patient into **Overdue**, **Due Soon** (within 7 days), **This Month**, and **Upcoming** — click any patient to log their actual follow-up visit and set the next recall date, the same way you set the first one.
+- Each time you log a follow-up, Sarang quietly records whether it happened on or before the recall date that was due. Over time this builds a real **compliance percentage** — shown at the top of the screen and on your Dashboard's Chronic Recall card — telling you what share of recalls are actually being kept, not just how many are scheduled.
+- A patient can be tagged with more than one condition at once (e.g. both diabetes and hypertension), each tracked and recalled independently.
+
+This is separate from the Consultation Note's own one-time **Follow-up** date above — that's for "come back after this specific visit"; Chronic Recall is for "this patient has an ongoing condition I need to keep checking on, visit after visit."
+
+The same compliance figure also has its own dedicated report — open **Reports → Recall Compliance**, pick a date range, and you'll see a gauge showing what percentage of recalls closed in that window were kept on time, plus a breakdown by condition (so you can tell, for example, that your diabetes recalls are running at 90% but hypertension is slipping).

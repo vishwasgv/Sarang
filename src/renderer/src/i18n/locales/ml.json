@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "രോഗി ഫലങ്ങൾ ഫോക്കസ്",
       "sessionsScored": "സ്കോർ ചെയ്ത സെഷനുകൾ",
       "avgPainScore": "ശരാശരി വേദന സ്കോർ",
-      "avgFunctionalScore": "ശരാശരി പ്രവർത്തന സ്കോർ"
+      "avgFunctionalScore": "ശരാശരി പ്രവർത്തന സ്കോർ",
+      "chronicRecallTitle": "ക്രോണിക് റീകോൾ ഫോക്കസ്"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "ബജറ്റ് vs യഥാർത്ഥം",
         "description": "ഈ മാസത്തെ ബജറ്റ് ചെയ്ത കണക്കുകൾ യഥാർത്ഥ ചെലവിനൊപ്പം, ഓരോ ചെലവ് കേന്ദ്രത്തിനും അക്കൗണ്ടിനും അനുസരിച്ച്"
+      },
+      "chronicRecallCompliance": {
+        "label": "റീകോൾ കംപ്ലയൻസ്",
+        "description": "എത്ര ക്രോണിക് കണ്ടീഷൻ റീകോളുകൾ സമയബന്ധിതമായി പിന്തുടർന്നു, മൊത്തത്തിലും ഓരോ അവസ്ഥ പ്രകാരവും."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "നൽകിയ ആകെ കിഴിവ്",
       "discountedLines": "കിഴിവ് നൽകിയത് / ആകെ ലൈനുകൾ",
       "discountIncidence": "കിഴിവ് നൽകിയ ലൈനുകൾ",
-      "avgDiscountPercent": "ശരാശരി കിഴിവ്"
+      "avgDiscountPercent": "ശരാശരി കിഴിവ്",
+      "recallsClosed": "അടച്ച റീകോളുകൾ",
+      "compliancePercent": "കംപ്ലയൻസ് %"
     },
     "aging": {
       "current": "നിലവിലുള്ളത്",
@@ -1868,7 +1875,8 @@
       "spendByItem": "ഇനം പ്രകാരം ചെലവ്",
       "purchaseDetails": "വാങ്ങൽ വിശദാംശങ്ങൾ",
       "apAgingByVendor": "വിൽപ്പനക്കാരൻ പ്രകാരം അടയ്ക്കാനുള്ള കാലാവധി",
-      "untaggedNote": "ടാഗ് ചെയ്യാത്തത്: ചെലവ് കേന്ദ്രം സെറ്റ് ചെയ്യാത്ത ഇടപാടുകളിൽ നിന്നുള്ള {{revenue}} വരുമാനവും {{expense}} ചെലവും."
+      "untaggedNote": "ടാഗ് ചെയ്യാത്തത്: ചെലവ് കേന്ദ്രം സെറ്റ് ചെയ്യാത്ത ഇടപാടുകളിൽ നിന്നുള്ള {{revenue}} വരുമാനവും {{expense}} ചെലവും.",
+      "complianceByCondition": "അവസ്ഥ പ്രകാരം കംപ്ലയൻസ്"
     },
     "empty": {
       "invoices": "ഈ തീയതി പരിധിയിൽ ബില്ലുകൾ ഇല്ല.",
@@ -1917,7 +1925,8 @@
       "placements": "ഈ തീയതി പരിധിയിൽ പ്ലേസ്‌മെന്റുകൾ ഇല്ല.",
       "drawingRegister": "ഈ തീയതി പരിധിയിൽ ഡ്രോയിംഗ് പതിപ്പുകൾ ഇല്ല.",
       "siteVisitLog": "ഈ തീയതി പരിധിയിൽ സൈറ്റ് സന്ദർശനങ്ങൾ ഇല്ല.",
-      "noData": "ഈ കാലയളവിലേക്ക് രേഖകളൊന്നും കണ്ടെത്തിയില്ല."
+      "noData": "ഈ കാലയളവിലേക്ക് രേഖകളൊന്നും കണ്ടെത്തിയില്ല.",
+      "chronicRecallCompliance": "ഈ തീയതി പരിധിയിൽ റീകോൾ കാലയളവുകളൊന്നും അവസാനിച്ചിട്ടില്ല."
     },
     "col": {
       "invoiceNo": "ബിൽ #",
@@ -2097,7 +2106,11 @@
       "projected": "പ്രവചിച്ചത്",
       "paidInvoiceCount": "അടച്ച ഇൻവോയ്‌സുകൾ",
       "avgDaysToPay": "പണമടയ്ക്കാൻ ശരാശരി ദിവസങ്ങൾ",
-      "outstandingInvoiceCount": "കുടിശ്ശികയുള്ള ഇൻവോയ്‌സുകൾ"
+      "outstandingInvoiceCount": "കുടിശ്ശികയുള്ള ഇൻവോയ്‌സുകൾ",
+      "condition": "അവസ്ഥ",
+      "recallsClosed": "അടച്ച റീകോളുകൾ",
+      "onTime": "സമയത്ത്",
+      "compliancePercent": "കംപ്ലയൻസ് %"
     },
     "legend": {
       "schemeCost": "സ്കീം ചെലവ്",

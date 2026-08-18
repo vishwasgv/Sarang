@@ -187,6 +187,11 @@ export type TemplateModule =
   // happens to sell both consumable and serialized-equipment stock can turn
   // it on too.
   | 'agri_dashboard'
+  // Phase 67 §9.1 item 19 — GP Clinic chronic-condition recall (diabetes/
+  // hypertension follow-up tracking + compliance report). A GP_CLINIC
+  // default below — core to that vertical, not an optional add-on — but a
+  // plain flag like dental_recall/dental_chart above.
+  | 'chronic_recall'
 
 export interface TemplateConfig {
   businessType: string
@@ -325,7 +330,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // Appointment.petId (added back in Phase 23) — the module flag was simply
   // never turned on for this vertical.
   VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'visit_notes', 'token_queue'],
-  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue'],
+  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue', 'chronic_recall'],
   // 'specialist_referral' (Phase 46) is the flag distinguishing this vertical's extra
   // referral fields on the visit note — GP_CLINIC/PHYSIO_CLINIC also have 'visit_notes'
   // but not this, since referral-in/referral-out fields are specialist-specific.

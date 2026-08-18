@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "ರೋಗಿ ಫಲಿತಾಂಶ ಫೋಕಸ್",
       "sessionsScored": "ಸ್ಕೋರ್ ಮಾಡಿದ ಸೆಷನ್‌ಗಳು",
       "avgPainScore": "ಸರಾಸರಿ ನೋವು ಸ್ಕೋರ್",
-      "avgFunctionalScore": "ಸರಾಸರಿ ಕ್ರಿಯಾತ್ಮಕ ಸ್ಕೋರ್"
+      "avgFunctionalScore": "ಸರಾಸರಿ ಕ್ರಿಯಾತ್ಮಕ ಸ್ಕೋರ್",
+      "chronicRecallTitle": "ದೀರ್ಘಕಾಲದ ಸ್ಥಿತಿ ಜ್ಞಾಪನೆ ಫೋಕಸ್"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "ಬಜೆಟ್ ವಿರುದ್ಧ ವಾಸ್ತವ",
         "description": "ಈ ತಿಂಗಳ ಬಜೆಟ್ ಮಾಡಿದ ಅಂಕಿಅಂಶಗಳು ನೈಜ ಖರ್ಚಿನ ಜೊತೆಗೆ, ಪ್ರತಿ ವೆಚ್ಚ ಕೇಂದ್ರ ಮತ್ತು ಖಾತೆಯ ಪ್ರಕಾರ"
+      },
+      "chronicRecallCompliance": {
+        "label": "ರಿಕಾಲ್ ಅನುಸರಣೆ",
+        "description": "ಎಷ್ಟು ದೀರ್ಘಕಾಲದ ಸ್ಥಿತಿ ರಿಕಾಲ್‌ಗಳನ್ನು ಸಮಯಕ್ಕೆ ಅನುಸರಿಸಲಾಗಿದೆ, ಒಟ್ಟಾರೆ ಮತ್ತು ಪ್ರತಿ ಸ್ಥಿತಿಯ ಪ್ರಕಾರ."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "ಒಟ್ಟು ನೀಡಿದ ರಿಯಾಯಿತಿ",
       "discountedLines": "ರಿಯಾಯಿತಿ / ಒಟ್ಟು ಸಾಲುಗಳು",
       "discountIncidence": "ರಿಯಾಯಿತಿ ನೀಡಿದ ಸಾಲುಗಳು",
-      "avgDiscountPercent": "ಸರಾಸರಿ ರಿಯಾಯಿತಿ"
+      "avgDiscountPercent": "ಸರಾಸರಿ ರಿಯಾಯಿತಿ",
+      "recallsClosed": "ಮುಚ್ಚಲಾದ ರಿಕಾಲ್‌ಗಳು",
+      "compliancePercent": "ಅನುಸರಣೆ %"
     },
     "aging": {
       "current": "ಪ್ರಸ್ತುತ",
@@ -1868,7 +1875,8 @@
       "spendByItem": "ವಸ್ತುವಿನ ಮೂಲಕ ಖರ್ಚು",
       "purchaseDetails": "ಖರೀದಿ ವಿವರಗಳು",
       "apAgingByVendor": "ಮಾರಾಟಗಾರರ ಮೂಲಕ ಪಾವತಿಸಬೇಕಾದ ವಯಸ್ಸು",
-      "untaggedNote": "ಟ್ಯಾಗ್ ಮಾಡದಿರುವುದು: ಯಾವುದೇ ವೆಚ್ಚ ಕೇಂದ್ರ ಹೊಂದಿಸದ ವಹಿವಾಟುಗಳಿಂದ {{revenue}} ಆದಾಯ ಮತ್ತು {{expense}} ವೆಚ್ಚ."
+      "untaggedNote": "ಟ್ಯಾಗ್ ಮಾಡದಿರುವುದು: ಯಾವುದೇ ವೆಚ್ಚ ಕೇಂದ್ರ ಹೊಂದಿಸದ ವಹಿವಾಟುಗಳಿಂದ {{revenue}} ಆದಾಯ ಮತ್ತು {{expense}} ವೆಚ್ಚ.",
+      "complianceByCondition": "ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಅನುಸರಣೆ"
     },
     "empty": {
       "invoices": "ಈ ದಿನಾಂಕ ಶ್ರೇಣಿಯಲ್ಲಿ ಯಾವುದೇ ಬಿಲ್‌ಗಳಿಲ್ಲ.",
@@ -1917,7 +1925,8 @@
       "placements": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಯಾವುದೇ ಪ್ಲೇಸ್‌ಮೆಂಟ್‌ಗಳಿಲ್ಲ.",
       "drawingRegister": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಯಾವುದೇ ಡ್ರಾಯಿಂಗ್ ಪರಿಷ್ಕರಣೆಗಳಿಲ್ಲ.",
       "siteVisitLog": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಯಾವುದೇ ಸೈಟ್ ವಿಸಿಟ್‌ಗಳಿಲ್ಲ.",
-      "noData": "ಈ ಅವಧಿಗೆ ಯಾವುದೇ ದಾಖಲೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ."
+      "noData": "ಈ ಅವಧಿಗೆ ಯಾವುದೇ ದಾಖಲೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+      "chronicRecallCompliance": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಯಾವುದೇ ರಿಕಾಲ್ ಅವಧಿ ಮುಚ್ಚಲಾಗಿಲ್ಲ."
     },
     "col": {
       "invoiceNo": "ಬಿಲ್ #",
@@ -2097,7 +2106,11 @@
       "projected": "ಅಂದಾಜಿಸಲಾಗಿದೆ",
       "paidInvoiceCount": "ಪಾವತಿಸಿದ ಇನ್‌ವಾಯ್ಸ್‌ಗಳು",
       "avgDaysToPay": "ಪಾವತಿಗೆ ಸರಾಸರಿ ದಿನಗಳು",
-      "outstandingInvoiceCount": "ಬಾಕಿ ಇನ್‌ವಾಯ್ಸ್‌ಗಳು"
+      "outstandingInvoiceCount": "ಬಾಕಿ ಇನ್‌ವಾಯ್ಸ್‌ಗಳು",
+      "condition": "ಸ್ಥಿತಿ",
+      "recallsClosed": "ಮುಚ್ಚಲಾದ ರಿಕಾಲ್‌ಗಳು",
+      "onTime": "ಸಮಯಕ್ಕೆ",
+      "compliancePercent": "ಅನುಸರಣೆ %"
     },
     "legend": {
       "schemeCost": "ಸ್ಕೀಮ್ ವೆಚ್ಚ",

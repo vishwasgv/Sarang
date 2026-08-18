@@ -272,7 +272,8 @@
       "outcomeProgressTitle": "రోగి ఫలితాల ఫోకస్",
       "sessionsScored": "స్కోర్ చేసిన సెషన్‌లు",
       "avgPainScore": "సగటు నొప్పి స్కోరు",
-      "avgFunctionalScore": "సగటు ఫంక్షనల్ స్కోరు"
+      "avgFunctionalScore": "సగటు ఫంక్షనల్ స్కోరు",
+      "chronicRecallTitle": "దీర్ఘకాలిక రీకాల్ ఫోకస్"
     }
   },
   "billing": {
@@ -1657,6 +1658,10 @@
       "budgetVsActual": {
         "label": "బడ్జెట్ Vs వాస్తవం",
         "description": "ఈ నెల బడ్జెట్ చేసిన గణాంకాలు వాస్తవ ఖర్చుతో పాటు, ప్రతి వ్యయ కేంద్రం మరియు ఖాతా ప్రకారం"
+      },
+      "chronicRecallCompliance": {
+        "label": "రీకాల్ కంప్లయన్స్",
+        "description": "ఎన్ని దీర్ఘకాలిక పరిస్థితి రీకాల్‌లు సకాలంలో అనుసరించబడ్డాయి, మొత్తం మరియు ప్రతి పరిస్థితి వారీగా."
       }
     },
     "summary": {
@@ -1784,7 +1789,9 @@
       "totalDiscountGiven": "మొత్తం ఇచ్చిన తగ్గింపు",
       "discountedLines": "తగ్గింపు ఇచ్చిన / మొత్తం లైన్లు",
       "discountIncidence": "తగ్గింపు ఇచ్చిన లైన్లు",
-      "avgDiscountPercent": "సగటు తగ్గింపు"
+      "avgDiscountPercent": "సగటు తగ్గింపు",
+      "recallsClosed": "మూసివేసిన రీకాల్స్",
+      "compliancePercent": "కంప్లయన్స్ %"
     },
     "aging": {
       "current": "ప్రస్తుత",
@@ -1868,7 +1875,8 @@
       "spendByItem": "వస్తువు వారీగా ఖర్చు",
       "purchaseDetails": "కొనుగోలు వివరాలు",
       "apAgingByVendor": "విక్రేత వారీగా చెల్లించవలసిన వయస్సు",
-      "untaggedNote": "ట్యాగ్ చేయని: వ్యయ కేంద్రం సెట్ చేయని లావాదేవీల నుండి {{revenue}} ఆదాయం మరియు {{expense}} ఖర్చు."
+      "untaggedNote": "ట్యాగ్ చేయని: వ్యయ కేంద్రం సెట్ చేయని లావాదేవీల నుండి {{revenue}} ఆదాయం మరియు {{expense}} ఖర్చు.",
+      "complianceByCondition": "పరిస్థితి వారీగా కంప్లయన్స్"
     },
     "empty": {
       "invoices": "ఈ తేదీ పరిధిలో బిల్లులు లేవు.",
@@ -1917,7 +1925,8 @@
       "placements": "ఈ తేదీ పరిధిలో ప్లేస్‌మెంట్‌లు లేవు.",
       "drawingRegister": "ఈ తేదీ పరిధిలో డ్రాయింగ్ రివిజన్లు లేవు.",
       "siteVisitLog": "ఈ తేదీ పరిధిలో సైట్ విజిట్‌లు లేవు.",
-      "noData": "ఈ కాలానికి రికార్డులు కనుగొనబడలేదు."
+      "noData": "ఈ కాలానికి రికార్డులు కనుగొనబడలేదు.",
+      "chronicRecallCompliance": "ఈ తేదీ పరిధిలో ఏ రీకాల్ వ్యవధి ముగియలేదు."
     },
     "col": {
       "invoiceNo": "బిల్లు #",
@@ -2097,7 +2106,11 @@
       "projected": "అంచనా వేయబడింది",
       "paidInvoiceCount": "చెల్లించిన ఇన్‌వాయిస్‌లు",
       "avgDaysToPay": "చెల్లింపుకు సగటు రోజులు",
-      "outstandingInvoiceCount": "బకాయి ఇన్‌వాయిస్‌లు"
+      "outstandingInvoiceCount": "బకాయి ఇన్‌వాయిస్‌లు",
+      "condition": "పరిస్థితి",
+      "recallsClosed": "మూసివేసిన రీకాల్స్",
+      "onTime": "సమయానికి",
+      "compliancePercent": "కంప్లయన్స్ %"
     },
     "legend": {
       "schemeCost": "స్కీమ్ ఖర్చు",

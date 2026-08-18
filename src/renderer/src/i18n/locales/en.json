@@ -240,7 +240,8 @@
       "outcomeProgressTitle": "Patient Outcomes Focus",
       "sessionsScored": "Sessions Scored",
       "avgPainScore": "Avg. Pain Score",
-      "avgFunctionalScore": "Avg. Functional Score"
+      "avgFunctionalScore": "Avg. Functional Score",
+      "chronicRecallTitle": "Chronic Recall Focus"
     },
     "todaySales": "Today's Sales",
     "totalInvoices": "Total Invoices",
@@ -1692,6 +1693,10 @@
       "schemeCostVsVolume": {
         "label": "Scheme Cost vs. Volume",
         "description": "Correlates what your pricing schemes cost against how much of the covered products actually sold, by week."
+      },
+      "chronicRecallCompliance": {
+        "label": "Recall Compliance",
+        "description": "How many chronic-condition recalls were followed up on time, overall and by condition."
       }
     },
     "summary": {
@@ -1784,6 +1789,8 @@
       "focUnitsGiven": "FOC Units Given",
       "activeSchemes": "Active Schemes",
       "coveredProducts": "Covered Products",
+      "recallsClosed": "Recalls Closed",
+      "compliancePercent": "Compliance %",
       "delivered": "Delivered",
       "avgTurnaround": "Avg Turnaround",
       "avgTurnaroundSub": "hours, order to report",
@@ -1883,6 +1890,7 @@
       "byDoctor": "By Prescribing Doctor",
       "schemeCostVsVolumeChart": "Scheme Cost vs. Covered-Product Volume",
       "schemesInPeriod": "Schemes in This Period",
+      "complianceByCondition": "Compliance by Condition",
       "prescriptionRegister": "Prescription Drug Sales Register",
       "batchDetails": "Batch Details",
       "byStage": "By Workflow Stage",
@@ -1952,7 +1960,8 @@
       "testScores": "No test scores recorded yet.",
       "complianceTasks": "No pending or overdue compliance tasks.",
       "prescriptionDrugSales": "No prescription drug sales in this date range.",
-      "schemeCostVsVolume": "No pricing schemes ran in this date range."
+      "schemeCostVsVolume": "No pricing schemes ran in this date range.",
+      "chronicRecallCompliance": "No recall periods closed in this date range."
     },
     "col": {
       "invoiceNo": "Invoice #",
@@ -1962,6 +1971,10 @@
       "schemeName": "Scheme",
       "ruleType": "Rule Type",
       "focUnitsGiven": "FOC Units Given",
+      "condition": "Condition",
+      "recallsClosed": "Recalls Closed",
+      "onTime": "On Time",
+      "compliancePercent": "Compliance %",
       "billNumber": "Bill #",
       "billCount": "Bills",
       "itemCount": "Items",
