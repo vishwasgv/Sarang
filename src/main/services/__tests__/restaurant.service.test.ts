@@ -26,6 +26,11 @@ function makeMockDb(kotStatus: string) {
     },
     restaurantTable: { update: vi.fn() },
     recipe: { findUnique: vi.fn().mockResolvedValue(null) },
+    // Phase 67 §9.1 — Restaurant's "Combo/thali auto-pricing" signature win.
+    // Empty by default (the item isn't a kit) so every pre-existing test's
+    // behavior is unchanged; kit-expansion tests below override this.
+    kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
+    inventory: { findUnique: vi.fn().mockResolvedValue(null) },
   }
   return db
 }
@@ -65,6 +70,85 @@ describe('restaurant.service.updateKOTStatus', () => {
     // but must not re-deduct ingredients since kot.status === 'DONE' already.
     expect(res.success).toBe(true)
     expect(inventoryService.adjustStock).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 67 §9.1 — Restaurant's "Combo/thali auto-pricing" signature win.
+// A combo/thali is a Phase 64 kit (Product.isKit + KitComponent) — kits have
+// no Recipe of their own (recipes are per-dish), so marking a combo's KOT
+// DONE used to silently skip ingredient-level deduction for every dish
+// inside it, even though billing.service.ts's explodeKitComponentsTx
+// already correctly deducts each dish's own top-level stock at sale time.
+describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient deduction', () => {
+  it('expands a kit line into its component dishes and deducts each dish\'s own recipe ingredients', async () => {
+    const db = makeMockDb('PENDING')
+    db.kOT.findUnique = vi.fn().mockResolvedValue({
+      id: 'kot-1', status: 'PENDING', tableId: null,
+      invoice: { items: [{ productId: 'thali-kit', quantity: 1, product: { isKit: true } }] }
+    })
+    // thali-kit explodes into 2 dishes: 1x Dal, 1x Rice
+    db.kitComponent.findMany = vi.fn().mockResolvedValue([
+      { componentProductId: 'dal', quantity: 1 },
+      { componentProductId: 'rice', quantity: 1 }
+    ])
+    db.recipe.findUnique = vi.fn().mockImplementation(({ where }: { where: { productId: string } }) => {
+      if (where.productId === 'dal') return Promise.resolve({ recipeName: 'Dal', items: [{ ingredientProductId: 'lentils', quantity: 0.2 }] })
+      if (where.productId === 'rice') return Promise.resolve({ recipeName: 'Rice', items: [{ ingredientProductId: 'raw-rice', quantity: 0.15 }] })
+      return Promise.resolve(null)
+    })
+    db.inventory.findUnique = vi.fn().mockResolvedValue({ quantity: 10 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateKOTStatus('kot-1', 'DONE')
+
+    expect(res.success).toBe(true)
+    expect(db.kitComponent.findMany).toHaveBeenCalledWith({ where: { kitProductId: 'thali-kit' } })
+    // Both component dishes' own recipes get looked up, not the kit's own productId
+    expect(db.recipe.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'dal' } }))
+    expect(db.recipe.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'rice' } }))
+    expect(db.recipe.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'thali-kit' } }))
+    // Ingredients for BOTH dishes get deducted, not just one
+    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'lentils', quantity: 9.8 }), undefined
+    )
+    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'raw-rice', quantity: 9.85 }), undefined
+    )
+  })
+
+  it('multiplies component quantity by both the kit-component ratio and the quantity of kits sold', async () => {
+    const db = makeMockDb('PENDING')
+    db.kOT.findUnique = vi.fn().mockResolvedValue({
+      id: 'kot-1', status: 'PENDING', tableId: null,
+      // 3 thali kits sold, each needs 2x Dal per the kit's own component ratio
+      invoice: { items: [{ productId: 'thali-kit', quantity: 3, product: { isKit: true } }] }
+    })
+    db.kitComponent.findMany = vi.fn().mockResolvedValue([{ componentProductId: 'dal', quantity: 2 }])
+    db.recipe.findUnique = vi.fn().mockResolvedValue({ recipeName: 'Dal', items: [{ ingredientProductId: 'lentils', quantity: 0.2 }] })
+    db.inventory.findUnique = vi.fn().mockResolvedValue({ quantity: 100 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateKOTStatus('kot-1', 'DONE')
+
+    // 3 kits x 2 dal-per-kit x 0.2 lentils-per-dal = 1.2 lentils needed
+    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'lentils', quantity: 98.8 }), undefined
+    )
+  })
+
+  it('a non-kit item still deducts its own recipe directly, unchanged from before this fix', async () => {
+    const db = makeMockDb('PENDING')
+    // kitComponent.findMany returns [] (default) — this item is a plain dish, not a kit
+    db.recipe.findUnique = vi.fn().mockResolvedValue({ recipeName: 'Butter Chicken', items: [{ ingredientProductId: 'chicken', quantity: 0.25 }] })
+    db.inventory.findUnique = vi.fn().mockResolvedValue({ quantity: 50 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateKOTStatus('kot-1', 'DONE')
+
+    expect(db.recipe.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'prod-1' } }))
+    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'chicken', quantity: 49.5 }), undefined
+    )
   })
 })
 

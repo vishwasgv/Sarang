@@ -32,6 +32,10 @@ Abra **Análise de pendências** para ver sua exposição total de crédito entr
 
 Defina um **limite de crédito** para um cliente a partir do seu registro em **Clientes**, e o Sarang bloqueia qualquer nova venda a *crédito* (do Faturamento ou da Entrada de Pedidos em Atacado) que faça o saldo pendente dele ultrapassar esse limite — rejeitada diretamente no momento de salvar, com uma mensagem mostrando o saldo pendente dele, o valor da nova nota e o limite dele. Isso se aplica apenas a vendas pelo método Crédito; vendas em Dinheiro, UPI, Cartão e Divididas não são afetadas. Um limite de crédito de 0 significa que nenhum limite é imposto.
 
+## Relatório de Custo do Esquema vs. Volume
+
+Se você executa esquemas de preços (Compre-X-Leve-Y-Grátis ou descontos por faixa — configure-os em Configurações → Esquemas de Preços), abra **Custo do Esquema vs. Volume** em Relatórios para ver se eles realmente estão funcionando: um gráfico mostra quanto o esquema custou (o valor das unidades gratuitas concedidas, ou o valor do desconto para um esquema por faixa) ao lado de quantas unidades do produto coberto realmente foram vendidas, semana a semana, além de um detalhamento de custo por esquema abaixo. Esta é uma comparação lado a lado, não uma afirmação de que o esquema *causou* o volume — o Sarang não tem como saber quanto você teria vendido sem o esquema, então leia o gráfico como evidência para julgar você mesmo, não como um veredito.
+
 ## Logística e Cadeia de Suprimentos
 
 Como o modelo padrão do Distribuidor inclui os módulos de Logística, você também tem **Frota**, **Transportadoras**, **Remessas**, **Nota de Recebimento (GRN)**, **Guia de Remessa**, **Livro de Fretes** e **Análise de Logística** para rastrear seus próprios veículos de entrega e as remessas de fornecedores — veja as telas de Logística sob esses nomes na barra lateral.

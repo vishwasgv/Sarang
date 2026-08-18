@@ -28,6 +28,10 @@ Pada layar Billing, gunakan **Tambah Tip / Biaya Layanan** untuk menambahkan bar
 
 Pada layar Products, alihkan sebuah item menu mana pun menjadi **86** (istilah slang dapur untuk "stok habis untuk hari ini") untuk langsung menyembunyikannya dari keranjang billing dan menu QR yang menghadap pelanggan, tanpa menonaktifkan produk itu sendiri — cocok untuk sebuah hidangan yang habis terjual untuk hari itu tetapi akan kembali ke menu besok.
 
+## Harga Combo / Thali
+
+Buat combo atau thali sebagai item menu seperti produk lainnya, lalu buka untuk diedit dan gunakan **Manage Kit Components** untuk menambahkan masing-masing hidangan yang menyusunnya dan berapa banyak masing-masing. Tetapkan harga jual combo itu sendiri pada produknya — ini sepenuhnya independen dari berapa harga hidangan individual jika dijual terpisah, sehingga thali dapat diberi harga sebagai penawaran paket sungguhan, bukan jumlah dari bagian-bagiannya. Menjual combo menagihnya sebagai satu baris yang bersih, tetapi di baliknya mengurangi stok setiap hidangan yang dikandungnya dengan benar, dan menandai tiket dapurnya sebagai **Mark Done** juga mengurangi bahan-bahan di balik hidangan-hidangan tersebut dengan benar — sama seperti jika setiap hidangan dipesan secara terpisah.
+
 ## Kitchen Order Tickets (KOT)
 
 Sebuah KOT adalah salinan dapur dari sebuah pesanan. Setelah membuat pesanan di **Penagihan**, buka faktur tersebut dan ketuk **Kirim ke Dapur** untuk membuat KOT untuknya. Dari **Kitchen Order Tickets** di sidebar, staf dapur melihat setiap tiket dikelompokkan berdasarkan status — Pending, In Progress, Done, Cancelled — beserta item dan kuantitasnya, dan memajukan masing-masing dengan satu ketukan (**Start Cooking** → **Mark Done**), atau **Batal**. Setiap tiket juga bisa langsung dicetak ke printer dapur Anda.

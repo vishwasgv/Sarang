@@ -28,6 +28,10 @@ Sur l'écran Facturation, utilisez **Ajouter un pourboire / frais de service** p
 
 Sur l'écran Produits, basculez n'importe quel article du menu en **86** (argot de cuisine pour « en rupture pour aujourd'hui ») pour le masquer instantanément du panier de facturation et du menu QR destiné aux clients, sans désactiver le produit lui-même — parfait pour un plat épuisé pour la journée mais qui reviendra au menu demain.
 
+## Tarification Combo / Thali
+
+Créez un combo ou un thali comme un article de menu, comme n'importe quel autre produit, puis ouvrez-le en modification et utilisez **Manage Kit Components** pour ajouter les plats individuels qui le composent et la quantité de chacun. Définissez le prix de vente propre du combo sur le produit lui-même — il est entièrement indépendant de ce que coûteraient les plats individuels séparément, afin qu'un thali puisse être tarifé comme une véritable offre groupée, pas la somme de ses parties. Vendre un combo le facture sur une seule ligne claire, mais en coulisses déduit correctement le stock de chaque plat qu'il contient, et marquer son ticket de cuisine **Mark Done** déduit également correctement les ingrédients derrière ces plats — comme si chaque plat avait été commandé séparément.
+
 ## Tickets de commande de cuisine (KOT)
 
 Un KOT est la copie de cuisine d'une commande. Après avoir enregistré une commande dans **Facturation**, ouvrez la facture et appuyez sur **Envoyer en cuisine** pour créer un KOT correspondant. Depuis **Tickets de commande de cuisine** dans la barre latérale, le personnel de cuisine voit chaque ticket regroupé par statut — En attente, En cours, Terminé, Annulé — avec ses articles et quantités, et fait avancer chacun d'un simple geste (**Commencer la cuisson** → **Marquer terminé**), ou l'**Annule**. Chaque ticket peut aussi être imprimé directement sur votre imprimante de cuisine.

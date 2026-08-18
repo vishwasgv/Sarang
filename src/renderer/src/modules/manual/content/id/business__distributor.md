@@ -32,6 +32,10 @@ Buka **Analisis Piutang** untuk melihat total eksposur kredit Anda di seluruh pe
 
 Berikan seorang pelanggan **batas kredit** dari catatannya di **Pelanggan**, dan Sarang memblokir penjualan *kredit* baru mana pun (dari Billing atau Bulk Order Entry) yang akan mendorong saldo tertunggak mereka melebihi batas itu — ditolak langsung saat disimpan dengan pesan yang menunjukkan saldo tertunggak mereka, jumlah faktur baru, dan batas mereka. Ini hanya berlaku untuk penjualan metode Kredit; penjualan Tunai, UPI, Kartu, dan Split-payment tidak terpengaruh. Batas kredit 0 berarti tidak ada batas yang diterapkan.
 
+## Laporan Biaya Skema vs. Volume
+
+Jika Anda menjalankan skema harga (Beli-X-Dapat-Y-Gratis atau diskon bertingkat — atur di Settings → Pricing Schemes), buka **Scheme Cost vs. Volume** di Reports untuk melihat apakah skema tersebut benar-benar berhasil: sebuah grafik menampilkan berapa biaya skema tersebut (nilai unit gratis yang diberikan, atau jumlah diskon untuk skema bertingkat) berdampingan dengan berapa banyak unit produk yang dicakup benar-benar terjual, minggu demi minggu, ditambah rincian biaya per skema di bawahnya. Ini adalah perbandingan berdampingan, bukan klaim bahwa skema *menyebabkan* volume tersebut — Sarang tidak memiliki cara untuk mengetahui berapa yang akan Anda jual tanpa skema tersebut, jadi baca grafik ini sebagai bukti untuk Anda nilai sendiri, bukan sebagai vonis.
+
 ## Logistics & Supply Chain
 
 Karena template default Distributor mencakup modul Logistics, Anda juga mendapatkan **Armada**, **Kurir**, **Pengiriman**, **Nota Penerimaan Barang**, **Surat Jalan**, **Buku Besar Ongkir**, dan **Analitik Logistik** untuk melacak kendaraan pengiriman Anda sendiri dan pengiriman dari pemasok — lihat layar Logistics di bawah nama-nama tersebut di sidebar.

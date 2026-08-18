@@ -421,6 +421,7 @@ export interface IpcChannels {
     drawingRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     siteVisitLog: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     prescriptionDrugSales: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    schemeCostVsVolume: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     logistics: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     attendance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     production: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>

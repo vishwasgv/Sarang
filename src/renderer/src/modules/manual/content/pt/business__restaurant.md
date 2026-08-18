@@ -28,6 +28,10 @@ Na tela de Faturamento, use **Adicionar gorjeta / taxa de serviço** para adicio
 
 Na tela de Produtos, marque qualquer item do cardápio como **86** (gíria de cozinha para "esgotado por hoje") para ocultá-lo instantaneamente do carrinho de faturamento e do cardápio QR voltado ao cliente, sem desativar o produto em si — perfeito para um prato que esgotou por hoje mas voltará ao cardápio amanhã.
 
+## Precificação de Combo / Thali
+
+Crie um combo ou thali como um item de cardápio igual a qualquer outro produto, depois abra-o para edição e use **Manage Kit Components** para adicionar os pratos individuais que o compõem e a quantidade de cada um. Defina o preço de venda próprio do combo no produto em si — ele é totalmente independente do que os pratos individuais custariam separadamente, para que um thali possa ser precificado como um verdadeiro pacote combinado, não a soma de suas partes. Vender um combo o fatura como uma única linha limpa, mas por baixo deduz corretamente o estoque de cada prato que ele contém, e marcar sua comanda de cozinha como **Mark Done** também deduz corretamente os ingredientes por trás desses pratos — assim como se cada prato tivesse sido pedido separadamente.
+
 ## Comandas de Cozinha (KOT)
 
 Uma KOT é a cópia do pedido que fica com a cozinha. Depois de lançar um pedido em **Faturamento**, abra a nota e toque em **Enviar para a Cozinha** para criar uma KOT para ela. Em **Comandas de Cozinha** na barra lateral, a equipe da cozinha vê todas as comandas agrupadas por status — Pendente, Em Andamento, Pronta, Cancelada — com seus itens e quantidades, e avança cada uma com um único toque (**Iniciar Preparo** → **Marcar como Pronta**), ou **Cancela** a comanda. Cada comanda também pode ser impressa diretamente na impressora da cozinha.

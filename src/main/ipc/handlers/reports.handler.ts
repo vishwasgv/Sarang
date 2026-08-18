@@ -418,6 +418,15 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report.
+  handle('reports:schemeCostVsVolume', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateSchemeCostVsVolumeReport(parsed.data)
+    return { success: true, data }
+  })
+
   handle('reports:logistics', async (payload) => {
     // Same fix as reports:projects/jobCards above — logistics is gated on
     // 'logistics.view' everywhere else (logistics-shipment.handler.ts,

@@ -1449,7 +1449,8 @@
       "jewellery": "Jewellery",
       "logistics": "Logistics",
       "rental": "Rental",
-      "hotel": "Hotel"
+      "hotel": "Hotel",
+      "distributor": "Distributor"
     },
     "defs": {
       "sales": {
@@ -1687,6 +1688,10 @@
       "prescriptionDrugSales": {
         "label": "Prescription Drug Sales",
         "description": "Register of Schedule H/H1 prescription-only medicine sales, with patient and doctor names."
+      },
+      "schemeCostVsVolume": {
+        "label": "Scheme Cost vs. Volume",
+        "description": "Correlates what your pricing schemes cost against how much of the covered products actually sold, by week."
       }
     },
     "summary": {
@@ -1775,6 +1780,10 @@
       "atRiskValue": "At-Risk Value (≤ 30 Days)",
       "totalSales": "Total Sales",
       "missingDetails": "Missing Details",
+      "totalSchemeCost": "Total Scheme Cost",
+      "focUnitsGiven": "FOC Units Given",
+      "activeSchemes": "Active Schemes",
+      "coveredProducts": "Covered Products",
       "delivered": "Delivered",
       "avgTurnaround": "Avg Turnaround",
       "avgTurnaroundSub": "hours, order to report",
@@ -1872,6 +1881,8 @@
       "byBucket": "By Expiry Bucket",
       "byBucketValue": "Value at Risk by Expiry Bucket",
       "byDoctor": "By Prescribing Doctor",
+      "schemeCostVsVolumeChart": "Scheme Cost vs. Covered-Product Volume",
+      "schemesInPeriod": "Schemes in This Period",
       "prescriptionRegister": "Prescription Drug Sales Register",
       "batchDetails": "Batch Details",
       "byStage": "By Workflow Stage",
@@ -1940,13 +1951,17 @@
       "variants": "No product variants found.",
       "testScores": "No test scores recorded yet.",
       "complianceTasks": "No pending or overdue compliance tasks.",
-      "prescriptionDrugSales": "No prescription drug sales in this date range."
+      "prescriptionDrugSales": "No prescription drug sales in this date range.",
+      "schemeCostVsVolume": "No pricing schemes ran in this date range."
     },
     "col": {
       "invoiceNo": "Invoice #",
       "invoiceDate": "Invoice Date",
       "doctorName": "Doctor",
       "rxDate": "Rx Date",
+      "schemeName": "Scheme",
+      "ruleType": "Rule Type",
+      "focUnitsGiven": "FOC Units Given",
       "billNumber": "Bill #",
       "billCount": "Bills",
       "itemCount": "Items",
@@ -2120,6 +2135,13 @@
       "daysUntilDue": "Days Until Due",
       "priority": "Priority",
       "projectTitle": "Project Title"
+    },
+    "legend": {
+      "schemeCost": "Scheme Cost",
+      "coveredVolume": "Covered-Product Volume"
+    },
+    "schemeCostVsVolume": {
+      "disclaimer": "This shows scheme cost and covered-product sales volume side by side so you can judge the correlation yourself — it doesn't (and can't) calculate what volume would have been without the scheme."
     },
     "val": {
       "walkIn": "Walk-in",

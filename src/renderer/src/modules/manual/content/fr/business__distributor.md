@@ -32,6 +32,10 @@ Ouvrez **Analyses des créances en cours** pour voir votre exposition totale au 
 
 Attribuez une **limite de crédit** à un client depuis sa fiche dans **Clients**, et Sarang bloque toute nouvelle vente à *crédit* (depuis Facturation ou Saisie de commande en gros) qui pousserait son solde en cours au-delà de cette limite — rejetée d'emblée à l'enregistrement avec un message montrant son solde en cours, le montant de la nouvelle facture, et sa limite. Cela ne s'applique qu'aux ventes de mode Crédit ; les ventes en Espèces, UPI, Carte, et Paiement fractionné ne sont pas affectées. Une limite de crédit de 0 signifie qu'aucune limite n'est appliquée.
 
+## Rapport Coût du Programme vs. Volume
+
+Si vous exécutez des programmes de prix (Achetez-X-Obtenez-Y-Gratuit ou remises par palier — configurez-les sous Paramètres → Programmes de Prix), ouvrez **Coût du Programme vs. Volume** dans Rapports pour voir s'ils fonctionnent vraiment : un graphique montre ce que le programme vous a coûté (la valeur des unités gratuites offertes, ou le montant de la remise pour un programme par palier) à côté du nombre d'unités du produit couvert réellement vendues, semaine par semaine, plus une ventilation du coût par programme en dessous. Il s'agit d'une comparaison côte à côte, pas d'une affirmation que le programme a *causé* le volume — Sarang n'a aucun moyen de savoir combien vous auriez vendu sans le programme, alors lisez le graphique comme une preuve à juger vous-même, pas comme un verdict.
+
 ## Logistique & Chaîne d'approvisionnement
 
 Comme le modèle par défaut de Distributeur inclut les modules Logistique, vous obtenez aussi **Flotte**, **Transporteurs**, **Expéditions**, **Bon de Réception**, **Bon de Livraison**, **Registre de Fret**, et **Analyses Logistiques** pour suivre vos propres véhicules de livraison et les expéditions fournisseurs — voir les écrans Logistique sous ces noms dans la barre latérale.

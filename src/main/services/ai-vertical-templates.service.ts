@@ -121,6 +121,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // keeps only batch expiry, unchanged.
     case 'PHARMACY': return ['inventory.batchExpiry', 'pharmacy.prescriptionVolumeByDoctor']
     case 'AGRI_INPUTS': return ['inventory.batchExpiry']
+    // Phase 67 §9.1 — DISTRIBUTOR previously had ZERO vertical AI templates
+    // (only appeared in LOGISTICS_BASED_TYPES, an unrelated module-defaults
+    // set) despite being a Section-1.2-named vertical — closing that gap
+    // alongside the new scheme-cost report itself, not deferring it.
+    case 'DISTRIBUTOR': return ['distributor.schemeCostVsVolume']
     // Added 2026-07-13 alongside the RETAIL/GENERAL/PLACEMENT_AGENCY gap
     // review — getPlacementKPIs() (placement.service.ts) already existed
     // and fit the same reuse pattern as every other template here; there
@@ -341,6 +346,25 @@ export async function executeVerticalTemplate(template: string, params: Record<s
           : 'No prescription sales recorded this period',
         details: r.byDoctor.slice(0, 5).map(d => `${d.doctorName}: ${d.salesCount} sales, ${formatAmountForSpeech(d.totalAmount, sym)}`),
         isEmpty: r.byDoctor.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Distributor's "Scheme cost vs. incremental volume"
+    // signature win. Reuses the SAME generateSchemeCostVsVolumeReport() the
+    // Reports screen's own report calls. Deliberately correlational phrasing
+    // ("alongside", not "caused") — this codebase has no counterfactual
+    // baseline, see the report function's own comment for why.
+    case 'distributor.schemeCostVsVolume': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateSchemeCostVsVolumeReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.activeSchemeCount > 0
+          ? `${r.summary.activeSchemeCount} active scheme(s) cost ${formatAmountForSpeech(r.summary.totalSchemeCost, sym)} this period, covering ${r.summary.coveredProductCount} product(s)`
+          : 'No pricing schemes ran this period',
+        details: [
+          `FOC units given: ${r.summary.totalFocUnitsGiven}`,
+          `Top scheme by cost: ${r.rows[0] ? `${r.rows[0].schemeName} (${formatAmountForSpeech(r.rows[0].totalCost, sym)})` : 'none'}`
+        ],
+        isEmpty: r.summary.activeSchemeCount === 0
       }
     }
     case 'service.projects': {

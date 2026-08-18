@@ -3876,6 +3876,139 @@ async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: s
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report.
+// The one piece of Phase 63's already-shipped PricingScheme engine that was
+// never finished — schemes could be created and applied at billing, but
+// nothing ever measured whether a scheme actually moved volume or just gave
+// away margin. IMPORTANT SCOPE NOTE, confirmed via a dedicated research pass
+// before writing this: this codebase has no counterfactual/baseline
+// mechanism anywhere (no "what would volume have been without the scheme"
+// concept) — this report is a CORRELATION view (scheme cost plotted
+// alongside covered-product volume, by week), not a causal "this scheme
+// created N incremental units" claim. The UI copy and this comment both say
+// so explicitly rather than implying more certainty than the data supports.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SchemeCostVsVolumePoint { period: string; schemeCost: number; totalVolume: number }
+export interface SchemeCostVsVolumeSchemeRow {
+  schemeId: string; schemeName: string; ruleType: string
+  totalCost: number; focUnitsGiven: number
+}
+export interface SchemeCostVsVolumeReport {
+  dateFrom: string; dateTo: string
+  summary: { totalSchemeCost: number; totalFocUnitsGiven: number; activeSchemeCount: number; coveredProductCount: number }
+  byPeriod: SchemeCostVsVolumePoint[]
+  rows: SchemeCostVsVolumeSchemeRow[]
+}
+
+// ISO-week bucket key (Monday start), local calendar — matches this
+// project's own toLocalISODate() convention (never toISOString() for a
+// date-only value, see harness.js's own documented UTC-lag bug class).
+function weekStartKey(d: Date): string {
+  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const day = local.getDay() // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  local.setDate(local.getDate() + diffToMonday)
+  return toLocalISODate(local)
+}
+
+async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<SchemeCostVsVolumeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  // Schemes that overlapped this window at all (not just currently-active
+  // ones) — a report looking back at last month should still show a scheme
+  // that has since ended.
+  const schemes = await db.pricingScheme.findMany({
+    where: {
+      AND: [
+        { OR: [{ startDate: null }, { startDate: { lte: to } }] },
+        { OR: [{ endDate: null }, { endDate: { gte: from } }] },
+      ],
+    },
+    include: { category: { select: { products: { select: { id: true } } } } },
+  })
+
+  const coveredProductIds = new Set<string>()
+  for (const s of schemes) {
+    if (s.productId) coveredProductIds.add(s.productId)
+    for (const p of s.category?.products ?? []) coveredProductIds.add(p.id)
+  }
+  const coveredIdsArr = [...coveredProductIds]
+
+  // Total volume (paid + FOC) of every scheme-covered product in range,
+  // regardless of whether a given line actually carried a schemeId — this is
+  // the "did the covered product sell more" half of the correlation.
+  const volumeItems = coveredIdsArr.length > 0
+    ? await db.invoiceItem.findMany({
+        where: { productId: { in: coveredIdsArr }, invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } } },
+        select: { quantity: true, invoice: { select: { invoiceDate: true } } },
+      })
+    : []
+
+  // Scheme-tagged lines only, for the cost half — FOC lines valued at each
+  // product's current cost basis (getProductCostsBatch, the same
+  // valuation-method-aware selector Phase 64 formalized), slab-discount
+  // lines valued at their own real discountAmount. Current cost basis is a
+  // documented simplification (no historical-cost-at-sale-date lookup, same
+  // "computed at current cost, framed as such" precedent Phase 63's own
+  // pricing.schemeCostThisMonth AI intent already established for FOC lines).
+  const schemeItems = await db.invoiceItem.findMany({
+    where: { schemeId: { not: null }, invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } } },
+    select: {
+      productId: true, quantity: true, isFreeOfCost: true, discountAmount: true, schemeId: true,
+      invoice: { select: { invoiceDate: true } }, scheme: { select: { name: true, ruleType: true } },
+    },
+  })
+  const focProductIds = [...new Set(schemeItems.filter(i => i.isFreeOfCost).map(i => i.productId))]
+  const costBasisByProduct = await getProductCostsBatch(focProductIds)
+
+  const periodMap = new Map<string, { schemeCost: number; totalVolume: number }>()
+  for (const item of volumeItems) {
+    const key = weekStartKey(item.invoice.invoiceDate)
+    const p = periodMap.get(key) ?? { schemeCost: 0, totalVolume: 0 }
+    p.totalVolume += item.quantity
+    periodMap.set(key, p)
+  }
+
+  let totalSchemeCost = 0
+  let totalFocUnitsGiven = 0
+  const bySchemeMap = new Map<string, SchemeCostVsVolumeSchemeRow>()
+  for (const item of schemeItems) {
+    const cost = item.isFreeOfCost ? item.quantity * (costBasisByProduct.get(item.productId) ?? 0) : item.discountAmount
+    const key = weekStartKey(item.invoice.invoiceDate)
+    const p = periodMap.get(key) ?? { schemeCost: 0, totalVolume: 0 }
+    p.schemeCost += cost
+    periodMap.set(key, p)
+    totalSchemeCost += cost
+    if (item.isFreeOfCost) totalFocUnitsGiven += item.quantity
+
+    const sid = item.schemeId as string
+    const row = bySchemeMap.get(sid) ?? { schemeId: sid, schemeName: item.scheme?.name ?? '—', ruleType: item.scheme?.ruleType ?? '', totalCost: 0, focUnitsGiven: 0 }
+    row.totalCost += cost
+    if (item.isFreeOfCost) row.focUnitsGiven += item.quantity
+    bySchemeMap.set(sid, row)
+  }
+
+  const byPeriod: SchemeCostVsVolumePoint[] = Array.from(periodMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([period, v]) => ({ period, schemeCost: roundCurrency(v.schemeCost), totalVolume: v.totalVolume }))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalSchemeCost: roundCurrency(totalSchemeCost),
+      totalFocUnitsGiven,
+      activeSchemeCount: schemes.filter(s => s.isActive).length,
+      coveredProductCount: coveredProductIds.size,
+    },
+    byPeriod,
+    rows: Array.from(bySchemeMap.values()).map(r => ({ ...r, totalCost: roundCurrency(r.totalCost) })).sort((a, b) => b.totalCost - a.totalCost),
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3937,4 +4070,5 @@ export const reportService = {
   generateDrawingRegisterReport,
   generateSiteVisitLogReport,
   generatePrescriptionDrugSalesReport,
+  generateSchemeCostVsVolumeReport,
 }

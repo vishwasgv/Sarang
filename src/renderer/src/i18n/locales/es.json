@@ -1414,7 +1414,8 @@
       "jewellery": "Joyería",
       "logistics": "Logística",
       "rental": "Alquiler",
-      "hotel": "Hotel"
+      "hotel": "Hotel",
+      "distributor": "Distribuidor"
     },
     "defs": {
       "sales": {
@@ -1633,6 +1634,10 @@
         "label": "Ventas de Medicamentos Recetados",
         "description": "Registro de ventas de medicamentos de venta exclusiva con receta (Lista H/H1), con nombres de paciente y médico."
       },
+      "schemeCostVsVolume": {
+        "label": "Costo de Esquema vs. Volumen",
+        "description": "Correlaciona el costo de sus esquemas de precios con las ventas semanales reales de los productos cubiertos."
+      },
       "costCentreTreemap": {
         "label": "P&G por Centro de Costo",
         "description": "Ingresos, gastos y margen reales por centro de costo, de cada factura, cuenta por pagar y gasto etiquetado"
@@ -1740,6 +1745,10 @@
       "atRiskValue": "Valor en Riesgo (≤ 30 Días)",
       "totalSales": "Ventas Totales",
       "missingDetails": "Detalles Faltantes",
+      "totalSchemeCost": "Costo Total del Esquema",
+      "focUnitsGiven": "Unidades Gratuitas (FOC) Entregadas",
+      "activeSchemes": "Esquemas Activos",
+      "coveredProducts": "Productos Cubiertos",
       "delivered": "Entregado",
       "avgTurnaround": "Tiempo Promedio",
       "avgTurnaroundSub": "horas, de la orden al informe",
@@ -1837,6 +1846,8 @@
       "byBucketValue": "Valor en Riesgo por Categoría de Caducidad",
       "byDoctor": "Por Médico Prescriptor",
       "prescriptionRegister": "Registro de Ventas de Medicamentos con Receta",
+      "schemeCostVsVolumeChart": "Costo de Esquema vs. Volumen de Productos Cubiertos",
+      "schemesInPeriod": "Esquemas en Este Período",
       "batchDetails": "Detalles del Lote",
       "byStage": "Por Etapa del Flujo",
       "testDetails": "Detalles de la Orden de Prueba",
@@ -1905,6 +1916,7 @@
       "testScores": "Aún no se han registrado calificaciones de pruebas.",
       "complianceTasks": "No hay tareas de cumplimiento pendientes o vencidas.",
       "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas.",
+      "schemeCostVsVolume": "Ningún esquema de precios estuvo activo en este rango de fechas.",
       "noData": "No se encontraron registros para este período."
     },
     "col": {
@@ -1912,6 +1924,9 @@
       "invoiceDate": "Fecha de Factura",
       "doctorName": "Médico",
       "rxDate": "Fecha de Receta",
+      "schemeName": "Esquema",
+      "ruleType": "Tipo de Regla",
+      "focUnitsGiven": "Unidades Gratuitas (FOC) Entregadas",
       "billNumber": "N.º de Factura",
       "billCount": "Facturas",
       "itemCount": "Artículos",
@@ -2083,6 +2098,13 @@
       "paidInvoiceCount": "Facturas Pagadas",
       "avgDaysToPay": "Días Prom. de Pago",
       "outstandingInvoiceCount": "Facturas Pendientes"
+    },
+    "legend": {
+      "schemeCost": "Costo del Esquema",
+      "coveredVolume": "Volumen de Producto Cubierto"
+    },
+    "schemeCostVsVolume": {
+      "disclaimer": "Esto muestra el costo del esquema y el volumen de ventas de productos cubiertos uno junto al otro para que usted mismo juzgue la correlación — no calcula (ni puede calcular) cuál habría sido el volumen sin el esquema."
     },
     "val": {
       "walkIn": "Cliente Ocasional",

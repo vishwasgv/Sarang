@@ -32,6 +32,10 @@ Open **Outstanding Analytics** to see your total credit exposure across every wh
 
 Give a customer a **credit limit** from their record in **Customers**, and Sarang blocks any new *credit* sale (from Billing or Bulk Order Entry) that would push their outstanding balance over that limit — rejected outright at save time with a message showing their outstanding balance, the new invoice amount, and their limit. This only applies to Credit-method sales; Cash, UPI, Card, and Split-payment sales are unaffected. A credit limit of 0 means no limit is enforced.
 
+## Scheme Cost vs. Volume Report
+
+If you run pricing schemes (Buy-X-Get-Y-Free or slab discounts — set up under Settings → Pricing Schemes), open **Scheme Cost vs. Volume** from Reports to see whether they're actually working: a chart plots what the scheme cost you (the value of free units given away, or the discount amount for a slab scheme) alongside how many units of the covered product actually sold, week by week, plus a per-scheme cost breakdown below it. This is a side-by-side comparison, not a claim that the scheme *caused* the volume — Sarang has no way to know what you would have sold without the scheme running, so read the chart as evidence to judge yourself, not a verdict.
+
 ## Logistics & Supply Chain
 
 Because Distributor's default template includes the Logistics modules, you also get **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, and **Logistics Analytics** for tracking your own delivery vehicles and supplier shipments — see the Logistics screens under those names in the sidebar.

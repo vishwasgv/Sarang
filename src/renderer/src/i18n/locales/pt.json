@@ -1414,7 +1414,8 @@
       "logistics": "Logística",
       "rental": "Aluguel",
       "jewellery": "Joalheria",
-      "hotel": "Hotel"
+      "hotel": "Hotel",
+      "distributor": "Distribuidor"
     },
     "defs": {
       "sales": {
@@ -1589,6 +1590,10 @@
         "label": "Vendas de Medicamentos Sob Prescrição",
         "description": "Registro de vendas de medicamentos somente sob prescrição (Lista H/H1), com nomes do paciente e do médico."
       },
+      "schemeCostVsVolume": {
+        "label": "Custo do Esquema vs. Volume",
+        "description": "Correlaciona o custo dos seus esquemas de preços com as vendas semanais reais dos produtos cobertos."
+      },
       "serviceProjects": {
         "label": "Relatório de Projetos de Serviço",
         "description": "Cada projeto por status e valor de contrato — para Consultor Independente, Arquiteto, Engenheiro Civil, Agência de Marketing, Agência de Software e Corretor de Imóveis"
@@ -1718,6 +1723,10 @@
       "atRiskValue": "Valor em Risco (≤ 30 Dias)",
       "totalSales": "Vendas Totais",
       "missingDetails": "Detalhes Ausentes",
+      "totalSchemeCost": "Custo Total do Esquema",
+      "focUnitsGiven": "Unidades Gratuitas (FOC) Concedidas",
+      "activeSchemes": "Esquemas Ativos",
+      "coveredProducts": "Produtos Cobertos",
       "delivered": "Entregue",
       "avgTurnaround": "Tempo Médio",
       "avgTurnaroundSub": "horas, do pedido ao laudo",
@@ -1814,6 +1823,8 @@
       "byBucketValue": "Valor em Risco por Categoria de Validade",
       "byDoctor": "Por Médico Prescritor",
       "prescriptionRegister": "Registro de Vendas de Medicamentos Prescritos",
+      "schemeCostVsVolumeChart": "Custo do Esquema vs. Volume de Produtos Cobertos",
+      "schemesInPeriod": "Esquemas Neste Período",
       "batchDetails": "Detalhes do Lote",
       "byStage": "Por Etapa do Fluxo",
       "testDetails": "Detalhes do Pedido de Teste",
@@ -1893,6 +1904,7 @@
       "projects": "Nenhum projeto neste período.",
       "jobCards": "Nenhuma ordem de serviço neste período.",
       "prescriptionDrugSales": "Nenhuma venda de medicamento sob prescrição neste período.",
+      "schemeCostVsVolume": "Nenhum esquema de preços esteve ativo neste intervalo de datas.",
       "discounts": "Nenhum desconto ou preço negociado neste intervalo de datas.",
       "serviceProjects": "Nenhum projeto neste intervalo de datas.",
       "carJobCards": "Nenhuma ordem de serviço neste intervalo de datas.",
@@ -1912,6 +1924,9 @@
       "invoiceDate": "Data da Fatura",
       "doctorName": "Médico",
       "rxDate": "Data da Receita",
+      "schemeName": "Esquema",
+      "ruleType": "Tipo de Regra",
+      "focUnitsGiven": "Unidades Gratuitas (FOC) Concedidas",
       "billNumber": "N.º da Fatura",
       "billCount": "Faturas",
       "itemCount": "Itens",
@@ -2083,6 +2098,13 @@
       "paidInvoiceCount": "Faturas Pagas",
       "avgDaysToPay": "Dias Médios para Pagamento",
       "outstandingInvoiceCount": "Faturas Pendentes"
+    },
+    "legend": {
+      "schemeCost": "Custo do Esquema",
+      "coveredVolume": "Volume de Produto Coberto"
+    },
+    "schemeCostVsVolume": {
+      "disclaimer": "Isto mostra o custo do esquema e o volume de vendas dos produtos cobertos lado a lado para que você mesmo julgue a correlação — não calcula (nem pode calcular) qual teria sido o volume sem o esquema."
     },
     "val": {
       "walkIn": "Cliente Ocasional",

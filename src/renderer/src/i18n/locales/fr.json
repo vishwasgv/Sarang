@@ -1414,7 +1414,8 @@
       "logistics": "Logistique",
       "rental": "Location",
       "jewellery": "Bijouterie",
-      "hotel": "Hôtel"
+      "hotel": "Hôtel",
+      "distributor": "Distributeur"
     },
     "defs": {
       "sales": {
@@ -1589,6 +1590,10 @@
         "label": "Ventes de Médicaments sur Ordonnance",
         "description": "Registre des ventes de médicaments sur ordonnance uniquement (Liste H/H1), avec noms du patient et du médecin."
       },
+      "schemeCostVsVolume": {
+        "label": "Coût du Programme vs. Volume",
+        "description": "Met en corrélation le coût de vos programmes de prix avec les ventes hebdomadaires réelles des produits couverts."
+      },
       "serviceProjects": {
         "label": "Rapport des Projets de Service",
         "description": "Tous les projets par statut et valeur de contrat — pour Consultant Indépendant, Architecte, Ingénieur Civil, Agence Marketing, Agence Logicielle et Agent Immobilier"
@@ -1718,6 +1723,10 @@
       "atRiskValue": "Valeur à Risque (≤ 30 Jours)",
       "totalSales": "Ventes Totales",
       "missingDetails": "Détails Manquants",
+      "totalSchemeCost": "Coût Total du Programme",
+      "focUnitsGiven": "Unités Gratuites (FOC) Données",
+      "activeSchemes": "Programmes Actifs",
+      "coveredProducts": "Produits Couverts",
       "delivered": "Livré",
       "avgTurnaround": "Délai Moyen",
       "avgTurnaroundSub": "heures, de la commande au rapport",
@@ -1814,6 +1823,8 @@
       "byBucketValue": "Valeur à Risque par Catégorie de Péremption",
       "byDoctor": "Par Médecin Prescripteur",
       "prescriptionRegister": "Registre des Ventes de Médicaments sur Ordonnance",
+      "schemeCostVsVolumeChart": "Coût du Programme vs. Volume des Produits Couverts",
+      "schemesInPeriod": "Programmes de Cette Période",
       "batchDetails": "Détails du Lot",
       "byStage": "Par Étape du Flux",
       "testDetails": "Détails de la Commande de Test",
@@ -1893,6 +1904,7 @@
       "projects": "Aucun projet dans cette période.",
       "jobCards": "Aucune fiche de travail dans cette période.",
       "prescriptionDrugSales": "Aucune vente de médicament sur ordonnance dans cette période.",
+      "schemeCostVsVolume": "Aucun programme de prix n'a été actif dans cette plage de dates.",
       "discounts": "Aucune remise ni prix négocié dans cette période.",
       "serviceProjects": "Aucun projet dans cette période.",
       "carJobCards": "Aucune fiche d'intervention dans cette période.",
@@ -1912,6 +1924,9 @@
       "invoiceDate": "Date de Facture",
       "doctorName": "Médecin",
       "rxDate": "Date d'Ordonnance",
+      "schemeName": "Programme",
+      "ruleType": "Type de Règle",
+      "focUnitsGiven": "Unités Gratuites (FOC) Données",
       "billNumber": "N° de Facture",
       "billCount": "Factures",
       "itemCount": "Articles",
@@ -2083,6 +2098,13 @@
       "paidInvoiceCount": "Factures Payées",
       "avgDaysToPay": "Jours Moy. de Paiement",
       "outstandingInvoiceCount": "Factures en Attente"
+    },
+    "legend": {
+      "schemeCost": "Coût du Programme",
+      "coveredVolume": "Volume des Produits Couverts"
+    },
+    "schemeCostVsVolume": {
+      "disclaimer": "Ceci montre le coût du programme et le volume des ventes des produits couverts côte à côte afin que vous puissiez juger vous-même de la corrélation — cela ne calcule pas (et ne peut pas calculer) ce qu'aurait été le volume sans le programme."
     },
     "val": {
       "walkIn": "Client de Passage",

@@ -7,7 +7,7 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn() } }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn() } }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
 vi.mock('../roc-filing.service', () => ({ listROCFilings: vi.fn() }))
 vi.mock('../property.service', () => ({ getPropertyKPIs: vi.fn() }))
@@ -128,5 +128,48 @@ describe('ai-vertical-templates.service — pharmacy.prescriptionVolumeByDoctor'
 
     expect(result.isEmpty).toBe(true)
     expect(result.headline).toBe('No prescription sales recorded this period')
+  })
+})
+
+// Phase 67 §9.1 — Distributor's "Scheme cost vs. incremental volume"
+// signature win. Confirms the intent is registered for DISTRIBUTOR only
+// (it had ZERO vertical AI templates before this) and reuses the SAME
+// generateSchemeCostVsVolumeReport() the Reports screen calls.
+describe('ai-vertical-templates.service — distributor.schemeCostVsVolume', () => {
+  it('registers distributor.schemeCostVsVolume for DISTRIBUTOR (which previously had zero vertical templates)', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'DISTRIBUTOR' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['distributor.schemeCostVsVolume'])
+  })
+
+  it('executeVerticalTemplate answers with active scheme count, cost, and covered products', async () => {
+    vi.mocked(reportService.generateSchemeCostVsVolumeReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-18',
+      summary: { totalSchemeCost: 8000, totalFocUnitsGiven: 40, activeSchemeCount: 2, coveredProductCount: 5 },
+      byPeriod: [],
+      rows: [{ schemeId: 's1', schemeName: 'Buy 10 Get 2 Free', ruleType: 'BUY_X_GET_Y_FREE', totalCost: 5000, focUnitsGiven: 25 }]
+    } as never)
+
+    const result = await executeVerticalTemplate('distributor.schemeCostVsVolume', {}, '₹')
+
+    expect(result.headline).toContain('2 active scheme(s)')
+    expect(result.headline).toContain('5 product(s)')
+    expect(result.details).toEqual(['FOC units given: 40', 'Top scheme by cost: Buy 10 Get 2 Free (₹5,000.00)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when no schemes ran this period', async () => {
+    vi.mocked(reportService.generateSchemeCostVsVolumeReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-18',
+      summary: { totalSchemeCost: 0, totalFocUnitsGiven: 0, activeSchemeCount: 0, coveredProductCount: 0 },
+      byPeriod: [], rows: []
+    } as never)
+
+    const result = await executeVerticalTemplate('distributor.schemeCostVsVolume', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No pricing schemes ran this period')
   })
 })

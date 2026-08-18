@@ -3314,6 +3314,124 @@ describe('reportService.generatePrescriptionDrugSalesReport', () => {
   })
 })
 
+// Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report.
+// The report itself is a CORRELATION view, not a causal claim — see the
+// function's own comment in report.service.ts. These tests verify the real
+// computable pieces: FOC lines valued at current cost basis (via the same
+// getProductCostsBatch() Phase 64 formalized), SLAB_DISCOUNT lines valued at
+// their own discountAmount, and total covered-product volume tracked
+// regardless of whether a given line carried a schemeId.
+describe('reportService.generateSchemeCostVsVolumeReport', () => {
+  function makeSchemeDb(overrides: {
+    schemes?: unknown[]
+    volumeItems?: unknown[]
+    schemeItems?: unknown[]
+    products?: unknown[]
+    inventories?: unknown[]
+  } = {}) {
+    const invoiceItemFindMany = vi.fn().mockImplementation((args: { where: { schemeId?: unknown } }) => {
+      if (args.where.schemeId) return Promise.resolve(overrides.schemeItems ?? [])
+      return Promise.resolve(overrides.volumeItems ?? [])
+    })
+    return {
+      pricingScheme: { findMany: vi.fn().mockResolvedValue(overrides.schemes ?? []) },
+      invoiceItem: { findMany: invoiceItemFindMany },
+      product: { findMany: vi.fn().mockResolvedValue(overrides.products ?? []) },
+      inventory: { findMany: vi.fn().mockResolvedValue(overrides.inventories ?? []) },
+    }
+  }
+
+  it('values a BUY_X_GET_Y_FREE FOC line at the current cost basis (getProductCostsBatch), not at sale price', async () => {
+    const db = makeSchemeDb({
+      schemes: [{ id: 's1', isActive: true, productId: 'p1', category: null, startDate: null, endDate: null }],
+      volumeItems: [
+        { quantity: 10, invoice: { invoiceDate: new Date('2026-08-03') } }, // paid units of the covered product
+      ],
+      schemeItems: [
+        { productId: 'p1', quantity: 2, isFreeOfCost: true, discountAmount: 0, schemeId: 's1', invoice: { invoiceDate: new Date('2026-08-03') }, scheme: { name: 'Buy 10 Get 2 Free', ruleType: 'BUY_X_GET_Y_FREE' } },
+      ],
+      products: [{ id: 'p1', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }],
+      inventories: [{ productId: 'p1', averageCost: 40, quantity: 100 }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    // 2 FOC units * 40 (weighted-average cost basis) = 80, NOT the sale price
+    expect(result.summary.totalSchemeCost).toBe(80)
+    expect(result.summary.totalFocUnitsGiven).toBe(2)
+    expect(result.summary.activeSchemeCount).toBe(1)
+    expect(result.summary.coveredProductCount).toBe(1)
+    expect(result.rows).toEqual([{ schemeId: 's1', schemeName: 'Buy 10 Get 2 Free', ruleType: 'BUY_X_GET_Y_FREE', totalCost: 80, focUnitsGiven: 2 }])
+  })
+
+  it('values a SLAB_DISCOUNT line at its own real discountAmount, not a computed cost basis', async () => {
+    const db = makeSchemeDb({
+      schemes: [{ id: 's2', isActive: true, productId: 'p2', category: null, startDate: null, endDate: null }],
+      volumeItems: [{ quantity: 5, invoice: { invoiceDate: new Date('2026-08-04') } }],
+      schemeItems: [
+        { productId: 'p2', quantity: 5, isFreeOfCost: false, discountAmount: 250, schemeId: 's2', invoice: { invoiceDate: new Date('2026-08-04') }, scheme: { name: 'Slab 10% off 5+', ruleType: 'SLAB_DISCOUNT' } },
+      ],
+      products: [], inventories: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.summary.totalSchemeCost).toBe(250)
+    expect(result.summary.totalFocUnitsGiven).toBe(0)
+    expect(result.rows[0]).toMatchObject({ schemeId: 's2', totalCost: 250, focUnitsGiven: 0 })
+  })
+
+  it('resolves a category-scoped scheme to every product in that category for the volume trend', async () => {
+    const db = makeSchemeDb({
+      schemes: [{ id: 's3', isActive: true, productId: null, category: { products: [{ id: 'p3' }, { id: 'p4' }] }, startDate: null, endDate: null }],
+      volumeItems: [
+        { quantity: 3, invoice: { invoiceDate: new Date('2026-08-05') } },
+        { quantity: 4, invoice: { invoiceDate: new Date('2026-08-05') } },
+      ],
+      schemeItems: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.summary.coveredProductCount).toBe(2)
+    expect(result.byPeriod[0].totalVolume).toBe(7)
+  })
+
+  it('buckets scheme cost and volume by ISO week (Monday start)', async () => {
+    const db = makeSchemeDb({
+      schemes: [{ id: 's1', isActive: true, productId: 'p1', category: null, startDate: null, endDate: null }],
+      volumeItems: [
+        { quantity: 10, invoice: { invoiceDate: new Date('2026-08-03') } }, // Monday
+        { quantity: 5, invoice: { invoiceDate: new Date('2026-08-05') } },  // same week, Wednesday
+        { quantity: 6, invoice: { invoiceDate: new Date('2026-08-11') } },  // next week, Tuesday
+      ],
+      schemeItems: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-14' })
+
+    expect(result.byPeriod).toEqual([
+      { period: '2026-08-03', schemeCost: 0, totalVolume: 15 },
+      { period: '2026-08-10', schemeCost: 0, totalVolume: 6 },
+    ])
+  })
+
+  it('returns an honest empty result when no scheme overlapped the date range', async () => {
+    const db = makeSchemeDb({})
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.summary).toEqual({ totalSchemeCost: 0, totalFocUnitsGiven: 0, activeSchemeCount: 0, coveredProductCount: 0 })
+    expect(result.byPeriod).toEqual([])
+    expect(result.rows).toEqual([])
+  })
+})
+
 // ─── Discounts & Bargained Pricing Report ──────────────────────────────────────
 
 function makeDiscountInvoice(overrides: Record<string, unknown> = {}) {

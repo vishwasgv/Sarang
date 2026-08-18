@@ -28,6 +28,10 @@ On the Billing screen, use **Add Tip / Service Charge** to add a tip line to a b
 
 On the Products screen, toggle any menu item **86** (kitchen slang for "out of stock for today") to instantly hide it from the billing cart and the customer-facing QR menu, without deactivating the product itself — perfect for a dish that's sold out for the day but will be back on the menu tomorrow.
 
+## Combo / Thali Pricing
+
+Create a combo or thali as a menu item like any other product, then open it for editing and use **Manage Kit Components** to add the individual dishes it's made of and how many of each. Set the combo's own selling price on the product itself — it's completely independent of what the individual dishes would cost separately, so a thali can be priced as a real bundle deal, not the sum of its parts. Selling a combo bills it as one clean line, but under the hood correctly deducts stock for every dish it contains, and marking its kitchen ticket **Mark Done** correctly deducts the ingredients behind each of those dishes too — the same as if each dish had been ordered on its own.
+
 ## Kitchen Order Tickets (KOT)
 
 A KOT is the kitchen's copy of an order. After ringing up an order in **Billing**, open the invoice and tap **Send to Kitchen** to create a KOT for it. From **Kitchen Order Tickets** in the sidebar, kitchen staff see every ticket grouped by status — Pending, In Progress, Done, Cancelled — with its items and quantities, and move each one forward with a single tap (**Start Cooking** → **Mark Done**), or **Cancel** it. Each ticket can also be printed directly to your kitchen printer.

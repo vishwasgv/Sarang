@@ -28,6 +28,10 @@ En la pantalla de Facturación, use **Agregar propina / cargo por servicio** par
 
 En la pantalla de Productos, marque cualquier artículo del menú como **86** (jerga de cocina para "agotado por hoy") para ocultarlo instantáneamente del carrito de facturación y del menú QR de cara al cliente, sin desactivar el producto en sí — perfecto para un platillo que se agotó por el día pero que volverá al menú mañana.
 
+## Precios de Combo / Thali
+
+Cree un combo o thali como un artículo de menú igual que cualquier otro producto, luego ábralo para editar y use **Manage Kit Components** para agregar los platos individuales que lo componen y cuántos de cada uno. Establezca el precio de venta propio del combo en el producto mismo — es completamente independiente de lo que costarían los platos individuales por separado, de modo que un thali se pueda cotizar como una oferta combinada real, no la suma de sus partes. Vender un combo lo factura como una sola línea limpia, pero por debajo deduce correctamente el stock de cada plato que contiene, y marcar su ticket de cocina como **Mark Done** deduce correctamente también los ingredientes detrás de esos platos — igual que si cada plato se hubiera pedido por separado.
+
 ## Comandas de Cocina (KOT)
 
 Un KOT es la copia de cocina de un pedido. Después de registrar un pedido en **Facturación**, abra la factura y toque **Enviar a Cocina** para crear un KOT para ella. Desde **Kitchen Order Tickets** en la barra lateral, el personal de cocina ve cada comanda agrupada por estado — Pending, In Progress, Done, Cancelled — con sus artículos y cantidades, y avanza cada una con un solo toque (**Start Cooking** → **Mark Done**), o la **Cancelar** (cancela). Cada comanda también se puede imprimir directamente en su impresora de cocina.

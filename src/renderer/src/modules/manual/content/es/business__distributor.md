@@ -32,6 +32,10 @@ Abra **Análisis de saldos pendientes** para ver su exposición total de crédit
 
 Asigne a un cliente un **límite de crédito** desde su registro en **Clientes**, y Sarang bloquea cualquier nueva venta *a crédito* (desde Facturación o Bulk Order Entry) que empujaría su saldo pendiente por encima de ese límite — rechazada de plano al momento de guardar con un mensaje que muestra su saldo pendiente, el monto de la nueva factura y su límite. Esto solo se aplica a ventas por método de Crédito; las ventas en Efectivo, UPI, Tarjeta y Pago Dividido no se ven afectadas. Un límite de crédito de 0 significa que no se aplica ningún límite.
 
+## Informe de Costo de Esquema vs. Volumen
+
+Si ejecuta esquemas de precios (Compre-X-Lleve-Y-Gratis o descuentos por escalones — configúrelos en Configuración → Esquemas de Precios), abra **Costo de Esquema vs. Volumen** en Informes para ver si realmente están funcionando: un gráfico muestra cuánto le costó el esquema (el valor de las unidades gratuitas entregadas, o el monto del descuento para un esquema por escalones) junto con cuántas unidades del producto cubierto realmente se vendieron, semana a semana, además de un desglose de costo por esquema debajo. Esto es una comparación lado a lado, no una afirmación de que el esquema *causó* el volumen — Sarang no tiene forma de saber cuánto habría vendido sin el esquema, así que lea el gráfico como evidencia para juzgar usted mismo, no como un veredicto.
+
 ## Logística y Cadena de Suministro
 
 Debido a que la plantilla predeterminada de Distribuidor incluye los módulos de Logística, también obtiene **Flota**, **Transportistas**, **Envíos**, **Nota de Recepción**, **Albarán de Entrega**, **Libro de Fletes** y **Análisis de Logística** para rastrear sus propios vehículos de entrega y envíos de proveedores — vea las pantallas de Logística bajo esos nombres en la barra lateral.

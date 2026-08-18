@@ -344,6 +344,7 @@ const api: IpcChannels = {
     drawingRegister: (p) => invoke('reports:drawingRegister', p),
     siteVisitLog: (p) => invoke('reports:siteVisitLog', p),
     prescriptionDrugSales: (p) => invoke('reports:prescriptionDrugSales', p),
+    schemeCostVsVolume: (p) => invoke('reports:schemeCostVsVolume', p),
     logistics: (p) => invoke('reports:logistics', p),
     attendance: (p) => invoke('reports:attendance', p),
     production: (p) => invoke('reports:production', p),

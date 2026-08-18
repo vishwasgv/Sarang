@@ -11,7 +11,11 @@ import {
   PieChart, ShieldCheck, LineChart, Clock, Target
 } from 'lucide-react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap,
+  // Phase 67 §9.1 — Distributor's Scheme Cost vs. Volume report is this
+  // file's first dual-line chart; aliased to avoid colliding with the
+  // same-named lucide-react icon already imported above.
+  LineChart as RCLineChart, Line
 } from 'recharts'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
@@ -246,6 +250,13 @@ interface PrescriptionDrugSalesRow { invoiceNumber: string; invoiceDate: string;
 interface PrescriptionDrugSalesByDoctor { doctorName: string; salesCount: number; totalAmount: number }
 interface PrescriptionDrugSalesReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }; byDoctor: PrescriptionDrugSalesByDoctor[]; rows: PrescriptionDrugSalesRow[] }
 
+// Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report
+// (a correlation view, not a causal claim — see report.service.ts's own
+// comment on generateSchemeCostVsVolumeReport for why).
+interface SchemeCostVsVolumePoint { period: string; schemeCost: number; totalVolume: number }
+interface SchemeCostVsVolumeSchemeRow { schemeId: string; schemeName: string; ruleType: string; totalCost: number; focUnitsGiven: number }
+interface SchemeCostVsVolumeReport { dateFrom: string; dateTo: string; summary: { totalSchemeCost: number; totalFocUnitsGiven: number; activeSchemeCount: number; coveredProductCount: number }; byPeriod: SchemeCostVsVolumePoint[]; rows: SchemeCostVsVolumeSchemeRow[] }
+
 interface JobCardReportRow { jobNumber: string; title: string; customerName: string | null; status: string; priority: string; estimatedCost: number; actualCost: number; receivedDate: string; expectedDate: string | null; deliveredDate: string | null }
 interface JobCardReportByStatus { status: string; count: number }
 interface JobCardReport {
@@ -348,6 +359,7 @@ type ReportType =
   | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'serviceProjects' | 'jobCards'
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
+  | 'schemeCostVsVolume'
   | 'hotelOccupancy' | 'hotelGuestRegister'
   // Phase 61 — Purchase-side reports (Section 3.1 item 5)
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
@@ -442,9 +454,13 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
   { id: 'siteVisitLog', icon: <HardHat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'site_visit_log' },
   { id: 'prescriptionDrugSales', icon: <Pill size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PHARMACY' },
+  // Phase 67 §9.1 — Distributor: correlates scheme cost against covered-
+  // product volume, not a causal incrementality claim (see the report
+  // function's own comment in report.service.ts for why).
+  { id: 'schemeCostVsVolume', icon: <TrendingUp size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
 ]
 
-const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel']
+const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel', 'distributor']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -747,6 +763,9 @@ export function ReportsScreen() {
           break
         case 'prescriptionDrugSales':
           res = await window.api.reports.prescriptionDrugSales({ dateFrom, dateTo })
+          break
+        case 'schemeCostVsVolume':
+          res = await window.api.reports.schemeCostVsVolume({ dateFrom, dateTo })
           break
         case 'logistics':
           res = await window.api.reports.logistics({ dateFrom, dateTo })
@@ -1212,6 +1231,13 @@ export function ReportsScreen() {
         return {
           headers: ['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Prescription Date', t('reports.col.customer'), t('common.amount')],
           rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName, r.doctorName, r.prescriptionDate, r.customerName, r.lineTotal])
+        }
+      }
+      case 'schemeCostVsVolume': {
+        const d = reportData as SchemeCostVsVolumeReport
+        return {
+          headers: [t('reports.col.schemeName'), t('reports.col.ruleType'), t('reports.col.focUnitsGiven'), t('common.amount')],
+          rows: d.rows.map(r => [r.schemeName, r.ruleType, r.focUnitsGiven, r.totalCost])
         }
       }
       case 'siteVisitLog': {
@@ -1779,6 +1805,14 @@ export function ReportsScreen() {
           { label: 'Total Sales', value: String(d.summary.totalSales) },
           { label: t('common.amount'), value: fmt(d.summary.totalAmount) },
           { label: 'Missing Details', value: String(d.summary.missingPrescriptionDetails) }
+        ]
+      }
+      case 'schemeCostVsVolume': {
+        const d = reportData as SchemeCostVsVolumeReport
+        return [
+          { label: t('reports.summary.totalSchemeCost'), value: fmt(d.summary.totalSchemeCost) },
+          { label: t('reports.summary.focUnitsGiven'), value: String(d.summary.totalFocUnitsGiven) },
+          { label: t('reports.summary.activeSchemes'), value: String(d.summary.activeSchemeCount) }
         ]
       }
       case 'logistics': {
@@ -2534,6 +2568,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'drawingRegister': return <DrawingRegisterReportView data={data as DrawingRegisterReport} fmt={fmt} />
     case 'siteVisitLog': return <SiteVisitLogReportView data={data as SiteVisitLogReport} fmt={fmt} />
     case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
+    case 'schemeCostVsVolume': return <SchemeCostVsVolumeView data={data as SchemeCostVsVolumeReport} fmt={fmt} />
     case 'logistics': return <LogisticsView data={data as LogisticsReport} fmt={fmt} />
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
@@ -4473,6 +4508,53 @@ function PrescriptionDrugSalesReportView({ data, fmt }: { data: PrescriptionDrug
           headers={[t('reports.col.invoiceNo'), t('reports.col.invoiceDate'), t('reports.col.product'), t('reports.col.qty'), t('reports.col.patientName'), t('reports.col.doctorName'), t('reports.col.rxDate'), t('reports.col.customer'), t('common.amount')]}
           rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName ?? '—', r.doctorName ?? '—', r.prescriptionDate ?? '—', r.customerName ?? '—', fmt(r.lineTotal)])}
           emptyText={t('reports.empty.prescriptionDrugSales')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report.
+// Deliberately framed as a CORRELATION view, not a causal claim — this
+// codebase has no counterfactual/baseline mechanism (see the report
+// function's own comment in report.service.ts), so the UI copy says so
+// explicitly via reports.schemeCostVsVolume.disclaimer rather than implying
+// the chart proves the scheme caused the volume.
+function SchemeCostVsVolumeView({ data, fmt }: { data: SchemeCostVsVolumeReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalSchemeCost'), value: fmt(s.totalSchemeCost) },
+        { label: t('reports.summary.focUnitsGiven'), value: String(s.totalFocUnitsGiven) },
+        { label: t('reports.summary.activeSchemes'), value: String(s.activeSchemeCount) },
+        { label: t('reports.summary.coveredProducts'), value: String(s.coveredProductCount) }
+      ]} />
+      <p className="text-xs text-slate-500 dark:text-slate-400 italic">{t('reports.schemeCostVsVolume.disclaimer')}</p>
+      {data.byPeriod.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.schemeCostVsVolumeChart')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <RCLineChart data={data.byPeriod}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="period" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="cost" tick={CHART_TICK} tickLine={false} axisLine={false} tickFormatter={fmt} />
+              <YAxis yAxisId="volume" orientation="right" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => name === t('reports.legend.schemeCost') ? fmt(v) : v} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line yAxisId="cost" type="monotone" dataKey="schemeCost" name={t('reports.legend.schemeCost')} stroke={STATUS_COLORS.warning} strokeWidth={2} dot={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="totalVolume" name={t('reports.legend.coveredVolume')} stroke={STATUS_COLORS.brand} strokeWidth={2} dot={false} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.schemesInPeriod')}</h3>
+        <DataTable
+          headers={[t('reports.col.schemeName'), t('reports.col.ruleType'), t('reports.col.focUnitsGiven'), t('common.amount')]}
+          rows={data.rows.map(r => [r.schemeName, r.ruleType, r.focUnitsGiven, fmt(r.totalCost)])}
+          emptyText={t('reports.empty.schemeCostVsVolume')}
         />
       </div>
     </div>

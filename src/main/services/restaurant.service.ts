@@ -269,38 +269,57 @@ async function deductIngredients(
 ): Promise<void> {
   const db = getPrisma()
   for (const item of invoiceItems) {
-    const recipe = await db.recipe.findUnique({
-      where: { productId: item.productId },
-      include: { items: true }
-    })
-    if (!recipe) continue
+    // Phase 67 §9.1 — Restaurant's "Combo/thali auto-pricing" signature win
+    // surfaced a real, previously-undisclosed gap: a combo/thali is a kit
+    // (Phase 64), and a kit has no Recipe of its own — recipes are per-dish
+    // (e.g. "Butter Chicken" has one, a 3-dish thali kit does not). Selling
+    // a combo already correctly deducts each dish's own top-level stock
+    // (billing.service.ts's explodeKitComponentsTx, inside the invoice
+    // transaction), but this function used to look up a Recipe keyed to
+    // the combo's OWN productId and silently find nothing — skipping
+    // ingredient-level deduction for every dish inside the combo. Expand
+    // kit lines into their real component dishes first; a non-kit item has
+    // zero KitComponent rows, so this falls through to the original
+    // single-item behavior unchanged for the overwhelmingly common case.
+    const kitComponents = await db.kitComponent.findMany({ where: { kitProductId: item.productId } })
+    const resolvedItems = kitComponents.length > 0
+      ? kitComponents.map(c => ({ productId: c.componentProductId, quantity: c.quantity * item.quantity }))
+      : [item]
 
-    for (const ri of recipe.items) {
-      const needed = ri.quantity * item.quantity
-      try {
-        const inv = await db.inventory.findUnique({ where: { productId: ri.ingredientProductId } })
-        if (!inv) continue
-        const newQty = Math.max(0, inv.quantity - needed)
-        // adjustStock expects new absolute quantity; movement created with negative delta for food cost report
-        await inventoryService.adjustStock({
-          productId: ri.ingredientProductId,
-          quantity: newQty,
-          reason: `${INGREDIENT_DEDUCTION_REMARKS_PREFIX} — recipe: ${recipe.recipeName}`
-        }, userId)
-      } catch (err) {
-        // Do not abort KOT fulfillment if an ingredient stock adjustment
-        // fails — but a swallowed failure here previously left inventory
-        // silently wrong with zero trace. Surface it: log to console, record
-        // an audit entry, and raise a visible notification so staff know
-        // stock needs a manual recount for this ingredient.
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        console.error(`[Restaurant] Ingredient deduction failed for recipe "${recipe.recipeName}" (ingredient ${ri.ingredientProductId}):`, message)
-        await logAction(userId, 'INGREDIENT_DEDUCTION_FAILED', 'Inventory', ri.ingredientProductId, undefined, message).catch(() => {})
-        await createNotification({
-          title: 'Ingredient stock not deducted',
-          message: `Recipe "${recipe.recipeName}" fulfilled, but stock for one ingredient could not be updated (${message}). Recount this ingredient's stock manually.`,
-          notificationType: 'WARNING'
-        }).catch(() => {})
+    for (const resolved of resolvedItems) {
+      const recipe = await db.recipe.findUnique({
+        where: { productId: resolved.productId },
+        include: { items: true }
+      })
+      if (!recipe) continue
+
+      for (const ri of recipe.items) {
+        const needed = ri.quantity * resolved.quantity
+        try {
+          const inv = await db.inventory.findUnique({ where: { productId: ri.ingredientProductId } })
+          if (!inv) continue
+          const newQty = Math.max(0, inv.quantity - needed)
+          // adjustStock expects new absolute quantity; movement created with negative delta for food cost report
+          await inventoryService.adjustStock({
+            productId: ri.ingredientProductId,
+            quantity: newQty,
+            reason: `${INGREDIENT_DEDUCTION_REMARKS_PREFIX} — recipe: ${recipe.recipeName}`
+          }, userId)
+        } catch (err) {
+          // Do not abort KOT fulfillment if an ingredient stock adjustment
+          // fails — but a swallowed failure here previously left inventory
+          // silently wrong with zero trace. Surface it: log to console, record
+          // an audit entry, and raise a visible notification so staff know
+          // stock needs a manual recount for this ingredient.
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          console.error(`[Restaurant] Ingredient deduction failed for recipe "${recipe.recipeName}" (ingredient ${ri.ingredientProductId}):`, message)
+          await logAction(userId, 'INGREDIENT_DEDUCTION_FAILED', 'Inventory', ri.ingredientProductId, undefined, message).catch(() => {})
+          await createNotification({
+            title: 'Ingredient stock not deducted',
+            message: `Recipe "${recipe.recipeName}" fulfilled, but stock for one ingredient could not be updated (${message}). Recount this ingredient's stock manually.`,
+            notificationType: 'WARNING'
+          }).catch(() => {})
+        }
       }
     }
   }
