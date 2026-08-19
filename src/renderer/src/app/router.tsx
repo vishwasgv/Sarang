@@ -29,6 +29,8 @@ import { CostCentresScreen } from '@modules/cost-centres/ui/CostCentresScreen'
 import { BudgetsScreen } from '@modules/budgets/ui/BudgetsScreen'
 import { ApprovalWorkflowsScreen } from '@modules/approvals/ui/ApprovalWorkflowsScreen'
 import { PricingSchemesScreen } from '@modules/pricing/ui/PricingSchemesScreen'
+import { PriceMarkdownsScreen } from '@modules/pricing/ui/PriceMarkdownsScreen'
+import { LoyaltyProgramScreen } from '@modules/pricing/ui/LoyaltyProgramScreen'
 import { SupplierPaymentsScreen } from '@modules/suppliers/ui/SupplierPaymentsScreen'
 import { ChartOfAccountsScreen } from '@modules/accounting/ui/ChartOfAccountsScreen'
 import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScreen'
@@ -94,6 +96,7 @@ import { PayrollScreen } from '@modules/hr/ui/PayrollScreen'
 import { AppointmentsScreen } from '@modules/service-business/ui/AppointmentsScreen'
 import { ServiceCatalogScreen } from '@modules/service-business/ui/ServiceCatalogScreen'
 import { NormalRangesScreen } from '@modules/service-business/ui/NormalRangesScreen'
+import { BreedHealthAlertsScreen } from '@modules/service-business/ui/BreedHealthAlertsScreen'
 import { ProviderScheduleScreen } from '@modules/service-business/ui/ProviderScheduleScreen'
 import { NotificationQueueScreen } from '@modules/service-business/ui/NotificationQueueScreen'
 // Phase 23 — Veterinary
@@ -303,6 +306,9 @@ export function AppRouter() {
         <Route path="/budgets" element={<ProtectedRoute permission="budgets.view"><BudgetsScreen /></ProtectedRoute>} />
         <Route path="/approval-workflows" element={<ProtectedRoute permission="approvalWorkflows.view"><ApprovalWorkflowsScreen /></ProtectedRoute>} />
         <Route path="/pricing/schemes" element={<ProtectedRoute permission="pricingSchemes.view"><PricingSchemesScreen /></ProtectedRoute>} />
+        {/* Phase 67 §9.1 — Retail: time-boxed markdown workflow */}
+        <Route path="/pricing/markdowns" element={<ProtectedRoute permission="priceMarkdowns.view"><PriceMarkdownsScreen /></ProtectedRoute>} />
+        <Route path="/pricing/loyalty" element={<ProtectedRoute permission="loyaltyProgram.view"><LoyaltyProgramScreen /></ProtectedRoute>} />
         <Route path="/supplier-payments" element={<ProtectedRoute permission="supplierPayments.view"><SupplierPaymentsScreen /></ProtectedRoute>} />
         {/* Phase 62 — Banking, Ledger & Compliance Backbone */}
         <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute permission="chartOfAccounts.view"><ChartOfAccountsScreen /></ProtectedRoute>} />
@@ -366,6 +372,7 @@ export function AppRouter() {
         <Route path="/appointments" element={<ProtectedRoute permission="billing.view"><AppointmentsScreen /></ProtectedRoute>} />
         <Route path="/service-catalog" element={<ProtectedRoute permission="settings.view"><ServiceCatalogScreen /></ProtectedRoute>} />
         <Route path="/normal-ranges" element={<ProtectedRoute permission="clinicalNotes.view"><NormalRangesScreen /></ProtectedRoute>} />
+        <Route path="/vet/breed-alerts" element={<ProtectedRoute permission="clinicalNotes.view"><BreedHealthAlertsScreen /></ProtectedRoute>} />
         <Route path="/provider-schedule" element={<ProtectedRoute permission="settings.view"><ProviderScheduleScreen /></ProtectedRoute>} />
         <Route path="/service-notifications" element={<ProtectedRoute permission="billing.view"><NotificationQueueScreen /></ProtectedRoute>} />
         {/* Phase 23 — Veterinary */}

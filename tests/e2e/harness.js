@@ -246,6 +246,30 @@ function cleanupByNamePrefix(prefix) {
     const custIds = db.prepare('SELECT id FROM Customer WHERE customerName LIKE ?').all(like).map((r) => r.id)
     const prodIds = db.prepare('SELECT id FROM Product WHERE productName LIKE ?').all(like).map((r) => r.id)
 
+    // Phase 67 §9.1 — Hardware: smart carton-break reorder trigger needed
+    // the first-ever E2E test Supplier + real drafted PurchaseOrder in this
+    // codebase. Both PurchaseOrder.supplierId and PurchaseOrderItem.
+    // productId are plain (RESTRICT) foreign keys — deleted first, in FK-
+    // dependency order, so neither the product loop below nor the supplier
+    // itself gets silently forced into the soft-delete fallback.
+    const supIds = db.prepare('SELECT id FROM Supplier WHERE supplierName LIKE ?').all(like).map((r) => r.id)
+    const poIds = new Set()
+    for (const sid of supIds) {
+      for (const row of db.prepare('SELECT id FROM PurchaseOrder WHERE supplierId = ?').all(sid)) poIds.add(row.id)
+    }
+    for (const pid of prodIds) {
+      for (const row of db.prepare('SELECT purchaseOrderId FROM PurchaseOrderItem WHERE productId = ?').all(pid)) {
+        if (row.purchaseOrderId) poIds.add(row.purchaseOrderId)
+      }
+    }
+    for (const poId of poIds) {
+      db.prepare('DELETE FROM PurchaseOrderItem WHERE purchaseOrderId = ?').run(poId)
+      try { db.prepare('DELETE FROM PurchaseOrder WHERE id = ?').run(poId) } catch { /* other FK dependents (e.g. a GRN) — leave it, its items are already gone */ }
+    }
+    for (const sid of supIds) {
+      try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(sid) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(sid) }
+    }
+
     const invIds = new Set()
     for (const pid of prodIds) {
       for (const row of db.prepare('SELECT invoiceId FROM InvoiceItem WHERE productId = ?').all(pid)) {
@@ -260,6 +284,20 @@ function cleanupByNamePrefix(prefix) {
       db.prepare('DELETE FROM InvoiceItem WHERE invoiceId = ?').run(invId)
       db.prepare('DELETE FROM Payment WHERE invoiceId = ?').run(invId)
       try { db.prepare('DELETE FROM Invoice WHERE id = ?').run(invId) } catch { /* other FK dependents — leave the invoice, its items are already gone */ }
+    }
+    // Phase 67 §9.1 — Loyalty Program. LoyaltyCard.customerId is ON DELETE
+    // RESTRICT, so a leftover card would silently force the soft-delete
+    // fallback below (leaking rows) instead of a real cleanup — same class
+    // of gotcha as PriceMarkdown/ProductCategory above. Deleted first, in
+    // FK-dependency order (redemptions/punches reference the card, not the
+    // customer directly).
+    for (const cid of custIds) {
+      const cardIds = db.prepare('SELECT id FROM LoyaltyCard WHERE customerId = ?').all(cid).map((r) => r.id)
+      for (const cardId of cardIds) {
+        db.prepare('DELETE FROM LoyaltyRedemption WHERE loyaltyCardId = ?').run(cardId)
+        db.prepare('DELETE FROM LoyaltyPunchEvent WHERE loyaltyCardId = ?').run(cardId)
+        db.prepare('DELETE FROM LoyaltyCard WHERE id = ?').run(cardId)
+      }
     }
     for (const cid of custIds) {
       db.prepare('DELETE FROM CustomerLedger WHERE customerId = ?').run(cid)
@@ -277,10 +315,21 @@ function cleanupByNamePrefix(prefix) {
     }
     for (const pid of prodIds) {
       db.prepare('DELETE FROM Inventory WHERE productId = ?').run(pid)
+      db.prepare('DELETE FROM PriceMarkdown WHERE productId = ?').run(pid)
       try { db.prepare('DELETE FROM Product WHERE id = ?').run(pid) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(pid) }
     }
 
-    return { invoicesRemoved: invIds.size, customersHandled: custIds.length, productsHandled: prodIds.length }
+    // Phase 67 §9.1 — Category Sell-Through Rate needed the first-ever E2E
+    // test category. Deleted LAST, after every referencing product above is
+    // already gone, so the FK never blocks it; wrapped in try/catch anyway
+    // since a category this prefix-matched but didn't create is still safe
+    // to leave alone rather than fail the whole cleanup pass over it.
+    const catIds = db.prepare('SELECT id FROM ProductCategory WHERE name LIKE ?').all(like).map((r) => r.id)
+    for (const cid of catIds) {
+      try { db.prepare('DELETE FROM ProductCategory WHERE id = ?').run(cid) } catch { /* still referenced — leave it, not worth failing cleanup over */ }
+    }
+
+    return { invoicesRemoved: invIds.size, customersHandled: custIds.length, productsHandled: prodIds.length, categoriesHandled: catIds.length, suppliersHandled: supIds.length, purchaseOrdersHandled: poIds.size }
   })
 }
 

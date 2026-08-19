@@ -15,6 +15,7 @@ Ouvrir la **Consultation Note** d'un rendez-vous vous donne une note clinique st
 - **Vitals** : tension artérielle (systolique/diastolique), pouls, température, taille, poids — chaque champ est automatiquement signalé (Normal / Bas / Élevé) par rapport à une référence de plage normale enregistrée dès que vous sauvegardez, afin que les mesures hors plage ressortent immédiatement.
 - **O — Objective** : constatations de l'examen.
 - **A — Assessment** : diagnostic / impression clinique.
+- **Diagnosis Category** (optionnel) : une courte étiquette de catégorie — Infection, Suivi de Maladie Chronique, Blessure, et similaires — distincte du texte libre d'Assessment ci-dessus. L'étiqueter alimente **Reports → Diagnosis-Category Trend**, choisissez donc dans la liste suggérée ou saisissez la vôtre si aucune ne convient.
 - **P — Plan** : plan de traitement, médicaments, examens prescrits.
 - **Follow-up** : une date de suivi optionnelle et des instructions.
 
@@ -24,7 +25,11 @@ Cliquez sur **Save Note** au fur et à mesure, puis sur **Finaliser** lorsque la
 
 **Vitals Trend.** Une fois qu'un patient a deux visites ou plus avec des signes vitaux enregistrés, un graphique de tendance apparaît montrant comment une métrique choisie (tension, pouls, température, ou poids) a évolué dans le temps — choisissez quelle métrique tracer depuis la rangée de puces au-dessus du graphique.
 
-**Lettres de référence.** Utiliser l'action existante « Refer to Another Provider » crée une véritable référence ; une fois qu'elle existe, **Print Referral Letter** produit une lettre formelle adressée au médecin destinataire avec le motif de la référence — un document véritablement différent du résumé complet de consultation, conçu pour être remis au patient afin qu'il l'apporte au spécialiste.
+**Référer un patient.** Utilisez « Refer to Another Provider » pour réserver un véritable rendez-vous avec un autre praticien — une fois qu'il existe, **Print Referral Letter** produit une lettre formelle adressée au médecin destinataire avec le motif de la référence, un document véritablement différent du résumé complet de consultation, conçu pour être emporté par le patient. Une fois que ce rendez-vous de référence a lieu et que sa propre note est finalisée, l'évaluation du praticien destinataire apparaît ici même sous forme de ligne **Outcome** sous la référence, afin que vous n'ayez pas à aller chercher sa note séparément pour voir ce qu'il a trouvé.
+
+**Résultat de Référence Sortante.** Toutes vos références sortantes, au même endroit — ouvrez **Reports → Referral-Out Outcome** et choisissez une plage de dates. Vous verrez combien de références vous avez faites, combien ont désormais un résultat enregistré, et combien sont encore en attente, plus un tableau de chaque référence avec son statut et son résultat (une fois disponible).
+
+**Tendance par Catégorie de Diagnostic.** Chaque fois que vous étiquetez une Diagnosis Category sur une note de consultation, cela alimente **Reports → Diagnosis-Category Trend** — choisissez une plage de dates et vous verrez un graphique en lignes avec une ligne par catégorie, mois par mois, plus un tableau de répartition. Ceci est distinct du texte d'Assessment lui-même : Assessment est votre note clinique en texte libre, tandis que la catégorie est une courte étiquette purement destinée à repérer des tendances dans le temps (par ex. « les infections augmentent ce trimestre »). Les visites sans catégorie étiquetée comptent toujours dans votre total de visites mais n'apparaissent pas sur le graphique, puisqu'il n'y a rien pour les regrouper.
 
 ## File d'Attente de Tickets
 
@@ -36,6 +41,8 @@ L'écran **File de tickets** gère les patients sans rendez-vous du jour même s
 - **Call Next** pour appeler le prochain ticket en attente.
 
 Chaque ticket de la liste peut être appelé, marqué comme vu, ignoré, ou remis en attente — la file se retrie automatiquement en sections « Actuellement Appelé », « En attente », et « Terminé ». Ceci est entièrement séparé de la liste Appointments préréservée — c'est conçu pour la réalité des patients qui arrivent simplement et attendent leur tour.
+
+Pour voir quelle part de votre journée est constituée de patients sans rendez-vous par rapport aux rendez-vous préréservés, ouvrez **Reports → Walk-in vs. Appointment Ratio** et choisissez une plage de dates. Cela affiche votre répartition totale en pourcentage, plus un graphique en barres jour par jour, pour que vous sachiez en un coup d'œil si votre clinique fonctionne principalement sur rendez-vous ou principalement avec des personnes qui se présentent simplement.
 
 ## Rappel de Condition Chronique
 

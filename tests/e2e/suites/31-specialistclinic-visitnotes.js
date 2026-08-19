@@ -63,6 +63,14 @@ async function run() {
 
       await page.getByPlaceholder('Full name').fill('E2E Spec Patient')
       await page.getByPlaceholder('Reason for visit').fill('E2E test chest pain complaint')
+      // Phase 67 §9.1 item 20.4 — referral-loop closure fields.
+      await page.getByPlaceholder('Referring practitioner / clinic').fill('E2E Spec Referring Dr')
+      await page.getByPlaceholder('For sharing the summary via WhatsApp').fill('9123456780')
+      await page.getByPlaceholder('For sharing the summary via Email').fill('e2e-referring-dr@example.com')
+      // Phase 67 §9.1 item 20.2 — second-opinion flag.
+      await page.getByText('This is a second-opinion consultation').click()
+      // Phase 67 §9.1 item 20.3 — case-complexity tag.
+      await page.locator('select').filter({ has: page.locator('option[value="COMPLEX"]') }).selectOption('COMPLEX')
       await page.waitForTimeout(300)
 
       await page.getByRole('button', { name: /Save Note/ }).click()
@@ -77,6 +85,109 @@ async function run() {
       const res = await page.evaluate((id) => window.api.visitNotes.get({ appointmentId: id }), appointmentId)
       visitNoteId = res?.data?.id
       r.log('note-findable-via-api', !!visitNoteId, JSON.stringify({ patientName: res?.data?.patientName, chiefComplaint: res?.data?.chiefComplaint }))
+      r.log('referral-contact-fields-persisted', res?.data?.referredByPhone === '9123456780' && res?.data?.referredByEmail === 'e2e-referring-dr@example.com', JSON.stringify({ referredByPhone: res?.data?.referredByPhone, referredByEmail: res?.data?.referredByEmail }))
+      r.log('second-opinion-flag-persisted', res?.data?.isSecondOpinion === true, JSON.stringify({ isSecondOpinion: res?.data?.isSecondOpinion }))
+      r.log('case-complexity-persisted', res?.data?.caseComplexity === 'COMPLEX', JSON.stringify({ caseComplexity: res?.data?.caseComplexity }))
+
+      const badgeVisible = await page.getByText('Second Opinion').isVisible().catch(() => false)
+      r.log('second-opinion-badge-visible-on-screen', badgeVisible)
+    })
+
+    await r.step('finalize-and-verify-share-buttons-appear', async () => {
+      if (!visitNoteId) return r.log('finalize-and-verify-share-buttons-appear', false, 'no visitNoteId captured')
+      // Share buttons should NOT appear on a draft (unfinalized) note even
+      // though a referring doctor with contact info is already recorded.
+      const shareVisibleBeforeFinalize = await page.getByRole('button', { name: 'WhatsApp' }).isVisible().catch(() => false)
+      r.log('share-buttons-absent-before-finalize', !shareVisibleBeforeFinalize)
+
+      await page.getByRole('button', { name: 'Finalize' }).click()
+      await page.waitForTimeout(1200)
+      r.log('finalize-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const whatsappBtn = page.getByRole('button', { name: 'WhatsApp' })
+      const emailBtn = page.getByRole('button', { name: 'Email' })
+      r.log('share-whatsapp-button-visible-after-finalize', await whatsappBtn.isVisible().catch(() => false))
+      r.log('share-email-button-visible-after-finalize', await emailBtn.isVisible().catch(() => false))
+      r.log('share-whatsapp-button-enabled', await whatsappBtn.isEnabled().catch(() => false))
+      await h.shot(page, 'specialist-referral-loop-share-buttons')
+    })
+
+    let laterAppointmentId
+
+    await r.step('second-opinion-conversion-report-via-real-ui', async () => {
+      // Phase 67 §9.1 item 20.2 — book a LATER appointment for the same
+      // customer and mark it COMPLETED, so this second-opinion patient
+      // should show up as "converted" in the report.
+      const laterDate = h.toLocalISODate(new Date(Date.now() + 5 * 24 * 3600000))
+      const laterRes = await page.evaluate(async ({ providerId, customerId, laterDate }) => window.api.appointments.create({
+        providerId, customerId, serviceTitle: 'E2E Spec Follow-up',
+        scheduledDate: laterDate, scheduledTime: '10:00', durationMinutes: 30,
+      }), { providerId, customerId, laterDate })
+      laterAppointmentId = laterRes?.data?.id
+      r.log('later-appointment-created', !!laterAppointmentId, JSON.stringify(laterRes?.error || ''))
+
+      const statusRes = await page.evaluate((id) => window.api.appointments.updateStatus({ id, status: 'COMPLETED' }), laterAppointmentId)
+      r.log('later-appointment-marked-completed', !!statusRes?.success, JSON.stringify(statusRes?.error || ''))
+
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button, div', { hasText: 'Second-Opinion Conversion' }).first()
+      r.log('second-opinion-report-tile-present', await tile.count() > 0)
+      if (await tile.count()) {
+        await tile.click()
+        await page.waitForTimeout(500)
+        const genBtn = page.getByRole('button', { name: 'Generate Report' })
+        if (await genBtn.count()) {
+          await genBtn.click()
+          await page.waitForTimeout(1000)
+        }
+        r.log('second-opinion-report-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+        await h.shot(page, 'specialist-second-opinion-conversion-report')
+      }
+
+      const res = await page.evaluate(async () => {
+        const from = new Date(); from.setDate(from.getDate() - 3)
+        const to = new Date(); to.setDate(to.getDate() + 10)
+        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        return window.api.reports.secondOpinionConversion({ dateFrom: fmt(from), dateTo: fmt(to) })
+      })
+      const row = (res?.data?.rows || []).find((row) => row.patientName === 'E2E Spec Patient')
+      r.log('second-opinion-patient-found-in-report', !!row, JSON.stringify(row))
+      r.log('second-opinion-patient-marked-converted', row?.converted === true, JSON.stringify({ converted: row?.converted, nextVisitDate: row?.nextVisitDate }))
+
+    })
+
+    await r.step('case-complexity-mix-report-via-real-ui', async () => {
+      // Phase 67 §9.1 item 20.3 — the note was saved with Case Complexity =
+      // COMPLEX; confirm the report tile renders and the tag is reflected.
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button, div', { hasText: 'Case-Complexity Mix' }).first()
+      r.log('case-complexity-report-tile-present', await tile.count() > 0)
+      if (await tile.count()) {
+        await tile.click()
+        await page.waitForTimeout(500)
+        const genBtn = page.getByRole('button', { name: 'Generate Report' })
+        if (await genBtn.count()) {
+          await genBtn.click()
+          await page.waitForTimeout(1000)
+        }
+        r.log('case-complexity-report-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+        await h.shot(page, 'specialist-case-complexity-mix-report')
+      }
+
+      const res = await page.evaluate(async () => {
+        const from = new Date(); from.setDate(from.getDate() - 3)
+        const to = new Date(); to.setDate(to.getDate() + 10)
+        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        return window.api.reports.caseComplexityMix({ dateFrom: fmt(from), dateTo: fmt(to) })
+      })
+      r.log('case-complexity-mix-shows-at-least-one-complex-case', (res?.data?.summary?.complexCount ?? 0) >= 1, JSON.stringify(res?.data?.summary))
+
+      // Navigate back to the visit note screen — the next step continues
+      // working on this same note and assumes it's still on-screen.
+      await h.gotoHash(page, `#/clinical/visit/${appointmentId}`)
+      await page.waitForTimeout(800)
     })
 
     await r.step('refer-to-another-provider-via-real-ui', async () => {
@@ -135,6 +246,39 @@ async function run() {
       const tokens = res?.data || []
       const found = tokens.find((t) => t.patientName === 'E2E Spec Walkin Patient')
       r.log('token-findable-via-api', !!found, JSON.stringify({ status: found?.status, tokenNumber: found?.tokenNumber }))
+    })
+
+    await r.step('urgent-walk-in-priority-via-real-ui', async () => {
+      // Phase 67 §9.1 item 20.5 — issue a SECOND walk-in, marked urgent, and
+      // confirm it gets a HIGHER token number (checked in later) yet is
+      // returned AHEAD of the earlier non-urgent walk-in — proving the real
+      // orderBy (isUrgent desc, tokenNumber asc) actually reprioritizes the
+      // queue rather than just storing an inert flag.
+      await page.getByRole('button', { name: 'Add Walk-in' }).click()
+      await page.waitForTimeout(500)
+      const modal = h.topModal(page)
+
+      await modal.getByPlaceholder('Full name').fill('E2E Spec Walkin Urgent')
+      await modal.getByText('Mark as urgent').click()
+      await page.waitForTimeout(300)
+
+      await modal.getByRole('button', { name: 'Issue Token' }).click()
+      await page.waitForTimeout(1200)
+      r.log('urgent-token-issued-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const urgentBadgeVisible = await page.getByText('Urgent', { exact: true }).isVisible().catch(() => false)
+      r.log('urgent-badge-visible-on-screen', urgentBadgeVisible)
+      await h.shot(page, 'specialist-urgent-token-issued')
+
+      const res = await page.evaluate(async () => window.api.tokenQueue.today({}))
+      const tokens = res?.data || []
+      const normal = tokens.find((t) => t.patientName === 'E2E Spec Walkin Patient')
+      const urgent = tokens.find((t) => t.patientName === 'E2E Spec Walkin Urgent')
+      r.log('urgent-token-persisted-with-flag', urgent?.isUrgent === true, JSON.stringify({ isUrgent: urgent?.isUrgent }))
+      r.log('urgent-token-has-later-token-number', !!normal && !!urgent && urgent.tokenNumber > normal.tokenNumber, JSON.stringify({ normal: normal?.tokenNumber, urgent: urgent?.tokenNumber }))
+      const normalIdx = tokens.findIndex((t) => t.patientName === 'E2E Spec Walkin Patient')
+      const urgentIdx = tokens.findIndex((t) => t.patientName === 'E2E Spec Walkin Urgent')
+      r.log('urgent-token-ordered-ahead-despite-later-checkin', urgentIdx >= 0 && normalIdx >= 0 && urgentIdx < normalIdx, JSON.stringify({ normalIdx, urgentIdx }))
     })
 
     await r.step('restore-business-type', async () => {

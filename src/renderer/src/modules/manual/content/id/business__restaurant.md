@@ -32,6 +32,10 @@ Pada layar Products, alihkan sebuah item menu mana pun menjadi **86** (istilah s
 
 Buat combo atau thali sebagai item menu seperti produk lainnya, lalu buka untuk diedit dan gunakan **Manage Kit Components** untuk menambahkan masing-masing hidangan yang menyusunnya dan berapa banyak masing-masing. Tetapkan harga jual combo itu sendiri pada produknya — ini sepenuhnya independen dari berapa harga hidangan individual jika dijual terpisah, sehingga thali dapat diberi harga sebagai penawaran paket sungguhan, bukan jumlah dari bagian-bagiannya. Menjual combo menagihnya sebagai satu baris yang bersih, tetapi di baliknya mengurangi stok setiap hidangan yang dikandungnya dengan benar, dan menandai tiket dapurnya sebagai **Mark Done** juga mengurangi bahan-bahan di balik hidangan-hidangan tersebut dengan benar — sama seperti jika setiap hidangan dipesan secara terpisah.
 
+## Harga Jam Bahagia
+
+Untuk menjalankan jam bahagia — misalnya diskon 20% untuk minuman pukul 16.00–18.00 — tidak memerlukan fitur restoran khusus: buat Skema Harga **Jam Bahagia / Diskon % Flat** (Skema Harga, lihat bab Pesanan Penjualan & Penetapan Harga) yang dibatasi ke kategori minuman atau satu item, dan beri waktu mulai serta akhir harian bersama diskonnya. Ini berlaku otomatis saat checkout hanya selama jendela waktu tersebut dan mati dengan sendirinya begitu jendela waktu berakhir — tidak ada yang perlu mengingat untuk menyalakan atau mematikan diskon secara manual.
+
 ## Kitchen Order Tickets (KOT)
 
 Sebuah KOT adalah salinan dapur dari sebuah pesanan. Setelah membuat pesanan di **Penagihan**, buka faktur tersebut dan ketuk **Kirim ke Dapur** untuk membuat KOT untuknya. Dari **Kitchen Order Tickets** di sidebar, staf dapur melihat setiap tiket dikelompokkan berdasarkan status — Pending, In Progress, Done, Cancelled — beserta item dan kuantitasnya, dan memajukan masing-masing dengan satu ketukan (**Start Cooking** → **Mark Done**), atau **Batal**. Setiap tiket juga bisa langsung dicetak ke printer dapur Anda.
@@ -59,6 +63,14 @@ Buka **Resep** untuk menautkan sebuah item menu (misalnya "Masala Chai") ke baha
 Setelah sebuah resep ada untuk item menu, menyelesaikan KOT-nya (menandainya Done) secara otomatis mengurangi kuantitas bahan resep × kuantitas yang dipesan dari stok produk reguler Anda — tidak ada inventaris bahan terpisah untuk dikelola. Jika stok sebuah bahan tidak bisa disesuaikan karena alasan tertentu, Sarang tidak diam-diam kehilangan selisihnya: ia memunculkan notifikasi yang memberi tahu bahan mana yang perlu dihitung ulang secara manual, sehingga angka stok Anda tidak pernah diam-diam melenceng.
 
 Item menu tanpa resep yang dikonfigurasi cukup tidak mengurangi stok bahan apa pun saat terjual — resep sepenuhnya opsional per item.
+
+## Laporan
+
+Buka **Laporan → Margin Kontribusi per Hidangan** untuk melihat, untuk setiap hidangan yang terjual dalam rentang tanggal, pendapatannya dikurangi biaya resepnya — grafik batang plus tabel lengkap, diurutkan sehingga hidangan dengan margin terbaik berada di atas. Ini adalah pertanyaan yang berbeda dari **Laporan → Laporan Biaya Makanan**: Biaya Makanan menjumlahkan apa yang benar-benar Anda keluarkan untuk bahan selama periode ini, sementara Margin Kontribusi menjawab "hidangan mana yang benar-benar menutupi biayanya", menggunakan rumus resep masing-masing hidangan alih-alih total pengeluaran. Margin combo atau thali secara benar mencerminkan resep hidangan asli di dalamnya, dan item menu tanpa resep yang dikonfigurasi cukup menampilkan biaya bahan 0 — "tidak ada data" yang jujur, bukan tebakan.
+
+Buka **Laporan → Perputaran Meja per Jam** untuk melihat peta panas hari-dalam-minggu × jam-dalam-hari dari pesanan makan di tempat Anda dalam rentang tanggal — semakin gelap sebuah sel, semakin sibuk restoran Anda sesungguhnya selama jam tersebut, pada hari itu. Di sini hanya pesanan yang benar-benar dimulai dari meja (melalui **Start Order** di Restaurant Tables) yang dihitung; penjualan konter atau bawa pulang tanpa meja terkait bukan bagian dari pertanyaan "perputaran meja" dan dikecualikan dengan benar. Gunakan ini untuk melihat jam sibuk sebenarnya sekilas, bukan tebakan berdasarkan ingatan — berguna untuk menjadwalkan shift staf berdasarkan kapan lantai restoran sebenarnya paling sibuk.
+
+Buka **Laporan → Varians Pemborosan: Resep vs. Aktual** untuk membandingkan, per bahan, berapa yang seharusnya digunakan menurut resep Anda dengan apa yang sebenarnya diambil dari stok dalam rentang tanggal — grafik batang plus tabel lengkap, dengan selisih terbesar di awal. Bahan yang secara konsisten lebih tinggi dari yang ditunjukkan resepnya adalah sinyal nyata yang layak diperiksa — porsi berlebih, tumpahan, atau resep yang sudah usang — sementara bahan yang lebih rendah bisa berarti sebaliknya. Ini benar-benar berbeda dari kedua laporan di atas: Biaya Makanan dan Margin Kontribusi masing-masing menunjukkan satu sisi cerita (pengeluaran aktual, atau biaya sesuai resep); ini adalah satu-satunya laporan yang menempatkan kedua sisi bahan yang SAMA berdampingan.
 
 ## Pemesanan meja lewat QR-code (opt-in)
 

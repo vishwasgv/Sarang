@@ -22,6 +22,10 @@ For each test on the order, enter its result: a set of named parameters (value, 
 
 A **Critical** result puts a red badge on the order (and on the specific item) immediately, and the order can't be considered handled until you use **Record Doctor Notified** to log that you actually called the referring doctor, with a note — this is a genuine record that the escalation happened, not just that the number was flagged.
 
+## Turnaround time (TAT)
+
+If a test in your Service Catalog has a **Target TAT (hours)** set — edit the test entry to add one — every order for that test tracks its actual turnaround automatically: the moment a result becomes ready is compared against the sample-collection time, and the test's result row shows an **On Time** or **Late** badge with the exact hours, right next to its status. No target means no badge — this is opt-in per test, not a requirement.
+
 ## Finalizing the report
 
 Once every test on the order has a result entered, **Finalize Report** locks the whole order — its status becomes Reported and every item is marked Reported. A finalized report's results can no longer be edited; if a correction is genuinely needed, that has to happen before finalization. After the report is finalized, mark it **Delivered** once the patient or referring clinic has actually received it. Attach real scan/image files to an order from its detail view.
@@ -33,6 +37,8 @@ Generate an invoice directly from a lab order once every test has a price greate
 ## Reports
 
 The **Reports** screen includes a Lab Test Throughput report specific to this vertical, showing orders by stage (ordered, sample collected, in process, reported) and the turnaround time from order to report for each one — useful for spotting where samples are piling up.
+
+Three more lab-specific reports live alongside it. **Per-Test TAT** breaks turnaround down by test name instead of by order — average actual hours against each test's own target, and how many results came in on time versus late, so you can see which specific tests are the ones missing their SLA rather than just that "something" is slow. **Test Volume by Panel** charts how many tests you're running per panel/category over time — a line per panel, month by month. **Referral Leaderboard** ranks the doctors referring the most tests to your lab, so you know who your real volume is coming from.
 
 ## Language
 

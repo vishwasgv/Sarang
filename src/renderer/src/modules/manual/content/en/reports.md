@@ -18,7 +18,7 @@ The Inventory Report shows current stock levels and valuation with low-stock ale
 
 ## Customers & Suppliers
 
-Customer Ledger and Supplier Statement each produce a full transaction statement for one specific customer or supplier that you search for and select. The Outstanding entry, under Finance, lists every customer and supplier with a pending balance in one place.
+Customer Ledger and Supplier Statement each produce a full transaction statement for one specific customer or supplier that you search for and select — opening balance, every transaction in date order, and closing balance, plus a running-balance trend line so you can see at a glance whether their balance has been climbing or coming down over the period. This is also exactly how a contractor's running account works: every credit sale adds to their balance as it happens, and this statement is the month-end (or any date range) bill you hand them, already itemized and totaled — no separate "running account" setup needed. The Outstanding entry, under Finance, lists every customer and supplier with a pending balance in one place.
 
 ## Financial
 

@@ -27,3 +27,13 @@ La pestaña de **Exercise Program** le permite construir un Programa de Ejercici
 ## Paquetes de Sesiones
 
 La pestaña de **Paquetes de sesiones** sigue paquetes prepagados de sesiones (p. ej. "Paquete de Fisioterapia de 10 sesiones"): nombre del paquete, sesiones totales, precio, tasa de GST, fechas de compra y vencimiento. Un paquete activo muestra una barra de progreso de sesiones restantes, y cada cita completada contra ese paquete descuenta una sesión automáticamente. Una vez que un paquete tiene un precio, puede **Generar Factura** para él directamente desde esta pantalla — solo lo ofrece una vez, y marca el paquete como "Invoiced" después, para que nunca se facture dos veces.
+
+La fila de filtros en la parte superior de la lista de Paquetes de Sesiones (**Todos / Activos / Bajos / Vencidos**, cada uno con un contador en vivo) es su vista de alertas: un paquete pasa a **Bajos** cuando quedan 2 sesiones o menos, y a **Vencidos** una vez que su fecha de vencimiento ha pasado — ambos se marcan con color también en la propia tarjeta del paquete, así que nunca tiene que abrir un paquete para notar que necesita atención.
+
+Para ver cómo se están usando sus paquetes de sesiones en todos los pacientes, abra **Reports → Pack Utilization** y elija un rango de fechas. Muestra el total de paquetes vendidos, sesiones usadas frente a sesiones compradas, y un porcentaje de utilización general, más un gráfico de barras y una tabla completa desglosándolo paquete por paquete — para que pueda detectar de un vistazo paquetes mayormente sin usar (una señal para hacer seguimiento con ese paciente).
+
+## Referencias
+
+Si un paciente llega derivado por un médico externo, la sección **Detalles de Referencia** de la Nota de Consulta registra quién lo derivó, la fecha y el motivo — campos de texto libre, ya que el médico que deriva suele estar fuera de Sarang por completo. Si en cambio está enviando un paciente a otro proveedor dentro de su propia clínica, use **Derivar a Otro Proveedor** en su nota para reservar una cita real vinculada, el mismo mecanismo de derivación dentro de la app usado en los tipos de negocio clínicos de Sarang.
+
+Una vez que ese proveedor finaliza su propia nota en la cita derivada, su resultado aparece automáticamente en su nota original. Si esa nota está siguiendo el Puntaje de Dolor y el Puntaje Funcional a lo largo de las sesiones, el resultado mostrado no es solo su comentario final — es un antes-y-después cuantificado a lo largo de todo el curso del tratamiento desde la derivación (por ejemplo, "Dolor 7→3, Función 40→75 en 3 sesiones"), para que pueda ver de un vistazo si la derivación realmente ayudó, no solo que ocurrió.

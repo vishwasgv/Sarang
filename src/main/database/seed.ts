@@ -194,6 +194,16 @@ const PERMISSIONS = [
   { permissionKey: 'pricingSchemes.view', permissionName: 'View Pricing Schemes' },
   { permissionKey: 'pricingSchemes.manage', permissionName: 'Manage Pricing Schemes' },
   { permissionKey: 'pricingSchemes.resolve', permissionName: 'Evaluate Cart Against Pricing Schemes' },
+  // Phase 67 §9.1 — Retail time-boxed markdown workflow. Same Manager-tier
+  // trust level as the rest of this phase's pricing-policy permissions —
+  // starting a markdown immediately changes a live selling price.
+  { permissionKey: 'priceMarkdowns.view', permissionName: 'View Price Markdowns' },
+  { permissionKey: 'priceMarkdowns.manage', permissionName: 'Manage Price Markdowns' },
+  // Phase 67 §9.1 — Retail loyalty punch-card. Same Manager-tier trust level
+  // as Price Markdowns just above — configuring the program or redeeming a
+  // reward both affect real customer-facing value.
+  { permissionKey: 'loyaltyProgram.view', permissionName: 'View Loyalty Program' },
+  { permissionKey: 'loyaltyProgram.manage', permissionName: 'Manage Loyalty Program' },
   // Phase 63 — editable invoice template system, a branding/settings-level
   // decision, same Manager trust tier as the rest of this phase's own
   // pricing/catalog management permissions.
@@ -568,6 +578,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'priceLists.view', 'priceLists.manage', 'priceLists.resolve',
     'recurringProfiles.view', 'recurringProfiles.manage',
     'pricingSchemes.view', 'pricingSchemes.manage', 'pricingSchemes.resolve',
+    'priceMarkdowns.view', 'priceMarkdowns.manage',
+    'loyaltyProgram.view', 'loyaltyProgram.manage',
     'invoiceTemplates.view', 'invoiceTemplates.manage',
     // approvalWorkflows.manage (configuring workflows) stays Admin-only —
     // not granted here, see the permission definitions' own comment above.

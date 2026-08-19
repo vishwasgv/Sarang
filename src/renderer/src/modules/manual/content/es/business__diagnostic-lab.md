@@ -22,6 +22,10 @@ Para cada prueba en la orden, ingrese su resultado: un conjunto de parámetros c
 
 Un resultado **Crítico** pone una insignia roja en la orden (y en el elemento específico) de inmediato, y la orden no se puede considerar atendida hasta que use **Record Doctor Notified** para registrar que realmente llamó al médico que hizo la derivación, con una nota — este es un registro genuino de que la escalación ocurrió, no solo que el número fue marcado.
 
+## Tiempo de respuesta (TAT)
+
+Si una prueba en su Service Catalog tiene un **Target TAT (hours)** configurado — edite la entrada de la prueba para agregarlo — cada orden para esa prueba rastrea automáticamente su tiempo de respuesta real: el momento en que un resultado queda listo se compara con la hora de recolección de la muestra, y la fila de resultado de la prueba muestra una insignia **On Time** o **Late** con las horas exactas, justo junto a su estado. Sin un objetivo no hay insignia — esto es opcional por prueba, no un requisito.
+
 ## Finalizar el informe
 
 Una vez que cada prueba en la orden tiene un resultado ingresado, **Finalize Report** bloquea toda la orden — su estado se vuelve Reported y cada elemento se marca como Reported. Los resultados de un informe finalizado ya no se pueden editar; si genuinamente se necesita una corrección, esta tiene que ocurrir antes de la finalización. Después de que el informe se finaliza, márquelo como **Entregado** una vez que el paciente o la clínica que refirió realmente lo haya recibido. Adjunte archivos reales de escaneo/imagen a una orden desde su vista de detalle.
@@ -33,6 +37,8 @@ Genere una factura directamente desde una orden de laboratorio una vez que cada 
 ## Informes
 
 La pantalla de **Informes** incluye un informe de Lab Test Throughput específico de esta vertical, que muestra las órdenes por etapa (ordenada, muestra recolectada, en proceso, informada) y el tiempo de respuesta desde la orden hasta el informe para cada una — útil para detectar dónde se están acumulando las muestras.
+
+Tres informes más específicos del laboratorio están junto a él. **Per-Test TAT** desglosa el tiempo de respuesta por nombre de prueba en lugar de por orden — horas reales promedio contra el objetivo propio de cada prueba, y cuántos resultados llegaron a tiempo versus tarde, para que pueda ver qué pruebas específicas son las que no cumplen su SLA en lugar de solo que "algo" está lento. **Test Volume by Panel** grafica cuántas pruebas está realizando por panel/categoría a lo largo del tiempo — una línea por panel, mes a mes. **Referral Leaderboard** clasifica a los médicos que refieren más pruebas a su laboratorio, para que sepa de dónde viene realmente su volumen.
 
 ## Idioma
 

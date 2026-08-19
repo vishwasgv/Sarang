@@ -612,4 +612,50 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
     expect(result.data?.skippedNoDefaultSupplier).toBe(0)
     expect(result.data?.skippedAlreadyOnOpenPO).toBe(0)
   })
+
+  // Phase 67 §9.1 — Hardware: smart carton-break reorder trigger. A supplier
+  // sells whole cartons, not a fractional piece count — the drafted PO's
+  // quantity must round UP to the next carton multiple, never down (that
+  // would under-order an already-low-stock item).
+  it('rounds the drafted quantity up to a whole carton multiple for a sellByPack product', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({
+        reorderQuantity: 50,
+        product: { id: 'prod-a', productName: 'Screws (Box of 24)', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18, sellByPack: true, unitsPerPack: 24 }
+      })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await purchaseOrderService.generateReorderDraftPOs()
+
+    const createCall = db.purchaseOrder.create.mock.calls[0][0]
+    expect(createCall.data.items.create[0].quantity).toBe(72) // ceil(50/24) * 24 = 3 cartons = 72 pieces
+  })
+
+  it('leaves the drafted quantity untouched for a product not sold by pack', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({ reorderQuantity: 50 }) // default fixture has no sellByPack
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await purchaseOrderService.generateReorderDraftPOs()
+
+    const createCall = db.purchaseOrder.create.mock.calls[0][0]
+    expect(createCall.data.items.create[0].quantity).toBe(50)
+  })
+
+  it('does not round when the reorder quantity already lands exactly on a carton boundary', async () => {
+    const db = makeReorderDb([
+      makeReorderInventoryRow({
+        reorderQuantity: 48,
+        product: { id: 'prod-a', productName: 'Screws (Box of 24)', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18, sellByPack: true, unitsPerPack: 24 }
+      })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await purchaseOrderService.generateReorderDraftPOs()
+
+    const createCall = db.purchaseOrder.create.mock.calls[0][0]
+    expect(createCall.data.items.create[0].quantity).toBe(48)
+  })
 })

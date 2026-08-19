@@ -38,6 +38,7 @@ export async function createService(payload: {
   taxRate?: number
   sacCode?: string
   notes?: string
+  targetTATHours?: number
 }) {
   try {
     const db = getPrisma()
@@ -58,6 +59,7 @@ export async function createService(payload: {
         taxRate: payload.taxRate ?? 0,
         sacCode: payload.sacCode ?? null,
         notes: payload.notes ?? null,
+        targetTATHours: payload.targetTATHours ?? null,
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ServiceCatalog', entityId: item.id, newValue: JSON.stringify({ serviceName: item.serviceName }) } }).catch(() => {})
@@ -79,6 +81,7 @@ export async function updateService(payload: {
   sacCode?: string | null
   isActive?: boolean
   notes?: string | null
+  targetTATHours?: number | null
 }) {
   try {
     const db = getPrisma()

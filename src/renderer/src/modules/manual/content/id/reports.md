@@ -16,7 +16,7 @@ Laporan Inventaris menampilkan tingkat stok saat ini dan penilaiannya dengan per
 
 ## Pelanggan & Pemasok
 
-Customer Ledger dan Supplier Statement masing-masing menghasilkan laporan transaksi lengkap untuk satu pelanggan atau pemasok tertentu yang Anda cari dan pilih. Entri Outstanding, di bawah Finance, mendaftar setiap pelanggan dan pemasok dengan saldo tertunda dalam satu tempat.
+Customer Ledger dan Supplier Statement masing-masing menghasilkan laporan transaksi lengkap untuk satu pelanggan atau pemasok tertentu yang Anda cari dan pilih — saldo awal, setiap transaksi berurutan tanggal, dan saldo akhir, ditambah garis tren saldo agar Anda bisa melihat sekilas apakah saldo mereka naik atau turun selama periode tersebut. Begitulah tepatnya cara kerja rekening berjalan kontraktor: setiap penjualan kredit langsung ditambahkan ke saldo mereka saat terjadi, dan laporan ini adalah tagihan akhir bulan (atau rentang tanggal mana pun) yang Anda berikan kepada mereka, sudah terperinci per item dan dijumlahkan — tanpa perlu pengaturan "rekening berjalan" terpisah. Entri Outstanding, di bawah Finance, mendaftar setiap pelanggan dan pemasok dengan saldo tertunda dalam satu tempat.
 
 ## Keuangan
 

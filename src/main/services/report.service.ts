@@ -1,9 +1,10 @@
 import { getPrisma } from '../database/db'
-import { INGREDIENT_DEDUCTION_REMARKS_PREFIX } from './restaurant.service'
+import { INGREDIENT_DEDUCTION_REMARKS_PREFIX, getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { getProductCostsBatch } from './valuation.service'
 import { generateChronicRecallComplianceReport as generateChronicRecallComplianceReportImpl } from './chronic-condition-record.service'
+import { generateDentalRecallComplianceReport as generateDentalRecallComplianceReportImpl } from './recall-record.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -30,6 +31,11 @@ export interface SalesReport {
 export interface InventoryReportRow {
   sku: string | null; productName: string; category: string; productType: string
   currentStock: number; unit: string; costPrice: number; sellingPrice: number; stockValue: number; lowStockAlert: boolean
+  // Phase 67 §9.1 — Hardware: smart carton-break reorder trigger. Null for
+  // every product not sold by pack (the overwhelming majority) — populated
+  // only when there's a real carton ratio to break the flat piece count
+  // down by, since Inventory.quantity itself never stops being pieces.
+  cartonBreakdown: { unitsPerPack: number; fullCartons: number; loosePieces: number } | null
 }
 
 export interface InventoryReport {
@@ -344,6 +350,16 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
 
     if (params?.lowStockOnly && !lowAlert && stock !== 0) continue
 
+    // Phase 67 §9.1 — Hardware: reframe a flat piece count into carton
+    // terms for any product genuinely sold by pack — floor division, since
+    // this is "how much do I actually have," not a reorder suggestion
+    // (which rounds up instead — see purchase-order.service.ts's
+    // roundUpToCartonMultiple for that distinct, deliberately opposite,
+    // rounding direction).
+    const cartonBreakdown = (p.sellByPack && p.unitsPerPack && p.unitsPerPack > 0)
+      ? { unitsPerPack: p.unitsPerPack, fullCartons: Math.floor(stock / p.unitsPerPack), loosePieces: stock % p.unitsPerPack }
+      : null
+
     rows.push({
       sku: p.sku, productName: p.productName,
       category: p.category?.name ?? 'Uncategorized',
@@ -352,7 +368,8 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
       // weightUnit (kg/g/L/mL), not the generic pack Product.unit — showing
       // "42.5 PCS" for 42.5kg of loose rice was silently wrong.
       currentStock: stock, unit: (p.sellByWeight && p.weightUnit) ? p.weightUnit : p.unit, costPrice: p.costPrice,
-      sellingPrice: p.sellingPrice, stockValue, lowStockAlert: lowAlert || stock === 0
+      sellingPrice: p.sellingPrice, stockValue, lowStockAlert: lowAlert || stock === 0,
+      cartonBreakdown
     })
   }
 
@@ -1585,6 +1602,540 @@ async function generateFoodCostReport(params?: { dateFrom?: string; dateTo?: str
   const totalCost = sumCurrency(rows.map(r => r.totalCost))
 
   return { dateFrom: params?.dateFrom, dateTo: params?.dateTo, totalCost, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dish-wise Contribution Margin Report (Restaurant template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Per-dish menu-engineering margin: revenue (real, from InvoiceItem lines
+// sold in the period) minus THEORETICAL recipe cost (getDishIngredientCostsBatch,
+// combo-aware). Deliberately distinct from generateFoodCostReport() above —
+// see that function's own comment and getDishIngredientCostsBatch's — this
+// answers "which dishes are actually earning their keep," the Food Cost
+// Report answers "how much did we spend on food this period." A dish with
+// no recipe configured shows 0 cost / 100% margin, not a guess.
+export interface DishContributionMarginRow {
+  productId: string; productName: string; quantitySold: number
+  revenue: number; ingredientCost: number; contributionMargin: number; marginPercent: number
+}
+
+export interface DishContributionMarginReport {
+  dateFrom?: string; dateTo?: string; rows: DishContributionMarginRow[]
+}
+
+async function generateDishContributionMarginReport(params?: { dateFrom?: string; dateTo?: string }): Promise<DishContributionMarginReport> {
+  const db = getPrisma()
+  const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: {
+        status: 'ACTIVE',
+        ...(from || to ? { invoiceDate: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
+      }
+    },
+    select: {
+      productId: true, quantity: true, lineTotal: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { productName: true } }
+    }
+  })
+
+  const byProduct = new Map<string, { productName: string; quantitySold: number; revenue: number }>()
+  for (const item of items) {
+    const existing = byProduct.get(item.productId) ?? { productName: item.product.productName, quantitySold: 0, revenue: 0 }
+    // Same RETURN sign correction as getTopProducts (analytics.service.ts) —
+    // a returned dish must reduce both revenue and quantity, not inflate them.
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    existing.quantitySold += sign * item.quantity
+    existing.revenue += item.lineTotal
+    byProduct.set(item.productId, existing)
+  }
+
+  const costs = await getDishIngredientCostsBatch([...byProduct.keys()])
+
+  const rows: DishContributionMarginRow[] = Array.from(byProduct.entries()).map(([productId, p]) => {
+    const revenue = roundCurrency(p.revenue)
+    const ingredientCost = roundCurrency((costs.get(productId) ?? 0) * p.quantitySold)
+    const contributionMargin = roundCurrency(revenue - ingredientCost)
+    return {
+      productId, productName: p.productName, quantitySold: p.quantitySold,
+      revenue, ingredientCost, contributionMargin,
+      marginPercent: revenue !== 0 ? Math.round((contributionMargin / revenue) * 1000) / 10 : 0
+    }
+  }).sort((a, b) => b.contributionMargin - a.contributionMargin)
+
+  return { dateFrom: params?.dateFrom, dateTo: params?.dateTo, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Table Turnover by Hour Report (Restaurant template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A "table turn" is counted as one KOT created for an invoice that was
+// genuinely bound to a table (KOT.tableId is optional — see restaurant.
+// service.ts's createKOT — a counter/takeaway sale with no table produces a
+// KOT with tableId null, correctly excluded here; a "table turnover" report
+// can only honestly speak to actual dine-in seatings). Bucketed by real
+// local day-of-week (0=Sun..6=Sat) and hour-of-day (0-23) from KOT.createdAt
+// — Date.getDay()/getHours() are always local-time accessors in Node, the
+// same implicit-local-time assumption every other report in this file
+// already makes; no string-date UTC-parsing risk here since this reads a
+// real Date object, not a "YYYY-MM-DD" string.
+export interface TableTurnoverCell { dayOfWeek: number; hour: number; count: number }
+export interface TableTurnoverByHourReport {
+  dateFrom?: string; dateTo?: string
+  cells: TableTurnoverCell[] // always the full 7x24 = 168 grid, zero-filled
+  summary: { totalTurns: number; peakDayOfWeek: number | null; peakHour: number | null; peakCount: number }
+}
+
+async function generateTableTurnoverByHourReport(params?: { dateFrom?: string; dateTo?: string }): Promise<TableTurnoverByHourReport> {
+  const db = getPrisma()
+  const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
+
+  const kots = await db.kOT.findMany({
+    where: {
+      tableId: { not: null },
+      ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
+    },
+    select: { createdAt: true }
+  })
+
+  const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))
+  for (const kot of kots) {
+    grid[kot.createdAt.getDay()][kot.createdAt.getHours()]++
+  }
+
+  const cells: TableTurnoverCell[] = []
+  let peakDayOfWeek: number | null = null
+  let peakHour: number | null = null
+  let peakCount = 0
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 0; hour < 24; hour++) {
+      const count = grid[day][hour]
+      cells.push({ dayOfWeek: day, hour, count })
+      if (count > peakCount) { peakCount = count; peakDayOfWeek = day; peakHour = hour }
+    }
+  }
+
+  return {
+    dateFrom: params?.dateFrom, dateTo: params?.dateTo, cells,
+    summary: { totalTurns: kots.length, peakDayOfWeek, peakHour, peakCount }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recipe-vs-Actual Waste Variance Report (Restaurant template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Pairs two independently-sourced numbers per ingredient: what the recipes
+// SAY should have been consumed (getRecipeImpliedIngredientUsageBatch, from
+// dishes actually sold) against what was ACTUALLY drawn down (the same
+// InventoryMovement rows generateFoodCostReport reads — real deductions,
+// not a recipe prediction). A large gap in either direction is the real
+// signal: actual > implied hints at portion drift, spillage, or theft;
+// implied > actual hints at a stale/wrong recipe or ingredient substitution
+// that never got recorded. Neither side alone can show this — Food Cost
+// Report only has the actual side, Dish Contribution Margin only the
+// implied side (as cost, not quantity).
+export interface RecipeWasteVarianceRow {
+  ingredientProductId: string; ingredientName: string; unit: string
+  impliedQuantity: number; actualQuantity: number; varianceQuantity: number; variancePercent: number | null
+}
+export interface RecipeWasteVarianceReport {
+  dateFrom?: string; dateTo?: string; rows: RecipeWasteVarianceRow[]
+}
+
+async function generateRecipeWasteVarianceReport(params?: { dateFrom?: string; dateTo?: string }): Promise<RecipeWasteVarianceReport> {
+  const db = getPrisma()
+  const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
+  const dateFilter = from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined
+
+  const [invoiceItems, movements] = await Promise.all([
+    db.invoiceItem.findMany({
+      where: { invoice: { status: 'ACTIVE', ...(dateFilter ? { invoiceDate: dateFilter } : {}) } },
+      select: { productId: true, quantity: true, invoice: { select: { invoiceType: true } } }
+    }),
+    db.inventoryMovement.findMany({
+      where: {
+        movementType: 'ADJUSTMENT', quantity: { lt: 0 },
+        remarks: { contains: INGREDIENT_DEDUCTION_REMARKS_PREFIX },
+        ...(dateFilter ? { createdAt: dateFilter } : {})
+      },
+      select: { productId: true, quantity: true }
+    })
+  ])
+
+  const dishSalesByProduct = new Map<string, number>()
+  for (const item of invoiceItems) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    dishSalesByProduct.set(item.productId, (dishSalesByProduct.get(item.productId) ?? 0) + sign * item.quantity)
+  }
+  const dishSales = Array.from(dishSalesByProduct.entries()).map(([productId, quantity]) => ({ productId, quantity }))
+  const impliedByIngredient = await getRecipeImpliedIngredientUsageBatch(dishSales)
+
+  const actualByIngredient = new Map<string, number>()
+  for (const m of movements) {
+    actualByIngredient.set(m.productId, (actualByIngredient.get(m.productId) ?? 0) + Math.abs(m.quantity))
+  }
+
+  const ingredientIds = [...new Set([...impliedByIngredient.keys(), ...actualByIngredient.keys()])]
+  const ingredients = ingredientIds.length > 0
+    ? await db.product.findMany({ where: { id: { in: ingredientIds } }, select: { id: true, productName: true, unit: true } })
+    : []
+  const ingredientById = new Map(ingredients.map(p => [p.id, p]))
+
+  const rows: RecipeWasteVarianceRow[] = ingredientIds.map(id => {
+    const implied = roundCurrency(impliedByIngredient.get(id) ?? 0)
+    const actual = roundCurrency(actualByIngredient.get(id) ?? 0)
+    const varianceQuantity = roundCurrency(actual - implied)
+    return {
+      ingredientProductId: id,
+      ingredientName: ingredientById.get(id)?.productName ?? id,
+      unit: ingredientById.get(id)?.unit ?? '',
+      impliedQuantity: implied, actualQuantity: actual, varianceQuantity,
+      variancePercent: implied !== 0 ? Math.round((varianceQuantity / implied) * 1000) / 10 : null
+    }
+  }).sort((a, b) => Math.abs(b.varianceQuantity) - Math.abs(a.varianceQuantity))
+
+  return { dateFrom: params?.dateFrom, dateTo: params?.dateTo, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dead-Stock Clearance Report (Retail template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "Hasn't sold in N days, still in stock" is already computed for the AI
+// Assistant by ai-aggregations.service.ts's getDeadStock() — deliberately
+// NOT reused directly here rather than refactored into a shared function:
+// that AI aggregation is tested, live, and answers a different question
+// (sorted by staleness, no cost data) than this report needs (sorted by
+// CAPITAL LOCKED — quantity x cost, the actual money sitting idle on the
+// shelf). Mirroring its query shape rather than disturbing a working,
+// already-shipped AI-facing function for a UI-only need.
+export interface DeadStockClearanceRow {
+  productId: string; productName: string; sku: string | null; unit: string
+  currentStock: number; unitCost: number; capitalLocked: number
+  lastSoldDate: string | null; daysSinceLastSale: number | null
+}
+export interface DeadStockClearanceReport {
+  asOfDate: string; lookbackDays: number; rows: DeadStockClearanceRow[]
+  summary: { totalCapitalLocked: number; itemCount: number }
+}
+
+async function generateDeadStockClearanceReport(params?: { days?: number }): Promise<DeadStockClearanceReport> {
+  const db = getPrisma()
+  const days = params?.days ?? 90
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+
+  const products = await db.product.findMany({
+    where: { isActive: true },
+    select: {
+      id: true, productName: true, sku: true, unit: true,
+      inventory: { select: { quantity: true } },
+      invoiceItems: {
+        where: { invoice: { status: 'ACTIVE' } },
+        orderBy: { invoice: { invoiceDate: 'desc' } },
+        take: 1,
+        select: { invoice: { select: { invoiceDate: true } } }
+      }
+    }
+  })
+
+  const withStock = products.filter(p => (p.inventory?.quantity ?? 0) > 0)
+  const costs = await getProductCostsBatch(withStock.map(p => p.id))
+  const now = Date.now()
+
+  const rows: DeadStockClearanceRow[] = withStock
+    .map(p => {
+      const lastSoldDate = p.invoiceItems[0]?.invoice.invoiceDate ? toLocalISODate(p.invoiceItems[0].invoice.invoiceDate) : null
+      const currentStock = p.inventory?.quantity ?? 0
+      const unitCost = costs.get(p.id) ?? 0
+      return {
+        productId: p.id, productName: p.productName, sku: p.sku, unit: p.unit,
+        currentStock, unitCost, capitalLocked: roundCurrency(currentStock * unitCost),
+        lastSoldDate,
+        daysSinceLastSale: lastSoldDate ? Math.floor((now - parseLocalDateStart(lastSoldDate).getTime()) / 86400000) : null
+      }
+    })
+    .filter(r => !r.lastSoldDate || parseLocalDateStart(r.lastSoldDate) < cutoff)
+    .sort((a, b) => b.capitalLocked - a.capitalLocked)
+
+  return {
+    asOfDate: toLocalISODate(new Date()), lookbackDays: days, rows,
+    summary: { totalCapitalLocked: sumCurrency(rows.map(r => r.capitalLocked)), itemCount: rows.length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category Sell-Through Rate Report (Retail template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sell-through rate = units sold ÷ (units sold + stock available), the
+// standard retail formula for "of what could have sold, how much actually
+// did." This app has no historical opening-stock snapshot per month (only
+// `InventoryMovement`'s append-only ledger and `Inventory.quantity`'s
+// current total) — reconstructing a genuine per-month opening balance would
+// mean walking that ledger backward from today for every product in every
+// category, a much heavier and more fragile computation for a marginal gain
+// in precision. Deliberate, disclosed simplification instead (same honesty
+// standard as Distributor's Scheme Cost report shipping as a correlation
+// view rather than a fabricated causal one): every month in the requested
+// range is compared against the SAME current stock-on-hand figure per
+// category, not that month's own historical level — this is a trend-over-
+// current-inventory view, not a true point-in-time historical one, and the
+// UI/Manual say so explicitly.
+export interface CategorySellThroughRow {
+  month: string; categoryId: string; categoryName: string
+  unitsSold: number; currentStock: number; sellThroughRate: number
+}
+export interface CategorySellThroughReport {
+  dateFrom: string; dateTo: string; rows: CategorySellThroughRow[]
+}
+
+async function generateCategorySellThroughReport(params: { dateFrom: string; dateTo: string }): Promise<CategorySellThroughReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const categories = await db.productCategory.findMany({ select: { id: true, name: true } })
+  if (categories.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [] }
+  const categoryNameById = new Map(categories.map(c => [c.id, c.name]))
+
+  const catProducts = await db.product.findMany({
+    where: { isActive: true, categoryId: { not: null } },
+    select: { id: true, categoryId: true }
+  })
+  const stockRows = await db.inventory.findMany({
+    where: { productId: { in: catProducts.map(p => p.id) } },
+    select: { productId: true, quantity: true }
+  })
+  const stockByProduct = new Map(stockRows.map(r => [r.productId, r.quantity]))
+  const stockByCategory = new Map<string, number>()
+  for (const p of catProducts) {
+    if (!p.categoryId) continue
+    stockByCategory.set(p.categoryId, (stockByCategory.get(p.categoryId) ?? 0) + (stockByProduct.get(p.id) ?? 0))
+  }
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      product: { categoryId: { not: null } }
+    },
+    select: {
+      quantity: true,
+      invoice: { select: { invoiceType: true, invoiceDate: true } },
+      product: { select: { categoryId: true } }
+    }
+  })
+
+  const byKey = new Map<string, { month: string; categoryId: string; unitsSold: number }>()
+  // Zero-fill every month in the range for every category so a category
+  // with zero sales in a given month still appears as a real 0% bar, not a
+  // gap the chart would otherwise silently skip.
+  const cursor = new Date(from.getFullYear(), from.getMonth(), 1)
+  const end = new Date(to.getFullYear(), to.getMonth(), 1)
+  while (cursor <= end) {
+    const month = groupLabel(cursor, 'month')
+    for (const c of categories) byKey.set(`${month}|${c.id}`, { month, categoryId: c.id, unitsSold: 0 })
+    cursor.setMonth(cursor.getMonth() + 1)
+  }
+
+  for (const item of items) {
+    if (!item.product.categoryId) continue
+    const month = groupLabel(item.invoice.invoiceDate, 'month')
+    const key = `${month}|${item.product.categoryId}`
+    const existing = byKey.get(key)
+    if (!existing) continue // outside the zero-filled range (shouldn't happen given the query's own date filter)
+    // Same RETURN sign correction as every other report in this file.
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    existing.unitsSold += sign * item.quantity
+  }
+
+  const rows: CategorySellThroughRow[] = Array.from(byKey.values())
+    .map(r => {
+      const currentStock = stockByCategory.get(r.categoryId) ?? 0
+      const unitsSold = Math.max(0, r.unitsSold) // a category with more returns than sales this month shows 0%, not a negative rate
+      const denom = unitsSold + currentStock
+      return {
+        month: r.month, categoryId: r.categoryId, categoryName: categoryNameById.get(r.categoryId) ?? '',
+        unitsSold: r.unitsSold, currentStock,
+        sellThroughRate: denom > 0 ? Math.round((unitsSold / denom) * 1000) / 10 : 0
+      }
+    })
+    .sort((a, b) => a.month === b.month ? a.categoryName.localeCompare(b.categoryName) : a.month.localeCompare(b.month))
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Basket Composition Report (Retail template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "Which products tend to be bought together" — a pairwise co-occurrence
+// count over InvoiceItem rows grouped by invoice (a "basket"). RETURN
+// invoices are excluded entirely, not sign-corrected — a returned basket's
+// item pairing was never a genuine co-purchase decision at checkout, unlike
+// a quantity/revenue figure that can be honestly negated instead.
+export interface BasketPairRow {
+  productAId: string; productAName: string
+  productBId: string; productBName: string
+  basketCount: number
+}
+export interface BasketCompositionReport {
+  dateFrom: string; dateTo: string
+  summary: { totalBaskets: number; avgItemsPerBasket: number; avgBasketValue: number }
+  rows: BasketPairRow[]
+}
+
+async function generateBasketCompositionReport(params: { dateFrom: string; dateTo: string }): Promise<BasketCompositionReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const invoices = await db.invoice.findMany({
+    where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, invoiceDate: { gte: from, lte: to } },
+    select: {
+      totalAmount: true,
+      items: { select: { productId: true, product: { select: { productName: true } } } }
+    }
+  })
+
+  let totalItems = 0
+  let totalValue = 0
+  const pairCounts = new Map<string, BasketPairRow>()
+
+  for (const inv of invoices) {
+    // Distinct products only — buying 3 units of the same product isn't a
+    // "pairing," and a duplicated line must never double-count a pair.
+    const distinct = new Map<string, string>()
+    for (const item of inv.items) distinct.set(item.productId, item.product.productName)
+    const productIds = Array.from(distinct.keys())
+
+    // Every real basket counts toward the averages, including single-item
+    // ones — only the PAIRING logic below needs at least 2 products.
+    totalItems += productIds.length
+    totalValue += inv.totalAmount
+    if (productIds.length < 2) continue
+
+    // Sort so productAId < productBId consistently — the SAME pair seen in
+    // two different baskets ({X,Y} then {Y,X}) must always collapse into one
+    // key, never be double-counted as two different "pairs."
+    for (let i = 0; i < productIds.length; i++) {
+      for (let j = i + 1; j < productIds.length; j++) {
+        const [aId, bId] = [productIds[i], productIds[j]].sort()
+        const existing = pairCounts.get(`${aId}|${bId}`)
+        if (existing) { existing.basketCount++; continue }
+        pairCounts.set(`${aId}|${bId}`, {
+          productAId: aId, productAName: distinct.get(aId)!,
+          productBId: bId, productBName: distinct.get(bId)!,
+          basketCount: 1
+        })
+      }
+    }
+  }
+
+  const totalBaskets = invoices.length
+  const rows = Array.from(pairCounts.values()).sort((a, b) => b.basketCount - a.basketCount)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalBaskets,
+      avgItemsPerBasket: totalBaskets > 0 ? Math.round((totalItems / totalBaskets) * 10) / 10 : 0,
+      avgBasketValue: totalBaskets > 0 ? roundCurrency(totalValue / totalBaskets) : 0
+    },
+    rows
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fast-Mover vs. Slow-Mover Matrix (Hardware template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A scatter of velocity (units sold per day, RETURN-sign-corrected the same
+// way as every other report in this file) against margin (%, from the same
+// getProductCostsBatch() valuation basis dead-stock/GSTR reports already use)
+// — no dedicated "sales velocity" concept existed anywhere in this codebase
+// before this report, confirmed via a codebase-wide grep. Quadrant split by
+// the MEDIAN of each axis across only products that actually sold in the
+// period (a fixed absolute threshold would be meaningless across wildly
+// different-sized stores) — matches the item's own "matrix" framing: a real
+// 2x2, not just a flat scatter with no actionable grouping.
+export type MoverQuadrant = 'FAST_HIGH_MARGIN' | 'FAST_LOW_MARGIN' | 'SLOW_HIGH_MARGIN' | 'SLOW_LOW_MARGIN'
+export interface FastSlowMoverRow {
+  productId: string; productName: string; sku: string | null
+  quantitySold: number; velocity: number
+  sellingPrice: number; unitCost: number; marginPercent: number
+  quadrant: MoverQuadrant
+}
+export interface FastSlowMoverMatrixReport {
+  dateFrom: string; dateTo: string; days: number
+  velocityMedian: number; marginMedian: number
+  rows: FastSlowMoverRow[]
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
+async function generateFastSlowMoverMatrixReport(params: { dateFrom: string; dateTo: string }): Promise<FastSlowMoverMatrixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+  const days = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000))
+
+  const items = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } } },
+    select: {
+      productId: true, quantity: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { productName: true, sku: true, sellingPrice: true } }
+    }
+  })
+
+  const agg = new Map<string, { productName: string; sku: string | null; sellingPrice: number; quantitySold: number }>()
+  for (const item of items) {
+    const existing = agg.get(item.productId) ?? {
+      productName: item.product.productName, sku: item.product.sku,
+      sellingPrice: item.product.sellingPrice, quantitySold: 0
+    }
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    existing.quantitySold += sign * item.quantity
+    agg.set(item.productId, existing)
+  }
+
+  const sold = Array.from(agg.entries()).filter(([, v]) => v.quantitySold > 0)
+  const costs = await getProductCostsBatch(sold.map(([productId]) => productId))
+
+  const preRows = sold.map(([productId, v]) => {
+    const unitCost = costs.get(productId) ?? 0
+    const velocity = Math.round((v.quantitySold / days) * 100) / 100
+    const marginPercent = v.sellingPrice > 0 ? Math.round(((v.sellingPrice - unitCost) / v.sellingPrice) * 1000) / 10 : 0
+    return { productId, productName: v.productName, sku: v.sku, quantitySold: v.quantitySold, velocity, sellingPrice: v.sellingPrice, unitCost, marginPercent }
+  })
+
+  const velocityMedian = median(preRows.map(r => r.velocity))
+  const marginMedian = median(preRows.map(r => r.marginPercent))
+
+  const rows: FastSlowMoverRow[] = preRows
+    .map(r => ({
+      ...r,
+      quadrant: (r.velocity >= velocityMedian
+        ? (r.marginPercent >= marginMedian ? 'FAST_HIGH_MARGIN' : 'FAST_LOW_MARGIN')
+        : (r.marginPercent >= marginMedian ? 'SLOW_HIGH_MARGIN' : 'SLOW_LOW_MARGIN')) as MoverQuadrant
+    }))
+    .sort((a, b) => b.velocity - a.velocity)
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, days, velocityMedian, marginMedian, rows }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3926,6 +4477,729 @@ async function generateChronicRecallComplianceReport(params: { dateFrom: string;
   return res.data
 }
 
+// Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance report. Same
+// thin-adapter shape as generateChronicRecallComplianceReport above — the
+// real query lives in recall-record.service.ts (already unit-tested there,
+// already reused by the Dental recall list screen's own header figure).
+export interface DentalRecallComplianceByType { recallType: string; total: number; onTime: number; percent: number }
+export interface DentalRecallComplianceReport {
+  totalRecallsClosed: number; overallOnTime: number; overallPercent: number | null
+  byRecallType: DentalRecallComplianceByType[]
+}
+async function generateDentalRecallComplianceReport(params: { dateFrom: string; dateTo: string }): Promise<DentalRecallComplianceReport> {
+  const res = await generateDentalRecallComplianceReportImpl(params)
+  if (!res.success || !res.data) throw new Error(res.error?.message ?? 'Could not generate dental recall compliance report.')
+  return res.data
+}
+
+// Phase 67 §9.1 item 19.3 (GP Clinic) — Walk-in vs. Appointment Ratio.
+// TokenQueue (walk-ins) and Appointment (booked visits) are the two real,
+// already-captured sources — confirmed via a grounding-check code read that
+// TokenQueue.appointmentId is never actually set by the real "Add Walk-in"
+// UI (TokenQueueScreen.tsx never passes it), so every TokenQueue row in
+// practice IS a genuine walk-in, not a check-in for an existing booking.
+// Counting Appointment separately (regardless of whether it happens to have
+// a linked TokenQueue row) avoids any double-counting risk if that ever
+// changes.
+export interface WalkInVsAppointmentDayPoint { date: string; walkIns: number; appointments: number }
+export interface WalkInVsAppointmentRatioReport {
+  dateFrom: string; dateTo: string
+  summary: { totalWalkIns: number; totalAppointments: number; walkInPercent: number }
+  byDay: WalkInVsAppointmentDayPoint[]
+}
+
+async function generateWalkInVsAppointmentRatioReport(params: { dateFrom: string; dateTo: string }): Promise<WalkInVsAppointmentRatioReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const [walkIns, appointments] = await Promise.all([
+    db.tokenQueue.findMany({ where: { queueDate: { gte: from, lte: to } }, select: { queueDate: true } }),
+    db.appointment.findMany({ where: { scheduledDate: { gte: from, lte: to } }, select: { scheduledDate: true } }),
+  ])
+
+  const dayMap = new Map<string, WalkInVsAppointmentDayPoint>()
+  for (const w of walkIns) {
+    const day = toLocalISODate(w.queueDate)
+    const existing = dayMap.get(day) ?? { date: day, walkIns: 0, appointments: 0 }
+    existing.walkIns += 1
+    dayMap.set(day, existing)
+  }
+  for (const a of appointments) {
+    const day = toLocalISODate(a.scheduledDate)
+    const existing = dayMap.get(day) ?? { date: day, walkIns: 0, appointments: 0 }
+    existing.appointments += 1
+    dayMap.set(day, existing)
+  }
+  const byDay = Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+
+  const totalWalkIns = walkIns.length
+  const totalAppointments = appointments.length
+  const totalEncounters = totalWalkIns + totalAppointments
+  const walkInPercent = totalEncounters > 0 ? Math.round((totalWalkIns / totalEncounters) * 100) : 0
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalWalkIns, totalAppointments, walkInPercent },
+    byDay,
+  }
+}
+
+// Phase 67 §9.1 item 19.4 (GP Clinic) — Diagnosis-Category Trend report.
+// Grounding check confirmed `VisitNote.assessment` (the SOAP note's own
+// diagnosis field) is unstructured free text with no existing categorization
+// anywhere in the schema — the roadmap's own "if categorized" condition was
+// false, so the new `VisitNote.diagnosisCategory` free-text tag field (added
+// this same session) is what this report actually reads. `byMonth` is a
+// pivoted/"wide" shape (one row per month, one column per category) so the
+// renderer can draw one dynamic `<Line>` per category without a second query.
+export interface DiagnosisCategoryTrendReport {
+  dateFrom: string; dateTo: string
+  summary: { totalVisits: number; categorizedCount: number; uncategorizedCount: number; distinctCategoryCount: number }
+  categories: string[]
+  byMonth: Record<string, number | string>[]
+}
+
+async function generateDiagnosisCategoryTrendReport(params: { dateFrom: string; dateTo: string }): Promise<DiagnosisCategoryTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const notes = await db.visitNote.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { createdAt: true, diagnosisCategory: true },
+  })
+
+  let categorizedCount = 0
+  const categorySet = new Set<string>()
+  const monthMap = new Map<string, Map<string, number>>()
+
+  for (const n of notes) {
+    const month = groupLabel(n.createdAt, 'month')
+    if (!monthMap.has(month)) monthMap.set(month, new Map())
+    const category = n.diagnosisCategory?.trim() || null
+    if (category) {
+      categorizedCount += 1
+      categorySet.add(category)
+      const monthEntry = monthMap.get(month)!
+      monthEntry.set(category, (monthEntry.get(category) ?? 0) + 1)
+    }
+  }
+
+  const categories = Array.from(categorySet).sort()
+  const byMonth = Array.from(monthMap.keys()).sort().map((month) => {
+    const row: Record<string, number | string> = { month }
+    const monthEntry = monthMap.get(month)!
+    for (const category of categories) row[category] = monthEntry.get(category) ?? 0
+    return row
+  })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalVisits: notes.length,
+      categorizedCount,
+      uncategorizedCount: notes.length - categorizedCount,
+      distinctCategoryCount: categories.length,
+    },
+    categories, byMonth,
+  }
+}
+
+// Phase 67 §9.1 item 19.5 (GP Clinic) — Referral-Out Tracking with Outcome
+// Follow-up. Reads real in-app referrals (Appointment.referredFromVisitNoteId,
+// Phase 54F) — the "outcome" is the referred-to provider's own finalized
+// VisitNote.assessment, the same field `listReferralsForVisitNote()` now also
+// surfaces inline on the referring note itself (one underlying fact, two
+// callers). Gated by the `specialist_referral` module rather than a
+// GP_CLINIC-only check, since SPECIALIST_CLINIC shares the exact same
+// mechanism and data shape — not scope creep, just not artificially
+// excluding a vertical the report already correctly applies to.
+export interface ReferralOutcomeRow {
+  appointmentNumber: string
+  patientName: string
+  referredToProviderName: string | null
+  scheduledDate: string
+  status: string
+  outcomeSummary: string | null
+}
+export interface ReferralOutcomeReport {
+  dateFrom: string; dateTo: string
+  summary: { totalReferrals: number; completedCount: number; outcomeRecordedCount: number; pendingCount: number }
+  rows: ReferralOutcomeRow[]
+}
+
+async function generateReferralOutcomeReport(params: { dateFrom: string; dateTo: string }): Promise<ReferralOutcomeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const referrals = await db.appointment.findMany({
+    where: { referredFromVisitNoteId: { not: null }, scheduledDate: { gte: from, lte: to } },
+    select: {
+      appointmentNumber: true, customerName: true, scheduledDate: true, status: true,
+      provider: { select: { fullName: true } },
+      visitNote: { select: { assessment: true, isFinalized: true } },
+    },
+    orderBy: { scheduledDate: 'desc' },
+  })
+
+  const rows: ReferralOutcomeRow[] = referrals.map((r) => ({
+    appointmentNumber: r.appointmentNumber,
+    patientName: r.customerName ?? 'Unknown',
+    referredToProviderName: r.provider?.fullName ?? null,
+    scheduledDate: toLocalISODate(r.scheduledDate),
+    status: r.status,
+    outcomeSummary: r.visitNote?.isFinalized ? r.visitNote.assessment : null,
+  }))
+
+  const completedCount = rows.filter((r) => r.status === 'COMPLETED').length
+  const outcomeRecordedCount = rows.filter((r) => r.outcomeSummary).length
+  const pendingCount = rows.filter((r) => r.status === 'SCHEDULED' || r.status === 'CONFIRMED').length
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalReferrals: rows.length, completedCount, outcomeRecordedCount, pendingCount },
+    rows,
+  }
+}
+
+// Phase 67 §9.1 item 22.4 (Physio Clinic) — Pack Utilization report. Tagged
+// in the roadmap as a literal shared-component candidate with Gym/Studio
+// (both use the exact same ClientSessionPack model, Phase 27/41) — gated by
+// the `session_packs` module rather than a single business type, matching
+// this file's own established convention (e.g. Referral-Out Outcome above).
+// Reads packs purchased in the date range, regardless of active/inactive
+// status — a pack that got fully used up and deactivated is still real
+// utilization history, not something to silently drop from the report.
+export interface PackUtilizationRow {
+  packId: string; customerName: string; packName: string
+  totalSessions: number; usedSessions: number; remainingSessions: number
+  utilizationPercent: number; expiryDate: string | null; isActive: boolean
+}
+export interface PackUtilizationReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPacks: number; totalSessionsSold: number; totalSessionsUsed: number; overallUtilizationPercent: number }
+  rows: PackUtilizationRow[]
+}
+
+async function generatePackUtilizationReport(params: { dateFrom: string; dateTo: string }): Promise<PackUtilizationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const packs = await db.clientSessionPack.findMany({
+    where: { purchaseDate: { gte: from, lte: to } },
+    select: {
+      id: true, packName: true, totalSessions: true, usedSessions: true, expiryDate: true, isActive: true,
+      customer: { select: { customerName: true } },
+    },
+    orderBy: { totalSessions: 'desc' },
+  })
+
+  const rows: PackUtilizationRow[] = packs.map((p) => ({
+    packId: p.id,
+    customerName: p.customer.customerName,
+    packName: p.packName,
+    totalSessions: p.totalSessions,
+    usedSessions: p.usedSessions,
+    remainingSessions: Math.max(0, p.totalSessions - p.usedSessions),
+    utilizationPercent: p.totalSessions > 0 ? Math.round((p.usedSessions / p.totalSessions) * 100) : 0,
+    expiryDate: p.expiryDate ? toLocalISODate(p.expiryDate) : null,
+    isActive: p.isActive,
+  }))
+
+  const totalSessionsSold = rows.reduce((sum, r) => sum + r.totalSessions, 0)
+  const totalSessionsUsed = rows.reduce((sum, r) => sum + r.usedSessions, 0)
+  const overallUtilizationPercent = totalSessionsSold > 0 ? Math.round((totalSessionsUsed / totalSessionsSold) * 100) : 0
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalPacks: rows.length, totalSessionsSold, totalSessionsUsed, overallUtilizationPercent },
+    rows,
+  }
+}
+
+// Phase 67 §9.1 item 23.1 (Diagnostic Lab) — Per-test TAT target vs. actual.
+// Actual TAT is measured from the ORDER's own sampleCollectedAt (the one
+// recorded collection moment for the whole visit — items ordered together
+// are collected together) to each ITEM's own resultReadyAt (Phase 67 §9.1,
+// set exactly once by updateTestResult(), see schema comment). Only items
+// with BOTH timestamps present are counted at all; only items that also
+// carry a targetTATHours snapshot count toward on-time/late, since there's
+// nothing to compare against otherwise.
+export interface LabTATRow {
+  testName: string
+  category: string | null
+  ordersCount: number
+  avgActualTATHours: number
+  targetTATHours: number | null
+  onTimeCount: number
+  lateCount: number
+  onTimePercent: number
+}
+export interface LabTATReport {
+  dateFrom: string; dateTo: string
+  summary: { totalCompleted: number; withTargetCount: number; onTimeCount: number; overallOnTimePercent: number }
+  rows: LabTATRow[]
+}
+
+async function generateLabTATReport(params: { dateFrom: string; dateTo: string }): Promise<LabTATReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.labTestOrderItem.findMany({
+    where: { resultReadyAt: { gte: from, lte: to } },
+    select: {
+      testName: true, category: true, targetTATHours: true, resultReadyAt: true,
+      labTestOrder: { select: { sampleCollectedAt: true } },
+    },
+  })
+
+  const byTest = new Map<string, { category: string | null; targetTATHours: number | null; actualHours: number[]; onTime: number; late: number }>()
+  for (const item of items) {
+    if (!item.labTestOrder.sampleCollectedAt || !item.resultReadyAt) continue
+    const actualHours = (item.resultReadyAt.getTime() - item.labTestOrder.sampleCollectedAt.getTime()) / (1000 * 60 * 60)
+    if (!byTest.has(item.testName)) byTest.set(item.testName, { category: item.category, targetTATHours: item.targetTATHours, actualHours: [], onTime: 0, late: 0 })
+    const bucket = byTest.get(item.testName)!
+    bucket.actualHours.push(actualHours)
+    if (item.targetTATHours != null) {
+      if (actualHours <= item.targetTATHours) bucket.onTime++
+      else bucket.late++
+    }
+  }
+
+  const rows: LabTATRow[] = [...byTest.entries()]
+    .map(([testName, b]) => {
+      const withTarget = b.onTime + b.late
+      return {
+        testName,
+        category: b.category,
+        ordersCount: b.actualHours.length,
+        avgActualTATHours: b.actualHours.length > 0 ? Math.round((b.actualHours.reduce((s, v) => s + v, 0) / b.actualHours.length) * 10) / 10 : 0,
+        targetTATHours: b.targetTATHours,
+        onTimeCount: b.onTime,
+        lateCount: b.late,
+        onTimePercent: withTarget > 0 ? Math.round((b.onTime / withTarget) * 100) : 0,
+      }
+    })
+    .sort((a, b) => b.ordersCount - a.ordersCount)
+
+  const withTargetCount = rows.reduce((s, r) => s + r.onTimeCount + r.lateCount, 0)
+  const onTimeCount = rows.reduce((s, r) => s + r.onTimeCount, 0)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalCompleted: items.length,
+      withTargetCount,
+      onTimeCount,
+      overallOnTimePercent: withTargetCount > 0 ? Math.round((onTimeCount / withTargetCount) * 100) : 0,
+    },
+    rows,
+  }
+}
+
+// Phase 67 §9.1 item 23.4 (Diagnostic Lab) — Test volume by panel report.
+// Pivots into a month × panel "wide" table using the same groupLabel()
+// helper and dynamic-category shape as generateDiagnosisCategoryTrendReport
+// above (categories/panels are free text per install, so the series count
+// isn't known ahead of time) — same established pattern, different vertical.
+export interface TestVolumeByPanelReport {
+  dateFrom: string; dateTo: string
+  summary: { totalTests: number; distinctPanelCount: number }
+  panels: string[]
+  byMonth: Record<string, number | string>[]
+}
+
+async function generateTestVolumeByPanelReport(params: { dateFrom: string; dateTo: string }): Promise<TestVolumeByPanelReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.labTestOrderItem.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { category: true, createdAt: true },
+  })
+
+  const panelSet = new Set<string>()
+  const monthMap = new Map<string, Map<string, number>>()
+  for (const item of items) {
+    const panel = item.category?.trim() || 'Uncategorized'
+    panelSet.add(panel)
+    const month = groupLabel(item.createdAt, 'month')
+    if (!monthMap.has(month)) monthMap.set(month, new Map())
+    const m = monthMap.get(month)!
+    m.set(panel, (m.get(panel) ?? 0) + 1)
+  }
+
+  const panels = [...panelSet].sort()
+  const byMonth = [...monthMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, counts]) => {
+      const row: Record<string, number | string> = { month }
+      for (const p of panels) row[p] = counts.get(p) ?? 0
+      return row
+    })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalTests: items.length, distinctPanelCount: panels.length },
+    panels, byMonth,
+  }
+}
+
+// Phase 67 §9.1 item 23.5 (Diagnostic Lab) + item 20.1 (Specialist Clinic) —
+// Referral leaderboard. Roadmap tags item 23.5 as "literally the same
+// mechanism ... build once, apply to both", which is true of the REPORT
+// SHAPE and its UI/AI-intent surface — but the two verticals' underlying
+// referral data is NOT identically shaped (Specialist's is
+// VisitNote.referredBy, free text; Lab's is LabTestOrder.referredByProviderId,
+// a real Employee FK), so honestly "build once" here means one shared
+// ranking helper + one shared report/view/AI-intent, fed by two small
+// per-vertical queries — not one literal query reused verbatim, unlike Pack
+// Utilization/Referral-Out Outcome above where the source table really was
+// identical. `businessType` is passed explicitly by the caller (the same
+// convention dashboard-spotlight.service.ts already uses), since a Sarang
+// install is always exactly one business type at a time.
+export interface ReferralLeaderboardRow { referrerName: string; count: number }
+export interface ReferralLeaderboardReport {
+  dateFrom: string; dateTo: string
+  summary: { totalReferrals: number; distinctReferrerCount: number; topReferrerName: string | null }
+  rows: ReferralLeaderboardRow[]
+}
+
+function rankReferrers(names: Array<string | null | undefined>): ReferralLeaderboardReport {
+  const counts = new Map<string, number>()
+  for (const raw of names) {
+    const name = raw?.trim()
+    if (!name) continue
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+  const rows: ReferralLeaderboardRow[] = [...counts.entries()]
+    .map(([referrerName, count]) => ({ referrerName, count }))
+    .sort((a, b) => b.count - a.count)
+  return {
+    dateFrom: '', dateTo: '',
+    summary: { totalReferrals: rows.reduce((s, r) => s + r.count, 0), distinctReferrerCount: rows.length, topReferrerName: rows[0]?.referrerName ?? null },
+    rows,
+  }
+}
+
+async function generateReferralLeaderboardReport(params: { dateFrom: string; dateTo: string; businessType: string }): Promise<ReferralLeaderboardReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  let names: Array<string | null | undefined>
+  if (params.businessType === 'DIAGNOSTIC_LAB') {
+    const orders = await db.labTestOrder.findMany({
+      where: { createdAt: { gte: from, lte: to } },
+      select: { referredByProvider: { select: { fullName: true } } },
+    })
+    names = orders.map((o) => o.referredByProvider?.fullName)
+  } else {
+    const notes = await db.visitNote.findMany({
+      where: { referredBy: { not: null }, appointment: { scheduledDate: { gte: from, lte: to } } },
+      select: { referredBy: true },
+    })
+    names = notes.map((n) => n.referredBy)
+  }
+
+  const ranked = rankReferrers(names)
+  return { ...ranked, dateFrom: params.dateFrom, dateTo: params.dateTo }
+}
+
+// Phase 67 §9.1 item 20.2 — Specialist Clinic: Second-Opinion Conversion.
+// "Conversion" here means the patient went on to book a LATER completed
+// appointment after their second-opinion visit — i.e. became an ongoing
+// patient rather than a one-off. Only patients linked to a real Customer
+// record can be tracked this way (a walk-in with no customerId has no
+// identity to match a later visit against), same limitation this app's
+// other cross-visit patient-history features already accept.
+export interface SecondOpinionConversionRow {
+  patientName: string
+  visitDate: string
+  converted: boolean
+  nextVisitDate: string | null
+}
+export interface SecondOpinionConversionReport {
+  dateFrom: string; dateTo: string
+  summary: { totalSecondOpinionVisits: number; convertedCount: number; conversionPercent: number | null; distinctPatientCount: number }
+  rows: SecondOpinionConversionRow[]
+}
+
+async function generateSecondOpinionConversionReport(params: { dateFrom: string; dateTo: string }): Promise<SecondOpinionConversionReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const notes = await db.visitNote.findMany({
+    where: { isSecondOpinion: true, appointment: { scheduledDate: { gte: from, lte: to } } },
+    select: { patientName: true, appointment: { select: { customerId: true, scheduledDate: true } } },
+    orderBy: { appointment: { scheduledDate: 'asc' } },
+  })
+  const trackable = notes.filter((n) => n.appointment?.customerId)
+
+  const rows: SecondOpinionConversionRow[] = []
+  let convertedCount = 0
+  const patientSet = new Set<string>()
+  for (const n of trackable) {
+    const customerId = n.appointment!.customerId!
+    const visitDate = n.appointment!.scheduledDate
+    patientSet.add(customerId)
+    const nextAppointment = await db.appointment.findFirst({
+      where: { customerId, status: 'COMPLETED', scheduledDate: { gt: visitDate } },
+      orderBy: { scheduledDate: 'asc' },
+      select: { scheduledDate: true },
+    })
+    if (nextAppointment) convertedCount++
+    rows.push({
+      patientName: n.patientName,
+      visitDate: visitDate.toISOString().slice(0, 10),
+      converted: !!nextAppointment,
+      nextVisitDate: nextAppointment ? nextAppointment.scheduledDate.toISOString().slice(0, 10) : null,
+    })
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalSecondOpinionVisits: trackable.length,
+      convertedCount,
+      conversionPercent: trackable.length > 0 ? Math.round((convertedCount / trackable.length) * 100) : null,
+      distinctPatientCount: patientSet.size,
+    },
+    rows,
+  }
+}
+
+// Phase 67 §9.1 item 20.3 — Specialist Clinic: Case-Complexity Mix report.
+// Only notes with a real `caseComplexity` tag are counted — an untagged
+// note isn't assumed Routine, it's simply excluded, same "only count what's
+// genuinely comparable" precedent as the chronic-recall and vaccination
+// compliance reports above. Month pivot via the same `groupLabel()` pattern
+// generateVetCaseTypeVolumeReport/generateTestVolumeByPanelReport use.
+export interface CaseComplexityMixReport {
+  dateFrom: string; dateTo: string
+  summary: { totalTagged: number; routineCount: number; complexCount: number; complexPercent: number | null }
+  byMonth: Array<{ month: string; ROUTINE: number; COMPLEX: number }>
+}
+
+async function generateCaseComplexityMixReport(params: { dateFrom: string; dateTo: string }): Promise<CaseComplexityMixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const notes = await db.visitNote.findMany({
+    where: { caseComplexity: { in: ['ROUTINE', 'COMPLEX'] }, appointment: { scheduledDate: { gte: from, lte: to } } },
+    select: { caseComplexity: true, appointment: { select: { scheduledDate: true } } },
+  })
+
+  const monthMap = new Map<string, { ROUTINE: number; COMPLEX: number }>()
+  let routineCount = 0
+  let complexCount = 0
+  for (const n of notes) {
+    const complexity = n.caseComplexity as 'ROUTINE' | 'COMPLEX'
+    if (complexity === 'ROUTINE') routineCount++
+    else complexCount++
+    const month = groupLabel(n.appointment!.scheduledDate, 'month')
+    const entry = monthMap.get(month) ?? { ROUTINE: 0, COMPLEX: 0 }
+    entry[complexity]++
+    monthMap.set(month, entry)
+  }
+
+  const byMonth = [...monthMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, counts]) => ({ month, ...counts }))
+
+  const totalTagged = routineCount + complexCount
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalTagged, routineCount, complexCount,
+      complexPercent: totalTagged > 0 ? Math.round((complexCount / totalTagged) * 100) : null,
+    },
+    byMonth,
+  }
+}
+
+// Phase 67 §9.1 item 21.2 — Dental Clinic: Treatment Acceptance Rate report
+// (funnel chart). Depends on item 21.1's TreatmentPlan.invoiceId — a
+// 3-stage funnel: every plan proposed in the range, how many were accepted
+// (ACCEPTED/IN_PROGRESS/COMPLETED — genuinely moved past PROPOSED/DECLINED),
+// and how many of THOSE were actually billed (invoiceId set). This is a
+// funnel of the SAME cohort narrowing at each stage, not three independent
+// counts, so billedCount is always <= acceptedCount <= proposedCount.
+export interface TreatmentAcceptanceRateReport {
+  dateFrom: string; dateTo: string
+  summary: { proposedCount: number; acceptedCount: number; billedCount: number; acceptanceRatePercent: number | null; billedRatePercent: number | null }
+  funnel: Array<{ stage: string; count: number }>
+}
+
+async function generateTreatmentAcceptanceRateReport(params: { dateFrom: string; dateTo: string }): Promise<TreatmentAcceptanceRateReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const plans = await db.treatmentPlan.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { status: true, invoiceId: true },
+  })
+
+  const proposedCount = plans.length
+  const acceptedPlans = plans.filter((p) => p.status !== 'PROPOSED' && p.status !== 'DECLINED')
+  const acceptedCount = acceptedPlans.length
+  const billedCount = acceptedPlans.filter((p) => !!p.invoiceId).length
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      proposedCount, acceptedCount, billedCount,
+      acceptanceRatePercent: proposedCount > 0 ? Math.round((acceptedCount / proposedCount) * 100) : null,
+      billedRatePercent: proposedCount > 0 ? Math.round((billedCount / proposedCount) * 100) : null,
+    },
+    funnel: [
+      { stage: 'Proposed', count: proposedCount },
+      { stage: 'Accepted', count: acceptedCount },
+      { stage: 'Billed', count: billedCount },
+    ],
+  }
+}
+
+// Phase 67 §9.1 item 18.2 (Vet Clinic) — Vaccination compliance report. A
+// genuinely different question from the Dashboard's own `vaccination`
+// spotlight card (dashboard-spotlight.service.ts): that card is a live "is
+// anything overdue right now" snapshot; this is a historical, date-ranged
+// report — of the follow-up doses actually GIVEN in this period, how many
+// were given on or before the due date the PRIOR dose in that same
+// pet+vaccine series set. A pet's first-ever dose of a vaccine has no prior
+// due date to compare against, so it's excluded from on-time/late counting
+// entirely, not counted as either — same "only count what's genuinely
+// comparable" precedent as GP's own chronic-recall compliance report
+// (item 19.2). No new schema needed: `VaccinationRecord` is already an
+// append-only per-dose history, so a prior dose's own `nextDueDate` is
+// already there to compare the next dose against.
+export interface VaccinationComplianceByVaccine { vaccineName: string; total: number; onTime: number; percent: number }
+export interface VaccinationComplianceReport {
+  dateFrom: string; dateTo: string
+  totalDosesEvaluated: number; overallOnTime: number; overallPercent: number | null
+  byVaccine: VaccinationComplianceByVaccine[]
+}
+
+async function generateVaccinationComplianceReport(params: { dateFrom: string; dateTo: string }): Promise<VaccinationComplianceReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const dosesInRange = await db.vaccinationRecord.findMany({
+    where: { administeredAt: { gte: from, lte: to } },
+    select: { petId: true, vaccineName: true, administeredAt: true },
+  })
+
+  const evaluated: Array<{ vaccineName: string; onTime: boolean }> = []
+  for (const dose of dosesInRange) {
+    const prior = await db.vaccinationRecord.findFirst({
+      where: { petId: dose.petId, vaccineName: dose.vaccineName, administeredAt: { lt: dose.administeredAt } },
+      orderBy: { administeredAt: 'desc' },
+      select: { nextDueDate: true },
+    })
+    if (!prior || !prior.nextDueDate) continue
+    evaluated.push({ vaccineName: dose.vaccineName, onTime: dose.administeredAt <= prior.nextDueDate })
+  }
+
+  const overallOnTime = evaluated.filter((e) => e.onTime).length
+  const overallPercent = evaluated.length > 0 ? Math.round((overallOnTime / evaluated.length) * 100) : null
+
+  const byVaccineMap = new Map<string, { total: number; onTime: number }>()
+  for (const e of evaluated) {
+    const entry = byVaccineMap.get(e.vaccineName) ?? { total: 0, onTime: 0 }
+    entry.total++
+    if (e.onTime) entry.onTime++
+    byVaccineMap.set(e.vaccineName, entry)
+  }
+  const byVaccine: VaccinationComplianceByVaccine[] = Array.from(byVaccineMap.entries())
+    .map(([vaccineName, v]) => ({ vaccineName, total: v.total, onTime: v.onTime, percent: v.total > 0 ? Math.round((v.onTime / v.total) * 100) : 0 }))
+    .sort((a, b) => b.total - a.total)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    totalDosesEvaluated: evaluated.length, overallOnTime, overallPercent,
+    byVaccine,
+  }
+}
+
+// Phase 67 §9.1 item 18.4 (Vet Clinic) — Case-Type Volume Trend report. The
+// item's own spec names "surgeries/consults/vaccinations" as example case
+// types, but grounding found no dedicated case-type field or Surgery
+// category in this codebase's own seed data — real case types come from
+// whatever categories a clinic's own Service Catalog actually has (via
+// Appointment.serviceCatalogId), same dynamic-category convention as
+// generateDiagnosisCategoryTrendReport (item 19.4) and
+// generateTestVolumeByPanelReport (item 23.4). Vaccinations get their own
+// dedicated series sourced from VaccinationRecord directly — a real
+// administered dose, not merely a booked appointment — since that's the
+// authoritative source of "a vaccination actually happened," the same
+// reasoning behind item 18.2's own compliance report. Only pet-linked,
+// non-cancelled appointments count as a real "case."
+export interface VetCaseTypeVolumeReport {
+  dateFrom: string; dateTo: string
+  summary: { totalCases: number; distinctCaseTypeCount: number }
+  caseTypes: string[]
+  byMonth: Record<string, number | string>[]
+}
+
+async function generateVetCaseTypeVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<VetCaseTypeVolumeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const [appointments, vaccinations] = await Promise.all([
+    db.appointment.findMany({
+      where: { scheduledDate: { gte: from, lte: to }, petId: { not: null }, status: { not: 'CANCELLED' } },
+      select: { scheduledDate: true, serviceCatalog: { select: { category: true } } },
+    }),
+    db.vaccinationRecord.findMany({
+      where: { administeredAt: { gte: from, lte: to } },
+      select: { administeredAt: true },
+    }),
+  ])
+
+  const caseTypeSet = new Set<string>()
+  const monthMap = new Map<string, Map<string, number>>()
+  for (const appt of appointments) {
+    const caseType = appt.serviceCatalog?.category?.trim() || 'Other'
+    caseTypeSet.add(caseType)
+    const month = groupLabel(appt.scheduledDate, 'month')
+    if (!monthMap.has(month)) monthMap.set(month, new Map())
+    const m = monthMap.get(month)!
+    m.set(caseType, (m.get(caseType) ?? 0) + 1)
+  }
+  if (vaccinations.length > 0) caseTypeSet.add('Vaccinations')
+  for (const vac of vaccinations) {
+    const month = groupLabel(vac.administeredAt, 'month')
+    if (!monthMap.has(month)) monthMap.set(month, new Map())
+    const m = monthMap.get(month)!
+    m.set('Vaccinations', (m.get('Vaccinations') ?? 0) + 1)
+  }
+
+  const caseTypes = [...caseTypeSet].sort()
+  const byMonth = [...monthMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, counts]) => {
+      const row: Record<string, number | string> = { month }
+      for (const c of caseTypes) row[c] = counts.get(c) ?? 0
+      return row
+    })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: { totalCases: appointments.length + vaccinations.length, distinctCaseTypeCount: caseTypes.length },
+    caseTypes, byMonth,
+  }
+}
+
 async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<SchemeCostVsVolumeReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
@@ -4048,6 +5322,13 @@ export const reportService = {
   generatePaymentPerformanceReport,
   generateAuditReport,
   generateFoodCostReport,
+  generateDishContributionMarginReport,
+  generateTableTurnoverByHourReport,
+  generateRecipeWasteVarianceReport,
+  generateDeadStockClearanceReport,
+  generateCategorySellThroughReport,
+  generateBasketCompositionReport,
+  generateFastSlowMoverMatrixReport,
   generateGSTR1,
   generateHSNSummaryReport,
   generateDocumentSummaryReport,
@@ -4086,4 +5367,17 @@ export const reportService = {
   generatePrescriptionDrugSalesReport,
   generateSchemeCostVsVolumeReport,
   generateChronicRecallComplianceReport,
+  generateWalkInVsAppointmentRatioReport,
+  generateDiagnosisCategoryTrendReport,
+  generateReferralOutcomeReport,
+  generatePackUtilizationReport,
+  generateLabTATReport,
+  generateTestVolumeByPanelReport,
+  generateReferralLeaderboardReport,
+  generateSecondOpinionConversionReport,
+  generateCaseComplexityMixReport,
+  generateTreatmentAcceptanceRateReport,
+  generateDentalRecallComplianceReport,
+  generateVaccinationComplianceReport,
+  generateVetCaseTypeVolumeReport,
 }

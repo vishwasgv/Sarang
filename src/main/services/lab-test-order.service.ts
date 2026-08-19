@@ -76,6 +76,16 @@ export async function createLabTestOrder(payload: CreateLabTestOrderInput, userI
       }
     }
 
+    // Phase 67 §9.1 item 23.1 — snapshot each item's target TAT from its
+    // catalog entry at order-creation time (same "denormalize so a later
+    // catalog edit doesn't rewrite history" convention as testName/category/
+    // price above), rather than joining to ServiceCatalog on every report run.
+    const catalogIds = [...new Set(payload.items.map((i) => i.serviceCatalogId).filter((id): id is string => !!id))]
+    const catalogTATs = catalogIds.length > 0
+      ? await db.serviceCatalog.findMany({ where: { id: { in: catalogIds } }, select: { id: true, targetTATHours: true } })
+      : []
+    const tatByCatalogId = new Map(catalogTATs.map((c) => [c.id, c.targetTATHours]))
+
     const order = await db.$transaction(async (tx) => {
       const orderNumber = await nextLabOrderNumber(tx)
       // Real bug found live (2026-07-28 service-vertical audit, continued):
@@ -106,6 +116,7 @@ export async function createLabTestOrder(payload: CreateLabTestOrderInput, userI
               category: i.category,
               sampleType: i.sampleType ?? 'BLOOD',
               price: i.price ?? 0,
+              targetTATHours: i.serviceCatalogId ? (tatByCatalogId.get(i.serviceCatalogId) ?? null) : null,
             })),
           },
         },
@@ -335,6 +346,12 @@ export async function updateTestResult(payload: {
         resultParameters: payload.resultParameters ? JSON.stringify(payload.resultParameters) : undefined,
         resultSummary: payload.resultSummary,
         status: 'RESULT_READY',
+        // Phase 67 §9.1 item 23.1 — set exactly once, the first time this
+        // item's result actually becomes ready. A later correction (still
+        // RESULT_READY, not yet REPORTED) re-runs this same code path but
+        // must NOT push the timestamp forward, or actual TAT would silently
+        // shrink every time a tech fixes a typo in the result.
+        resultReadyAt: item.resultReadyAt ?? new Date(),
         ...(hasCriticalResult !== undefined ? { hasCriticalResult } : {}),
       },
     })

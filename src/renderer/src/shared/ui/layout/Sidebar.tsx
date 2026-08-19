@@ -17,7 +17,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock, ShieldCheck, Gift, MapPin, Building2, PiggyBank,
+  BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -107,6 +107,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'WhatsApp Reminders', path: '/service-notifications', icon: Bell, permissionKey: 'billing.view', requiredModule: 'notification_queue' },
   // Phase 23 — Veterinary
   { label: 'Patients', path: '/vet/pets', icon: PawPrint, permissionKey: 'billing.view', requiredModule: 'vet_patients' },
+  // Phase 67 §9.1 item 18.3 — clinic-maintained breed health-alert reference list.
+  { label: 'Breed Health Alerts', path: '/vet/breed-alerts', icon: ShieldAlert, permissionKey: 'clinicalNotes.view', requiredModule: 'vet_patients' },
   // Phase 24 — Medical
   { label: 'Token Queue', path: '/clinical/queue', icon: Hash, permissionKey: 'billing.view', requiredModule: 'token_queue' },
   { label: 'Clinical Notes', path: '/clinical/notes', icon: Stethoscope, permissionKey: 'clinicalNotes.view', requiredModule: 'visit_notes' },
@@ -188,6 +190,9 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },
   { label: 'Price Lists', i18nKey: 'nav.priceLists', path: '/pricing/price-lists', icon: Tag, permissionKey: 'priceLists.view' },
   { label: 'Pricing Schemes', i18nKey: 'nav.pricingSchemes', path: '/pricing/schemes', icon: Gift, permissionKey: 'pricingSchemes.view' },
+  // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
+  { label: 'Price Markdowns', i18nKey: 'nav.priceMarkdowns', path: '/pricing/markdowns', icon: Clock, permissionKey: 'priceMarkdowns.view', requiredModule: 'price_markdowns' },
+  { label: 'Loyalty Program', i18nKey: 'nav.loyaltyProgram', path: '/pricing/loyalty', icon: Award, permissionKey: 'loyaltyProgram.view', requiredModule: 'loyalty_program' },
   { label: 'Recurring Profiles', i18nKey: 'nav.recurringProfiles', path: '/recurring-profiles', icon: Repeat, permissionKey: 'recurringProfiles.view' },
   { label: 'Approval Workflows', i18nKey: 'nav.approvalWorkflows', path: '/approval-workflows', icon: ShieldCheck, permissionKey: 'approvalWorkflows.view' },
   // Phase 61 — Bills (AP: what we owe a supplier) + Payments Made.

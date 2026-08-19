@@ -180,6 +180,27 @@ describe('lab-test-order.service', () => {
       expect(res.success).toBe(true)
       expect((res.data as any).totalAmount).toBe(500)
     })
+
+    // Phase 67 §9.1 item 23.1 — TAT target vs. actual: each item snapshots
+    // its catalog entry's targetTATHours at creation time, same convention
+    // as testName/category/price above.
+    it("snapshots each item's target TAT from its catalog entry at creation time", async () => {
+      const { db } = makeMockDb(null)
+      db.serviceCatalog.findMany = vi.fn().mockResolvedValue([{ id: 'sc-1', targetTATHours: 24 }])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const res = await createLabTestOrder({ patientName: 'Ravi', items: [{ testName: 'CBC', serviceCatalogId: 'sc-1', price: 300 }] })
+      expect(res.success).toBe(true)
+      expect((res.data as any).items[0].targetTATHours).toBe(24)
+      expect(db.serviceCatalog.findMany).toHaveBeenCalledWith({ where: { id: { in: ['sc-1'] } }, select: { id: true, targetTATHours: true } })
+    })
+
+    it('leaves targetTATHours null for an item with no catalog link', async () => {
+      const { db } = makeMockDb(null)
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const res = await createLabTestOrder({ patientName: 'Ravi', items: [{ testName: 'Custom Test', price: 100 }] })
+      expect(res.success).toBe(true)
+      expect((res.data as any).items[0].targetTATHours).toBeNull()
+    })
   })
 
   describe('markSampleCollected', () => {
@@ -259,6 +280,31 @@ describe('lab-test-order.service', () => {
       vi.mocked(getPrisma).mockReturnValue(db as never)
       await updateTestResult({ itemId: 'item-1', resultSummary: 'Repeat sample requested' })
       expect((orderStore.current?.items as any[])?.find((i) => i.id === 'item-1').hasCriticalResult).toBe(true)
+    })
+
+    // Phase 67 §9.1 item 23.1 — resultReadyAt must be set exactly once, the
+    // first time a result becomes ready, and never pushed forward by a later
+    // correction (still RESULT_READY, not yet REPORTED) — otherwise actual
+    // TAT would silently shrink every time a tech fixes a typo.
+    it('sets resultReadyAt the first time a result becomes ready', async () => {
+      const { db, orderStore } = makeMockDb(makeOrder({ status: 'SAMPLE_COLLECTED', items: makeOrder().items.map((i) => ({ ...i, status: 'COLLECTED' })) }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const res = await updateTestResult({ itemId: 'item-1', resultParameters: [{ parameter: 'Hemoglobin', value: '13.5', flag: 'NORMAL' }] })
+      expect(res.success).toBe(true)
+      const item = (orderStore.current?.items as any[])?.find((i) => i.id === 'item-1')
+      expect(item.resultReadyAt).toBeInstanceOf(Date)
+    })
+
+    it('does not push resultReadyAt forward on a later correction', async () => {
+      const firstReadyAt = new Date('2026-08-01T10:00:00Z')
+      const { db, orderStore } = makeMockDb(makeOrder({
+        status: 'IN_PROCESS',
+        items: makeOrder().items.map((i) => ({ ...i, status: 'RESULT_READY', resultReadyAt: firstReadyAt })),
+      }))
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await updateTestResult({ itemId: 'item-1', resultSummary: 'Corrected transcription typo' })
+      const item = (orderStore.current?.items as any[])?.find((i) => i.id === 'item-1')
+      expect(item.resultReadyAt).toBe(firstReadyAt)
     })
   })
 

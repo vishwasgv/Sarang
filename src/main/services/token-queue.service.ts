@@ -30,7 +30,12 @@ export async function getTodayQueue(date?: string) {
       include: {
         appointment: { select: { id: true, appointmentNumber: true, serviceTitle: true, scheduledTime: true } },
       },
-      orderBy: { tokenNumber: 'asc' },
+      // Phase 67 §9.1 item 20.5 — urgent tokens bubble to the top of
+      // whichever status group they're in (Waiting/Called/Completed all
+      // render as separate sections client-side). Harmless everywhere
+      // isUrgent is always false: this collapses back to plain token-number
+      // order, since Prisma's compound orderBy only breaks ties.
+      orderBy: [{ isUrgent: 'desc' }, { tokenNumber: 'asc' }],
     })
 
     return { success: true, data: items }
@@ -47,6 +52,7 @@ export async function createToken(payload: {
   appointmentId?: string
   notes?: string
   date?: string
+  isUrgent?: boolean
 }) {
   try {
     const db = getPrisma()
@@ -79,6 +85,7 @@ export async function createToken(payload: {
           appointmentId: payload.appointmentId ?? null,
           notes: payload.notes ?? null,
           status: 'WAITING',
+          isUrgent: payload.isUrgent ?? false,
         },
       })
     })

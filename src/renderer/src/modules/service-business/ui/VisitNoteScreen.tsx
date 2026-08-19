@@ -12,6 +12,7 @@ import { cn } from '@shared/utils/cn'
 import { AszurexMark } from '@shared/ui/atoms/Brand'
 import { DocumentWatermark, documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 
 interface Appointment {
   id: string
@@ -47,12 +48,20 @@ interface VisitNote {
   subjective: string | null
   objective: string | null
   assessment: string | null
+  diagnosisCategory: string | null
   plan: string | null
   followUpDate: string | null
   followUpNotes: string | null
   referredBy: string | null
   referralDate: string | null
   referralReason: string | null
+  // Phase 67 §9.1 item 20.4 — Specialist Clinic: referral-loop closure.
+  referredByPhone: string | null
+  referredByEmail: string | null
+  // Phase 67 §9.1 item 20.2 — Specialist Clinic: second-opinion flag.
+  isSecondOpinion: boolean
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic: case-complexity tag.
+  caseComplexity: 'ROUTINE' | 'COMPLEX' | null
   treatmentDone: string | null
   painScore: number | null
   functionalScore: number | null
@@ -79,6 +88,11 @@ interface ReferralAppointment {
   serviceTitle: string
   notes: string | null
   provider: { id: string; fullName: string; specialization: string | null } | null
+  // Phase 67 §9.1 item 19.5 — the referred-to provider's own finalized
+  // assessment, surfaced back to the referring provider. Null until that
+  // provider's own visit note exists AND is finalized — a draft isn't a
+  // real outcome yet.
+  outcomeSummary: string | null
 }
 
 // Phase 58 §2 — GP/Specialist Clinic: structured prescription line
@@ -110,12 +124,17 @@ interface FormData {
   subjective: string
   objective: string
   assessment: string
+  diagnosisCategory: string
   plan: string
   followUpDate: string
   followUpNotes: string
   referredBy: string
   referralDate: string
   referralReason: string
+  referredByPhone: string
+  referredByEmail: string
+  isSecondOpinion: boolean
+  caseComplexity: string
   treatmentDone: string
   painScore: string
   functionalScore: string
@@ -143,6 +162,10 @@ export function VisitNoteScreen() {
   const isPhysio = useIndustryStore((s) => s.isModuleEnabled('physio_notes'))
   // Phase 58 §2 — Vet Clinic
   const isVet = useIndustryStore((s) => s.isModuleEnabled('vet_patients'))
+  // Phase 67 §9.1 item 19.4 — GP Clinic diagnosis-category trend report
+  const isDiagnosisCategories = useIndustryStore((s) => s.isModuleEnabled('diagnosis_categories'))
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic case-complexity mix report
+  const isCaseComplexity = useIndustryStore((s) => s.isModuleEnabled('case_complexity'))
   const [apptPet, setApptPet] = useState<Appointment['pet']>(null)
   const [apptOwnerName, setApptOwnerName] = useState('')
   const canWrite = hasPermission('clinicalNotes.write')
@@ -186,12 +209,17 @@ export function VisitNoteScreen() {
     subjective: '',
     objective: '',
     assessment: '',
+    diagnosisCategory: '',
     plan: '',
     followUpDate: '',
     followUpNotes: '',
     referredBy: '',
     referralDate: '',
     referralReason: '',
+    referredByPhone: '',
+    referredByEmail: '',
+    isSecondOpinion: false,
+    caseComplexity: '',
     treatmentDone: '',
     painScore: '',
     functionalScore: '',
@@ -221,12 +249,17 @@ export function VisitNoteScreen() {
           subjective: n.subjective ?? '',
           objective: n.objective ?? '',
           assessment: n.assessment ?? '',
+          diagnosisCategory: n.diagnosisCategory ?? '',
           plan: n.plan ?? '',
           followUpDate: n.followUpDate ? n.followUpDate.slice(0, 10) : '',
           followUpNotes: n.followUpNotes ?? '',
           referredBy: n.referredBy ?? '',
           referralDate: n.referralDate ? n.referralDate.slice(0, 10) : '',
           referralReason: n.referralReason ?? '',
+          referredByPhone: n.referredByPhone ?? '',
+          referredByEmail: n.referredByEmail ?? '',
+          isSecondOpinion: n.isSecondOpinion ?? false,
+          caseComplexity: n.caseComplexity ?? '',
           treatmentDone: n.treatmentDone ?? '',
           painScore: n.painScore !== null && n.painScore !== undefined ? String(n.painScore) : '',
           functionalScore: n.functionalScore !== null && n.functionalScore !== undefined ? String(n.functionalScore) : '',
@@ -402,12 +435,17 @@ export function VisitNoteScreen() {
       subjective: form.subjective.trim() || undefined,
       objective: form.objective.trim() || undefined,
       assessment: form.assessment.trim() || undefined,
+      diagnosisCategory: form.diagnosisCategory.trim() || undefined,
       plan: form.plan.trim() || undefined,
       followUpDate: form.followUpDate || undefined,
       followUpNotes: form.followUpNotes.trim() || undefined,
       referredBy: form.referredBy.trim() || undefined,
       referralDate: form.referralDate || undefined,
       referralReason: form.referralReason.trim() || undefined,
+      referredByPhone: form.referredByPhone.trim() || undefined,
+      referredByEmail: form.referredByEmail.trim() || undefined,
+      isSecondOpinion: form.isSecondOpinion,
+      caseComplexity: (form.caseComplexity as 'ROUTINE' | 'COMPLEX' | '') || undefined,
       treatmentDone: form.treatmentDone.trim() || undefined,
       painScore: form.painScore !== '' ? parseInt(form.painScore, 10) : null,
       functionalScore: form.functionalScore !== '' ? parseInt(form.functionalScore, 10) : null,
@@ -461,6 +499,48 @@ export function VisitNoteScreen() {
   const isFinalized = note?.isFinalized ?? false
   const appointment = note?.appointment ?? null
 
+  // Phase 67 §9.1 item 20.4 — referral-loop closure: exports a finalized
+  // visit summary to PDF for the ShareMenu to attach. `export.toPdf` renders
+  // this HTML in an isolated, sandboxed hidden window with no access to the
+  // app's own bundled Tailwind CSS (see export.service.ts) — this has to be
+  // a genuinely self-contained document, not a snapshot of the on-screen
+  // print view's own classes.
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  async function handleExportVisitSummaryPdf(): Promise<ExportPdfResult> {
+    if (!note) return { success: false, error: { message: 'No visit note to export.' } }
+    const rows: string[] = []
+    const addRow = (label: string, value: string | null | undefined) => {
+      if (value && value.trim()) rows.push(`<tr><td style="padding:6px 12px 6px 0;font-weight:bold;white-space:nowrap;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:6px 0;">${escapeHtml(value).replace(/\n/g, '<br/>')}</td></tr>`)
+    }
+    addRow('Chief Complaint', note.chiefComplaint)
+    addRow('Subjective', note.subjective)
+    addRow('Objective', note.objective)
+    addRow('Assessment', note.assessment)
+    addRow('Plan', note.plan)
+    if (note.painScore != null) addRow('Pain Score', `${note.painScore}/10`)
+    if (note.functionalScore != null) addRow('Functional Score', `${note.functionalScore}/100`)
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      body { font-family: Georgia, serif; color: #1e293b; padding: 24px; font-size: 13px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: #64748b; font-size: 11px; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      .footer { margin-top: 24px; font-size: 10px; color: #94a3b8; }
+    </style></head><body>
+      <h1>${escapeHtml(profile?.businessName ?? 'Clinic')} — Consultation Summary</h1>
+      <p class="sub">${escapeHtml(note.patientName)}${note.patientAge ? ` (${escapeHtml(note.patientAge)})` : ''} · ${appointment ? new Date(appointment.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}${appointment?.provider ? ` · ${escapeHtml(appointment.provider.fullName)}` : ''}</p>
+      <table>${rows.join('')}</table>
+      <p class="footer">Sent via Sarang, referring this patient's outcome back to ${escapeHtml(note.referredBy ?? 'the referring provider')} — a convenience document, not a validated medical record.</p>
+    </body></html>`
+
+    const res = await window.api.export.toPdf({ html, filename: `visit-summary-${note.id}.pdf` })
+    if (!res.success) return { success: false, error: { message: res.error?.message ?? 'Could not export PDF.' } }
+    return { success: true, cancelled: res.data?.cancelled, filePath: res.data?.filePath }
+  }
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -483,6 +563,9 @@ export function VisitNoteScreen() {
               {isFinalized && (
                 <Badge variant="success" size="sm" icon={<Lock size={10} />}>Finalized</Badge>
               )}
+              {isSpecialist && form.isSecondOpinion && (
+                <Badge variant="info" size="sm">Second Opinion</Badge>
+              )}
             </div>
             {appointment && (
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -500,6 +583,20 @@ export function VisitNoteScreen() {
             >
               <Printer size={14} /> Print Summary
             </button>
+          )}
+          {/* Phase 67 §9.1 item 20.4 — referral-loop closure: only once the
+              note is finalized (a draft isn't a real outcome to send yet)
+              and there's a referring doctor recorded to send it to at all. */}
+          {isSpecialist && note && isFinalized && form.referredBy.trim() && (
+            <ShareMenu
+              variant="button"
+              recipientPhone={form.referredByPhone}
+              recipientEmail={form.referredByEmail}
+              buildWhatsAppMessage={() => `Visit summary for ${form.patientName} — outcome for the patient you referred to ${profile?.businessName ?? 'us'}.`}
+              buildEmailSubject={() => `Visit Summary — ${form.patientName}`}
+              buildEmailBody={() => `Please find attached the visit summary for ${form.patientName}, whom you referred to ${profile?.businessName ?? 'us'}.`}
+              onExportPdf={handleExportVisitSummaryPdf}
+            />
           )}
           {canWrite && !isFinalized && (
             <>
@@ -618,6 +715,48 @@ export function VisitNoteScreen() {
               rows={3}
             />
           </Section>
+
+          {isDiagnosisCategories && (
+            <Section title="Diagnosis Category">
+              <input
+                type="text"
+                list="diagnosis-category-suggestions"
+                value={form.diagnosisCategory}
+                onChange={(e) => setField('diagnosisCategory', e.target.value)}
+                disabled={isFinalized || !canWrite}
+                placeholder="e.g. Infection, Chronic Disease Follow-up"
+                className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand disabled:opacity-60 bg-white dark:bg-slate-900 text-dark dark:text-slate-100"
+              />
+              <datalist id="diagnosis-category-suggestions">
+                <option value="Infection" />
+                <option value="Chronic Disease Follow-up" />
+                <option value="Injury" />
+                <option value="Preventive / Screening" />
+                <option value="Gastrointestinal" />
+                <option value="Respiratory" />
+                <option value="Musculoskeletal" />
+                <option value="Skin" />
+                <option value="Other" />
+              </datalist>
+              <p className="text-xs text-slate-400 mt-1">A short category tag (separate from the Assessment text above) so your Diagnosis-Category Trend report can group visits without needing to read free-text notes.</p>
+            </Section>
+          )}
+
+          {isCaseComplexity && (
+            <Section title="Case Complexity">
+              <select
+                value={form.caseComplexity}
+                onChange={(e) => setField('caseComplexity', e.target.value)}
+                disabled={isFinalized || !canWrite}
+                className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand disabled:opacity-60 bg-white dark:bg-slate-900 text-dark dark:text-slate-100"
+              >
+                <option value="">— Not set —</option>
+                <option value="ROUTINE">Routine</option>
+                <option value="COMPLEX">Complex</option>
+              </select>
+              <p className="text-xs text-slate-400 mt-1">Tags this case for the Case-Complexity Mix report. Leave unset if you'd rather not classify this visit — untagged notes are simply excluded from that report, not counted as Routine.</p>
+            </Section>
+          )}
 
           <Section title="P — Plan">
             <TextArea
@@ -764,7 +903,7 @@ export function VisitNoteScreen() {
             </>
           )}
 
-          {/* Referral — Specialist only */}
+          {/* Referral — gated by the 'specialist_referral' module flag (Specialist/GP/Physio) */}
           {isSpecialist && (
             <Section title="Referral Details">
               <div className="grid grid-cols-2 gap-4">
@@ -796,6 +935,43 @@ export function VisitNoteScreen() {
                   className={inputCls(isFinalized || !canWrite)}
                 />
               </Field>
+              {/* Phase 67 §9.1 item 20.4 — referral-loop closure: a contact
+                  to actually send the finalized visit summary back to. */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Referring Doctor's Phone">
+                  <input
+                    value={form.referredByPhone}
+                    onChange={(e) => setField('referredByPhone', e.target.value)}
+                    disabled={isFinalized || !canWrite}
+                    placeholder="For sharing the summary via WhatsApp"
+                    className={inputCls(isFinalized || !canWrite)}
+                  />
+                </Field>
+                <Field label="Referring Doctor's Email">
+                  <input
+                    value={form.referredByEmail}
+                    onChange={(e) => setField('referredByEmail', e.target.value)}
+                    disabled={isFinalized || !canWrite}
+                    placeholder="For sharing the summary via Email"
+                    className={inputCls(isFinalized || !canWrite)}
+                  />
+                </Field>
+              </div>
+              {/* Phase 67 §9.1 item 20.2 — flags this visit as a
+                  second-opinion consultation (patient already
+                  diagnosed/treated elsewhere), distinct from a referral
+                  (who sent them). Feeds the Second-Opinion Conversion
+                  report. */}
+              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 mt-3">
+                <input
+                  type="checkbox"
+                  checked={form.isSecondOpinion}
+                  onChange={(e) => { setForm((f) => ({ ...f, isSecondOpinion: e.target.checked })); setSaved(false) }}
+                  disabled={isFinalized || !canWrite}
+                  className="w-4 h-4"
+                />
+                This is a second-opinion consultation
+              </label>
             </Section>
           )}
 
@@ -809,24 +985,35 @@ export function VisitNoteScreen() {
               {referrals.length > 0 && (
                 <div className="space-y-2 mb-3">
                   {referrals.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
-                      <div>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{r.provider?.fullName ?? 'Unassigned'}</span>
-                        {r.provider?.specialization && <span className="text-slate-400"> · {r.provider.specialization}</span>}
-                        <span className="text-slate-400"> — {new Date(r.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at {r.scheduledTime}</span>
+                    <div key={r.id} className="text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <span className="font-medium text-slate-800 dark:text-slate-200">{r.provider?.fullName ?? 'Unassigned'}</span>
+                          {r.provider?.specialization && <span className="text-slate-400"> · {r.provider.specialization}</span>}
+                          <span className="text-slate-400"> — {new Date(r.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at {r.scheduledTime}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={r.status === 'COMPLETED' ? 'success' : r.status === 'CANCELLED' || r.status === 'NO_SHOW' ? 'danger' : 'info'} size="sm">{r.status}</Badge>
+                          {/* Phase 58 §2 — short formal referral letter, distinct
+                              from the full SOAP visit summary print. */}
+                          <button
+                            onClick={() => setPrintReferral(r)}
+                            title="Print Referral Letter"
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+                          >
+                            <Mail size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={r.status === 'COMPLETED' ? 'success' : r.status === 'CANCELLED' || r.status === 'NO_SHOW' ? 'danger' : 'info'} size="sm">{r.status}</Badge>
-                        {/* Phase 58 §2 — short formal referral letter, distinct
-                            from the full SOAP visit summary print. */}
-                        <button
-                          onClick={() => setPrintReferral(r)}
-                          title="Print Referral Letter"
-                          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-                        >
-                          <Mail size={13} />
-                        </button>
-                      </div>
+                      {/* Phase 67 §9.1 item 19.5 — outcome follow-up: the
+                          referred-to provider's own finalized assessment,
+                          surfaced here so the referring provider doesn't have
+                          to separately open that provider's note. */}
+                      {r.outcomeSummary && (
+                        <p className="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                          <span className="font-medium">Outcome:</span> {r.outcomeSummary}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

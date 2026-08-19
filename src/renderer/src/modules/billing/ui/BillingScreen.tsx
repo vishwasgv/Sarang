@@ -7,6 +7,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
+import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
@@ -125,6 +126,14 @@ export function BillingScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   const areaPricingEnabled = isModuleEnabled('area_pricing')
+  // Phase 67 §9.1 — Hardware item 5: live margin preview inside the area
+  // calculator, gated the same way every other margin/profit-facing UI in
+  // this app already is (Dashboard's own canViewProfit) — a cashier without
+  // this permission never sees cost/margin data, even though the underlying
+  // products.get() call itself has always returned costPrice unrestricted.
+  const hasPermission = useAuthStore((s) => s.hasPermission)
+  const canViewMargin = hasPermission('analytics.viewProfit')
+  const [areaCalcCostCache, setAreaCalcCostCache] = useState<Record<string, number>>({})
   const variantTrackingEnabled = isModuleEnabled('variant_tracking')
   const serialTrackingEnabled = isModuleEnabled('serial_tracking')
   // Fresh-audit fix (2026-07-12): batch.service.ts already does real FIFO
@@ -1459,14 +1468,24 @@ export function BillingScreen() {
                       {areaPricingEnabled && (
                         <div className="relative">
                           <button
-                            onClick={() => setAreaCalc(prev => ({
-                              ...prev,
-                              [ck]: {
-                                l: prev[ck]?.l ?? '',
-                                w: prev[ck]?.w ?? '',
-                                open: !(prev[ck]?.open ?? false)
+                            onClick={() => {
+                              const opening = !(areaCalc[ck]?.open ?? false)
+                              setAreaCalc(prev => ({
+                                ...prev,
+                                [ck]: {
+                                  l: prev[ck]?.l ?? '',
+                                  w: prev[ck]?.w ?? '',
+                                  open: opening
+                                }
+                              }))
+                              if (opening && canViewMargin && !(item.productId in areaCalcCostCache)) {
+                                window.api.products.get(item.productId).then((res) => {
+                                  const p = res?.data as { costPrice?: number; inventory?: { averageCost?: number } } | undefined
+                                  const unitCost = p?.inventory?.averageCost ?? p?.costPrice ?? 0
+                                  setAreaCalcCostCache(prev => ({ ...prev, [item.productId]: unitCost }))
+                                }).catch(() => {})
                               }
-                            }))}
+                            }}
                             title={t('billing.areaCalculator') as string}
                             className="flex items-center gap-1 text-xs text-brand/70 hover:text-brand transition-colors">
                             <Ruler size={10} /> {t('billing.areaLabel')}
@@ -1491,6 +1510,24 @@ export function BillingScreen() {
                                   className="w-14 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:border-brand text-center"
                                 />
                               </div>
+                              {canViewMargin && (() => {
+                                const l = parseFloat(areaCalc[ck]?.l ?? '0')
+                                const w = parseFloat(areaCalc[ck]?.w ?? '0')
+                                const area = l > 0 && w > 0 ? parseFloat((l * w).toFixed(3)) : null
+                                const unitCost = areaCalcCostCache[item.productId]
+                                if (area === null || unitCost === undefined || item.unitPrice <= 0) return null
+                                const lineRevenue = area * item.unitPrice
+                                const lineCost = area * unitCost
+                                const marginPercent = Math.round(((lineRevenue - lineCost) / lineRevenue) * 1000) / 10
+                                return (
+                                  <p className={cn(
+                                    'text-xs text-center font-semibold',
+                                    marginPercent >= 20 ? 'text-success' : marginPercent >= 0 ? 'text-warning' : 'text-danger'
+                                  )}>
+                                    {t('billing.areaMarginPreview', { percent: marginPercent })}
+                                  </p>
+                                )
+                              })()}
                               {(() => {
                                 const l = parseFloat(areaCalc[ck]?.l ?? '0')
                                 const w = parseFloat(areaCalc[ck]?.w ?? '0')

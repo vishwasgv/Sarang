@@ -32,6 +32,10 @@ On the Products screen, toggle any menu item **86** (kitchen slang for "out of s
 
 Create a combo or thali as a menu item like any other product, then open it for editing and use **Manage Kit Components** to add the individual dishes it's made of and how many of each. Set the combo's own selling price on the product itself — it's completely independent of what the individual dishes would cost separately, so a thali can be priced as a real bundle deal, not the sum of its parts. Selling a combo bills it as one clean line, but under the hood correctly deducts stock for every dish it contains, and marking its kitchen ticket **Mark Done** correctly deducts the ingredients behind each of those dishes too — the same as if each dish had been ordered on its own.
 
+## Happy-Hour Pricing
+
+Running a happy hour — say 20% off drinks from 4–6 PM — doesn't need a special restaurant feature: create a **Happy-Hour / Flat % Off** Pricing Scheme (Pricing Schemes, see the Sales Orders & Pricing chapter) scoped to the drinks category or a single item, and give it a daily start and end time alongside the discount. It applies itself automatically at checkout only during that window and switches off on its own the moment the window ends — no one has to remember to turn a discount on or off by hand.
+
 ## Kitchen Order Tickets (KOT)
 
 A KOT is the kitchen's copy of an order. After ringing up an order in **Billing**, open the invoice and tap **Send to Kitchen** to create a KOT for it. From **Kitchen Order Tickets** in the sidebar, kitchen staff see every ticket grouped by status — Pending, In Progress, Done, Cancelled — with its items and quantities, and move each one forward with a single tap (**Start Cooking** → **Mark Done**), or **Cancel** it. Each ticket can also be printed directly to your kitchen printer.
@@ -59,6 +63,14 @@ Open **Recipes** to link a menu item (e.g. "Masala Chai") to the raw ingredients
 Once a recipe exists for a menu item, completing its KOT (marking it Done) automatically deducts the recipe's ingredient quantities × the quantity ordered from your regular product stock — no separate ingredient inventory to maintain. If an ingredient's stock can't be adjusted for some reason, Sarang doesn't silently lose the discrepancy: it raises a notification telling you which ingredient needs a manual recount, so your stock numbers never quietly drift.
 
 Menu items with no recipe configured simply don't deduct any ingredient stock when sold — recipes are entirely optional per item.
+
+## Reports
+
+Open **Reports → Dish-Wise Contribution Margin** to see, per dish sold in a date range, its revenue minus its recipe cost — a bar chart plus a full table, sorted so your best-margin dishes sit at the top. This is a different question from **Reports → Food Cost Report**: Food Cost totals what you actually spent on ingredients this period, while Contribution Margin answers "which dishes are actually earning their keep," using each dish's own recipe formula rather than the aggregate spend. A combo or thali's margin correctly reflects the recipes of the real dishes inside it, and a menu item with no recipe configured simply shows 0 ingredient cost — an honest "no data," not a guess.
+
+Open **Reports → Table Turnover by Hour** to see a day-of-week × hour-of-day heatmap of your dine-in table orders — the darker a cell, the busier your restaurant genuinely was during that hour, on that day of the week, across the date range. Only orders actually started from a table (via **Start Order** on Restaurant Tables) count here; a counter or takeaway sale with no table attached isn't part of a "table turnover" question and is correctly left out. Use it to see your real rush hours at a glance, not a guess based on memory — useful for scheduling staff shifts around when the floor is actually busiest.
+
+Open **Reports → Recipe-vs-Actual Waste Variance** to compare, per ingredient, what your recipes say should have been used against what was actually drawn down from stock over a date range — a bar chart plus a full table, with the biggest gaps first. An ingredient running consistently higher than its recipes imply is a real signal worth a look — over-portioning, spillage, or a recipe that's drifted out of date — while an ingredient running lower can mean the opposite. This is genuinely different from both reports above it: Food Cost and Contribution Margin each show one side of the story (actual spend, or recipe-implied cost); this is the only report that puts the two sides of the SAME ingredient side by side.
 
 ## QR-code table ordering (opt-in)
 

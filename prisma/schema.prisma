@@ -118,6 +118,8 @@ model User {
   recurringProfilesCreated RecurringProfile[]  @relation("RecurringProfileCreatedBy") // Phase 63
   approvalStepsAsApprover  ApprovalStep[]      @relation("ApprovalStepApprover") // Phase 63
   approvalActions          ApprovalAction[]    @relation("ApprovalActionBy") // Phase 63
+  priceMarkdownsCreated    PriceMarkdown[]     @relation("PriceMarkdownCreatedBy") // Phase 67 §9.1
+  loyaltyRedemptions       LoyaltyRedemption[] @relation("LoyaltyRedeemedBy") // Phase 67 §9.1
 }
 
 model Role {
@@ -340,6 +342,7 @@ model Product {
   salesOrderItems           SalesOrderItem[] // Phase 63
   priceListItems            PriceListItem[] // Phase 63
   pricingSchemes            PricingScheme[] // Phase 63
+  priceMarkdowns            PriceMarkdown[] // Phase 67 §9.1 — Retail: time-boxed markdown workflow
   creditNoteItems           CreditNoteItem[] // Phase 63
   debitNoteItems            DebitNoteItem[] // Phase 63
   locationStock             LocationStock[] // Phase 64
@@ -884,6 +887,7 @@ model Customer {
   fieldOrderRequests        FieldOrderRequest[] // Phase 58 §2 — Distributor field-rep order capture
   repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
   convertedFromLeads        Lead[]                        @relation("LeadConvertedClient") // Fresh-audit fix (2026-07-23) — was an unconstrained bare String, see Lead.convertedClientId
+  loyaltyCard               LoyaltyCard? // Phase 67 §9.1 — Retail: simple visit-based punch-card
 
   @@index([customerName])
   @@index([phone])
@@ -1513,6 +1517,7 @@ model Invoice {
   splitInvoices    Invoice[]         @relation("InvoiceSplitLineage")
   salesOrder       SalesOrder?       @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
   invoiceTemplate  InvoiceTemplate?  @relation(fields: [invoiceTemplateId], references: [id])
+  loyaltyPunchEvents LoyaltyPunchEvent[] // Phase 67 §9.1 — Retail: which invoice earned a given punch, if any
 
   @@index([customerId])
   @@index([salesOrderId])
@@ -2876,6 +2881,12 @@ model ServiceCatalog {
   sacCode         String?
   isActive        Boolean  @default(true)
   notes           String?
+  // Phase 67 §9.1 item 23.1 — Diagnostic Lab: target turnaround time in hours
+  // for this test/panel, distinct from `durationMinutes` (that's the sample
+  // *collection* appointment slot; this is how long the result itself should
+  // take). Only meaningful for lab category entries — null for every other
+  // vertical's catalog rows, so no other vertical is affected.
+  targetTATHours  Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -3033,6 +3044,16 @@ model LabTestOrderItem {
   criticalNotifiedAt    DateTime?
   criticalNotifiedById  String?
   criticalNotifiedNotes String?
+  // Phase 67 §9.1 item 23.1 — TAT target vs. actual. targetTATHours is a
+  // denormalized snapshot of ServiceCatalog.targetTATHours at order-creation
+  // time (same "snapshot so a later catalog edit doesn't rewrite history"
+  // convention already used for testName/category/price above).
+  // resultReadyAt is set exactly once, the moment this item's status first
+  // transitions to RESULT_READY — `updatedAt` can't be reused for this since
+  // it's overwritten by any later field change (e.g. a correction), so it
+  // can't answer "when did the result first become ready" after the fact.
+  targetTATHours        Int?
+  resultReadyAt         DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -3283,6 +3304,25 @@ model Pet {
   @@index([isActive])
 }
 
+// Phase 67 §9.1 item 18.3 — Vet Clinic: breed-specific health-alert flagging
+// at intake. Deliberately user-maintained, NOT pre-seeded with any clinical
+// claims — this app doesn't author veterinary medical content (the same
+// caution behind every "convenience document, not a validated medical
+// record" disclaimer already in this codebase); each clinic defines its own
+// alerts for the breeds it actually sees. `breed` is free text matched
+// case-insensitively against Pet.breed (also free text, no shared enum),
+// not a foreign key.
+model BreedHealthAlert {
+  id         String   @id @default(cuid())
+  species    String // Dog | Cat | Bird | Rabbit | Reptile | Other — same set as Pet.species
+  breed      String
+  alertText  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([species])
+}
+
 model WeightHistory {
   id         String   @id @default(cuid())
   petId      String
@@ -3330,12 +3370,38 @@ model VisitNote {
   subjective      String? // patient-reported history
   objective       String? // vitals and examination findings
   assessment      String? // diagnosis / differential
+  diagnosisCategory String? // Phase 67 §9.1 item 19.4 — GP Clinic: free-text category tag (e.g. "Infection", "Chronic Disease Follow-up") distinct from the free-text `assessment` field above, so trend reporting can group without needing NLP over unstructured prose. Shared model across all 4 `visit_notes` verticals but only surfaced in the UI/report for GP_CLINIC (gated by the new `diagnosis_categories` module), per this codebase's "config flags only, no template-specific if/else" convention.
   plan            String? // treatment plan, medications, procedures
   followUpDate    DateTime?
   followUpNotes   String?
   referredBy      String? // specialist: who referred this patient
   referralDate    DateTime?
   referralReason  String?
+  // Phase 67 §9.1 item 20.4 — Specialist Clinic: referral-loop closure. A
+  // contact for the referring doctor, distinct from `referredBy` (that's
+  // just a free-text name) — without one, there's nowhere to actually send
+  // a "closing the loop" visit summary back to. Both optional: a clinic
+  // that's already captured `referredBy` for older notes has no email/phone
+  // on file for those, and that's fine — the share buttons simply stay
+  // disabled until filled in, same "no round-trip to attempt a share that
+  // can't work" convention ShareMenu.tsx already uses for customer contacts.
+  referredByPhone String?
+  referredByEmail String?
+  // Phase 67 §9.1 item 20.2 — Specialist Clinic: flags a visit as a
+  // second-opinion consultation (patient already diagnosed/treated
+  // elsewhere, seeking another view), distinct from `referredBy` (who sent
+  // them) — a referred patient isn't necessarily a second-opinion case, and
+  // a second-opinion case doesn't require a referral. Feeds the
+  // Second-Opinion Conversion report: of these visits, how many patients
+  // went on to book a later completed appointment (became an ongoing
+  // patient) vs. only ever had the one visit.
+  isSecondOpinion Boolean   @default(false)
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic: case-complexity mix report.
+  // Free-form-but-controlled ('ROUTINE' | 'COMPLEX'), left optional since
+  // forcing a value on every note (including old ones) isn't realistic —
+  // untagged notes are simply excluded from the report's percentages
+  // rather than counted as a fake third bucket.
+  caseComplexity  String?
   treatmentDone   String? // Phase 25 — Dental: what was done this session
   painScore       Int? // Phase 26 — Physio: pain score 0–10
   functionalScore Int? // Phase 58 §2 — Physio: structured functional outcome measure, 0-100 (higher = better function), trended across sessions alongside pain score
@@ -3434,6 +3500,15 @@ model TokenQueue {
   seenAt        DateTime?
   notes         String?
   createdAt     DateTime  @default(now())
+  // Phase 67 §9.1 item 20.5 — Specialist Clinic: waitlist prioritization by
+  // referral urgency. A generic flag on the token itself (not tied to a
+  // specific referral record) so front-desk staff can mark a walk-in whose
+  // referring doctor flagged it urgent — the queue then calls urgent
+  // patients ahead of their strict check-in order. Harmless for every other
+  // clinic vertical: the UI checkbox that sets this is gated to Specialist
+  // Clinic only, so it's always false elsewhere and the ordering below
+  // collapses back to plain token-number order.
+  isUrgent      Boolean   @default(false)
 
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
@@ -3503,6 +3578,13 @@ model TreatmentPlan {
   completedDate      DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  // Phase 67 §9.1 item 21.1 — Dental Clinic: treatment-plan conversion
+  // tracking (quoted→accepted→billed). `status` already covered
+  // proposed/accepted, but nothing recorded whether an accepted plan ever
+  // actually turned into real revenue — a plan can sit at ACCEPTED forever
+  // with no invoice behind it. Unenforced FK, deliberately, same convention
+  // as Appointment.invoiceId/TimeEntry.invoiceId elsewhere in this schema.
+  invoiceId          String?
 
   patient   Customer  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   createdBy Employee? @relation("TreatmentPlanCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -3525,8 +3607,34 @@ model RecallRecord {
   updatedAt        DateTime  @updatedAt
 
   patient Customer @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  // Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance report.
+  complianceLogs RecallComplianceLog[]
 
   @@index([nextRecallDate])
+}
+
+// Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance report.
+// RecallRecord's own upsert-overwrites-in-place design (see the GP Clinic
+// comment block below, which independently named this exact gap for its own
+// ChronicRecallComplianceLog) has no way to answer "was the LAST recall met
+// on time" after the fact — each upsert on an EXISTING record first
+// snapshots the outcome of the cycle it's closing, before overwriting it.
+// Same shape as ChronicRecallComplianceLog, deliberately not merged with it:
+// RecallRecord.patientId is @unique (one row per patient), a structurally
+// different source table from ChronicConditionRecord's several-per-patient
+// design.
+model RecallComplianceLog {
+  id            String   @id @default(cuid())
+  recordId      String
+  scheduledDate DateTime // the nextRecallDate that was due
+  actualDate    DateTime // the date the recall actually happened (new lastVisitDate at upsert time)
+  onTime        Boolean // actualDate <= scheduledDate
+  createdAt     DateTime @default(now())
+
+  record RecallRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@index([scheduledDate])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5803,6 +5911,106 @@ model RecurringProfile {
   @@index([supplierId])
 }
 
+// Phase 67 §9.1 — Retail: time-boxed markdown workflow. Mirrors
+// RecurringProfile's own "no real cron exists in this codebase" evaluation
+// shape (see recurring-profile.service.ts's header comment) — a scheduled
+// mechanism runs on app startup + hourly via setInterval in main/index.ts,
+// not a live process timer. A markdown applies its price CUT immediately on
+// creation (Product.sellingPrice is set to markdownPrice right away) and
+// the evaluator reverts it back to originalPrice once endDate passes,
+// unless the price was manually changed away from markdownPrice in the
+// meantime — in which case the revert is skipped rather than clobbering a
+// deliberate manual edit (see price-markdown.service.ts).
+model PriceMarkdown {
+  id            String    @id @default(cuid())
+  productId     String
+  originalPrice Float
+  markdownPrice Float
+  startDate     DateTime  @default(now())
+  endDate       DateTime
+  status        String    @default("ACTIVE") // ACTIVE | REVERTED | CANCELLED | SKIPPED_MANUAL_OVERRIDE
+  revertedAt    DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User?   @relation("PriceMarkdownCreatedBy", fields: [createdById], references: [id])
+
+  @@index([productId])
+  @@index([status])
+  @@index([endDate])
+}
+
+// Phase 67 §9.1 — Retail: simple visit-based loyalty punch-card. Singleton
+// config row (mirrors BusinessProfile's own findFirst()-based singleton
+// convention elsewhere in this codebase) — deliberately Retail-specific for
+// now rather than a generic multi-vertical loyalty engine: no other Phase
+// 67/68/69 item needs one by name, so generalizing now would be premature
+// abstraction, not a real requirement (see the roadmap's own grounding
+// note). A punch is earned automatically at invoice-creation time (see
+// billing.service.ts's createInvoice) for any qualifying sale — "qualifying"
+// meaning totalAmount >= minPurchaseAmount — so there's no separate manual
+// staff action required for the common case.
+model LoyaltyProgram {
+  id                String   @id @default(cuid())
+  isActive          Boolean  @default(true)
+  punchesRequired   Int      @default(10)
+  rewardDescription String
+  minPurchaseAmount Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model LoyaltyCard {
+  id                   String    @id @default(cuid())
+  customerId           String    @unique
+  currentPunches       Int       @default(0)
+  totalPunchesEarned   Int       @default(0)
+  totalRewardsRedeemed Int       @default(0)
+  lastPunchAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  customer    Customer            @relation(fields: [customerId], references: [id])
+  punches     LoyaltyPunchEvent[]
+  redemptions LoyaltyRedemption[]
+
+  @@index([customerId])
+}
+
+model LoyaltyPunchEvent {
+  id            String   @id @default(cuid())
+  loyaltyCardId String
+  // Nullable — an invoice can be deleted/split independent of loyalty
+  // history; the punch itself is never retroactively undone (a disclosed,
+  // deliberate simplification — see loyalty-program.service.ts).
+  invoiceId     String?
+  createdAt     DateTime @default(now())
+
+  loyaltyCard LoyaltyCard @relation(fields: [loyaltyCardId], references: [id])
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+
+  @@index([loyaltyCardId])
+}
+
+model LoyaltyRedemption {
+  id                String   @id @default(cuid())
+  loyaltyCardId     String
+  punchesUsed       Int
+  // Snapshot of the reward text at redemption time — if the program's own
+  // rewardDescription is edited later, past redemption history stays
+  // accurate to what was actually given, not silently rewritten.
+  rewardDescription String
+  redeemedById      String?
+  redeemedAt        DateTime @default(now())
+
+  loyaltyCard LoyaltyCard @relation(fields: [loyaltyCardId], references: [id])
+  redeemedBy  User?       @relation("LoyaltyRedeemedBy", fields: [redeemedById], references: [id])
+
+  @@index([loyaltyCardId])
+}
+
 // Formal Price Lists — additive alongside the existing, narrower
 // CustomerClassPrice (Phase 58 §2: one flat price per product per
 // Customer.customerClass string, no quantity tiers, no supplier side, no
@@ -5859,9 +6067,18 @@ model PricingScheme {
   // SLAB_DISCOUNT — JSON array of {minQty:number, discountPercent:number},
   // same "JSON for a variable-shape config" convention as
   // Product.rentalRates.
-  slabBreakpoints String    @default("[]")
-  startDate       DateTime?
-  endDate         DateTime?
+  slabBreakpoints     String    @default("[]")
+  flatDiscountPercent Float? // FLAT_PERCENT_OFF (Phase 67 21.x — Restaurant happy-hour pricing)
+  startDate           DateTime?
+  endDate             DateTime?
+  // Time-of-day window (minutes since midnight, 0-1439), gates ANY ruleType
+  // the same way startDate/endDate already gate any ruleType — e.g. a
+  // happy-hour FLAT_PERCENT_OFF from 16:00-18:00, or a lunch-only combo.
+  // Both null = no time restriction. Non-wrapping by design (end must be
+  // after start) — a window crossing midnight isn't supported, an honest
+  // scope limit rather than silently mishandling it.
+  startTimeMinutes    Int?
+  endTimeMinutes      Int?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

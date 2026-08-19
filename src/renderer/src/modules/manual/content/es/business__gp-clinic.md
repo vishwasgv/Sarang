@@ -15,6 +15,7 @@ Abrir la **Consultation Note** de una cita le da una nota clínica estructurada,
 - **Vitals**: presión arterial (sistólica/diastólica), pulso, temperatura, altura, peso — cada campo se marca automáticamente (Normal / Bajo / Alto) contra una referencia de rango normal guardada al momento de guardar, así que las lecturas fuera de rango destacan de inmediato.
 - **O — Objective**: hallazgos del examen.
 - **A — Assessment**: diagnóstico / impresión clínica.
+- **Diagnosis Category** (opcional): una breve etiqueta de categoría — Infección, Seguimiento de Enfermedad Crónica, Lesión, y similares — separada del texto libre de Assessment anterior. Etiquetar esto alimenta **Reports → Diagnosis-Category Trend**, así que elija de la lista sugerida o escriba la suya si ninguna encaja.
 - **P — Plan**: plan de tratamiento, medicamentos, estudios solicitados.
 - **Follow-up**: una fecha de seguimiento opcional e instrucciones.
 
@@ -24,7 +25,11 @@ Haga clic en **Save Note** a medida que avanza, y luego en **Finalizar** cuando 
 
 **Vitals Trend.** Una vez que un paciente tiene dos o más visitas con signos vitales registrados, aparece un gráfico de tendencia que muestra cómo ha evolucionado una métrica elegida (presión arterial, pulso, temperatura o peso) a lo largo del tiempo — elija qué métrica graficar desde la fila de chips arriba del gráfico.
 
-**Cartas de derivación.** Usar la acción existente "Refer to Another Provider" crea una derivación real; una vez que existe una, **Print Referral Letter** produce una carta formal dirigida al médico al que se deriva con el motivo de la derivación — un documento genuinamente distinto del resumen completo de consulta, hecho para entregárselo al paciente para que lo lleve al especialista.
+**Derivar a un paciente.** Use "Refer to Another Provider" para reservar una cita real con otro proveedor — una vez que existe, **Print Referral Letter** produce una carta formal dirigida al médico derivado con el motivo de la derivación, un documento genuinamente distinto del resumen completo de consulta, hecho para que el paciente lo lleve consigo. Una vez que esa cita de derivación ocurre y su propia nota se finaliza, la evaluación del proveedor derivado aparece aquí mismo como una línea de **Outcome** debajo de la derivación, para que no tenga que ir por separado a buscar su nota para ver qué encontraron.
+
+**Resultado de Derivación Saliente.** Todas sus derivaciones salientes, en un solo lugar — abra **Reports → Referral-Out Outcome** y elija un rango de fechas. Verá cuántas derivaciones hizo, cuántas ya tienen un resultado registrado, y cuántas siguen pendientes, además de una tabla con cada derivación, su estado y su resultado (cuando esté disponible).
+
+**Tendencia de Categoría de Diagnóstico.** Cada vez que etiqueta una Diagnosis Category en una nota de consulta, alimenta **Reports → Diagnosis-Category Trend** — elija un rango de fechas y verá un gráfico de líneas con una línea por categoría, mes a mes, más una tabla de desglose. Esto es independiente del texto de Assessment en sí: Assessment es su nota clínica de texto libre, mientras que la categoría es una etiqueta breve puramente para detectar patrones a lo largo del tiempo (p. ej. "las infecciones están aumentando este trimestre"). Las visitas sin categoría etiquetada aún cuentan hacia su total de visitas pero no aparecen en el gráfico, ya que no hay nada por lo cual agruparlas.
 
 ## Cola de Turnos
 
@@ -36,6 +41,8 @@ La pantalla de **Cola de turnos** gestiona a los pacientes sin cita previa del m
 - **Call Next** para llamar al próximo turno en espera.
 
 Cada turno en la lista se puede llamar, marcar como atendido, omitir o restablecer a en espera — la cola se reordena automáticamente en secciones de "Actualmente Llamado," "Esperando," y "Completado." Esto es completamente independiente de la lista de Appointments reservadas con anticipación — está hecho para la realidad de pacientes que simplemente llegan y esperan su turno.
+
+Para ver qué parte de su día son pacientes sin cita frente a citas reservadas previamente, abra **Reports → Walk-in vs. Appointment Ratio** y elija un rango de fechas. Muestra su proporción total como un porcentaje, más un gráfico de barras día por día, para que pueda saber de un vistazo si su clínica funciona principalmente con citas reservadas o principalmente con personas que simplemente llegan.
 
 ## Recordatorio de Condición Crónica
 

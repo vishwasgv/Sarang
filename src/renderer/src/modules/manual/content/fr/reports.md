@@ -16,7 +16,7 @@ Le Rapport de stock affiche les niveaux de stock actuels et leur valorisation, a
 
 ## Clients & Fournisseurs
 
-Le Grand livre client et le Relevé fournisseur produisent chacun un relevé complet des transactions pour un client ou un fournisseur spécifique que vous recherchez et sélectionnez. L'entrée En cours, sous Finances, liste chaque client et fournisseur ayant un solde en attente, au même endroit.
+Le Grand livre client et le Relevé fournisseur produisent chacun un relevé complet des transactions pour un client ou un fournisseur spécifique que vous recherchez et sélectionnez — solde d'ouverture, chaque transaction dans l'ordre des dates, et solde de clôture, plus une courbe de tendance du solde pour voir d'un coup d'œil si son solde a augmenté ou diminué sur la période. C'est exactement ainsi que fonctionne le compte courant d'un entrepreneur : chaque vente à crédit s'ajoute à son solde au moment où elle a lieu, et ce relevé est la facture de fin de mois (ou de toute autre plage de dates) que vous lui remettez, déjà détaillée par article et totalisée — aucune configuration séparée de « compte courant » n'est nécessaire. L'entrée En cours, sous Finances, liste chaque client et fournisseur ayant un solde en attente, au même endroit.
 
 ## Finances
 

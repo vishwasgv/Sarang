@@ -147,6 +147,10 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/sales-orders', key: 'salesOrders' },
   { path: '/pricing/price-lists', key: 'priceLists' },
   { path: '/pricing/schemes', key: 'pricingSchemes' },
+  // Phase 67 §9.1 — Retail: time-boxed markdown workflow, a genuinely new screen.
+  { path: '/pricing/markdowns', key: 'priceMarkdowns' },
+  // Phase 67 §9.1 — Retail: simple visit-based loyalty punch-card, a genuinely new screen.
+  { path: '/pricing/loyalty', key: 'loyaltyProgram' },
   { path: '/recurring-profiles', key: 'recurringProfiles' },
   { path: '/approval-workflows', key: 'approvalWorkflows' },
   // Phase 64 — Inventory & Costing Depth. Locations is the one genuinely new

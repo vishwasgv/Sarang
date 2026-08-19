@@ -27,6 +27,7 @@
 import { getActiveTemplate } from './industry-template.service'
 import { getOccupancyReport } from './hotel.service'
 import { reportService } from './report.service'
+import { loyaltyProgramService } from './loyalty-program.service'
 import { getPlacementKPIs } from './placement.service'
 import { formatAmountForSpeech } from './ai-format.util'
 import { getPrisma } from '../database/db'
@@ -104,9 +105,18 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // AI expansion, 2026-07 — lab.reportsPendingFinalization reuses the same
     // generateLabThroughputReport as lab.throughput, just framed around the
     // "reports pending" question specifically rather than the full summary.
-    case 'DIAGNOSTIC_LAB': return ['lab.throughput', 'lab.reportsPendingFinalization']
+    // Phase 67 §9.1 items 23.1/23.4/23.5 — Diagnostic Lab's TAT compliance,
+    // top test panel by volume, and referral leaderboard (shared mechanism
+    // with SPECIALIST_CLINIC's own intent below — see report.service.ts's
+    // comment on why the two verticals need separate queries).
+    case 'DIAGNOSTIC_LAB': return ['lab.throughput', 'lab.reportsPendingFinalization', 'lab.tatCompliance', 'lab.topPanel', 'lab.referralLeaderboard']
     case 'BLOOD_BANK': return ['bloodBank.stock']
-    case 'RESTAURANT': return ['restaurant.foodCost', 'restaurant.orderVolume']
+    case 'RESTAURANT': return ['restaurant.foodCost', 'restaurant.orderVolume', 'restaurant.dishContributionMargin', 'restaurant.tableTurnoverByHour', 'restaurant.recipeWasteVariance']
+    case 'RETAIL': return ['retail.deadStockClearance', 'retail.categorySellThrough', 'retail.loyaltyProgress', 'retail.basketComposition']
+    // Phase 67 §9.1 — Hardware's item 4 (Fast-mover vs. slow-mover matrix)
+    // gets a matching AI intent per Section 1.2's "any new report gets a
+    // matching AI query pattern" rule.
+    case 'HARDWARE': return ['hardware.fastSlowMoverMatrix']
     case 'MANUFACTURING': return ['manufacturing.production']
     case 'ELECTRONICS': return ['electronics.serialWarranty']
     case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock']
@@ -164,8 +174,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     if (businessType === 'DRIVING_SCHOOL') templates.push('driving.upcomingTestsAndLowBalance')
     if (businessType === 'TAILOR_BOUTIQUE') templates.push('tailoring.ordersDueThisWeek')
     if (businessType === 'PEST_CONTROL') templates.push('pestControl.contractsDueForRenewal')
-    if (businessType === 'VET_CLINIC') templates.push('vet.vaccinationsDue')
-    if (businessType === 'DENTAL_CLINIC') templates.push('dental.recallsDue')
+    // Phase 67 §9.1 items 18.2/18.4 — Vet Clinic's own Vaccination
+    // Compliance and Case-Type Volume Trend reports each get a matching AI
+    // intent, per Section 1.2's own rule.
+    if (businessType === 'VET_CLINIC') templates.push('vet.vaccinationsDue', 'vet.vaccinationCompliance', 'vet.caseTypeVolume')
+    if (businessType === 'DENTAL_CLINIC') templates.push('dental.recallsDue', 'dental.treatmentAcceptanceRate', 'dental.recallCompliance')
     // Phase 66 — the Dashboard spotlight card for GYM_STUDIO now surfaces
     // expiring-membership counts (getExpiringMemberships, same function the
     // dedicated Memberships screen's own "Expiring Soon" tab calls) — per
@@ -176,7 +189,17 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // has a real Dashboard spotlight card (dashboard-spotlight.service.ts's
     // `chronicRecall` kind); per Section 1.2's "any new report gets a
     // matching AI query pattern" rule, it needs a matching intent too.
-    if (businessType === 'GP_CLINIC') templates.push('gp.chronicRecallsDue')
+    if (businessType === 'GP_CLINIC') templates.push('gp.chronicRecallsDue', 'gp.walkInVsAppointmentRatio', 'gp.topDiagnosisCategory', 'gp.referralOutcomes')
+    // Phase 67 §9.1 item 22.4 — Physio Clinic's own Pack Utilization report,
+    // explicitly named in the roadmap as a shared component with Gym/Studio
+    // (both use the exact same ClientSessionPack model) — one intent, one
+    // underlying report function, two callers.
+    if (businessType === 'PHYSIO_CLINIC' || businessType === 'GYM_STUDIO') templates.push('sessionPacks.utilization')
+    // Phase 67 §9.1 item 20.1 — Specialist Clinic's own Referral-Source
+    // Leaderboard, the audit's "exists, unused" field finally getting a real
+    // report + intent. Shares its report shape/UI with Diagnostic Lab's
+    // 'lab.referralLeaderboard' above, not its underlying query.
+    if (businessType === 'SPECIALIST_CLINIC') templates.push('specialist.referralLeaderboard', 'specialist.secondOpinionConversion', 'specialist.caseComplexityMix')
     return templates
   }
   if (LOGISTICS_BASED_TYPES.has(businessType)) return ['logistics.summary']
@@ -260,6 +283,98 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `Ingredient cost this period: ${formatAmountForSpeech(r.totalCost, sym)}`,
         details: [],
         isEmpty: r.totalCost === 0
+      }
+    }
+    case 'restaurant.dishContributionMargin': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateDishContributionMarginReport({ dateFrom, dateTo })
+      const top = r.rows[0]
+      return {
+        headline: top ? `Best margin: ${top.productName} at ${formatAmountForSpeech(top.contributionMargin, sym)}` : 'No dishes sold this period',
+        details: r.rows.slice(0, 3).map(row => `${row.productName}: ${formatAmountForSpeech(row.contributionMargin, sym)} (${row.marginPercent}%)`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    case 'restaurant.tableTurnoverByHour': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateTableTurnoverByHourReport({ dateFrom, dateTo })
+      const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const s = r.summary
+      const peakLabel = s.peakDayOfWeek !== null && s.peakHour !== null ? `${DAY_NAMES[s.peakDayOfWeek]} at ${s.peakHour}:00` : null
+      return {
+        headline: peakLabel ? `Busiest: ${peakLabel} (${s.peakCount} table turns)` : 'No dine-in table orders this period',
+        details: [`Total table turns this period: ${s.totalTurns}`],
+        isEmpty: s.totalTurns === 0
+      }
+    }
+    case 'restaurant.recipeWasteVariance': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateRecipeWasteVarianceReport({ dateFrom, dateTo })
+      const biggest = r.rows.filter(row => row.varianceQuantity > 0)[0] ?? null
+      return {
+        headline: biggest ? `Biggest overage: ${biggest.ingredientName} (+${biggest.varianceQuantity} ${biggest.unit} vs. recipe)` : 'No recipe-linked ingredient activity this period',
+        details: r.rows.slice(0, 3).map(row => `${row.ingredientName}: ${row.varianceQuantity > 0 ? '+' : ''}${row.varianceQuantity} ${row.unit} vs. recipe`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    case 'retail.deadStockClearance': {
+      const r = await reportService.generateDeadStockClearanceReport()
+      const top = r.rows[0] ?? null
+      return {
+        headline: `${formatAmountForSpeech(r.summary.totalCapitalLocked, sym)} locked in ${r.summary.itemCount} dead-stock items (no sale in ${r.lookbackDays} days)`,
+        details: top ? [`Biggest: ${top.productName} — ${formatAmountForSpeech(top.capitalLocked, sym)}`] : [],
+        isEmpty: r.summary.itemCount === 0
+      }
+    }
+    case 'retail.categorySellThrough': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCategorySellThroughReport({ dateFrom, dateTo })
+      const thisMonth = r.rows.filter(row => row.unitsSold > 0 || row.currentStock > 0)
+      const sorted = [...thisMonth].sort((a, b) => b.sellThroughRate - a.sellThroughRate)
+      const top = sorted[0] ?? null
+      return {
+        headline: top ? `${top.categoryName} leads this month at ${top.sellThroughRate}% sell-through` : 'No category sales this month yet',
+        details: sorted.slice(0, 3).map(row => `${row.categoryName}: ${row.sellThroughRate}% (${row.unitsSold} sold, ${row.currentStock} in stock)`),
+        isEmpty: thisMonth.length === 0
+      }
+    }
+    case 'retail.loyaltyProgress': {
+      const r = await loyaltyProgramService.getSummary()
+      if (!r.success) {
+        return { headline: 'No loyalty program is configured yet', details: [], isEmpty: true }
+      }
+      const d = r.data
+      if (!d.configured) {
+        return { headline: 'No loyalty program is configured yet', details: [], isEmpty: true }
+      }
+      return {
+        headline: `${d.readyForRewardCount} customer${d.readyForRewardCount === 1 ? '' : 's'} ready to redeem, ${d.totalCards} total loyalty cards`,
+        details: [`Rewards redeemed this month: ${d.rewardsRedeemedThisMonth}`, `Program ${d.isActive ? 'active' : 'turned off'}`],
+        isEmpty: d.totalCards === 0
+      }
+    }
+    case 'retail.basketComposition': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateBasketCompositionReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top ? `${top.productAName} + ${top.productBName} bought together in ${top.basketCount} baskets this month` : 'No repeated product pairings found this month',
+        details: r.rows.slice(0, 3).map(row => `${row.productAName} + ${row.productBName}: ${row.basketCount} baskets`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    case 'hardware.fastSlowMoverMatrix': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateFastSlowMoverMatrixReport({ dateFrom, dateTo })
+      const fastest = [...r.rows].sort((a, b) => b.velocity - a.velocity)[0] ?? null
+      const laggards = r.rows.filter(row => row.quadrant === 'SLOW_LOW_MARGIN')
+      return {
+        headline: fastest ? `${fastest.productName} is your fastest mover at ${fastest.velocity}/day (${fastest.marginPercent}% margin)` : 'No products sold this month yet',
+        details: [
+          laggards.length > 0 ? `${laggards.length} product${laggards.length === 1 ? '' : 's'} are slow-moving with low margin — worth reviewing for discontinuation` : 'No slow-moving, low-margin products this month',
+          `Median velocity: ${r.velocityMedian}/day, median margin: ${r.marginMedian}%`
+        ],
+        isEmpty: r.rows.length === 0
       }
     }
     case 'restaurant.orderVolume': {
@@ -607,6 +722,26 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         isEmpty: items.length === 0
       }
     }
+    case 'dental.treatmentAcceptanceRate': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateTreatmentAcceptanceRateReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.proposedCount > 0
+          ? `${r.summary.acceptanceRatePercent}% of treatment plans proposed this period were accepted, ${r.summary.billedRatePercent}% actually billed (${r.summary.billedCount} of ${r.summary.proposedCount})`
+          : 'No treatment plans proposed this period',
+        details: r.funnel.map((f) => `${f.stage}: ${f.count}`),
+        isEmpty: r.summary.proposedCount === 0
+      }
+    }
+    case 'dental.recallCompliance': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateDentalRecallComplianceReport({ dateFrom, dateTo })
+      return {
+        headline: r.overallPercent != null ? `${r.overallPercent}% of recalls closed this period came back on time (${r.overallOnTime} of ${r.totalRecallsClosed})` : 'No recall periods closed this period',
+        details: r.byRecallType.slice(0, 5).map((row) => `${row.recallType}: ${row.percent}% on time (${row.onTime} of ${row.total})`),
+        isEmpty: r.totalRecallsClosed === 0
+      }
+    }
     case 'gp.chronicRecallsDue': {
       const now = new Date()
       const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() + 30)
@@ -617,6 +752,160 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${items.length} chronic-condition recalls due in the next 30 days`,
         details: items.slice(0, 10).map((r) => `${r.patient.customerName} (${r.conditionName}) — due ${toLocalISODate(new Date(r.nextRecallDate))}`),
         isEmpty: items.length === 0
+      }
+    }
+    case 'gp.walkInVsAppointmentRatio': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateWalkInVsAppointmentRatioReport({ dateFrom, dateTo })
+      const total = r.summary.totalWalkIns + r.summary.totalAppointments
+      return {
+        headline: `${r.summary.walkInPercent}% of visits this period were walk-ins (${r.summary.totalWalkIns} walk-in, ${r.summary.totalAppointments} booked)`,
+        details: [],
+        isEmpty: total === 0
+      }
+    }
+    case 'gp.topDiagnosisCategory': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateDiagnosisCategoryTrendReport({ dateFrom, dateTo })
+      // A raw month-by-category pivot doesn't translate to a spoken answer —
+      // sum each category's counts across the returned months and surface
+      // the leader, which is what a GP actually wants to know out loud.
+      const totals = new Map<string, number>()
+      for (const row of r.byMonth) {
+        for (const category of r.categories) {
+          const value = row[category]
+          totals.set(category, (totals.get(category) ?? 0) + (typeof value === 'number' ? value : 0))
+        }
+      }
+      const sorted = Array.from(totals.entries()).sort((a, b) => b[1] - a[1])
+      const top = sorted[0]
+      return {
+        headline: top ? `${top[0]} is your most common diagnosis category this period (${top[1]} visits)` : 'No categorized diagnoses this period',
+        details: sorted.slice(0, 5).map(([category, count]) => `${category}: ${count}`),
+        isEmpty: r.summary.categorizedCount === 0
+      }
+    }
+    case 'gp.referralOutcomes': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateReferralOutcomeReport({ dateFrom, dateTo })
+      const pendingOutcomes = r.summary.completedCount - r.summary.outcomeRecordedCount
+      return {
+        headline: `${r.summary.totalReferrals} referral(s) this period, ${r.summary.outcomeRecordedCount} with an outcome recorded`,
+        details: [
+          `Completed visits: ${r.summary.completedCount}`,
+          `Still pending: ${r.summary.pendingCount}`,
+          ...(pendingOutcomes > 0 ? [`Completed but no outcome note yet: ${pendingOutcomes}`] : [])
+        ],
+        isEmpty: r.summary.totalReferrals === 0
+      }
+    }
+    case 'sessionPacks.utilization': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generatePackUtilizationReport({ dateFrom, dateTo })
+      return {
+        headline: `${r.summary.overallUtilizationPercent}% of purchased sessions used this period (${r.summary.totalSessionsUsed} of ${r.summary.totalSessionsSold} across ${r.summary.totalPacks} pack(s))`,
+        details: r.rows.filter((row) => row.remainingSessions > 0 && row.isActive).slice(0, 5).map((row) => `${row.customerName} (${row.packName}): ${row.remainingSessions} session(s) left`),
+        isEmpty: r.summary.totalPacks === 0
+      }
+    }
+    case 'lab.tatCompliance': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateLabTATReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.withTargetCount > 0
+          ? `${r.summary.overallOnTimePercent}% of tests met their turnaround target this period (${r.summary.onTimeCount} of ${r.summary.withTargetCount})`
+          : `${r.summary.totalCompleted} test(s) completed this period, none with a turnaround target set yet`,
+        details: r.rows.filter((row) => row.targetTATHours != null && row.lateCount > 0).slice(0, 5).map((row) => `${row.testName}: ${row.lateCount} late of ${row.ordersCount}`),
+        isEmpty: r.summary.totalCompleted === 0
+      }
+    }
+    case 'lab.topPanel': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateTestVolumeByPanelReport({ dateFrom, dateTo })
+      // Same "sum across months, surface the leader" pattern as
+      // gp.topDiagnosisCategory above — a raw pivot isn't a spoken answer.
+      const totals = new Map<string, number>()
+      for (const row of r.byMonth) {
+        for (const panel of r.panels) {
+          const value = row[panel]
+          totals.set(panel, (totals.get(panel) ?? 0) + (typeof value === 'number' ? value : 0))
+        }
+      }
+      const sorted = Array.from(totals.entries()).sort((a, b) => b[1] - a[1])
+      const top = sorted[0]
+      return {
+        headline: top ? `${top[0]} is your highest-volume panel this period (${top[1]} test(s))` : 'No tests recorded this period',
+        details: sorted.slice(0, 5).map(([panel, count]) => `${panel}: ${count}`),
+        isEmpty: r.summary.totalTests === 0
+      }
+    }
+    case 'lab.referralLeaderboard': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateReferralLeaderboardReport({ dateFrom, dateTo, businessType: 'DIAGNOSTIC_LAB' })
+      return {
+        headline: r.summary.topReferrerName ? `${r.summary.topReferrerName} referred the most tests this period (${r.rows[0]?.count ?? 0})` : 'No referring doctors recorded this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.referrerName}: ${row.count}`),
+        isEmpty: r.summary.totalReferrals === 0
+      }
+    }
+    case 'specialist.referralLeaderboard': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateReferralLeaderboardReport({ dateFrom, dateTo, businessType: 'SPECIALIST_CLINIC' })
+      return {
+        headline: r.summary.topReferrerName ? `${r.summary.topReferrerName} referred the most patients this period (${r.rows[0]?.count ?? 0})` : 'No referring doctors recorded this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.referrerName}: ${row.count}`),
+        isEmpty: r.summary.totalReferrals === 0
+      }
+    }
+    case 'specialist.secondOpinionConversion': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateSecondOpinionConversionReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.totalSecondOpinionVisits > 0
+          ? `${r.summary.conversionPercent}% of your second-opinion patients this period came back as ongoing patients (${r.summary.convertedCount} of ${r.summary.totalSecondOpinionVisits})`
+          : 'No second-opinion consultations recorded this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.patientName} (${row.visitDate}): ${row.converted ? `returned ${row.nextVisitDate}` : 'no return visit yet'}`),
+        isEmpty: r.summary.totalSecondOpinionVisits === 0
+      }
+    }
+    case 'specialist.caseComplexityMix': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCaseComplexityMixReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.totalTagged > 0
+          ? `${r.summary.complexPercent}% of your tagged cases this period were complex (${r.summary.complexCount} of ${r.summary.totalTagged})`
+          : 'No cases tagged with a complexity level this period',
+        details: r.byMonth.slice(-3).map((row) => `${row.month}: ${row.ROUTINE} routine, ${row.COMPLEX} complex`),
+        isEmpty: r.summary.totalTagged === 0
+      }
+    }
+    case 'vet.vaccinationCompliance': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateVaccinationComplianceReport({ dateFrom, dateTo })
+      return {
+        headline: r.overallPercent != null ? `${r.overallPercent}% of vaccine doses this period were given on time (${r.overallOnTime} of ${r.totalDosesEvaluated})` : 'No follow-up doses with a prior due date this period',
+        details: r.byVaccine.slice(0, 5).map((row) => `${row.vaccineName}: ${row.percent}% on time (${row.onTime} of ${row.total})`),
+        isEmpty: r.totalDosesEvaluated === 0
+      }
+    }
+    case 'vet.caseTypeVolume': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateVetCaseTypeVolumeReport({ dateFrom, dateTo })
+      // Same "sum across months, surface the leader" pattern as
+      // gp.topDiagnosisCategory/lab.topPanel above.
+      const totals = new Map<string, number>()
+      for (const row of r.byMonth) {
+        for (const caseType of r.caseTypes) {
+          const value = row[caseType]
+          totals.set(caseType, (totals.get(caseType) ?? 0) + (typeof value === 'number' ? value : 0))
+        }
+      }
+      const sorted = Array.from(totals.entries()).sort((a, b) => b[1] - a[1])
+      const top = sorted[0]
+      return {
+        headline: top ? `${top[0]} is your highest-volume case type this period (${top[1]} case(s))` : 'No cases recorded this period',
+        details: sorted.slice(0, 5).map(([caseType, count]) => `${caseType}: ${count}`),
+        isEmpty: r.summary.totalCases === 0
       }
     }
     case 'carService.vehiclesInService': {

@@ -22,6 +22,10 @@ Untuk setiap tes pada order, masukkan hasilnya: sebuah set parameter bernama (ni
 
 Sebuah hasil **Kritis** menempatkan lencana merah pada order (dan pada item spesifik) segera, dan order tidak dapat dianggap tertangani sampai Anda menggunakan **Record Doctor Notified** untuk mencatat bahwa Anda benar-benar menelepon dokter yang merujuk, dengan sebuah catatan — ini adalah catatan sungguhan bahwa eskalasi terjadi, bukan sekadar bahwa angka tersebut ditandai.
 
+## Waktu penyelesaian (TAT)
+
+Jika sebuah tes di Service Catalog Anda memiliki **Target TAT (hours)** yang diatur — edit entri tes untuk menambahkannya — setiap order untuk tes tersebut secara otomatis melacak waktu penyelesaian aktualnya: momen ketika sebuah hasil menjadi siap dibandingkan dengan waktu pengumpulan sampel, dan baris hasil tes menampilkan lencana **On Time** atau **Late** dengan jam yang tepat, tepat di sebelah statusnya. Tanpa target berarti tanpa lencana — ini opsional per tes, bukan keharusan.
+
 ## Menyelesaikan laporan
 
 Setelah setiap tes pada order memiliki hasil yang dimasukkan, **Finalize Report** mengunci seluruh order — statusnya menjadi Reported dan setiap item ditandai Reported. Hasil laporan yang sudah final tidak dapat lagi diedit; jika koreksi sungguhan diperlukan, itu harus terjadi sebelum finalisasi. Setelah laporan difinalisasi, tandai **Terkirim** setelah pasien atau klinik perujuk benar-benar menerimanya. Lampirkan file scan/gambar sebenarnya ke sebuah order dari tampilan detailnya.
@@ -33,6 +37,8 @@ Hasilkan sebuah faktur langsung dari sebuah order lab setelah setiap tes memilik
 ## Reports
 
 Layar **Laporan** mencakup sebuah laporan Lab Test Throughput khusus untuk vertikal ini, menunjukkan order berdasarkan tahap (ordered, sample collected, in process, reported) dan waktu turnaround dari order ke laporan untuk masing-masing — berguna untuk mengetahui di mana sampel menumpuk.
+
+Tiga laporan khusus laboratorium lainnya berada di sebelahnya. **Per-Test TAT** merinci waktu penyelesaian berdasarkan nama tes, bukan berdasarkan order — rata-rata jam aktual dibandingkan target masing-masing tes, dan berapa banyak hasil yang datang tepat waktu versus terlambat, sehingga Anda dapat melihat tes spesifik mana yang tidak memenuhi SLA-nya, bukan hanya bahwa "sesuatu" berjalan lambat. **Test Volume by Panel** menggambarkan berapa banyak tes yang Anda jalankan per panel/kategori dari waktu ke waktu — satu garis per panel, bulan demi bulan. **Referral Leaderboard** memberi peringkat dokter yang paling banyak merujuk tes ke laboratorium Anda, sehingga Anda tahu dari mana sebenarnya volume Anda berasal.
 
 ## Bahasa
 

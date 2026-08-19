@@ -40,6 +40,17 @@ async function generatePONumber(tx: TxClient): Promise<string> {
   )
 }
 
+// Phase 67 §9.1 — Hardware: smart carton-break reorder trigger. Rounds a
+// piece-unit reorder quantity UP to the next whole multiple of the
+// product's carton size — never down, since under-ordering a genuinely low-
+// stock item to save a fraction of a carton defeats the point of a reorder
+// alert. A product not sold by pack (the overwhelming majority) is returned
+// completely untouched.
+function roundUpToCartonMultiple(quantity: number, sellByPack: boolean, unitsPerPack: number | null): number {
+  if (!sellByPack || !unitsPerPack || unitsPerPack <= 0) return quantity
+  return Math.ceil(quantity / unitsPerPack) * unitsPerPack
+}
+
 export const purchaseOrderService = {
   async createPO(payload: CreatePOPayload, userId?: string) {
     const db = getPrisma()
@@ -168,7 +179,9 @@ export const purchaseOrderService = {
 
     const lowStock = await db.inventory.findMany({
       where: { reorderLevel: { gt: 0 }, reorderQuantity: { gt: 0 } },
-      include: { product: { select: { id: true, productName: true, isActive: true, defaultSupplierId: true, costPrice: true, taxRate: true } } }
+      // Phase 67 §9.1 — Hardware: sellByPack/unitsPerPack needed for the
+      // carton-aware reorder rounding below.
+      include: { product: { select: { id: true, productName: true, isActive: true, defaultSupplierId: true, costPrice: true, taxRate: true, sellByPack: true, unitsPerPack: true } } }
     })
     const due = lowStock.filter(inv => inv.quantity <= inv.reorderLevel && inv.product.isActive)
 
@@ -200,7 +213,14 @@ export const purchaseOrderService = {
     for (const inv of toOrder) {
       const supplierId = inv.product.defaultSupplierId!
       const list = bySupplier.get(supplierId) ?? []
-      list.push({ productId: inv.product.id, quantity: inv.reorderQuantity, unitCost: costs.get(inv.product.id) ?? inv.product.costPrice, taxRate: inv.product.taxRate })
+      // Phase 67 §9.1 — Hardware: smart carton-break reorder trigger. A
+      // supplier sells whole cartons, not a fractional count of pieces — a
+      // draft PO suggesting "37 pieces" for a product bought in cartons of
+      // 50 is not actually orderable as written. Round the suggested
+      // quantity UP to the next whole-carton multiple for any product sold
+      // by pack; every other product is completely unaffected.
+      const quantity = roundUpToCartonMultiple(inv.reorderQuantity, inv.product.sellByPack, inv.product.unitsPerPack)
+      list.push({ productId: inv.product.id, quantity, unitCost: costs.get(inv.product.id) ?? inv.product.costPrice, taxRate: inv.product.taxRate })
       bySupplier.set(supplierId, list)
     }
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { upsertTooth, getToothHistory } from '../tooth-record.service'
+import { upsertTooth, getToothHistory, getToothTimeline } from '../tooth-record.service'
 
 // Regression coverage for the Phase 25 re-audit finding: the handler injected
 // the session's userId (a User record) into recordedById, which is FK'd to
@@ -157,5 +157,84 @@ describe('tooth-record.service — getToothHistory', () => {
     expect(res.success).toBe(true)
     expect(res.data).toEqual([])
     expect(db.toothRecordHistory.findMany).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 67 §9.1 item 21.5 — Dental Clinic: tooth-chart-linked treatment
+// timeline. Merges condition-change history with treatment-plan procedures
+// that named this specific tooth, sorted newest first.
+describe('tooth-record.service — getToothTimeline', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('merges condition history and matching treatment-plan procedures, sorted newest first', async () => {
+    const db: Record<string, any> = {
+      toothRecord: { findUnique: vi.fn().mockResolvedValue({ id: 'tooth-1' }) },
+      toothRecordHistory: {
+        findMany: vi.fn().mockResolvedValue([
+          { condition: 'CARIES', surface: '["MESIAL"]', notes: 'Initial finding', recordedDate: new Date('2026-01-01'), recordedBy: null },
+        ]),
+      },
+      treatmentPlan: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'plan-1', title: 'Root Canal Plan', status: 'COMPLETED', createdAt: new Date('2026-02-01'),
+            planItems: JSON.stringify([{ toothNumber: 14, procedure: 'Root Canal', itemStatus: 'DONE' }]),
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getToothTimeline('pat-1', 14)
+
+    expect(res.success).toBe(true)
+    const entries = res.data as Array<{ type: string; date: Date }>
+    expect(entries).toHaveLength(2)
+    expect(entries[0].type).toBe('TREATMENT') // 2026-02-01, newest first
+    expect(entries[1].type).toBe('CONDITION') // 2026-01-01
+  })
+
+  it('excludes treatment-plan items tied to a different tooth', async () => {
+    const db: Record<string, any> = {
+      toothRecord: { findUnique: vi.fn().mockResolvedValue(null) },
+      toothRecordHistory: { findMany: vi.fn() },
+      treatmentPlan: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'plan-1', title: 'Other Tooth Plan', status: 'PROPOSED', createdAt: new Date('2026-02-01'),
+            planItems: JSON.stringify([{ toothNumber: 22, procedure: 'Filling', itemStatus: 'PENDING' }]),
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getToothTimeline('pat-1', 14)
+
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual([])
+  })
+
+  it('includes a treatment-plan item even when the tooth has never had a condition recorded', async () => {
+    const db: Record<string, any> = {
+      toothRecord: { findUnique: vi.fn().mockResolvedValue(null) },
+      toothRecordHistory: { findMany: vi.fn() },
+      treatmentPlan: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'plan-1', title: 'Extraction Plan', status: 'PROPOSED', createdAt: new Date('2026-03-01'),
+            planItems: JSON.stringify([{ toothNumber: 18, procedure: 'Extraction', itemStatus: 'PENDING' }]),
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getToothTimeline('pat-1', 18)
+
+    expect(res.success).toBe(true)
+    expect(db.toothRecordHistory.findMany).not.toHaveBeenCalled()
+    const entries = res.data as Array<{ type: string; procedure: string; itemStatus: string }>
+    expect(entries).toEqual([{ type: 'TREATMENT', date: new Date('2026-03-01'), procedure: 'Extraction', itemStatus: 'PENDING', planId: 'plan-1', planTitle: 'Extraction Plan', planStatus: 'PROPOSED' }])
   })
 })

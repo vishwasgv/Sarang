@@ -17,6 +17,7 @@ import { serializeCustomFieldValues } from './custom-field.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { explodeKitComponentsTx } from './kit.service'
+import { loyaltyProgramService } from './loyalty-program.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
@@ -532,6 +533,10 @@ export const billingService = {
     // Gating on `startsUnpaid` (which also covers SPLIT) wrongly blocked a
     // customer near their limit from paying via cash+UPI split.
     const creditLimitModuleEnabled = isCredit && await isModuleEnabled('credit_limit_enforcement')
+    // Phase 67 §9.1 — Retail loyalty punch-card. Computed once here (not
+    // inside the transaction) since it never changes mid-request, matching
+    // creditLimitModuleEnabled's own convention just above.
+    const loyaltyModuleEnabled = await isModuleEnabled('loyalty_program')
 
     try {
       // RULE B007 + B008: ALL operations in ONE transaction — rolled back if any step fails
@@ -732,6 +737,13 @@ export const billingService = {
 
         // Phase 62 — GL auto-posting.
         await postInvoiceJournalEntry(tx, inv, !startsUnpaid)
+
+        // Phase 67 §9.1 — Retail loyalty punch-card. Never blocks the sale
+        // itself (recordPunchTx never throws) — a punch is a bonus, not a
+        // requirement for a valid invoice.
+        if (payload.customerId && loyaltyModuleEnabled) {
+          await loyaltyProgramService.recordPunchTx(tx, payload.customerId, inv.id, totalAmount)
+        }
 
         return inv
       }, { timeout: 15000, maxWait: 10000 })

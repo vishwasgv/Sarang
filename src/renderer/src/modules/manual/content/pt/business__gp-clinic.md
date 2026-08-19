@@ -15,6 +15,7 @@ Abrir a **Consultation Note** de um agendamento fornece uma nota clínica estrut
 - **Vitals**: pressão arterial (sistólica/diastólica), pulso, temperatura, altura, peso — cada campo é automaticamente sinalizado (Normal / Baixo / Alto) contra uma referência de faixa normal salva assim que você salva, para que leituras fora da faixa se destaquem imediatamente.
 - **O — Objective**: achados do exame.
 - **A — Assessment**: diagnóstico / impressão clínica.
+- **Diagnosis Category** (opcional): uma breve tag de categoria — Infecção, Acompanhamento de Doença Crônica, Lesão, e similares — separada do texto livre de Assessment acima. Marcar isso alimenta **Reports → Diagnosis-Category Trend**, então escolha da lista sugerida ou digite a sua se nenhuma se encaixar.
 - **P — Plan**: plano de tratamento, medicamentos, exames solicitados.
 - **Follow-up**: uma data de retorno opcional e instruções.
 
@@ -24,7 +25,11 @@ Clique em **Save Note** conforme avança, e depois em **Finalizar** quando a con
 
 **Vitals Trend.** Assim que um paciente tiver duas ou mais visitas com sinais vitais registrados, um gráfico de tendência aparece mostrando como uma métrica escolhida (pressão arterial, pulso, temperatura ou peso) se moveu ao longo do tempo — escolha qual métrica plotar na linha de chips acima do gráfico.
 
-**Cartas de encaminhamento.** Usar a ação existente "Refer to Another Provider" cria um encaminhamento real; assim que um existe, **Print Referral Letter** produz uma carta formal endereçada ao médico encaminhado com o motivo do encaminhamento — um documento genuinamente diferente do resumo completo de consulta, feito para ser entregue ao paciente levar ao especialista.
+**Encaminhando um paciente.** Use "Refer to Another Provider" para agendar uma consulta real com outro profissional — assim que uma existe, **Print Referral Letter** produz uma carta formal endereçada ao médico encaminhado com o motivo do encaminhamento, um documento genuinamente diferente do resumo completo de consulta, feito para o paciente levar consigo. Assim que essa consulta de encaminhamento acontece e sua própria nota é finalizada, a avaliação do profissional encaminhado aparece bem aqui como uma linha de **Outcome** abaixo do encaminhamento, para que você não precise ir procurar a nota dele separadamente para ver o que foi encontrado.
+
+**Resultado de Encaminhamento Externo.** Todos os seus encaminhamentos externos, em um só lugar — abra **Reports → Referral-Out Outcome** e escolha um intervalo de datas. Você verá quantos encaminhamentos fez, quantos já têm um resultado registrado, e quantos ainda estão pendentes, além de uma tabela de cada encaminhamento com seu status e resultado (quando disponível).
+
+**Tendência por Categoria de Diagnóstico.** Toda vez que você marca uma Diagnosis Category em uma nota de consulta, isso alimenta **Reports → Diagnosis-Category Trend** — escolha um intervalo de datas e você verá um gráfico de linhas com uma linha por categoria, mês a mês, além de uma tabela de detalhamento. Isso é separado do próprio texto de Assessment: Assessment é sua nota clínica em texto livre, enquanto a categoria é uma tag curta puramente para identificar padrões ao longo do tempo (ex. "infecções estão aumentando neste trimestre"). Visitas sem categoria marcada ainda contam no seu total de visitas mas não aparecem no gráfico, já que não há nada para agrupá-las.
 
 ## Fila de Senhas
 
@@ -36,6 +41,8 @@ A tela **Fila de senhas** gerencia pacientes sem hora marcada do mesmo dia sem p
 - **Call Next** para chamar a próxima senha em espera.
 
 Cada senha na lista pode ser chamada, marcada como atendida, pulada, ou redefinida para aguardando — a fila se reorganiza automaticamente em seções de "Atualmente Chamado," "Aguardando," e "Concluído." Isso é totalmente separado da lista Appointments pré-reservada — foi feito para a realidade de pacientes que simplesmente chegam e aguardam sua vez.
+
+Para ver quanto do seu dia é de pacientes sem hora marcada versus consultas pré-agendadas, abra **Reports → Walk-in vs. Appointment Ratio** e escolha um intervalo de datas. Isso mostra sua divisão total como uma porcentagem, além de um gráfico de barras dia a dia, para que você saiba rapidamente se sua clínica funciona principalmente com consultas agendadas ou principalmente com pessoas que simplesmente aparecem.
 
 ## Lembrete de Condição Crônica
 

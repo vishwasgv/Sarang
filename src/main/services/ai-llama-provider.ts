@@ -82,7 +82,7 @@ const CATEGORY_BY_PREFIX: Record<string, string> = {
   // coverage expansion (5 → ~30 business types) — keep this list in sync
   // with every prefix used there.
   hotel: 'vertical', jewellery: 'vertical', rental: 'vertical', lab: 'vertical', bloodBank: 'vertical',
-  restaurant: 'vertical', manufacturing: 'vertical', electronics: 'vertical', retail: 'vertical',
+  restaurant: 'vertical', manufacturing: 'vertical', electronics: 'vertical', retail: 'vertical', hardware: 'vertical',
   coaching: 'vertical', compliance: 'vertical', repair: 'vertical', service: 'vertical', logistics: 'vertical',
   placement: 'vertical',
   // AI expansion, 2026-07 — 18 vertical-specific templates' new prefixes.

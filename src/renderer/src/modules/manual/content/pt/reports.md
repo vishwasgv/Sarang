@@ -16,7 +16,7 @@ O Relatório de Estoque mostra os níveis de estoque atuais e a avaliação, com
 
 ## Clientes e Fornecedores
 
-O Extrato do Cliente e o Extrato do Fornecedor produzem, cada um, um extrato completo de transações para um cliente ou fornecedor específico que você busca e seleciona. A entrada Saldos Pendentes, em Financeiro, lista todo cliente e fornecedor com um saldo pendente em um só lugar.
+O Extrato do Cliente e o Extrato do Fornecedor produzem, cada um, um extrato completo de transações para um cliente ou fornecedor específico que você busca e seleciona — saldo inicial, cada transação em ordem de data, e saldo final, além de uma linha de tendência do saldo para que você veja rapidamente se o saldo dele tem subido ou caído ao longo do período. É exatamente assim que funciona a conta corrente de um empreiteiro: cada venda a crédito soma ao saldo dele assim que acontece, e este extrato é a fatura de fim de mês (ou de qualquer intervalo de datas) que você entrega a ele, já detalhada por item e totalizada — sem necessidade de configurar uma "conta corrente" separada. A entrada Saldos Pendentes, em Financeiro, lista todo cliente e fornecedor com um saldo pendente em um só lugar.
 
 ## Financeiro
 

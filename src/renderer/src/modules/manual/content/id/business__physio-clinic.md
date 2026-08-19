@@ -27,3 +27,13 @@ Tab **Exercise Program** memungkinkan Anda membangun Home Exercise Program yang 
 ## Session Packs
 
 Tab **Paket Sesi** melacak bundel sesi yang dibayar di muka (misalnya "Paket Fisio 10-sesi"): nama paket, total sesi, harga, tarif GST, tanggal pembelian dan kedaluwarsa. Sebuah paket aktif menampilkan progress bar sesi yang tersisa, dan setiap janji temu selesai terhadap paket tersebut mengurangi satu sesi secara otomatis. Setelah sebuah paket memiliki harga, Anda dapat **Buat Faktur** untuknya langsung dari layar ini — ini hanya menawarkan sekali, dan menandai paket "Invoiced" sesudahnya sehingga tidak pernah ditagih dua kali.
+
+Baris filter di bagian atas daftar Paket Sesi (**Semua / Aktif / Menipis / Kedaluwarsa**, masing-masing dengan hitungan langsung) adalah tampilan peringatan Anda: sebuah paket masuk ke **Menipis** begitu tersisa 2 sesi atau kurang, dan ke **Kedaluwarsa** begitu tanggal kedaluwarsanya terlewati — keduanya juga ditandai dengan warna pada kartu paket itu sendiri, sehingga Anda tidak perlu membuka paket untuk menyadari bahwa itu perlu perhatian.
+
+Untuk melihat bagaimana paket sesi Anda digunakan di seluruh pasien, buka **Reports → Pack Utilization** dan pilih rentang tanggal. Ini menampilkan total paket terjual, sesi terpakai dibandingkan sesi dibeli, dan persentase penggunaan keseluruhan, ditambah grafik batang dan tabel lengkap yang merinci per paket — sehingga Anda dapat melihat sekilas paket yang sebagian besar belum terpakai (tanda untuk menindaklanjuti dengan pasien tersebut).
+
+## Rujukan
+
+Jika seorang pasien datang dirujuk oleh dokter luar, bagian **Detail Rujukan** pada Catatan Konsultasi mencatat siapa yang merujuk, tanggalnya, dan alasannya — kolom teks bebas, karena dokter yang merujuk biasanya sepenuhnya di luar Sarang. Jika sebaliknya Anda mengarahkan pasien ke penyedia lain di dalam klinik Anda sendiri, gunakan **Rujuk ke Penyedia Lain** pada catatan pasien tersebut untuk memesan janji temu tertaut yang sesungguhnya, mekanisme rujukan dalam-aplikasi yang sama yang digunakan di seluruh jenis bisnis klinis Sarang.
+
+Setelah penyedia tersebut menyelesaikan catatannya sendiri pada janji temu rujukan, hasilnya muncul kembali secara otomatis pada catatan asli Anda. Jika catatan itu melacak Skor Nyeri dan Skor Fungsional sepanjang sesi, hasil yang ditampilkan bukan sekadar komentar penutupnya — melainkan perbandingan sebelum-dan-sesudah yang terukur di seluruh perjalanan pengobatan sejak rujukan (misalnya, "Nyeri 7→3, Fungsi 40→75 selama 3 sesi"), sehingga Anda dapat melihat sekilas apakah rujukan itu benar-benar membantu, bukan sekadar bahwa itu terjadi.

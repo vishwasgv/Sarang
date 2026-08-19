@@ -10,6 +10,8 @@
     "purchaseOrders": "ખરીદ ઓર્ડર",
     "priceLists": "કિંમત યાદીઓ",
     "pricingSchemes": "ભાવ યોજનાઓ",
+    "priceMarkdowns": "પ્રાઇસ માર્કડાઉન",
+    "loyaltyProgram": "લોયલ્ટી પ્રોગ્રામ",
     "recurringProfiles": "આવર્તક પ્રોફાઇલ",
     "locations": "સ્થાનો",
     "approvalWorkflows": "મંજૂરી વર્કફ્લો",
@@ -437,6 +439,7 @@
     "areaLabel": "ક્ષેત્રફળ",
     "areaFormula": "લંબાઈ × પહોળાઈ = ક્ષેત્રફળ",
     "useAreaSq": "{{area}} ચો. વાપરો",
+    "areaMarginPreview": "માર્જિન: {{percent}}%",
     "rx": {
       "title": "પ્રિસ્ક્રિપ્શન વિગતો",
       "description": "આ ફક્ત પ્રિસ્ક્રિપ્શન પર મળતી વસ્તુ છે (શેડ્યુલ H/H1) — તેને વેચવા માટે દર્દી અને ડૉક્ટરનું નામ જરૂરી છે.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "ભાવ યોજનાઓ",
-    "subtitle": "{{count}} યોજનાઓ — X ખરીદો Y મફત મેળવો ઓફર્સ અને જથ્થા-સ્તર છૂટ",
+    "subtitle": "{{count}} યોજનાઓ — X ખરીદો Y મફત મેળવો ઓફર્સ, જથ્થા-સ્તર છૂટ, અને ફ્લેટ % છૂટ ઓફર્સ",
     "newScheme": "નવી યોજના",
     "namePlaceholder": "દા.ત. 2 ખરીદો 1 મફત મેળવો — નોટબુક",
     "ruleTypeLabel": "ઓફર પ્રકાર",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "X ખરીદો Y મફત મેળવો",
-      "SLAB_DISCOUNT": "જથ્થા છૂટ"
+      "SLAB_DISCOUNT": "જથ્થા છૂટ",
+      "FLAT_PERCENT_OFF": "હેપી-અવર / ફ્લેટ % છૂટ"
     },
     "scopeType": "કોના પર લાગુ",
     "byProduct": "એક ઉત્પાદન",
@@ -1145,8 +1149,14 @@
     "minQuantity": "ન્યૂનતમ જથ્થો",
     "discountPercent": "છૂટ %",
     "buyXGetYSummary": "{{buy}} ખરીદો, {{free}} મફત મેળવો",
+    "flatPercentSummary": "{{percent}}% છૂટ",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "શરૂઆતની તારીખ (વૈકલ્પિક)",
     "endDateOptional": "સમાપ્તિ તારીખ (વૈકલ્પિક)",
+    "happyHourWindow": "હેપી-અવર વિન્ડો (વૈકલ્પિક)",
+    "startTimeOptional": "શરૂઆત સમય",
+    "endTimeOptional": "સમાપ્તિ સમય",
+    "happyHourWindowHint": "ફક્ત દરરોજ આ કલાકો દરમિયાન સક્રિય — કોઈપણ સમયે લાગુ કરવા માટે ખાલી છોડો. તે મધ્યરાત્રિ પાર કરતું નથી (દા.ત. સાંજે 4:00–સાંજે 6:00 કામ કરે છે; રાત્રે 10:00–સવારે 2:00 નહીં).",
     "rule": "ઓફર",
     "noSchemesYet": "હજુ સુધી કોઈ ભાવ યોજના નથી.",
     "deleteSchemeTitle": "ભાવ યોજના કાઢી નાખો",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "ભાવ યોજના બનાવી શકાઈ નહીં.",
     "couldNotSave": "ફેરફારો સાચવી શકાયા નહીં.",
     "couldNotDelete": "ભાવ યોજના કાઢી શકાઈ નહીં."
+  },
+  "priceMarkdowns": {
+    "title": "પ્રાઇસ માર્કડાઉન",
+    "subtitle": "{{count}} માર્કડાઉન — સમય-બદ્ધ કિંમત ઘટાડો જે આપમેળે પાછો ફરે છે",
+    "newMarkdown": "નવું માર્કડાઉન",
+    "checkNow": "હમણાં તપાસો",
+    "product": "ઉત્પાદન",
+    "originalPrice": "મૂળ કિંમત",
+    "markdownPrice": "માર્કડાઉન કિંમત",
+    "endDate": "પાછા ફરવાની તારીખ",
+    "status": {
+      "ACTIVE": "સક્રિય",
+      "REVERTED": "પાછું ફર્યું",
+      "CANCELLED": "રદ",
+      "SKIPPED_MANUAL_OVERRIDE": "જાતે બદલાયું"
+    },
+    "createHint": "માર્કડાઉન કિંમત તરત જ લાગુ થાય છે. તે ઉપરની તારીખે આપમેળે મૂળ કિંમત પર પાછી ફરે છે — સિવાય કે તમે તે પહેલાં જાતે કિંમત બદલો, જે કિસ્સામાં પાછા ફરવાનું છોડી દેવાય છે જેથી તમારો જાતે કરેલો ફેરફાર ભૂંસાય નહીં.",
+    "noMarkdownsYet": "હજુ સુધી કોઈ પ્રાઇસ માર્કડાઉન નથી.",
+    "cancelMarkdownTitle": "પ્રાઇસ માર્કડાઉન રદ કરો",
+    "cancelMarkdownMessage": "આ માર્કડાઉનને હમણાં સમાપ્ત કરે છે. જો માર્કડાઉન શરૂ થયા પછી કિંમત બદલાઈ ન હોય, તો તે તરત જ મૂળ કિંમત પર પાછી ફરે છે.",
+    "markdownCreated": "પ્રાઇસ માર્કડાઉન બનાવ્યું",
+    "markdownCancelled": "પ્રાઇસ માર્કડાઉન રદ કર્યું",
+    "checkComplete": "તપાસ પૂર્ણ",
+    "checkCompleteDetail": "{{evaluated}} માંથી {{reverted}} બાકી માર્કડાઉન પાછા ફેરવાયા.",
+    "missingFields": "માહિતી અધૂરી છે",
+    "productRequired": "આ માર્કડાઉન માટે એક ઉત્પાદન પસંદ કરો.",
+    "markdownPriceRequired": "માન્ય માર્કડાઉન કિંમત દાખલ કરો.",
+    "endDateRequired": "માર્કડાઉન પાછું ફરવાની તારીખ પસંદ કરો.",
+    "couldNotLoad": "પ્રાઇસ માર્કડાઉન લોડ કરી શકાયા નહીં.",
+    "couldNotCreate": "પ્રાઇસ માર્કડાઉન બનાવી શકાયું નહીં.",
+    "couldNotCancel": "પ્રાઇસ માર્કડાઉન રદ કરી શકાયું નહીં.",
+    "couldNotCheck": "બાકી માર્કડાઉન તપાસી શકાયા નહીં."
+  },
+  "loyaltyProgram": {
+    "title": "લોયલ્ટી પ્રોગ્રામ",
+    "subtitle": "{{count}} ગ્રાહક લોયલ્ટી કાર્ડ — દરેક મુલાકાત માટે એક સાદો પંચ રિવોર્ડ",
+    "programSettings": "પ્રોગ્રામ સેટિંગ્સ",
+    "isActive": "પ્રોગ્રામ સક્રિય છે",
+    "punchesRequired": "રિવોર્ડ માટે જરૂરી પંચ",
+    "rewardDescription": "રિવોર્ડ",
+    "rewardPlaceholder": "દા.ત. મફત કોફી, આગલી ખરીદી પર 10% છૂટ",
+    "minPurchaseAmount": "પંચ માટે લઘુત્તમ ખરીદી",
+    "settingsHint": "કોઈપણ યોગ્ય વેચાણ પર પંચ આપમેળે મળે છે — ચેકઆઉટ પર કોઈ વધારાનું પગલું જરૂરી નથી. દરેક વેચાણ પર પંચ આપવા માટે લઘુત્તમ ખરીદી રકમ 0 રાખો, રકમ ગમે તે હોય.",
+    "customer": "ગ્રાહક",
+    "progress": "પ્રગતિ",
+    "totalEarned": "કુલ મળેલા પંચ",
+    "totalRedeemed": "રિડીમ કરેલા રિવોર્ડ",
+    "redeem": "રિડીમ કરો",
+    "redeemTitle": "રિવોર્ડ રિડીમ કરો",
+    "redeemMessage": "{{name}} ને તેમનું રિવોર્ડ આપો: {{reward}}. આનાથી તેમના પંચ તે રિવોર્ડ માટે વપરાઈ જશે.",
+    "noProgramYet": "હજુ સુધી કોઈ લોયલ્ટી પ્રોગ્રામ સેટ કરેલો નથી.",
+    "noCardsYet": "હજુ સુધી કોઈ લોયલ્ટી કાર્ડ નથી — ગ્રાહકની યોગ્ય ખરીદી થતાં જ પંચ શરૂ થશે.",
+    "missingFields": "માહિતી અધૂરી છે",
+    "rewardRequired": "રિવોર્ડ શું છે તે દર્શાવો.",
+    "punchesRequiredInvalid": "કેટલા પંચ જરૂરી છે તે દર્શાવો (ઓછામાં ઓછા 1).",
+    "programSaved": "લોયલ્ટી પ્રોગ્રામ સાચવ્યો",
+    "rewardRedeemed": "રિવોર્ડ રિડીમ થયું",
+    "couldNotLoad": "લોયલ્ટી પ્રોગ્રામ લોડ કરી શકાયો નહીં.",
+    "couldNotSave": "લોયલ્ટી પ્રોગ્રામ સાચવી શકાયો નહીં.",
+    "couldNotRedeem": "રિવોર્ડ રિડીમ કરી શકાયું નહીં."
   },
   "recurringProfiles": {
     "title": "આવર્તક પ્રોફાઇલ",
@@ -1475,6 +1545,34 @@
         "label": "ફૂડ કોસ્ટ અહેવાલ",
         "description": "KOT પૂર્તિ પ્રમાણે સામગ્રી ઉપયોગ અને ખર્ચ — રેસ્ટોરન્ટ ટેમ્પલેટ"
       },
+      "dishContributionMargin": {
+        "label": "વાનગી-વાર યોગદાન માર્જિન",
+        "description": "વેચાયેલી દરેક વાનગીની આવકમાંથી રેસિપી ખર્ચ બાદ કરીને — કઈ વાનગીઓ ખરેખર પોતાનો ખર્ચ કાઢી રહી છે"
+      },
+      "tableTurnoverByHour": {
+        "label": "કલાક પ્રમાણે ટેબલ ટર્નઓવર",
+        "description": "ડાઇન-ઇન ટેબલ ઓર્ડરનો સપ્તાહનો દિવસ x કલાક પ્રમાણેનો હીટમેપ — તમારું રેસ્ટોરન્ટ ખરેખર ક્યારે સૌથી વ્યસ્ત હોય છે"
+      },
+      "recipeWasteVariance": {
+        "label": "રેસિપી-વિરુદ્ધ-વાસ્તવિક બગાડ તફાવત",
+        "description": "તમારી રેસિપી પ્રમાણે સામગ્રીનો જેટલો ઉપયોગ થવો જોઈતો હતો, તેની સરખામણી ખરેખર કેટલી સામગ્રી કાઢવામાં આવી તેની સાથે કરે છે — ખરો પોર્શન ડ્રિફ્ટ, ઢોળાવ કે જૂની રેસિપી ઉજાગર કરે છે"
+      },
+      "deadStockClearance": {
+        "label": "ડેડ-સ્ટોક ક્લિયરન્સ યાદી",
+        "description": "છેલ્લા 90 દિવસમાં કોઈ વેચાણ ન થયેલા, છતાં સ્ટોકમાં હાજર ઉત્પાદનો, શેલ્ફ પર કેટલી મૂડી નિષ્ક્રિય પડી છે તે પ્રમાણે ક્રમાંકિત"
+      },
+      "categorySellThrough": {
+        "label": "કેટેગરી વેચાણ-દર",
+        "description": "મહિના પ્રમાણે, દરેક કેટેગરીના વેચાયેલા-વત્તા-સ્ટોકમાં રહેલા યુનિટ્સમાંથી ખરેખર કેટલા વેચાયા — ઝડપથી વેચાતી અને ભેગી થતી કેટેગરીઓ ઓળખો"
+      },
+      "basketComposition": {
+        "label": "બાસ્કેટ રચના",
+        "description": "એક જ વેચાણમાં કયા ઉત્પાદનો સૌથી વધુ સાથે ખરીદાય છે — બાજુમાં મૂકવા અથવા કોમ્બો તરીકે ઓફર કરવા યોગ્ય કુદરતી જોડીઓ અને બંડલ ઓળખો"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "ફાસ્ટ-મૂવર વિ. સ્લો-મૂવર મેટ્રિક્સ",
+        "description": "વેચાણ ઝડપ (વેલોસિટી) વિરુદ્ધ માર્જિનનું સ્કેટર, ચાર ક્વૉડ્રન્ટમાં વહેંચાયેલું — એક નજરમાં જુઓ કે કયા ઉત્પાદનો ઝડપથી ફરીથી સ્ટોક કરવા યોગ્ય છે, કયા ઓછા-માર્જિનવાળી મહેનત છે, અને કયા ધીમા ઉત્પાદનો તેમના માર્જિનને કારણે રાખવા યોગ્ય છે"
+      },
       "gstr1": {
         "label": "GSTR-1 અહેવાલ",
         "description": "GST રિટર્ન ફાઇલિંગ માટે B2B અને B2CS કર સારાંશ"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "રિકોલ કમ્પ્લાયન્સ",
         "description": "કેટલા ક્રોનિક કન્ડિશન રિકોલ સમયસર અનુસરવામાં આવ્યા, એકંદરે અને દરેક સ્થિતિ પ્રમાણે."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "વૉક-ઇન વિ. એપોઇન્ટમેન્ટ ગુણોત્તર",
+        "description": "તમારી કેટલી મુલાકાતો વૉક-ઇન છે અને કેટલી અગાઉથી બુક કરેલી એપોઇન્ટમેન્ટ છે, દિવસ પ્રમાણે."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "નિદાન-શ્રેણી વલણ",
+        "description": "તમારા પરામર્શ નિદાન કેવી રીતે શ્રેણી પ્રમાણે વિભાજિત થાય છે અને મહિને મહિને તેનું વલણ."
+      },
+      "referralOutcome": {
+        "label": "આઉટગોઇંગ રેફરલ પરિણામ",
+        "description": "તમે અન્ય પ્રદાતાને રેફર કરેલા દર્દીઓ, તે મુલાકાત થઈ કે નહીં, અને શું મળ્યું."
+      },
+      "packUtilization": {
+        "label": "પેક ઉપયોગ",
+        "description": "દરેક સેશન પેકનો ખરેખર કેટલો ઉપયોગ થયો, દરેક ક્લાયન્ટ માટે અને એકંદરે."
+      },
+      "labTAT": {
+        "label": "પ્રતિ-ટેસ્ટ TAT",
+        "description": "ટેસ્ટ પ્રમાણે ટર્નઅરાઉન્ડ સમય, ખરો વિરુદ્ધ લક્ષ્ય, સમયસર વિરુદ્ધ મોડા આવેલાની ગણતરી સાથે."
+      },
+      "testVolumeByPanel": {
+        "label": "પેનલ પ્રમાણે ટેસ્ટ વોલ્યુમ",
+        "description": "તમે દરેક પેનલ અથવા શ્રેણીમાં મહિને-મહિને કેટલા ટેસ્ટ કરી રહ્યા છો."
+      },
+      "referralLeaderboard": {
+        "label": "રેફરલ લીડરબોર્ડ",
+        "description": "કયા ડૉક્ટરો તમને સૌથી વધુ દર્દીઓ અથવા ટેસ્ટ રેફર કરી રહ્યા છે, ક્રમાંકિત."
+      },
+      "secondOpinionConversion": {
+        "label": "સેકન્ડ-ઓપિનિયન કન્વર્ઝન",
+        "description": "તમારા સેકન્ડ-ઓપિનિયન પરામર્શમાંથી, કેટલા દર્દીઓ પાછા આવ્યા અને નિયમિત દર્દી બન્યા."
+      },
+      "caseComplexityMix": {
+        "label": "કેસ-કોમ્પ્લેક્સિટી મિક્સ",
+        "description": "તમે મહિને-મહિને કેટલા રૂટીન વિરુદ્ધ કોમ્પ્લેક્સ કેસ જોઈ રહ્યા છો, તેનું મિશ્રણ."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "સારવાર સ્વીકૃતિ દર",
+        "description": "તમે પ્રસ્તાવિત કરેલી સારવાર યોજનાઓમાંથી, કેટલી સ્વીકારવામાં આવી અને કેટલી ખરેખર બિલ કરેલી આવકમાં ફેરવાઈ."
+      },
+      "dentalRecallCompliance": {
+        "label": "રિકોલ કમ્પ્લાયન્સ",
+        "description": "આ શ્રેણીમાં બંધ કરેલા રિકોલમાંથી, કેટલા દર્દીઓ તેમની નિયત તારીખે અથવા તે પહેલાં પાછા આવ્યા."
+      },
+      "vaccinationCompliance": {
+        "label": "રસીકરણ પાલન",
+        "description": "આ સમયગાળામાં આપેલા ફોલો-અપ ડોઝમાંથી કેટલા તેમની અગાઉની નિયત તારીખની સામે સમયસર હતા."
+      },
+      "vetCaseTypeVolume": {
+        "label": "કેસ-પ્રકાર વોલ્યુમ ટ્રેન્ડ",
+        "description": "તમે કેસ પ્રકાર પ્રમાણે કેટલા કેસ સંભાળ્યા — પરામર્શ, નિવારક સંભાળ, રસીકરણ, અને તમારા Service Catalog માં અન્ય — મહિને-મહિને."
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} રેકોર્ડ્સ",
       "totalFoodCost": "કુલ ફૂડ કોસ્ટ",
       "ingredientsUsed": "વપરાયેલ સામગ્રી",
+      "totalContributionMargin": "કુલ યોગદાન માર્જિન",
+      "dishesSold": "વેચાયેલી વાનગીઓ",
+      "contributionMarginByDish": "વાનગી-વાર યોગદાન માર્જિન",
+      "totalTurns": "કુલ ટેબલ ટર્ન",
+      "peakTime": "સૌથી વ્યસ્ત સમય",
+      "peakTurns": "પીક-અવર ટર્ન",
+      "ingredientsTracked": "ટ્રેક કરેલ સામગ્રી",
+      "biggestWaste": "સૌથી મોટી વધારાની વપરાશ",
+      "varianceByIngredient": "સામગ્રી-વાર તફાવત",
+      "totalCapitalLocked": "કુલ બંધાયેલી મૂડી",
+      "deadStockItems": "ડેડ-સ્ટોક આઇટમ",
+      "lookbackWindow": "લુકબેક વિન્ડો",
+      "capitalLockedByProduct": "ઉત્પાદન-વાર બંધાયેલી મૂડી",
+      "sellThroughByCategoryMonth": "કેટેગરી પ્રમાણે, મહિના પ્રમાણે વેચાણ-દર",
+      "sellThroughStockNote": "બતાવેલા દરેક મહિનાની સરખામણી હાલના ઉપલબ્ધ સ્ટોક સાથે કરવામાં આવી છે — આ એક વલણ દૃશ્ય છે, દરેક મહિનાનું પોતાનું ઐતિહાસિક સ્ટોક સ્તર નથી.",
+      "avgSellThroughByCategory": "કેટેગરી પ્રમાણે સરેરાશ વેચાણ-દર",
+      "totalBaskets": "કુલ બાસ્કેટ",
+      "avgItemsPerBasket": "સરેરાશ આઇટમ પ્રતિ બાસ્કેટ",
+      "avgBasketValue": "સરેરાશ બાસ્કેટ મૂલ્ય",
+      "topProductPairs": "સૌથી વધુ સાથે ખરીદાયેલા",
+      "balanceTrend": "બેલેન્સ ટ્રેન્ડ",
+      "balanceTrendSampledNote": "આ ખાતામાં ઘણી બધી પ્રવૃત્તિ છે — ટ્રેન્ડ લાઇન દરેક એન્ટ્રી નહીં પણ પોઈન્ટ્સનો એક પ્રતિનિધિ નમૂનો બતાવે છે. નીચેનું ટેબલ હજુ પણ દરેક ટ્રાન્ઝેક્શન યાદી કરે છે.",
+      "velocityMedian": "મધ્યક ઝડપ",
+      "marginMedian": "મધ્યક માર્જિન",
+      "fastSlowMoverMatrix": "ઝડપ વિ. માર્જિન",
+      "fastSlowMoverMatrixNote": "દરેક બિંદુ એક ઉત્પાદન છે. તૂટક રેખાઓ આ સમયગાળાની મધ્યક ઝડપ અને મધ્યક માર્જિન દર્શાવે છે — ચાર ક્વૉડ્રન્ટ ઉત્પાદનોને ઝડપી/ધીમા મૂવર અને ઊંચા/નીચા માર્જિન પ્રમાણે વહેંચે છે.",
       "invoicesSuffix_one": "{{count}} ઇનવોઇસ",
       "invoicesSuffix_other": "{{count}} ઇનવોઇસ",
       "groupsSuffix_one": "{{count}} ગ્રુપ",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "ડિસ્કાઉન્ટ થયેલ લાઇન",
       "avgDiscountPercent": "સરેરાશ ડિસ્કાઉન્ટ",
       "recallsClosed": "બંધ થયેલ રિકોલ",
-      "compliancePercent": "કમ્પ્લાયન્સ %"
+      "compliancePercent": "કમ્પ્લાયન્સ %",
+      "totalWalkIns": "કુલ વૉક-ઇન",
+      "walkInPercent": "વૉક-ઇન %",
+      "totalVisits": "કુલ મુલાકાતો",
+      "categorized": "વર્ગીકૃત",
+      "uncategorizedSub": "{{count}} અવર્ગીકૃત",
+      "distinctCategories": "અલગ શ્રેણીઓ",
+      "totalReferrals": "કુલ રેફરલ",
+      "outcomeRecorded": "પરિણામ નોંધાયું",
+      "pendingReferrals": "બાકી",
+      "totalPacks": "કુલ પેક",
+      "sessionsUsed": "વપરાયેલ સેશન",
+      "overallUtilization": "એકંદર ઉપયોગ",
+      "totalCompleted": "પૂર્ણ થયેલા ટેસ્ટ",
+      "withTarget": "લક્ષ્ય સાથે",
+      "overallOnTimePercent": "એકંદર સમયસર %",
+      "distinctPanels": "અલગ પેનલ",
+      "distinctReferrers": "અલગ રેફરર",
+      "topReferrer": "ટોચના રેફરર",
+      "totalSecondOpinionVisits": "સેકન્ડ-ઓપિનિયન મુલાકાતો",
+      "convertedCount": "કન્વર્ટ થયા",
+      "conversionPercent": "કન્વર્ઝન દર",
+      "totalTagged": "ટેગ કરેલા કેસ",
+      "routineCount": "રૂટીન",
+      "complexCount": "કોમ્પ્લેક્સ",
+      "complexPercent": "કોમ્પ્લેક્સ %",
+      "proposedCount": "પ્રસ્તાવિત યોજનાઓ",
+      "acceptedCount": "સ્વીકૃત",
+      "billedCount": "બિલ કરેલ",
+      "acceptanceRatePercent": "સ્વીકૃતિ દર",
+      "billedRatePercent": "બિલિંગ દર",
+      "dosesEvaluated": "મૂલ્યાંકિત ડોઝ",
+      "totalCases": "કુલ કેસ",
+      "distinctCaseTypes": "અલગ કેસ પ્રકારો"
     },
     "aging": {
       "current": "વર્તમાન",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "ખરીદી વિગતો",
       "apAgingByVendor": "વિક્રેતા મુજબ દેય વયોમાન",
       "untaggedNote": "ટેગ વગરનું: કોઈ ખર્ચ કેન્દ્ર સેટ ન કરેલા વ્યવહારોમાંથી {{revenue}} આવક અને {{expense}} ખર્ચ.",
-      "complianceByCondition": "સ્થિતિ પ્રમાણે કમ્પ્લાયન્સ"
+      "complianceByCondition": "સ્થિતિ પ્રમાણે કમ્પ્લાયન્સ",
+      "dailyBreakdown": "દૈનિક વિભાજન",
+      "monthlyBreakdown": "માસિક વિભાજન",
+      "diagnosisTrendChart": "નિદાન-શ્રેણી વલણ",
+      "packUtilizationChart": "ક્લાયન્ટ પ્રમાણે પેક ઉપયોગ",
+      "labTATChart": "ટેસ્ટ મુજબ ટર્નઅરાઉન્ડ સમય",
+      "testVolumeByPanelChart": "ટેસ્ટ વોલ્યુમ ટ્રેન્ડ",
+      "referralLeaderboardChart": "ટોચના રેફર કરનાર ડૉક્ટરો",
+      "tableTurnoverHeatmap": "દિવસ અને કલાક પ્રમાણે ટેબલ ટર્ન",
+      "caseComplexityMixChart": "મહિના પ્રમાણે રૂટીન વિરુદ્ધ કોમ્પ્લેક્સ",
+      "treatmentAcceptanceFunnelChart": "પ્રસ્તાવિત → સ્વીકૃત → બિલ કરેલ",
+      "complianceByRecallType": "રિકોલ પ્રકાર પ્રમાણે પાલન",
+      "complianceByVaccine": "રસી પ્રમાણે પાલન",
+      "caseTypeVolumeChart": "કેસ વોલ્યુમ ટ્રેન્ડ"
     },
     "empty": {
       "invoices": "આ તારીખ શ્રેણીમાં કોઈ બિલ નથી.",
@@ -1892,6 +2114,13 @@
       "auditRecords": "કોઈ ઓડિટ રેકોર્ડ્સ મળ્યા નથી.",
       "backups": "કોઈ બેકઅપ મળ્યા નથી. બેકઅપ મોડ્યુલ સેટ થયા પછી બેકઅપ અહીં દેખાશે.",
       "foodCost": "આ તારીખ શ્રેણીમાં કોઈ સામગ્રી કપાત મળી નથી. ફૂડ કોસ્ટ રેકોર્ડ કરવા માટે KOT ને પૂર્ણ ચિહ્નિત કરવું જરૂરી છે.",
+      "dishContributionMargin": "આ તારીખ શ્રેણીમાં કોઈ વાનગી વેચાઈ નથી.",
+      "tableTurnoverByHour": "આ તારીખ શ્રેણીમાં કોઈ ડાઇન-ઇન ટેબલ ઓર્ડર મળ્યો નથી.",
+      "recipeWasteVariance": "આ તારીખ શ્રેણીમાં કોઈ રેસિપી-લિંક્ડ સામગ્રી પ્રવૃત્તિ મળી નથી.",
+      "deadStockClearance": "કોઈ ડેડ સ્ટોક મળ્યો નથી — સ્ટોકમાંનું દરેક ઉત્પાદન તાજેતરમાં વેચાયું છે.",
+      "categorySellThrough": "આ તારીખ શ્રેણીમાં કોઈ કેટેગરીવાળું ઉત્પાદન વેચાણ મળ્યું નથી.",
+      "basketComposition": "આ તારીખ શ્રેણીમાં 2 અથવા વધુ અલગ ઉત્પાદનો ધરાવતી કોઈ બાસ્કેટ મળી નથી.",
+      "fastSlowMoverMatrix": "આ તારીખ શ્રેણીમાં કોઈ ઉત્પાદન વેચાયું નથી.",
       "gstr1": "આ સમયગાળા માટે કોઈ કરપાત્ર બિલ મળ્યા નથી.",
       "appointments": "આ તારીખ શ્રેણીમાં કોઈ એપોઇન્ટમેન્ટ નથી.",
       "clientAppointments": "આ તારીખ શ્રેણીમાં કોઈ ક્લાયન્ટ એપોઇન્ટમેન્ટ મળ્યા નથી.",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "આ તારીખ શ્રેણીમાં કોઈ ડ્રોઇંગ રિવિઝન નથી.",
       "siteVisitLog": "આ તારીખ શ્રેણીમાં કોઈ સાઇટ વિઝિટ નથી.",
       "noData": "આ સમયગાળા માટે કોઈ રેકોર્ડ મળ્યો નથી.",
-      "chronicRecallCompliance": "આ તારીખ શ્રેણીમાં કોઈ રિકોલ સમયગાળો બંધ થયો નથી."
+      "chronicRecallCompliance": "આ તારીખ શ્રેણીમાં કોઈ રિકોલ સમયગાળો બંધ થયો નથી.",
+      "walkInVsAppointmentRatio": "આ તારીખ શ્રેણીમાં કોઈ વૉક-ઇન અથવા એપોઇન્ટમેન્ટ નથી.",
+      "diagnosisCategoryTrend": "આ તારીખ શ્રેણીમાં કોઈ વર્ગીકૃત મુલાકાતો નથી.",
+      "referralOutcome": "આ તારીખ શ્રેણીમાં કોઈ રેફરલ કરવામાં આવ્યા નથી.",
+      "packUtilization": "આ તારીખ શ્રેણીમાં કોઈ સેશન પેક ખરીદવામાં આવ્યા નથી.",
+      "labTAT": "આ તારીખ શ્રેણીમાં કોઈ પૂર્ણ ટેસ્ટ નથી.",
+      "testVolumeByPanel": "આ તારીખ શ્રેણીમાં કોઈ ટેસ્ટ નોંધાયેલ નથી.",
+      "referralLeaderboard": "આ તારીખ શ્રેણીમાં કોઈ રેફરલ નોંધાયેલ નથી.",
+      "secondOpinionConversion": "આ તારીખ શ્રેણીમાં કોઈ સેકન્ડ-ઓપિનિયન પરામર્શ નોંધાયેલ નથી.",
+      "caseComplexityMix": "આ તારીખ શ્રેણીમાં કોઈ કેસ-કોમ્પ્લેક્સિટી-ટેગ કરેલી મુલાકાત નથી.",
+      "treatmentAcceptanceRate": "આ તારીખ શ્રેણીમાં કોઈ સારવાર યોજના પ્રસ્તાવિત નથી.",
+      "dentalRecallCompliance": "આ તારીખ શ્રેણીમાં કોઈ રિકોલ બંધ કરાયેલ નથી.",
+      "vaccinationCompliance": "આ તારીખ શ્રેણીમાં અગાઉની નિયત તારીખ ધરાવતો કોઈ ફોલો-અપ ડોઝ નથી.",
+      "vetCaseTypeVolume": "આ તારીખ શ્રેણીમાં કોઈ કેસ નોંધાયેલ નથી."
     },
     "col": {
       "invoiceNo": "બિલ #",
@@ -1987,6 +2229,20 @@
       "ingredient": "સામગ્રી",
       "qtyUsed": "વપરાયેલ માત્રા",
       "totalCost": "કુલ ખર્ચ",
+      "dishName": "વાનગી",
+      "qtySold": "વેચાયેલ જથ્થો",
+      "revenue": "આવક",
+      "ingredientCost": "સામગ્રી ખર્ચ",
+      "contributionMargin": "યોગદાન માર્જિન",
+      "marginPercent": "માર્જિન %",
+      "quadrant": "ક્વૉડ્રન્ટ",
+      "dayOfWeek": "દિવસ",
+      "hour": "કલાક",
+      "turns": "ટર્ન",
+      "impliedQuantity": "રેસિપી-પ્રમાણે જથ્થો",
+      "actualQuantity": "ખરેખર વપરાયેલ જથ્થો",
+      "varianceQuantity": "તફાવત",
+      "variancePercent": "તફાવત %",
       "gstin": "GSTIN",
       "party": "પક્ષ",
       "value": "મૂલ્ય",
@@ -2001,7 +2257,6 @@
       "durationShort": "અવધિ",
       "day": "દિવસ",
       "appointments": "એપોઇન્ટમેન્ટ",
-      "hour": "કલાક",
       "noShow": "નો-શો",
       "completionPercent": "પૂર્ણતા %",
       "providerTotal": "કુલ",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "બાકી જથ્થો",
       "bucket": "સ્થિતિ",
       "unitCost": "યુનિટ કિંમત",
+      "capitalLocked": "બંધાયેલી મૂડી",
+      "lastSoldDate": "છેલ્લું વેચાણ",
+      "neverSold": "ક્યારેય વેચાયું નથી",
       "orderNumber": "ઓર્ડર #",
       "patientName": "દર્દી",
       "createdDate": "બનાવેલ",
@@ -2042,6 +2300,12 @@
       "componentType": "ઘટક",
       "expiringSoonQ": "ટૂંક સમયમાં સમાપ્ત?",
       "month": "મહિનો",
+      "unitsSold": "વેચાયેલા યુનિટ્સ",
+      "sellThroughRate": "વેચાણ-દર",
+      "productA": "ઉત્પાદન A",
+      "productB": "ઉત્પાદન B",
+      "basketCount": "બાસ્કેટ",
+      "velocity": "ઝડપ (યુનિટ્સ/દિવસ)",
       "shipmentCount": "શિપમેન્ટ",
       "freightAmount": "ફ્રેટ રકમ",
       "employee": "કર્મચારી",
@@ -2110,7 +2374,30 @@
       "condition": "સ્થિતિ",
       "recallsClosed": "બંધ થયેલ રિકોલ",
       "onTime": "સમયસર",
-      "compliancePercent": "કમ્પ્લાયન્સ %"
+      "compliancePercent": "કમ્પ્લાયન્સ %",
+      "walkIns": "વૉક-ઇન",
+      "referredTo": "ને રેફર કર્યું",
+      "outcome": "પરિણામ",
+      "packName": "પેક",
+      "totalSessions": "કુલ સેશન",
+      "usedSessions": "વપરાયેલ",
+      "remainingSessions": "બાકી",
+      "utilization": "ઉપયોગ",
+      "orders": "ઓર્ડર",
+      "avgActualTAT": "સરેરાશ વાસ્તવિક TAT",
+      "targetTAT": "લક્ષ્ય TAT",
+      "onTimePercent": "સમયસર %",
+      "referrerName": "રેફર કરનાર ડૉક્ટર",
+      "referralCount": "રેફરલ્સ",
+      "visitDate": "મુલાકાત તારીખ",
+      "converted": "કન્વર્ટ થયું",
+      "nextVisitDate": "આગામી મુલાકાત",
+      "routine": "રૂટીન",
+      "complex": "કોમ્પ્લેક્સ",
+      "stage": "તબક્કો",
+      "recallType": "રિકોલ પ્રકાર",
+      "vaccineName": "રસી",
+      "doses": "ડોઝ"
     },
     "legend": {
       "schemeCost": "સ્કીમ ખર્ચ",
@@ -2125,6 +2412,13 @@
       "returning": "પરત ફરતું",
       "atRiskFlag": "⚠ જોખમમાં",
       "lowFlag": "⚠ ઓછું",
+      "cartonsAndPieces": "{{cartons}} કાર્ટન + {{pieces}} પીસ",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "ઝડપી, ઊંચું માર્જિન",
+        "FAST_LOW_MARGIN": "ઝડપી, નીચું માર્જિન",
+        "SLOW_HIGH_MARGIN": "ધીમું, ઊંચું માર્જિન",
+        "SLOW_LOW_MARGIN": "ધીમું, નીચું માર્જિન"
+      },
       "customerPrefix": "ગ્રાહક: ",
       "supplierPrefix": "સપ્લાયર: ",
       "bucketExpired": "સમાપ્ત",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "ભાવ યોજનાઓ",
         "body": "Buy-X-Get-Y-Free અથવા જથ્થા-ડિસ્કાઉન્ટ ઓફર સેટ કરો — એક બનાવીને જુઓ અને લાયક વસ્તુ ઉમેરાય કે તરત જ તે કાર્ટમાં આપમેળે સૂચવાય તે જુઓ."
+      },
+      "priceMarkdowns": {
+        "title": "પ્રાઇસ માર્કડાઉન",
+        "body": "કોઈ ઉત્પાદનની કિંમત મર્યાદિત સમય માટે ઘટાડો, એવી તારીખ સાથે જે તેને આપમેળે પાછી ફેરવે — તેને જાતે પાછી બદલવાનું યાદ રાખવાની જરૂર નથી."
+      },
+      "loyaltyProgram": {
+        "title": "લોયલ્ટી પ્રોગ્રામ",
+        "body": "કેટલી મુલાકાતો પર રિવોર્ડ મળશે અને તે રિવોર્ડ શું હશે તે નક્કી કરો — દરેક યોગ્ય વેચાણ પર ગ્રાહકના કાર્ડમાં આપમેળે એક પંચ ઉમેરાય છે, ચેકઆઉટ પર કોઈ વધારાનું પગલું જરૂરી નથી. રિવોર્ડ મળે ત્યારે અહીંથી જ રિડીમ કરો."
       },
       "recurringProfiles": {
         "title": "પુનરાવર્તિત પ્રોફાઇલ",

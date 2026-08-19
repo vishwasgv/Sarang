@@ -16,7 +16,7 @@ When pricing a line for a customer or supplier who has a price list assigned, Sa
 
 ## Pricing Schemes
 
-**Pricing Schemes** (`/pricing/schemes`) are promotional offers, evaluated automatically at checkout: **Buy X Get Y Free** (e.g. buy 2, get 1 free) and **Quantity Discounts** (e.g. 5+ units gets 10% off, 10+ gets 15% off, using as many breakpoints as you like). Create a scheme, scope it to either one product or a whole category, set its rule, and optionally give it a start and end date for a limited-time offer.
+**Pricing Schemes** (`/pricing/schemes`) are promotional offers, evaluated automatically at checkout: **Buy X Get Y Free** (e.g. buy 2, get 1 free), **Quantity Discounts** (e.g. 5+ units gets 10% off, 10+ gets 15% off, using as many breakpoints as you like), and **Happy-Hour / Flat % Off** (a flat percentage off with no quantity threshold — the everyday "4–6 PM, 20% off" kind of offer). Create a scheme, scope it to either one product or a whole category, set its rule, and optionally give it a start and end date for a limited-time offer, a daily start and end time for a happy-hour-style window (e.g. 4:00 PM–6:00 PM — this can't cross midnight), or both together.
 
 At checkout, adding a qualifying product or quantity to the cart shows a dismissible offer banner with an **Apply** button — applying a Buy-X-Get-Y-Free offer adds the free line for you; applying a discount offer sets that line's discount automatically. These are always suggestions: nothing is applied until you click Apply, and the final invoice is independently checked against the real, current scheme rules when it's created — a scheme can never be tricked into under-pricing an invoice.
 

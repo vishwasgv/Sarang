@@ -30,6 +30,14 @@ async function run() {
   const schemeName = `${TEST_PREFIX} Scheme ${suffix}`
   const expenseName = `${TEST_PREFIX} Expense ${suffix}`
   const workflowName = `${TEST_PREFIX} Workflow ${suffix}`
+  const happyHourProductId = newId()
+  const outsideWindowProductId = newId()
+  const happyHourProductName = `${TEST_PREFIX} Drink ${suffix}`
+  const outsideWindowProductName = `${TEST_PREFIX} Midnight Item ${suffix}`
+  const happyHourSchemeName = `${schemeName} Happy Hour`
+  const outsideWindowSchemeName = `${schemeName} Outside Window`
+  let happyHourSchemeId = null
+  let outsideWindowSchemeId = null
 
   let page
   try {
@@ -263,6 +271,79 @@ async function run() {
       }
     })
 
+    // ── Pricing Schemes: FLAT_PERCENT_OFF happy-hour window, live against ──
+    // the real wall clock (evaluateCart's `now` is server-side only, not
+    // exposed over IPC, so this genuinely proves the time-gate — not a
+    // mocked clock) — Phase 67 21.x (Restaurant happy-hour pricing).
+    await r.step('seed-happyhour-test-products', () => h.withDb((db) => {
+      for (const [pid, pname] of [[happyHourProductId, happyHourProductName], [outsideWindowProductId, outsideWindowProductName]]) {
+        db.prepare(`INSERT INTO Product (id, productName, productType, sellingPrice, costPrice, taxRate, isActive, updatedAt)
+          VALUES (?, ?, 'STANDARD', 100, 50, 18, 1, CURRENT_TIMESTAMP)`).run(pid, pname)
+        db.prepare(`INSERT INTO Inventory (id, productId, quantity, updatedAt) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`).run(newId(), pid, 100)
+      }
+    }))
+
+    function fmtMinutes(m) { return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` }
+
+    async function createFlatPercentScheme({ name, productName, discountPercent, startMinutes, endMinutes }) {
+      await h.gotoHash(page, '#/pricing/schemes')
+      await page.waitForTimeout(600)
+      await page.locator('button', { hasText: 'New Scheme' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByLabel('Name').fill(name)
+      await modal.getByLabel('Offer Type').selectOption('FLAT_PERCENT_OFF')
+      const scopeSelect = modal.getByLabel('Product / Category')
+      const scopeOptValue = await scopeSelect.locator('option', { hasText: productName }).first().getAttribute('value')
+      if (scopeOptValue) await scopeSelect.selectOption(scopeOptValue)
+      await modal.getByLabel('Discount %').fill(String(discountPercent))
+      await modal.getByLabel('Start Time').fill(fmtMinutes(startMinutes))
+      await modal.getByLabel('End Time').fill(fmtMinutes(endMinutes))
+      await modal.locator('button', { hasText: 'Create' }).click()
+      await page.waitForTimeout(800)
+      return !(await h.hasErrorBoundary(page))
+    }
+
+    await r.step('create-happyhour-scheme-window-spans-right-now-via-ui', async () => {
+      const now = new Date()
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      const winStart = Math.max(0, nowMinutes - 30)
+      const winEnd = Math.min(1439, nowMinutes + 30)
+      const ok = await createFlatPercentScheme({ name: happyHourSchemeName, productName: happyHourProductName, discountPercent: 20, startMinutes: winStart, endMinutes: winEnd })
+      r.log('happyhour-scheme-modal-closed-no-crash', ok)
+    })
+
+    await r.step('create-outsidewindow-scheme-window-is-just-after-midnight-via-ui', async () => {
+      // 00:01-00:02 — a window virtually guaranteed not to contain the real
+      // "now" whenever this suite actually runs, giving a genuine (not
+      // fabricated) negative case for the same live time-gate.
+      const ok = await createFlatPercentScheme({ name: outsideWindowSchemeName, productName: outsideWindowProductName, discountPercent: 15, startMinutes: 1, endMinutes: 2 })
+      r.log('outsidewindow-scheme-modal-closed-no-crash', ok)
+    })
+
+    await r.step('happyhour-schemes-persisted-correctly', () => h.withDb((db) => {
+      const hh = db.prepare('SELECT * FROM PricingScheme WHERE name = ?').get(happyHourSchemeName)
+      const ow = db.prepare('SELECT * FROM PricingScheme WHERE name = ?').get(outsideWindowSchemeName)
+      r.log('happyhour-scheme-row-exists-with-flat-percent-and-window', !!hh && hh.ruleType === 'FLAT_PERCENT_OFF' && hh.flatDiscountPercent === 20 && hh.startTimeMinutes !== null, JSON.stringify(hh))
+      r.log('outsidewindow-scheme-row-exists', !!ow && ow.flatDiscountPercent === 15, JSON.stringify(ow))
+      if (hh) happyHourSchemeId = hh.id
+      if (ow) outsideWindowSchemeId = ow.id
+    }))
+
+    await r.step('happyhour-discount-applies-live-right-now-via-real-api', async () => {
+      if (!happyHourSchemeId) { r.log('skipped-no-scheme-id', false); return }
+      const res = await page.evaluate((pid) => window.api.pricingSchemes.evaluateCart({ items: [{ productId: pid, quantity: 1 }] }), happyHourProductId)
+      const discounts = res?.data?.discounts || []
+      r.log('happyhour-20-percent-discount-suggested-right-now', discounts.some((d) => d.discountPercent === 20 && d.productId === happyHourProductId), JSON.stringify(discounts))
+    })
+
+    await r.step('outsidewindow-discount-does-not-apply-right-now-via-real-api', async () => {
+      if (!outsideWindowSchemeId) { r.log('skipped-no-scheme-id', false); return }
+      const res = await page.evaluate((pid) => window.api.pricingSchemes.evaluateCart({ items: [{ productId: pid, quantity: 1 }] }), outsideWindowProductId)
+      const discounts = res?.data?.discounts || []
+      r.log('outsidewindow-discount-correctly-absent-right-now', discounts.length === 0, JSON.stringify(discounts))
+    })
+
     // ── Recurring Profiles: EXPENSE type, then pause/resume ─────────────────
     let profileId = null
     await r.step('create-recurring-profile-via-ui', async () => {
@@ -418,7 +499,7 @@ async function run() {
     })
   } finally {
     const cleanup = h.withDb((db) => {
-      let counts = { soItems: 0, sos: 0, approvalActions: 0, approvalSteps: 0, approvalInstances: 0, workflows: 0, schemes: 0, priceListItems: 0, priceLists: 0, profiles: 0, category: 0, inventory: 0, products: 0, customers: 0 }
+      let counts = { soItems: 0, sos: 0, approvalActions: 0, approvalSteps: 0, approvalInstances: 0, workflows: 0, schemes: 0, priceListItems: 0, priceLists: 0, profiles: 0, category: 0, inventory: 0, products: 0, customers: 0, happyHourSchemes: 0, happyHourProducts: 0 }
       const sos = db.prepare('SELECT id FROM SalesOrder WHERE customerId = ?').all(customerId)
       for (const so of sos) {
         counts.soItems += db.prepare('DELETE FROM SalesOrderItem WHERE salesOrderId = ?').run(so.id).changes
@@ -436,6 +517,14 @@ async function run() {
       }
       const scheme = db.prepare('SELECT id FROM PricingScheme WHERE name = ?').get(schemeName)
       if (scheme) counts.schemes += db.prepare('DELETE FROM PricingScheme WHERE id = ?').run(scheme.id).changes
+      for (const name of [happyHourSchemeName, outsideWindowSchemeName]) {
+        const s = db.prepare('SELECT id FROM PricingScheme WHERE name = ?').get(name)
+        if (s) counts.happyHourSchemes += db.prepare('DELETE FROM PricingScheme WHERE id = ?').run(s.id).changes
+      }
+      for (const pid of [happyHourProductId, outsideWindowProductId]) {
+        db.prepare('DELETE FROM Inventory WHERE productId = ?').run(pid)
+        try { counts.happyHourProducts += db.prepare('DELETE FROM Product WHERE id = ?').run(pid).changes } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(pid) }
+      }
       const pl = db.prepare('SELECT id FROM PriceList WHERE name = ?').get(priceListName)
       if (pl) {
         counts.priceListItems += db.prepare('DELETE FROM PriceListItem WHERE priceListId = ?').run(pl.id).changes

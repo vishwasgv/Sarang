@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Card } from '@shared/ui/molecules/Card'
@@ -26,6 +27,8 @@ interface Token {
   calledAt: string | null
   seenAt: string | null
   notes: string | null
+  // Phase 67 §9.1 item 20.5 — Specialist Clinic: waitlist prioritization by referral urgency.
+  isUrgent: boolean
   appointment: { id: string; appointmentNumber: string; serviceTitle: string; scheduledTime: string } | null
 }
 
@@ -49,6 +52,8 @@ export function TokenQueueScreen() {
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const canManage = hasPermission('billing.createInvoice')
   const canManageCheckIn = hasPermission('tokenQueue.manage')
+  // Phase 67 §9.1 item 20.5 — Specialist Clinic: waitlist prioritization by referral urgency.
+  const isReferralUrgency = useIndustryStore((s) => s.isModuleEnabled('referral_urgency'))
 
   const [tokens, setTokens] = useState<Token[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -339,7 +344,7 @@ export function TokenQueueScreen() {
 
       {/* Add Walk-in Modal */}
       {showAddForm && (
-        <AddTokenModal onClose={() => setShowAddForm(false)} onSaved={() => { setShowAddForm(false); load() }} />
+        <AddTokenModal showUrgent={isReferralUrgency} onClose={() => setShowAddForm(false)} onSaved={() => { setShowAddForm(false); load() }} />
       )}
     </div>
   )
@@ -359,7 +364,8 @@ function TokenRow({ token, canManage, actioning, onAction }: {
       padding="md"
       className={cn(
         'flex items-center gap-4',
-        token.status === 'CALLED' && 'border-amber-300 bg-amber-50/50'
+        token.status === 'CALLED' && 'border-amber-300 bg-amber-50/50',
+        token.isUrgent && 'border-danger/40'
       )}
     >
       {/* Token number */}
@@ -380,6 +386,9 @@ function TokenRow({ token, canManage, actioning, onAction }: {
           <Badge variant={STATUS_VARIANT[token.status] ?? 'neutral'} size="sm">
             {token.status === 'WAITING' ? 'Waiting' : token.status === 'CALLED' ? 'Called' : token.status === 'SEEN' ? 'Seen' : 'Skipped'}
           </Badge>
+          {token.isUrgent && (
+            <Badge variant="danger" size="sm" icon={<AlertTriangle size={10} />}>Urgent</Badge>
+          )}
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           {[token.age, token.gender].filter(Boolean).join(' · ')}
@@ -434,8 +443,8 @@ function TokenRow({ token, canManage, actioning, onAction }: {
 
 // ─── Add Token Modal ──────────────────────────────────────────────────────────
 
-function AddTokenModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ patientName: '', age: '', gender: '', phone: '', notes: '' })
+function AddTokenModal({ showUrgent, onClose, onSaved }: { showUrgent: boolean; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ patientName: '', age: '', gender: '', phone: '', notes: '', isUrgent: false })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -456,6 +465,7 @@ function AddTokenModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
         gender: form.gender || undefined,
         phone: form.phone.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        isUrgent: form.isUrgent || undefined,
       })
       if (!res.success) { setError(res.error?.message ?? 'Could not create token.'); return }
       onSaved()
@@ -509,6 +519,18 @@ function AddTokenModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
             <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
           </div>
+
+          {showUrgent && (
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.isUrgent}
+                onChange={(e) => setForm((f) => ({ ...f, isUrgent: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              Mark as urgent (referring doctor flagged this as urgent) — calls this patient ahead of the regular queue order
+            </label>
+          )}
         </div>
         <div className="px-6 pb-6 flex gap-3 justify-end">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

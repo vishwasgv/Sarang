@@ -15,6 +15,7 @@ Opening an appointment's **Consultation Note** gives you a structured, SOAP-form
 - **Vitals**: BP (systolic/diastolic), pulse, temperature, height, weight — each field is automatically flagged (Normal / Low / High) against a saved normal-range reference once you save, so out-of-range readings stand out immediately.
 - **O — Objective**: examination findings.
 - **A — Assessment**: diagnosis / clinical impression.
+- **Diagnosis Category** (optional): a short category tag — Infection, Chronic Disease Follow-up, Injury, and similar — separate from the free-text Assessment above. Tagging this feeds **Reports → Diagnosis-Category Trend**, so pick from the suggested list or type your own if none fit.
 - **P — Plan**: treatment plan, medications, investigations ordered.
 - **Follow-up**: an optional follow-up date and instructions.
 
@@ -24,7 +25,11 @@ Click **Save Note** as you go, then **Finalize** when the consultation is comple
 
 **Vitals Trend.** Once a patient has two or more visits with recorded vitals, a trend chart appears showing how a chosen metric (BP, pulse, temperature, or weight) has moved over time — pick which metric to plot from the chip row above the chart.
 
-**Referral letters.** Using the existing "Refer to Another Provider" action creates a real referral; once one exists, **Print Referral Letter** produces a formal letter addressed to the referred-to doctor with the reason for referral — a genuinely different document from the full consultation summary, built for handing to the patient to take to the specialist.
+**Referring a patient out.** Use "Refer to Another Provider" to book a real appointment with another provider — once it exists, **Print Referral Letter** produces a formal letter addressed to the referred-to doctor with the reason for referral, a genuinely different document from the full consultation summary, built for handing to the patient to take with them. Once that referral appointment happens and its own note is finalized, the referred-to provider's assessment shows up right here as an **Outcome** line under the referral, so you don't have to separately go find their note to see what they found.
+
+**Referral-Out Outcome.** All your outgoing referrals, in one place — open **Reports → Referral-Out Outcome** and pick a date range. You'll see how many referrals you made, how many now have a recorded outcome, and how many are still pending, plus a table of every referral with its status and outcome (once available).
+
+**Diagnosis-Category Trend.** Every time you tag a Diagnosis Category on a consultation note, it feeds **Reports → Diagnosis-Category Trend** — pick a date range and you'll see a line chart with one line per category, month by month, plus a breakdown table. This is separate from the Assessment text itself: Assessment is your free-text clinical note, while the category is a short tag purely for spotting patterns over time (e.g. "infections are rising this quarter"). Visits with no category tagged still count toward your total visits but don't appear on the chart, since there's nothing to group them by.
 
 ## Token Queue
 
@@ -36,6 +41,8 @@ The **Token Queue** screen manages same-day walk-in patients without needing a p
 - **Call Next** to call the next waiting token.
 
 Each token in the list can be called, marked seen, skipped, or reset back to waiting — the queue re-sorts itself into "Currently Called," "Waiting," and "Completed" sections automatically. This is entirely separate from the pre-booked Appointments list — it's built for the reality of patients who simply walk in and wait their turn.
+
+To see how much of your day is walk-ins versus pre-booked appointments, open **Reports → Walk-in vs. Appointment Ratio** and pick a date range. It shows your total split as a percentage, plus a day-by-day bar chart, so you can tell at a glance whether your clinic runs mostly on booked appointments or mostly on people simply showing up.
 
 ## Chronic Condition Recall
 

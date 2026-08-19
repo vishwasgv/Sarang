@@ -10,6 +10,8 @@
     "purchaseOrders": "खरीद आदेश",
     "priceLists": "मूल्य सूचियाँ",
     "pricingSchemes": "मूल्य निर्धारण योजनाएँ",
+    "priceMarkdowns": "प्राइस मार्कडाउन",
+    "loyaltyProgram": "लॉयल्टी प्रोग्राम",
     "recurringProfiles": "आवर्ती प्रोफाइल",
     "locations": "स्थान",
     "approvalWorkflows": "अनुमोदन वर्कफ़्लो",
@@ -437,6 +439,7 @@
     "areaLabel": "क्षेत्रफल",
     "areaFormula": "लंबाई × चौड़ाई = क्षेत्रफल",
     "useAreaSq": "{{area}} वर्ग का उपयोग करें",
+    "areaMarginPreview": "मार्जिन: {{percent}}%",
     "rx": {
       "title": "प्रिस्क्रिप्शन विवरण",
       "description": "यह केवल प्रिस्क्रिप्शन पर मिलने वाली वस्तु है (शेड्यूल H/H1) — इसे बेचने के लिए रोगी और डॉक्टर का नाम आवश्यक है।",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "मूल्य निर्धारण योजनाएँ",
-    "subtitle": "{{count}} योजनाएँ — X खरीदें Y मुफ़्त पाएं ऑफ़र और मात्रा-स्तर छूट",
+    "subtitle": "{{count}} योजनाएँ — X खरीदें Y मुफ़्त पाएं ऑफ़र, मात्रा-स्तर छूट, और फ्लैट % छूट ऑफ़र",
     "newScheme": "नई योजना",
     "namePlaceholder": "जैसे, 2 खरीदें 1 मुफ़्त पाएं — नोटबुक",
     "ruleTypeLabel": "ऑफ़र प्रकार",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "X खरीदें Y मुफ़्त पाएं",
-      "SLAB_DISCOUNT": "मात्रा छूट"
+      "SLAB_DISCOUNT": "मात्रा छूट",
+      "FLAT_PERCENT_OFF": "हैप्पी-ऑवर / फ्लैट % छूट"
     },
     "scopeType": "किस पर लागू",
     "byProduct": "एक उत्पाद",
@@ -1145,8 +1149,14 @@
     "minQuantity": "न्यूनतम मात्रा",
     "discountPercent": "छूट %",
     "buyXGetYSummary": "{{buy}} खरीदें, {{free}} मुफ़्त पाएं",
+    "flatPercentSummary": "{{percent}}% छूट",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "आरंभ तिथि (वैकल्पिक)",
     "endDateOptional": "समाप्ति तिथि (वैकल्पिक)",
+    "happyHourWindow": "हैप्पी-ऑवर विंडो (वैकल्पिक)",
+    "startTimeOptional": "प्रारंभ समय",
+    "endTimeOptional": "समाप्ति समय",
+    "happyHourWindowHint": "केवल हर दिन इन घंटों के दौरान सक्रिय — किसी भी समय लागू करने के लिए खाली छोड़ें। यह आधी रात को पार नहीं करता (जैसे शाम 4:00–शाम 6:00 काम करता है; रात 10:00–सुबह 2:00 नहीं)।",
     "rule": "ऑफ़र",
     "noSchemesYet": "अभी तक कोई मूल्य निर्धारण योजना नहीं।",
     "deleteSchemeTitle": "मूल्य निर्धारण योजना हटाएं",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "मूल्य निर्धारण योजना नहीं बनाई जा सकी।",
     "couldNotSave": "बदलाव सहेजे नहीं जा सके।",
     "couldNotDelete": "मूल्य निर्धारण योजना हटाई नहीं जा सकी।"
+  },
+  "priceMarkdowns": {
+    "title": "प्राइस मार्कडाउन",
+    "subtitle": "{{count}} मार्कडाउन — समय-सीमित मूल्य कटौती जो अपने आप वापस हो जाती हैं",
+    "newMarkdown": "नया मार्कडाउन",
+    "checkNow": "अभी जांचें",
+    "product": "उत्पाद",
+    "originalPrice": "मूल मूल्य",
+    "markdownPrice": "मार्कडाउन मूल्य",
+    "endDate": "वापसी तिथि",
+    "status": {
+      "ACTIVE": "सक्रिय",
+      "REVERTED": "वापस हो गया",
+      "CANCELLED": "रद्द",
+      "SKIPPED_MANUAL_OVERRIDE": "मैन्युअल रूप से बदला गया"
+    },
+    "createHint": "मार्कडाउन मूल्य तुरंत लागू होता है। यह ऊपर दी गई तिथि पर अपने आप मूल मूल्य पर वापस चला जाता है — जब तक कि आप उससे पहले खुद कीमत न बदल दें, ऐसी स्थिति में वापसी छोड़ दी जाती है ताकि आपका मैन्युअल बदलाव मिटे नहीं।",
+    "noMarkdownsYet": "अभी तक कोई प्राइस मार्कडाउन नहीं।",
+    "cancelMarkdownTitle": "प्राइस मार्कडाउन रद्द करें",
+    "cancelMarkdownMessage": "यह मार्कडाउन को अभी समाप्त कर देता है। अगर मार्कडाउन शुरू होने के बाद से कीमत नहीं बदली है, तो यह तुरंत मूल मूल्य पर वापस चली जाती है।",
+    "markdownCreated": "प्राइस मार्कडाउन बनाया गया",
+    "markdownCancelled": "प्राइस मार्कडाउन रद्द किया गया",
+    "checkComplete": "जांच पूरी हुई",
+    "checkCompleteDetail": "{{evaluated}} में से {{reverted}} देय मार्कडाउन वापस किए गए।",
+    "missingFields": "जानकारी अधूरी है",
+    "productRequired": "इस मार्कडाउन के लिए एक उत्पाद चुनें।",
+    "markdownPriceRequired": "एक वैध मार्कडाउन मूल्य दर्ज करें।",
+    "endDateRequired": "मार्कडाउन वापस होने की तिथि चुनें।",
+    "couldNotLoad": "प्राइस मार्कडाउन लोड नहीं हो सके।",
+    "couldNotCreate": "प्राइस मार्कडाउन नहीं बनाया जा सका।",
+    "couldNotCancel": "प्राइस मार्कडाउन रद्द नहीं हो सका।",
+    "couldNotCheck": "देय मार्कडाउन की जांच नहीं हो सकी।"
+  },
+  "loyaltyProgram": {
+    "title": "लॉयल्टी प्रोग्राम",
+    "subtitle": "{{count}} ग्राहक लॉयल्टी कार्ड — हर विज़िट पर एक साधारण पंच रिवॉर्ड",
+    "programSettings": "प्रोग्राम सेटिंग्स",
+    "isActive": "प्रोग्राम सक्रिय है",
+    "punchesRequired": "रिवॉर्ड के लिए ज़रूरी पंच",
+    "rewardDescription": "रिवॉर्ड",
+    "rewardPlaceholder": "जैसे मुफ़्त कॉफ़ी, अगली खरीद पर 10% छूट",
+    "minPurchaseAmount": "पंच के लिए न्यूनतम खरीद",
+    "settingsHint": "किसी भी योग्य बिक्री पर पंच अपने आप मिल जाता है — चेकआउट पर कोई अतिरिक्त कदम नहीं चाहिए। हर बिक्री पर पंच देने के लिए न्यूनतम खरीद राशि 0 रखें, चाहे राशि कुछ भी हो।",
+    "customer": "ग्राहक",
+    "progress": "प्रगति",
+    "totalEarned": "कुल मिले पंच",
+    "totalRedeemed": "रिडीम किए गए रिवॉर्ड",
+    "redeem": "रिडीम करें",
+    "redeemTitle": "रिवॉर्ड रिडीम करें",
+    "redeemMessage": "{{name}} को उनका रिवॉर्ड दें: {{reward}}। इससे उनके पंच उस रिवॉर्ड के लिए इस्तेमाल हो जाएंगे।",
+    "noProgramYet": "अभी तक कोई लॉयल्टी प्रोग्राम सेट अप नहीं है।",
+    "noCardsYet": "अभी तक कोई लॉयल्टी कार्ड नहीं — किसी ग्राहक की योग्य खरीद होते ही पंच शुरू होंगे।",
+    "missingFields": "जानकारी अधूरी है",
+    "rewardRequired": "बताएं कि रिवॉर्ड क्या है।",
+    "punchesRequiredInvalid": "बताएं कि कितने पंच चाहिए (कम से कम 1)।",
+    "programSaved": "लॉयल्टी प्रोग्राम सहेजा गया",
+    "rewardRedeemed": "रिवॉर्ड रिडीम हो गया",
+    "couldNotLoad": "लॉयल्टी प्रोग्राम लोड नहीं हो सका।",
+    "couldNotSave": "लॉयल्टी प्रोग्राम सहेजा नहीं जा सका।",
+    "couldNotRedeem": "रिवॉर्ड रिडीम नहीं हो सका।"
   },
   "recurringProfiles": {
     "title": "आवर्ती प्रोफाइल",
@@ -1475,6 +1545,34 @@
         "label": "फूड कॉस्ट रिपोर्ट",
         "description": "KOT पूर्ति अनुसार सामग्री उपयोग और लागत — रेस्टोरेंट टेम्पलेट"
       },
+      "dishContributionMargin": {
+        "label": "व्यंजन-वार योगदान मार्जिन",
+        "description": "प्रति बिकी व्यंजन आय में से रेसिपी लागत घटाकर — कौन से व्यंजन वास्तव में अपनी लागत निकाल रहे हैं"
+      },
+      "tableTurnoverByHour": {
+        "label": "घंटे के अनुसार टेबल टर्नओवर",
+        "description": "डाइन-इन टेबल ऑर्डर का सप्ताह-के-दिन x घंटे-के-अनुसार हीटमैप — आपका रेस्टोरेंट वास्तव में कब सबसे व्यस्त है"
+      },
+      "recipeWasteVariance": {
+        "label": "रेसिपी-बनाम-वास्तविक बर्बादी अंतर",
+        "description": "आपकी रेसिपी के अनुसार सामग्री का जितना उपयोग होना चाहिए था, उसकी तुलना वास्तव में कितनी निकाली गई सामग्री से करता है — असली पोर्शन ड्रिफ्ट, फैलाव, या पुरानी रेसिपी को उजागर करता है"
+      },
+      "deadStockClearance": {
+        "label": "डेड-स्टॉक क्लीयरेंस लिस्ट",
+        "description": "पिछले 90 दिनों में कोई बिक्री न होने वाले, फिर भी स्टॉक में मौजूद उत्पाद, शेल्फ पर कितनी पूंजी बेकार पड़ी है इसके अनुसार क्रमबद्ध"
+      },
+      "categorySellThrough": {
+        "label": "श्रेणी बिक्री-दर",
+        "description": "महीने-दर-महीने, प्रत्येक श्रेणी की बिकी-प्लस-स्टॉक इकाइयों में से वास्तव में कितनी बिकीं — तेज़ी से बिकने वाली श्रेणियों और जमा होती जा रही श्रेणियों को पहचानें"
+      },
+      "basketComposition": {
+        "label": "बास्केट संरचना",
+        "description": "एक ही बिक्री में सबसे ज़्यादा किन उत्पादों को साथ खरीदा जाता है — पास-पास रखने या कॉम्बो के रूप में पेश करने लायक स्वाभाविक जोड़ियां और बंडल पहचानें"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "फास्ट-मूवर बनाम स्लो-मूवर मैट्रिक्स",
+        "description": "बिक्री गति (वेलोसिटी) बनाम मार्जिन का एक स्कैटर, चार क्वाड्रेंट में बंटा हुआ — एक नज़र में देखें कि कौन से उत्पाद तेज़ी से दोबारा स्टॉक करने लायक हैं, कौन से कम-मार्जिन वाली मेहनत हैं, और कौन से धीमी गति वाले उत्पाद अपने मार्जिन के कारण रखने लायक हैं"
+      },
       "gstr1": {
         "label": "GSTR-1 रिपोर्ट",
         "description": "GST रिटर्न फाइलिंग के लिए B2B और B2CS कर सारांश"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "रिकॉल अनुपालन",
         "description": "कितने क्रॉनिक कंडीशन रिकॉल समय पर पूरे किए गए, कुल मिलाकर और प्रत्येक स्थिति के अनुसार।"
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "वॉक-इन बनाम अपॉइंटमेंट अनुपात",
+        "description": "आपकी कितनी मुलाकातें वॉक-इन हैं और कितनी पहले से बुक की गई अपॉइंटमेंट हैं, दिन के हिसाब से।"
+      },
+      "diagnosisCategoryTrend": {
+        "label": "निदान-श्रेणी रुझान",
+        "description": "आपके परामर्श निदान श्रेणी के अनुसार कैसे विभाजित होते हैं और महीने-दर-महीने उनका रुझान।"
+      },
+      "referralOutcome": {
+        "label": "बाहरी रेफ़रल परिणाम",
+        "description": "जिन मरीज़ों को आपने किसी अन्य प्रदाता के पास रेफ़र किया, वह मुलाकात हुई या नहीं, और क्या पाया गया।"
+      },
+      "packUtilization": {
+        "label": "पैक उपयोग",
+        "description": "हर सेशन पैक वास्तव में कितना इस्तेमाल हुआ, प्रति क्लाइंट और कुल मिलाकर।"
+      },
+      "labTAT": {
+        "label": "प्रति-टेस्ट TAT",
+        "description": "टेस्ट के हिसाब से टर्नअराउंड समय, असली बनाम लक्ष्य, समय पर बनाम देर से आने की गिनती के साथ।"
+      },
+      "testVolumeByPanel": {
+        "label": "पैनल के हिसाब से टेस्ट वॉल्यूम",
+        "description": "आप हर पैनल या श्रेणी में महीने-दर-महीने कितने टेस्ट कर रहे हैं।"
+      },
+      "referralLeaderboard": {
+        "label": "रेफ़रल लीडरबोर्ड",
+        "description": "कौन से डॉक्टर आपको सबसे ज़्यादा मरीज़ या टेस्ट रेफ़र कर रहे हैं, रैंक किए हुए।"
+      },
+      "secondOpinionConversion": {
+        "label": "सेकंड-ओपिनियन कन्वर्ज़न",
+        "description": "आपकी सेकंड-ओपिनियन परामर्श में से, कितने मरीज़ वापस आए और नियमित मरीज़ बन गए।"
+      },
+      "caseComplexityMix": {
+        "label": "केस-कॉम्प्लेक्सिटी मिक्स",
+        "description": "आप महीने-दर-महीने कितने रूटीन बनाम कॉम्प्लेक्स केस देख रहे हैं, उसका मिश्रण।"
+      },
+      "treatmentAcceptanceRate": {
+        "label": "उपचार स्वीकृति दर",
+        "description": "आपने प्रस्तावित किए गए ट्रीटमेंट प्लान में से, कितने स्वीकार किए गए और कितने वाकई बिल की गई आय में बदले।"
+      },
+      "dentalRecallCompliance": {
+        "label": "रिकॉल अनुपालन",
+        "description": "इस सीमा में बंद किए गए रिकॉल में से, कितने मरीज़ अपनी नियत तारीख़ पर या उससे पहले वापस आए।"
+      },
+      "vaccinationCompliance": {
+        "label": "वैक्सीनेशन कम्प्लायंस",
+        "description": "इस अवधि में दी गई फॉलो-अप डोज़ में से कितनी अपनी पिछली नियत तारीख़ के मुकाबले समय पर थीं।"
+      },
+      "vetCaseTypeVolume": {
+        "label": "केस-टाइप वॉल्यूम ट्रेंड",
+        "description": "आपने केस टाइप के हिसाब से कितने केस संभाले — परामर्श, निवारक देखभाल, टीकाकरण, और आपके Service Catalog में मौजूद अन्य — महीने-दर-महीने।"
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} रिकॉर्ड",
       "totalFoodCost": "कुल फूड कॉस्ट",
       "ingredientsUsed": "उपयोग की गई सामग्री",
+      "totalContributionMargin": "कुल योगदान मार्जिन",
+      "dishesSold": "बिकी व्यंजन",
+      "contributionMarginByDish": "व्यंजन-वार योगदान मार्जिन",
+      "totalTurns": "कुल टेबल टर्न",
+      "peakTime": "व्यस्ततम समय",
+      "peakTurns": "पीक-ऑवर टर्न",
+      "ingredientsTracked": "ट्रैक की गई सामग्री",
+      "biggestWaste": "सबसे बड़ी अधिकता",
+      "varianceByIngredient": "सामग्री-वार अंतर",
+      "totalCapitalLocked": "कुल बंधी हुई पूंजी",
+      "deadStockItems": "डेड-स्टॉक आइटम",
+      "lookbackWindow": "लुकबैक विंडो",
+      "capitalLockedByProduct": "उत्पाद-वार बंधी पूंजी",
+      "sellThroughByCategoryMonth": "श्रेणी अनुसार, महीने अनुसार बिक्री-दर",
+      "sellThroughStockNote": "दिखाए गए हर महीने की तुलना वर्तमान उपलब्ध स्टॉक से की गई है — यह एक रुझान दृश्य है, हर महीने का अपना ऐतिहासिक स्टॉक स्तर नहीं।",
+      "avgSellThroughByCategory": "श्रेणी अनुसार औसत बिक्री-दर",
+      "totalBaskets": "कुल बास्केट",
+      "avgItemsPerBasket": "औसत आइटम प्रति बास्केट",
+      "avgBasketValue": "औसत बास्केट मूल्य",
+      "topProductPairs": "सबसे ज़्यादा साथ खरीदे गए",
+      "balanceTrend": "शेष राशि रुझान",
+      "balanceTrendSampledNote": "इस खाते में बहुत अधिक गतिविधि है — रुझान रेखा हर एक प्रविष्टि नहीं, बल्कि बिंदुओं का एक प्रतिनिधि नमूना दिखाती है। नीचे दी गई तालिका में अब भी हर लेन-देन सूचीबद्ध है।",
+      "velocityMedian": "औसत (मीडियन) गति",
+      "marginMedian": "औसत (मीडियन) मार्जिन",
+      "fastSlowMoverMatrix": "गति बनाम मार्जिन",
+      "fastSlowMoverMatrixNote": "प्रत्येक बिंदु एक उत्पाद है। डैश्ड रेखाएँ इस अवधि की मीडियन गति और मीडियन मार्जिन दर्शाती हैं — चार क्वाड्रेंट उत्पादों को तेज़/धीमे मूवर और उच्च/निम्न मार्जिन के आधार पर बाँटते हैं।",
       "invoicesSuffix_one": "{{count}} बिल",
       "invoicesSuffix_other": "{{count}} बिल",
       "groupsSuffix_one": "{{count}} समूह",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "छूट वाली लाइनें",
       "avgDiscountPercent": "औसत छूट",
       "recallsClosed": "बंद किए गए रिकॉल",
-      "compliancePercent": "अनुपालन %"
+      "compliancePercent": "अनुपालन %",
+      "totalWalkIns": "कुल वॉक-इन",
+      "walkInPercent": "वॉक-इन %",
+      "totalVisits": "कुल मुलाकातें",
+      "categorized": "वर्गीकृत",
+      "uncategorizedSub": "{{count}} अवर्गीकृत",
+      "distinctCategories": "अलग श्रेणियाँ",
+      "totalReferrals": "कुल रेफ़रल",
+      "outcomeRecorded": "परिणाम दर्ज",
+      "pendingReferrals": "लंबित",
+      "totalPacks": "कुल पैक",
+      "sessionsUsed": "इस्तेमाल किए गए सेशन",
+      "overallUtilization": "कुल उपयोग",
+      "totalCompleted": "पूर्ण टेस्ट",
+      "withTarget": "लक्ष्य के साथ",
+      "overallOnTimePercent": "कुल समय पर %",
+      "distinctPanels": "अलग-अलग पैनल",
+      "distinctReferrers": "अलग-अलग रेफ़रर",
+      "topReferrer": "शीर्ष रेफ़रर",
+      "totalSecondOpinionVisits": "सेकंड-ओपिनियन विज़िट",
+      "convertedCount": "कन्वर्ट हुए",
+      "conversionPercent": "कन्वर्ज़न दर",
+      "totalTagged": "टैग किए गए केस",
+      "routineCount": "रूटीन",
+      "complexCount": "कॉम्प्लेक्स",
+      "complexPercent": "कॉम्प्लेक्स %",
+      "proposedCount": "प्रस्तावित प्लान",
+      "acceptedCount": "स्वीकृत",
+      "billedCount": "बिल किया गया",
+      "acceptanceRatePercent": "स्वीकृति दर",
+      "billedRatePercent": "बिलिंग दर",
+      "dosesEvaluated": "मूल्यांकित डोज़",
+      "totalCases": "कुल केस",
+      "distinctCaseTypes": "अलग-अलग केस टाइप"
     },
     "aging": {
       "current": "वर्तमान",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "खरीद विवरण",
       "apAgingByVendor": "विक्रेता अनुसार देय आयु",
       "untaggedNote": "अनटैग्ड: बिना लागत केंद्र सेट किए लेनदेन से {{revenue}} राजस्व और {{expense}} व्यय।",
-      "complianceByCondition": "स्थिति के अनुसार अनुपालन"
+      "complianceByCondition": "स्थिति के अनुसार अनुपालन",
+      "dailyBreakdown": "दैनिक विवरण",
+      "monthlyBreakdown": "मासिक विवरण",
+      "diagnosisTrendChart": "निदान-श्रेणी रुझान",
+      "packUtilizationChart": "क्लाइंट के अनुसार पैक उपयोग",
+      "labTATChart": "टेस्ट के अनुसार टर्नअराउंड समय",
+      "testVolumeByPanelChart": "टेस्ट वॉल्यूम ट्रेंड",
+      "referralLeaderboardChart": "शीर्ष रेफ़र करने वाले डॉक्टर",
+      "tableTurnoverHeatmap": "दिन और घंटे के अनुसार टेबल टर्न",
+      "caseComplexityMixChart": "महीने के हिसाब से रूटीन बनाम कॉम्प्लेक्स",
+      "treatmentAcceptanceFunnelChart": "प्रस्तावित → स्वीकृत → बिल किया गया",
+      "complianceByRecallType": "रिकॉल प्रकार के अनुसार अनुपालन",
+      "complianceByVaccine": "वैक्सीन के अनुसार कम्प्लायंस",
+      "caseTypeVolumeChart": "केस वॉल्यूम ट्रेंड"
     },
     "empty": {
       "invoices": "इस तिथि सीमा में कोई बिल नहीं।",
@@ -1892,6 +2114,13 @@
       "auditRecords": "कोई ऑडिट रिकॉर्ड नहीं मिला।",
       "backups": "कोई बैकअप नहीं मिला। बैकअप मॉड्यूल सेट होने के बाद बैकअप यहां दिखाई देंगे।",
       "foodCost": "इस तिथि सीमा में कोई सामग्री कटौती नहीं मिली। फूड कॉस्ट रिकॉर्ड करने के लिए KOT को पूर्ण चिह्नित करना आवश्यक है।",
+      "dishContributionMargin": "इस तिथि सीमा में कोई व्यंजन नहीं बिका।",
+      "tableTurnoverByHour": "इस तिथि सीमा में कोई डाइन-इन टेबल ऑर्डर नहीं मिला।",
+      "recipeWasteVariance": "इस तिथि सीमा में कोई रेसिपी-लिंक्ड सामग्री गतिविधि नहीं मिली।",
+      "deadStockClearance": "कोई डेड स्टॉक नहीं मिला — स्टॉक में मौजूद हर उत्पाद हाल ही में बिका है।",
+      "categorySellThrough": "इस तिथि सीमा में कोई श्रेणीबद्ध उत्पाद बिक्री नहीं मिली।",
+      "basketComposition": "इस तिथि सीमा में 2 या अधिक अलग-अलग उत्पादों वाली कोई बास्केट नहीं मिली।",
+      "fastSlowMoverMatrix": "इस तिथि सीमा में कोई उत्पाद नहीं बिका।",
       "gstr1": "इस अवधि के लिए कोई कर योग्य बिल नहीं मिला।",
       "appointments": "इस तिथि सीमा में कोई अपॉइंटमेंट नहीं।",
       "clientAppointments": "इस तिथि सीमा में कोई क्लाइंट अपॉइंटमेंट नहीं मिला।",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "इस दिनांक सीमा में कोई ड्रॉइंग संशोधन नहीं।",
       "siteVisitLog": "इस दिनांक सीमा में कोई साइट विज़िट नहीं।",
       "noData": "इस अवधि के लिए कोई रिकॉर्ड नहीं मिला।",
-      "chronicRecallCompliance": "इस दिनांक सीमा में कोई रिकॉल अवधि समाप्त नहीं हुई।"
+      "chronicRecallCompliance": "इस दिनांक सीमा में कोई रिकॉल अवधि समाप्त नहीं हुई।",
+      "walkInVsAppointmentRatio": "इस दिनांक सीमा में कोई वॉक-इन या अपॉइंटमेंट नहीं है।",
+      "diagnosisCategoryTrend": "इस दिनांक सीमा में कोई वर्गीकृत मुलाकात नहीं है।",
+      "referralOutcome": "इस दिनांक सीमा में कोई रेफ़रल नहीं किया गया।",
+      "packUtilization": "इस दिनांक सीमा में कोई सेशन पैक नहीं खरीदा गया।",
+      "labTAT": "इस तारीख़ सीमा में कोई पूर्ण टेस्ट नहीं है।",
+      "testVolumeByPanel": "इस तारीख़ सीमा में कोई टेस्ट दर्ज नहीं है।",
+      "referralLeaderboard": "इस तारीख़ सीमा में कोई रेफ़रल दर्ज नहीं है।",
+      "secondOpinionConversion": "इस तारीख़ सीमा में कोई सेकंड-ओपिनियन परामर्श दर्ज नहीं है।",
+      "caseComplexityMix": "इस तारीख़ सीमा में कोई केस-कॉम्प्लेक्सिटी-टैग की गई विज़िट नहीं है।",
+      "treatmentAcceptanceRate": "इस तारीख़ सीमा में कोई ट्रीटमेंट प्लान प्रस्तावित नहीं किया गया।",
+      "dentalRecallCompliance": "इस तारीख़ सीमा में कोई रिकॉल बंद नहीं किया गया।",
+      "vaccinationCompliance": "इस तारीख़ सीमा में पिछली नियत तारीख़ वाली कोई फॉलो-अप डोज़ नहीं है।",
+      "vetCaseTypeVolume": "इस तारीख़ सीमा में कोई केस दर्ज नहीं है।"
     },
     "col": {
       "invoiceNo": "बिल #",
@@ -1987,6 +2229,20 @@
       "ingredient": "सामग्री",
       "qtyUsed": "उपयोग की गई मात्रा",
       "totalCost": "कुल लागत",
+      "dishName": "व्यंजन",
+      "qtySold": "बिकी मात्रा",
+      "revenue": "आय",
+      "ingredientCost": "सामग्री लागत",
+      "contributionMargin": "योगदान मार्जिन",
+      "marginPercent": "मार्जिन %",
+      "quadrant": "क्वाड्रेंट",
+      "dayOfWeek": "दिन",
+      "hour": "घंटा",
+      "turns": "टर्न",
+      "impliedQuantity": "रेसिपी-अनुसार मात्रा",
+      "actualQuantity": "वास्तविक उपयोग मात्रा",
+      "varianceQuantity": "अंतर",
+      "variancePercent": "अंतर %",
       "gstin": "GSTIN",
       "party": "पार्टी",
       "value": "मूल्य",
@@ -2001,7 +2257,6 @@
       "durationShort": "अवधि",
       "day": "दिन",
       "appointments": "अपॉइंटमेंट",
-      "hour": "घंटा",
       "noShow": "नो-शो",
       "completionPercent": "पूर्णता %",
       "providerTotal": "कुल",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "शेष मात्रा",
       "bucket": "स्थिति",
       "unitCost": "यूनिट लागत",
+      "capitalLocked": "बंधी हुई पूंजी",
+      "lastSoldDate": "अंतिम बिक्री",
+      "neverSold": "कभी नहीं बिका",
       "orderNumber": "ऑर्डर #",
       "patientName": "मरीज़",
       "createdDate": "बनाया गया",
@@ -2042,6 +2300,12 @@
       "componentType": "घटक",
       "expiringSoonQ": "जल्द समाप्त?",
       "month": "महीना",
+      "unitsSold": "बिकी इकाइयाँ",
+      "sellThroughRate": "बिक्री-दर",
+      "productA": "उत्पाद A",
+      "productB": "उत्पाद B",
+      "basketCount": "बास्केट",
+      "velocity": "गति (यूनिट/दिन)",
       "shipmentCount": "शिपमेंट",
       "freightAmount": "माल भाड़ा राशि",
       "employee": "कर्मचारी",
@@ -2110,7 +2374,30 @@
       "condition": "स्थिति",
       "recallsClosed": "बंद किए गए रिकॉल",
       "onTime": "समय पर",
-      "compliancePercent": "अनुपालन %"
+      "compliancePercent": "अनुपालन %",
+      "walkIns": "वॉक-इन",
+      "referredTo": "रेफ़र किया गया",
+      "outcome": "परिणाम",
+      "packName": "पैक",
+      "totalSessions": "कुल सेशन",
+      "usedSessions": "इस्तेमाल किए गए",
+      "remainingSessions": "शेष",
+      "utilization": "उपयोग",
+      "orders": "ऑर्डर",
+      "avgActualTAT": "औसत वास्तविक TAT",
+      "targetTAT": "लक्ष्य TAT",
+      "onTimePercent": "समय पर %",
+      "referrerName": "रेफ़र करने वाला डॉक्टर",
+      "referralCount": "रेफ़रल",
+      "visitDate": "विज़िट की तारीख़",
+      "converted": "कन्वर्ट हुआ",
+      "nextVisitDate": "अगली विज़िट",
+      "routine": "रूटीन",
+      "complex": "कॉम्प्लेक्स",
+      "stage": "चरण",
+      "recallType": "रिकॉल प्रकार",
+      "vaccineName": "वैक्सीन",
+      "doses": "डोज़"
     },
     "legend": {
       "schemeCost": "स्कीम लागत",
@@ -2125,6 +2412,13 @@
       "returning": "लौटने वाला",
       "atRiskFlag": "⚠ जोखिम में",
       "lowFlag": "⚠ कम",
+      "cartonsAndPieces": "{{cartons}} कार्टन + {{pieces}} पीस",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "तेज़, उच्च मार्जिन",
+        "FAST_LOW_MARGIN": "तेज़, निम्न मार्जिन",
+        "SLOW_HIGH_MARGIN": "धीमा, उच्च मार्जिन",
+        "SLOW_LOW_MARGIN": "धीमा, निम्न मार्जिन"
+      },
       "customerPrefix": "ग्राहक: ",
       "supplierPrefix": "आपूर्तिकर्ता: ",
       "bucketExpired": "समाप्त",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "मूल्य योजनाएं",
         "body": "Buy-X-Get-Y-Free या मात्रा-छूट ऑफर सेट करें — एक बनाकर देखें और जैसे ही योग्य वस्तु जोड़ी जाती है, इसे कार्ट में स्वचालित रूप से सुझाते हुए देखें।"
+      },
+      "priceMarkdowns": {
+        "title": "प्राइस मार्कडाउन",
+        "body": "किसी उत्पाद की कीमत सीमित समय के लिए घटाएं, एक ऐसी तिथि के साथ जिस पर यह अपने आप वापस हो जाती है — इसे खुद वापस बदलना याद रखने की ज़रूरत नहीं।"
+      },
+      "loyaltyProgram": {
+        "title": "लॉयल्टी प्रोग्राम",
+        "body": "तय करें कि कितनी विज़िट पर रिवॉर्ड मिलेगा और वह रिवॉर्ड क्या होगा — हर योग्य बिक्री पर ग्राहक के कार्ड में अपने आप एक पंच जुड़ जाता है, चेकआउट पर कोई अतिरिक्त कदम नहीं चाहिए। रिवॉर्ड मिलने पर यहीं से रिडीम करें।"
       },
       "recurringProfiles": {
         "title": "आवर्ती प्रोफ़ाइल",

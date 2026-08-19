@@ -105,6 +105,18 @@ export type TemplateModule =
   // Phase 67 — GP Clinic chronic-condition recall, a GP_CLINIC default, see
   // industry-template.service.ts's header comment.
   | 'chronic_recall'
+  // Phase 67 — GP Clinic diagnosis-category trend report, a GP_CLINIC
+  // default, see industry-template.service.ts's header comment.
+  | 'diagnosis_categories'
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic case-complexity tagging, a
+  // SPECIALIST_CLINIC default, see industry-template.service.ts's header comment.
+  | 'case_complexity'
+  // Phase 67 §9.1 item 20.5 — Specialist Clinic referral-urgency queue
+  // prioritization, a SPECIALIST_CLINIC default, see industry-template.service.ts's header comment.
+  | 'referral_urgency'
+  // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
+  | 'price_markdowns'
+  | 'loyalty_program'
 
 interface IndustryState {
   businessType: string

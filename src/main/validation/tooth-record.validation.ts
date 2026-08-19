@@ -16,4 +16,10 @@ export const GetToothHistorySchema = z.object({
   toothNumber: z.number().int().positive('Tooth number must be a positive integer'),
 })
 
+// Phase 67 §9.1 item 21.5 — Dental Clinic: tooth-chart-linked treatment timeline.
+export const GetToothTimelineSchema = z.object({
+  patientId: z.string().min(1, 'Patient is required'),
+  toothNumber: z.number().int().positive('Tooth number must be a positive integer'),
+})
+
 export type UpsertToothPayload = z.infer<typeof UpsertToothSchema>

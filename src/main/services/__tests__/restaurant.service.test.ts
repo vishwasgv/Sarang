@@ -6,7 +6,7 @@ vi.mock('../inventory.service', () => ({ inventoryService: { adjustStock: vi.fn(
 
 import { getPrisma } from '../../database/db'
 import { inventoryService } from '../inventory.service'
-import { updateKOTStatus, assignWaiter, mergeTableIntoInvoice, releaseTablesForInvoiceTx } from '../restaurant.service'
+import { updateKOTStatus, assignWaiter, mergeTableIntoInvoice, releaseTablesForInvoiceTx, getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch } from '../restaurant.service'
 
 function makeKot(status: string) {
   return {
@@ -307,5 +307,159 @@ describe('restaurant.service.mergeTableIntoInvoice', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('RST-042')
+  })
+})
+
+// Phase 67 §9.1 — Restaurant: Dish-Wise Contribution Margin's cost side.
+// Shares deductIngredients()'s own kit-expansion logic so a combo's margin
+// reflects the sum of its real component dishes' recipes.
+describe('restaurant.service.getDishIngredientCostsBatch', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeCostDb(overrides: Record<string, unknown> = {}) {
+    const db: Record<string, any> = {
+      kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([]) },
+      product: { findMany: vi.fn().mockResolvedValue([]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([]) },
+      ...overrides
+    }
+    return db
+  }
+
+  it('returns 0 for a product with no recipe at all', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeCostDb() as never)
+
+    const result = await getDishIngredientCostsBatch(['dish-no-recipe'])
+
+    expect(result.get('dish-no-recipe')).toBe(0)
+  })
+
+  it('computes a non-kit dish\'s cost as recipe quantity times ingredient cost', async () => {
+    const db = makeCostDb({
+      recipe: { findMany: vi.fn().mockResolvedValue([{ productId: 'dish-1', items: [{ ingredientProductId: 'ing-1', quantity: 4 }] }]) },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'ing-1', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'ing-1', averageCost: 12, quantity: 100 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDishIngredientCostsBatch(['dish-1'])
+
+    expect(result.get('dish-1')).toBe(48) // 4 * 12
+  })
+
+  it('expands a kit/combo into its component dishes\' recipes rather than looking for the combo\'s own (nonexistent) recipe', async () => {
+    const db = makeCostDb({
+      kitComponent: { findMany: vi.fn().mockResolvedValue([
+        { kitProductId: 'combo-1', componentProductId: 'dish-a', quantity: 2 },
+        { kitProductId: 'combo-1', componentProductId: 'dish-b', quantity: 1 },
+      ]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'dish-a', items: [{ ingredientProductId: 'ing-1', quantity: 1 }] },
+        { productId: 'dish-b', items: [{ ingredientProductId: 'ing-1', quantity: 3 }] },
+      ]) },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'ing-1', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'ing-1', averageCost: 10, quantity: 100 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDishIngredientCostsBatch(['combo-1'])
+
+    // dish-a: 1 * 10 = 10, weighted by kit qty 2 = 20; dish-b: 3 * 10 = 30, weighted by kit qty 1 = 30; total 50
+    expect(result.get('combo-1')).toBe(50)
+  })
+
+  it('resolves multiple distinct products in one batched call without cross-contamination', async () => {
+    const db = makeCostDb({
+      recipe: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'dish-1', items: [{ ingredientProductId: 'ing-1', quantity: 1 }] },
+        { productId: 'dish-2', items: [{ ingredientProductId: 'ing-2', quantity: 1 }] },
+      ]) },
+      product: { findMany: vi.fn().mockResolvedValue([
+        { id: 'ing-1', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null },
+        { id: 'ing-2', costPrice: 5, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null },
+      ]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'ing-1', averageCost: 7, quantity: 100 },
+        { productId: 'ing-2', averageCost: 20, quantity: 100 },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDishIngredientCostsBatch(['dish-1', 'dish-2'])
+
+    expect(result.get('dish-1')).toBe(7)
+    expect(result.get('dish-2')).toBe(20)
+  })
+})
+
+// Phase 67 §9.1 — Restaurant: Recipe-vs-Actual Waste Variance's implied
+// side. Shares the same kit-expansion as getDishIngredientCostsBatch, but
+// aggregates ingredient QUANTITY across every dish sold, not cost per dish.
+describe('restaurant.service.getRecipeImpliedIngredientUsageBatch', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeUsageDb(overrides: Record<string, unknown> = {}) {
+    const db: Record<string, any> = {
+      kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([]) },
+      ...overrides
+    }
+    return db
+  }
+
+  it('returns an empty map for a dish with no recipe', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeUsageDb() as never)
+
+    const result = await getRecipeImpliedIngredientUsageBatch([{ productId: 'dish-no-recipe', quantity: 5 }])
+
+    expect(result.size).toBe(0)
+  })
+
+  it('multiplies recipe quantity by units sold for a non-kit dish', async () => {
+    const db = makeUsageDb({
+      recipe: { findMany: vi.fn().mockResolvedValue([{ productId: 'dish-1', items: [{ ingredientProductId: 'ing-1', quantity: 3 }] }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getRecipeImpliedIngredientUsageBatch([{ productId: 'dish-1', quantity: 4 }])
+
+    expect(result.get('ing-1')).toBe(12) // 3 * 4
+  })
+
+  it('expands a kit/combo sale into its component dishes\' recipes, weighted by kit quantity and units sold', async () => {
+    const db = makeUsageDb({
+      kitComponent: { findMany: vi.fn().mockResolvedValue([
+        { kitProductId: 'combo-1', componentProductId: 'dish-a', quantity: 2 },
+        { kitProductId: 'combo-1', componentProductId: 'dish-b', quantity: 1 },
+      ]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'dish-a', items: [{ ingredientProductId: 'ing-1', quantity: 1 }] },
+        { productId: 'dish-b', items: [{ ingredientProductId: 'ing-1', quantity: 3 }] },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getRecipeImpliedIngredientUsageBatch([{ productId: 'combo-1', quantity: 2 }])
+
+    // dish-a: 1 * (2 kit qty * 2 sold) = 4; dish-b: 3 * (1 kit qty * 2 sold) = 6; total 10
+    expect(result.get('ing-1')).toBe(10)
+  })
+
+  it('aggregates the SAME ingredient across multiple different dishes sold', async () => {
+    const db = makeUsageDb({
+      recipe: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'dish-1', items: [{ ingredientProductId: 'ing-shared', quantity: 2 }] },
+        { productId: 'dish-2', items: [{ ingredientProductId: 'ing-shared', quantity: 5 }] },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getRecipeImpliedIngredientUsageBatch([
+      { productId: 'dish-1', quantity: 3 },
+      { productId: 'dish-2', quantity: 1 },
+    ])
+
+    expect(result.get('ing-shared')).toBe(11) // (2*3) + (5*1)
   })
 })

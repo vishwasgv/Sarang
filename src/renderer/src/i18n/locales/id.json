@@ -10,6 +10,8 @@
     "purchaseOrders": "Pesanan Pembelian",
     "priceLists": "Daftar Harga",
     "pricingSchemes": "Skema Harga",
+    "priceMarkdowns": "Markdown Harga",
+    "loyaltyProgram": "Program Loyalitas",
     "recurringProfiles": "Profil Berulang",
     "locations": "Lokasi",
     "approvalWorkflows": "Alur Persetujuan",
@@ -437,6 +439,7 @@
     "areaLabel": "Luas",
     "areaFormula": "P × L = Luas",
     "useAreaSq": "Gunakan {{area}} persegi",
+    "areaMarginPreview": "Margin: {{percent}}%",
     "rx": {
       "title": "Detail Resep",
       "description": "Ini adalah item khusus resep (Schedule H/H1) — nama pasien dan dokter wajib diisi untuk menjualnya.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "Skema Harga",
-    "subtitle": "{{count}} skema — penawaran beli X gratis Y dan diskon berdasarkan kuantitas",
+    "subtitle": "{{count}} skema — penawaran beli X gratis Y, diskon berdasarkan kuantitas, dan diskon % flat",
     "newScheme": "Skema Baru",
     "namePlaceholder": "misalnya Beli 2 Gratis 1 — Buku Catatan",
     "ruleTypeLabel": "Jenis Penawaran",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "Beli X Gratis Y",
-      "SLAB_DISCOUNT": "Diskon Kuantitas"
+      "SLAB_DISCOUNT": "Diskon Kuantitas",
+      "FLAT_PERCENT_OFF": "Jam Bahagia / Diskon % Flat"
     },
     "scopeType": "Berlaku Untuk",
     "byProduct": "Satu Produk",
@@ -1145,8 +1149,14 @@
     "minQuantity": "Jumlah Min.",
     "discountPercent": "Diskon %",
     "buyXGetYSummary": "Beli {{buy}}, gratis {{free}}",
+    "flatPercentSummary": "diskon {{percent}}%",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "Tanggal Mulai (opsional)",
     "endDateOptional": "Tanggal Selesai (opsional)",
+    "happyHourWindow": "Jendela Jam Bahagia (opsional)",
+    "startTimeOptional": "Waktu Mulai",
+    "endTimeOptional": "Waktu Selesai",
+    "happyHourWindowHint": "Hanya aktif selama jam-jam ini setiap hari — biarkan kosong untuk berlaku kapan saja. Tidak melewati tengah malam (mis. 16.00–18.00 berfungsi; 22.00–02.00 tidak).",
     "rule": "Penawaran",
     "noSchemesYet": "Belum ada Skema Harga.",
     "deleteSchemeTitle": "Hapus Skema Harga",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "Skema harga tidak dapat dibuat.",
     "couldNotSave": "Perubahan tidak dapat disimpan.",
     "couldNotDelete": "Skema harga tidak dapat dihapus."
+  },
+  "priceMarkdowns": {
+    "title": "Markdown Harga",
+    "subtitle": "{{count}} markdown — pemotongan harga terbatas waktu yang kembali secara otomatis",
+    "newMarkdown": "Markdown Baru",
+    "checkNow": "Periksa Sekarang",
+    "product": "Produk",
+    "originalPrice": "Harga Asli",
+    "markdownPrice": "Harga Markdown",
+    "endDate": "Kembali Pada",
+    "status": {
+      "ACTIVE": "Aktif",
+      "REVERTED": "Dikembalikan",
+      "CANCELLED": "Dibatalkan",
+      "SKIPPED_MANUAL_OVERRIDE": "Diubah Manual"
+    },
+    "createHint": "Harga markdown berlaku segera. Harga kembali otomatis ke harga asli pada tanggal di atas — kecuali Anda mengubah harga sendiri sebelum itu, dalam hal ini pengembalian dilewati agar perubahan manual Anda tidak tertimpa.",
+    "noMarkdownsYet": "Belum ada Markdown Harga.",
+    "cancelMarkdownTitle": "Batalkan Markdown Harga",
+    "cancelMarkdownMessage": "Ini mengakhiri markdown sekarang. Jika harga belum berubah sejak markdown dimulai, harga langsung kembali ke harga asli.",
+    "markdownCreated": "Markdown Harga Dibuat",
+    "markdownCancelled": "Markdown Harga Dibatalkan",
+    "checkComplete": "Pemeriksaan Selesai",
+    "checkCompleteDetail": "{{reverted}} dari {{evaluated}} markdown jatuh tempo dikembalikan.",
+    "missingFields": "Informasi Kurang",
+    "productRequired": "Pilih produk untuk markdown ini.",
+    "markdownPriceRequired": "Masukkan harga markdown yang valid.",
+    "endDateRequired": "Pilih tanggal markdown akan kembali.",
+    "couldNotLoad": "Tidak dapat memuat markdown harga.",
+    "couldNotCreate": "Tidak dapat membuat markdown harga.",
+    "couldNotCancel": "Tidak dapat membatalkan markdown harga.",
+    "couldNotCheck": "Tidak dapat memeriksa markdown jatuh tempo."
+  },
+  "loyaltyProgram": {
+    "title": "Program Loyalitas",
+    "subtitle": "{{count}} kartu loyalitas pelanggan — hadiah cap sederhana setiap kunjungan",
+    "programSettings": "Pengaturan Program",
+    "isActive": "Program aktif",
+    "punchesRequired": "Cap yang Dibutuhkan untuk Hadiah",
+    "rewardDescription": "Hadiah",
+    "rewardPlaceholder": "mis. Kopi gratis, diskon 10% untuk pembelian berikutnya",
+    "minPurchaseAmount": "Pembelian Minimum untuk Satu Cap",
+    "settingsHint": "Cap diperoleh secara otomatis pada penjualan yang memenuhi syarat — tidak perlu langkah tambahan saat checkout. Atur jumlah pembelian minimum ke 0 untuk memberikan cap pada setiap penjualan, berapa pun jumlahnya.",
+    "customer": "Pelanggan",
+    "progress": "Kemajuan",
+    "totalEarned": "Total Cap Diperoleh",
+    "totalRedeemed": "Hadiah Ditukarkan",
+    "redeem": "Tukarkan",
+    "redeemTitle": "Tukarkan Hadiah",
+    "redeemMessage": "Berikan {{name}} hadiah mereka: {{reward}}. Ini akan menggunakan cap mereka untuk hadiah tersebut.",
+    "noProgramYet": "Belum ada program loyalitas yang diatur.",
+    "noCardsYet": "Belum ada kartu loyalitas — cap dimulai setelah pelanggan melakukan pembelian yang memenuhi syarat.",
+    "missingFields": "Informasi Tidak Lengkap",
+    "rewardRequired": "Masukkan apa hadiahnya.",
+    "punchesRequiredInvalid": "Masukkan berapa banyak cap yang dibutuhkan (minimal 1).",
+    "programSaved": "Program Loyalitas Disimpan",
+    "rewardRedeemed": "Hadiah Ditukarkan",
+    "couldNotLoad": "Tidak dapat memuat program loyalitas.",
+    "couldNotSave": "Tidak dapat menyimpan program loyalitas.",
+    "couldNotRedeem": "Tidak dapat menukarkan hadiah."
   },
   "recurringProfiles": {
     "title": "Profil Berulang",
@@ -1475,6 +1545,34 @@
         "label": "Laporan Biaya Makanan",
         "description": "Penggunaan bahan dan biaya per penyelesaian KOT — template Restoran"
       },
+      "dishContributionMargin": {
+        "label": "Margin Kontribusi per Hidangan",
+        "description": "Pendapatan dikurangi biaya resep per hidangan terjual — hidangan mana yang benar-benar menutupi biayanya"
+      },
+      "tableTurnoverByHour": {
+        "label": "Perputaran Meja per Jam",
+        "description": "Peta panas hari-dalam-minggu x jam-dalam-hari pesanan makan di tempat — kapan restoran Anda sebenarnya paling sibuk"
+      },
+      "recipeWasteVariance": {
+        "label": "Varians Pemborosan: Resep vs. Aktual",
+        "description": "Membandingkan berapa banyak bahan yang seharusnya digunakan menurut resep Anda dengan apa yang sebenarnya diambil — mengungkap penyimpangan porsi, tumpahan, atau resep yang sudah usang"
+      },
+      "deadStockClearance": {
+        "label": "Daftar Pembersihan Stok Mati",
+        "description": "Produk yang masih ada stoknya tanpa penjualan dalam 90 hari terakhir, diurutkan berdasarkan berapa banyak modal yang mengendap di rak"
+      },
+      "categorySellThrough": {
+        "label": "Tingkat Penjualan per Kategori",
+        "description": "Bulan demi bulan, berapa bagian dari unit terjual-ditambah-stok setiap kategori yang benar-benar terjual — kenali kategori yang bergerak cepat dibanding yang menumpuk"
+      },
+      "basketComposition": {
+        "label": "Komposisi Keranjang",
+        "description": "Produk mana yang paling sering dibeli bersamaan dalam penjualan yang sama — kenali kombinasi dan pasangan alami yang layak diletakkan berdampingan atau ditawarkan sebagai paket"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "Matriks Produk Perputaran Cepat vs. Lambat",
+        "description": "Sebaran kecepatan penjualan terhadap margin, dibagi menjadi empat kuadran — lihat sekilas produk mana yang layak untuk segera diisi ulang stoknya, mana yang merupakan usaha bermargin rendah, dan produk perputaran lambat mana yang layak dipertahankan karena marginnya"
+      },
       "gstr1": {
         "label": "Laporan GSTR-1",
         "description": "Ringkasan pajak B2B dan B2CS untuk pengajuan pengembalian PPN"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "Kepatuhan Pengingat",
         "description": "Berapa banyak pengingat kondisi kronis yang ditindaklanjuti tepat waktu, secara keseluruhan dan per kondisi."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "Rasio Walk-in vs. Janji Temu",
+        "description": "Berapa banyak kunjungan Anda yang tanpa janji dibandingkan janji temu yang dipesan, hari demi hari."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "Tren Kategori Diagnosis",
+        "description": "Bagaimana diagnosis konsultasi Anda terbagi berdasarkan kategori dan trennya dari bulan ke bulan."
+      },
+      "referralOutcome": {
+        "label": "Hasil Rujukan Keluar",
+        "description": "Pasien yang Anda rujuk ke penyedia lain, apakah kunjungan itu terjadi, dan apa yang ditemukan."
+      },
+      "packUtilization": {
+        "label": "Penggunaan Paket",
+        "description": "Seberapa banyak setiap paket sesi yang benar-benar telah digunakan, per klien dan secara keseluruhan."
+      },
+      "labTAT": {
+        "label": "TAT per Tes",
+        "description": "Waktu penyelesaian per tes, aktual dibandingkan target, dengan hitungan tepat waktu versus terlambat."
+      },
+      "testVolumeByPanel": {
+        "label": "Volume Tes per Panel",
+        "description": "Berapa banyak tes yang Anda jalankan per panel atau kategori, bulan demi bulan."
+      },
+      "referralLeaderboard": {
+        "label": "Papan Peringkat Rujukan",
+        "description": "Dokter mana yang paling banyak merujuk pasien atau tes kepada Anda, diperingkat."
+      },
+      "secondOpinionConversion": {
+        "label": "Konversi Opini Kedua",
+        "description": "Dari konsultasi opini kedua Anda, berapa banyak pasien yang kembali dan menjadi pasien tetap."
+      },
+      "caseComplexityMix": {
+        "label": "Campuran Kompleksitas Kasus",
+        "description": "Campuran kasus rutin vs. kompleks yang Anda tangani, bulan demi bulan."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "Tingkat Penerimaan Perawatan",
+        "description": "Dari rencana perawatan yang Anda usulkan, berapa banyak yang diterima dan berapa banyak yang benar-benar menjadi pendapatan yang ditagih."
+      },
+      "dentalRecallCompliance": {
+        "label": "Kepatuhan Panggilan Ulang",
+        "description": "Dari periode panggilan ulang yang ditutup dalam rentang ini, berapa banyak pasien yang kembali pada atau sebelum tanggal jatuh tempo mereka."
+      },
+      "vaccinationCompliance": {
+        "label": "Kepatuhan Vaksinasi",
+        "description": "Dari dosis lanjutan yang diberikan periode ini, berapa banyak yang tepat waktu terhadap tanggal jatuh tempo sebelumnya."
+      },
+      "vetCaseTypeVolume": {
+        "label": "Tren Volume Jenis Kasus",
+        "description": "Berapa banyak kasus yang Anda tangani per jenis kasus — konsultasi, perawatan preventif, vaksinasi, dan lainnya di Service Catalog Anda — bulan demi bulan."
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} catatan",
       "totalFoodCost": "Total Biaya Makanan",
       "ingredientsUsed": "Bahan Digunakan",
+      "totalContributionMargin": "Total Margin Kontribusi",
+      "dishesSold": "Hidangan Terjual",
+      "contributionMarginByDish": "Margin Kontribusi per Hidangan",
+      "totalTurns": "Total Perputaran Meja",
+      "peakTime": "Waktu Puncak",
+      "peakTurns": "Perputaran Jam Puncak",
+      "ingredientsTracked": "Bahan Terlacak",
+      "biggestWaste": "Kelebihan Terbesar",
+      "varianceByIngredient": "Varians per Bahan",
+      "totalCapitalLocked": "Total Modal Mengendap",
+      "deadStockItems": "Item Stok Mati",
+      "lookbackWindow": "Jendela Lihat-Balik",
+      "capitalLockedByProduct": "Modal Mengendap per Produk",
+      "sellThroughByCategoryMonth": "Tingkat Penjualan per Kategori, per Bulan",
+      "sellThroughStockNote": "Dibandingkan dengan stok yang tersedia saat ini untuk setiap bulan yang ditampilkan — ini adalah tampilan tren, bukan tingkat stok historis masing-masing bulan.",
+      "avgSellThroughByCategory": "Rata-rata Tingkat Penjualan per Kategori",
+      "totalBaskets": "Total Keranjang",
+      "avgItemsPerBasket": "Rata-rata Barang per Keranjang",
+      "avgBasketValue": "Nilai Rata-rata Keranjang",
+      "topProductPairs": "Paling Sering Dibeli Bersama",
+      "balanceTrend": "Tren Saldo",
+      "balanceTrendSampledNote": "Akun ini memiliki banyak aktivitas — garis tren menampilkan sampel titik yang representatif, bukan setiap entri. Tabel di bawah tetap mencantumkan setiap transaksi.",
+      "velocityMedian": "Median Kecepatan",
+      "marginMedian": "Median Margin",
+      "fastSlowMoverMatrix": "Kecepatan vs. Margin",
+      "fastSlowMoverMatrixNote": "Setiap titik mewakili satu produk. Garis putus-putus menandai median kecepatan dan median margin untuk periode ini — empat kuadran membagi produk berdasarkan perputaran cepat/lambat dan margin tinggi/rendah.",
       "invoicesSuffix_one": "{{count}} faktur",
       "invoicesSuffix_other": "{{count}} faktur",
       "groupsSuffix_one": "{{count}} grup",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "Baris Didiskon",
       "avgDiscountPercent": "Rata-rata Diskon",
       "recallsClosed": "Pengingat Ditutup",
-      "compliancePercent": "Kepatuhan %"
+      "compliancePercent": "Kepatuhan %",
+      "totalWalkIns": "Total Walk-in",
+      "walkInPercent": "% Walk-in",
+      "totalVisits": "Total Kunjungan",
+      "categorized": "Dikategorikan",
+      "uncategorizedSub": "{{count}} belum dikategorikan",
+      "distinctCategories": "Kategori Berbeda",
+      "totalReferrals": "Total Rujukan",
+      "outcomeRecorded": "Hasil Tercatat",
+      "pendingReferrals": "Menunggu",
+      "totalPacks": "Total Paket",
+      "sessionsUsed": "Sesi Terpakai",
+      "overallUtilization": "Penggunaan Keseluruhan",
+      "totalCompleted": "Tes Selesai",
+      "withTarget": "Dengan Target",
+      "overallOnTimePercent": "Tepat Waktu % Keseluruhan",
+      "distinctPanels": "Panel Berbeda",
+      "distinctReferrers": "Perujuk Berbeda",
+      "topReferrer": "Perujuk Teratas",
+      "totalSecondOpinionVisits": "Kunjungan Opini Kedua",
+      "convertedCount": "Terkonversi",
+      "conversionPercent": "Tingkat Konversi",
+      "totalTagged": "Kasus Ditandai",
+      "routineCount": "Rutin",
+      "complexCount": "Kompleks",
+      "complexPercent": "Kompleks %",
+      "proposedCount": "Rencana Diusulkan",
+      "acceptedCount": "Diterima",
+      "billedCount": "Ditagih",
+      "acceptanceRatePercent": "Tingkat Penerimaan",
+      "billedRatePercent": "Tingkat Penagihan",
+      "dosesEvaluated": "Dosis Dievaluasi",
+      "totalCases": "Total Kasus",
+      "distinctCaseTypes": "Jenis Kasus Berbeda"
     },
     "aging": {
       "current": "Terkini",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "Detail Pembelian",
       "apAgingByVendor": "Umur Hutang per Vendor",
       "untaggedNote": "Tidak diberi tag: {{revenue}} pendapatan dan {{expense}} pengeluaran dari transaksi tanpa pusat biaya yang ditetapkan.",
-      "complianceByCondition": "Kepatuhan per Kondisi"
+      "complianceByCondition": "Kepatuhan per Kondisi",
+      "dailyBreakdown": "Rincian Harian",
+      "monthlyBreakdown": "Rincian Bulanan",
+      "diagnosisTrendChart": "Tren Kategori Diagnosis",
+      "packUtilizationChart": "Penggunaan Paket per Klien",
+      "labTATChart": "Waktu Penyelesaian per Tes",
+      "testVolumeByPanelChart": "Tren Volume Tes",
+      "referralLeaderboardChart": "Dokter Perujuk Teratas",
+      "tableTurnoverHeatmap": "Perputaran Meja per Hari dan Jam",
+      "caseComplexityMixChart": "Rutin vs. Kompleks, per Bulan",
+      "treatmentAcceptanceFunnelChart": "Diusulkan → Diterima → Ditagih",
+      "complianceByRecallType": "Kepatuhan berdasarkan Jenis Panggilan Ulang",
+      "complianceByVaccine": "Kepatuhan per Vaksin",
+      "caseTypeVolumeChart": "Tren Volume Kasus"
     },
     "empty": {
       "invoices": "Tidak ada faktur dalam rentang tanggal ini.",
@@ -1892,6 +2114,13 @@
       "auditRecords": "Tidak ada catatan audit ditemukan.",
       "backups": "Tidak ada cadangan ditemukan. Cadangan akan muncul di sini setelah modul cadangan disiapkan.",
       "foodCost": "Tidak ada pengurangan bahan ditemukan dalam rentang tanggal ini. KOT harus ditandai Selesai untuk mencatat biaya makanan.",
+      "dishContributionMargin": "Tidak ada hidangan terjual dalam rentang tanggal ini.",
+      "tableTurnoverByHour": "Tidak ada pesanan makan di tempat ditemukan dalam rentang tanggal ini.",
+      "recipeWasteVariance": "Tidak ada aktivitas bahan terkait resep ditemukan dalam rentang tanggal ini.",
+      "deadStockClearance": "Tidak ada stok mati ditemukan — setiap produk dalam stok telah terjual baru-baru ini.",
+      "categorySellThrough": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
+      "basketComposition": "Tidak ditemukan keranjang dengan 2 atau lebih produk berbeda dalam rentang tanggal ini.",
+      "fastSlowMoverMatrix": "Tidak ada produk yang terjual dalam rentang tanggal ini.",
       "gstr1": "Tidak ada faktur kena pajak ditemukan untuk periode ini.",
       "appointments": "Tidak ada jadwal temu dalam rentang tanggal ini.",
       "clientAppointments": "Tidak ada jadwal temu klien ditemukan dalam rentang tanggal ini.",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "Tidak ada revisi gambar dalam rentang tanggal ini.",
       "siteVisitLog": "Tidak ada kunjungan lokasi dalam rentang tanggal ini.",
       "noData": "Tidak ada catatan yang ditemukan untuk periode ini.",
-      "chronicRecallCompliance": "Tidak ada periode pengingat yang ditutup dalam rentang tanggal ini."
+      "chronicRecallCompliance": "Tidak ada periode pengingat yang ditutup dalam rentang tanggal ini.",
+      "walkInVsAppointmentRatio": "Tidak ada walk-in atau janji temu dalam rentang tanggal ini.",
+      "diagnosisCategoryTrend": "Tidak ada kunjungan yang dikategorikan dalam rentang tanggal ini.",
+      "referralOutcome": "Tidak ada rujukan yang dibuat dalam rentang tanggal ini.",
+      "packUtilization": "Tidak ada paket sesi yang dibeli dalam rentang tanggal ini.",
+      "labTAT": "Tidak ada tes selesai pada rentang tanggal ini.",
+      "testVolumeByPanel": "Tidak ada tes tercatat pada rentang tanggal ini.",
+      "referralLeaderboard": "Tidak ada rujukan tercatat pada rentang tanggal ini.",
+      "secondOpinionConversion": "Tidak ada konsultasi opini kedua tercatat pada rentang tanggal ini.",
+      "caseComplexityMix": "Tidak ada kunjungan bertanda kompleksitas kasus pada rentang tanggal ini.",
+      "treatmentAcceptanceRate": "Tidak ada rencana perawatan yang diusulkan pada rentang tanggal ini.",
+      "dentalRecallCompliance": "Tidak ada periode panggilan ulang yang ditutup pada rentang tanggal ini.",
+      "vaccinationCompliance": "Tidak ada dosis lanjutan dengan tanggal jatuh tempo sebelumnya pada rentang tanggal ini.",
+      "vetCaseTypeVolume": "Tidak ada kasus tercatat pada rentang tanggal ini."
     },
     "col": {
       "invoiceNo": "No. Faktur",
@@ -1987,6 +2229,20 @@
       "ingredient": "Bahan",
       "qtyUsed": "Jumlah Digunakan",
       "totalCost": "Total Biaya",
+      "dishName": "Hidangan",
+      "qtySold": "Jumlah Terjual",
+      "revenue": "Pendapatan",
+      "ingredientCost": "Biaya Bahan",
+      "contributionMargin": "Margin Kontribusi",
+      "marginPercent": "Margin %",
+      "quadrant": "Kuadran",
+      "dayOfWeek": "Hari",
+      "hour": "Jam",
+      "turns": "Perputaran",
+      "impliedQuantity": "Jml Sesuai Resep",
+      "actualQuantity": "Jml Aktual Digunakan",
+      "varianceQuantity": "Varians",
+      "variancePercent": "Varians %",
       "gstin": "GSTIN",
       "party": "Pihak",
       "value": "Nilai",
@@ -2001,7 +2257,6 @@
       "durationShort": "Durasi",
       "day": "Hari",
       "appointments": "Jadwal Temu",
-      "hour": "Jam",
       "noShow": "Tidak Hadir",
       "completionPercent": "Penyelesaian %",
       "providerTotal": "Total",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "Sisa Kuantitas",
       "bucket": "Status",
       "unitCost": "Biaya Satuan",
+      "capitalLocked": "Modal Mengendap",
+      "lastSoldDate": "Terakhir Terjual",
+      "neverSold": "Tidak Pernah Terjual",
       "orderNumber": "No. Pesanan",
       "patientName": "Pasien",
       "createdDate": "Dibuat",
@@ -2042,6 +2300,12 @@
       "componentType": "Komponen",
       "expiringSoonQ": "Segera Kedaluwarsa?",
       "month": "Bulan",
+      "unitsSold": "Unit Terjual",
+      "sellThroughRate": "Tingkat Penjualan",
+      "productA": "Produk A",
+      "productB": "Produk B",
+      "basketCount": "Keranjang",
+      "velocity": "Kecepatan (unit/hari)",
       "shipmentCount": "Pengiriman",
       "freightAmount": "Jumlah Angkutan",
       "employee": "Karyawan",
@@ -2110,7 +2374,30 @@
       "condition": "Kondisi",
       "recallsClosed": "Pengingat Ditutup",
       "onTime": "Tepat Waktu",
-      "compliancePercent": "Kepatuhan %"
+      "compliancePercent": "Kepatuhan %",
+      "walkIns": "Walk-in",
+      "referredTo": "Dirujuk Ke",
+      "outcome": "Hasil",
+      "packName": "Paket",
+      "totalSessions": "Total Sesi",
+      "usedSessions": "Terpakai",
+      "remainingSessions": "Tersisa",
+      "utilization": "Penggunaan",
+      "orders": "Pesanan",
+      "avgActualTAT": "TAT Aktual Rata2",
+      "targetTAT": "TAT Target",
+      "onTimePercent": "Tepat Waktu %",
+      "referrerName": "Dokter Perujuk",
+      "referralCount": "Rujukan",
+      "visitDate": "Tanggal Kunjungan",
+      "converted": "Terkonversi",
+      "nextVisitDate": "Kunjungan Berikutnya",
+      "routine": "Rutin",
+      "complex": "Kompleks",
+      "stage": "Tahap",
+      "recallType": "Jenis Panggilan Ulang",
+      "vaccineName": "Vaksin",
+      "doses": "Dosis"
     },
     "legend": {
       "schemeCost": "Biaya Skema",
@@ -2125,6 +2412,13 @@
       "returning": "Kembali",
       "atRiskFlag": "⚠ Berisiko",
       "lowFlag": "⚠ Rendah",
+      "cartonsAndPieces": "{{cartons}} karton + {{pieces}} pcs",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "Cepat, Margin Tinggi",
+        "FAST_LOW_MARGIN": "Cepat, Margin Rendah",
+        "SLOW_HIGH_MARGIN": "Lambat, Margin Tinggi",
+        "SLOW_LOW_MARGIN": "Lambat, Margin Rendah"
+      },
       "customerPrefix": "PELANGGAN: ",
       "supplierPrefix": "PEMASOK: ",
       "bucketExpired": "Kedaluwarsa",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "Skema Harga",
         "body": "Atur penawaran Beli-X-Dapat-Y-Gratis atau diskon volume — coba satu dan lihat bagaimana itu menyarankan dirinya secara otomatis di keranjang begitu item yang memenuhi syarat ditambahkan."
+      },
+      "priceMarkdowns": {
+        "title": "Markdown Harga",
+        "body": "Kurangi harga produk untuk waktu terbatas, dengan tanggal saat harga kembali sendiri — tidak perlu mengingat untuk mengubahnya kembali."
+      },
+      "loyaltyProgram": {
+        "title": "Program Loyalitas",
+        "body": "Atur berapa banyak kunjungan yang menghasilkan hadiah dan apa hadiah itu — cap ditambahkan secara otomatis ke kartu pelanggan pada setiap penjualan yang memenuhi syarat, tanpa langkah tambahan saat checkout. Tukarkan di sini setelah diperoleh."
       },
       "recurringProfiles": {
         "title": "Profil Berulang",

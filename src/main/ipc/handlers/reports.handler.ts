@@ -4,7 +4,8 @@ import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
   OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
-  CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema
+  CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema,
+  ReferralLeaderboardReportSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -196,6 +197,58 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('reports.financial'); if (deny) return deny
     const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }
     const data = await reportService.generateFoodCostReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:dishContributionMargin', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }
+    const data = await reportService.generateDishContributionMarginReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:tableTurnoverByHour', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }
+    const data = await reportService.generateTableTurnoverByHourReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:recipeWasteVariance', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }
+    const data = await reportService.generateRecipeWasteVarianceReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:deadStockClearance', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = (payload ?? {}) as { days?: number }
+    const data = await reportService.generateDeadStockClearanceReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:categorySellThrough', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateCategorySellThroughReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:basketComposition', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateBasketCompositionReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:fastSlowMoverMatrix', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateFastSlowMoverMatrixReport(p)
     return { success: true, data }
   })
 
@@ -433,6 +486,123 @@ export function register(handle: HandleFn): void {
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateChronicRecallComplianceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 19.3 — GP Clinic: Walk-in vs. Appointment Ratio.
+  handle('reports:walkInVsAppointmentRatio', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateWalkInVsAppointmentRatioReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 19.4 — GP Clinic: Diagnosis-Category Trend.
+  handle('reports:diagnosisCategoryTrend', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateDiagnosisCategoryTrendReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 19.5 — GP Clinic: Referral-Out Tracking with Outcome.
+  handle('reports:referralOutcome', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateReferralOutcomeReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 22.4 — Physio Clinic (shared with Gym/Studio): Pack Utilization.
+  handle('reports:packUtilization', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePackUtilizationReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 23.1 — Diagnostic Lab: Per-Test TAT.
+  handle('reports:labTAT', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateLabTATReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 23.4 — Diagnostic Lab: Test Volume by Panel.
+  handle('reports:testVolumeByPanel', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTestVolumeByPanelReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 23.5 (Diagnostic Lab) + item 20.1 (Specialist Clinic): Referral Leaderboard.
+  handle('reports:referralLeaderboard', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = ReferralLeaderboardReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateReferralLeaderboardReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 20.2 — Specialist Clinic: Second-Opinion Conversion.
+  handle('reports:secondOpinionConversion', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateSecondOpinionConversionReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic: Case-Complexity Mix.
+  handle('reports:caseComplexityMix', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCaseComplexityMixReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 21.2 — Dental Clinic: Treatment Acceptance Rate.
+  handle('reports:treatmentAcceptanceRate', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTreatmentAcceptanceRateReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance.
+  handle('reports:dentalRecallCompliance', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateDentalRecallComplianceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 18.2 — Vet Clinic: Vaccination Compliance.
+  handle('reports:vaccinationCompliance', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateVaccinationComplianceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 item 18.4 — Vet Clinic: Case-Type Volume Trend.
+  handle('reports:vetCaseTypeVolume', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateVetCaseTypeVolumeReport(parsed.data)
     return { success: true, data }
   })
 

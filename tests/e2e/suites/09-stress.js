@@ -211,6 +211,19 @@ async function run() {
       if (ledgerCustomerId) {
         const start = Date.now()
         let runningBalance = 0
+        // Real bug found (2026-08-19) via live stress-test verification of
+        // the new balance-trend chart: this INSERT never set `createdAt`,
+        // so every row fell back to SQLite's own CURRENT_TIMESTAMP — which
+        // produces a TEXT string, not the epoch-ms INTEGER every Prisma-
+        // native DateTime column actually uses (see suite 40's identical
+        // lesson from earlier this phase). generateCustomerLedgerReport's
+        // date-range filter silently excluded every one of these 5,000
+        // TEXT-stored rows, so this "5,000-row stress test" had actually
+        // been exercising an EMPTY report this whole time — the "no crash"/
+        // "renders within 8s" checks were trivially true against zero rows.
+        // Fixed with a real literal epoch-ms integer per row, spread across
+        // the last 30 days so the report's own default date range includes them.
+        const baseTs = Date.now() - 30 * 86400000
         h.withDb((db) => {
           db.exec('BEGIN')
           for (let i = 0; i < LEDGER_SIZE; i++) {
@@ -218,9 +231,10 @@ async function run() {
             const amount = 100 + (i % 500)
             if (isDebit) runningBalance += amount
             else runningBalance -= amount
-            db.prepare(`INSERT INTO CustomerLedger (id, customerId, referenceType, debitAmount, creditAmount, balance, remarks)
-              VALUES (?, ?, 'INVOICE', ?, ?, ?, ?)`).run(
-              newId(), ledgerCustomerId, isDebit ? amount : 0, isDebit ? 0 : amount, runningBalance, `${TEST_PREFIX} entry ${i}`
+            const ts = baseTs + Math.floor((i / LEDGER_SIZE) * 30 * 86400000)
+            db.prepare(`INSERT INTO CustomerLedger (id, customerId, referenceType, debitAmount, creditAmount, balance, remarks, createdAt)
+              VALUES (?, ?, 'INVOICE', ?, ?, ?, ?, ?)`).run(
+              newId(), ledgerCustomerId, isDebit ? amount : 0, isDebit ? 0 : amount, runningBalance, `${TEST_PREFIX} entry ${i}`, ts
             )
           }
           db.prepare('UPDATE Customer SET outstandingBalance = ? WHERE id = ?').run(runningBalance, ledgerCustomerId)
@@ -241,6 +255,16 @@ async function run() {
       if (await tile.count()) {
         await tile.click()
         await page.waitForTimeout(500)
+        // Explicit wide date range (last 45 days to today) rather than
+        // relying on whatever this screen's own default window happens to
+        // be — the 5,000 seeded rows are spread across the last 30 days,
+        // so this must comfortably cover that regardless of the report's
+        // own default, which is not this test's concern to assume.
+        const dateInputs = page.locator('input[type="date"]')
+        if (await dateInputs.count() >= 2) {
+          await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 86400000)))
+          await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+        }
         // Entity picker — search/select our heavy-ledger test customer.
         const entitySearch = page.locator('input[placeholder*="Search" i]').first()
         if (await entitySearch.count()) {
@@ -256,7 +280,36 @@ async function run() {
         const elapsedMs = Date.now() - start
         r.log('customer-ledger-report-renders-no-crash', !(await h.hasErrorBoundary(page)))
         r.log('customer-ledger-report-renders-within-8s', elapsedMs < 8000, `${elapsedMs}ms`)
+        // Phase 67 §9.1 — Hardware: "contractor monthly statement" resolved
+        // to adding a running-balance trend chart to this SAME pre-existing
+        // report. This suite's heavy-ledger customer is the best available
+        // real proof the chart renders correctly at real scale (many entries),
+        // not just on a toy 2-row fixture. A blind 2s wait genuinely wasn't
+        // enough for this specific check — a 5,000-row DataTable rendering
+        // in the same pass takes noticeably longer than the report's own
+        // "no crash" signal above — so this waits for the chart heading
+        // itself (polls, doesn't just sleep-and-hope) rather than lengthening
+        // the suite's fixed wait for every other assertion too.
+        const chartHeading = page.locator('h3', { hasText: 'Balance Trend' })
+        const chartRendered = await chartHeading.first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false)
+        r.log('balance-trend-chart-renders-at-scale', chartRendered)
+        // The sampled-note caption should appear too, since 5,000 rows is
+        // far past LEDGER_CHART_MAX_POINTS — proves the sampling path
+        // (not just the unsampled small-account path) is what's live here.
+        const bodyText = await page.locator('body').innerText().catch(() => '')
+        r.log('sampled-note-shown-for-heavy-account', bodyText.includes('lot of activity'))
         await h.shot(page, 'customer-ledger-at-scale')
+
+        // Confirm via the live API too, not just the rendered UI, that the
+        // CURRENT_TIMESTAMP fix above genuinely surfaced real rows — proof
+        // this is really exercising 5,000 rows now, not a coincidentally-
+        // passing empty report the way the pre-fix version silently was.
+        const ledgerRes = await page.evaluate((id) => window.api.reports.customerLedger({
+          customerId: id,
+          dateFrom: new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10),
+          dateTo: new Date().toISOString().slice(0, 10)
+        }), ledgerCustomerId)
+        r.log('ledger-report-genuinely-returns-thousands-of-rows', (ledgerRes?.data?.rows?.length ?? 0) >= 4000, `rows=${ledgerRes?.data?.rows?.length}`)
       }
     })
 

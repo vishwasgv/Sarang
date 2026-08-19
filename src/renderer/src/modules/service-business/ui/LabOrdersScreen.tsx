@@ -33,6 +33,9 @@ interface LabTestOrderItem {
   hasCriticalResult: boolean
   criticalNotifiedAt: string | null
   criticalNotifiedNotes: string | null
+  // Phase 67 §9.1 item 23.1 — TAT target vs. actual.
+  targetTATHours: number | null
+  resultReadyAt: string | null
 }
 
 interface LabTestOrder {
@@ -47,6 +50,7 @@ interface LabTestOrder {
   totalAmount: number
   invoiceId: string | null
   createdAt: string
+  sampleCollectedAt: string | null
   items: LabTestOrderItem[]
   customer?: { customerName: string } | null
 }
@@ -123,7 +127,7 @@ export function LabOrdersScreen() {
     setResultParams((prev) => prev.map((x, i) => {
       if (i !== pIdx) return x
       const range = rangeRes.success ? (rangeRes.data as { minValue: number | null; maxValue: number | null; unit: string | null } | null) : null
-      const flag = evalRes.success ? (evalRes.data as { flag: 'LOW' | 'NORMAL' | 'HIGH' | null }).flag : null
+      const flag = evalRes.success ? (evalRes.data as { flag: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL' | null }).flag : null
       return {
         ...x,
         unit: x.unit ? x.unit : (range?.unit ?? x.unit),
@@ -537,6 +541,15 @@ export function LabOrdersScreen() {
                         {item.hasCriticalResult && (
                           <Badge variant="danger" size="sm">{item.criticalNotifiedAt ? 'Critical — Notified' : 'Critical'}</Badge>
                         )}
+                        {item.resultReadyAt && item.targetTATHours != null && detail.sampleCollectedAt && (() => {
+                          const actualHours = (new Date(item.resultReadyAt).getTime() - new Date(detail.sampleCollectedAt).getTime()) / (1000 * 60 * 60)
+                          const onTime = actualHours <= item.targetTATHours
+                          return (
+                            <Badge variant={onTime ? 'success' : 'danger'} size="sm">
+                              {onTime ? 'On Time' : 'Late'} · {actualHours.toFixed(1)}h / {item.targetTATHours}h
+                            </Badge>
+                          )
+                        })()}
                         <Badge variant={ITEM_STATUS_VARIANT[item.status]} size="sm">{item.status.replace('_', ' ')}</Badge>
                         {canManage && detail.status !== 'ORDERED' && detail.status !== 'CANCELLED' && detail.status !== 'DELIVERED' && (
                           <button onClick={() => openResultEditor(item)} className="text-xs text-brand font-semibold hover:underline">

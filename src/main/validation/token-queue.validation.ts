@@ -8,6 +8,7 @@ export const CreateTokenSchema = z.object({
   appointmentId: z.string().optional(),
   notes: z.string().optional(),
   date: z.string().optional(),
+  isUrgent: z.boolean().optional(),
 })
 
 export const TokenQueueIdSchema = z.object({

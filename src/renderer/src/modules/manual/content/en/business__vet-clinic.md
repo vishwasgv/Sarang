@@ -14,11 +14,13 @@ Click **Add Patient** to register a new one — name, species, breed, date of bi
 
 A banner at the top of the Patients list surfaces **Upcoming Vaccinations** due in the next 30 days across all patients, so nothing gets missed.
 
+If you maintain a **Breed Health Alerts** list (its own screen in the sidebar), a matching alert shows automatically as you type a breed into the Add Patient form — and stays visible on that patient's profile afterward, every time it's opened, not just at registration. This list is entirely yours to build: Sarang doesn't ship any pre-written veterinary advice, so add whatever risk notes you want your own team to be reminded of for breeds you actually see (e.g. "ask about hip/joint symptoms at every visit").
+
 ## Patient profile
 
 Opening a patient takes you to three tabs:
 
-- **Overview** — the patient's details, linked owner card, and a **Weight History** log. Add a new weigh-in at any time; once there are two or more entries, a small trend chart plots weight over time.
+- **Overview** — the patient's details, linked owner card, and a **Weight History** log. Add a new weigh-in at any time; once there are two or more entries, a small trend chart plots weight over time. If the owner has other active pets registered, an **Other Pets in This Household** card lists them — one click takes you straight to a sibling's own profile, no need to search the Patients list again.
 - **Vaccinations** — every vaccination record (vaccine name, type, batch number, manufacturer, administered date, next due date, administering vet). Each record shows a status badge (Overdue / Due in Xd / Up to date). From here you can **queue a WhatsApp reminder** for an upcoming due date (skipped automatically if the owner has no phone number on file), or **print a vaccination certificate**.
 - **Appointments** — the patient's full visit history with status (Scheduled, Confirmed, In Progress, Completed, Cancelled, No-show).
 
@@ -33,3 +35,9 @@ Printing a vaccination certificate produces a formal one-page document with the 
 When booking an appointment, pick the specific **patient (pet)** it's for. Once the visit happens, open **Clinical Notes** to record a real consultation — vitals, findings, and plan — the same structured note-taking every clinical vertical in Sarang shares. The note is prefilled with the pet's own name and age (not the owner's), and shows the pet's species, breed, sex, and owner right alongside it for quick context.
 
 Vitals are checked against **normal ranges** that account for the patient's species — a dog's normal temperature and pulse range genuinely differ from a cat's or a human's, and Sarang evaluates each reading against the right one automatically.
+
+## Reports
+
+Open **Reports → Vaccination Compliance** to see how many follow-up doses actually came in on time. This looks at every dose given in your chosen date range that had a prior due date on record — a patient's very first dose of a vaccine has nothing to be "on time" against, so it's left out of the count — and shows the percentage that arrived on or before that due date, as an overall gauge plus a breakdown per vaccine. It's a different question from the Dashboard's own vaccination card (which is a live "what's overdue right now" snapshot): this report looks backward at a specific period, useful for spotting whether a particular vaccine's follow-up schedule is consistently slipping.
+
+**Case-Type Volume Trend** charts how many cases you're handling per case type, month by month — one line per type. Your case types come straight from whatever categories you've set up in your own Service Catalog (Consultation, Grooming, Diagnostics, or anything else you've added, including Surgery if you track it there), plus a dedicated **Vaccinations** line sourced from real administered doses rather than booked appointments. Only pet-linked, non-cancelled appointments count as a real case.

@@ -5,8 +5,9 @@ import {
   getTreatmentPlan,
   createTreatmentPlan,
   updateTreatmentPlan,
+  generateInvoiceFromTreatmentPlan,
 } from '../../services/treatment-plan.service'
-import { CreateTreatmentPlanSchema, UpdateTreatmentPlanSchema } from '../../validation/treatment-plan.validation'
+import { CreateTreatmentPlanSchema, UpdateTreatmentPlanSchema, GenerateInvoiceFromTreatmentPlanSchema } from '../../validation/treatment-plan.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -41,5 +42,13 @@ export function register(handle: HandleFn): void {
     const parsed = UpdateTreatmentPlanSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return updateTreatmentPlan(parsed.data)
+  })
+
+  // Phase 67 §9.1 item 21.1 — Dental Clinic: treatment-plan conversion tracking.
+  handle('treatmentPlan:generateInvoice', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = GenerateInvoiceFromTreatmentPlanSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateInvoiceFromTreatmentPlan(parsed.data, getCurrentSession()?.userId)
   })
 }

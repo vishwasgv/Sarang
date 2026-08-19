@@ -10,6 +10,8 @@
     "purchaseOrders": "أوامر الشراء",
     "priceLists": "قوائم الأسعار",
     "pricingSchemes": "خطط الأسعار",
+    "priceMarkdowns": "تخفيضات الأسعار",
+    "loyaltyProgram": "برنامج الولاء",
     "recurringProfiles": "الملفات المتكررة",
     "locations": "المواقع",
     "approvalWorkflows": "مسارات الموافقة",
@@ -437,6 +439,7 @@
     "areaLabel": "المساحة",
     "areaFormula": "الطول × العرض = المساحة",
     "useAreaSq": "استخدام {{area}} تربيعي",
+    "areaMarginPreview": "الهامش: {{percent}}%",
     "rx": {
       "title": "تفاصيل الوصفة الطبية",
       "description": "هذا صنف يُصرف بوصفة طبية فقط (الجدول H/H1) — يلزم إدخال اسم المريض واسم الطبيب لبيعه.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "خطط الأسعار",
-    "subtitle": "{{count}} خطط — عروض اشترِ X واحصل على Y مجانًا وخصومات حسب الكمية",
+    "subtitle": "{{count}} خطط — عروض اشترِ X واحصل على Y مجانًا، وخصومات حسب الكمية، ونسبة خصم ثابتة",
     "newScheme": "خطة جديدة",
     "namePlaceholder": "مثال: اشترِ 2 واحصل على 1 مجانًا — دفاتر",
     "ruleTypeLabel": "نوع العرض",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "اشترِ X واحصل على Y مجانًا",
-      "SLAB_DISCOUNT": "خصم حسب الكمية"
+      "SLAB_DISCOUNT": "خصم حسب الكمية",
+      "FLAT_PERCENT_OFF": "ساعة سعيدة / نسبة خصم ثابتة"
     },
     "scopeType": "يُطبَّق على",
     "byProduct": "منتج واحد",
@@ -1145,8 +1149,14 @@
     "minQuantity": "الحد الأدنى للكمية",
     "discountPercent": "نسبة الخصم %",
     "buyXGetYSummary": "اشترِ {{buy}}، احصل على {{free}} مجانًا",
+    "flatPercentSummary": "خصم {{percent}}%",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "تاريخ البدء (اختياري)",
     "endDateOptional": "تاريخ الانتهاء (اختياري)",
+    "happyHourWindow": "نافذة الساعة السعيدة (اختياري)",
+    "startTimeOptional": "وقت البدء",
+    "endTimeOptional": "وقت الانتهاء",
+    "happyHourWindowHint": "نشط فقط خلال هذه الساعات كل يوم — اتركه فارغًا للتطبيق في أي وقت. لا يتجاوز منتصف الليل (مثال: 4:00 م–6:00 م يعمل؛ 10:00 م–2:00 ص لا يعمل).",
     "rule": "العرض",
     "noSchemesYet": "لا توجد خطط أسعار بعد.",
     "deleteSchemeTitle": "حذف خطة السعر",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "تعذّر إنشاء خطة السعر.",
     "couldNotSave": "تعذّر حفظ التغييرات.",
     "couldNotDelete": "تعذّر حذف خطة السعر."
+  },
+  "priceMarkdowns": {
+    "title": "تخفيضات الأسعار",
+    "subtitle": "{{count}} تخفيض — تخفيضات أسعار محددة زمنيًا تعود تلقائيًا",
+    "newMarkdown": "تخفيض جديد",
+    "checkNow": "تحقق الآن",
+    "product": "المنتج",
+    "originalPrice": "السعر الأصلي",
+    "markdownPrice": "السعر المخفض",
+    "endDate": "يعود في",
+    "status": {
+      "ACTIVE": "نشط",
+      "REVERTED": "تمت الإعادة",
+      "CANCELLED": "ملغى",
+      "SKIPPED_MANUAL_OVERRIDE": "تم تغييره يدويًا"
+    },
+    "createHint": "يُطبَّق السعر المخفض فورًا. يعود تلقائيًا إلى السعر الأصلي في التاريخ أعلاه — إلا إذا قمت بتغيير السعر بنفسك قبل ذلك، وفي هذه الحالة يتم تخطي الإعادة حتى لا يُستبدل تغييرك اليدوي.",
+    "noMarkdownsYet": "لا توجد تخفيضات أسعار بعد.",
+    "cancelMarkdownTitle": "إلغاء تخفيض السعر",
+    "cancelMarkdownMessage": "هذا ينهي التخفيض الآن. إذا لم يتغير السعر منذ بدء التخفيض، فإنه يعود فورًا إلى السعر الأصلي.",
+    "markdownCreated": "تم إنشاء تخفيض السعر",
+    "markdownCancelled": "تم إلغاء تخفيض السعر",
+    "checkComplete": "اكتمل التحقق",
+    "checkCompleteDetail": "تمت إعادة {{reverted}} من {{evaluated}} تخفيضًا مستحقًا.",
+    "missingFields": "معلومات ناقصة",
+    "productRequired": "اختر منتجًا لهذا التخفيض.",
+    "markdownPriceRequired": "أدخل سعرًا مخفضًا صالحًا.",
+    "endDateRequired": "اختر تاريخًا لعودة التخفيض.",
+    "couldNotLoad": "تعذر تحميل تخفيضات الأسعار.",
+    "couldNotCreate": "تعذر إنشاء تخفيض السعر.",
+    "couldNotCancel": "تعذر إلغاء تخفيض السعر.",
+    "couldNotCheck": "تعذر التحقق من التخفيضات المستحقة."
+  },
+  "loyaltyProgram": {
+    "title": "برنامج الولاء",
+    "subtitle": "{{count}} بطاقة ولاء للعملاء — مكافأة ختم بسيطة في كل زيارة",
+    "programSettings": "إعدادات البرنامج",
+    "isActive": "البرنامج نشط",
+    "punchesRequired": "الأختام المطلوبة للمكافأة",
+    "rewardDescription": "المكافأة",
+    "rewardPlaceholder": "مثال: قهوة مجانية، خصم 10% على الشراء القادم",
+    "minPurchaseAmount": "الحد الأدنى للشراء للحصول على ختم",
+    "settingsHint": "يتم الحصول على ختم تلقائيًا في أي عملية بيع مؤهلة — لا حاجة لأي خطوة إضافية عند الدفع. اضبط الحد الأدنى لمبلغ الشراء على 0 لمنح ختم في كل عملية بيع، بغض النظر عن المبلغ.",
+    "customer": "العميل",
+    "progress": "التقدم",
+    "totalEarned": "إجمالي الأختام المكتسبة",
+    "totalRedeemed": "المكافآت المستبدلة",
+    "redeem": "استبدال",
+    "redeemTitle": "استبدال المكافأة",
+    "redeemMessage": "امنح {{name}} مكافأته: {{reward}}. سيؤدي هذا إلى استخدام أختامه للحصول عليها.",
+    "noProgramYet": "لم يتم إعداد برنامج ولاء بعد.",
+    "noCardsYet": "لا توجد بطاقات ولاء بعد — تبدأ الأختام بمجرد أن يقوم العميل بشراء مؤهل.",
+    "missingFields": "معلومات ناقصة",
+    "rewardRequired": "أدخل ما هي المكافأة.",
+    "punchesRequiredInvalid": "أدخل عدد الأختام المطلوبة (واحد على الأقل).",
+    "programSaved": "تم حفظ برنامج الولاء",
+    "rewardRedeemed": "تم استبدال المكافأة",
+    "couldNotLoad": "تعذر تحميل برنامج الولاء.",
+    "couldNotSave": "تعذر حفظ برنامج الولاء.",
+    "couldNotRedeem": "تعذر استبدال المكافأة."
   },
   "recurringProfiles": {
     "title": "الملفات المتكررة",
@@ -1475,6 +1545,34 @@
         "label": "تقرير تكلفة الطعام",
         "description": "استخدام المكونات والتكلفة حسب إنجاز أوامر المطبخ — قالب المطعم"
       },
+      "dishContributionMargin": {
+        "label": "هامش المساهمة حسب الطبق",
+        "description": "الإيراد ناقص تكلفة الوصفة لكل طبق مباع — أي الأطباق تُغطي تكلفتها فعليًا"
+      },
+      "tableTurnoverByHour": {
+        "label": "معدل دوران الطاولات حسب الساعة",
+        "description": "خريطة حرارية ليوم الأسبوع × ساعة اليوم لطلبات تناول الطعام في المطعم — متى يكون مطعمك مزدحمًا فعليًا"
+      },
+      "recipeWasteVariance": {
+        "label": "فرق الهدر: الوصفة مقابل الفعلي",
+        "description": "يقارن ما تقوله وصفاتك عن كمية المكونات التي كان يجب استخدامها بما تم سحبه فعليًا — يكشف انحرافًا حقيقيًا في الحصص، أو انسكابًا، أو وصفة قديمة"
+      },
+      "deadStockClearance": {
+        "label": "قائمة تصفية المخزون الراكد",
+        "description": "منتجات لا تزال في المخزون دون أي بيع خلال آخر 90 يومًا، مرتبة حسب مقدار رأس المال الراكد على الرف"
+      },
+      "categorySellThrough": {
+        "label": "معدل دوران المبيعات حسب الفئة",
+        "description": "شهرًا بعد شهر، ما هي نسبة الوحدات المباعة-بالإضافة-إلى-المخزون لكل فئة التي بيعت فعليًا — حدد الفئات سريعة الحركة مقابل تلك المتراكمة"
+      },
+      "basketComposition": {
+        "label": "تركيبة السلة",
+        "description": "ما هي المنتجات التي تُشترى معًا في نفس عملية البيع بشكل أكثر تكرارًا — حدد التركيبات والأزواج الطبيعية التي تستحق وضعها جنبًا إلى جنب أو تقديمها كعرض مجمّع"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "مصفوفة المنتجات سريعة الحركة مقابل بطيئة الحركة",
+        "description": "مخطط تشتت لسرعة المبيعات مقابل هامش الربح، مقسم إلى أربعة أرباع — اطّلع بنظرة واحدة على المنتجات التي تستحق إعادة التخزين بسرعة، وتلك ذات الهامش المنخفض المُجهِد، والمنتجات بطيئة الحركة التي تستحق الاحتفاظ بها بسبب هامشها"
+      },
       "gstr1": {
         "label": "تقرير GSTR-1",
         "description": "ملخص ضريبي B2B و B2CS لتقديم إقرار ضريبة السلع والخدمات"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "الالتزام بالتذكير",
         "description": "كم عدد تذكيرات الحالة المزمنة التي تمت متابعتها في الوقت المحدد، إجمالاً وحسب الحالة."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "نسبة الحضور المباشر مقابل الموعد",
+        "description": "كم عدد زياراتك التي تمت دون موعد مقابل المواعيد المحجوزة مسبقًا، يومًا بيوم."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "اتجاه فئة التشخيص",
+        "description": "كيف تتوزع تشخيصات استشاراتك حسب الفئة واتجاهها شهرًا بعد شهر."
+      },
+      "referralOutcome": {
+        "label": "نتيجة الإحالة الصادرة",
+        "description": "المرضى الذين أحلتهم إلى مقدم رعاية آخر، وما إذا كانت تلك الزيارة قد حدثت، وما تم اكتشافه."
+      },
+      "packUtilization": {
+        "label": "استخدام الباقات",
+        "description": "مقدار ما تم استخدامه فعليًا من كل باقة جلسات، لكل عميل وإجمالاً."
+      },
+      "labTAT": {
+        "label": "وقت الإنجاز لكل فحص",
+        "description": "وقت الإنجاز حسب الفحص، الفعلي مقابل الهدف، مع عدد النتائج في الوقت المحدد مقابل المتأخرة."
+      },
+      "testVolumeByPanel": {
+        "label": "حجم الفحوصات حسب اللوحة",
+        "description": "عدد الفحوصات التي تجريها لكل لوحة أو فئة، شهرًا بشهر."
+      },
+      "referralLeaderboard": {
+        "label": "قائمة أفضل المحيلين",
+        "description": "أي الأطباء يحيلون إليك أكبر عدد من المرضى أو الفحوصات، مرتبين."
+      },
+      "secondOpinionConversion": {
+        "label": "تحويل الرأي الثاني",
+        "description": "من بين استشارات الرأي الثاني لديك، كم عدد المرضى الذين عادوا وأصبحوا مرضى مستمرين."
+      },
+      "caseComplexityMix": {
+        "label": "مزيج تعقيد الحالات",
+        "description": "مزيج الحالات الروتينية مقابل المعقدة التي تراها، شهرًا بشهر."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "معدل قبول العلاج",
+        "description": "من بين خطط العلاج التي اقترحتها، كم منها تم قبوله وكم منها تحول فعليًا إلى إيرادات مفوترة."
+      },
+      "dentalRecallCompliance": {
+        "label": "الالتزام بالاستدعاء",
+        "description": "من فترات الاستدعاء المغلقة في هذا النطاق، كم عدد المرضى الذين عادوا في تاريخ الاستحقاق أو قبله."
+      },
+      "vaccinationCompliance": {
+        "label": "الالتزام بالتطعيم",
+        "description": "من جرعات المتابعة المُعطاة خلال هذه الفترة، كم منها كانت في الوقت المحدد مقارنة بتاريخ استحقاقها السابق."
+      },
+      "vetCaseTypeVolume": {
+        "label": "اتجاه حجم الحالات حسب النوع",
+        "description": "عدد الحالات التي عالجتها حسب نوع الحالة — استشارات، رعاية وقائية، تطعيمات، وأخرى في كتالوج الخدمات الخاص بك — شهرًا بشهر."
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} سجل",
       "totalFoodCost": "إجمالي تكلفة الطعام",
       "ingredientsUsed": "المكونات المستخدمة",
+      "totalContributionMargin": "إجمالي هامش المساهمة",
+      "dishesSold": "الأطباق المباعة",
+      "contributionMarginByDish": "هامش المساهمة حسب الطبق",
+      "totalTurns": "إجمالي دورات الطاولات",
+      "peakTime": "وقت الذروة",
+      "peakTurns": "دورات وقت الذروة",
+      "ingredientsTracked": "المكونات المتتبعة",
+      "biggestWaste": "أكبر تجاوز",
+      "varianceByIngredient": "الفرق حسب المكون",
+      "totalCapitalLocked": "إجمالي رأس المال الراكد",
+      "deadStockItems": "عناصر المخزون الراكد",
+      "lookbackWindow": "نافذة الاستعادة",
+      "capitalLockedByProduct": "رأس المال الراكد حسب المنتج",
+      "sellThroughByCategoryMonth": "معدل دوران المبيعات حسب الفئة، حسب الشهر",
+      "sellThroughStockNote": "تمت المقارنة مع المخزون المتاح حاليًا لكل شهر معروض — هذا عرض للاتجاه، وليس مستوى المخزون التاريخي الخاص بكل شهر.",
+      "avgSellThroughByCategory": "متوسط معدل دوران المبيعات حسب الفئة",
+      "totalBaskets": "إجمالي السلال",
+      "avgItemsPerBasket": "متوسط العناصر لكل سلة",
+      "avgBasketValue": "متوسط قيمة السلة",
+      "topProductPairs": "الأكثر شراءً معًا",
+      "balanceTrend": "اتجاه الرصيد",
+      "balanceTrendSampledNote": "يحتوي هذا الحساب على نشاط كبير — يعرض خط الاتجاه عينة تمثيلية من النقاط، وليس كل إدخال على حدة. لا يزال الجدول أدناه يسرد كل معاملة.",
+      "velocityMedian": "متوسط السرعة",
+      "marginMedian": "متوسط هامش الربح",
+      "fastSlowMoverMatrix": "السرعة مقابل هامش الربح",
+      "fastSlowMoverMatrixNote": "كل نقطة تمثل منتجًا. تشير الخطوط المتقطعة إلى متوسط السرعة ومتوسط هامش الربح لهذه الفترة — تقسم الأرباع الأربعة المنتجات حسب الحركة السريعة/البطيئة والهامش المرتفع/المنخفض.",
       "invoicesSuffix_one": "{{count}} فاتورة",
       "invoicesSuffix_other": "{{count}} فاتورة",
       "groupsSuffix_one": "{{count}} مجموعة",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "عدد السطور المخصومة",
       "avgDiscountPercent": "متوسط الخصم",
       "recallsClosed": "التذكيرات المغلقة",
-      "compliancePercent": "نسبة الالتزام %"
+      "compliancePercent": "نسبة الالتزام %",
+      "totalWalkIns": "إجمالي الحضور المباشر",
+      "walkInPercent": "% الحضور المباشر",
+      "totalVisits": "إجمالي الزيارات",
+      "categorized": "مصنّف",
+      "uncategorizedSub": "{{count}} غير مصنّف",
+      "distinctCategories": "فئات متميزة",
+      "totalReferrals": "إجمالي الإحالات",
+      "outcomeRecorded": "النتيجة مسجلة",
+      "pendingReferrals": "قيد الانتظار",
+      "totalPacks": "إجمالي الباقات",
+      "sessionsUsed": "الجلسات المستخدمة",
+      "overallUtilization": "الاستخدام الإجمالي",
+      "totalCompleted": "الفحوصات المكتملة",
+      "withTarget": "بهدف محدد",
+      "overallOnTimePercent": "الإجمالي في الوقت المحدد %",
+      "distinctPanels": "الألواح المميزة",
+      "distinctReferrers": "المحيلون المميزون",
+      "topReferrer": "أفضل مُحيل",
+      "totalSecondOpinionVisits": "زيارات الرأي الثاني",
+      "convertedCount": "تم التحويل",
+      "conversionPercent": "معدل التحويل",
+      "totalTagged": "الحالات المُصنَّفة",
+      "routineCount": "روتينية",
+      "complexCount": "معقدة",
+      "complexPercent": "معقدة %",
+      "proposedCount": "الخطط المقترحة",
+      "acceptedCount": "مقبولة",
+      "billedCount": "مفوترة",
+      "acceptanceRatePercent": "معدل القبول",
+      "billedRatePercent": "معدل الفوترة",
+      "dosesEvaluated": "الجرعات المُقيَّمة",
+      "totalCases": "إجمالي الحالات",
+      "distinctCaseTypes": "أنواع الحالات المميزة"
     },
     "aging": {
       "current": "حالي",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "تفاصيل الشراء",
       "apAgingByVendor": "أعمار الذمم الدائنة حسب المورّد",
       "untaggedNote": "غير موسوم: {{revenue}} إيرادات و {{expense}} مصروفات من معاملات بدون مركز تكلفة محدد.",
-      "complianceByCondition": "الالتزام حسب الحالة"
+      "complianceByCondition": "الالتزام حسب الحالة",
+      "dailyBreakdown": "التوزيع اليومي",
+      "monthlyBreakdown": "التوزيع الشهري",
+      "diagnosisTrendChart": "اتجاه فئة التشخيص",
+      "packUtilizationChart": "استخدام الباقات حسب العميل",
+      "labTATChart": "وقت إنجاز الفحص حسب النوع",
+      "testVolumeByPanelChart": "اتجاه حجم الفحوصات",
+      "referralLeaderboardChart": "أفضل الأطباء المحيلين",
+      "tableTurnoverHeatmap": "دورات الطاولات حسب اليوم والساعة",
+      "caseComplexityMixChart": "روتينية مقابل معقدة، حسب الشهر",
+      "treatmentAcceptanceFunnelChart": "مقترحة ← مقبولة ← مفوترة",
+      "complianceByRecallType": "الالتزام حسب نوع الاستدعاء",
+      "complianceByVaccine": "الالتزام حسب اللقاح",
+      "caseTypeVolumeChart": "اتجاه حجم الحالات"
     },
     "empty": {
       "invoices": "لا توجد فواتير في هذا النطاق الزمني.",
@@ -1892,6 +2114,13 @@
       "auditRecords": "لم يتم العثور على سجلات تدقيق.",
       "backups": "لم يتم العثور على نسخ احتياطية. ستظهر النسخ الاحتياطية هنا بعد إعداد وحدة النسخ الاحتياطي.",
       "foodCost": "لم يتم العثور على خصومات مكونات في هذا النطاق الزمني. يجب تحديد أوامر المطبخ كمكتملة لتسجيل تكلفة الطعام.",
+      "dishContributionMargin": "لم يتم بيع أي طبق في هذا النطاق الزمني.",
+      "tableTurnoverByHour": "لم يتم العثور على طلبات تناول طعام داخل المطعم في هذا النطاق الزمني.",
+      "recipeWasteVariance": "لم يتم العثور على نشاط مكونات مرتبط بوصفة في هذا النطاق الزمني.",
+      "deadStockClearance": "لم يتم العثور على مخزون راكد — تم بيع كل منتج في المخزون مؤخرًا.",
+      "categorySellThrough": "لم يتم العثور على مبيعات منتجات مصنفة في هذا النطاق الزمني.",
+      "basketComposition": "لم يتم العثور على سلال تحتوي على منتجين مختلفين أو أكثر في هذا النطاق الزمني.",
+      "fastSlowMoverMatrix": "لم يُباع أي منتج في هذا النطاق الزمني.",
       "gstr1": "لم يتم العثور على فواتير خاضعة للضريبة لهذه الفترة.",
       "appointments": "لا توجد مواعيد في هذا النطاق الزمني.",
       "clientAppointments": "لم يتم العثور على مواعيد عملاء في هذا النطاق الزمني.",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "لا توجد مراجعات مخططات في هذا النطاق الزمني.",
       "siteVisitLog": "لا توجد زيارات موقع في هذا النطاق الزمني.",
       "noData": "لم يتم العثور على سجلات لهذه الفترة.",
-      "chronicRecallCompliance": "لم يتم إغلاق أي فترة تذكير في هذا النطاق الزمني."
+      "chronicRecallCompliance": "لم يتم إغلاق أي فترة تذكير في هذا النطاق الزمني.",
+      "walkInVsAppointmentRatio": "لا توجد زيارات مباشرة أو مواعيد في هذا النطاق الزمني.",
+      "diagnosisCategoryTrend": "لا توجد زيارات مصنّفة في هذا النطاق الزمني.",
+      "referralOutcome": "لم تتم أي إحالات في هذا النطاق الزمني.",
+      "packUtilization": "لم يتم شراء باقات جلسات في هذا النطاق الزمني.",
+      "labTAT": "لا توجد فحوصات مكتملة في هذا النطاق الزمني.",
+      "testVolumeByPanel": "لا توجد فحوصات مسجلة في هذا النطاق الزمني.",
+      "referralLeaderboard": "لا توجد إحالات مسجلة في هذا النطاق الزمني.",
+      "secondOpinionConversion": "لا توجد استشارات رأي ثانٍ مسجلة في هذا النطاق الزمني.",
+      "caseComplexityMix": "لا توجد زيارات مُصنَّفة حسب تعقيد الحالة في هذا النطاق الزمني.",
+      "treatmentAcceptanceRate": "لا توجد خطط علاج مقترحة في هذا النطاق الزمني.",
+      "dentalRecallCompliance": "لا توجد فترات استدعاء مغلقة في هذا النطاق الزمني.",
+      "vaccinationCompliance": "لا توجد جرعات متابعة بتاريخ استحقاق سابق في هذا النطاق الزمني.",
+      "vetCaseTypeVolume": "لا توجد حالات مسجلة في هذا النطاق الزمني."
     },
     "col": {
       "invoiceNo": "رقم الفاتورة",
@@ -1987,6 +2229,20 @@
       "ingredient": "المكوّن",
       "qtyUsed": "الكمية المستخدمة",
       "totalCost": "التكلفة الإجمالية",
+      "dishName": "الطبق",
+      "qtySold": "الكمية المباعة",
+      "revenue": "الإيراد",
+      "ingredientCost": "تكلفة المكونات",
+      "contributionMargin": "هامش المساهمة",
+      "marginPercent": "هامش الربح %",
+      "quadrant": "الربع",
+      "dayOfWeek": "اليوم",
+      "hour": "الساعة",
+      "turns": "الدورات",
+      "impliedQuantity": "الكمية حسب الوصفة",
+      "actualQuantity": "الكمية المستخدمة فعليًا",
+      "varianceQuantity": "الفرق",
+      "variancePercent": "الفرق %",
       "gstin": "الرقم الضريبي",
       "party": "الطرف",
       "value": "القيمة",
@@ -2001,7 +2257,6 @@
       "durationShort": "المدة",
       "day": "اليوم",
       "appointments": "المواعيد",
-      "hour": "الساعة",
       "noShow": "عدم حضور",
       "completionPercent": "نسبة الإنجاز",
       "providerTotal": "الإجمالي",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "الكمية المتبقية",
       "bucket": "الحالة",
       "unitCost": "تكلفة الوحدة",
+      "capitalLocked": "رأس المال الراكد",
+      "lastSoldDate": "آخر بيع",
+      "neverSold": "لم يُباع مطلقًا",
       "orderNumber": "رقم الطلب",
       "patientName": "المريض",
       "createdDate": "تاريخ الإنشاء",
@@ -2042,6 +2300,12 @@
       "componentType": "المكوّن",
       "expiringSoonQ": "قريب الانتهاء؟",
       "month": "الشهر",
+      "unitsSold": "الوحدات المباعة",
+      "sellThroughRate": "معدل دوران المبيعات",
+      "productA": "المنتج أ",
+      "productB": "المنتج ب",
+      "basketCount": "السلال",
+      "velocity": "السرعة (وحدة/يوم)",
       "shipmentCount": "الشحنات",
       "freightAmount": "مبلغ الشحن",
       "employee": "الموظف",
@@ -2110,7 +2374,30 @@
       "condition": "الحالة",
       "recallsClosed": "التذكيرات المغلقة",
       "onTime": "في الوقت المحدد",
-      "compliancePercent": "نسبة الالتزام %"
+      "compliancePercent": "نسبة الالتزام %",
+      "walkIns": "حضور مباشر",
+      "referredTo": "أُحيل إلى",
+      "outcome": "النتيجة",
+      "packName": "الباقة",
+      "totalSessions": "إجمالي الجلسات",
+      "usedSessions": "مستخدمة",
+      "remainingSessions": "متبقية",
+      "utilization": "الاستخدام",
+      "orders": "الطلبات",
+      "avgActualTAT": "متوسط الوقت الفعلي",
+      "targetTAT": "الوقت المستهدف",
+      "onTimePercent": "في الوقت المحدد %",
+      "referrerName": "الطبيب المُحيل",
+      "referralCount": "الإحالات",
+      "visitDate": "تاريخ الزيارة",
+      "converted": "تم التحويل",
+      "nextVisitDate": "الزيارة التالية",
+      "routine": "روتينية",
+      "complex": "معقدة",
+      "stage": "المرحلة",
+      "recallType": "نوع الاستدعاء",
+      "vaccineName": "اللقاح",
+      "doses": "الجرعات"
     },
     "legend": {
       "schemeCost": "تكلفة الخطة",
@@ -2125,6 +2412,13 @@
       "returning": "عائد",
       "atRiskFlag": "⚠ معرّض للخطر",
       "lowFlag": "⚠ منخفض",
+      "cartonsAndPieces": "{{cartons}} كرتونة + {{pieces}} قطعة",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "سريع، هامش مرتفع",
+        "FAST_LOW_MARGIN": "سريع، هامش منخفض",
+        "SLOW_HIGH_MARGIN": "بطيء، هامش مرتفع",
+        "SLOW_LOW_MARGIN": "بطيء، هامش منخفض"
+      },
       "customerPrefix": "عميل: ",
       "supplierPrefix": "مورد: ",
       "bucketExpired": "منتهي الصلاحية",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "خطط التسعير",
         "body": "اضبط عرض اشترِ-X-واحصل-على-Y-مجانًا أو خصم بالكمية — جرّب واحدًا وشاهد كيف يقترح نفسه تلقائيًا في السلة بمجرد إضافة عنصر مؤهل."
+      },
+      "priceMarkdowns": {
+        "title": "تخفيضات الأسعار",
+        "body": "خفّض سعر منتج لفترة محدودة، مع تاريخ يعود فيه تلقائيًا — دون الحاجة لتذكر تغييره مرة أخرى بنفسك."
+      },
+      "loyaltyProgram": {
+        "title": "برنامج الولاء",
+        "body": "حدد عدد الزيارات التي تحقق مكافأة وما هي تلك المكافأة — تتم إضافة ختم تلقائيًا إلى بطاقة العميل في كل عملية بيع مؤهلة، دون أي خطوة إضافية عند الدفع. استبدلها من هنا بمجرد اكتسابها."
       },
       "recurringProfiles": {
         "title": "الملفات المتكررة",

@@ -16,7 +16,7 @@ El Informe de Inventario muestra los niveles de stock actuales y su valoración,
 
 ## Clientes y Proveedores
 
-La Cuenta del Cliente y el Estado del Proveedor generan, cada uno, un estado de cuenta completo para un cliente o proveedor específico que usted busca y selecciona. La entrada de Saldos Pendientes, bajo Finanzas, lista a todos los clientes y proveedores con un saldo pendiente en un solo lugar.
+La Cuenta del Cliente y el Estado del Proveedor generan, cada uno, un estado de cuenta completo para un cliente o proveedor específico que usted busca y selecciona — saldo inicial, cada transacción en orden de fecha, y saldo final, además de una línea de tendencia del saldo para que pueda ver de un vistazo si su saldo ha ido subiendo o bajando durante el período. Así es exactamente como funciona la cuenta corriente de un contratista: cada venta a crédito se suma a su saldo en el momento en que ocurre, y este estado de cuenta es la factura de fin de mes (o de cualquier rango de fechas) que usted le entrega, ya detallada por artículo y totalizada — sin necesidad de configurar una "cuenta corriente" aparte. La entrada de Saldos Pendientes, bajo Finanzas, lista a todos los clientes y proveedores con un saldo pendiente en un solo lugar.
 
 ## Financiero
 

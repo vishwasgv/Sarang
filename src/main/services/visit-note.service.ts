@@ -56,12 +56,17 @@ export async function createVisitNote(payload: {
   subjective?: string
   objective?: string
   assessment?: string
+  diagnosisCategory?: string
   plan?: string
   followUpDate?: string
   followUpNotes?: string
   referredBy?: string
   referralDate?: string
   referralReason?: string
+  referredByPhone?: string
+  referredByEmail?: string
+  isSecondOpinion?: boolean
+  caseComplexity?: 'ROUTINE' | 'COMPLEX'
   treatmentDone?: string
   painScore?: number | null
   functionalScore?: number | null
@@ -90,12 +95,17 @@ export async function createVisitNote(payload: {
         subjective: payload.subjective ?? null,
         objective: payload.objective ?? null,
         assessment: payload.assessment ?? null,
+        diagnosisCategory: payload.diagnosisCategory ?? null,
         plan: payload.plan ?? null,
         followUpDate: payload.followUpDate ? new Date(payload.followUpDate) : null,
         followUpNotes: payload.followUpNotes ?? null,
         referredBy: payload.referredBy ?? null,
         referralDate: payload.referralDate ? new Date(payload.referralDate) : null,
         referralReason: payload.referralReason ?? null,
+        referredByPhone: payload.referredByPhone ?? null,
+        referredByEmail: payload.referredByEmail ?? null,
+        isSecondOpinion: payload.isSecondOpinion ?? false,
+        caseComplexity: payload.caseComplexity ?? null,
         treatmentDone: payload.treatmentDone ?? null,
         painScore: payload.painScore != null ? Math.min(10, Math.max(0, Math.round(payload.painScore))) : null,
         functionalScore: payload.functionalScore != null ? Math.min(100, Math.max(0, Math.round(payload.functionalScore))) : null,
@@ -129,12 +139,17 @@ export async function updateVisitNote(payload: {
   subjective?: string | null
   objective?: string | null
   assessment?: string | null
+  diagnosisCategory?: string | null
   plan?: string | null
   followUpDate?: string | null
   followUpNotes?: string | null
   referredBy?: string | null
   referralDate?: string | null
   referralReason?: string | null
+  referredByPhone?: string | null
+  referredByEmail?: string | null
+  isSecondOpinion?: boolean
+  caseComplexity?: 'ROUTINE' | 'COMPLEX' | null
   treatmentDone?: string | null
   painScore?: number | null
   functionalScore?: number | null
@@ -342,6 +357,14 @@ export async function referToProvider(payload: {
 // Appointments booked FROM this visit note's "refer to another provider"
 // action — so the referring provider can see whether the patient actually
 // got booked in, and with which provider/status.
+//
+// Phase 67 §9.1 item 19.5 (GP Clinic) — Referral-Out Tracking with Outcome
+// Follow-up. The "outcome" of a referral already lives in the referred-to
+// provider's own VisitNote (their real assessment of the patient) — this
+// just surfaces it back to the referring provider inline, rather than
+// requiring them to separately navigate to that provider's note. Only
+// exposed once the referral's own note is finalized, since a draft note
+// isn't a real clinical outcome yet.
 export async function listReferralsForVisitNote(visitNoteId: string) {
   try {
     const db = getPrisma()
@@ -349,12 +372,44 @@ export async function listReferralsForVisitNote(visitNoteId: string) {
       where: { referredFromVisitNoteId: visitNoteId },
       select: {
         id: true, appointmentNumber: true, scheduledDate: true, scheduledTime: true,
-        status: true, serviceTitle: true, notes: true,
+        status: true, serviceTitle: true, notes: true, customerId: true,
         provider: { select: { id: true, fullName: true, specialization: true } },
+        visitNote: { select: { assessment: true, isFinalized: true, painScore: true, functionalScore: true } },
       },
       orderBy: { scheduledDate: 'desc' },
     })
-    return { success: true, data: referrals }
+    const withOutcome = await Promise.all(referrals.map(async (r) => {
+      if (!r.visitNote?.isFinalized) return { ...r, outcomeSummary: null }
+      // Phase 67 §9.1 item 22.5 — Physio Clinic referring-doctor outcome feedback
+      // loop: when the recipient is tracking pain/functional scores (item 1's own
+      // data, not new capture), surface a quantified before/after across the whole
+      // course of treatment since the referral, not just this one visit's free-text
+      // note — reuses the exact "trend across a patient's visit notes" query
+      // getVitalsTrend() already does, just scoped to sessions from the referral on.
+      if ((r.visitNote.painScore != null || r.visitNote.functionalScore != null) && r.customerId) {
+        const course = await db.visitNote.findMany({
+          where: {
+            appointment: { customerId: r.customerId, scheduledDate: { gte: r.scheduledDate } },
+            OR: [{ painScore: { not: null } }, { functionalScore: { not: null } }],
+          },
+          select: { painScore: true, functionalScore: true, appointment: { select: { scheduledDate: true } } },
+          orderBy: { appointment: { scheduledDate: 'asc' } },
+        })
+        if (course.length > 0) {
+          const first = course[0]
+          const latest = course[course.length - 1]
+          const parts: string[] = []
+          if (first.painScore != null && latest.painScore != null) parts.push(`Pain ${first.painScore}→${latest.painScore}`)
+          if (first.functionalScore != null && latest.functionalScore != null) parts.push(`Function ${first.functionalScore}→${latest.functionalScore}`)
+          if (parts.length > 0) {
+            const sessionWord = course.length === 1 ? 'session' : 'sessions'
+            return { ...r, outcomeSummary: `${parts.join(', ')} across ${course.length} ${sessionWord}` }
+          }
+        }
+      }
+      return { ...r, outcomeSummary: r.visitNote.assessment }
+    }))
+    return { success: true, data: withOutcome }
   } catch (err) {
     return { success: false, error: { code: 'VN-008', message: err instanceof Error ? err.message : 'Could not list referrals.' } }
   }

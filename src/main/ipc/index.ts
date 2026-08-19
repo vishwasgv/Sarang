@@ -23,6 +23,8 @@ import { register as registerSalesOrders } from './handlers/sales-order.handler'
 import { register as registerPriceLists } from './handlers/price-list.handler'
 import { register as registerRecurringProfiles } from './handlers/recurring-profile.handler'
 import { register as registerPricingSchemes } from './handlers/pricing-scheme.handler'
+import { register as registerPriceMarkdowns } from './handlers/price-markdown.handler'
+import { register as registerLoyaltyProgram } from './handlers/loyalty-program.handler'
 import { register as registerInvoiceTemplates } from './handlers/invoice-template.handler'
 import { register as registerApprovalWorkflows } from './handlers/approval-workflow.handler'
 import { register as registerExpenses } from './handlers/expenses.handler'
@@ -77,6 +79,7 @@ import { register as registerVaccinations } from './handlers/vaccination.handler
 import { register as registerVisitNotes } from './handlers/visit-note.handler'
 import { register as registerTokenQueue } from './handlers/token-queue.handler'
 import { register as registerNormalRange } from './handlers/normal-range.handler'
+import { register as registerBreedHealthAlert } from './handlers/breed-health-alert.handler'
 // Phase 50 — Diagnostic & Pathology Labs
 import { register as registerLabTestOrders } from './handlers/lab-test-order.handler'
 // Phase 51 — Blood Bank
@@ -206,6 +209,8 @@ export function registerAllIpcHandlers(): void {
   registerPriceLists(h)
   registerRecurringProfiles(h)
   registerPricingSchemes(h)
+  registerPriceMarkdowns(h)
+  registerLoyaltyProgram(h)
   registerInvoiceTemplates(h)
   registerApprovalWorkflows(h)
   registerExpenses(h)
@@ -260,6 +265,7 @@ export function registerAllIpcHandlers(): void {
   registerVisitNotes(h)
   registerTokenQueue(h)
   registerNormalRange(h)
+  registerBreedHealthAlert(h)
   // Phase 25 — Dental
   registerToothRecords(h)
   registerTreatmentPlans(h)

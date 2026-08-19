@@ -10,6 +10,8 @@
     "purchaseOrders": "Bons de commande",
     "priceLists": "Listes de Prix",
     "pricingSchemes": "Barèmes de Prix",
+    "priceMarkdowns": "Démarques de Prix",
+    "loyaltyProgram": "Programme de Fidélité",
     "recurringProfiles": "Profils Récurrents",
     "locations": "Emplacements",
     "approvalWorkflows": "Flux d'Approbation",
@@ -437,6 +439,7 @@
     "areaLabel": "Surface",
     "areaFormula": "L × l = Surface",
     "useAreaSq": "Utiliser {{area}} carrés",
+    "areaMarginPreview": "Marge : {{percent}}%",
     "rx": {
       "title": "Détails de l'Ordonnance",
       "description": "Ceci est un article sur ordonnance uniquement (Liste H/H1) — le nom du patient et du médecin sont requis pour le vendre.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "Barèmes de Prix",
-    "subtitle": "{{count}} barèmes — offres achetez X obtenez Y gratuit et remises par quantité",
+    "subtitle": "{{count}} barèmes — offres achetez X obtenez Y gratuit, remises par quantité et % de réduction fixe",
     "newScheme": "Nouveau Barème",
     "namePlaceholder": "ex. Achetez 2 Obtenez 1 Gratuit — Cahiers",
     "ruleTypeLabel": "Type d'Offre",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "Achetez X Obtenez Y Gratuit",
-      "SLAB_DISCOUNT": "Remise par Quantité"
+      "SLAB_DISCOUNT": "Remise par Quantité",
+      "FLAT_PERCENT_OFF": "Happy Hour / % de Réduction Fixe"
     },
     "scopeType": "S'applique à",
     "byProduct": "Un Produit",
@@ -1145,8 +1149,14 @@
     "minQuantity": "Quantité Min.",
     "discountPercent": "Remise %",
     "buyXGetYSummary": "Achetez {{buy}}, obtenez {{free}} gratuit",
+    "flatPercentSummary": "{{percent}}% de réduction",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "Date de Début (facultatif)",
     "endDateOptional": "Date de Fin (facultatif)",
+    "happyHourWindow": "Créneau Happy Hour (facultatif)",
+    "startTimeOptional": "Heure de Début",
+    "endTimeOptional": "Heure de Fin",
+    "happyHourWindowHint": "Actif uniquement pendant ces heures chaque jour — laissez vide pour appliquer à tout moment. Ne franchit pas minuit (ex. 16h00–18h00 fonctionne ; 22h00–2h00 non).",
     "rule": "Offre",
     "noSchemesYet": "Aucun Barème de Prix pour le moment.",
     "deleteSchemeTitle": "Supprimer le Barème de Prix",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "Impossible de créer le barème de prix.",
     "couldNotSave": "Impossible d'enregistrer les modifications.",
     "couldNotDelete": "Impossible de supprimer le barème de prix."
+  },
+  "priceMarkdowns": {
+    "title": "Démarques de Prix",
+    "subtitle": "{{count}} démarques — réductions de prix limitées dans le temps qui se rétablissent automatiquement",
+    "newMarkdown": "Nouvelle Démarque",
+    "checkNow": "Vérifier Maintenant",
+    "product": "Produit",
+    "originalPrice": "Prix d'Origine",
+    "markdownPrice": "Prix Démarqué",
+    "endDate": "Rétablit Le",
+    "status": {
+      "ACTIVE": "Active",
+      "REVERTED": "Rétablie",
+      "CANCELLED": "Annulée",
+      "SKIPPED_MANUAL_OVERRIDE": "Modifiée Manuellement"
+    },
+    "createHint": "Le prix démarqué s'applique immédiatement. Il revient automatiquement au prix d'origine à la date ci-dessus — sauf si vous changez vous-même le prix avant cette date, auquel cas le rétablissement est ignoré pour ne pas écraser votre modification manuelle.",
+    "noMarkdownsYet": "Aucune démarque de prix pour l'instant.",
+    "cancelMarkdownTitle": "Annuler la Démarque de Prix",
+    "cancelMarkdownMessage": "Ceci met fin à la démarque maintenant. Si le prix n'a pas changé depuis le début de la démarque, il revient immédiatement au prix d'origine.",
+    "markdownCreated": "Démarque de Prix Créée",
+    "markdownCancelled": "Démarque de Prix Annulée",
+    "checkComplete": "Vérification Terminée",
+    "checkCompleteDetail": "{{reverted}} sur {{evaluated}} démarque(s) échue(s) rétablie(s).",
+    "missingFields": "Informations Manquantes",
+    "productRequired": "Sélectionnez un produit pour cette démarque.",
+    "markdownPriceRequired": "Saisissez un prix démarqué valide.",
+    "endDateRequired": "Sélectionnez une date pour le rétablissement de la démarque.",
+    "couldNotLoad": "Impossible de charger les démarques de prix.",
+    "couldNotCreate": "Impossible de créer la démarque de prix.",
+    "couldNotCancel": "Impossible d'annuler la démarque de prix.",
+    "couldNotCheck": "Impossible de vérifier les démarques échues."
+  },
+  "loyaltyProgram": {
+    "title": "Programme de Fidélité",
+    "subtitle": "{{count}} cartes de fidélité clients — une simple récompense par tampon à chaque visite",
+    "programSettings": "Paramètres du Programme",
+    "isActive": "Le programme est actif",
+    "punchesRequired": "Tampons Nécessaires pour une Récompense",
+    "rewardDescription": "Récompense",
+    "rewardPlaceholder": "ex. Café gratuit, 10 % de réduction sur le prochain achat",
+    "minPurchaseAmount": "Achat Minimum pour un Tampon",
+    "settingsHint": "Un tampon est gagné automatiquement sur toute vente qualifiante — aucune étape supplémentaire n'est nécessaire à la caisse. Mettez le montant d'achat minimum à 0 pour donner un tampon à chaque vente, quel que soit le montant.",
+    "customer": "Client",
+    "progress": "Progression",
+    "totalEarned": "Total des Tampons Gagnés",
+    "totalRedeemed": "Récompenses Échangées",
+    "redeem": "Échanger",
+    "redeemTitle": "Échanger la Récompense",
+    "redeemMessage": "Donnez à {{name}} sa récompense : {{reward}}. Cela utilise ses tampons pour l'obtenir.",
+    "noProgramYet": "Aucun programme de fidélité configuré pour l’instant.",
+    "noCardsYet": "Aucune carte de fidélité pour l'instant — les tampons commencent dès qu'un client effectue un achat qualifiant.",
+    "missingFields": "Informations Manquantes",
+    "rewardRequired": "Indiquez quelle est la récompense.",
+    "punchesRequiredInvalid": "Indiquez combien de tampons sont nécessaires (au moins 1).",
+    "programSaved": "Programme de Fidélité Enregistré",
+    "rewardRedeemed": "Récompense Échangée",
+    "couldNotLoad": "Impossible de charger le programme de fidélité.",
+    "couldNotSave": "Impossible d'enregistrer le programme de fidélité.",
+    "couldNotRedeem": "Impossible d'échanger la récompense."
   },
   "recurringProfiles": {
     "title": "Profils Récurrents",
@@ -1475,6 +1545,34 @@
         "label": "Rapport de Coût Alimentaire",
         "description": "Utilisation des ingrédients et coût par exécution de KOT — modèle Restaurant"
       },
+      "dishContributionMargin": {
+        "label": "Marge de Contribution par Plat",
+        "description": "Revenu moins coût de recette par plat vendu — quels plats couvrent réellement leur coût"
+      },
+      "tableTurnoverByHour": {
+        "label": "Rotation des Tables par Heure",
+        "description": "Une carte thermique jour de la semaine x heure de la journée des commandes en salle — quand votre restaurant est vraiment le plus occupé"
+      },
+      "recipeWasteVariance": {
+        "label": "Écart Gaspillage : Recette vs. Réel",
+        "description": "Compare la quantité d'ingrédients que vos recettes indiquent comme nécessaire à ce qui a réellement été prélevé — révèle une vraie dérive des portions, un gaspillage ou une recette obsolète"
+      },
+      "deadStockClearance": {
+        "label": "Liste de Liquidation des Stocks Dormants",
+        "description": "Produits toujours en stock sans aucune vente au cours des 90 derniers jours, triés selon le capital immobilisé sur l'étagère"
+      },
+      "categorySellThrough": {
+        "label": "Taux d'Écoulement par Catégorie",
+        "description": "Mois par mois, quelle part des unités vendues-plus-en-stock de chaque catégorie s'est réellement vendue — repérez les catégories qui bougent vite face à celles qui s'accumulent"
+      },
+      "basketComposition": {
+        "label": "Composition du Panier",
+        "description": "Quels produits sont le plus souvent achetés ensemble dans la même vente — repérez les combinaisons et associations naturelles qui méritent d'être placées côte à côte ou proposées en formule"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "Matrice Produits à Rotation Rapide vs. Lente",
+        "description": "Un nuage de points de la vélocité des ventes par rapport à la marge, réparti en quatre quadrants — voyez en un coup d'œil quels produits méritent d'être réapprovisionnés rapidement, lesquels sont un effort à faible marge, et quels produits à rotation lente valent la peine d'être conservés pour leur marge"
+      },
       "gstr1": {
         "label": "Rapport GSTR-1",
         "description": "Résumé fiscal B2B et B2CS pour la déclaration de TPS"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "Conformité des Rappels",
         "description": "Combien de rappels de condition chronique ont été suivis à temps, au global et par condition."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "Sans Rendez-vous vs. Rendez-vous",
+        "description": "Quelle part de vos visites sont sans rendez-vous par rapport aux rendez-vous réservés, jour par jour."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "Tendance par Catégorie de Diagnostic",
+        "description": "Comment vos diagnostics de consultation se répartissent par catégorie et évoluent mois après mois."
+      },
+      "referralOutcome": {
+        "label": "Résultat de Référence Sortante",
+        "description": "Patients que vous avez référés à un autre praticien, si cette visite a eu lieu, et ce qui a été trouvé."
+      },
+      "packUtilization": {
+        "label": "Utilisation des Forfaits",
+        "description": "Combien de chaque forfait de séances a réellement été utilisé, par client et au global."
+      },
+      "labTAT": {
+        "label": "DTT par Test",
+        "description": "Délai de traitement par test, réel contre cible, avec les décomptes à temps versus en retard."
+      },
+      "testVolumeByPanel": {
+        "label": "Volume de Tests par Panel",
+        "description": "Combien de tests vous réalisez par panel ou catégorie, mois par mois."
+      },
+      "referralLeaderboard": {
+        "label": "Classement des Références",
+        "description": "Quels médecins vous réfèrent le plus de patients ou de tests, classés."
+      },
+      "secondOpinionConversion": {
+        "label": "Conversion de Deuxième Avis",
+        "description": "Parmi vos consultations de deuxième avis, combien de patients sont revenus et sont devenus des patients réguliers."
+      },
+      "caseComplexityMix": {
+        "label": "Mix de Complexité des Cas",
+        "description": "Le mélange de cas routiniers vs. complexes que vous voyez, mois par mois."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "Taux d'Acceptation des Traitements",
+        "description": "Parmi les plans de traitement que vous avez proposés, combien ont été acceptés et combien sont réellement devenus des revenus facturés."
+      },
+      "dentalRecallCompliance": {
+        "label": "Conformité de Rappel",
+        "description": "Des périodes de rappel clôturées sur cette période, combien de patients sont revenus à leur date d'échéance ou avant."
+      },
+      "vaccinationCompliance": {
+        "label": "Conformité Vaccinale",
+        "description": "Parmi les doses de rappel administrées durant cette période, combien étaient à temps par rapport à leur date d’échéance précédente."
+      },
+      "vetCaseTypeVolume": {
+        "label": "Tendance du Volume par Type de Cas",
+        "description": "Combien de cas vous avez traités par type de cas — consultations, soins préventifs, vaccinations, et autres dans votre catalogue de services — mois par mois."
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} enregistrements",
       "totalFoodCost": "Coût Alimentaire Total",
       "ingredientsUsed": "Ingrédients Utilisés",
+      "totalContributionMargin": "Marge de Contribution Totale",
+      "dishesSold": "Plats Vendus",
+      "contributionMarginByDish": "Marge de Contribution par Plat",
+      "totalTurns": "Total des Rotations de Table",
+      "peakTime": "Heure de Pointe",
+      "peakTurns": "Rotations à l'Heure de Pointe",
+      "ingredientsTracked": "Ingrédients Suivis",
+      "biggestWaste": "Plus Grand Excédent",
+      "varianceByIngredient": "Écart par Ingrédient",
+      "totalCapitalLocked": "Capital Total Immobilisé",
+      "deadStockItems": "Articles en Stock Dormant",
+      "lookbackWindow": "Fenêtre Rétrospective",
+      "capitalLockedByProduct": "Capital Immobilisé par Produit",
+      "sellThroughByCategoryMonth": "Taux d'Écoulement par Catégorie, par Mois",
+      "sellThroughStockNote": "Comparé au stock actuellement disponible pour chaque mois affiché — une vue de tendance, pas le niveau de stock historique propre à chaque mois.",
+      "avgSellThroughByCategory": "Taux d'Écoulement Moyen par Catégorie",
+      "totalBaskets": "Total des Paniers",
+      "avgItemsPerBasket": "Articles Moy. par Panier",
+      "avgBasketValue": "Valeur Moyenne du Panier",
+      "topProductPairs": "Les Plus Souvent Achetés Ensemble",
+      "balanceTrend": "Tendance du Solde",
+      "balanceTrendSampledNote": "Ce compte a beaucoup d'activité — la courbe de tendance affiche un échantillon représentatif de points, pas chaque entrée individuelle. Le tableau ci-dessous liste toujours chaque transaction.",
+      "velocityMedian": "Vélocité Médiane",
+      "marginMedian": "Marge Médiane",
+      "fastSlowMoverMatrix": "Vélocité vs. Marge",
+      "fastSlowMoverMatrixNote": "Chaque point représente un produit. Les lignes en pointillés marquent la vélocité médiane et la marge médiane de cette période — les quatre quadrants répartissent les produits selon rotation rapide/lente et marge élevée/faible.",
       "invoicesSuffix_one": "{{count}} facture",
       "invoicesSuffix_other": "{{count}} factures",
       "groupsSuffix_one": "{{count}} groupe",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "Lignes Remisées",
       "avgDiscountPercent": "Remise Moy.",
       "recallsClosed": "Rappels Clôturés",
-      "compliancePercent": "Conformité %"
+      "compliancePercent": "Conformité %",
+      "totalWalkIns": "Total Sans RDV",
+      "walkInPercent": "% Sans RDV",
+      "totalVisits": "Total des Visites",
+      "categorized": "Catégorisé",
+      "uncategorizedSub": "{{count}} non catégorisé",
+      "distinctCategories": "Catégories Distinctes",
+      "totalReferrals": "Total des Références",
+      "outcomeRecorded": "Résultat Enregistré",
+      "pendingReferrals": "En Attente",
+      "totalPacks": "Forfaits Totaux",
+      "sessionsUsed": "Séances Utilisées",
+      "overallUtilization": "Utilisation Globale",
+      "totalCompleted": "Tests Terminés",
+      "withTarget": "Avec Cible Définie",
+      "overallOnTimePercent": "À Temps % Global",
+      "distinctPanels": "Panels Distincts",
+      "distinctReferrers": "Référents Distincts",
+      "topReferrer": "Meilleur Référent",
+      "totalSecondOpinionVisits": "Visites de Deuxième Avis",
+      "convertedCount": "Convertis",
+      "conversionPercent": "Taux de Conversion",
+      "totalTagged": "Cas Étiquetés",
+      "routineCount": "Routinier",
+      "complexCount": "Complexe",
+      "complexPercent": "Complexe %",
+      "proposedCount": "Plans Proposés",
+      "acceptedCount": "Acceptés",
+      "billedCount": "Facturés",
+      "acceptanceRatePercent": "Taux d'Acceptation",
+      "billedRatePercent": "Taux de Facturation",
+      "dosesEvaluated": "Doses Évaluées",
+      "totalCases": "Total des Cas",
+      "distinctCaseTypes": "Types de Cas Distincts"
     },
     "aging": {
       "current": "Actuel",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "Détails des Achats",
       "apAgingByVendor": "Ancienneté des Comptes Fournisseurs par Fournisseur",
       "untaggedNote": "Non étiqueté : {{revenue}} de revenus et {{expense}} de dépenses provenant de transactions sans centre de coûts défini.",
-      "complianceByCondition": "Conformité par Condition"
+      "complianceByCondition": "Conformité par Condition",
+      "dailyBreakdown": "Répartition Quotidienne",
+      "monthlyBreakdown": "Répartition Mensuelle",
+      "diagnosisTrendChart": "Tendance par Catégorie de Diagnostic",
+      "packUtilizationChart": "Utilisation des Forfaits par Client",
+      "labTATChart": "Délai de Traitement par Test",
+      "testVolumeByPanelChart": "Tendance du Volume de Tests",
+      "referralLeaderboardChart": "Meilleurs Médecins Référents",
+      "tableTurnoverHeatmap": "Rotations de Table par Jour et Heure",
+      "caseComplexityMixChart": "Routinier vs. Complexe, par Mois",
+      "treatmentAcceptanceFunnelChart": "Proposé → Accepté → Facturé",
+      "complianceByRecallType": "Conformité par Type de Rappel",
+      "complianceByVaccine": "Conformité par Vaccin",
+      "caseTypeVolumeChart": "Tendance du Volume de Cas"
     },
     "empty": {
       "invoices": "Aucune facture dans cette plage de dates.",
@@ -1892,6 +2114,13 @@
       "auditRecords": "Aucun enregistrement d'audit trouvé.",
       "backups": "Aucune sauvegarde trouvée. Les sauvegardes apparaîtront ici une fois le module de sauvegarde configuré.",
       "foodCost": "Aucune déduction d'ingrédients trouvée dans cette plage de dates. Les KOT doivent être marqués comme terminés pour enregistrer le coût alimentaire.",
+      "dishContributionMargin": "Aucun plat vendu dans cette plage de dates.",
+      "tableTurnoverByHour": "Aucune commande en salle trouvée dans cette plage de dates.",
+      "recipeWasteVariance": "Aucune activité d'ingrédients liée à une recette trouvée dans cette plage de dates.",
+      "deadStockClearance": "Aucun stock dormant trouvé — tous les produits en stock ont été vendus récemment.",
+      "categorySellThrough": "Aucune vente de produit catégorisé trouvée dans cette plage de dates.",
+      "basketComposition": "Aucun panier avec 2 produits différents ou plus trouvé dans cette plage de dates.",
+      "fastSlowMoverMatrix": "Aucun produit vendu sur cette période.",
       "gstr1": "Aucune facture imposable trouvée pour cette période.",
       "appointments": "Aucun rendez-vous dans cette plage de dates.",
       "clientAppointments": "Aucun rendez-vous client trouvé dans cette plage de dates.",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "Aucune révision de plan dans cette période.",
       "siteVisitLog": "Aucune visite de chantier dans cette période.",
       "noData": "Aucun enregistrement trouvé pour cette période.",
-      "chronicRecallCompliance": "Aucune période de rappel clôturée dans cette plage de dates."
+      "chronicRecallCompliance": "Aucune période de rappel clôturée dans cette plage de dates.",
+      "walkInVsAppointmentRatio": "Aucune visite sans rendez-vous ni rendez-vous dans cette plage de dates.",
+      "diagnosisCategoryTrend": "Aucune visite catégorisée dans cette plage de dates.",
+      "referralOutcome": "Aucune référence effectuée dans cette plage de dates.",
+      "packUtilization": "Aucun forfait de séances acheté dans cette plage de dates.",
+      "labTAT": "Aucun test terminé sur cette période.",
+      "testVolumeByPanel": "Aucun test enregistré sur cette période.",
+      "referralLeaderboard": "Aucune référence enregistrée sur cette période.",
+      "secondOpinionConversion": "Aucune consultation de deuxième avis enregistrée sur cette période.",
+      "caseComplexityMix": "Aucune visite étiquetée par complexité de cas sur cette période.",
+      "treatmentAcceptanceRate": "Aucun plan de traitement proposé sur cette période.",
+      "dentalRecallCompliance": "Aucune période de rappel clôturée sur cette période.",
+      "vaccinationCompliance": "Aucune dose de rappel avec une date d’échéance précédente sur cette période.",
+      "vetCaseTypeVolume": "Aucun cas enregistré sur cette période."
     },
     "col": {
       "invoiceNo": "N° Facture",
@@ -1987,6 +2229,20 @@
       "ingredient": "Ingrédient",
       "qtyUsed": "Quantité Utilisée",
       "totalCost": "Coût Total",
+      "dishName": "Plat",
+      "qtySold": "Quantité Vendue",
+      "revenue": "Revenu",
+      "ingredientCost": "Coût des Ingrédients",
+      "contributionMargin": "Marge de Contribution",
+      "marginPercent": "Marge %",
+      "quadrant": "Quadrant",
+      "dayOfWeek": "Jour",
+      "hour": "Heure",
+      "turns": "Rotations",
+      "impliedQuantity": "Qté Selon Recette",
+      "actualQuantity": "Qté Réellement Utilisée",
+      "varianceQuantity": "Écart",
+      "variancePercent": "Écart %",
       "gstin": "GSTIN",
       "party": "Partie",
       "value": "Valeur",
@@ -2001,7 +2257,6 @@
       "durationShort": "Durée",
       "day": "Jour",
       "appointments": "Rendez-vous",
-      "hour": "Heure",
       "noShow": "Absence",
       "completionPercent": "Achèvement %",
       "providerTotal": "Total",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "Quantité Restante",
       "bucket": "Statut",
       "unitCost": "Coût Unitaire",
+      "capitalLocked": "Capital Immobilisé",
+      "lastSoldDate": "Dernière Vente",
+      "neverSold": "Jamais Vendu",
       "orderNumber": "N° de Commande",
       "patientName": "Patient",
       "createdDate": "Créé",
@@ -2042,6 +2300,12 @@
       "componentType": "Composant",
       "expiringSoonQ": "Bientôt Périmé ?",
       "month": "Mois",
+      "unitsSold": "Unités Vendues",
+      "sellThroughRate": "Taux d'Écoulement",
+      "productA": "Produit A",
+      "productB": "Produit B",
+      "basketCount": "Paniers",
+      "velocity": "Vélocité (unités/jour)",
       "shipmentCount": "Expéditions",
       "freightAmount": "Montant du Fret",
       "employee": "Employé",
@@ -2110,7 +2374,30 @@
       "condition": "Condition",
       "recallsClosed": "Rappels Clôturés",
       "onTime": "À Temps",
-      "compliancePercent": "Conformité %"
+      "compliancePercent": "Conformité %",
+      "walkIns": "Sans RDV",
+      "referredTo": "Référé À",
+      "outcome": "Résultat",
+      "packName": "Forfait",
+      "totalSessions": "Séances Totales",
+      "usedSessions": "Utilisées",
+      "remainingSessions": "Restantes",
+      "utilization": "Utilisation",
+      "orders": "Commandes",
+      "avgActualTAT": "DTT Réel Moy.",
+      "targetTAT": "DTT Cible",
+      "onTimePercent": "À Temps %",
+      "referrerName": "Médecin Référent",
+      "referralCount": "Références",
+      "visitDate": "Date de Visite",
+      "converted": "Converti",
+      "nextVisitDate": "Prochaine Visite",
+      "routine": "Routinier",
+      "complex": "Complexe",
+      "stage": "Étape",
+      "recallType": "Type de Rappel",
+      "vaccineName": "Vaccin",
+      "doses": "Doses"
     },
     "legend": {
       "schemeCost": "Coût du Programme",
@@ -2125,6 +2412,13 @@
       "returning": "Récurrent",
       "atRiskFlag": "⚠ À Risque",
       "lowFlag": "⚠ Faible",
+      "cartonsAndPieces": "{{cartons}} cartons + {{pieces}} pièces",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "Rapide, Marge Élevée",
+        "FAST_LOW_MARGIN": "Rapide, Marge Faible",
+        "SLOW_HIGH_MARGIN": "Lent, Marge Élevée",
+        "SLOW_LOW_MARGIN": "Lent, Marge Faible"
+      },
       "customerPrefix": "CLIENT : ",
       "supplierPrefix": "FOURNISSEUR : ",
       "bucketExpired": "Expiré",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "Schémas de Prix",
         "body": "Configurez une offre Achetez-X-Obtenez-Y-Gratuit ou de remise sur volume — essayez-en une et observez comment elle se suggère automatiquement dans le panier dès qu'un article éligible est ajouté."
+      },
+      "priceMarkdowns": {
+        "title": "Démarques de Prix",
+        "body": "Réduisez le prix d'un produit pour une durée limitée, avec une date à laquelle il revient tout seul — pas besoin de se souvenir de le remodifier."
+      },
+      "loyaltyProgram": {
+        "title": "Programme de Fidélité",
+        "body": "Définissez combien de visites permettent de gagner une récompense et quelle est cette récompense — un tampon est ajouté automatiquement à la carte du client à chaque vente qualifiante, sans étape supplémentaire à la caisse. Échangez-la ici une fois gagnée."
       },
       "recurringProfiles": {
         "title": "Profils Récurrents",

@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { billingService } from './billing.service'
 
 // TreatmentPlan.totalEstimatedCost is a Prisma Decimal, not a plain number —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -104,5 +105,67 @@ export async function updateTreatmentPlan(payload: {
     return { success: true, data: serializePlan(plan) }
   } catch (err) {
     return { success: false, error: { code: 'TP-004', message: err instanceof Error ? err.message : 'Could not update treatment plan.' } }
+  }
+}
+
+async function findOrCreateDentalServiceProduct() {
+  const db = getPrisma()
+  const hsnCode = '999312' // dental services
+  let product = await db.product.findFirst({ where: { hsnCode, isActive: true } })
+  if (!product) {
+    product = await db.product.create({
+      data: { productName: 'Dental Treatment Services', productType: 'SERVICE', hsnCode, sellingPrice: 0, taxRate: 18, unit: 'NOS', isActive: true },
+    })
+  }
+  return product
+}
+
+// Phase 67 §9.1 item 21.1 — Dental Clinic: treatment-plan conversion
+// tracking (quoted→accepted→billed). Mirrors generateInvoiceForServiceProject's
+// own "one product, one line per real chargeable item" pattern (time-entry.service.ts)
+// rather than inventing a new invoice-generation shape. Only a plan that's
+// actually been accepted (not still PROPOSED, not DECLINED) can be billed —
+// billing an unaccepted plan would silently invent acceptance the patient
+// never gave. A plan can only be billed once: `invoiceId` is the claim.
+export async function generateInvoiceFromTreatmentPlan(payload: { treatmentPlanId: string }, userId?: string) {
+  try {
+    const db = getPrisma()
+    const plan = await db.treatmentPlan.findUnique({ where: { id: payload.treatmentPlanId } })
+    if (!plan) return { success: false, error: { code: 'TP-005', message: 'Treatment plan not found.' } }
+    if (plan.invoiceId) return { success: false, error: { code: 'TP-006', message: 'This treatment plan has already been billed.' } }
+    if (plan.status === 'PROPOSED' || plan.status === 'DECLINED') {
+      return { success: false, error: { code: 'TP-007', message: 'Only an accepted treatment plan can be billed.' } }
+    }
+
+    let items: Array<{ toothNumber?: number; procedure: string; estimatedCost: number; itemStatus: string }> = []
+    try { items = JSON.parse(plan.planItems) } catch { items = [] }
+    const billableItems = items.filter((i) => i.estimatedCost > 0)
+    if (billableItems.length === 0) return { success: false, error: { code: 'TP-008', message: 'This plan has no priced items to bill.' } }
+
+    const product = await findOrCreateDentalServiceProduct()
+    const result = await billingService.createInvoice({
+      customerId: plan.patientId,
+      paymentMethod: 'CREDIT',
+      gstType: 'CGST_SGST',
+      items: billableItems.map((i) => ({
+        productId: product.id,
+        quantity: 1,
+        unitPrice: i.estimatedCost,
+        variantInfo: (i.toothNumber ? `Tooth #${i.toothNumber} — ${i.procedure}` : i.procedure).slice(0, 100),
+      })),
+      notes: plan.title,
+      referenceNumber: plan.id.slice(0, 12),
+    }, userId)
+    if (!result.success) return result
+
+    const invoice = result.data as { id: string }
+    await db.treatmentPlan.update({ where: { id: plan.id }, data: { invoiceId: invoice.id } })
+    await db.auditLog.create({
+      data: { userId: userId ?? null, action: 'INVOICED', entityType: 'TreatmentPlan', entityId: plan.id, newValue: JSON.stringify({ invoiceId: invoice.id }) },
+    }).catch(() => {})
+
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    return { success: false, error: { code: 'TP-009', message: err instanceof Error ? err.message : 'Could not generate invoice for treatment plan.' } }
   }
 }

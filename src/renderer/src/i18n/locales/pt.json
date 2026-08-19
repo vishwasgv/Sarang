@@ -10,6 +10,8 @@
     "purchaseOrders": "Pedidos de Compra",
     "priceLists": "Listas de Preços",
     "pricingSchemes": "Esquemas de Preços",
+    "priceMarkdowns": "Reduções de Preço",
+    "loyaltyProgram": "Programa de Fidelidade",
     "recurringProfiles": "Perfis Recorrentes",
     "locations": "Localizações",
     "approvalWorkflows": "Fluxos de Aprovação",
@@ -437,6 +439,7 @@
     "areaLabel": "Área",
     "areaFormula": "C × L = Área",
     "useAreaSq": "Usar {{area}} quadrados",
+    "areaMarginPreview": "Margem: {{percent}}%",
     "rx": {
       "title": "Detalhes da Prescrição",
       "description": "Este é um item somente sob prescrição (Lista H/H1) — o nome do paciente e do médico são obrigatórios para vendê-lo.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "Esquemas de Preços",
-    "subtitle": "{{count}} esquemas — ofertas compre X leve Y grátis e descontos por quantidade",
+    "subtitle": "{{count}} esquemas — ofertas compre X leve Y grátis, descontos por quantidade e % de desconto fixo",
     "newScheme": "Novo Esquema",
     "namePlaceholder": "ex. Compre 2 Leve 1 Grátis — Cadernos",
     "ruleTypeLabel": "Tipo de Oferta",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "Compre X Leve Y Grátis",
-      "SLAB_DISCOUNT": "Desconto por Quantidade"
+      "SLAB_DISCOUNT": "Desconto por Quantidade",
+      "FLAT_PERCENT_OFF": "Happy Hour / % de Desconto Fixo"
     },
     "scopeType": "Aplica-se a",
     "byProduct": "Um Produto",
@@ -1145,8 +1149,14 @@
     "minQuantity": "Quantidade Mín.",
     "discountPercent": "Desconto %",
     "buyXGetYSummary": "Compre {{buy}}, leve {{free}} grátis",
+    "flatPercentSummary": "{{percent}}% de desconto",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "Data de Início (opcional)",
     "endDateOptional": "Data de Término (opcional)",
+    "happyHourWindow": "Janela de Happy Hour (opcional)",
+    "startTimeOptional": "Hora de Início",
+    "endTimeOptional": "Hora de Término",
+    "happyHourWindowHint": "Ativo apenas durante esses horários todos os dias — deixe em branco para aplicar a qualquer momento. Não atravessa a meia-noite (ex. 16h00–18h00 funciona; 22h00–2h00 não).",
     "rule": "Oferta",
     "noSchemesYet": "Ainda não há Esquemas de Preços.",
     "deleteSchemeTitle": "Excluir Esquema de Preços",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "Não foi possível criar o esquema de preços.",
     "couldNotSave": "Não foi possível salvar as alterações.",
     "couldNotDelete": "Não foi possível excluir o esquema de preços."
+  },
+  "priceMarkdowns": {
+    "title": "Reduções de Preço",
+    "subtitle": "{{count}} reduções — cortes de preço por tempo limitado que revertem automaticamente",
+    "newMarkdown": "Nova Redução",
+    "checkNow": "Verificar Agora",
+    "product": "Produto",
+    "originalPrice": "Preço Original",
+    "markdownPrice": "Preço Reduzido",
+    "endDate": "Reverte Em",
+    "status": {
+      "ACTIVE": "Ativa",
+      "REVERTED": "Revertida",
+      "CANCELLED": "Cancelada",
+      "SKIPPED_MANUAL_OVERRIDE": "Alterada Manualmente"
+    },
+    "createHint": "O preço reduzido aplica-se imediatamente. Ele volta automaticamente ao preço original na data acima — a menos que você mesmo altere o preço antes disso, caso em que a reversão é ignorada para não sobrescrever sua alteração manual.",
+    "noMarkdownsYet": "Ainda não há Reduções de Preço.",
+    "cancelMarkdownTitle": "Cancelar Redução de Preço",
+    "cancelMarkdownMessage": "Isso encerra a redução agora. Se o preço não mudou desde que a redução começou, ele volta imediatamente ao preço original.",
+    "markdownCreated": "Redução de Preço Criada",
+    "markdownCancelled": "Redução de Preço Cancelada",
+    "checkComplete": "Verificação Concluída",
+    "checkCompleteDetail": "{{reverted}} de {{evaluated}} redução(ões) vencida(s) revertida(s).",
+    "missingFields": "Informações Faltando",
+    "productRequired": "Selecione um produto para esta redução.",
+    "markdownPriceRequired": "Insira um preço reduzido válido.",
+    "endDateRequired": "Selecione uma data para a redução reverter.",
+    "couldNotLoad": "Não foi possível carregar as reduções de preço.",
+    "couldNotCreate": "Não foi possível criar a redução de preço.",
+    "couldNotCancel": "Não foi possível cancelar a redução de preço.",
+    "couldNotCheck": "Não foi possível verificar as reduções vencidas."
+  },
+  "loyaltyProgram": {
+    "title": "Programa de Fidelidade",
+    "subtitle": "{{count}} cartões de fidelidade de clientes — uma recompensa simples por carimbo a cada visita",
+    "programSettings": "Configurações do Programa",
+    "isActive": "O programa está ativo",
+    "punchesRequired": "Carimbos Necessários para uma Recompensa",
+    "rewardDescription": "Recompensa",
+    "rewardPlaceholder": "ex. Café grátis, 10% de desconto na próxima compra",
+    "minPurchaseAmount": "Compra Mínima para um Carimbo",
+    "settingsHint": "Um carimbo é ganho automaticamente em qualquer venda qualificada — nenhuma etapa extra é necessária no checkout. Defina o valor mínimo de compra como 0 para dar um carimbo em toda venda, independente do valor.",
+    "customer": "Cliente",
+    "progress": "Progresso",
+    "totalEarned": "Total de Carimbos Ganhos",
+    "totalRedeemed": "Recompensas Resgatadas",
+    "redeem": "Resgatar",
+    "redeemTitle": "Resgatar Recompensa",
+    "redeemMessage": "Dê a {{name}} sua recompensa: {{reward}}. Isso usa os carimbos dela para consegui-la.",
+    "noProgramYet": "Nenhum programa de fidelidade configurado ainda.",
+    "noCardsYet": "Nenhum cartão de fidelidade ainda — os carimbos começam assim que um cliente faz uma compra qualificada.",
+    "missingFields": "Informação Faltando",
+    "rewardRequired": "Informe qual é a recompensa.",
+    "punchesRequiredInvalid": "Informe quantos carimbos são necessários (pelo menos 1).",
+    "programSaved": "Programa de Fidelidade Salvo",
+    "rewardRedeemed": "Recompensa Resgatada",
+    "couldNotLoad": "Não foi possível carregar o programa de fidelidade.",
+    "couldNotSave": "Não foi possível salvar o programa de fidelidade.",
+    "couldNotRedeem": "Não foi possível resgatar a recompensa."
   },
   "recurringProfiles": {
     "title": "Perfis Recorrentes",
@@ -1475,6 +1545,34 @@
         "label": "Relatório de Custo de Alimentos",
         "description": "Uso de ingredientes e custo por conclusão de KOT — modelo de Restaurante"
       },
+      "dishContributionMargin": {
+        "label": "Margem de Contribuição por Prato",
+        "description": "Receita menos custo de receita por prato vendido — quais pratos realmente estão cobrindo seu custo"
+      },
+      "tableTurnoverByHour": {
+        "label": "Rotatividade de Mesas por Hora",
+        "description": "Um mapa de calor dia da semana x hora do dia de pedidos no salão — quando seu restaurante está realmente mais movimentado"
+      },
+      "recipeWasteVariance": {
+        "label": "Variação de Desperdício: Receita vs. Real",
+        "description": "Compara quanto de ingredientes suas receitas dizem que deveria ter sido usado com o que foi realmente retirado — revela desvio real de porções, derramamento ou uma receita desatualizada"
+      },
+      "deadStockClearance": {
+        "label": "Lista de Liquidação de Estoque Parado",
+        "description": "Produtos ainda em estoque sem nenhuma venda nos últimos 90 dias, ordenados por quanto capital está parado na prateleira"
+      },
+      "categorySellThrough": {
+        "label": "Taxa de Giro por Categoria",
+        "description": "Mês a mês, qual parcela das unidades vendidas-mais-em-estoque de cada categoria realmente vendeu — identifique categorias que giram rápido versus as que se acumulam"
+      },
+      "basketComposition": {
+        "label": "Composição da Cesta",
+        "description": "Quais produtos são mais frequentemente comprados juntos na mesma venda — identifique combinações e pareamentos naturais que vale a pena colocar lado a lado ou oferecer como combo"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "Matriz de Produtos de Giro Rápido vs. Lento",
+        "description": "Um gráfico de dispersão da velocidade de vendas em relação à margem, dividido em quatro quadrantes — veja rapidamente quais produtos vale a pena reabastecer rápido, quais são um esforço de baixa margem, e quais produtos de giro lento vale a pena manter pela sua margem"
+      },
       "gstr1": {
         "label": "Relatório GSTR-1",
         "description": "Resumo fiscal B2B e B2CS para declaração de GST"
@@ -1662,6 +1760,58 @@
       "chronicRecallCompliance": {
         "label": "Conformidade de Lembretes",
         "description": "Quantos lembretes de condição crônica foram seguidos no prazo, no geral e por condição."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "Proporção de Sem Hora Marcada vs. Consultas Agendadas",
+        "description": "Quantas de suas visitas são sem hora marcada em comparação com consultas agendadas, dia a dia."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "Tendência por Categoria de Diagnóstico",
+        "description": "Como seus diagnósticos de consulta se dividem por categoria e sua tendência mês a mês."
+      },
+      "referralOutcome": {
+        "label": "Resultado de Encaminhamento Externo",
+        "description": "Pacientes que você encaminhou para outro profissional, se essa visita aconteceu, e o que foi encontrado."
+      },
+      "packUtilization": {
+        "label": "Utilização de Pacotes",
+        "description": "Quanto de cada pacote de sessões foi realmente utilizado, por cliente e no geral."
+      },
+      "labTAT": {
+        "label": "TAT por Exame",
+        "description": "Tempo de resposta por exame, real contra meta, com contagens no prazo versus atrasado."
+      },
+      "testVolumeByPanel": {
+        "label": "Volume de Exames por Painel",
+        "description": "Quantos exames você realiza por painel ou categoria, mês a mês."
+      },
+      "referralLeaderboard": {
+        "label": "Classificação de Encaminhamentos",
+        "description": "Quais médicos mais lhe encaminham pacientes ou exames, classificados."
+      },
+      "secondOpinionConversion": {
+        "label": "Conversão de Segunda Opinião",
+        "description": "Das suas consultas de segunda opinião, quantos pacientes voltaram e se tornaram pacientes contínuos."
+      },
+      "caseComplexityMix": {
+        "label": "Mix de Complexidade de Casos",
+        "description": "A mistura de casos rotineiros vs. complexos que você está atendendo, mês a mês."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "Taxa de Aceitação de Tratamento",
+        "description": "Dos planos de tratamento que você propôs, quantos foram aceitos e quantos realmente se tornaram receita faturada."
+      },
+      "dentalRecallCompliance": {
+        "label": "Conformidade de Retorno",
+        "description": "Dos períodos de retorno encerrados neste intervalo, quantos pacientes voltaram na data de vencimento ou antes."
+      },
+      "vaccinationCompliance": {
+        "label": "Conformidade de Vacinação",
+        "description": "Das doses de reforço aplicadas neste período, quantas estavam no prazo em relação à sua data de vencimento anterior."
+      },
+      "vetCaseTypeVolume": {
+        "label": "Tendência de Volume por Tipo de Caso",
+        "description": "Quantos casos você atendeu por tipo de caso — consultas, cuidados preventivos, vacinações, e outros no seu Catálogo de Serviços — mês a mês."
       }
     },
     "summary": {
@@ -1711,6 +1861,32 @@
       "recordsSuffix": "{{count}} registros",
       "totalFoodCost": "Custo Total de Alimentos",
       "ingredientsUsed": "Ingredientes Usados",
+      "totalContributionMargin": "Margem de Contribuição Total",
+      "dishesSold": "Pratos Vendidos",
+      "contributionMarginByDish": "Margem de Contribuição por Prato",
+      "totalTurns": "Total de Rotações de Mesa",
+      "peakTime": "Horário de Pico",
+      "peakTurns": "Rotações no Horário de Pico",
+      "ingredientsTracked": "Ingredientes Rastreados",
+      "biggestWaste": "Maior Excesso",
+      "varianceByIngredient": "Variação por Ingrediente",
+      "totalCapitalLocked": "Capital Total Parado",
+      "deadStockItems": "Itens de Estoque Parado",
+      "lookbackWindow": "Janela Retrospectiva",
+      "capitalLockedByProduct": "Capital Parado por Produto",
+      "sellThroughByCategoryMonth": "Taxa de Giro por Categoria, por Mês",
+      "sellThroughStockNote": "Comparado com o estoque atualmente disponível para cada mês mostrado — uma visão de tendência, não o nível de estoque histórico próprio de cada mês.",
+      "avgSellThroughByCategory": "Taxa de Giro Média por Categoria",
+      "totalBaskets": "Total de Cestas",
+      "avgItemsPerBasket": "Méd. de Itens por Cesta",
+      "avgBasketValue": "Valor Médio da Cesta",
+      "topProductPairs": "Mais Comprados Juntos",
+      "balanceTrend": "Tendência do Saldo",
+      "balanceTrendSampledNote": "Esta conta tem muita atividade — a linha de tendência mostra uma amostra representativa de pontos, não cada lançamento individual. A tabela abaixo ainda lista cada transação.",
+      "velocityMedian": "Velocidade Mediana",
+      "marginMedian": "Margem Mediana",
+      "fastSlowMoverMatrix": "Velocidade vs. Margem",
+      "fastSlowMoverMatrixNote": "Cada ponto é um produto. As linhas tracejadas marcam a velocidade mediana e a margem mediana deste período — os quatro quadrantes dividem os produtos por giro rápido/lento e margem alta/baixa.",
       "invoicesSuffix_one": "{{count}} nota",
       "invoicesSuffix_other": "{{count}} notas",
       "groupsSuffix_one": "{{count}} grupo",
@@ -1791,7 +1967,40 @@
       "discountIncidence": "Itens com Desconto",
       "avgDiscountPercent": "Desconto Médio",
       "recallsClosed": "Lembretes Encerrados",
-      "compliancePercent": "Conformidade %"
+      "compliancePercent": "Conformidade %",
+      "totalWalkIns": "Total Sem Hora Marcada",
+      "walkInPercent": "% Sem Hora Marcada",
+      "totalVisits": "Total de Visitas",
+      "categorized": "Categorizado",
+      "uncategorizedSub": "{{count}} não categorizado",
+      "distinctCategories": "Categorias Distintas",
+      "totalReferrals": "Total de Encaminhamentos",
+      "outcomeRecorded": "Resultado Registrado",
+      "pendingReferrals": "Pendente",
+      "totalPacks": "Total de Pacotes",
+      "sessionsUsed": "Sessões Usadas",
+      "overallUtilization": "Utilização Geral",
+      "totalCompleted": "Exames Concluídos",
+      "withTarget": "Com Meta Definida",
+      "overallOnTimePercent": "No Prazo % Geral",
+      "distinctPanels": "Painéis Distintos",
+      "distinctReferrers": "Encaminhadores Distintos",
+      "topReferrer": "Principal Encaminhador",
+      "totalSecondOpinionVisits": "Visitas de Segunda Opinião",
+      "convertedCount": "Convertidos",
+      "conversionPercent": "Taxa de Conversão",
+      "totalTagged": "Casos Marcados",
+      "routineCount": "Rotineiro",
+      "complexCount": "Complexo",
+      "complexPercent": "Complexo %",
+      "proposedCount": "Planos Propostos",
+      "acceptedCount": "Aceitos",
+      "billedCount": "Faturados",
+      "acceptanceRatePercent": "Taxa de Aceitação",
+      "billedRatePercent": "Taxa de Faturamento",
+      "dosesEvaluated": "Doses Avaliadas",
+      "totalCases": "Total de Casos",
+      "distinctCaseTypes": "Tipos de Caso Distintos"
     },
     "aging": {
       "current": "Em Dia",
@@ -1876,7 +2085,20 @@
       "purchaseDetails": "Detalhes da Compra",
       "apAgingByVendor": "Antiguidade de Contas a Pagar por Fornecedor",
       "untaggedNote": "Não marcado: {{revenue}} de receita e {{expense}} de despesa de transações sem centro de custo definido.",
-      "complianceByCondition": "Conformidade por Condição"
+      "complianceByCondition": "Conformidade por Condição",
+      "dailyBreakdown": "Detalhamento Diário",
+      "monthlyBreakdown": "Detalhamento Mensal",
+      "diagnosisTrendChart": "Tendência por Categoria de Diagnóstico",
+      "packUtilizationChart": "Utilização de Pacotes por Cliente",
+      "labTATChart": "Tempo de Resposta por Exame",
+      "testVolumeByPanelChart": "Tendência de Volume de Exames",
+      "referralLeaderboardChart": "Principais Médicos Encaminhadores",
+      "tableTurnoverHeatmap": "Rotações de Mesa por Dia e Hora",
+      "caseComplexityMixChart": "Rotineiro vs. Complexo, por Mês",
+      "treatmentAcceptanceFunnelChart": "Proposto → Aceito → Faturado",
+      "complianceByRecallType": "Conformidade por Tipo de Retorno",
+      "complianceByVaccine": "Conformidade por Vacina",
+      "caseTypeVolumeChart": "Tendência de Volume de Casos"
     },
     "empty": {
       "invoices": "Nenhuma fatura neste intervalo de datas.",
@@ -1892,6 +2114,13 @@
       "auditRecords": "Nenhum registro de auditoria encontrado.",
       "backups": "Nenhum backup encontrado. Os backups aparecerão aqui após a configuração do módulo de backup.",
       "foodCost": "Nenhuma dedução de ingredientes encontrada neste intervalo de datas. Os KOTs devem ser marcados como concluídos para registrar o custo de alimentos.",
+      "dishContributionMargin": "Nenhum prato vendido neste intervalo de datas.",
+      "tableTurnoverByHour": "Nenhum pedido no salão encontrado neste intervalo de datas.",
+      "recipeWasteVariance": "Nenhuma atividade de ingredientes vinculada a receitas encontrada neste intervalo de datas.",
+      "deadStockClearance": "Nenhum estoque parado encontrado — todos os produtos em estoque foram vendidos recentemente.",
+      "categorySellThrough": "Nenhuma venda de produto categorizado encontrada neste intervalo de datas.",
+      "basketComposition": "Nenhuma cesta com 2 ou mais produtos diferentes encontrada neste intervalo de datas.",
+      "fastSlowMoverMatrix": "Nenhum produto vendido neste período.",
       "gstr1": "Nenhuma fatura tributável encontrada para este período.",
       "appointments": "Nenhum agendamento neste intervalo de datas.",
       "clientAppointments": "Nenhum agendamento de cliente encontrado neste intervalo de datas.",
@@ -1926,7 +2155,20 @@
       "drawingRegister": "Nenhuma revisão de desenho neste intervalo de datas.",
       "siteVisitLog": "Nenhuma visita ao local neste intervalo de datas.",
       "noData": "Nenhum registro encontrado para este período.",
-      "chronicRecallCompliance": "Nenhum período de lembrete encerrado neste intervalo de datas."
+      "chronicRecallCompliance": "Nenhum período de lembrete encerrado neste intervalo de datas.",
+      "walkInVsAppointmentRatio": "Nenhuma visita sem hora marcada ou consulta agendada neste intervalo de datas.",
+      "diagnosisCategoryTrend": "Nenhuma visita categorizada neste intervalo de datas.",
+      "referralOutcome": "Nenhum encaminhamento feito neste intervalo de datas.",
+      "packUtilization": "Nenhum pacote de sessões comprado neste intervalo de datas.",
+      "labTAT": "Nenhum exame concluído neste período.",
+      "testVolumeByPanel": "Nenhum exame registrado neste período.",
+      "referralLeaderboard": "Nenhum encaminhamento registrado neste período.",
+      "secondOpinionConversion": "Nenhuma consulta de segunda opinião registrada neste período.",
+      "caseComplexityMix": "Nenhuma visita marcada por complexidade de caso neste período.",
+      "treatmentAcceptanceRate": "Nenhum plano de tratamento proposto neste período.",
+      "dentalRecallCompliance": "Nenhum período de retorno encerrado neste intervalo de datas.",
+      "vaccinationCompliance": "Nenhuma dose de reforço com uma data de vencimento anterior neste período.",
+      "vetCaseTypeVolume": "Nenhum caso registrado neste período."
     },
     "col": {
       "invoiceNo": "N.º Fatura",
@@ -1987,6 +2229,20 @@
       "ingredient": "Ingrediente",
       "qtyUsed": "Quantidade Usada",
       "totalCost": "Custo Total",
+      "dishName": "Prato",
+      "qtySold": "Quantidade Vendida",
+      "revenue": "Receita",
+      "ingredientCost": "Custo de Ingredientes",
+      "contributionMargin": "Margem de Contribuição",
+      "marginPercent": "Margem %",
+      "quadrant": "Quadrante",
+      "dayOfWeek": "Dia",
+      "hour": "Hora",
+      "turns": "Rotações",
+      "impliedQuantity": "Qtd. Conforme Receita",
+      "actualQuantity": "Qtd. Realmente Usada",
+      "varianceQuantity": "Variação",
+      "variancePercent": "Variação %",
       "gstin": "GSTIN",
       "party": "Parte",
       "value": "Valor",
@@ -2001,7 +2257,6 @@
       "durationShort": "Duração",
       "day": "Dia",
       "appointments": "Agendamentos",
-      "hour": "Hora",
       "noShow": "Não Comparecimento",
       "completionPercent": "Conclusão %",
       "providerTotal": "Total",
@@ -2032,6 +2287,9 @@
       "quantityRemaining": "Qtd. Restante",
       "bucket": "Status",
       "unitCost": "Custo Unitário",
+      "capitalLocked": "Capital Parado",
+      "lastSoldDate": "Última Venda",
+      "neverSold": "Nunca Vendido",
       "orderNumber": "Pedido #",
       "patientName": "Paciente",
       "createdDate": "Criado",
@@ -2042,6 +2300,12 @@
       "componentType": "Componente",
       "expiringSoonQ": "Vencendo em Breve?",
       "month": "Mês",
+      "unitsSold": "Unidades Vendidas",
+      "sellThroughRate": "Taxa de Giro",
+      "productA": "Produto A",
+      "productB": "Produto B",
+      "basketCount": "Cestas",
+      "velocity": "Velocidade (unidades/dia)",
       "shipmentCount": "Remessas",
       "freightAmount": "Valor do Frete",
       "employee": "Funcionário",
@@ -2110,7 +2374,30 @@
       "condition": "Condição",
       "recallsClosed": "Lembretes Encerrados",
       "onTime": "No Prazo",
-      "compliancePercent": "Conformidade %"
+      "compliancePercent": "Conformidade %",
+      "walkIns": "Sem Hora Marcada",
+      "referredTo": "Encaminhado Para",
+      "outcome": "Resultado",
+      "packName": "Pacote",
+      "totalSessions": "Total de Sessões",
+      "usedSessions": "Usadas",
+      "remainingSessions": "Restantes",
+      "utilization": "Utilização",
+      "orders": "Pedidos",
+      "avgActualTAT": "TAT Real Méd.",
+      "targetTAT": "TAT Alvo",
+      "onTimePercent": "No Prazo %",
+      "referrerName": "Médico Encaminhador",
+      "referralCount": "Encaminhamentos",
+      "visitDate": "Data da Visita",
+      "converted": "Convertido",
+      "nextVisitDate": "Próxima Visita",
+      "routine": "Rotineiro",
+      "complex": "Complexo",
+      "stage": "Etapa",
+      "recallType": "Tipo de Retorno",
+      "vaccineName": "Vacina",
+      "doses": "Doses"
     },
     "legend": {
       "schemeCost": "Custo do Esquema",
@@ -2125,6 +2412,13 @@
       "returning": "Recorrente",
       "atRiskFlag": "⚠ Em Risco",
       "lowFlag": "⚠ Baixo",
+      "cartonsAndPieces": "{{cartons}} caixas + {{pieces}} unidades",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "Rápido, Margem Alta",
+        "FAST_LOW_MARGIN": "Rápido, Margem Baixa",
+        "SLOW_HIGH_MARGIN": "Lento, Margem Alta",
+        "SLOW_LOW_MARGIN": "Lento, Margem Baixa"
+      },
       "customerPrefix": "CLIENTE: ",
       "supplierPrefix": "FORNECEDOR: ",
       "bucketExpired": "Vencido",
@@ -2901,6 +3195,14 @@
       "pricingSchemes": {
         "title": "Esquemas de Preços",
         "body": "Configure uma oferta Compre-X-Leve-Y-Grátis ou de desconto por volume — experimente uma e veja como ela se sugere automaticamente no carrinho assim que um item elegível é adicionado."
+      },
+      "priceMarkdowns": {
+        "title": "Reduções de Preço",
+        "body": "Reduza o preço de um produto por tempo limitado, com uma data em que ele reverte sozinho — sem precisar lembrar de alterá-lo de volta."
+      },
+      "loyaltyProgram": {
+        "title": "Programa de Fidelidade",
+        "body": "Defina quantas visitas geram uma recompensa e qual é essa recompensa — um carimbo é adicionado automaticamente ao cartão do cliente em toda venda qualificada, sem etapa extra no checkout. Resgate aqui assim que for conquistada."
       },
       "recurringProfiles": {
         "title": "Perfis Recorrentes",

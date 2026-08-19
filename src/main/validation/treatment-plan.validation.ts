@@ -22,5 +22,11 @@ export const UpdateTreatmentPlanSchema = z.object({
   completedDate: z.string().nullable().optional(),
 })
 
+// Phase 67 §9.1 item 21.1 — Dental Clinic: treatment-plan conversion tracking.
+export const GenerateInvoiceFromTreatmentPlanSchema = z.object({
+  treatmentPlanId: z.string().min(1, 'Treatment plan ID is required'),
+})
+
 export type CreateTreatmentPlanPayload = z.infer<typeof CreateTreatmentPlanSchema>
 export type UpdateTreatmentPlanPayload = z.infer<typeof UpdateTreatmentPlanSchema>
+export type GenerateInvoiceFromTreatmentPlanPayload = z.infer<typeof GenerateInvoiceFromTreatmentPlanSchema>

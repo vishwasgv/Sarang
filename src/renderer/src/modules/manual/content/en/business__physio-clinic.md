@@ -27,3 +27,13 @@ The **Exercise Program** tab lets you build a printable Home Exercise Program fo
 ## Session Packs
 
 The **Session Packs** tab tracks pre-paid bundles of sessions (e.g. "10-session Physio Pack"): pack name, total sessions, price, GST rate, purchase and expiry dates. An active pack shows a progress bar of sessions remaining, and each completed appointment against that pack deducts one session automatically. Once a pack has a price, you can **Generate Invoice** for it directly from this screen — it only offers this once, and marks the pack "Invoiced" afterward so it's never billed twice.
+
+The filter row at the top of the Session Packs list (**All / Active / Running Low / Expired**, each with a live count) is your alert view: a pack drops into **Running Low** once 2 or fewer sessions remain, and into **Expired** once its expiry date has passed — both are flagged with color on the pack's own card too, so you never have to open a pack to notice it needs attention.
+
+To see how your session packs are being used across every patient, open **Reports → Pack Utilization** and pick a date range. It shows total packs sold, sessions used versus sessions purchased, and an overall utilization percentage, plus a bar chart and a full table breaking it down pack by pack — so you can spot packs sitting mostly unused (a sign to follow up with that patient) at a glance.
+
+## Referrals
+
+If a patient comes to you referred by an outside doctor, the Consultation Note's **Referral Details** section records who referred them, the date, and why — free-text fields, since the referring doctor is usually outside Sarang entirely. If instead you're routing a patient to another provider within your own clinic, use **Refer to Another Provider** on their note to book a real linked appointment, the same in-app referral mechanism used across Sarang's clinical business types.
+
+Once that provider finalizes their own note on the referral appointment, its outcome appears back on your original note automatically. If that note is tracking Pain Score and Functional Score across sessions, the outcome shown isn't just their closing remark — it's a quantified before-and-after across the whole course of treatment since the referral (for example, "Pain 7→3, Function 40→75 across 3 sessions"), so you can see at a glance whether the referral actually helped, not just that it happened.

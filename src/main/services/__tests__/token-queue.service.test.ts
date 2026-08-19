@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { createToken } from '../token-queue.service'
+import { createToken, getTodayQueue } from '../token-queue.service'
 
 // Regression coverage for the Phase 24 re-audit finding: createToken's
 // "read the last token number, then create" wasn't wrapped in a transaction —
@@ -73,5 +73,41 @@ describe('token-queue.service — createToken numbering', () => {
     expect(r1.success).toBe(true)
     expect(r2.success).toBe(true)
     expect(tokens.map(t => t.tokenNumber).sort()).toEqual([1, 2])
+  })
+})
+
+// Phase 67 §9.1 item 20.5 — Specialist Clinic: waitlist prioritization by referral urgency.
+describe('token-queue.service — isUrgent', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stores isUrgent when true on create', async () => {
+    const { db } = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createToken({ patientName: 'Patient A', isUrgent: true })
+
+    const call = vi.mocked(db.tokenQueue.create).mock.calls[0][0] as { data: { isUrgent: boolean } }
+    expect(call.data.isUrgent).toBe(true)
+  })
+
+  it('defaults isUrgent to false when omitted', async () => {
+    const { db } = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createToken({ patientName: 'Patient A' })
+
+    const call = vi.mocked(db.tokenQueue.create).mock.calls[0][0] as { data: { isUrgent: boolean } }
+    expect(call.data.isUrgent).toBe(false)
+  })
+
+  it('orders the queue by isUrgent desc, then tokenNumber asc — urgent tokens are called ahead of check-in order', async () => {
+    const db = { tokenQueue: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getTodayQueue('2026-08-19')
+
+    expect(db.tokenQueue.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [{ isUrgent: 'desc' }, { tokenNumber: 'asc' }],
+    }))
   })
 })

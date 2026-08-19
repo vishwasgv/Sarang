@@ -27,3 +27,13 @@ A aba **Exercise Program** permite construir um Programa de Exercícios Domicili
 ## Pacotes de Sessões
 
 A aba **Pacotes de sessões** acompanha pacotes pré-pagos de sessões (por exemplo, "Pacote de Fisioterapia de 10 sessões"): nome do pacote, total de sessões, preço, taxa de GST, datas de compra e vencimento. Um pacote ativo mostra uma barra de progresso das sessões restantes, e cada agendamento concluído contra esse pacote deduz uma sessão automaticamente. Assim que um pacote tiver um preço, você pode **Gerar Fatura** para ele diretamente desta tela — isso só é oferecido uma vez, e marca o pacote como "Invoiced" depois, para que nunca seja faturado duas vezes.
+
+A linha de filtros no topo da lista de Pacotes de Sessões (**Todos / Ativos / Baixos / Vencidos**, cada um com uma contagem ao vivo) é sua visão de alertas: um pacote passa para **Baixos** quando restam 2 sessões ou menos, e para **Vencidos** assim que sua data de vencimento passa — ambos também são sinalizados por cor no próprio cartão do pacote, para que você nunca precise abrir um pacote para perceber que ele precisa de atenção.
+
+Para ver como seus pacotes de sessões estão sendo usados entre todos os pacientes, abra **Reports → Pack Utilization** e escolha um intervalo de datas. Isso mostra o total de pacotes vendidos, sessões usadas versus sessões compradas, e uma porcentagem de utilização geral, além de um gráfico de barras e uma tabela completa detalhando pacote por pacote — para que você identifique rapidamente pacotes majoritariamente não utilizados (um sinal para fazer um acompanhamento com aquele paciente).
+
+## Encaminhamentos
+
+Se um paciente vier encaminhado por um médico externo, a seção **Detalhes do Encaminhamento** da Nota de Consulta registra quem o encaminhou, a data e o motivo — campos de texto livre, já que o médico que encaminha geralmente está totalmente fora do Sarang. Se, em vez disso, você estiver direcionando um paciente a outro profissional dentro da sua própria clínica, use **Encaminhar para Outro Profissional** na nota dele para reservar um agendamento real vinculado, o mesmo mecanismo de encaminhamento interno usado em todos os tipos de negócio clínicos do Sarang.
+
+Assim que esse profissional finaliza sua própria nota no agendamento encaminhado, o resultado aparece automaticamente na sua nota original. Se essa nota estiver acompanhando o Escore de Dor e o Escore Funcional ao longo das sessões, o resultado mostrado não é apenas o comentário final dele — é um antes-e-depois quantificado ao longo de todo o curso do tratamento desde o encaminhamento (por exemplo, "Dor 7→3, Função 40→75 em 3 sessões"), para que você veja rapidamente se o encaminhamento realmente ajudou, não apenas que ele aconteceu.

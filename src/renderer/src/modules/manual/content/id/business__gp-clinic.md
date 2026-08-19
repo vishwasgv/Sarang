@@ -15,6 +15,7 @@ Membuka **Consultation Note** sebuah janji temu memberi Anda catatan klinis ters
 - **Vitals**: tekanan darah (sistolik/diastolik), denyut nadi, suhu, tinggi, berat — setiap field ditandai otomatis (Normal / Low / High) terhadap referensi rentang normal yang tersimpan setelah Anda menyimpan, sehingga pembacaan di luar rentang langsung terlihat.
 - **O — Objective**: temuan pemeriksaan.
 - **A — Assessment**: diagnosis / kesan klinis.
+- **Diagnosis Category** (opsional): tag kategori singkat — Infeksi, Tindak Lanjut Penyakit Kronis, Cedera, dan sejenisnya — terpisah dari teks bebas Assessment di atas. Menandai ini memberi data ke **Reports → Diagnosis-Category Trend**, jadi pilih dari daftar yang disarankan atau ketik sendiri jika tidak ada yang cocok.
 - **P — Plan**: rencana pengobatan, obat-obatan, pemeriksaan yang dipesan.
 - **Follow-up**: tanggal follow-up opsional dan instruksi.
 
@@ -24,7 +25,11 @@ Klik **Save Note** sambil berjalan, lalu **Selesaikan** saat konsultasi selesai.
 
 **Vitals Trend.** Setelah seorang pasien memiliki dua kunjungan atau lebih dengan tanda vital tercatat, sebuah grafik tren muncul menunjukkan bagaimana sebuah metrik pilihan (BP, denyut nadi, suhu, atau berat) bergerak dari waktu ke waktu — pilih metrik mana yang akan diplot dari baris chip di atas grafik.
 
-**Referral letters.** Menggunakan aksi "Refer to Another Provider" yang ada membuat sebuah rujukan sungguhan; setelah ada satu, **Print Referral Letter** menghasilkan sebuah surat formal yang ditujukan kepada dokter yang dirujuk dengan alasan rujukan — sebuah dokumen yang sungguh berbeda dari ringkasan konsultasi lengkap, dibuat untuk diberikan kepada pasien untuk dibawa ke spesialis.
+**Merujuk pasien keluar.** Gunakan "Refer to Another Provider" untuk memesan janji temu sungguhan dengan penyedia lain — setelah ada, **Print Referral Letter** menghasilkan surat formal yang ditujukan kepada dokter yang dirujuk dengan alasan rujukan, dokumen yang sungguh berbeda dari ringkasan konsultasi lengkap, dibuat untuk dibawa pasien. Setelah janji temu rujukan itu terjadi dan catatannya sendiri difinalisasi, penilaian penyedia yang dirujuk muncul tepat di sini sebagai baris **Outcome** di bawah rujukan, sehingga Anda tidak perlu mencari catatan mereka secara terpisah untuk melihat apa yang ditemukan.
+
+**Hasil Rujukan Keluar.** Semua rujukan keluar Anda, di satu tempat — buka **Reports → Referral-Out Outcome** dan pilih rentang tanggal. Anda akan melihat berapa banyak rujukan yang Anda buat, berapa yang sekarang memiliki hasil tercatat, dan berapa yang masih menunggu, ditambah tabel setiap rujukan dengan status dan hasilnya (jika tersedia).
+
+**Tren Kategori Diagnosis.** Setiap kali Anda menandai Diagnosis Category pada catatan konsultasi, ini memberi data ke **Reports → Diagnosis-Category Trend** — pilih rentang tanggal dan Anda akan melihat grafik garis dengan satu garis per kategori, bulan demi bulan, ditambah tabel rincian. Ini terpisah dari teks Assessment itu sendiri: Assessment adalah catatan klinis teks bebas Anda, sedangkan kategori adalah tag singkat murni untuk melihat pola dari waktu ke waktu (misalnya "infeksi meningkat kuartal ini"). Kunjungan tanpa kategori yang ditandai tetap dihitung dalam total kunjungan Anda tetapi tidak muncul di grafik, karena tidak ada yang bisa dikelompokkan.
 
 ## Token Queue
 
@@ -36,6 +41,8 @@ Layar **Antrean Token** mengelola pasien walk-in hari yang sama tanpa memerlukan
 - **Call Next** untuk memanggil token menunggu berikutnya.
 
 Setiap token dalam daftar dapat dipanggil, ditandai seen, dilewati, atau direset kembali ke waiting — antrean menyortir ulang dirinya sendiri secara otomatis ke bagian "Currently Called," "Waiting," dan "Completed." Ini sepenuhnya terpisah dari daftar Appointments yang dipesan sebelumnya — dibuat untuk realitas pasien yang sekadar datang dan menunggu giliran mereka.
+
+Untuk melihat berapa banyak hari Anda yang berupa walk-in dibandingkan janji temu yang dipesan sebelumnya, buka **Reports → Walk-in vs. Appointment Ratio** dan pilih rentang tanggal. Ini menampilkan pembagian total Anda sebagai persentase, ditambah grafik batang hari demi hari, sehingga Anda dapat mengetahui sekilas apakah klinik Anda berjalan sebagian besar dengan janji temu yang dipesan atau sebagian besar dengan orang yang sekadar datang.
 
 ## Pengingat Kondisi Kronis
 

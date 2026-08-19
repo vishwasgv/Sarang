@@ -3,6 +3,8 @@ import { inventoryService } from './inventory.service'
 import { logAction } from './audit.service'
 import { createNotification } from './notification.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
+import { getProductCostsBatch } from './valuation.service'
+import { roundCurrency } from './currency.service'
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -323,6 +325,115 @@ async function deductIngredients(
       }
     }
   }
+}
+
+// Phase 67 §9.1 item — Restaurant's "Dish-wise contribution margin report"
+// signature win. Resolves each dish's THEORETICAL per-unit recipe cost (the
+// standard "menu engineering" cost — recipe formula × ingredient cost),
+// shared with deductIngredients()'s own kit-expansion so a combo/thali's
+// margin correctly reflects the sum of its real component dishes' recipes,
+// not the combo's own (nonexistent) recipe.
+//
+// Deliberately distinct from generateFoodCostReport() (report.service.ts),
+// which totals ACTUAL ingredient consumption from InventoryMovement rows —
+// that answers "how much did we really spend on food this period," while
+// this answers "what should each dish be earning per unit sold," a
+// per-DISH margin question the aggregate movement log can't answer since a
+// movement's remarks carry only a recipe name, not which sale caused it.
+// Products with no recipe configured (recipes are optional, see the
+// Restaurant Manual chapter) simply cost 0 here — an honest "no ingredient
+// data" rather than a fabricated estimate.
+export async function getDishIngredientCostsBatch(productIds: string[]): Promise<Map<string, number>> {
+  const db = getPrisma()
+  const uniqueIds = [...new Set(productIds)]
+  const result = new Map<string, number>()
+  if (uniqueIds.length === 0) return result
+
+  const kitComponents = await db.kitComponent.findMany({ where: { kitProductId: { in: uniqueIds } } })
+  const componentsByKit = new Map<string, { componentProductId: string; quantity: number }[]>()
+  for (const kc of kitComponents) {
+    const arr = componentsByKit.get(kc.kitProductId) ?? []
+    arr.push({ componentProductId: kc.componentProductId, quantity: kc.quantity })
+    componentsByKit.set(kc.kitProductId, arr)
+  }
+
+  // Every distinct dish a recipe might be needed for: the product itself
+  // (non-kit case) plus every kit's real component dishes.
+  const recipeLookupIds = [...new Set([...uniqueIds, ...kitComponents.map(kc => kc.componentProductId)])]
+  const recipes = await db.recipe.findMany({
+    where: { productId: { in: recipeLookupIds } },
+    include: { items: true }
+  })
+  const recipeByProduct = new Map(recipes.map(r => [r.productId, r]))
+
+  const ingredientIds = [...new Set(recipes.flatMap(r => r.items.map(i => i.ingredientProductId)))]
+  const ingredientCosts = await getProductCostsBatch(ingredientIds)
+
+  function recipeCostPerUnit(productId: string): number {
+    const recipe = recipeByProduct.get(productId)
+    if (!recipe) return 0
+    return roundCurrency(recipe.items.reduce((sum, ri) => sum + ri.quantity * (ingredientCosts.get(ri.ingredientProductId) ?? 0), 0))
+  }
+
+  for (const productId of uniqueIds) {
+    const components = componentsByKit.get(productId)
+    if (components && components.length > 0) {
+      result.set(productId, roundCurrency(components.reduce((sum, c) => sum + c.quantity * recipeCostPerUnit(c.componentProductId), 0)))
+    } else {
+      result.set(productId, recipeCostPerUnit(productId))
+    }
+  }
+
+  return result
+}
+
+// Phase 67 §9.1 item — Restaurant's "Recipe-vs-actual waste variance"
+// signature win. The RECIPE-IMPLIED side of the comparison: given a set of
+// dish sales, how much of each ingredient the recipes SAY should have been
+// consumed — the same kit-expansion as getDishIngredientCostsBatch above
+// (and deductIngredients()'s own original), but aggregating ingredient
+// QUANTITY across every dish sold, not cost per dish. Report-side pairs
+// this with the ACTUAL quantity drawn down (from the same InventoryMovement
+// rows generateFoodCostReport already reads) to surface real variance —
+// portion drift, spillage, or theft the recipe alone can't reveal.
+export async function getRecipeImpliedIngredientUsageBatch(
+  dishSales: { productId: string; quantity: number }[]
+): Promise<Map<string, number>> {
+  const db = getPrisma()
+  const uniqueIds = [...new Set(dishSales.map(d => d.productId))]
+  const result = new Map<string, number>()
+  if (uniqueIds.length === 0) return result
+
+  const kitComponents = await db.kitComponent.findMany({ where: { kitProductId: { in: uniqueIds } } })
+  const componentsByKit = new Map<string, { componentProductId: string; quantity: number }[]>()
+  for (const kc of kitComponents) {
+    const arr = componentsByKit.get(kc.kitProductId) ?? []
+    arr.push({ componentProductId: kc.componentProductId, quantity: kc.quantity })
+    componentsByKit.set(kc.kitProductId, arr)
+  }
+
+  const recipeLookupIds = [...new Set([...uniqueIds, ...kitComponents.map(kc => kc.componentProductId)])]
+  const recipes = await db.recipe.findMany({ where: { productId: { in: recipeLookupIds } }, include: { items: true } })
+  const recipeByProduct = new Map(recipes.map(r => [r.productId, r]))
+
+  function addUsage(productId: string, multiplier: number) {
+    const recipe = recipeByProduct.get(productId)
+    if (!recipe) return
+    for (const ri of recipe.items) {
+      result.set(ri.ingredientProductId, (result.get(ri.ingredientProductId) ?? 0) + ri.quantity * multiplier)
+    }
+  }
+
+  for (const sale of dishSales) {
+    const components = componentsByKit.get(sale.productId)
+    if (components && components.length > 0) {
+      for (const c of components) addUsage(c.componentProductId, c.quantity * sale.quantity)
+    } else {
+      addUsage(sale.productId, sale.quantity)
+    }
+  }
+
+  return result
 }
 
 // ─── Recipes ──────────────────────────────────────────────────────────────────

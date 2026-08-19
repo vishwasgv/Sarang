@@ -16,6 +16,7 @@ import { ensureTokenQueueServerState, stopTokenQueueServer } from './server/toke
 import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-window'
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { recurringProfileService } from './services/recurring-profile.service'
+import { priceMarkdownService } from './services/price-markdown.service'
 import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
 import { shutdownAi } from './services/ai-query.service'
@@ -347,12 +348,15 @@ app.whenReady().then(async () => {
   // shape as everything else in this block (no real cron exists in this
   // codebase — see recurring-profile.service.ts's own header comment).
   recurringProfileService.generateDueRecurringDocuments().catch(() => {})
+  // Phase 67 §9.1 — Retail time-boxed markdown auto-revert, same shape.
+  priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})
     evaluateNotificationQueue().catch(() => {})
     scanPaymentOverdueNotifications().catch(() => {})
     generateComplianceTasks().catch(() => {})
     recurringProfileService.generateDueRecurringDocuments().catch(() => {})
+    priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
   }, 60 * 60 * 1000)
 
   // Usage-metrics tick — shorter cadence than the hour-ly evaluators above

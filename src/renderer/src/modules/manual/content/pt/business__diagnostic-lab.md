@@ -22,6 +22,10 @@ Para cada exame no pedido, informe seu resultado: um conjunto de parâmetros nom
 
 Um resultado **Crítico** coloca imediatamente um selo vermelho no pedido (e no item específico), e o pedido não pode ser considerado tratado até que você use **Record Doctor Notified** para registrar que você realmente ligou para o médico que fez o encaminhamento, com uma nota — este é um registro genuíno de que a escalada aconteceu, não apenas que o número foi sinalizado.
 
+## Tempo de resposta (TAT)
+
+Se um exame no seu Service Catalog tiver um **Target TAT (hours)** definido — edite a entrada do exame para adicionar um — todo pedido para aquele exame acompanha automaticamente seu tempo de resposta real: o momento em que um resultado fica pronto é comparado com o horário de coleta da amostra, e a linha de resultado do exame mostra um selo **On Time** ou **Late** com as horas exatas, bem ao lado do seu status. Sem meta, sem selo — isso é opcional por exame, não uma exigência.
+
 ## Finalizando o laudo
 
 Assim que todo exame no pedido tiver um resultado inserido, **Finalize Report** bloqueia todo o pedido — seu status se torna Reported e cada item é marcado como Reported. Os resultados de um laudo finalizado não podem mais ser editados; se uma correção for genuinamente necessária, isso precisa acontecer antes da finalização. Depois que o laudo é finalizado, marque-o como **Entregue** assim que o paciente ou a clínica encaminhadora realmente o receber. Anexe arquivos reais de exame/imagem a um pedido a partir da sua visualização de detalhe.
@@ -33,6 +37,8 @@ Gere uma nota fiscal diretamente de um pedido de laboratório assim que todo exa
 ## Relatórios
 
 A tela **Relatórios** inclui um relatório de Lab Test Throughput específico deste setor, mostrando os pedidos por etapa (pedido, amostra coletada, em processo, laudado) e o tempo de processamento do pedido até o laudo para cada um — útil para identificar onde as amostras estão se acumulando.
+
+Mais três relatórios específicos do laboratório ficam ao lado dele. **Per-Test TAT** detalha o tempo de resposta por nome de exame em vez de por pedido — horas reais médias em relação à meta própria de cada exame, e quantos resultados chegaram no prazo versus atrasados, para você ver quais exames específicos são os que estão perdendo o SLA, não apenas que "algo" está lento. **Test Volume by Panel** traça quantos exames você está realizando por painel/categoria ao longo do tempo — uma linha por painel, mês a mês. **Referral Leaderboard** classifica os médicos que mais encaminham exames para o seu laboratório, para você saber de onde realmente vem o seu volume.
 
 ## Idioma
 

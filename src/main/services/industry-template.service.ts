@@ -192,6 +192,23 @@ export type TemplateModule =
   // default below — core to that vertical, not an optional add-on — but a
   // plain flag like dental_recall/dental_chart above.
   | 'chronic_recall'
+  // Phase 67 §9.1 item 19.4 — GP Clinic diagnosis-category trend report.
+  // `VisitNote.diagnosisCategory` is a field on the shared visit_notes
+  // model (also used by Vet/Specialist/Physio), but this module flag keeps
+  // the UI input + report surfaced to GP_CLINIC only, per this codebase's
+  // "config flags only, no template-specific if/else" convention.
+  | 'diagnosis_categories'
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic case-complexity tagging +
+  // Case-Complexity Mix report. Its own flag, not folded into
+  // 'specialist_referral' (shared with GP_CLINIC/PHYSIO_CLINIC).
+  | 'case_complexity'
+  // Phase 67 §9.1 item 20.5 — Specialist Clinic waitlist prioritization by
+  // referral urgency (Token Queue). Own flag, same reasoning as
+  // 'case_complexity' above.
+  | 'referral_urgency'
+  // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
+  | 'price_markdowns'
+  | 'loyalty_program'
 
 export interface TemplateConfig {
   businessType: string
@@ -253,7 +270,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // "Additional Business Features" Logistics & Supply Chain toggle in
   // Settings (SettingsScreen.tsx's BusinessFeaturesSection).
   RESTAURANT:  ['tables', 'kot', 'recipes', 'ingredient_tracking'],
-  RETAIL:      ['returns', ...LOGISTICS_MODULES],
+  RETAIL:      ['returns', 'price_markdowns', 'loyalty_program', ...LOGISTICS_MODULES],
   HARDWARE:    ['area_pricing', 'credit_limit_enforcement', ...LOGISTICS_MODULES],
   DISTRIBUTOR: ['credit_limit_enforcement', 'bulk_orders', 'outstanding_analytics', 'field_order_capture', ...LOGISTICS_MODULES],
   GENERAL:     [...LOGISTICS_MODULES],
@@ -330,13 +347,27 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // Appointment.petId (added back in Phase 23) — the module flag was simply
   // never turned on for this vertical.
   VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'visit_notes', 'token_queue'],
-  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue', 'chronic_recall'],
+  // Phase 67 §9.1 item 19.5 — GP Clinic gained 'specialist_referral' this
+  // phase to unlock the already-built "Refer to Another Provider" +
+  // referral-outcome UI (previously SPECIALIST_CLINIC-only) for GPs
+  // referring patients out — a real, previously-missing capability, not
+  // just a report.
+  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue', 'chronic_recall', 'diagnosis_categories', 'specialist_referral'],
   // 'specialist_referral' (Phase 46) is the flag distinguishing this vertical's extra
-  // referral fields on the visit note — GP_CLINIC/PHYSIO_CLINIC also have 'visit_notes'
-  // but not this, since referral-in/referral-out fields are specialist-specific.
-  SPECIALIST_CLINIC:  [...SERVICE_BASE_MODULES, 'visit_notes', 'specialist_referral', 'token_queue'],
+  // referral fields on the visit note. Phase 67 §9.1 item 20.3 — 'case_complexity'
+  // is deliberately its OWN flag, not folded into 'specialist_referral': that flag
+  // is shared with GP_CLINIC/PHYSIO_CLINIC (Phase 67 items 19.5/22.5), but the
+  // Case-Complexity Mix report is scoped to Specialist Clinic alone.
+  SPECIALIST_CLINIC:  [...SERVICE_BASE_MODULES, 'visit_notes', 'specialist_referral', 'case_complexity', 'referral_urgency', 'token_queue'],
   DENTAL_CLINIC:      [...SERVICE_BASE_MODULES, 'dental_chart', 'dental_recall', 'token_queue'],
-  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs', 'token_queue'],
+  // Phase 67 §9.1 item 22.5 — PHYSIO_CLINIC gained 'specialist_referral' this
+  // phase too, for the same reason GP_CLINIC did above: unlocks inbound
+  // referredBy capture plus the already-built outbound "Refer to Another
+  // Provider" + outcome UI, so a referring doctor's feedback loop actually
+  // has something to attach to. `listReferralsForVisitNote()`'s outcome
+  // enrichment additionally surfaces a quantified pain/functional-score
+  // before/after for physio recipients specifically (item 1's own data).
+  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs', 'token_queue', 'specialist_referral'],
   // Phase 50 — Diagnostic & Pathology Labs. Test/panel catalog reuses
   // service_catalog (already in SERVICE_BASE_MODULES) rather than a parallel
   // catalog module.

@@ -15,20 +15,36 @@ interface SlabBreakpoint { minQty: number; discountPercent: number }
 interface PricingScheme {
   id: string
   name: string
-  ruleType: 'BUY_X_GET_Y_FREE' | 'SLAB_DISCOUNT'
+  ruleType: 'BUY_X_GET_Y_FREE' | 'SLAB_DISCOUNT' | 'FLAT_PERCENT_OFF'
   isActive: boolean
   buyQuantity: number | null
   freeQuantity: number | null
   slabBreakpoints: string
+  flatDiscountPercent: number | null
   startDate: string | null
   endDate: string | null
+  startTimeMinutes: number | null
+  endTimeMinutes: number | null
   product: { id: string; productName: string } | null
   category: { id: string; name: string } | null
 }
 interface Product { id: string; productName: string; sku?: string | null; productType: string }
 interface Category { id: string; name: string }
 
-const RULE_TYPES = ['BUY_X_GET_Y_FREE', 'SLAB_DISCOUNT'] as const
+const RULE_TYPES = ['BUY_X_GET_Y_FREE', 'SLAB_DISCOUNT', 'FLAT_PERCENT_OFF'] as const
+
+function timeInputToMinutes(value: string): number | undefined {
+  if (!value) return undefined
+  const [h, m] = value.split(':').map(Number)
+  return h * 60 + m
+}
+function formatTimeLabel(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  const period = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`
+}
 
 // Phase 63 — the scheme engine's config side (BillingScreen.tsx's cart
 // consumes these via pricingSchemes.evaluateCart). Create-only for rule
@@ -55,8 +71,11 @@ export function PricingSchemesScreen() {
   const [formBuyQuantity, setFormBuyQuantity] = useState('1')
   const [formFreeQuantity, setFormFreeQuantity] = useState('1')
   const [formSlabs, setFormSlabs] = useState<SlabBreakpoint[]>([{ minQty: 1, discountPercent: 0 }])
+  const [formFlatDiscountPercent, setFormFlatDiscountPercent] = useState('20')
   const [formStartDate, setFormStartDate] = useState('')
   const [formEndDate, setFormEndDate] = useState('')
+  const [formStartTime, setFormStartTime] = useState('')
+  const [formEndTime, setFormEndTime] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -88,8 +107,11 @@ export function PricingSchemesScreen() {
     setFormBuyQuantity('1')
     setFormFreeQuantity('1')
     setFormSlabs([{ minQty: 1, discountPercent: 0 }])
+    setFormFlatDiscountPercent('20')
     setFormStartDate('')
     setFormEndDate('')
+    setFormStartTime('')
+    setFormEndTime('')
     setShowCreate(true)
   }
 
@@ -116,8 +138,11 @@ export function PricingSchemesScreen() {
         buyQuantity: formRuleType === 'BUY_X_GET_Y_FREE' ? Number(formBuyQuantity) || 1 : undefined,
         freeQuantity: formRuleType === 'BUY_X_GET_Y_FREE' ? Number(formFreeQuantity) || 1 : undefined,
         slabBreakpoints: formRuleType === 'SLAB_DISCOUNT' ? formSlabs.map(s => ({ minQty: Number(s.minQty) || 1, discountPercent: Number(s.discountPercent) || 0 })) : undefined,
+        flatDiscountPercent: formRuleType === 'FLAT_PERCENT_OFF' ? Number(formFlatDiscountPercent) || 0 : undefined,
         startDate: formStartDate || undefined,
-        endDate: formEndDate || undefined
+        endDate: formEndDate || undefined,
+        startTimeMinutes: timeInputToMinutes(formStartTime),
+        endTimeMinutes: timeInputToMinutes(formEndTime)
       })
       if (res.success) {
         toastSuccess(t('pricingSchemes.schemeCreated'), formName.trim())
@@ -167,12 +192,20 @@ export function PricingSchemesScreen() {
   }
 
   function ruleSummary(scheme: PricingScheme) {
+    let summary: string
     if (scheme.ruleType === 'BUY_X_GET_Y_FREE') {
-      return t('pricingSchemes.buyXGetYSummary', { buy: scheme.buyQuantity, free: scheme.freeQuantity })
+      summary = t('pricingSchemes.buyXGetYSummary', { buy: scheme.buyQuantity, free: scheme.freeQuantity })
+    } else if (scheme.ruleType === 'FLAT_PERCENT_OFF') {
+      summary = t('pricingSchemes.flatPercentSummary', { percent: scheme.flatDiscountPercent })
+    } else {
+      let slabs: SlabBreakpoint[] = []
+      try { slabs = JSON.parse(scheme.slabBreakpoints) } catch { slabs = [] }
+      summary = slabs.map(s => `${s.minQty}+ → ${s.discountPercent}%`).join(', ')
     }
-    let slabs: SlabBreakpoint[] = []
-    try { slabs = JSON.parse(scheme.slabBreakpoints) } catch { slabs = [] }
-    return slabs.map(s => `${s.minQty}+ → ${s.discountPercent}%`).join(', ')
+    if (scheme.startTimeMinutes !== null && scheme.endTimeMinutes !== null) {
+      summary += t('pricingSchemes.timeWindowSuffix', { start: formatTimeLabel(scheme.startTimeMinutes), end: formatTimeLabel(scheme.endTimeMinutes) })
+    }
+    return summary
   }
 
   return (
@@ -224,7 +257,7 @@ export function PricingSchemesScreen() {
                   <td className="px-6 py-3 font-semibold text-dark dark:text-slate-100">{scheme.name}</td>
                   <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{scopeLabel(scheme)}</td>
                   <td className="px-4 py-3 text-xs">
-                    <Badge variant={scheme.ruleType === 'BUY_X_GET_Y_FREE' ? 'success' : 'info'} size="sm">{t(`pricingSchemes.ruleType.${scheme.ruleType}`)}</Badge>
+                    <Badge variant={scheme.ruleType === 'BUY_X_GET_Y_FREE' ? 'success' : scheme.ruleType === 'FLAT_PERCENT_OFF' ? 'warning' : 'info'} size="sm">{t(`pricingSchemes.ruleType.${scheme.ruleType}`)}</Badge>
                     <span className="ms-2 text-slate-500 dark:text-slate-400">{ruleSummary(scheme)}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -280,6 +313,10 @@ export function PricingSchemesScreen() {
                 <Input label={t('pricingSchemes.buyQuantity')} type="number" min="1" value={formBuyQuantity} onChange={e => setFormBuyQuantity(e.target.value)} />
                 <Input label={t('pricingSchemes.freeQuantity')} type="number" min="1" value={formFreeQuantity} onChange={e => setFormFreeQuantity(e.target.value)} />
               </div>
+            ) : formRuleType === 'FLAT_PERCENT_OFF' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <Input label={t('pricingSchemes.discountPercent')} type="number" min="0" max="100" step="0.5" value={formFlatDiscountPercent} onChange={e => setFormFlatDiscountPercent(e.target.value)} />
+              </div>
             ) : (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -310,6 +347,15 @@ export function PricingSchemesScreen() {
             <div className="grid grid-cols-2 gap-4">
               <Input label={t('pricingSchemes.startDateOptional')} type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
               <Input label={t('pricingSchemes.endDateOptional')} type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)} />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">{t('pricingSchemes.happyHourWindow')}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label={t('pricingSchemes.startTimeOptional')} type="time" value={formStartTime} onChange={e => setFormStartTime(e.target.value)} />
+                <Input label={t('pricingSchemes.endTimeOptional')} type="time" value={formEndTime} onChange={e => setFormEndTime(e.target.value)} />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">{t('pricingSchemes.happyHourWindowHint')}</p>
             </div>
           </div>
         </Modal>

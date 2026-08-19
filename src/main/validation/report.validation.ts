@@ -10,6 +10,13 @@ export const SalesReportSchema = DateRangeSchema.extend({
   dateGroupBy: z.enum(['invoiceDate', 'paymentDate']).optional()
 })
 
+// Phase 67 §9.1 item 23.5 (Diagnostic Lab) + item 20.1 (Specialist Clinic) —
+// one shared report, businessType picks which of the two differently-shaped
+// referral data sources to query (see report.service.ts's own comment).
+export const ReferralLeaderboardReportSchema = DateRangeSchema.extend({
+  businessType: z.string().min(1, 'Business type is required')
+})
+
 export const InventoryReportSchema = z.object({
   categoryId: z.string().optional(),
   lowStockOnly: z.boolean().optional()

@@ -31,8 +31,11 @@ export const pricingSchemeService = {
           buyQuantity: payload.buyQuantity ?? null,
           freeQuantity: payload.freeQuantity ?? null,
           slabBreakpoints: payload.slabBreakpoints ? JSON.stringify(payload.slabBreakpoints) : '[]',
+          flatDiscountPercent: payload.flatDiscountPercent ?? null,
           startDate: payload.startDate ? new Date(payload.startDate) : null,
           endDate: payload.endDate ? new Date(payload.endDate) : null,
+          startTimeMinutes: payload.startTimeMinutes ?? null,
+          endTimeMinutes: payload.endTimeMinutes ?? null,
         }
       })
       await logAction({ userId, action: 'PRICING_SCHEME_CREATED', entityType: 'PricingScheme', entityId: scheme.id, newValue: { name: scheme.name, ruleType: scheme.ruleType } })
@@ -98,12 +101,15 @@ export const pricingSchemeService = {
   // the actual enforcement happens server-side in billing.service.ts's
   // createInvoice when the resulting isFreeOfCost/discountAmount are
   // eventually submitted with the real invoice.
-  async evaluateCart(payload: EvaluateCartPayload) {
+  // `now` is injectable (defaults to the real clock) purely so happy-hour
+  // time-window evaluation can be unit-tested deterministically rather than
+  // mocking the global Date.
+  async evaluateCart(payload: EvaluateCartPayload, now: Date = new Date()) {
     try {
       const db = getPrisma()
       const focLines: Array<{ productId: string; quantity: number; schemeId: string; schemeName: string }> = []
       const discounts: Array<{ productId: string; discountPercent: number; schemeId: string; schemeName: string }> = []
-      const now = new Date()
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
       for (const line of payload.items) {
         const product = await db.product.findUnique({ where: { id: line.productId }, select: { categoryId: true } })
@@ -119,6 +125,9 @@ export const pricingSchemeService = {
         for (const scheme of schemes) {
           if (scheme.startDate && scheme.startDate > now) continue
           if (scheme.endDate && scheme.endDate < now) continue
+          if (scheme.startTimeMinutes !== null && scheme.endTimeMinutes !== null) {
+            if (nowMinutes < scheme.startTimeMinutes || nowMinutes >= scheme.endTimeMinutes) continue
+          }
 
           if (scheme.ruleType === 'BUY_X_GET_Y_FREE' && scheme.buyQuantity && scheme.freeQuantity) {
             const timesEarned = Math.floor(line.quantity / scheme.buyQuantity)
@@ -133,6 +142,8 @@ export const pricingSchemeService = {
             if (best) {
               discounts.push({ productId: line.productId, discountPercent: best.discountPercent, schemeId: scheme.id, schemeName: scheme.name })
             }
+          } else if (scheme.ruleType === 'FLAT_PERCENT_OFF' && scheme.flatDiscountPercent) {
+            discounts.push({ productId: line.productId, discountPercent: scheme.flatDiscountPercent, schemeId: scheme.id, schemeName: scheme.name })
           }
         }
       }

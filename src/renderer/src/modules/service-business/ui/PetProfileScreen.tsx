@@ -50,6 +50,8 @@ interface Pet {
   weightHistory: WeightEntry[]
   vaccinations: VaccinationRecord[]
   appointments: AppointmentRef[]
+  // Phase 67 §9.1 item 18.5 — multi-pet household linkage.
+  siblingPets: { id: string; petName: string; species: string; breed: string | null }[]
 }
 
 interface PetEditFormData {
@@ -216,6 +218,11 @@ export function PetProfileScreen() {
   const [reminderNoPhoneId, setReminderNoPhoneId] = useState<string | null>(null)
   const [reminderFailId, setReminderFailId] = useState<string | null>(null)
 
+  // Phase 67 §9.1 item 18.3 — breed-specific health-alert flagging. Shown
+  // on every profile view, not just at intake, so staff see it on every
+  // visit, not only the one-time creation moment.
+  const [breedAlerts, setBreedAlerts] = useState<{ id: string; alertText: string }[]>([])
+
   const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
@@ -231,6 +238,13 @@ export function PetProfileScreen() {
   }, [id, toastError])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!pet?.breed) { setBreedAlerts([]); return }
+    api.breedHealthAlert.forBreed({ species: pet.species, breed: pet.breed }).then((res) => {
+      setBreedAlerts(res.success ? (res.data as { id: string; alertText: string }[]) ?? [] : [])
+    })
+  }, [pet?.species, pet?.breed])
 
   useEffect(() => {
     api.customers.list({ limit: 200 }).then((res) => {
@@ -528,6 +542,14 @@ export function PetProfileScreen() {
         {/* === OVERVIEW TAB === */}
         {tab === 'overview' && (
           <>
+            {breedAlerts.length > 0 && (
+              <div className="bg-warning/5 border border-warning/20 rounded-xl px-4 py-3 space-y-1">
+                {breedAlerts.map((a) => (
+                  <p key={a.id} className="text-xs text-warning">⚠ {a.alertText}</p>
+                ))}
+              </div>
+            )}
+
             {/* Pet details grid */}
             <Card padding="md" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
@@ -558,6 +580,31 @@ export function PetProfileScreen() {
                     {pet.customer.phone && <p className="text-xs text-slate-500 dark:text-slate-400">{pet.customer.phone}</p>}
                     {pet.customer.email && <p className="text-xs text-slate-400">{pet.customer.email}</p>}
                   </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Phase 67 §9.1 item 18.5 — multi-pet household linkage: other
+                active pets under the same owner, one click away. */}
+            {pet.siblingPets.length > 0 && (
+              <Card padding="md">
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-2">Other Pets in This Household</p>
+                <div className="space-y-2">
+                  {pet.siblingPets.map((sibling) => (
+                    <button
+                      key={sibling.id}
+                      onClick={() => navigate(`/vet/pets/${sibling.id}`)}
+                      className="w-full flex items-center gap-3 text-start p-2 -m-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center text-base shrink-0">
+                        {SPECIES_EMOJI[sibling.species] ?? '🐾'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-dark dark:text-slate-100 truncate">{sibling.petName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{sibling.species}{sibling.breed ? ` · ${sibling.breed}` : ''}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </Card>
             )}

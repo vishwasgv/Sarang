@@ -79,6 +79,167 @@ describe('visit-note.service — createVisitNote vitals', () => {
   })
 })
 
+// Phase 67 §9.1 item 20.4 — Specialist Clinic: referral-loop closure. A
+// contact for the referring doctor, distinct from the free-text
+// `referredBy` name field.
+describe('visit-note.service — referredByPhone / referredByEmail (referral-loop closure)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stores the referring doctor\'s phone and email on create', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({
+      appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1',
+      referredBy: 'Dr. Rao', referredByPhone: '9876543210', referredByEmail: 'rao@clinic.example',
+    })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { referredByPhone: string | null; referredByEmail: string | null } }
+    expect(call.data.referredByPhone).toBe('9876543210')
+    expect(call.data.referredByEmail).toBe('rao@clinic.example')
+  })
+
+  it('defaults referredByPhone/referredByEmail to null when omitted', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({ appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1' })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { referredByPhone: string | null; referredByEmail: string | null } }
+    expect(call.data.referredByPhone).toBeNull()
+    expect(call.data.referredByEmail).toBeNull()
+  })
+
+  it('passes referredByPhone/referredByEmail through on update', async () => {
+    const db = {
+      visitNote: {
+        findUnique: vi.fn().mockResolvedValue({ isFinalized: false, bpSystolic: null, bpDiastolic: null, pulseRate: null, temperatureF: null, appointment: { pet: null } }),
+        update: vi.fn().mockResolvedValue(makeVisitNote()),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateVisitNote({ id: 'vn-1', referredByPhone: '9998887777', referredByEmail: 'updated@clinic.example' })
+
+    const call = vi.mocked(db.visitNote.update).mock.calls[0][0] as { data: { referredByPhone?: string | null; referredByEmail?: string | null } }
+    expect(call.data.referredByPhone).toBe('9998887777')
+    expect(call.data.referredByEmail).toBe('updated@clinic.example')
+  })
+})
+
+// Phase 67 §9.1 item 20.2 — Specialist Clinic: second-opinion flag.
+describe('visit-note.service — isSecondOpinion', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stores isSecondOpinion when true on create', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({ appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1', isSecondOpinion: true })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { isSecondOpinion: boolean } }
+    expect(call.data.isSecondOpinion).toBe(true)
+  })
+
+  it('defaults isSecondOpinion to false when omitted', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({ appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1' })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { isSecondOpinion: boolean } }
+    expect(call.data.isSecondOpinion).toBe(false)
+  })
+
+  it('passes isSecondOpinion through on update', async () => {
+    const db = {
+      visitNote: {
+        findUnique: vi.fn().mockResolvedValue({ isFinalized: false, bpSystolic: null, bpDiastolic: null, pulseRate: null, temperatureF: null, appointment: { pet: null } }),
+        update: vi.fn().mockResolvedValue(makeVisitNote()),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateVisitNote({ id: 'vn-1', isSecondOpinion: true })
+
+    const call = vi.mocked(db.visitNote.update).mock.calls[0][0] as { data: { isSecondOpinion?: boolean } }
+    expect(call.data.isSecondOpinion).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 item 20.3 — Specialist Clinic: case-complexity tag.
+describe('visit-note.service — caseComplexity', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stores caseComplexity when provided on create', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({ appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1', caseComplexity: 'COMPLEX' })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { caseComplexity: string | null } }
+    expect(call.data.caseComplexity).toBe('COMPLEX')
+  })
+
+  it('defaults caseComplexity to null when omitted', async () => {
+    const db = {
+      visitNote: { create: vi.fn().mockResolvedValue(makeVisitNote()) },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      appointment: { findUnique: vi.fn().mockResolvedValue(null) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(computeVitalsFlags).mockResolvedValue({})
+
+    await createVisitNote({ appointmentId: 'appt-1', patientName: 'John Doe', createdBy: 'user-1' })
+
+    const call = vi.mocked(db.visitNote.create).mock.calls[0][0] as { data: { caseComplexity: string | null } }
+    expect(call.data.caseComplexity).toBeNull()
+  })
+
+  it('passes caseComplexity through on update', async () => {
+    const db = {
+      visitNote: {
+        findUnique: vi.fn().mockResolvedValue({ isFinalized: false, bpSystolic: null, bpDiastolic: null, pulseRate: null, temperatureF: null, appointment: { pet: null } }),
+        update: vi.fn().mockResolvedValue(makeVisitNote()),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateVisitNote({ id: 'vn-1', caseComplexity: 'ROUTINE' })
+
+    const call = vi.mocked(db.visitNote.update).mock.calls[0][0] as { data: { caseComplexity?: string | null } }
+    expect(call.data.caseComplexity).toBe('ROUTINE')
+  })
+})
+
 // Phase 58 §2 — Physio Clinic: structured functional outcome measure,
 // clamped to 0-100 the same way painScore is already clamped to 0-10.
 describe('visit-note.service — functionalScore (Physio Clinic outcome measure)', () => {
@@ -319,6 +480,93 @@ describe('visit-note.service — listReferralsForVisitNote', () => {
     expect(db.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { referredFromVisitNoteId: 'vn-1' }
     }))
+  })
+
+  // Phase 67 §9.1 item 19.5 — outcome follow-up: outcomeSummary should only
+  // surface a FINALIZED note's assessment, never a draft one.
+  it('surfaces outcomeSummary from a finalized referred-to visit note', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([
+        { id: 'appt-1', appointmentNumber: 'APT-00001', status: 'COMPLETED', visitNote: { assessment: 'Confirmed diagnosis', isFinalized: true } },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listReferralsForVisitNote('vn-1')
+
+    expect(res.success).toBe(true)
+    expect((res.data as Array<{ outcomeSummary: string | null }>)[0].outcomeSummary).toBe('Confirmed diagnosis')
+  })
+
+  it('does not surface outcomeSummary from a draft (not-yet-finalized) referred-to visit note', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([
+        { id: 'appt-1', appointmentNumber: 'APT-00001', status: 'COMPLETED', visitNote: { assessment: 'Draft impression', isFinalized: false } },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listReferralsForVisitNote('vn-1')
+
+    expect((res.data as Array<{ outcomeSummary: string | null }>)[0].outcomeSummary).toBeNull()
+  })
+
+  it('does not surface outcomeSummary when the referred-to appointment has no visit note yet', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([
+        { id: 'appt-1', appointmentNumber: 'APT-00001', status: 'SCHEDULED', visitNote: null },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listReferralsForVisitNote('vn-1')
+
+    expect((res.data as Array<{ outcomeSummary: string | null }>)[0].outcomeSummary).toBeNull()
+  })
+
+  // Phase 67 §9.1 item 22.5 — Physio Clinic referring-doctor outcome feedback
+  // loop: a finalized referred-to note carrying pain/functional scores should
+  // surface a quantified before/after across the full course of treatment,
+  // not just the single visit's free-text assessment.
+  it('surfaces a quantified pain/functional-score before-after for a physio referral outcome', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([
+        {
+          id: 'appt-1', appointmentNumber: 'APT-00001', status: 'COMPLETED', customerId: 'cust-1',
+          scheduledDate: new Date('2026-08-01'),
+          visitNote: { assessment: 'Improving well', isFinalized: true, painScore: 3, functionalScore: 75 },
+        },
+      ]) },
+      visitNote: { findMany: vi.fn().mockResolvedValue([
+        { painScore: 7, functionalScore: 40, appointment: { scheduledDate: new Date('2026-08-01') } },
+        { painScore: 5, functionalScore: 60, appointment: { scheduledDate: new Date('2026-08-08') } },
+        { painScore: 3, functionalScore: 75, appointment: { scheduledDate: new Date('2026-08-15') } },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listReferralsForVisitNote('vn-1')
+
+    expect(res.success).toBe(true)
+    expect((res.data as Array<{ outcomeSummary: string | null }>)[0].outcomeSummary)
+      .toBe('Pain 7→3, Function 40→75 across 3 sessions')
+  })
+
+  it('falls back to plain assessment text when the referred-to note has no pain/functional scores', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([
+        {
+          id: 'appt-1', appointmentNumber: 'APT-00001', status: 'COMPLETED', customerId: 'cust-1',
+          scheduledDate: new Date('2026-08-01'),
+          visitNote: { assessment: 'Confirmed diagnosis', isFinalized: true, painScore: null, functionalScore: null },
+        },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listReferralsForVisitNote('vn-1')
+
+    expect((res.data as Array<{ outcomeSummary: string | null }>)[0].outcomeSummary).toBe('Confirmed diagnosis')
   })
 })
 

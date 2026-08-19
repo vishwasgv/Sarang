@@ -10,6 +10,8 @@
     "purchaseOrders": "Purchase Orders",
     "priceLists": "Price Lists",
     "pricingSchemes": "Pricing Schemes",
+    "priceMarkdowns": "Price Markdowns",
+    "loyaltyProgram": "Loyalty Program",
     "recurringProfiles": "Recurring Profiles",
     "locations": "Locations",
     "costCentres": "Cost Centres",
@@ -439,6 +441,7 @@
     "areaLabel": "Area",
     "areaFormula": "L × W = Area",
     "useAreaSq": "Use {{area}} sq",
+    "areaMarginPreview": "Margin: {{percent}}%",
     "rx": {
       "title": "Prescription Details",
       "description": "This is a prescription-only (Schedule H/H1) item — patient and doctor name are required to sell it.",
@@ -1125,13 +1128,14 @@
   },
   "pricingSchemes": {
     "title": "Pricing Schemes",
-    "subtitle": "{{count}} schemes — buy-X-get-Y-free offers and quantity-slab discounts",
+    "subtitle": "{{count}} schemes — buy-X-get-Y-free, quantity-slab, and flat % off offers",
     "newScheme": "New Scheme",
     "namePlaceholder": "e.g. Buy 2 Get 1 Free — Notebooks",
     "ruleTypeLabel": "Offer Type",
     "ruleType": {
       "BUY_X_GET_Y_FREE": "Buy X Get Y Free",
-      "SLAB_DISCOUNT": "Quantity Discount"
+      "SLAB_DISCOUNT": "Quantity Discount",
+      "FLAT_PERCENT_OFF": "Happy-Hour / Flat % Off"
     },
     "scopeType": "Applies To",
     "byProduct": "One Product",
@@ -1145,8 +1149,14 @@
     "minQuantity": "Min. Quantity",
     "discountPercent": "Discount %",
     "buyXGetYSummary": "Buy {{buy}}, get {{free}} free",
+    "flatPercentSummary": "{{percent}}% off",
+    "timeWindowSuffix": " ({{start}}–{{end}})",
     "startDateOptional": "Start Date (optional)",
     "endDateOptional": "End Date (optional)",
+    "happyHourWindow": "Happy-Hour Window (optional)",
+    "startTimeOptional": "Start Time",
+    "endTimeOptional": "End Time",
+    "happyHourWindowHint": "Only active during these hours each day — leave blank to apply at any time. Doesn't cross midnight (e.g. 4:00 PM–6:00 PM works; 10:00 PM–2:00 AM does not).",
     "rule": "Offer",
     "noSchemesYet": "No Pricing Schemes yet.",
     "deleteSchemeTitle": "Delete Pricing Scheme",
@@ -1160,6 +1170,66 @@
     "couldNotCreate": "Could not create pricing scheme.",
     "couldNotSave": "Could not save changes.",
     "couldNotDelete": "Could not delete pricing scheme."
+  },
+  "priceMarkdowns": {
+    "title": "Price Markdowns",
+    "subtitle": "{{count}} markdowns — time-boxed price cuts that revert themselves automatically",
+    "newMarkdown": "New Markdown",
+    "checkNow": "Check Now",
+    "product": "Product",
+    "originalPrice": "Original Price",
+    "markdownPrice": "Markdown Price",
+    "endDate": "Reverts On",
+    "status": {
+      "ACTIVE": "Active",
+      "REVERTED": "Reverted",
+      "CANCELLED": "Cancelled",
+      "SKIPPED_MANUAL_OVERRIDE": "Manually Changed"
+    },
+    "createHint": "The markdown price applies immediately. It reverts back to the original price automatically on the date above — unless you change the price yourself before then, in which case the revert is skipped so your manual change isn't overwritten.",
+    "noMarkdownsYet": "No Price Markdowns yet.",
+    "cancelMarkdownTitle": "Cancel Price Markdown",
+    "cancelMarkdownMessage": "This ends the markdown now. If the price hasn't been changed since the markdown started, it reverts to the original price immediately.",
+    "markdownCreated": "Price Markdown Created",
+    "markdownCancelled": "Price Markdown Cancelled",
+    "checkComplete": "Check Complete",
+    "checkCompleteDetail": "{{reverted}} of {{evaluated}} due markdown(s) reverted.",
+    "missingFields": "Missing Information",
+    "productRequired": "Select a product for this markdown.",
+    "markdownPriceRequired": "Enter a valid markdown price.",
+    "endDateRequired": "Select a date for the markdown to revert.",
+    "couldNotLoad": "Could not load price markdowns.",
+    "couldNotCreate": "Could not create price markdown.",
+    "couldNotCancel": "Could not cancel price markdown.",
+    "couldNotCheck": "Could not check for due markdowns."
+  },
+  "loyaltyProgram": {
+    "title": "Loyalty Program",
+    "subtitle": "{{count}} customer loyalty cards — a simple punch-per-visit reward",
+    "programSettings": "Program Settings",
+    "isActive": "Program is active",
+    "punchesRequired": "Punches Needed for a Reward",
+    "rewardDescription": "Reward",
+    "rewardPlaceholder": "e.g. Free coffee, 10% off next purchase",
+    "minPurchaseAmount": "Minimum Purchase for a Punch",
+    "settingsHint": "A punch is earned automatically on any qualifying sale — no extra step needed at checkout. Set the minimum purchase amount to 0 to give a punch for every sale, regardless of size.",
+    "customer": "Customer",
+    "progress": "Progress",
+    "totalEarned": "Total Punches Earned",
+    "totalRedeemed": "Rewards Redeemed",
+    "redeem": "Redeem",
+    "redeemTitle": "Redeem Reward",
+    "redeemMessage": "Give {{name}} their reward: {{reward}}. This uses up their punches toward it.",
+    "noProgramYet": "No loyalty program set up yet.",
+    "noCardsYet": "No loyalty cards yet — punches start once a customer makes a qualifying purchase.",
+    "missingFields": "Missing Information",
+    "rewardRequired": "Enter what the reward is.",
+    "punchesRequiredInvalid": "Enter how many punches are needed (at least 1).",
+    "programSaved": "Loyalty Program Saved",
+    "rewardRedeemed": "Reward Redeemed",
+    "couldNotLoad": "Could not load the loyalty program.",
+    "couldNotSave": "Could not save the loyalty program.",
+    "couldNotRedeem": "Could not redeem the reward."
   },
   "recurringProfiles": {
     "title": "Recurring Profiles",
@@ -1180,7 +1250,13 @@
     "dayOfWeekLabel": "Day of Week",
     "dayOfPeriodLabel": "Day of Period",
     "dayOfMonth": "day {{day}}",
-    "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat", "sun": "Sun",
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
     "docType": {
       "INVOICE": "Invoice",
       "BILL": "Bill",
@@ -1542,6 +1618,34 @@
         "label": "Food Cost Report",
         "description": "Ingredient usage and cost per KOT fulfillment — Restaurant template"
       },
+      "dishContributionMargin": {
+        "label": "Dish-Wise Contribution Margin",
+        "description": "Revenue minus recipe cost per dish sold — which dishes are actually earning their keep"
+      },
+      "tableTurnoverByHour": {
+        "label": "Table Turnover by Hour",
+        "description": "A day-of-week x hour-of-day heatmap of dine-in table orders — when your restaurant is genuinely busiest"
+      },
+      "recipeWasteVariance": {
+        "label": "Recipe-vs-Actual Waste Variance",
+        "description": "Compares what your recipes say ingredients should have been used against what was actually drawn down — surfaces real portion drift, spillage, or a stale recipe"
+      },
+      "deadStockClearance": {
+        "label": "Dead-Stock Clearance List",
+        "description": "Products still in stock with no sale in the last 90 days, sorted by how much capital is sitting idle on the shelf"
+      },
+      "categorySellThrough": {
+        "label": "Category Sell-Through Rate",
+        "description": "Month by month, what share of each category's sold-plus-in-stock units actually sold — spot categories moving fast versus ones piling up"
+      },
+      "basketComposition": {
+        "label": "Basket Composition",
+        "description": "Which products are most often bought together in the same sale — spot natural bundles and pairings worth placing side by side or offering as a combo"
+      },
+      "fastSlowMoverMatrix": {
+        "label": "Fast-Mover vs. Slow-Mover Matrix",
+        "description": "A scatter of sales velocity against margin, split into four quadrants — see at a glance which products are worth restocking fast, which are a low-margin grind, and which slow movers are worth keeping anyway for their margin"
+      },
       "gstr1": {
         "label": "GSTR-1 Report",
         "description": "B2B and B2CS tax summary for GST return filing"
@@ -1697,6 +1801,58 @@
       "chronicRecallCompliance": {
         "label": "Recall Compliance",
         "description": "How many chronic-condition recalls were followed up on time, overall and by condition."
+      },
+      "walkInVsAppointmentRatio": {
+        "label": "Walk-in vs. Appointment Ratio",
+        "description": "How many of your visits are walk-ins versus pre-booked appointments, day by day."
+      },
+      "diagnosisCategoryTrend": {
+        "label": "Diagnosis-Category Trend",
+        "description": "How your consultation diagnoses break down by category and trend month over month."
+      },
+      "referralOutcome": {
+        "label": "Referral-Out Outcome",
+        "description": "Patients you referred to another provider, whether that visit happened, and what was found."
+      },
+      "packUtilization": {
+        "label": "Pack Utilization",
+        "description": "How much of each session pack has actually been used, per client and overall."
+      },
+      "labTAT": {
+        "label": "Per-Test TAT",
+        "description": "Turnaround time by test, actual against target, with on-time vs. late counts."
+      },
+      "testVolumeByPanel": {
+        "label": "Test Volume by Panel",
+        "description": "How many tests you're running per panel or category, month by month."
+      },
+      "referralLeaderboard": {
+        "label": "Referral Leaderboard",
+        "description": "Which doctors are referring you the most patients or tests, ranked."
+      },
+      "secondOpinionConversion": {
+        "label": "Second-Opinion Conversion",
+        "description": "Of your second-opinion consultations, how many patients came back and became ongoing patients."
+      },
+      "caseComplexityMix": {
+        "label": "Case-Complexity Mix",
+        "description": "The mix of routine vs. complex cases you're seeing, month by month."
+      },
+      "treatmentAcceptanceRate": {
+        "label": "Treatment Acceptance Rate",
+        "description": "Of the treatment plans you proposed, how many were accepted and how many actually turned into billed revenue."
+      },
+      "dentalRecallCompliance": {
+        "label": "Recall Compliance",
+        "description": "Of the recall periods closed in this range, how many patients came back on or before their due date."
+      },
+      "vaccinationCompliance": {
+        "label": "Vaccination Compliance",
+        "description": "Of the follow-up doses given this period, how many were on time against their prior due date."
+      },
+      "vetCaseTypeVolume": {
+        "label": "Case-Type Volume Trend",
+        "description": "How many cases you handled per case type — consults, preventive care, vaccinations, and any others in your Service Catalog — month by month."
       }
     },
     "summary": {
@@ -1772,6 +1928,32 @@
       "recordsSuffix": "{{count}} records",
       "totalFoodCost": "Total Food Cost",
       "ingredientsUsed": "Ingredients Used",
+      "totalContributionMargin": "Total Contribution Margin",
+      "dishesSold": "Dishes Sold",
+      "contributionMarginByDish": "Contribution Margin by Dish",
+      "totalTurns": "Total Table Turns",
+      "peakTime": "Peak Time",
+      "peakTurns": "Peak-Hour Turns",
+      "ingredientsTracked": "Ingredients Tracked",
+      "biggestWaste": "Biggest Overage",
+      "varianceByIngredient": "Variance by Ingredient",
+      "totalCapitalLocked": "Total Capital Locked",
+      "deadStockItems": "Dead-Stock Items",
+      "lookbackWindow": "Lookback Window",
+      "capitalLockedByProduct": "Capital Locked by Product",
+      "sellThroughByCategoryMonth": "Sell-Through Rate by Category, by Month",
+      "sellThroughStockNote": "Compared against current stock on hand for every month shown — a trend view, not each month's own historical stock level.",
+      "avgSellThroughByCategory": "Average Sell-Through by Category",
+      "totalBaskets": "Total Baskets",
+      "avgItemsPerBasket": "Avg. Items per Basket",
+      "avgBasketValue": "Avg. Basket Value",
+      "topProductPairs": "Most Frequently Bought Together",
+      "balanceTrend": "Balance Trend",
+      "balanceTrendSampledNote": "This account has a lot of activity — the trend line shows a representative sample of points, not every single entry. The table below still lists every transaction.",
+      "velocityMedian": "Median Velocity",
+      "marginMedian": "Median Margin",
+      "fastSlowMoverMatrix": "Velocity vs. Margin",
+      "fastSlowMoverMatrixNote": "Each dot is a product. The dashed lines mark the median velocity and median margin for this period — the four quadrants split products into fast/slow movers crossed with high/low margin.",
       "totalOrders": "Total Orders",
       "accepted": "Accepted",
       "rejected": "Rejected",
@@ -1791,6 +1973,18 @@
       "coveredProducts": "Covered Products",
       "recallsClosed": "Recalls Closed",
       "compliancePercent": "Compliance %",
+      "totalWalkIns": "Total Walk-ins",
+      "walkInPercent": "Walk-in %",
+      "totalVisits": "Total Visits",
+      "categorized": "Categorized",
+      "uncategorizedSub": "{{count}} uncategorized",
+      "distinctCategories": "Distinct Categories",
+      "totalReferrals": "Total Referrals",
+      "outcomeRecorded": "Outcome Recorded",
+      "pendingReferrals": "Pending",
+      "totalPacks": "Total Packs",
+      "sessionsUsed": "Sessions Used",
+      "overallUtilization": "Overall Utilization",
       "delivered": "Delivered",
       "avgTurnaround": "Avg Turnaround",
       "avgTurnaroundSub": "hours, order to report",
@@ -1826,7 +2020,28 @@
       "totalOpen": "Open Tasks",
       "overdueCount": "Overdue",
       "dueThisWeekCount": "Due This Week",
-      "clientCount": "Clients"
+      "clientCount": "Clients",
+      "totalCompleted": "Tests Completed",
+      "withTarget": "With Target Set",
+      "overallOnTimePercent": "Overall On-Time %",
+      "distinctPanels": "Distinct Panels",
+      "distinctReferrers": "Distinct Referrers",
+      "topReferrer": "Top Referrer",
+      "totalSecondOpinionVisits": "Second-Opinion Visits",
+      "convertedCount": "Converted",
+      "conversionPercent": "Conversion Rate",
+      "totalTagged": "Cases Tagged",
+      "routineCount": "Routine",
+      "complexCount": "Complex",
+      "complexPercent": "Complex %",
+      "proposedCount": "Plans Proposed",
+      "acceptedCount": "Accepted",
+      "billedCount": "Billed",
+      "acceptanceRatePercent": "Acceptance Rate",
+      "billedRatePercent": "Billed Rate",
+      "dosesEvaluated": "Doses Evaluated",
+      "totalCases": "Total Cases",
+      "distinctCaseTypes": "Distinct Case Types"
     },
     "aging": {
       "current": "Current",
@@ -1891,6 +2106,10 @@
       "schemeCostVsVolumeChart": "Scheme Cost vs. Covered-Product Volume",
       "schemesInPeriod": "Schemes in This Period",
       "complianceByCondition": "Compliance by Condition",
+      "dailyBreakdown": "Daily Breakdown",
+      "monthlyBreakdown": "Monthly Breakdown",
+      "diagnosisTrendChart": "Diagnosis Category Trend",
+      "packUtilizationChart": "Pack Utilization by Client",
       "prescriptionRegister": "Prescription Drug Sales Register",
       "batchDetails": "Batch Details",
       "byStage": "By Workflow Stage",
@@ -1911,7 +2130,16 @@
       "salesByHour": "Sales by Hour of Day",
       "testScoreDetails": "Test Score Details",
       "byStudent": "By Student",
-      "complianceTaskDetails": "Compliance Task Details"
+      "complianceTaskDetails": "Compliance Task Details",
+      "labTATChart": "Turnaround Time by Test",
+      "testVolumeByPanelChart": "Test Volume Trend",
+      "referralLeaderboardChart": "Top Referring Doctors",
+      "tableTurnoverHeatmap": "Table Turns by Day and Hour",
+      "caseComplexityMixChart": "Routine vs. Complex, by Month",
+      "treatmentAcceptanceFunnelChart": "Proposed → Accepted → Billed",
+      "complianceByVaccine": "Compliance by Vaccine",
+      "complianceByRecallType": "Compliance by Recall Type",
+      "caseTypeVolumeChart": "Case Volume Trend"
     },
     "empty": {
       "noData": "No records found for this period.",
@@ -1929,6 +2157,13 @@
       "auditRecords": "No audit records found.",
       "backups": "No backups found. Backups will appear here once the Backup module is set up.",
       "foodCost": "No ingredient deductions found in this date range. KOTs need to be marked Done to record food costs.",
+      "dishContributionMargin": "No dishes sold in this date range.",
+      "tableTurnoverByHour": "No dine-in table orders found in this date range.",
+      "recipeWasteVariance": "No recipe-linked ingredient activity found in this date range.",
+      "deadStockClearance": "No dead stock found — every product in stock has sold recently.",
+      "categorySellThrough": "No categorized product sales found in this date range.",
+      "basketComposition": "No baskets with 2 or more different products found in this date range.",
+      "fastSlowMoverMatrix": "No products sold in this date range.",
       "gstr1": "No taxable invoices found for this period.",
       "hsnSummary": "No taxable invoices found for this period.",
       "documentSummary": "No documents issued in this period.",
@@ -1961,7 +2196,20 @@
       "complianceTasks": "No pending or overdue compliance tasks.",
       "prescriptionDrugSales": "No prescription drug sales in this date range.",
       "schemeCostVsVolume": "No pricing schemes ran in this date range.",
-      "chronicRecallCompliance": "No recall periods closed in this date range."
+      "chronicRecallCompliance": "No recall periods closed in this date range.",
+      "walkInVsAppointmentRatio": "No walk-ins or appointments in this date range.",
+      "diagnosisCategoryTrend": "No categorized visits in this date range.",
+      "referralOutcome": "No referrals made in this date range.",
+      "packUtilization": "No session packs purchased in this date range.",
+      "labTAT": "No completed tests in this date range.",
+      "testVolumeByPanel": "No tests recorded in this date range.",
+      "referralLeaderboard": "No referrals recorded in this date range.",
+      "secondOpinionConversion": "No second-opinion consultations recorded in this date range.",
+      "caseComplexityMix": "No case-complexity-tagged visits in this date range.",
+      "treatmentAcceptanceRate": "No treatment plans proposed in this date range.",
+      "dentalRecallCompliance": "No recall periods closed in this date range.",
+      "vaccinationCompliance": "No follow-up doses with a prior due date in this date range.",
+      "vetCaseTypeVolume": "No cases recorded in this date range."
     },
     "col": {
       "invoiceNo": "Invoice #",
@@ -1975,6 +2223,14 @@
       "recallsClosed": "Recalls Closed",
       "onTime": "On Time",
       "compliancePercent": "Compliance %",
+      "walkIns": "Walk-ins",
+      "referredTo": "Referred To",
+      "outcome": "Outcome",
+      "packName": "Pack",
+      "totalSessions": "Total Sessions",
+      "usedSessions": "Used",
+      "remainingSessions": "Remaining",
+      "utilization": "Utilization",
       "billNumber": "Bill #",
       "billCount": "Bills",
       "itemCount": "Items",
@@ -2050,6 +2306,19 @@
       "ingredient": "Ingredient",
       "qtyUsed": "Qty Used",
       "totalCost": "Total Cost",
+      "dishName": "Dish",
+      "qtySold": "Qty Sold",
+      "revenue": "Revenue",
+      "ingredientCost": "Ingredient Cost",
+      "contributionMargin": "Contribution Margin",
+      "marginPercent": "Margin %",
+      "dayOfWeek": "Day",
+      "hour": "Hour",
+      "turns": "Turns",
+      "impliedQuantity": "Recipe-Implied Qty",
+      "actualQuantity": "Actual Qty Used",
+      "varianceQuantity": "Variance",
+      "variancePercent": "Variance %",
       "gstin": "GSTIN",
       "party": "Party",
       "value": "Value",
@@ -2066,12 +2335,10 @@
       "toNumber": "To #",
       "totalCount": "Total Count",
       "cancelledCount": "Cancelled Count",
-      "item": "Item",
       "bookingCount": "Bookings",
       "apptNo": "Appt #",
       "time": "Time",
       "provider": "Provider",
-      "service": "Service",
       "durationMin": "Duration (min)",
       "durationShort": "Duration",
       "day": "Day",
@@ -2111,6 +2378,9 @@
       "quantityRemaining": "Qty Remaining",
       "bucket": "Status",
       "unitCost": "Unit Cost",
+      "capitalLocked": "Capital Locked",
+      "lastSoldDate": "Last Sold",
+      "neverSold": "Never Sold",
       "orderNumber": "Order #",
       "patientName": "Patient",
       "createdDate": "Created",
@@ -2121,6 +2391,14 @@
       "componentType": "Component",
       "expiringSoonQ": "Expiring Soon?",
       "month": "Month",
+      "unitsSold": "Units Sold",
+      "sellThroughRate": "Sell-Through Rate",
+      "productA": "Product A",
+      "productB": "Product B",
+      "basketCount": "Baskets",
+      "velocity": "Velocity (units/day)",
+      "marginPercent": "Margin %",
+      "quadrant": "Quadrant",
       "shipmentCount": "Shipments",
       "freightAmount": "Freight Amount",
       "employee": "Employee",
@@ -2147,7 +2425,22 @@
       "dueDate": "Due Date",
       "daysUntilDue": "Days Until Due",
       "priority": "Priority",
-      "projectTitle": "Project Title"
+      "projectTitle": "Project Title",
+      "orders": "Orders",
+      "avgActualTAT": "Avg Actual TAT",
+      "targetTAT": "Target TAT",
+      "onTimePercent": "On-Time %",
+      "referrerName": "Referring Doctor",
+      "referralCount": "Referrals",
+      "visitDate": "Visit Date",
+      "converted": "Converted",
+      "nextVisitDate": "Next Visit",
+      "routine": "Routine",
+      "complex": "Complex",
+      "stage": "Stage",
+      "recallType": "Recall Type",
+      "vaccineName": "Vaccine",
+      "doses": "Doses"
     },
     "legend": {
       "schemeCost": "Scheme Cost",
@@ -2162,6 +2455,13 @@
       "returning": "Returning",
       "atRiskFlag": "⚠ At Risk",
       "lowFlag": "⚠ Low",
+      "cartonsAndPieces": "{{cartons}} cartons + {{pieces}} pcs",
+      "quadrant": {
+        "FAST_HIGH_MARGIN": "Fast, High Margin",
+        "FAST_LOW_MARGIN": "Fast, Low Margin",
+        "SLOW_HIGH_MARGIN": "Slow, High Margin",
+        "SLOW_LOW_MARGIN": "Slow, Low Margin"
+      },
       "customerPrefix": "CUSTOMER: ",
       "supplierPrefix": "SUPPLIER: ",
       "bucketExpired": "Expired",
@@ -2698,115 +2998,450 @@
       "licenseBody": "Sarang is free for your first 12 months. This screen always shows exactly where you stand, and is where you'll renew when the time comes."
     },
     "items": {
-      "restaurantTables": { "title": "Tables", "body": "See every table at a glance — open, occupied, or reserved. Tap a table to start an order, or merge two tables for a bigger group. If you turn on QR Table Ordering above, save your WiFi network once and every table's QR code prints as a WiFi-join code plus the order code together, so a customer can join your network and start ordering in two scans. Try it: open a table and see it turn occupied instantly." },
-      "restaurantKot": { "title": "Kitchen Order Tickets (KOT)", "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see." },
-      "restaurantRecipes": { "title": "Recipes", "body": "Link a dish to the raw ingredients it uses, so every sale can automatically deduct stock. Set one up and see how it connects a menu item to your inventory." },
-      "retailReturns": { "title": "Returns", "body": "Process a customer return against a real past invoice — pick the invoice, choose what's being returned, and see the refund and stock adjustment happen automatically." },
-      "distributorBulkOrder": { "title": "Bulk Order", "body": "Build a large, multi-item order fast for a wholesale customer — add several products at once instead of one at a time, exactly how a real distributor order works." },
-      "distributorOutstanding": { "title": "Outstanding Analytics", "body": "See which customers owe you the most and for how long, at a glance — this is how you'd spot who to follow up with first." },
-      "distributorFieldOrders": { "title": "Field Orders", "body": "This is where orders captured by your field reps out on the road land, ready for you to review and approve." },
-      "distributorPricing": { "title": "Customer Pricing", "body": "Set different prices per customer class — your best wholesale accounts don't have to pay the same rate as a walk-in." },
-      "agriDashboard": { "title": "Agri Inputs Dashboard", "body": "One combined view of both consumables (seeds, fertilizer) and equipment (tools, machinery) — everything an agri-inputs business stocks, in one place." },
-      "batchTracking": { "title": "Batch & Expiry Tracking", "body": "Every batch of stock is tracked with its own expiry date — try adding one and see how it flags when something's nearing expiry." },
-      "serialTracking": { "title": "Serial & Warranty Tracking", "body": "Track individual units by serial number (and IMEI, if enabled) so you always know exactly which unit you sold to which customer, and when its warranty ends." },
-      "repairTickets": { "title": "Repair Tickets", "body": "Log a device in for repair, track its status, and hand it back — a full repair/RMA workflow from intake to return." },
-      "rawMaterials": { "title": "Raw Materials", "body": "Track the ingredients or components you buy in, before they become a finished product." },
-      "billOfMaterials": { "title": "Bill of Materials (BOM)", "body": "Define exactly which raw materials go into one finished product — set one up and see how it becomes the recipe production runs from." },
-      "productionOrders": { "title": "Production Orders", "body": "Start a production run against a BOM — try creating one and watch it consume raw materials and produce finished stock." },
-      "finishedGoods": { "title": "Finished Goods", "body": "Everything your production line has completed lands here, ready to sell." },
-      "dispatchTracking": { "title": "Dispatch Tracking", "body": "Track a shipment from your warehouse to its recipient, start to finish." },
-      "vendorManagement": { "title": "Vendors", "body": "Manage the suppliers your production line depends on for raw materials." },
-      "productionAnalytics": { "title": "Production Analytics", "body": "See throughput, output, and efficiency across every production run at a glance." },
-      "logisticsFleet": { "title": "Fleet", "body": "Manage the vehicles you use to move goods — try adding one and see it become available for assigning to a shipment." },
-      "logisticsCarriers": { "title": "Carriers", "body": "Manage third-party carriers you use alongside (or instead of) your own fleet." },
-      "logisticsShipments": { "title": "Shipments", "body": "Track a shipment end-to-end — create one and follow it from pickup to delivery." },
-      "logisticsGrn": { "title": "Goods Receipt Notes (GRN)", "body": "Record what actually arrived against a purchase order — try creating one and see how it reconciles against what was ordered." },
-      "logisticsChallan": { "title": "Delivery Challan", "body": "Generate a delivery challan — the document that travels with goods in transit, separate from the invoice." },
-      "logisticsFreight": { "title": "Freight Ledger", "body": "Track what you're paying carriers for freight, all in one ledger." },
-      "logisticsAnalytics": { "title": "Logistics Analytics", "body": "See delivery performance and freight costs across your whole logistics operation at a glance." },
-      "printLabels": { "title": "Barcode & Label Printing", "body": "Generate and print barcode labels for your products — try picking a product and printing a label, exactly as you would for real shelf stock." },
-      "serviceProjects": { "title": "Projects", "body": "Track a client project from kickoff to completion, with its own tasks and milestones." },
-      "serviceTickets": { "title": "Service Tickets", "body": "Log a customer service request and track it through to resolution." },
-      "serviceJobCards": { "title": "Job Cards", "body": "Create a job card for a specific piece of work — try one and see how it tracks the job from start to finish." },
-      "workTracking": { "title": "Work Tracking", "body": "See time and effort logged against jobs or projects, all in one place." },
-      "customerHistory": { "title": "Customer History", "body": "See a customer's full service history in one place — every job, ticket, and visit they've ever had with you." },
-      "appointments": { "title": "Appointments", "body": "Book a real appointment — pick a customer, a time slot, and a service. This is the heart of how a service business runs its day." },
-      "serviceCatalog": { "title": "Service Catalog", "body": "Define the services you offer and their prices — this is what populates the choices when booking an appointment." },
-      "normalRanges": { "title": "Normal Ranges", "body": "Set the reference ranges clinical notes compare a patient's readings against (e.g. normal blood pressure range)." },
-      "providerSchedule": { "title": "Provider Schedule", "body": "Set your (or your staff's) working hours and availability — this controls which time slots show up when booking an appointment." },
-      "whatsappReminders": { "title": "WhatsApp Reminders", "body": "See the queue of appointment reminders scheduled to go out automatically to your customers." },
-      "vetPatients": { "title": "Patients (Pets)", "body": "Every pet you've ever treated, with its own profile and visit history — try registering one." },
-      "tokenQueue": { "title": "Token Queue", "body": "Manage a walk-in queue with numbered tokens — try issuing one and see it move through the queue." },
-      "clinicalNotes": { "title": "Clinical Notes", "body": "Record a patient's visit notes — symptoms, diagnosis, and treatment — all tied to their appointment." },
-      "labOrders": { "title": "Lab Test Orders", "body": "Create a test order for a patient, then record the result once it's ready — a full order-to-result workflow." },
-      "bloodDonors": { "title": "Donors", "body": "Every registered blood donor, with their donation history — try registering one." },
-      "bloodDonations": { "title": "Donations & Screening", "body": "Record a donation and its screening result — try one and see how it becomes available blood stock only after passing screening." },
-      "bloodStock": { "title": "Blood Stock", "body": "See exactly how many units of each blood type and group you have on hand, ready to issue." },
-      "bloodIssue": { "title": "Blood Issue", "body": "Issue blood units to a patient or hospital — try one and watch the stock count update immediately." },
-      "rentalBookings": { "title": "Rental Bookings", "body": "Book an item out to a customer for a period, then check it back in — a full checkout-and-return cycle." },
-      "rentalUnits": { "title": "Rental Units", "body": "Every item you have available to rent out, and whether it's currently checked out." },
-      "hotelBookings": { "title": "Hotel Bookings", "body": "Book a guest into a room — try one and see it turn the room's status to occupied." },
-      "hotelRooms": { "title": "Rooms", "body": "See every room's status at a glance — available, occupied, or being cleaned." },
-      "hotelHousekeeping": { "title": "Housekeeping", "body": "Track which rooms need cleaning and mark them ready once done — try updating one and see the room's status change." },
-      "metalRates": { "title": "Metal Rates", "body": "Set today's gold/silver rate — this is what a jewellery sale's price is actually calculated from, not a fixed selling price." },
-      "metalExchange": { "title": "Old-Metal Exchange", "body": "Record a customer trading in old jewellery against a new purchase, valued at today's metal rate." },
-      "dentalRecall": { "title": "Recall Schedule", "body": "See which patients are due for a follow-up visit, so none are missed." },
-      "sessionPacks": { "title": "Session Packs", "body": "Sell a bundle of sessions upfront (e.g. 10 physio sessions), then track how many a patient has used." },
-      "staffCommission": { "title": "Staff Commission", "body": "See commission earned per staff member based on the sales or services they've handled." },
-      "memberships": { "title": "Memberships", "body": "Sell and track gym memberships — try creating one and see its start and expiry dates." },
-      "groupClasses": { "title": "Group Classes", "body": "Schedule a class with a capacity limit, then enroll members into it." },
-      "learners": { "title": "Learners", "body": "Every driving-school learner's profile, with their progress toward a license." },
-      "driveSessions": { "title": "Drive Sessions", "body": "Schedule and log an individual driving lesson against a learner's profile." },
-      "legalCases": { "title": "Cases", "body": "Track a legal case from filing to resolution, with its own hearings and documents." },
-      "compliance": { "title": "Compliance Tasks", "body": "Track recurring compliance deadlines (filings, renewals) so nothing is missed." },
-      "engagements": { "title": "Engagements", "body": "Track a client engagement — the scope of work you've agreed to do for them." },
-      "rocFilings": { "title": "ROC Filings", "body": "Track company-secretary filings with the Registrar of Companies and their due dates." },
-      "timeTracking": { "title": "Time Tracking", "body": "Log billable hours against a client or engagement — try logging an entry and see it ready to bill." },
-      "leads": { "title": "Leads", "body": "Track a prospective client from first contact through to becoming a real, billing customer." },
-      "consultingProjects": { "title": "Projects", "body": "Track a client project with its own milestones and deliverables." },
-      "retainers": { "title": "Retainers", "body": "Track an ongoing retainer agreement — hours or value used against what a client has paid for upfront." },
-      "issues": { "title": "Issues", "body": "Log and track an issue raised during a project through to resolution." },
-      "drawingRegister": { "title": "Drawing Register", "body": "Track every drawing revision for a project, so everyone always knows which version is current." },
-      "siteVisits": { "title": "Site Visit Log", "body": "Log a site visit with notes and photos — try one and see how it builds a real visit history for a project." },
-      "students": { "title": "Students", "body": "Every enrolled student's profile, with their batch, fees, and performance in one place." },
-      "coachingBatches": { "title": "Batches", "body": "Group students into a batch (a class/section) with its own schedule." },
-      "coachingAttendance": { "title": "Attendance", "body": "Mark attendance for a batch, session by session." },
-      "feeCollection": { "title": "Fee Collection", "body": "Record a student's fee payment and see their outstanding balance update." },
-      "performances": { "title": "Performances", "body": "Track how each student is performing across tests and assessments over time." },
-      "testScores": { "title": "Test Scores", "body": "Record a student's score for a specific test." },
-      "shootBookings": { "title": "Shoot Bookings", "body": "Book a photography shoot with a client — try one and see it become a schedulable event." },
-      "events": { "title": "Events", "body": "Manage an event from booking through to its run-of-show on the day." },
-      "properties": { "title": "Properties", "body": "Every property you're selling or renting out, with its own listing details and status." },
-      "carServiceJobs": { "title": "Job Cards", "body": "Open a job card for a vehicle being serviced, and track the work done against it." },
-      "tailoring": { "title": "Tailoring Orders", "body": "Take a tailoring order with a customer's measurements, and track it through to delivery." },
-      "pestControl": { "title": "Pest Control Contracts", "body": "Track a recurring pest-control contract and its scheduled visits." },
-      "placement": { "title": "Placement", "body": "Track a candidate through a job placement, from application to a confirmed hire." },
-      "quotations": { "title": "Quotations", "body": "Send a customer a quote before they commit — try creating one, then convert it to a real invoice with one click once they say yes." },
-      "creditNotes": { "title": "Credit Notes", "body": "Issue a credit note against a past invoice — for a discount, a billing correction, or goods returned. It adjusts what the customer owes without touching the original invoice." },
-      "debitNotes": { "title": "Debit Notes", "body": "Record a debit note against a supplier — for a purchase price correction or something you're charging back to them." },
-      "purchaseOrders": { "title": "Purchase Orders", "body": "Create a purchase order to a supplier, then receive the goods against it when they arrive — keeps what you ordered and what actually showed up cleanly separate." },
-      "suppliers": { "title": "Suppliers", "body": "Every supplier you buy from, with their own purchase and payment history — the other side of the business from Customers." },
-      "bills": { "title": "Bills", "body": "Record what a supplier actually billed you — a purchase, a rent bill, professional fees, anything you owe — with or without a Purchase Order behind it. This is what makes your Purchase Register and payables aging correct." },
-      "supplierPayments": { "title": "Payments Made", "body": "Every payment you've made to a supplier against a Bill, in one place — with reversal support if one was entered wrong." },
-      "bankReconciliation": { "title": "Bank Accounts", "body": "Add a real bank or cash account, then open it to import a statement and auto-match it against what Sarang already recorded — try it and see how it flags what still needs your review instead of guessing." },
-      "manualJournal": { "title": "Journal Entries", "body": "Every Invoice, Bill, and Payment already posts here automatically — this is where you post a correction by hand when you need to. Sarang rejects it outright if your debits and credits don't match exactly." },
-      "cashClose": { "title": "Cash Close", "body": "Reconcile the cash in your drawer against what Sarang recorded for the day — try it and see how it flags a shortage or overage instantly instead of at month-end." },
-      "expenses": { "title": "Expenses", "body": "Log a business expense — rent, utilities, anything that isn't stock — to keep your real profit picture accurate." },
-      "documents": { "title": "Documents", "body": "Attach and store documents against records across Sarang — receipts, contracts, ID proofs — so nothing lives only on paper." },
-      "importData": { "title": "Import Data", "body": "Bring in existing data in bulk — like a spreadsheet of products or customers — instead of typing everything in one at a time." },
-      "auditLog": { "title": "Audit Log", "body": "Every significant action anyone takes in Sarang is recorded here, tamper-evident — who did what, and when." },
-      "hrEmployees": { "title": "Employees", "body": "Add your staff here — this is also where their login accounts and roles get set up." },
-      "hrAttendance": { "title": "Attendance", "body": "Mark daily attendance for your staff — present, absent, or on leave." },
-      "hrLeave": { "title": "Leave", "body": "Track and approve leave requests from your staff." },
-      "hrPayroll": { "title": "Payroll", "body": "Run payroll for your staff based on their attendance and salary structure." },
-      "salesOrders": { "title": "Sales Orders", "body": "Commit to a sale before you're ready to invoice — try creating one, confirm it, then bill it fully or in parts as goods ship or work gets done." },
-      "priceLists": { "title": "Price Lists", "body": "Set quantity-based pricing for a customer or supplier — buy 50+ units and pay less per unit. Assign a price list to a customer and Sarang applies it automatically at billing." },
-      "pricingSchemes": { "title": "Pricing Schemes", "body": "Set up a Buy-X-Get-Y-Free or volume-discount offer — try one and watch it suggest itself automatically in the cart the moment a qualifying item is added." },
-      "recurringProfiles": { "title": "Recurring Profiles", "body": "Set up an invoice, bill, or expense to repeat on a schedule — weekly, monthly, or yearly — so you never have to recreate the same document by hand again." },
-      "approvalWorkflows": { "title": "Approval Workflows", "body": "Require sign-off before a large sales or purchase order is confirmed — set a threshold and an approver, and Sarang holds any order over that amount for approval instead of confirming it immediately." },
-      "locations": { "title": "Locations", "body": "If you store stock in more than one place, add a second location here and try a Transfer Stock — everything still starts in one default location until you actually add another." },
-      "costCentres": { "title": "Cost Centres", "body": "Create a cost centre for a department, branch, or project, then pick it on your next invoice, bill, or expense — see the profit and spend it drove on the Cost Centre P&L report." },
-      "budgets": { "title": "Budgets", "body": "Set a monthly budget for a cost centre, a specific account, or the whole company, then check back after the month to see how real spend compared." }
+      "restaurantTables": {
+        "title": "Tables",
+        "body": "See every table at a glance — open, occupied, or reserved. Tap a table to start an order, or merge two tables for a bigger group. If you turn on QR Table Ordering above, save your WiFi network once and every table's QR code prints as a WiFi-join code plus the order code together, so a customer can join your network and start ordering in two scans. Try it: open a table and see it turn occupied instantly."
+      },
+      "restaurantKot": {
+        "title": "Kitchen Order Tickets (KOT)",
+        "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see."
+      },
+      "restaurantRecipes": {
+        "title": "Recipes",
+        "body": "Link a dish to the raw ingredients it uses, so every sale can automatically deduct stock. Set one up and see how it connects a menu item to your inventory."
+      },
+      "retailReturns": {
+        "title": "Returns",
+        "body": "Process a customer return against a real past invoice — pick the invoice, choose what's being returned, and see the refund and stock adjustment happen automatically."
+      },
+      "distributorBulkOrder": {
+        "title": "Bulk Order",
+        "body": "Build a large, multi-item order fast for a wholesale customer — add several products at once instead of one at a time, exactly how a real distributor order works."
+      },
+      "distributorOutstanding": {
+        "title": "Outstanding Analytics",
+        "body": "See which customers owe you the most and for how long, at a glance — this is how you'd spot who to follow up with first."
+      },
+      "distributorFieldOrders": {
+        "title": "Field Orders",
+        "body": "This is where orders captured by your field reps out on the road land, ready for you to review and approve."
+      },
+      "distributorPricing": {
+        "title": "Customer Pricing",
+        "body": "Set different prices per customer class — your best wholesale accounts don't have to pay the same rate as a walk-in."
+      },
+      "agriDashboard": {
+        "title": "Agri Inputs Dashboard",
+        "body": "One combined view of both consumables (seeds, fertilizer) and equipment (tools, machinery) — everything an agri-inputs business stocks, in one place."
+      },
+      "batchTracking": {
+        "title": "Batch & Expiry Tracking",
+        "body": "Every batch of stock is tracked with its own expiry date — try adding one and see how it flags when something's nearing expiry."
+      },
+      "serialTracking": {
+        "title": "Serial & Warranty Tracking",
+        "body": "Track individual units by serial number (and IMEI, if enabled) so you always know exactly which unit you sold to which customer, and when its warranty ends."
+      },
+      "repairTickets": {
+        "title": "Repair Tickets",
+        "body": "Log a device in for repair, track its status, and hand it back — a full repair/RMA workflow from intake to return."
+      },
+      "rawMaterials": {
+        "title": "Raw Materials",
+        "body": "Track the ingredients or components you buy in, before they become a finished product."
+      },
+      "billOfMaterials": {
+        "title": "Bill of Materials (BOM)",
+        "body": "Define exactly which raw materials go into one finished product — set one up and see how it becomes the recipe production runs from."
+      },
+      "productionOrders": {
+        "title": "Production Orders",
+        "body": "Start a production run against a BOM — try creating one and watch it consume raw materials and produce finished stock."
+      },
+      "finishedGoods": {
+        "title": "Finished Goods",
+        "body": "Everything your production line has completed lands here, ready to sell."
+      },
+      "dispatchTracking": {
+        "title": "Dispatch Tracking",
+        "body": "Track a shipment from your warehouse to its recipient, start to finish."
+      },
+      "vendorManagement": {
+        "title": "Vendors",
+        "body": "Manage the suppliers your production line depends on for raw materials."
+      },
+      "productionAnalytics": {
+        "title": "Production Analytics",
+        "body": "See throughput, output, and efficiency across every production run at a glance."
+      },
+      "logisticsFleet": {
+        "title": "Fleet",
+        "body": "Manage the vehicles you use to move goods — try adding one and see it become available for assigning to a shipment."
+      },
+      "logisticsCarriers": {
+        "title": "Carriers",
+        "body": "Manage third-party carriers you use alongside (or instead of) your own fleet."
+      },
+      "logisticsShipments": {
+        "title": "Shipments",
+        "body": "Track a shipment end-to-end — create one and follow it from pickup to delivery."
+      },
+      "logisticsGrn": {
+        "title": "Goods Receipt Notes (GRN)",
+        "body": "Record what actually arrived against a purchase order — try creating one and see how it reconciles against what was ordered."
+      },
+      "logisticsChallan": {
+        "title": "Delivery Challan",
+        "body": "Generate a delivery challan — the document that travels with goods in transit, separate from the invoice."
+      },
+      "logisticsFreight": {
+        "title": "Freight Ledger",
+        "body": "Track what you're paying carriers for freight, all in one ledger."
+      },
+      "logisticsAnalytics": {
+        "title": "Logistics Analytics",
+        "body": "See delivery performance and freight costs across your whole logistics operation at a glance."
+      },
+      "printLabels": {
+        "title": "Barcode & Label Printing",
+        "body": "Generate and print barcode labels for your products — try picking a product and printing a label, exactly as you would for real shelf stock."
+      },
+      "serviceProjects": {
+        "title": "Projects",
+        "body": "Track a client project from kickoff to completion, with its own tasks and milestones."
+      },
+      "serviceTickets": {
+        "title": "Service Tickets",
+        "body": "Log a customer service request and track it through to resolution."
+      },
+      "serviceJobCards": {
+        "title": "Job Cards",
+        "body": "Create a job card for a specific piece of work — try one and see how it tracks the job from start to finish."
+      },
+      "workTracking": {
+        "title": "Work Tracking",
+        "body": "See time and effort logged against jobs or projects, all in one place."
+      },
+      "customerHistory": {
+        "title": "Customer History",
+        "body": "See a customer's full service history in one place — every job, ticket, and visit they've ever had with you."
+      },
+      "appointments": {
+        "title": "Appointments",
+        "body": "Book a real appointment — pick a customer, a time slot, and a service. This is the heart of how a service business runs its day."
+      },
+      "serviceCatalog": {
+        "title": "Service Catalog",
+        "body": "Define the services you offer and their prices — this is what populates the choices when booking an appointment."
+      },
+      "normalRanges": {
+        "title": "Normal Ranges",
+        "body": "Set the reference ranges clinical notes compare a patient's readings against (e.g. normal blood pressure range)."
+      },
+      "providerSchedule": {
+        "title": "Provider Schedule",
+        "body": "Set your (or your staff's) working hours and availability — this controls which time slots show up when booking an appointment."
+      },
+      "whatsappReminders": {
+        "title": "WhatsApp Reminders",
+        "body": "See the queue of appointment reminders scheduled to go out automatically to your customers."
+      },
+      "vetPatients": {
+        "title": "Patients (Pets)",
+        "body": "Every pet you've ever treated, with its own profile and visit history — try registering one."
+      },
+      "tokenQueue": {
+        "title": "Token Queue",
+        "body": "Manage a walk-in queue with numbered tokens — try issuing one and see it move through the queue."
+      },
+      "clinicalNotes": {
+        "title": "Clinical Notes",
+        "body": "Record a patient's visit notes — symptoms, diagnosis, and treatment — all tied to their appointment."
+      },
+      "labOrders": {
+        "title": "Lab Test Orders",
+        "body": "Create a test order for a patient, then record the result once it's ready — a full order-to-result workflow."
+      },
+      "bloodDonors": {
+        "title": "Donors",
+        "body": "Every registered blood donor, with their donation history — try registering one."
+      },
+      "bloodDonations": {
+        "title": "Donations & Screening",
+        "body": "Record a donation and its screening result — try one and see how it becomes available blood stock only after passing screening."
+      },
+      "bloodStock": {
+        "title": "Blood Stock",
+        "body": "See exactly how many units of each blood type and group you have on hand, ready to issue."
+      },
+      "bloodIssue": {
+        "title": "Blood Issue",
+        "body": "Issue blood units to a patient or hospital — try one and watch the stock count update immediately."
+      },
+      "rentalBookings": {
+        "title": "Rental Bookings",
+        "body": "Book an item out to a customer for a period, then check it back in — a full checkout-and-return cycle."
+      },
+      "rentalUnits": {
+        "title": "Rental Units",
+        "body": "Every item you have available to rent out, and whether it's currently checked out."
+      },
+      "hotelBookings": {
+        "title": "Hotel Bookings",
+        "body": "Book a guest into a room — try one and see it turn the room's status to occupied."
+      },
+      "hotelRooms": {
+        "title": "Rooms",
+        "body": "See every room's status at a glance — available, occupied, or being cleaned."
+      },
+      "hotelHousekeeping": {
+        "title": "Housekeeping",
+        "body": "Track which rooms need cleaning and mark them ready once done — try updating one and see the room's status change."
+      },
+      "metalRates": {
+        "title": "Metal Rates",
+        "body": "Set today's gold/silver rate — this is what a jewellery sale's price is actually calculated from, not a fixed selling price."
+      },
+      "metalExchange": {
+        "title": "Old-Metal Exchange",
+        "body": "Record a customer trading in old jewellery against a new purchase, valued at today's metal rate."
+      },
+      "dentalRecall": {
+        "title": "Recall Schedule",
+        "body": "See which patients are due for a follow-up visit, so none are missed."
+      },
+      "sessionPacks": {
+        "title": "Session Packs",
+        "body": "Sell a bundle of sessions upfront (e.g. 10 physio sessions), then track how many a patient has used."
+      },
+      "staffCommission": {
+        "title": "Staff Commission",
+        "body": "See commission earned per staff member based on the sales or services they've handled."
+      },
+      "memberships": {
+        "title": "Memberships",
+        "body": "Sell and track gym memberships — try creating one and see its start and expiry dates."
+      },
+      "groupClasses": {
+        "title": "Group Classes",
+        "body": "Schedule a class with a capacity limit, then enroll members into it."
+      },
+      "learners": {
+        "title": "Learners",
+        "body": "Every driving-school learner's profile, with their progress toward a license."
+      },
+      "driveSessions": {
+        "title": "Drive Sessions",
+        "body": "Schedule and log an individual driving lesson against a learner's profile."
+      },
+      "legalCases": {
+        "title": "Cases",
+        "body": "Track a legal case from filing to resolution, with its own hearings and documents."
+      },
+      "compliance": {
+        "title": "Compliance Tasks",
+        "body": "Track recurring compliance deadlines (filings, renewals) so nothing is missed."
+      },
+      "engagements": {
+        "title": "Engagements",
+        "body": "Track a client engagement — the scope of work you've agreed to do for them."
+      },
+      "rocFilings": {
+        "title": "ROC Filings",
+        "body": "Track company-secretary filings with the Registrar of Companies and their due dates."
+      },
+      "timeTracking": {
+        "title": "Time Tracking",
+        "body": "Log billable hours against a client or engagement — try logging an entry and see it ready to bill."
+      },
+      "leads": {
+        "title": "Leads",
+        "body": "Track a prospective client from first contact through to becoming a real, billing customer."
+      },
+      "consultingProjects": {
+        "title": "Projects",
+        "body": "Track a client project with its own milestones and deliverables."
+      },
+      "retainers": {
+        "title": "Retainers",
+        "body": "Track an ongoing retainer agreement — hours or value used against what a client has paid for upfront."
+      },
+      "issues": {
+        "title": "Issues",
+        "body": "Log and track an issue raised during a project through to resolution."
+      },
+      "drawingRegister": {
+        "title": "Drawing Register",
+        "body": "Track every drawing revision for a project, so everyone always knows which version is current."
+      },
+      "siteVisits": {
+        "title": "Site Visit Log",
+        "body": "Log a site visit with notes and photos — try one and see how it builds a real visit history for a project."
+      },
+      "students": {
+        "title": "Students",
+        "body": "Every enrolled student's profile, with their batch, fees, and performance in one place."
+      },
+      "coachingBatches": {
+        "title": "Batches",
+        "body": "Group students into a batch (a class/section) with its own schedule."
+      },
+      "coachingAttendance": {
+        "title": "Attendance",
+        "body": "Mark attendance for a batch, session by session."
+      },
+      "feeCollection": {
+        "title": "Fee Collection",
+        "body": "Record a student's fee payment and see their outstanding balance update."
+      },
+      "performances": {
+        "title": "Performances",
+        "body": "Track how each student is performing across tests and assessments over time."
+      },
+      "testScores": {
+        "title": "Test Scores",
+        "body": "Record a student's score for a specific test."
+      },
+      "shootBookings": {
+        "title": "Shoot Bookings",
+        "body": "Book a photography shoot with a client — try one and see it become a schedulable event."
+      },
+      "events": {
+        "title": "Events",
+        "body": "Manage an event from booking through to its run-of-show on the day."
+      },
+      "properties": {
+        "title": "Properties",
+        "body": "Every property you're selling or renting out, with its own listing details and status."
+      },
+      "carServiceJobs": {
+        "title": "Job Cards",
+        "body": "Open a job card for a vehicle being serviced, and track the work done against it."
+      },
+      "tailoring": {
+        "title": "Tailoring Orders",
+        "body": "Take a tailoring order with a customer's measurements, and track it through to delivery."
+      },
+      "pestControl": {
+        "title": "Pest Control Contracts",
+        "body": "Track a recurring pest-control contract and its scheduled visits."
+      },
+      "placement": {
+        "title": "Placement",
+        "body": "Track a candidate through a job placement, from application to a confirmed hire."
+      },
+      "quotations": {
+        "title": "Quotations",
+        "body": "Send a customer a quote before they commit — try creating one, then convert it to a real invoice with one click once they say yes."
+      },
+      "creditNotes": {
+        "title": "Credit Notes",
+        "body": "Issue a credit note against a past invoice — for a discount, a billing correction, or goods returned. It adjusts what the customer owes without touching the original invoice."
+      },
+      "debitNotes": {
+        "title": "Debit Notes",
+        "body": "Record a debit note against a supplier — for a purchase price correction or something you're charging back to them."
+      },
+      "purchaseOrders": {
+        "title": "Purchase Orders",
+        "body": "Create a purchase order to a supplier, then receive the goods against it when they arrive — keeps what you ordered and what actually showed up cleanly separate."
+      },
+      "suppliers": {
+        "title": "Suppliers",
+        "body": "Every supplier you buy from, with their own purchase and payment history — the other side of the business from Customers."
+      },
+      "bills": {
+        "title": "Bills",
+        "body": "Record what a supplier actually billed you — a purchase, a rent bill, professional fees, anything you owe — with or without a Purchase Order behind it. This is what makes your Purchase Register and payables aging correct."
+      },
+      "supplierPayments": {
+        "title": "Payments Made",
+        "body": "Every payment you've made to a supplier against a Bill, in one place — with reversal support if one was entered wrong."
+      },
+      "bankReconciliation": {
+        "title": "Bank Accounts",
+        "body": "Add a real bank or cash account, then open it to import a statement and auto-match it against what Sarang already recorded — try it and see how it flags what still needs your review instead of guessing."
+      },
+      "manualJournal": {
+        "title": "Journal Entries",
+        "body": "Every Invoice, Bill, and Payment already posts here automatically — this is where you post a correction by hand when you need to. Sarang rejects it outright if your debits and credits don't match exactly."
+      },
+      "cashClose": {
+        "title": "Cash Close",
+        "body": "Reconcile the cash in your drawer against what Sarang recorded for the day — try it and see how it flags a shortage or overage instantly instead of at month-end."
+      },
+      "expenses": {
+        "title": "Expenses",
+        "body": "Log a business expense — rent, utilities, anything that isn't stock — to keep your real profit picture accurate."
+      },
+      "documents": {
+        "title": "Documents",
+        "body": "Attach and store documents against records across Sarang — receipts, contracts, ID proofs — so nothing lives only on paper."
+      },
+      "importData": {
+        "title": "Import Data",
+        "body": "Bring in existing data in bulk — like a spreadsheet of products or customers — instead of typing everything in one at a time."
+      },
+      "auditLog": {
+        "title": "Audit Log",
+        "body": "Every significant action anyone takes in Sarang is recorded here, tamper-evident — who did what, and when."
+      },
+      "hrEmployees": {
+        "title": "Employees",
+        "body": "Add your staff here — this is also where their login accounts and roles get set up."
+      },
+      "hrAttendance": {
+        "title": "Attendance",
+        "body": "Mark daily attendance for your staff — present, absent, or on leave."
+      },
+      "hrLeave": {
+        "title": "Leave",
+        "body": "Track and approve leave requests from your staff."
+      },
+      "hrPayroll": {
+        "title": "Payroll",
+        "body": "Run payroll for your staff based on their attendance and salary structure."
+      },
+      "salesOrders": {
+        "title": "Sales Orders",
+        "body": "Commit to a sale before you're ready to invoice — try creating one, confirm it, then bill it fully or in parts as goods ship or work gets done."
+      },
+      "priceLists": {
+        "title": "Price Lists",
+        "body": "Set quantity-based pricing for a customer or supplier — buy 50+ units and pay less per unit. Assign a price list to a customer and Sarang applies it automatically at billing."
+      },
+      "pricingSchemes": {
+        "title": "Pricing Schemes",
+        "body": "Set up a Buy-X-Get-Y-Free or volume-discount offer — try one and watch it suggest itself automatically in the cart the moment a qualifying item is added."
+      },
+      "priceMarkdowns": {
+        "title": "Price Markdowns",
+        "body": "Cut a product's price for a limited time, with a date it reverts on its own — no need to remember to change it back yourself."
+      },
+      "loyaltyProgram": {
+        "title": "Loyalty Program",
+        "body": "Set how many visits earn a reward and what that reward is — a punch is added automatically to a customer's card on every qualifying sale, no extra step at checkout. Redeem here once they've earned it."
+      },
+      "recurringProfiles": {
+        "title": "Recurring Profiles",
+        "body": "Set up an invoice, bill, or expense to repeat on a schedule — weekly, monthly, or yearly — so you never have to recreate the same document by hand again."
+      },
+      "approvalWorkflows": {
+        "title": "Approval Workflows",
+        "body": "Require sign-off before a large sales or purchase order is confirmed — set a threshold and an approver, and Sarang holds any order over that amount for approval instead of confirming it immediately."
+      },
+      "locations": {
+        "title": "Locations",
+        "body": "If you store stock in more than one place, add a second location here and try a Transfer Stock — everything still starts in one default location until you actually add another."
+      },
+      "costCentres": {
+        "title": "Cost Centres",
+        "body": "Create a cost centre for a department, branch, or project, then pick it on your next invoice, bill, or expense — see the profit and spend it drove on the Cost Centre P&L report."
+      },
+      "budgets": {
+        "title": "Budgets",
+        "body": "Set a monthly budget for a cost centre, a specific account, or the whole company, then check back after the month to see how real spend compared."
+      }
     }
   },
   "manufacturing": {

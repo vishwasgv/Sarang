@@ -100,12 +100,26 @@ export function PetListScreen() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [customers, setCustomers] = useState<{ id: string; customerName: string }[]>([])
+  // Phase 67 §9.1 item 18.3 — breed-specific health-alert flagging at intake.
+  const [breedAlerts, setBreedAlerts] = useState<{ id: string; alertText: string }[]>([])
 
   // Debounce search by 200ms to avoid hammering the API on every keystroke
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 200)
     return () => clearTimeout(t)
   }, [search])
+
+  // Same debounce convention as search above — checks the clinic's own
+  // breed-alert reference list live as species/breed are typed, so a
+  // matching risk note surfaces before the patient is even saved.
+  useEffect(() => {
+    if (!showModal || !form.breed.trim()) { setBreedAlerts([]); return }
+    const t = setTimeout(async () => {
+      const res = await api.breedHealthAlert.forBreed({ species: form.species, breed: form.breed })
+      setBreedAlerts(res.success ? (res.data as { id: string; alertText: string }[]) ?? [] : [])
+    }, 300)
+    return () => clearTimeout(t)
+  }, [showModal, form.species, form.breed])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -380,6 +394,14 @@ export function PetListScreen() {
                   <option>Female</option>
                 </Select>
               </div>
+
+              {breedAlerts.length > 0 && (
+                <div className="bg-warning/5 border border-warning/20 rounded-lg px-3 py-2 space-y-1">
+                  {breedAlerts.map((a) => (
+                    <p key={a.id} className="text-xs text-warning">⚠ {a.alertText}</p>
+                  ))}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Date of Birth" type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} />

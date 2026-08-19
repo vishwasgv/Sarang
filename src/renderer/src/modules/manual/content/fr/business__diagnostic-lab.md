@@ -22,6 +22,10 @@ Pour chaque test de la commande, saisissez son résultat : un ensemble de param�
 
 Un résultat **Critique** met immédiatement un badge rouge sur la commande (et sur l'élément spécifique), et la commande ne peut pas être considérée comme traitée tant que vous n'utilisez pas **Record Doctor Notified** pour enregistrer que vous avez réellement appelé le médecin référent, avec une note — c'est un enregistrement authentique que l'escalade a eu lieu, pas seulement que le chiffre a été signalé.
 
+## Délai de traitement (TAT)
+
+Si un test de votre Service Catalog a un **Target TAT (hours)** défini — modifiez l'entrée du test pour en ajouter un — chaque commande pour ce test suit automatiquement son délai réel : le moment où un résultat devient prêt est comparé à l'heure de prélèvement de l'échantillon, et la ligne de résultat du test affiche un badge **On Time** ou **Late** avec les heures exactes, juste à côté de son statut. Pas de cible, pas de badge — c'est optionnel par test, pas une obligation.
+
 ## Finalisation du rapport
 
 Une fois que chaque test de la commande a un résultat saisi, **Finalize Report** verrouille toute la commande — son statut devient Reported et chaque élément est marqué Reported. Les résultats d'un rapport finalisé ne peuvent plus être modifiés ; si une correction est véritablement nécessaire, elle doit se produire avant la finalisation. Après la finalisation du rapport, marquez-le **Livrée** une fois que le patient ou la clinique référente l'a réellement reçu. Joignez de véritables fichiers de scan/image à une commande depuis sa vue de détail.
@@ -33,6 +37,8 @@ Générez une facture directement depuis une commande de laboratoire une fois qu
 ## Rapports
 
 L'écran **Rapports** inclut un rapport Lab Test Throughput spécifique à ce secteur, montrant les commandes par étape (commandée, échantillon prélevé, en cours, rapportée) et le temps de traitement de la commande au rapport pour chacune — utile pour repérer où les échantillons s'accumulent.
+
+Trois autres rapports spécifiques au laboratoire se trouvent à côté. **Per-Test TAT** décompose le délai de traitement par nom de test plutôt que par commande — heures réelles moyennes par rapport à la cible propre de chaque test, et combien de résultats sont arrivés à temps contre en retard, pour voir quels tests précis manquent leur SLA plutôt que juste que « quelque chose » est lent. **Test Volume by Panel** trace combien de tests vous réalisez par panel/catégorie dans le temps — une ligne par panel, mois par mois. **Referral Leaderboard** classe les médecins qui vous réfèrent le plus de tests, pour savoir d'où vient réellement votre volume.
 
 ## Langue
 

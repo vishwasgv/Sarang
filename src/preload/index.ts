@@ -175,6 +175,18 @@ const api: IpcChannels = {
     delete: (id) => invoke('pricingSchemes:delete', id),
     evaluateCart: (p) => invoke('pricingSchemes:evaluateCart', p)
   },
+  priceMarkdowns: {
+    list: (p) => invoke('priceMarkdowns:list', p),
+    create: (p) => invoke('priceMarkdowns:create', p),
+    cancel: (id) => invoke('priceMarkdowns:cancel', id),
+    evaluateNow: () => invoke('priceMarkdowns:evaluateNow')
+  },
+  loyaltyProgram: {
+    get: () => invoke('loyaltyProgram:get'),
+    upsert: (p) => invoke('loyaltyProgram:upsert', p),
+    listCards: (p) => invoke('loyaltyProgram:listCards', p),
+    redeem: (customerId) => invoke('loyaltyProgram:redeem', customerId)
+  },
   invoiceTemplates: {
     list: () => invoke('invoiceTemplates:list'),
     create: (p) => invoke('invoiceTemplates:create', p),
@@ -317,6 +329,13 @@ const api: IpcChannels = {
     supplierLedger: (p) => invoke('reports:supplierLedger', p),
     audit: (p) => invoke('reports:audit', p),
     foodCost: (p) => invoke('reports:foodCost', p),
+    dishContributionMargin: (p) => invoke('reports:dishContributionMargin', p),
+    tableTurnoverByHour: (p) => invoke('reports:tableTurnoverByHour', p),
+    recipeWasteVariance: (p) => invoke('reports:recipeWasteVariance', p),
+    deadStockClearance: (p) => invoke('reports:deadStockClearance', p),
+    categorySellThrough: (p) => invoke('reports:categorySellThrough', p),
+    basketComposition: (p) => invoke('reports:basketComposition', p),
+    fastSlowMoverMatrix: (p) => invoke('reports:fastSlowMoverMatrix', p),
     gstr1: (p) => invoke('reports:gstr1', p),
     hsnSummary: (p) => invoke('reports:hsnSummary', p),
     documentSummary: (p) => invoke('reports:documentSummary', p),
@@ -346,6 +365,19 @@ const api: IpcChannels = {
     prescriptionDrugSales: (p) => invoke('reports:prescriptionDrugSales', p),
     schemeCostVsVolume: (p) => invoke('reports:schemeCostVsVolume', p),
     chronicRecallCompliance: (p) => invoke('reports:chronicRecallCompliance', p),
+    walkInVsAppointmentRatio: (p) => invoke('reports:walkInVsAppointmentRatio', p),
+    diagnosisCategoryTrend: (p) => invoke('reports:diagnosisCategoryTrend', p),
+    referralOutcome: (p) => invoke('reports:referralOutcome', p),
+    packUtilization: (p) => invoke('reports:packUtilization', p),
+    labTAT: (p) => invoke('reports:labTAT', p),
+    testVolumeByPanel: (p) => invoke('reports:testVolumeByPanel', p),
+    referralLeaderboard: (p) => invoke('reports:referralLeaderboard', p),
+    secondOpinionConversion: (p) => invoke('reports:secondOpinionConversion', p),
+    caseComplexityMix: (p) => invoke('reports:caseComplexityMix', p),
+    treatmentAcceptanceRate: (p) => invoke('reports:treatmentAcceptanceRate', p),
+    dentalRecallCompliance: (p) => invoke('reports:dentalRecallCompliance', p),
+    vaccinationCompliance: (p) => invoke('reports:vaccinationCompliance', p),
+    vetCaseTypeVolume: (p) => invoke('reports:vetCaseTypeVolume', p),
     logistics: (p) => invoke('reports:logistics', p),
     attendance: (p) => invoke('reports:attendance', p),
     production: (p) => invoke('reports:production', p),
@@ -830,6 +862,12 @@ const api: IpcChannels = {
     evaluate: (p: unknown) => invoke('normalRange:evaluate', p),
     find: (p: unknown) => invoke('normalRange:find', p),
   },
+  breedHealthAlert: {
+    list: (p?: unknown) => invoke('breedHealthAlert:list', p),
+    save: (p: unknown) => invoke('breedHealthAlert:save', p),
+    delete: (p: unknown) => invoke('breedHealthAlert:delete', p),
+    forBreed: (p: unknown) => invoke('breedHealthAlert:forBreed', p),
+  },
   tokenQueue: {
     today: (p?: unknown) => invoke('tokenQueue:today', p),
     stats: (p?: unknown) => invoke('tokenQueue:stats', p),
@@ -886,6 +924,7 @@ const api: IpcChannels = {
     getChart: (p: unknown) => invoke('toothRecord:getChart', p),
     upsert: (p: unknown) => invoke('toothRecord:upsert', p),
     getHistory: (p: unknown) => invoke('toothRecord:getHistory', p),
+    getTimeline: (p: unknown) => invoke('toothRecord:getTimeline', p),
   },
   providerSkills: {
     listForEmployee: (p: unknown) => invoke('providerSkills:listForEmployee', p),
@@ -897,6 +936,7 @@ const api: IpcChannels = {
     get: (p: unknown) => invoke('treatmentPlan:get', p),
     create: (p: unknown) => invoke('treatmentPlan:create', p),
     update: (p: unknown) => invoke('treatmentPlan:update', p),
+    generateInvoice: (p: unknown) => invoke('treatmentPlan:generateInvoice', p),
   },
   recall: {
     get: (p: unknown) => invoke('recall:get', p),

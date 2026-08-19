@@ -10,7 +10,8 @@ function makeScheme(overrides: Record<string, unknown> = {}) {
   return {
     id: 'scheme-1', name: 'Buy 10 Get 1 Free', ruleType: 'BUY_X_GET_Y_FREE',
     productId: 'prod-1', categoryId: null, buyQuantity: 10, freeQuantity: 1,
-    slabBreakpoints: '[]', startDate: null, endDate: null, isActive: true,
+    slabBreakpoints: '[]', flatDiscountPercent: null, startDate: null, endDate: null,
+    startTimeMinutes: null, endTimeMinutes: null, isActive: true,
     ...overrides
   }
 }
@@ -123,6 +124,78 @@ describe('pricingSchemeService.evaluateCart — SLAB_DISCOUNT', () => {
     const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 5 }] })
 
     expect((res as any).data.discounts).toHaveLength(0)
+  })
+})
+
+// Phase 67 21.x — Restaurant happy-hour pricing: a new FLAT_PERCENT_OFF
+// rule type plus an optional time-of-day window that gates ANY rule type.
+describe('pricingSchemeService.createPricingScheme — FLAT_PERCENT_OFF', () => {
+  it('stores flatDiscountPercent and the happy-hour time window', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await pricingSchemeService.createPricingScheme({
+      name: 'Happy Hour', ruleType: 'FLAT_PERCENT_OFF', productId: 'prod-1',
+      flatDiscountPercent: 20, startTimeMinutes: 960, endTimeMinutes: 1080
+    } as never)
+
+    expect(db.pricingScheme.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ flatDiscountPercent: 20, startTimeMinutes: 960, endTimeMinutes: 1080 })
+    }))
+  })
+})
+
+describe('pricingSchemeService.evaluateCart — FLAT_PERCENT_OFF', () => {
+  it('applies the flat percent regardless of quantity', async () => {
+    const scheme = makeScheme({ ruleType: 'FLAT_PERCENT_OFF', buyQuantity: null, freeQuantity: null, flatDiscountPercent: 20 })
+    const db = makeDb({ pricingScheme: { findMany: vi.fn().mockResolvedValue([scheme]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 1 }] })
+
+    expect((res as any).data.discounts).toEqual([{ productId: 'prod-1', discountPercent: 20, schemeId: 'scheme-1', schemeName: 'Buy 10 Get 1 Free' }])
+  })
+})
+
+describe('pricingSchemeService.evaluateCart — happy-hour time-of-day window', () => {
+  it('applies a scheme when the current time is inside the window (4:00 PM–6:00 PM, checked at 5:00 PM)', async () => {
+    const scheme = makeScheme({ ruleType: 'FLAT_PERCENT_OFF', buyQuantity: null, freeQuantity: null, flatDiscountPercent: 20, startTimeMinutes: 960, endTimeMinutes: 1080 })
+    const db = makeDb({ pricingScheme: { findMany: vi.fn().mockResolvedValue([scheme]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 1 }] }, new Date(2026, 0, 1, 17, 0))
+
+    expect((res as any).data.discounts).toHaveLength(1)
+  })
+
+  it('skips a scheme when the current time is before the window (checked at 2:00 PM)', async () => {
+    const scheme = makeScheme({ ruleType: 'FLAT_PERCENT_OFF', buyQuantity: null, freeQuantity: null, flatDiscountPercent: 20, startTimeMinutes: 960, endTimeMinutes: 1080 })
+    const db = makeDb({ pricingScheme: { findMany: vi.fn().mockResolvedValue([scheme]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 1 }] }, new Date(2026, 0, 1, 14, 0))
+
+    expect((res as any).data.discounts).toHaveLength(0)
+  })
+
+  it('skips a scheme exactly at the window\'s end minute (window is [start, end) — half-open)', async () => {
+    const scheme = makeScheme({ ruleType: 'FLAT_PERCENT_OFF', buyQuantity: null, freeQuantity: null, flatDiscountPercent: 20, startTimeMinutes: 960, endTimeMinutes: 1080 })
+    const db = makeDb({ pricingScheme: { findMany: vi.fn().mockResolvedValue([scheme]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 1 }] }, new Date(2026, 0, 1, 18, 0))
+
+    expect((res as any).data.discounts).toHaveLength(0)
+  })
+
+  it('a scheme with no time window set applies at any time of day', async () => {
+    const scheme = makeScheme({ ruleType: 'FLAT_PERCENT_OFF', buyQuantity: null, freeQuantity: null, flatDiscountPercent: 20 })
+    const db = makeDb({ pricingScheme: { findMany: vi.fn().mockResolvedValue([scheme]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await pricingSchemeService.evaluateCart({ items: [{ productId: 'prod-1', quantity: 1 }] }, new Date(2026, 0, 1, 3, 0))
+
+    expect((res as any).data.discounts).toHaveLength(1)
   })
 })
 

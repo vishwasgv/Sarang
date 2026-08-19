@@ -10,6 +10,7 @@ export const CreateServiceSchema = z.object({
   taxRate: z.number().nonnegative('Tax rate cannot be negative').finite().optional(),
   sacCode: z.string().optional(),
   notes: z.string().optional(),
+  targetTATHours: z.number().positive('Target TAT must be greater than zero').finite().optional(),
 })
 
 export const UpdateServiceSchema = z.object({
@@ -24,6 +25,7 @@ export const UpdateServiceSchema = z.object({
   sacCode: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().nullable().optional(),
+  targetTATHours: z.number().positive('Target TAT must be greater than zero').finite().nullable().optional(),
 })
 
 export const ServiceIdSchema = z.object({ id: z.string().min(1, 'Service ID is required') })

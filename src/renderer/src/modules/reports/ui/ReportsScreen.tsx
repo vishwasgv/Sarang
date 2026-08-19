@@ -8,14 +8,17 @@ import {
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp, HeartPulse,
   Briefcase, Wrench, BedDouble, FolderOpen,
   Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins,
-  PieChart, ShieldCheck, LineChart, Clock, Target
+  PieChart, ShieldCheck, LineChart, Clock, Target, Share2, Timer
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap,
   // Phase 67 §9.1 — Distributor's Scheme Cost vs. Volume report is this
   // file's first dual-line chart; aliased to avoid colliding with the
   // same-named lucide-react icon already imported above.
-  LineChart as RCLineChart, Line
+  LineChart as RCLineChart, Line,
+  // Phase 67 §9.1 — Hardware's Fast-Mover vs. Slow-Mover Matrix is this
+  // file's first scatter plot.
+  ScatterChart, Scatter, ZAxis
 } from 'recharts'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
@@ -43,7 +46,7 @@ interface DiscountByStaffRow { staffName: string; discountGiven: number; lineCou
 interface DiscountByProductRow { productName: string; discountGiven: number; lineCount: number }
 interface DiscountReport { dateFrom: string; dateTo: string; summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }; byStaff: DiscountByStaffRow[]; byProduct: DiscountByProductRow[]; rows: DiscountReportRow[]; total: number }
 
-interface InventoryReportRow { sku: string | null; productName: string; category: string | null; productType: string; currentStock: number; unit: string; costPrice: number; sellingPrice: number; stockValue: number; lowStockAlert: boolean }
+interface InventoryReportRow { sku: string | null; productName: string; category: string | null; productType: string; currentStock: number; unit: string; costPrice: number; sellingPrice: number; stockValue: number; lowStockAlert: boolean; cartonBreakdown: { unitsPerPack: number; fullCartons: number; loosePieces: number } | null }
 interface InventoryReport { asOf?: string; summary: { totalProducts: number; totalStockValue: number; lowStockItems: number; outOfStockItems: number }; rows: InventoryReportRow[] }
 
 interface TaxReportRow { taxName: string; taxType: string; rate: number; taxableAmount: number; taxCollected: number; invoiceCount: number }
@@ -118,6 +121,28 @@ interface AuditReport { dateFrom?: string; dateTo?: string; totalRecords: number
 
 interface FoodCostReportRow { ingredientName: string; unit: string; totalQuantityUsed: number; costPrice: number; totalCost: number }
 interface FoodCostReport { dateFrom?: string; dateTo?: string; totalCost: number; rows: FoodCostReportRow[] }
+
+interface DishContributionMarginRow { productId: string; productName: string; quantitySold: number; revenue: number; ingredientCost: number; contributionMargin: number; marginPercent: number }
+interface DishContributionMarginReport { dateFrom?: string; dateTo?: string; rows: DishContributionMarginRow[] }
+
+interface TableTurnoverCell { dayOfWeek: number; hour: number; count: number }
+interface TableTurnoverByHourReport { dateFrom?: string; dateTo?: string; cells: TableTurnoverCell[]; summary: { totalTurns: number; peakDayOfWeek: number | null; peakHour: number | null; peakCount: number } }
+
+interface RecipeWasteVarianceRow { ingredientProductId: string; ingredientName: string; unit: string; impliedQuantity: number; actualQuantity: number; varianceQuantity: number; variancePercent: number | null }
+interface RecipeWasteVarianceReport { dateFrom?: string; dateTo?: string; rows: RecipeWasteVarianceRow[] }
+
+interface DeadStockClearanceRow { productId: string; productName: string; sku: string | null; unit: string; currentStock: number; unitCost: number; capitalLocked: number; lastSoldDate: string | null; daysSinceLastSale: number | null }
+interface DeadStockClearanceReport { asOfDate: string; lookbackDays: number; rows: DeadStockClearanceRow[]; summary: { totalCapitalLocked: number; itemCount: number } }
+
+interface CategorySellThroughRow { month: string; categoryId: string; categoryName: string; unitsSold: number; currentStock: number; sellThroughRate: number }
+interface CategorySellThroughReport { dateFrom: string; dateTo: string; rows: CategorySellThroughRow[] }
+
+interface BasketPairRow { productAId: string; productAName: string; productBId: string; productBName: string; basketCount: number }
+interface BasketCompositionReport { dateFrom: string; dateTo: string; summary: { totalBaskets: number; avgItemsPerBasket: number; avgBasketValue: number }; rows: BasketPairRow[] }
+
+type MoverQuadrant = 'FAST_HIGH_MARGIN' | 'FAST_LOW_MARGIN' | 'SLOW_HIGH_MARGIN' | 'SLOW_LOW_MARGIN'
+interface FastSlowMoverRow { productId: string; productName: string; sku: string | null; quantitySold: number; velocity: number; sellingPrice: number; unitCost: number; marginPercent: number; quadrant: MoverQuadrant }
+interface FastSlowMoverMatrixReport { dateFrom: string; dateTo: string; days: number; velocityMedian: number; marginMedian: number; rows: FastSlowMoverRow[] }
 
 interface GSTR1B2BRow { gstin: string; receiverName: string; invoiceNumber: string; invoiceDate: string; invoiceValue: number; placeOfSupply: string; taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number; rate: number }
 interface GSTR1B2CSRow { placeOfSupply: string; rate: number; taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number }
@@ -260,6 +285,89 @@ interface SchemeCostVsVolumeReport { dateFrom: string; dateTo: string; summary: 
 interface ChronicRecallComplianceByCondition { conditionName: string; total: number; onTime: number; percent: number }
 interface ChronicRecallComplianceReport { totalRecallsClosed: number; overallOnTime: number; overallPercent: number | null; byCondition: ChronicRecallComplianceByCondition[] }
 
+interface WalkInVsAppointmentDayPoint { date: string; walkIns: number; appointments: number }
+interface WalkInVsAppointmentRatioReport { dateFrom: string; dateTo: string; summary: { totalWalkIns: number; totalAppointments: number; walkInPercent: number }; byDay: WalkInVsAppointmentDayPoint[] }
+
+interface DiagnosisCategoryTrendReport {
+  dateFrom: string; dateTo: string
+  summary: { totalVisits: number; categorizedCount: number; uncategorizedCount: number; distinctCategoryCount: number }
+  categories: string[]
+  byMonth: Record<string, number | string>[]
+}
+
+interface ReferralOutcomeRow { appointmentNumber: string; patientName: string; referredToProviderName: string | null; scheduledDate: string; status: string; outcomeSummary: string | null }
+interface ReferralOutcomeReport {
+  dateFrom: string; dateTo: string
+  summary: { totalReferrals: number; completedCount: number; outcomeRecordedCount: number; pendingCount: number }
+  rows: ReferralOutcomeRow[]
+}
+
+interface PackUtilizationRow { packId: string; customerName: string; packName: string; totalSessions: number; usedSessions: number; remainingSessions: number; utilizationPercent: number; expiryDate: string | null; isActive: boolean }
+interface PackUtilizationReport {
+  dateFrom: string; dateTo: string
+  summary: { totalPacks: number; totalSessionsSold: number; totalSessionsUsed: number; overallUtilizationPercent: number }
+  rows: PackUtilizationRow[]
+}
+
+interface LabTATRow { testName: string; category: string | null; ordersCount: number; avgActualTATHours: number; targetTATHours: number | null; onTimeCount: number; lateCount: number; onTimePercent: number }
+interface LabTATReport {
+  dateFrom: string; dateTo: string
+  summary: { totalCompleted: number; withTargetCount: number; onTimeCount: number; overallOnTimePercent: number }
+  rows: LabTATRow[]
+}
+
+interface TestVolumeByPanelReport {
+  dateFrom: string; dateTo: string
+  summary: { totalTests: number; distinctPanelCount: number }
+  panels: string[]
+  byMonth: Record<string, number | string>[]
+}
+
+interface ReferralLeaderboardRow { referrerName: string; count: number }
+interface ReferralLeaderboardReport {
+  dateFrom: string; dateTo: string
+  summary: { totalReferrals: number; distinctReferrerCount: number; topReferrerName: string | null }
+  rows: ReferralLeaderboardRow[]
+}
+
+interface SecondOpinionConversionRow { patientName: string; visitDate: string; converted: boolean; nextVisitDate: string | null }
+interface SecondOpinionConversionReport {
+  dateFrom: string; dateTo: string
+  summary: { totalSecondOpinionVisits: number; convertedCount: number; conversionPercent: number | null; distinctPatientCount: number }
+  rows: SecondOpinionConversionRow[]
+}
+
+interface CaseComplexityMixReport {
+  dateFrom: string; dateTo: string
+  summary: { totalTagged: number; routineCount: number; complexCount: number; complexPercent: number | null }
+  byMonth: Array<{ month: string; ROUTINE: number; COMPLEX: number }>
+}
+
+interface TreatmentAcceptanceRateReport {
+  dateFrom: string; dateTo: string
+  summary: { proposedCount: number; acceptedCount: number; billedCount: number; acceptanceRatePercent: number | null; billedRatePercent: number | null }
+  funnel: Array<{ stage: string; count: number }>
+}
+
+interface DentalRecallComplianceReport {
+  totalRecallsClosed: number; overallOnTime: number; overallPercent: number | null
+  byRecallType: Array<{ recallType: string; total: number; onTime: number; percent: number }>
+}
+
+interface VaccinationComplianceByVaccine { vaccineName: string; total: number; onTime: number; percent: number }
+interface VaccinationComplianceReport {
+  dateFrom: string; dateTo: string
+  totalDosesEvaluated: number; overallOnTime: number; overallPercent: number | null
+  byVaccine: VaccinationComplianceByVaccine[]
+}
+
+interface VetCaseTypeVolumeReport {
+  dateFrom: string; dateTo: string
+  summary: { totalCases: number; distinctCaseTypeCount: number }
+  caseTypes: string[]
+  byMonth: Record<string, number | string>[]
+}
+
 interface JobCardReportRow { jobNumber: string; title: string; customerName: string | null; status: string; priority: string; estimatedCost: number; actualCost: number; receivedDate: string; expectedDate: string | null; deliveredDate: string | null }
 interface JobCardReportByStatus { status: string; count: number }
 interface JobCardReport {
@@ -354,7 +462,7 @@ type ReportChart =
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
-  | 'foodCost' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
+  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'basketComposition' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
   | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'variantStock'
@@ -364,6 +472,11 @@ type ReportType =
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
   | 'schemeCostVsVolume'
   | 'chronicRecallCompliance'
+  | 'walkInVsAppointmentRatio'
+  | 'diagnosisCategoryTrend'
+  | 'referralOutcome'
+  | 'packUtilization'
+  | 'labTAT' | 'testVolumeByPanel' | 'referralLeaderboard' | 'secondOpinionConversion' | 'caseComplexityMix' | 'treatmentAcceptanceRate' | 'dentalRecallCompliance' | 'vaccinationCompliance' | 'vetCaseTypeVolume'
   | 'hotelOccupancy' | 'hotelGuestRegister'
   // Phase 61 — Purchase-side reports (Section 3.1 item 5)
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
@@ -380,10 +493,14 @@ interface ReportDef {
   // exists for this (isPrescriptionRequired is a plain Product field, not a
   // TemplateModule), so gate directly on businessType instead, same
   // reasoning as isRestaurant/isDistributor elsewhere in this codebase.
-  requiredBusinessType?: string
+  // Phase 67 §9.1 item 23.5 — an array form covers Referral Leaderboard,
+  // shown for SPECIALIST_CLINIC and DIAGNOSTIC_LAB (two verticals with no
+  // shared module flag for this, since their underlying referral mechanisms
+  // are genuinely different — see report.service.ts's own comment).
+  requiredBusinessType?: string | string[]
 }
 
-const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule; requiredBusinessType?: string }[] = [
+const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule; requiredBusinessType?: string | string[] }[] = [
   { id: 'sales', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'inventory', icon: <Package size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory' },
   { id: 'tax', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax' },
@@ -417,6 +534,20 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
+  { id: 'dishContributionMargin', icon: <TrendingUp size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
+  { id: 'tableTurnoverByHour', icon: <Table size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'kot' },
+  { id: 'recipeWasteVariance', icon: <AlertCircle size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
+  // Phase 67 §9.1 — Retail: Dead-Stock Clearance List. Snapshot-as-of-today
+  // over a fixed 90-day lookback, not a date-range report — same category
+  // as Inventory Report/Batch Expiry (requiresDateRange: false).
+  { id: 'deadStockClearance', icon: <Boxes size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'RETAIL' },
+  { id: 'categorySellThrough', icon: <TrendingUp size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: 'RETAIL' },
+  { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'RETAIL' },
+  // Phase 67 §9.1 — Hardware: Fast-Mover vs. Slow-Mover Matrix. A scatter of
+  // velocity x margin, quadrant-split by each axis's own median — see
+  // report.service.ts's generateFastSlowMoverMatrixReport for why a median
+  // split, not a fixed threshold.
+  { id: 'fastSlowMoverMatrix', icon: <Target size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: 'HARDWARE' },
   { id: 'orderVolume', icon: <QrCode size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'qr_table_ordering' },
   // No requiredModule — bargained/negotiated line pricing writes to the
   // same InvoiceItem.discountAmount every PRODUCT-category business's
@@ -466,6 +597,36 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // followed up on time, over the picked date range (matches the recall
   // PERIOD's scheduled date, not when the recall was tagged).
   { id: 'chronicRecallCompliance', icon: <HeartPulse size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'chronic_recall' },
+  // Phase 67 §9.1 item 19.3 — GP Clinic: Walk-in vs. Appointment Ratio.
+  { id: 'walkInVsAppointmentRatio', icon: <UsersRound size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'GP_CLINIC' },
+  // Phase 67 §9.1 item 19.4 — GP Clinic: Diagnosis-Category Trend.
+  { id: 'diagnosisCategoryTrend', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'diagnosis_categories' },
+  // Phase 67 §9.1 item 19.5 — GP Clinic: Referral-Out Outcome. Gated by
+  // 'specialist_referral' (not GP_CLINIC-only) since SPECIALIST_CLINIC
+  // shares the exact same referral mechanism and data shape.
+  { id: 'referralOutcome', icon: <Share2 size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'specialist_referral' },
+  // Phase 67 §9.1 item 22.4 — Physio Clinic (shared with Gym/Studio, Beauty
+  // Salon, Driving School — every session_packs vertical): Pack Utilization.
+  { id: 'packUtilization', icon: <PackageSearch size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'session_packs' },
+  // Phase 67 §9.1 item 23.1 — Diagnostic Lab: Per-Test TAT target vs. actual.
+  { id: 'labTAT', icon: <Timer size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DIAGNOSTIC_LAB' },
+  // Phase 67 §9.1 item 23.4 — Diagnostic Lab: Test Volume by Panel.
+  { id: 'testVolumeByPanel', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DIAGNOSTIC_LAB' },
+  // Phase 67 §9.1 item 23.5 (Diagnostic Lab) + item 20.1 (Specialist Clinic):
+  // Referral Leaderboard — shown for both, backed by two different queries.
+  { id: 'referralLeaderboard', icon: <Share2 size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: ['DIAGNOSTIC_LAB', 'SPECIALIST_CLINIC'] },
+  // Phase 67 §9.1 item 20.2 — Specialist Clinic: Second-Opinion Conversion.
+  { id: 'secondOpinionConversion', icon: <UserCheck size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'SPECIALIST_CLINIC' },
+  // Phase 67 §9.1 item 20.3 — Specialist Clinic: Case-Complexity Mix.
+  { id: 'caseComplexityMix', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'SPECIALIST_CLINIC' },
+  // Phase 67 §9.1 item 21.2 — Dental Clinic: Treatment Acceptance Rate.
+  { id: 'treatmentAcceptanceRate', icon: <Target size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DENTAL_CLINIC' },
+  // Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance.
+  { id: 'dentalRecallCompliance', icon: <HeartPulse size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DENTAL_CLINIC' },
+  // Phase 67 §9.1 item 18.2 — Vet Clinic: Vaccination Compliance.
+  { id: 'vaccinationCompliance', icon: <HeartPulse size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'VET_CLINIC' },
+  // Phase 67 §9.1 item 18.4 — Vet Clinic: Case-Type Volume Trend.
+  { id: 'vetCaseTypeVolume', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'VET_CLINIC' },
 ]
 
 const CATEGORY_IDS = ['sales', 'inventory', 'finance', 'customers', 'suppliers', 'admin', 'restaurant', 'gst', 'service', 'bloodBank', 'jewellery', 'logistics', 'rental', 'hotel', 'distributor']
@@ -494,12 +655,26 @@ function localDateString(d: Date): string {
 function today() { return localDateString(new Date()) }
 function monthStart() { const d = new Date(); d.setDate(1); return localDateString(d) }
 
+// Table Turnover by Hour's day-of-week axis — uses the browser's native
+// Intl weekday formatting in the app's OWN currently-selected UI language,
+// rather than hand-translating 7 day names into 13 locale files. 2024-01-07
+// was a real Sunday; adding `dayOfWeek` days lands on the matching weekday
+// for any 0(Sun)-6(Sat) index, in any locale, correctly.
+function weekdayLabel(dayOfWeek: number, locale: string, short = true): string {
+  const d = new Date(2024, 0, 7 + dayOfWeek)
+  try {
+    return d.toLocaleDateString(locale, { weekday: short ? 'short' : 'long' })
+  } catch {
+    return d.toLocaleDateString('en-US', { weekday: short ? 'short' : 'long' })
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ReportsScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ReportsScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const { isModuleEnabled, businessType } = useIndustryStore()
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
@@ -645,6 +820,27 @@ export function ReportsScreen() {
         case 'foodCost':
           res = await window.api.reports.foodCost({ dateFrom, dateTo })
           break
+        case 'dishContributionMargin':
+          res = await window.api.reports.dishContributionMargin({ dateFrom, dateTo })
+          break
+        case 'tableTurnoverByHour':
+          res = await window.api.reports.tableTurnoverByHour({ dateFrom, dateTo })
+          break
+        case 'recipeWasteVariance':
+          res = await window.api.reports.recipeWasteVariance({ dateFrom, dateTo })
+          break
+        case 'deadStockClearance':
+          res = await window.api.reports.deadStockClearance({})
+          break
+        case 'categorySellThrough':
+          res = await window.api.reports.categorySellThrough({ dateFrom, dateTo })
+          break
+        case 'basketComposition':
+          res = await window.api.reports.basketComposition({ dateFrom, dateTo })
+          break
+        case 'fastSlowMoverMatrix':
+          res = await window.api.reports.fastSlowMoverMatrix({ dateFrom, dateTo })
+          break
         case 'gstr1':
           res = await window.api.reports.gstr1({ dateFrom, dateTo })
           break
@@ -777,6 +973,45 @@ export function ReportsScreen() {
           break
         case 'chronicRecallCompliance':
           res = await window.api.reports.chronicRecallCompliance({ dateFrom, dateTo })
+          break
+        case 'walkInVsAppointmentRatio':
+          res = await window.api.reports.walkInVsAppointmentRatio({ dateFrom, dateTo })
+          break
+        case 'diagnosisCategoryTrend':
+          res = await window.api.reports.diagnosisCategoryTrend({ dateFrom, dateTo })
+          break
+        case 'referralOutcome':
+          res = await window.api.reports.referralOutcome({ dateFrom, dateTo })
+          break
+        case 'packUtilization':
+          res = await window.api.reports.packUtilization({ dateFrom, dateTo })
+          break
+        case 'labTAT':
+          res = await window.api.reports.labTAT({ dateFrom, dateTo })
+          break
+        case 'testVolumeByPanel':
+          res = await window.api.reports.testVolumeByPanel({ dateFrom, dateTo })
+          break
+        case 'referralLeaderboard':
+          res = await window.api.reports.referralLeaderboard({ dateFrom, dateTo, businessType })
+          break
+        case 'secondOpinionConversion':
+          res = await window.api.reports.secondOpinionConversion({ dateFrom, dateTo })
+          break
+        case 'caseComplexityMix':
+          res = await window.api.reports.caseComplexityMix({ dateFrom, dateTo })
+          break
+        case 'treatmentAcceptanceRate':
+          res = await window.api.reports.treatmentAcceptanceRate({ dateFrom, dateTo })
+          break
+        case 'dentalRecallCompliance':
+          res = await window.api.reports.dentalRecallCompliance({ dateFrom, dateTo })
+          break
+        case 'vaccinationCompliance':
+          res = await window.api.reports.vaccinationCompliance({ dateFrom, dateTo })
+          break
+        case 'vetCaseTypeVolume':
+          res = await window.api.reports.vetCaseTypeVolume({ dateFrom, dateTo })
           break
         case 'logistics':
           res = await window.api.reports.logistics({ dateFrom, dateTo })
@@ -947,6 +1182,56 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.ingredient'), t('common.unit'), t('reports.col.qtyUsed'), t('reports.col.costPrice'), t('reports.col.totalCost')],
           rows: d.rows.map(r => [r.ingredientName, r.unit, r.totalQuantityUsed, r.costPrice, r.totalCost])
+        }
+      }
+      case 'dishContributionMargin': {
+        const d = reportData as DishContributionMarginReport
+        return {
+          headers: [t('reports.col.dishName'), t('reports.col.qtySold'), t('reports.col.revenue'), t('reports.col.ingredientCost'), t('reports.col.contributionMargin'), t('reports.col.marginPercent')],
+          rows: d.rows.map(r => [r.productName, r.quantitySold, r.revenue, r.ingredientCost, r.contributionMargin, `${r.marginPercent}%`])
+        }
+      }
+      case 'tableTurnoverByHour': {
+        const d = reportData as TableTurnoverByHourReport
+        const nonZero = d.cells.filter(c => c.count > 0)
+        return {
+          headers: [t('reports.col.dayOfWeek'), t('reports.col.hour'), t('reports.col.turns')],
+          rows: nonZero.map(c => [weekdayLabel(c.dayOfWeek, i18n.language), c.hour, c.count])
+        }
+      }
+      case 'recipeWasteVariance': {
+        const d = reportData as RecipeWasteVarianceReport
+        return {
+          headers: [t('reports.col.ingredient'), t('common.unit'), t('reports.col.impliedQuantity'), t('reports.col.actualQuantity'), t('reports.col.varianceQuantity'), t('reports.col.variancePercent')],
+          rows: d.rows.map(r => [r.ingredientName, r.unit, r.impliedQuantity, r.actualQuantity, r.varianceQuantity, r.variancePercent !== null ? `${r.variancePercent}%` : '—'])
+        }
+      }
+      case 'deadStockClearance': {
+        const d = reportData as DeadStockClearanceReport
+        return {
+          headers: [t('reports.col.product'), t('reports.col.sku'), t('reports.col.stock'), t('reports.col.unitCost'), t('reports.col.capitalLocked'), t('reports.col.lastSoldDate')],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.currentStock, r.unitCost, r.capitalLocked, r.lastSoldDate ?? t('reports.col.neverSold')])
+        }
+      }
+      case 'categorySellThrough': {
+        const d = reportData as CategorySellThroughReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.stock'), t('reports.col.sellThroughRate')],
+          rows: d.rows.map(r => [r.month, r.categoryName, r.unitsSold, r.currentStock, `${r.sellThroughRate}%`])
+        }
+      }
+      case 'basketComposition': {
+        const d = reportData as BasketCompositionReport
+        return {
+          headers: [t('reports.col.productA'), t('reports.col.productB'), t('reports.col.basketCount')],
+          rows: d.rows.map(r => [r.productAName, r.productBName, r.basketCount])
+        }
+      }
+      case 'fastSlowMoverMatrix': {
+        const d = reportData as FastSlowMoverMatrixReport
+        return {
+          headers: [t('reports.col.product'), t('reports.col.sku'), t('reports.col.unitsSold'), t('reports.col.velocity'), t('reports.col.marginPercent'), t('reports.col.quadrant')],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.quantitySold, r.velocity, `${r.marginPercent}%`, t(`reports.val.quadrant.${r.quadrant}`)])
         }
       }
       case 'gstr1': {
@@ -1256,6 +1541,97 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.condition'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')],
           rows: d.byCondition.map(r => [r.conditionName, r.total, r.onTime, `${r.percent}%`])
+        }
+      }
+      case 'walkInVsAppointmentRatio': {
+        const d = reportData as WalkInVsAppointmentRatioReport
+        return {
+          headers: [t('common.date'), t('reports.col.walkIns'), t('reports.col.appointments')],
+          rows: d.byDay.map(r => [r.date, r.walkIns, r.appointments])
+        }
+      }
+      case 'diagnosisCategoryTrend': {
+        const d = reportData as DiagnosisCategoryTrendReport
+        return {
+          headers: [t('reports.col.month'), ...d.categories],
+          rows: d.byMonth.map(r => [r.month, ...d.categories.map(c => r[c] ?? 0)])
+        }
+      }
+      case 'referralOutcome': {
+        const d = reportData as ReferralOutcomeReport
+        return {
+          headers: [t('reports.col.patientName'), t('reports.col.referredTo'), t('common.date'), t('common.status'), t('reports.col.outcome')],
+          rows: d.rows.map(r => [r.patientName, r.referredToProviderName ?? '—', r.scheduledDate, r.status, r.outcomeSummary ?? '—'])
+        }
+      }
+      case 'packUtilization': {
+        const d = reportData as PackUtilizationReport
+        return {
+          headers: [t('reports.col.customer'), t('reports.col.packName'), t('reports.col.totalSessions'), t('reports.col.usedSessions'), t('reports.col.remainingSessions'), t('reports.col.utilization')],
+          rows: d.rows.map(r => [r.customerName, r.packName, r.totalSessions, r.usedSessions, r.remainingSessions, `${r.utilizationPercent}%`])
+        }
+      }
+      case 'labTAT': {
+        const d = reportData as LabTATReport
+        return {
+          headers: [t('reports.col.testName'), t('reports.col.category'), t('reports.col.orders'), t('reports.col.avgActualTAT'), t('reports.col.targetTAT'), t('reports.col.onTimePercent')],
+          rows: d.rows.map(r => [r.testName, r.category ?? '—', r.ordersCount, `${r.avgActualTATHours}h`, r.targetTATHours != null ? `${r.targetTATHours}h` : '—', r.targetTATHours != null ? `${r.onTimePercent}%` : '—'])
+        }
+      }
+      case 'testVolumeByPanel': {
+        const d = reportData as TestVolumeByPanelReport
+        return {
+          headers: [t('reports.col.month'), ...d.panels],
+          rows: d.byMonth.map(r => [r.month, ...d.panels.map(p => r[p] ?? 0)])
+        }
+      }
+      case 'referralLeaderboard': {
+        const d = reportData as ReferralLeaderboardReport
+        return {
+          headers: [t('reports.col.referrerName'), t('reports.col.referralCount')],
+          rows: d.rows.map(r => [r.referrerName, r.count])
+        }
+      }
+      case 'secondOpinionConversion': {
+        const d = reportData as SecondOpinionConversionReport
+        return {
+          headers: [t('reports.col.patientName'), t('reports.col.visitDate'), t('reports.col.converted'), t('reports.col.nextVisitDate')],
+          rows: d.rows.map(r => [r.patientName, r.visitDate, r.converted ? t('common.yes') : t('common.no'), r.nextVisitDate ?? '—'])
+        }
+      }
+      case 'caseComplexityMix': {
+        const d = reportData as CaseComplexityMixReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.routine'), t('reports.col.complex')],
+          rows: d.byMonth.map(r => [r.month, r.ROUTINE, r.COMPLEX])
+        }
+      }
+      case 'treatmentAcceptanceRate': {
+        const d = reportData as TreatmentAcceptanceRateReport
+        return {
+          headers: [t('reports.col.stage'), t('reports.col.count')],
+          rows: d.funnel.map(r => [r.stage, r.count])
+        }
+      }
+      case 'dentalRecallCompliance': {
+        const d = reportData as DentalRecallComplianceReport
+        return {
+          headers: [t('reports.col.recallType'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')],
+          rows: d.byRecallType.map(r => [r.recallType, r.total, r.onTime, `${r.percent}%`])
+        }
+      }
+      case 'vaccinationCompliance': {
+        const d = reportData as VaccinationComplianceReport
+        return {
+          headers: [t('reports.col.vaccineName'), t('reports.col.doses'), t('reports.col.onTime'), t('reports.col.compliancePercent')],
+          rows: d.byVaccine.map(r => [r.vaccineName, r.total, r.onTime, `${r.percent}%`])
+        }
+      }
+      case 'vetCaseTypeVolume': {
+        const d = reportData as VetCaseTypeVolumeReport
+        return {
+          headers: [t('reports.col.month'), ...d.caseTypes],
+          rows: d.byMonth.map(r => [r.month, ...d.caseTypes.map(c => r[c] ?? 0)])
         }
       }
       case 'siteVisitLog': {
@@ -1840,6 +2216,109 @@ export function ReportsScreen() {
           { label: t('reports.summary.compliancePercent'), value: d.overallPercent != null ? `${d.overallPercent}%` : '—' }
         ]
       }
+      case 'walkInVsAppointmentRatio': {
+        const d = reportData as WalkInVsAppointmentRatioReport
+        return [
+          { label: t('reports.summary.totalWalkIns'), value: String(d.summary.totalWalkIns) },
+          { label: t('reports.col.appointments'), value: String(d.summary.totalAppointments) },
+          { label: t('reports.summary.walkInPercent'), value: `${d.summary.walkInPercent}%` }
+        ]
+      }
+      case 'diagnosisCategoryTrend': {
+        const d = reportData as DiagnosisCategoryTrendReport
+        return [
+          { label: t('reports.summary.totalVisits'), value: String(d.summary.totalVisits) },
+          { label: t('reports.summary.categorized'), value: String(d.summary.categorizedCount) },
+          { label: t('reports.summary.distinctCategories'), value: String(d.summary.distinctCategoryCount) }
+        ]
+      }
+      case 'referralOutcome': {
+        const d = reportData as ReferralOutcomeReport
+        return [
+          { label: t('reports.summary.totalReferrals'), value: String(d.summary.totalReferrals) },
+          { label: t('reports.summary.outcomeRecorded'), value: String(d.summary.outcomeRecordedCount) },
+          { label: t('reports.summary.pendingReferrals'), value: String(d.summary.pendingCount) }
+        ]
+      }
+      case 'packUtilization': {
+        const d = reportData as PackUtilizationReport
+        return [
+          { label: t('reports.summary.totalPacks'), value: String(d.summary.totalPacks) },
+          { label: t('reports.summary.sessionsUsed'), value: `${d.summary.totalSessionsUsed} / ${d.summary.totalSessionsSold}` },
+          { label: t('reports.summary.overallUtilization'), value: `${d.summary.overallUtilizationPercent}%` }
+        ]
+      }
+      case 'labTAT': {
+        const d = reportData as LabTATReport
+        return [
+          { label: t('reports.summary.totalCompleted'), value: String(d.summary.totalCompleted) },
+          { label: t('reports.summary.withTarget'), value: String(d.summary.withTargetCount) },
+          { label: t('reports.summary.overallOnTimePercent'), value: d.summary.withTargetCount > 0 ? `${d.summary.overallOnTimePercent}%` : '—' }
+        ]
+      }
+      case 'testVolumeByPanel': {
+        const d = reportData as TestVolumeByPanelReport
+        return [
+          { label: t('reports.summary.totalTests'), value: String(d.summary.totalTests) },
+          { label: t('reports.summary.distinctPanels'), value: String(d.summary.distinctPanelCount) }
+        ]
+      }
+      case 'referralLeaderboard': {
+        const d = reportData as ReferralLeaderboardReport
+        return [
+          { label: t('reports.summary.totalReferrals'), value: String(d.summary.totalReferrals) },
+          { label: t('reports.summary.distinctReferrers'), value: String(d.summary.distinctReferrerCount) },
+          { label: t('reports.summary.topReferrer'), value: d.summary.topReferrerName ?? '—' }
+        ]
+      }
+      case 'secondOpinionConversion': {
+        const d = reportData as SecondOpinionConversionReport
+        return [
+          { label: t('reports.summary.totalSecondOpinionVisits'), value: String(d.summary.totalSecondOpinionVisits) },
+          { label: t('reports.summary.convertedCount'), value: String(d.summary.convertedCount) },
+          { label: t('reports.summary.conversionPercent'), value: d.summary.conversionPercent != null ? `${d.summary.conversionPercent}%` : '—' }
+        ]
+      }
+      case 'caseComplexityMix': {
+        const d = reportData as CaseComplexityMixReport
+        return [
+          { label: t('reports.summary.totalTagged'), value: String(d.summary.totalTagged) },
+          { label: t('reports.summary.routineCount'), value: String(d.summary.routineCount) },
+          { label: t('reports.summary.complexCount'), value: String(d.summary.complexCount) },
+          { label: t('reports.summary.complexPercent'), value: d.summary.complexPercent != null ? `${d.summary.complexPercent}%` : '—' }
+        ]
+      }
+      case 'treatmentAcceptanceRate': {
+        const d = reportData as TreatmentAcceptanceRateReport
+        return [
+          { label: t('reports.summary.proposedCount'), value: String(d.summary.proposedCount) },
+          { label: t('reports.summary.acceptedCount'), value: String(d.summary.acceptedCount) },
+          { label: t('reports.summary.billedCount'), value: String(d.summary.billedCount) },
+          { label: t('reports.summary.acceptanceRatePercent'), value: d.summary.acceptanceRatePercent != null ? `${d.summary.acceptanceRatePercent}%` : '—' },
+          { label: t('reports.summary.billedRatePercent'), value: d.summary.billedRatePercent != null ? `${d.summary.billedRatePercent}%` : '—' }
+        ]
+      }
+      case 'dentalRecallCompliance': {
+        const d = reportData as DentalRecallComplianceReport
+        return [
+          { label: t('reports.summary.recallsClosed'), value: String(d.totalRecallsClosed) },
+          { label: t('reports.summary.compliancePercent'), value: d.overallPercent != null ? `${d.overallPercent}%` : '—' }
+        ]
+      }
+      case 'vaccinationCompliance': {
+        const d = reportData as VaccinationComplianceReport
+        return [
+          { label: t('reports.summary.dosesEvaluated'), value: String(d.totalDosesEvaluated) },
+          { label: t('reports.summary.compliancePercent'), value: d.overallPercent != null ? `${d.overallPercent}%` : '—' }
+        ]
+      }
+      case 'vetCaseTypeVolume': {
+        const d = reportData as VetCaseTypeVolumeReport
+        return [
+          { label: t('reports.summary.totalCases'), value: String(d.summary.totalCases) },
+          { label: t('reports.summary.distinctCaseTypes'), value: String(d.summary.distinctCaseTypeCount) }
+        ]
+      }
       case 'logistics': {
         const d = reportData as LogisticsReport
         return [
@@ -1984,6 +2463,51 @@ export function ReportsScreen() {
         const top = [...d.rows].sort((a, b) => b.totalCost - a.totalCost).slice(0, 10)
         return [{ type: 'bar', title: t('reports.summary.totalFoodCost'), data: top.map(r => ({ label: r.ingredientName, value: r.totalCost })), valueIsCurrency: true }]
       }
+      case 'dishContributionMargin': {
+        const d = reportData as DishContributionMarginReport
+        if (d.rows.length === 0) return []
+        const top = [...d.rows].slice(0, 10)
+        return [{ type: 'bar', title: t('reports.summary.contributionMarginByDish'), data: top.map(r => ({ label: r.productName, value: r.contributionMargin })), valueIsCurrency: true }]
+      }
+      case 'recipeWasteVariance': {
+        const d = reportData as RecipeWasteVarianceReport
+        if (d.rows.length === 0) return []
+        const top = [...d.rows].slice(0, 10)
+        return [{ type: 'bar', title: t('reports.summary.varianceByIngredient'), data: top.map(r => ({ label: r.ingredientName, value: r.varianceQuantity })) }]
+      }
+      case 'deadStockClearance': {
+        const d = reportData as DeadStockClearanceReport
+        if (d.rows.length === 0) return []
+        const top = [...d.rows].slice(0, 10)
+        return [{ type: 'bar', title: t('reports.summary.capitalLockedByProduct'), data: top.map(r => ({ label: r.productName, value: r.capitalLocked })), valueIsCurrency: true }]
+      }
+      case 'categorySellThrough': {
+        const d = reportData as CategorySellThroughReport
+        if (d.rows.length === 0) return []
+        const byCategory = new Map<string, { total: number; count: number }>()
+        for (const r of d.rows) {
+          const e = byCategory.get(r.categoryName) ?? { total: 0, count: 0 }
+          e.total += r.sellThroughRate; e.count += 1
+          byCategory.set(r.categoryName, e)
+        }
+        const avgRows = Array.from(byCategory.entries()).map(([label, e]) => ({ label, value: Math.round((e.total / e.count) * 10) / 10 })).sort((a, b) => b.value - a.value)
+        return [{ type: 'bar', title: t('reports.summary.avgSellThroughByCategory'), data: avgRows }]
+      }
+      case 'basketComposition': {
+        const d = reportData as BasketCompositionReport
+        if (d.rows.length === 0) return []
+        const top = [...d.rows].slice(0, 10)
+        return [{ type: 'bar', title: t('reports.summary.topProductPairs'), data: top.map(r => ({ label: `${r.productAName} + ${r.productBName}`, value: r.basketCount })) }]
+      }
+      // Deliberately no bar/pie/line chart — Table Turnover by Hour IS
+      // itself a chart (a day-of-week x hour-of-day heatmap grid), rendered
+      // directly in TableTurnoverHeatmapView below rather than through this
+      // generic bar/pie/line summary-chart pathway.
+      case 'tableTurnoverByHour': return []
+      // Same reasoning — a velocity x margin SCATTER doesn't fit this
+      // switch's bar/stackedBar/line/pie shape, rendered directly in
+      // FastSlowMoverMatrixView below instead.
+      case 'fastSlowMoverMatrix': return []
       // Deliberately no chart — a compliance filing reference checked
       // line-by-line against the GST portal, same category as Audit Log and
       // Backup: a precise document, not a dashboard.
@@ -2238,7 +2762,10 @@ export function ReportsScreen() {
             const defs = REPORT_DEFS.filter(r => {
               if (r.category === 'gst' && taxModel !== 'GST') return false
               if (r.requiredModule && !isModuleEnabled(r.requiredModule)) return false
-              if (r.requiredBusinessType && businessType !== r.requiredBusinessType) return false
+              if (r.requiredBusinessType) {
+                const allowed = Array.isArray(r.requiredBusinessType) ? r.requiredBusinessType : [r.requiredBusinessType]
+                if (!allowed.includes(businessType)) return false
+              }
               if (r.permission && !hasPermission(r.permission)) return false
               return r.category === cat
             })
@@ -2553,6 +3080,13 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />
+    case 'dishContributionMargin': return <DishContributionMarginView data={data as DishContributionMarginReport} fmt={fmt} />
+    case 'tableTurnoverByHour': return <TableTurnoverHeatmapView data={data as TableTurnoverByHourReport} />
+    case 'recipeWasteVariance': return <RecipeWasteVarianceView data={data as RecipeWasteVarianceReport} />
+    case 'deadStockClearance': return <DeadStockClearanceView data={data as DeadStockClearanceReport} fmt={fmt} />
+    case 'categorySellThrough': return <CategorySellThroughView data={data as CategorySellThroughReport} />
+    case 'basketComposition': return <BasketCompositionView data={data as BasketCompositionReport} />
+    case 'fastSlowMoverMatrix': return <FastSlowMoverMatrixView data={data as FastSlowMoverMatrixReport} />
     case 'gstr1': return <GSTR1ReportView data={data as GSTR1Report} fmt={fmt} />
     case 'hsnSummary': return <HSNSummaryView data={data as HSNSummaryReport} fmt={fmt} />
     case 'documentSummary': return <DocumentSummaryView data={data as DocumentSummaryReport} />
@@ -2595,6 +3129,19 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
     case 'schemeCostVsVolume': return <SchemeCostVsVolumeView data={data as SchemeCostVsVolumeReport} fmt={fmt} />
     case 'chronicRecallCompliance': return <ChronicRecallComplianceView data={data as ChronicRecallComplianceReport} />
+    case 'walkInVsAppointmentRatio': return <WalkInVsAppointmentRatioView data={data as WalkInVsAppointmentRatioReport} />
+    case 'diagnosisCategoryTrend': return <DiagnosisCategoryTrendView data={data as DiagnosisCategoryTrendReport} />
+    case 'referralOutcome': return <ReferralOutcomeView data={data as ReferralOutcomeReport} />
+    case 'packUtilization': return <PackUtilizationView data={data as PackUtilizationReport} />
+    case 'labTAT': return <LabTATView data={data as LabTATReport} />
+    case 'testVolumeByPanel': return <TestVolumeByPanelView data={data as TestVolumeByPanelReport} />
+    case 'referralLeaderboard': return <ReferralLeaderboardView data={data as ReferralLeaderboardReport} />
+    case 'secondOpinionConversion': return <SecondOpinionConversionView data={data as SecondOpinionConversionReport} />
+    case 'caseComplexityMix': return <CaseComplexityMixView data={data as CaseComplexityMixReport} />
+    case 'treatmentAcceptanceRate': return <TreatmentAcceptanceRateView data={data as TreatmentAcceptanceRateReport} />
+    case 'dentalRecallCompliance': return <DentalRecallComplianceView data={data as DentalRecallComplianceReport} />
+    case 'vaccinationCompliance': return <VaccinationComplianceView data={data as VaccinationComplianceReport} />
+    case 'vetCaseTypeVolume': return <VetCaseTypeVolumeView data={data as VetCaseTypeVolumeReport} />
     case 'logistics': return <LogisticsView data={data as LogisticsReport} fmt={fmt} />
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
@@ -2674,7 +3221,14 @@ function InventoryReportView({ data, fmt }: { data: InventoryReport; fmt: (n: nu
       <DataTable
         headers={[t('reports.col.sku'), t('reports.col.product'), t('reports.col.category'), t('reports.col.type'), t('reports.col.stock'), t('common.unit'), t('reports.col.costShort'), t('reports.col.sellPriceShort'), t('reports.col.valueShort'), t('reports.col.alert')]}
         rows={data.rows.map(r => [
-          r.sku, r.productName, r.category, r.productType, r.currentStock, r.unit,
+          r.sku, r.productName, r.category, r.productType,
+          // Phase 67 §9.1 — Hardware: reframe the flat piece count into
+          // carton terms for any product genuinely sold by pack, so a
+          // shop owner sees "6 cartons + 20 pcs" instead of a bare 320.
+          r.cartonBreakdown
+            ? `${r.currentStock} (${t('reports.val.cartonsAndPieces', { cartons: r.cartonBreakdown.fullCartons, pieces: r.cartonBreakdown.loosePieces })})`
+            : r.currentStock,
+          r.unit,
           fmt(r.costPrice), fmt(r.sellingPrice), fmt(r.stockValue),
           r.lowStockAlert ? t('reports.val.lowFlag') : ''
         ])}
@@ -2795,6 +3349,40 @@ function LedgerReportView({ data, entityType, fmt }: {
           the rest of this file's convention (symbol lives in fmt()'s output,
           not duplicated into the header) — see ExpenseReportView below for
           the same convention already in use. */}
+      {/* Phase 67 §9.1 — Hardware: the "contractor monthly statement" items
+          resolved to this SAME pre-existing ledger report (Phase 61) — the
+          running-account behavior and PDF export (via this screen's own
+          ShareMenu, already available on every report) were already fully
+          built; the one genuinely missing piece was a running-balance trend
+          visualization, added here for both Customer AND Supplier ledgers
+          since they share this one component.
+          Real bug found via live stress-test verification (not a unit test —
+          mocked data never exercises real scale): plotting one point per
+          ledger row crashed the renderer entirely on a 5,000-row account
+          (thousands of XAxis category tick labels is a known Recharts
+          performance cliff). A real contractor account in normal use never
+          approaches this, but must degrade gracefully rather than crash.
+          Fixed by evenly sampling down to at most MAX_CHART_POINTS rows —
+          the opening-balance point and the true final balance are always
+          kept, so the trend's start/end are never distorted by sampling,
+          only its interior resolution. */}
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('reports.summary.balanceTrend')}</h3>
+          {data.rows.length > LEDGER_CHART_MAX_POINTS && (
+            <p className="text-xs text-slate-400 mb-3">{t('reports.summary.balanceTrendSampledNote')}</p>
+          )}
+          <ResponsiveContainer width="100%" height={220}>
+            <RCLineChart data={[{ label: t('reports.col.openingBalance'), balance: data.openingBalance }, ...sampleLedgerRowsForChart(data.rows).map(r => ({ label: formatDate(r.date), balance: r.balance }))]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={{ ...CHART_TICK, fontSize: 9 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} tickFormatter={(v: number) => fmt(v)} width={70} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Line type="monotone" dataKey="balance" name={t('common.balance')} stroke={STATUS_COLORS.brand} strokeWidth={2} dot={false} isAnimationActive={false} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       <DataTable
         headers={[t('common.date'), t('reports.col.reference'), t('reports.col.refId'), t('common.debit'), t('common.credit'), t('common.balance'), t('reports.col.remarks')]}
         rows={data.rows.map(r => [
@@ -3039,6 +3627,310 @@ function FoodCostReportView({ data, fmt }: { data: FoodCostReport; fmt: (n: numb
           fmt(r.totalCost)
         ])}
         emptyText={t('reports.empty.foodCost')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Restaurant: Dish-wise Contribution Margin.
+function DishContributionMarginView({ data, fmt }: { data: DishContributionMarginReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const totalRevenue = data.rows.reduce((sum, r) => sum + r.revenue, 0)
+  const totalMargin = data.rows.reduce((sum, r) => sum + r.contributionMargin, 0)
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: r.productName, value: r.contributionMargin }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: fmt(totalRevenue) },
+        { label: t('reports.summary.totalContributionMargin'), value: fmt(totalMargin) },
+        { label: t('reports.summary.dishesSold'), value: String(data.rows.length) },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.contributionMarginByDish')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" name={t('reports.col.contributionMargin')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.dishName'), t('reports.col.qtySold'), t('reports.col.revenue'), t('reports.col.ingredientCost'), t('reports.col.contributionMargin'), t('reports.col.marginPercent')]}
+        rows={data.rows.map(r => [r.productName, r.quantitySold, fmt(r.revenue), fmt(r.ingredientCost), fmt(r.contributionMargin), `${r.marginPercent}%`])}
+        emptyText={t('reports.empty.dishContributionMargin')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Restaurant: Table Turnover by Hour. A hand-built CSS-grid
+// heatmap (day-of-week x hour-of-day) — this codebase has no charting-library
+// heatmap primitive, and a 168-cell grid doesn't need one.
+function TableTurnoverHeatmapView({ data }: { data: TableTurnoverByHourReport }) {
+  const { t, i18n } = useTranslation()
+  const maxCount = Math.max(1, ...data.cells.map(c => c.count))
+  const cellByDayHour = new Map(data.cells.map(c => [`${c.dayOfWeek}-${c.hour}`, c.count]))
+  const peakLabel = data.summary.peakDayOfWeek !== null && data.summary.peakHour !== null
+    ? `${weekdayLabel(data.summary.peakDayOfWeek, i18n.language)}, ${String(data.summary.peakHour).padStart(2, '0')}:00`
+    : '—'
+
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalTurns'), value: String(data.summary.totalTurns) },
+        { label: t('reports.summary.peakTime'), value: peakLabel },
+        { label: t('reports.summary.peakTurns'), value: String(data.summary.peakCount) },
+      ]} />
+      {data.summary.totalTurns > 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.tableTurnoverHeatmap')}</h3>
+          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: '3rem repeat(24, 1.6rem)' }}>
+            <div />
+            {Array.from({ length: 24 }, (_, hour) => (
+              <div key={`h-${hour}`} className="text-[9px] text-slate-400 text-center">{hour}</div>
+            ))}
+            {Array.from({ length: 7 }, (_, day) => (
+              <React.Fragment key={`row-${day}`}>
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center">{weekdayLabel(day, i18n.language)}</div>
+                {Array.from({ length: 24 }, (_, hour) => {
+                  const count = cellByDayHour.get(`${day}-${hour}`) ?? 0
+                  const intensity = count / maxCount
+                  return (
+                    <div
+                      key={`c-${day}-${hour}`}
+                      title={`${weekdayLabel(day, i18n.language, false)}, ${String(hour).padStart(2, '0')}:00 — ${count} ${t('reports.col.turns')}`}
+                      className="w-[1.6rem] h-[1.6rem] rounded-sm"
+                      style={{ backgroundColor: count === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})` }}
+                    />
+                  )
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <EmptyState title={t('reports.empty.tableTurnoverByHour')} subtitle="" />
+      )}
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Restaurant: Recipe-vs-Actual Waste Variance.
+function RecipeWasteVarianceView({ data }: { data: RecipeWasteVarianceReport }) {
+  const { t } = useTranslation()
+  const biggestWaste = data.rows.filter(r => r.varianceQuantity > 0)[0] ?? null
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: r.ingredientName, value: r.varianceQuantity }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.ingredientsTracked'), value: String(data.rows.length) },
+        { label: t('reports.summary.biggestWaste'), value: biggestWaste ? `${biggestWaste.ingredientName} (+${biggestWaste.varianceQuantity} ${biggestWaste.unit})` : '—' },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.varianceByIngredient')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name={t('reports.col.varianceQuantity')} radius={[0, 4, 4, 0]}>
+                {chartRows.map((row, idx) => (
+                  <Cell key={idx} fill={row.value > 0 ? STATUS_COLORS.danger : STATUS_COLORS.brand} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.ingredient'), t('common.unit'), t('reports.col.impliedQuantity'), t('reports.col.actualQuantity'), t('reports.col.varianceQuantity'), t('reports.col.variancePercent')]}
+        rows={data.rows.map(r => [r.ingredientName, r.unit, r.impliedQuantity, r.actualQuantity, r.varianceQuantity, r.variancePercent !== null ? `${r.variancePercent}%` : '—'])}
+        emptyText={t('reports.empty.recipeWasteVariance')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Retail: Dead-Stock Clearance List.
+function DeadStockClearanceView({ data, fmt }: { data: DeadStockClearanceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: r.productName, value: r.capitalLocked }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalCapitalLocked'), value: fmt(data.summary.totalCapitalLocked) },
+        { label: t('reports.summary.deadStockItems'), value: String(data.summary.itemCount) },
+        { label: t('reports.summary.lookbackWindow'), value: `${data.lookbackDays}d` },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.capitalLockedByProduct')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="value" name={t('reports.col.capitalLocked')} fill={STATUS_COLORS.warning} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.product'), t('reports.col.sku'), t('reports.col.stock'), t('reports.col.unitCost'), t('reports.col.capitalLocked'), t('reports.col.lastSoldDate')]}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.currentStock, fmt(r.unitCost), fmt(r.capitalLocked), r.lastSoldDate ?? t('reports.col.neverSold')])}
+        emptyText={t('reports.empty.deadStockClearance')}
+      />
+    </div>
+  )
+}
+
+const SELL_THROUGH_PALETTE = ['#00AEEF', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+function CategorySellThroughView({ data }: { data: CategorySellThroughReport }) {
+  const { t } = useTranslation()
+  const categoryNames = Array.from(new Set(data.rows.map(r => r.categoryName))).sort()
+  const months = Array.from(new Set(data.rows.map(r => r.month))).sort()
+  const chartRows = months.map(month => {
+    const row: Record<string, string | number> = { month }
+    for (const r of data.rows) if (r.month === month) row[r.categoryName] = r.sellThroughRate
+    return row
+  })
+  return (
+    <div className="space-y-6">
+      {chartRows.length > 0 && categoryNames.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('reports.summary.sellThroughByCategoryMonth')}</h3>
+          <p className="text-xs text-slate-400 mb-4">{t('reports.summary.sellThroughStockNote')}</p>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={chartRows} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {categoryNames.map((name, i) => (
+                <Bar key={name} dataKey={name} name={name} fill={SELL_THROUGH_PALETTE[i % SELL_THROUGH_PALETTE.length]} radius={[4, 4, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.month'), t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.stock'), t('reports.col.sellThroughRate')]}
+        rows={data.rows.map(r => [r.month, r.categoryName, r.unitsSold, r.currentStock, `${r.sellThroughRate}%`])}
+        emptyText={t('reports.empty.categorySellThrough')}
+      />
+    </div>
+  )
+}
+
+function BasketCompositionView({ data }: { data: BasketCompositionReport }) {
+  const { t } = useTranslation()
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: `${r.productAName} + ${r.productBName}`, value: r.basketCount }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalBaskets'), value: String(data.summary.totalBaskets) },
+        { label: t('reports.summary.avgItemsPerBasket'), value: String(data.summary.avgItemsPerBasket) },
+        { label: t('reports.summary.avgBasketValue'), value: formatCurrency(data.summary.avgBasketValue) },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.topProductPairs')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={220} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name={t('reports.col.basketCount')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.productA'), t('reports.col.productB'), t('reports.col.basketCount')]}
+        rows={data.rows.map(r => [r.productAName, r.productBName, r.basketCount])}
+        emptyText={t('reports.empty.basketComposition')}
+      />
+    </div>
+  )
+}
+
+// Hardcoded (not STATUS_COLORS.*) — STATUS_COLORS itself is declared much
+// later in this file, and this constant sits above every View component
+// that needs it, so referencing it here would throw a temporal-dead-zone
+// ReferenceError at module load. Values match STATUS_COLORS exactly.
+const QUADRANT_COLORS: Record<MoverQuadrant, string> = {
+  FAST_HIGH_MARGIN: '#22C55E',
+  FAST_LOW_MARGIN: '#00AEEF',
+  SLOW_HIGH_MARGIN: '#F59E0B',
+  SLOW_LOW_MARGIN: '#EF4444'
+}
+
+function FastSlowMoverMatrixView({ data }: { data: FastSlowMoverMatrixReport }) {
+  const { t } = useTranslation()
+  const quadrantCounts = { FAST_HIGH_MARGIN: 0, FAST_LOW_MARGIN: 0, SLOW_HIGH_MARGIN: 0, SLOW_LOW_MARGIN: 0 }
+  for (const r of data.rows) quadrantCounts[r.quadrant]++
+  const scatterByQuadrant = (Object.keys(quadrantCounts) as MoverQuadrant[]).map(q => ({
+    quadrant: q,
+    points: data.rows.filter(r => r.quadrant === q).map(r => ({ ...r, x: r.velocity, y: r.marginPercent }))
+  }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.velocityMedian'), value: `${data.velocityMedian}/d` },
+        { label: t('reports.summary.marginMedian'), value: `${data.marginMedian}%` },
+        { label: t('reports.val.quadrant.FAST_HIGH_MARGIN'), value: String(quadrantCounts.FAST_HIGH_MARGIN) },
+        { label: t('reports.val.quadrant.SLOW_LOW_MARGIN'), value: String(quadrantCounts.SLOW_LOW_MARGIN) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('reports.summary.fastSlowMoverMatrix')}</h3>
+          <p className="text-xs text-slate-400 mb-4">{t('reports.summary.fastSlowMoverMatrixNote')}</p>
+          <ResponsiveContainer width="100%" height={360}>
+            <ScatterChart margin={{ left: 4, right: 12, top: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" dataKey="x" name={t('reports.col.velocity')} tick={CHART_TICK} tickLine={false} axisLine={false} label={{ value: t('reports.col.velocity'), position: 'insideBottom', offset: -2, fontSize: 10, fill: '#94a3b8' }} />
+              <YAxis type="number" dataKey="y" name={t('reports.col.marginPercent')} tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" width={44} />
+              <ZAxis range={[60, 60]} />
+              <ReferenceLine x={data.velocityMedian} stroke="#cbd5e1" strokeDasharray="3 3" />
+              <ReferenceLine y={data.marginMedian} stroke="#cbd5e1" strokeDasharray="3 3" />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const p = payload[0].payload as FastSlowMoverRow
+                  return (
+                    <div style={CHART_TOOLTIP_STYLE} className="bg-white px-3 py-2">
+                      <p className="font-semibold text-dark">{p.productName}</p>
+                      <p className="text-slate-500">{t('reports.col.velocity')}: {p.velocity}/d · {t('reports.col.marginPercent')}: {p.marginPercent}%</p>
+                    </div>
+                  )
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => t(`reports.val.quadrant.${value}`)} />
+              {scatterByQuadrant.map(({ quadrant, points }) => (
+                points.length > 0 && (
+                  <Scatter key={quadrant} name={quadrant} data={points} fill={QUADRANT_COLORS[quadrant]} />
+                )
+              ))}
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.product'), t('reports.col.sku'), t('reports.col.unitsSold'), t('reports.col.velocity'), t('reports.col.marginPercent'), t('reports.col.quadrant')]}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.quantitySold, r.velocity, `${r.marginPercent}%`, t(`reports.val.quadrant.${r.quadrant}`)])}
+        emptyText={t('reports.empty.fastSlowMoverMatrix')}
       />
     </div>
   )
@@ -3411,6 +4303,22 @@ function CommissionReportView({ data, fmt }: { data: CommissionReport; fmt: (n: 
 const CHART_TICK = { fontSize: 10, fill: '#94a3b8' }
 const CHART_TOOLTIP_STYLE = { borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }
 const STATUS_COLORS = { success: '#22C55E', warning: '#F59E0B', danger: '#EF4444', dangerDeep: '#DC2626', brand: '#00AEEF' }
+
+// Phase 67 §9.1 — Hardware: real crash found via live stress-test
+// verification when the Customer/Supplier Ledger balance-trend chart tried
+// to plot one point per row on a 5,000-row account (thousands of XAxis
+// category ticks is a known Recharts performance cliff). Evenly sample down
+// to at most this many points rather than rendering every row — the caller
+// is responsible for always keeping the true final balance's own point.
+const LEDGER_CHART_MAX_POINTS = 150
+function sampleLedgerRowsForChart<T>(rows: T[]): T[] {
+  if (rows.length <= LEDGER_CHART_MAX_POINTS) return rows
+  const step = rows.length / LEDGER_CHART_MAX_POINTS
+  const sampled: T[] = []
+  for (let i = 0; i < LEDGER_CHART_MAX_POINTS - 1; i++) sampled.push(rows[Math.floor(i * step)])
+  sampled.push(rows[rows.length - 1]) // always keep the true final balance, never a sampled approximation of it
+  return sampled
+}
 
 function OrderVolumeView({ data }: { data: OrderVolumeReport }) {
   const { t } = useTranslation()
@@ -4631,6 +5539,489 @@ function ChronicRecallComplianceView({ data }: { data: ChronicRecallComplianceRe
           headers={[t('reports.col.condition'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')]}
           rows={data.byCondition.map(r => [r.conditionName, r.total, r.onTime, `${r.percent}%`])}
           emptyText={t('reports.empty.chronicRecallCompliance')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 18.2 — Vet Clinic: Vaccination Compliance. Reuses
+// ComplianceGauge as-is (first reuse of that component outside GP Clinic) —
+// a genuinely different underlying query (per-dose history vs. per-recall
+// log) but an identical "single % gauge + per-category breakdown table"
+// shape, so the same view structure as ChronicRecallComplianceView applies.
+function VaccinationComplianceView({ data }: { data: VaccinationComplianceReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center gap-3">
+        <ComplianceGauge percent={data.overallPercent} />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {t('reports.summary.dosesEvaluated')}: {data.totalDosesEvaluated}
+        </p>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByVaccine')}</h3>
+        <DataTable
+          headers={[t('reports.col.vaccineName'), t('reports.col.doses'), t('reports.col.onTime'), t('reports.col.compliancePercent')]}
+          rows={data.byVaccine.map(r => [r.vaccineName, r.total, r.onTime, `${r.percent}%`])}
+          emptyText={t('reports.empty.vaccinationCompliance')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance. Third reuse of
+// ComplianceGauge (after GP's chronic recall and Vet's vaccination
+// compliance) — same "single % gauge + per-category breakdown table" shape,
+// broken down by recallType instead of condition/vaccine.
+function DentalRecallComplianceView({ data }: { data: DentalRecallComplianceReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center gap-3">
+        <ComplianceGauge percent={data.overallPercent} />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {t('reports.summary.recallsClosed')}: {data.totalRecallsClosed}
+        </p>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByRecallType')}</h3>
+        <DataTable
+          headers={[t('reports.col.recallType'), t('reports.col.recallsClosed'), t('reports.col.onTime'), t('reports.col.compliancePercent')]}
+          rows={data.byRecallType.map(r => [r.recallType, r.total, r.onTime, `${r.percent}%`])}
+          emptyText={t('reports.empty.dentalRecallCompliance')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 18.4 — Vet Clinic: Case-Type Volume Trend. Same
+// dynamic-category multi-line pattern as DiagnosisCategoryTrendView (item
+// 19.4) and TestVolumeByPanelView (item 23.4) — case types come from
+// whatever categories the clinic's own Service Catalog actually has, plus a
+// dedicated "Vaccinations" series sourced from real administered doses.
+function VetCaseTypeVolumeView({ data }: { data: VetCaseTypeVolumeReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalCases'), value: String(s.totalCases) },
+        { label: t('reports.summary.distinctCaseTypes'), value: String(s.distinctCaseTypeCount) }
+      ]} />
+      {data.byMonth.length > 0 && data.caseTypes.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.caseTypeVolumeChart')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <RCLineChart data={data.byMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {data.caseTypes.map((caseType, i) => (
+                <Line key={caseType} type="monotone" dataKey={caseType} name={caseType} stroke={TREND_LINE_COLORS[i % TREND_LINE_COLORS.length]} strokeWidth={2} dot={false} />
+              ))}
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.monthlyBreakdown')}</h3>
+        <DataTable
+          headers={[t('reports.col.month'), ...data.caseTypes]}
+          rows={data.byMonth.map(r => [r.month, ...data.caseTypes.map(c => r[c] ?? 0)])}
+          emptyText={t('reports.empty.vetCaseTypeVolume')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 19.3 — GP Clinic: Walk-in vs. Appointment Ratio. Stacked
+// daily bar (same convention as OrderVolumeView above) plus a summary split.
+function WalkInVsAppointmentRatioView({ data }: { data: WalkInVsAppointmentRatioReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartData = data.byDay.map(d => ({ ...d, label: d.date.slice(5) }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalWalkIns'), value: String(s.totalWalkIns) },
+        { label: t('reports.col.appointments'), value: String(s.totalAppointments) },
+        { label: t('reports.summary.walkInPercent'), value: `${s.walkInPercent}%` }
+      ]} />
+      {chartData.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.byDayChart')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => (
+                value === 'walkIns' ? t('reports.summary.totalWalkIns') : t('reports.col.appointments')
+              )} />
+              <Bar dataKey="walkIns" stackId="visits" fill={STATUS_COLORS.warning} />
+              <Bar dataKey="appointments" stackId="visits" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.dailyBreakdown')}</h3>
+        <DataTable
+          headers={[t('common.date'), t('reports.col.walkIns'), t('reports.col.appointments')]}
+          rows={data.byDay.map(r => [r.date, r.walkIns, r.appointments])}
+          emptyText={t('reports.empty.walkInVsAppointmentRatio')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 19.4 — GP Clinic: Diagnosis-Category Trend. The only
+// dynamic-category multi-line chart in this codebase — categories are
+// free-text per install (see VisitNote.diagnosisCategory's own header
+// comment), so the number of series isn't known ahead of time. A small local
+// color cycle (not a shared palette — this is the only caller) picks a
+// color per category by index.
+const TREND_LINE_COLORS = [STATUS_COLORS.brand, STATUS_COLORS.warning, STATUS_COLORS.success, STATUS_COLORS.danger, '#8b5cf6', '#0891b2', '#db2777', '#65a30d']
+
+function DiagnosisCategoryTrendView({ data }: { data: DiagnosisCategoryTrendReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalVisits'), value: String(s.totalVisits) },
+        { label: t('reports.summary.categorized'), value: String(s.categorizedCount), sub: s.uncategorizedCount > 0 ? t('reports.summary.uncategorizedSub', { count: s.uncategorizedCount }) : undefined },
+        { label: t('reports.summary.distinctCategories'), value: String(s.distinctCategoryCount) }
+      ]} />
+      {data.byMonth.length > 0 && data.categories.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.diagnosisTrendChart')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <RCLineChart data={data.byMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {data.categories.map((category, i) => (
+                <Line key={category} type="monotone" dataKey={category} name={category} stroke={TREND_LINE_COLORS[i % TREND_LINE_COLORS.length]} strokeWidth={2} dot={false} />
+              ))}
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.monthlyBreakdown')}</h3>
+        <DataTable
+          headers={[t('reports.col.month'), ...data.categories]}
+          rows={data.byMonth.map(r => [r.month, ...data.categories.map(c => r[c] ?? 0)])}
+          emptyText={t('reports.empty.diagnosisCategoryTrend')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 19.5 — GP Clinic: Referral-Out Outcome. Pure data-table
+// report (no chart type named in the spec, unlike 19.1-19.4) — the "outcome"
+// text is often a real sentence of clinical prose, so a table row reads
+// better than trying to force it into a chart.
+function ReferralOutcomeView({ data }: { data: ReferralOutcomeReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalReferrals'), value: String(s.totalReferrals) },
+        { label: t('reports.summary.outcomeRecorded'), value: String(s.outcomeRecordedCount) },
+        { label: t('reports.summary.pendingReferrals'), value: String(s.pendingCount) }
+      ]} />
+      <div>
+        <DataTable
+          headers={[t('reports.col.patientName'), t('reports.col.referredTo'), t('common.date'), t('common.status'), t('reports.col.outcome')]}
+          rows={data.rows.map(r => [r.patientName, r.referredToProviderName ?? '—', r.scheduledDate, r.status, r.outcomeSummary ?? '—'])}
+          emptyText={t('reports.empty.referralOutcome')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 22.4 — Physio Clinic (shared with every session_packs
+// vertical): Pack Utilization. Chart is capped to the top 10 packs by total
+// sessions (this file's own established convention for per-row bar charts,
+// see e.g. the Discounts report's byProduct chart) — the table below lists
+// every pack in range, not just the charted top 10.
+function PackUtilizationView({ data }: { data: PackUtilizationReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10).map((r) => ({ label: `${r.customerName} — ${r.packName}`, used: r.usedSessions, remaining: r.remainingSessions }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalPacks'), value: String(s.totalPacks) },
+        { label: t('reports.summary.sessionsUsed'), value: `${s.totalSessionsUsed} / ${s.totalSessionsSold}` },
+        { label: t('reports.summary.overallUtilization'), value: `${s.overallUtilizationPercent}%` }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.packUtilizationChart')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => (value === 'used' ? t('reports.col.usedSessions') : t('reports.col.remainingSessions'))} />
+              <Bar dataKey="used" stackId="pack" fill={STATUS_COLORS.brand} />
+              <Bar dataKey="remaining" stackId="pack" fill={STATUS_COLORS.success} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <DataTable
+          headers={[t('reports.col.customer'), t('reports.col.packName'), t('reports.col.totalSessions'), t('reports.col.usedSessions'), t('reports.col.remainingSessions'), t('reports.col.utilization')]}
+          rows={data.rows.map(r => [r.customerName, r.packName, r.totalSessions, r.usedSessions, r.remainingSessions, `${r.utilizationPercent}%`])}
+          emptyText={t('reports.empty.packUtilization')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 23.1 — Diagnostic Lab: Per-Test TAT target vs. actual.
+// Bar chart is SLA color-flagged per the item's own spec: green when a
+// test's on-time rate is 50%+ (majority meets target), red otherwise — only
+// tests that actually carry a target are chart-worthy comparisons, so the
+// chart is built from rows with a target; the table below lists every
+// completed test, target or not, so nothing silently disappears from view.
+function LabTATView({ data }: { data: LabTATReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows
+    .filter((r) => r.targetTATHours != null)
+    .slice(0, 10)
+    .map((r) => ({ label: r.testName, avgActualTATHours: r.avgActualTATHours, targetTATHours: r.targetTATHours as number, onTimePercent: r.onTimePercent }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalCompleted'), value: String(s.totalCompleted) },
+        { label: t('reports.summary.withTarget'), value: String(s.withTargetCount) },
+        { label: t('reports.summary.overallOnTimePercent'), value: s.withTargetCount > 0 ? `${s.overallOnTimePercent}%` : '—' }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.labTATChart')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} unit="h" />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(value: number, name) => [`${value}h`, name === 'avgActualTATHours' ? t('reports.col.avgActualTAT') : name]} />
+              <Bar dataKey="avgActualTATHours" name={t('reports.col.avgActualTAT')} radius={[0, 4, 4, 0]}>
+                {chartRows.map((r, i) => <Cell key={i} fill={r.onTimePercent >= 50 ? STATUS_COLORS.success : STATUS_COLORS.danger} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <DataTable
+          headers={[t('reports.col.testName'), t('reports.col.category'), t('reports.col.orders'), t('reports.col.avgActualTAT'), t('reports.col.targetTAT'), t('reports.col.onTimePercent')]}
+          rows={data.rows.map(r => [r.testName, r.category ?? '—', r.ordersCount, `${r.avgActualTATHours}h`, r.targetTATHours != null ? `${r.targetTATHours}h` : '—', r.targetTATHours != null ? `${r.onTimePercent}%` : '—'])}
+          emptyText={t('reports.empty.labTAT')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 23.4 — Diagnostic Lab: Test Volume by Panel. Same
+// dynamic-category multi-line pattern as DiagnosisCategoryTrendView above
+// (panel/category names are free text per install, series count unknown
+// ahead of time) — reuses the same TREND_LINE_COLORS palette.
+function TestVolumeByPanelView({ data }: { data: TestVolumeByPanelReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalTests'), value: String(s.totalTests) },
+        { label: t('reports.summary.distinctPanels'), value: String(s.distinctPanelCount) }
+      ]} />
+      {data.byMonth.length > 0 && data.panels.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.testVolumeByPanelChart')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <RCLineChart data={data.byMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {data.panels.map((panel, i) => (
+                <Line key={panel} type="monotone" dataKey={panel} name={panel} stroke={TREND_LINE_COLORS[i % TREND_LINE_COLORS.length]} strokeWidth={2} dot={false} />
+              ))}
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.monthlyBreakdown')}</h3>
+        <DataTable
+          headers={[t('reports.col.month'), ...data.panels]}
+          rows={data.byMonth.map(r => [r.month, ...data.panels.map(p => r[p] ?? 0)])}
+          emptyText={t('reports.empty.testVolumeByPanel')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 23.5 (Diagnostic Lab) + item 20.1 (Specialist Clinic) —
+// Referral Leaderboard. One shared view for both verticals (see
+// report.service.ts's own comment on why the two underlying queries differ
+// but the shape/UI genuinely doesn't need to).
+function ReferralLeaderboardView({ data }: { data: ReferralLeaderboardReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10).map((r) => ({ label: r.referrerName, count: r.count }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalReferrals'), value: String(s.totalReferrals) },
+        { label: t('reports.summary.distinctReferrers'), value: String(s.distinctReferrerCount) },
+        { label: t('reports.summary.topReferrer'), value: s.topReferrerName ?? '—' }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.referralLeaderboardChart')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" name={t('reports.col.referralCount')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <DataTable
+          headers={[t('reports.col.referrerName'), t('reports.col.referralCount')]}
+          rows={data.rows.map(r => [r.referrerName, r.count])}
+          emptyText={t('reports.empty.referralLeaderboard')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 20.2 — Specialist Clinic: Second-Opinion Conversion.
+function SecondOpinionConversionView({ data }: { data: SecondOpinionConversionReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalSecondOpinionVisits'), value: String(s.totalSecondOpinionVisits) },
+        { label: t('reports.summary.convertedCount'), value: String(s.convertedCount) },
+        { label: t('reports.summary.conversionPercent'), value: s.conversionPercent != null ? `${s.conversionPercent}%` : '—' }
+      ]} />
+      <div>
+        <DataTable
+          headers={[t('reports.col.patientName'), t('reports.col.visitDate'), t('reports.col.converted'), t('reports.col.nextVisitDate')]}
+          rows={data.rows.map(r => [r.patientName, r.visitDate, r.converted ? t('common.yes') : t('common.no'), r.nextVisitDate ?? '—'])}
+          emptyText={t('reports.empty.secondOpinionConversion')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 20.3 — Specialist Clinic: Case-Complexity Mix.
+function CaseComplexityMixView({ data }: { data: CaseComplexityMixReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalTagged'), value: String(s.totalTagged) },
+        { label: t('reports.summary.routineCount'), value: String(s.routineCount) },
+        { label: t('reports.summary.complexCount'), value: String(s.complexCount) },
+        { label: t('reports.summary.complexPercent'), value: s.complexPercent != null ? `${s.complexPercent}%` : '—' }
+      ]} />
+      {data.byMonth.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.caseComplexityMixChart')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data.byMonth} margin={{ left: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend />
+              <Bar dataKey="ROUTINE" name={t('reports.col.routine')} stackId="mix" fill={STATUS_COLORS.success} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="COMPLEX" name={t('reports.col.complex')} stackId="mix" fill={STATUS_COLORS.danger} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <DataTable
+          headers={[t('reports.col.month'), t('reports.col.routine'), t('reports.col.complex')]}
+          rows={data.byMonth.map(r => [r.month, r.ROUTINE, r.COMPLEX])}
+          emptyText={t('reports.empty.caseComplexityMix')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 item 21.2 — Dental Clinic: Treatment Acceptance Rate. A
+// horizontal bar per funnel stage — same layout="vertical" pattern
+// ReferralLeaderboardView already established, since this codebase has no
+// dedicated funnel-chart component and three ordered, narrowing stages read
+// just as clearly as a ranked horizontal bar list.
+function TreatmentAcceptanceRateView({ data }: { data: TreatmentAcceptanceRateReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.funnel.map((f) => ({ label: f.stage, count: f.count }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.proposedCount'), value: String(s.proposedCount) },
+        { label: t('reports.summary.acceptedCount'), value: String(s.acceptedCount), sub: s.acceptanceRatePercent != null ? `${s.acceptanceRatePercent}%` : undefined },
+        { label: t('reports.summary.billedCount'), value: String(s.billedCount), sub: s.billedRatePercent != null ? `${s.billedRatePercent}%` : undefined },
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.treatmentAcceptanceFunnelChart')}</h3>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+            <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 11 }} tickLine={false} axisLine={false} width={80} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+            <Bar dataKey="count" name={t('reports.col.count')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div>
+        <DataTable
+          headers={[t('reports.col.stage'), t('reports.col.count')]}
+          rows={data.funnel.map(f => [f.stage, f.count])}
+          emptyText={t('reports.empty.treatmentAcceptanceRate')}
         />
       </div>
     </div>

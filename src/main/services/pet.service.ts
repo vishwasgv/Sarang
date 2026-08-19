@@ -63,7 +63,22 @@ export async function getPet(id: string) {
       },
     })
     if (!item) return { success: false, error: { code: 'PET-002', message: 'Pet not found.' } }
-    return { success: true, data: item }
+
+    // Phase 67 §9.1 item 18.5 — multi-pet household linkage. Pet.customerId
+    // already supports several pets per owner (a plain many-to-one relation,
+    // no unique constraint blocking it) — the data model needed nothing new,
+    // only surfacing it. Reuses this same getPet() call rather than a
+    // separate IPC round trip, since PetProfileScreen.tsx already calls it
+    // on every load.
+    const siblingPets = item.customerId
+      ? await db.pet.findMany({
+          where: { customerId: item.customerId, id: { not: item.id }, isActive: true },
+          select: { id: true, petName: true, species: true, breed: true },
+          orderBy: { petName: 'asc' },
+        })
+      : []
+
+    return { success: true, data: { ...item, siblingPets } }
   } catch (err) {
     return { success: false, error: { code: 'PET-002', message: err instanceof Error ? err.message : 'Could not fetch pet.' } }
   }

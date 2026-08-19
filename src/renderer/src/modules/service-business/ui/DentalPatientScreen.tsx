@@ -46,6 +46,8 @@ interface TreatmentPlan {
   completedDate: string | null
   createdAt: string
   createdBy: { id: string; fullName: string } | null
+  // Phase 67 §9.1 item 21.1 — treatment-plan conversion tracking (billing).
+  invoiceId: string | null
 }
 
 interface RecallRecord {
@@ -63,14 +65,20 @@ interface Patient {
   phone: string | null
 }
 
-// Phase 58 §2 — per-tooth chronological history
+// Phase 58 §2 — per-tooth chronological history. Phase 67 §9.1 item 21.5
+// extended this into a merged timeline: a CONDITION entry (unchanged shape)
+// or a TREATMENT entry (a treatment-plan procedure that named this tooth).
 interface ToothHistoryEntry {
-  id: string
-  condition: ToothCondition
-  surface: string
-  notes: string | null
-  recordedDate: string
-  recordedBy: { id: string; fullName: string } | null
+  type: 'CONDITION' | 'TREATMENT'
+  date: string
+  condition?: ToothCondition
+  surface?: string
+  notes?: string | null
+  recordedBy?: { id: string; fullName: string } | null
+  procedure?: string
+  itemStatus?: 'PENDING' | 'DONE'
+  planTitle?: string
+  planStatus?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -186,7 +194,7 @@ export function DentalPatientScreen() {
   const { hasPermission } = useAuthStore()
   const currSym = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
   const canWrite = hasPermission('clinicalNotes.write')
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
 
   const [tab, setTab] = useState<Tab>('chart')
   const [patient, setPatient] = useState<Patient | null>(null)
@@ -210,6 +218,8 @@ export function DentalPatientScreen() {
   // Treatment plan modal
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [editingPlan, setEditingPlan] = useState<TreatmentPlan | null>(null)
+  // Phase 67 §9.1 item 21.1 — treatment-plan conversion tracking (billing).
+  const [invoicingPlanId, setInvoicingPlanId] = useState<string | null>(null)
 
   // Recall form
   const [recallForm, setRecallForm] = useState({ recallType: 'HYGIENE_6M', lastVisitDate: '', nextRecallDate: '', notes: '' })
@@ -281,7 +291,7 @@ export function DentalPatientScreen() {
   async function loadToothHistory(num: number) {
     if (!patientId) return
     try {
-      const res = await api.toothRecord.getHistory({ patientId, toothNumber: num })
+      const res = await api.toothRecord.getTimeline({ patientId, toothNumber: num })
       if (res.success) setToothHistory((res.data as ToothHistoryEntry[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load tooth history.')
     } catch {
@@ -344,6 +354,24 @@ export function DentalPatientScreen() {
       setRecallError('Could not save recall record.')
     } finally {
       setRecallSaving(false)
+    }
+  }
+
+  // Phase 67 §9.1 item 21.1 — treatment-plan conversion tracking (billing).
+  async function handleGenerateInvoice(planId: string) {
+    setInvoicingPlanId(planId)
+    try {
+      const res = await api.treatmentPlan.generateInvoice({ treatmentPlanId: planId })
+      if (!res.success) {
+        toastError('Error', res.error?.message ?? 'Could not generate invoice.')
+        return
+      }
+      toastSuccess('Invoice generated', 'This treatment plan is now billed.')
+      loadAll()
+    } catch {
+      toastError('Error', 'Could not generate invoice.')
+    } finally {
+      setInvoicingPlanId(null)
     }
   }
 
@@ -436,6 +464,8 @@ export function DentalPatientScreen() {
             canWrite={canWrite}
             onNew={() => { setEditingPlan(null); setShowPlanModal(true) }}
             onEdit={(p) => { setEditingPlan(p); setShowPlanModal(true) }}
+            invoicingPlanId={invoicingPlanId}
+            onGenerateInvoice={handleGenerateInvoice}
           />
         )}
         {tab === 'recall' && (
@@ -677,19 +707,38 @@ function ToothChartTab({
 
             {showHistory && (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Chronological History</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Chronological Timeline</p>
                 {toothHistory.length === 0 ? (
                   <p className="text-xs text-slate-400">No history recorded yet — this tooth's first save will appear here.</p>
                 ) : (
                   <div className="space-y-2">
-                    {toothHistory.map((h) => {
-                      const cfg = CONDITION_CONFIG[h.condition]
+                    {toothHistory.map((h, idx) => {
+                      // Phase 67 §9.1 item 21.5 — tooth-chart-linked treatment
+                      // timeline: merges condition-change entries with
+                      // treatment-plan procedures that named this tooth.
+                      if (h.type === 'TREATMENT') {
+                        return (
+                          <div key={`t-${idx}`} className="flex items-start gap-3 text-xs bg-brand/5 rounded-lg px-3 py-2">
+                            <span className="text-slate-400 shrink-0 w-24">
+                              {new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                            <div className="flex-1">
+                              <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', h.itemStatus === 'DONE' ? 'bg-success/10 text-success' : 'bg-slate-100 dark:bg-slate-800 text-slate-500')}>
+                                {h.itemStatus === 'DONE' ? 'Treatment Done' : 'Treatment Planned'}
+                              </span>
+                              <p className="mt-1 text-slate-700 dark:text-slate-200 font-medium">{h.procedure}</p>
+                              <p className="mt-0.5 text-slate-400">Plan: {h.planTitle} ({h.planStatus?.replace('_', ' ')})</p>
+                            </div>
+                          </div>
+                        )
+                      }
+                      const cfg = CONDITION_CONFIG[h.condition!]
                       let surfaces: string[] = []
-                      try { surfaces = JSON.parse(h.surface) } catch { /* legacy/blank */ }
+                      try { surfaces = JSON.parse(h.surface ?? '[]') } catch { /* legacy/blank */ }
                       return (
-                        <div key={h.id} className="flex items-start gap-3 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+                        <div key={`c-${idx}`} className="flex items-start gap-3 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
                           <span className="text-slate-400 shrink-0 w-24">
-                            {new Date(h.recordedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
                           <div className="flex-1">
                             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cfg.bg, cfg.color)}>{cfg.label}</span>
@@ -715,12 +764,14 @@ function ToothChartTab({
 // Treatment Plans Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TreatmentPlansTab({ plans, currSym, canWrite, onNew, onEdit }: {
+function TreatmentPlansTab({ plans, currSym, canWrite, onNew, onEdit, invoicingPlanId, onGenerateInvoice }: {
   plans: TreatmentPlan[]
   currSym: string
   canWrite: boolean
   onNew: () => void
   onEdit: (p: TreatmentPlan) => void
+  invoicingPlanId: string | null
+  onGenerateInvoice: (planId: string) => void
 }) {
   return (
     <div className="p-6">
@@ -752,6 +803,7 @@ function TreatmentPlansTab({ plans, currSym, canWrite, onNew, onEdit }: {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-dark dark:text-slate-100">{plan.title}</p>
                       <Badge variant={STATUS_VARIANT[plan.status] ?? 'neutral'} size="sm">{plan.status.replace('_', ' ')}</Badge>
+                      {plan.invoiceId && <Badge variant="success" size="sm">Billed</Badge>}
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Created {fmt(plan.createdAt)}{plan.createdBy ? ` by ${plan.createdBy.fullName}` : ''}</p>
                   </div>
@@ -777,12 +829,27 @@ function TreatmentPlansTab({ plans, currSym, canWrite, onNew, onEdit }: {
                 {plan.notes && <p className="text-xs text-slate-400 mt-2 italic">{plan.notes}</p>}
 
                 {canWrite && (
-                  <button
-                    onClick={() => onEdit(plan)}
-                    className="mt-3 text-xs text-brand hover:underline"
-                  >
-                    Edit plan
-                  </button>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={() => onEdit(plan)}
+                      className="text-xs text-brand hover:underline"
+                    >
+                      Edit plan
+                    </button>
+                    {/* Phase 67 §9.1 item 21.1 — treatment-plan conversion
+                        tracking: only an accepted-or-further plan (not still
+                        PROPOSED, not DECLINED) that hasn't been billed yet
+                        can be converted to a real invoice. */}
+                    {!plan.invoiceId && plan.status !== 'PROPOSED' && plan.status !== 'DECLINED' && (
+                      <button
+                        onClick={() => onGenerateInvoice(plan.id)}
+                        disabled={invoicingPlanId === plan.id}
+                        className="text-xs text-success hover:underline disabled:opacity-50"
+                      >
+                        {invoicingPlanId === plan.id ? 'Generating…' : 'Generate Invoice'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )

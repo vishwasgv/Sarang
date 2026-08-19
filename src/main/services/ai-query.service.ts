@@ -185,6 +185,21 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'bloodBank.stock', patterns: [/blood\s+(stock|units|group)/i] },
   { template: 'restaurant.foodCost', patterns: [/(food|ingredient)\s+cost/i] },
   { template: 'restaurant.orderVolume', patterns: [/order\s+volume/i, /(qr|table)\s+orders?/i] },
+  { template: 'restaurant.dishContributionMargin', patterns: [/(dish|menu\s+item)s?\s+(margin|contribution)/i, /contribution\s+margin/i] },
+  { template: 'restaurant.tableTurnoverByHour', patterns: [/table\s+turnover/i, /busiest\s+(hour|time)/i, /rush\s+hour/i] },
+  { template: 'restaurant.recipeWasteVariance', patterns: [/(waste|wastage)\s+variance/i, /ingredient\s+(waste|variance)/i, /recipe.*(vs|versus).*actual/i] },
+  // Deliberately NOT matching a bare "dead stock" phrase — the universal
+  // inventory.deadStock template (above, checked first for every business
+  // type) already owns that question. This one only fires for the
+  // capital/clearance framing this report specifically adds.
+  { template: 'retail.deadStockClearance', patterns: [/capital\s+locked/i, /clearance\s+list/i, /dead[\s-]?stock.*(capital|clearance|money|value)/i] },
+  { template: 'retail.categorySellThrough', patterns: [/sell[\s-]?through/i, /category.*(sell|selling)\s+(rate|through)/i] },
+  { template: 'retail.loyaltyProgress', patterns: [/loyalty/i, /punch[\s-]?card/i, /ready.*(redeem|reward)/i] },
+  { template: 'retail.basketComposition', patterns: [/basket\s+(composition|analysis)/i, /bought\s+together/i, /(products?|items?).*(together|pair)/i] },
+  // Phase 67 §9.1 — Hardware's "Fast-mover vs. slow-mover matrix" signature
+  // win. Deliberately "mover"-scoped, not a bare "slow sell" phrase — that
+  // already belongs to inventory.bottomRevenueProducts above.
+  { template: 'hardware.fastSlowMoverMatrix', patterns: [/fast[\s-]?mover/i, /slow[\s-]?mover/i, /sales?\s+velocity/i, /(velocity.*margin|margin.*velocity)/i] },
   { template: 'manufacturing.production', patterns: [/\bproduction\b/i, /production\s+order/i] },
   { template: 'electronics.serialWarranty', patterns: [/warrant(y|ies)/i, /serial\s+number/i] },
   { template: 'retail.variantStock', patterns: [/variant\s+stock/i, /(size|color)\s+stock/i] },

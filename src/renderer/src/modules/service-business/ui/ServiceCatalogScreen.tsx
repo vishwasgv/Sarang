@@ -4,6 +4,7 @@ import { Layers, Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, Clock, T
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Card } from '@shared/ui/molecules/Card'
@@ -21,6 +22,8 @@ interface ServiceItem {
   sacCode: string | null
   isActive: boolean
   notes: string | null
+  // Phase 67 §9.1 item 23.1 — Diagnostic Lab only; null everywhere else.
+  targetTATHours: number | null
 }
 
 function ServiceForm({
@@ -44,7 +47,14 @@ function ServiceForm({
     taxRate: initial.taxRate ?? 0,
     sacCode: initial.sacCode ?? '',
     notes: initial.notes ?? '',
+    targetTATHours: initial.targetTATHours != null ? String(initial.targetTATHours) : '',
   })
+  const isLab = useIndustryStore((s) => s.isModuleEnabled('lab_orders'))
+
+  function handleSave(): void {
+    const { targetTATHours, ...rest } = form
+    onSave({ ...rest, targetTATHours: targetTATHours.trim() ? Number(targetTATHours) : null })
+  }
 
   return (
     <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -61,13 +71,18 @@ function ServiceForm({
         <Input label="Base Price" type="number" value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: Number(e.target.value) }))} />
         <Input label="Tax Rate %" type="number" value={form.taxRate} onChange={(e) => setForm((f) => ({ ...f, taxRate: Number(e.target.value) }))} />
       </div>
+      {isLab && (
+        <div className="grid grid-cols-3 gap-3">
+          <Input label="Target TAT (hours)" type="number" value={form.targetTATHours} onChange={(e) => setForm((f) => ({ ...f, targetTATHours: e.target.value }))} placeholder="e.g. 24" />
+        </div>
+      )}
       <div>
         <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
         <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 resize-none focus:outline-none focus:ring-2 focus:ring-brand" />
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
-        <Button size="sm" loading={saving} onClick={() => onSave(form)}>Save Service</Button>
+        <Button size="sm" loading={saving} onClick={handleSave}>Save Service</Button>
       </div>
     </div>
   )
@@ -264,6 +279,7 @@ export function ServiceCatalogScreen() {
                         {svc.taxRate > 0 && <span className="text-slate-400 font-normal">+{svc.taxRate}% tax</span>}
                       </span>
                       {svc.sacCode && <span className="text-xs text-slate-400">SAC: {svc.sacCode}</span>}
+                      {svc.targetTATHours != null && <span className="text-xs text-slate-400">Target TAT: {svc.targetTATHours}h</span>}
                     </div>
                   </div>
                   {canManage && (
