@@ -7,7 +7,9 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn() } }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn() } }))
+vi.mock('../template-suggestion.service', () => ({ getTemplateSuggestion: vi.fn() }))
+vi.mock('../custom-document.service', () => ({ customDocumentService: { listTypes: vi.fn(), listEntries: vi.fn() } }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
 vi.mock('../roc-filing.service', () => ({ listROCFilings: vi.fn() }))
 vi.mock('../property.service', () => ({ getPropertyKPIs: vi.fn() }))
@@ -17,6 +19,8 @@ vi.mock('../vaccination.service', () => ({ getUpcomingVaccinations: vi.fn() }))
 vi.mock('../recall-record.service', () => ({ listRecalls: vi.fn() }))
 vi.mock('../chronic-condition-record.service', () => ({ listChronicConditions: vi.fn() }))
 vi.mock('../car-job-card.service', () => ({ getCarJobCardKPIs: vi.fn() }))
+vi.mock('../repair-ticket.service', () => ({ lookupSerialService: vi.fn() }))
+vi.mock('../variant.service', () => ({ getSizeCurveReorderSuggestion: vi.fn() }))
 vi.mock('../coaching-fee.service', () => ({ getFeeKPIs: vi.fn() }))
 vi.mock('../loyalty-program.service', () => ({ loyaltyProgramService: { getSummary: vi.fn() } }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
@@ -24,8 +28,13 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 import { getActiveTemplate } from '../industry-template.service'
 import { getExpiringMemberships } from '../membership.service'
 import { reportService } from '../report.service'
+import { lookupSerialService } from '../repair-ticket.service'
+import { getSizeCurveReorderSuggestion } from '../variant.service'
+import { getTemplateSuggestion } from '../template-suggestion.service'
+import { customDocumentService } from '../custom-document.service'
 import { listChronicConditions } from '../chronic-condition-record.service'
 import { loyaltyProgramService } from '../loyalty-program.service'
+import { getPrisma } from '../../database/db'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from '../ai-vertical-templates.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -889,6 +898,137 @@ describe('ai-vertical-templates.service — retail.categorySellThrough', () => {
   })
 })
 
+// Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report.
+describe('ai-vertical-templates.service — clothing.seasonSellThrough', () => {
+  it('registers clothing.seasonSellThrough for CLOTHING and FOOTWEAR alongside retail.variantStock', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } } as never)
+    const clothingNames = await getActiveVerticalTemplateNames()
+    expect(clothingNames).toContain('clothing.seasonSellThrough')
+    expect(clothingNames).toContain('retail.variantStock')
+    expect(clothingNames).toContain('clothing.sizeCurveReorderSuggestion')
+    expect(clothingNames).toContain('clothing.sizeStyleHeatmap')
+
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const footwearNames = await getActiveVerticalTemplateNames()
+    expect(footwearNames).toContain('clothing.seasonSellThrough')
+  })
+
+  it('reports the leading season/collection by sell-through rate this month, sorted highest first', async () => {
+    vi.mocked(reportService.generateSeasonSellThroughReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      rows: [
+        { month: '2024-01', season: 'Winter 2025', unitsSold: 10, currentStock: 30, sellThroughRate: 25 },
+        { month: '2024-01', season: 'Summer 2026', unitsSold: 40, currentStock: 10, sellThroughRate: 80 },
+      ],
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.seasonSellThrough', {}, '₹')
+
+    expect(result.headline).toBe('Summer 2026 leads this month at 80% sell-through')
+    expect(result.details).toEqual(['Summer 2026: 80% (40 sold, 10 in stock)', 'Winter 2025: 25% (10 sold, 30 in stock)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when every season has zero sales and zero stock this month', async () => {
+    vi.mocked(reportService.generateSeasonSellThroughReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      rows: [{ month: '2024-01', season: 'Summer 2026', unitsSold: 0, currentStock: 0, sellThroughRate: 0 }],
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.seasonSellThrough', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No season/collection sales this month yet')
+  })
+})
+
+// Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+describe('ai-vertical-templates.service — clothing.sizeCurveReorderSuggestion', () => {
+  it('reports the suggested split for the product named in the question', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      product: { findFirst: vi.fn().mockResolvedValue({ id: 'prod-1', productName: 'Cotton T-Shirt' }) }
+    } as never)
+    vi.mocked(getSizeCurveReorderSuggestion).mockResolvedValue({
+      success: true,
+      data: {
+        productId: 'prod-1', totalReorderQty: 40, lookbackDays: 90,
+        rows: [
+          { variantId: 'var-m', size: 'M', color: null, unitsSoldRecently: 30, suggestedQuantity: 30 },
+          { variantId: 'var-l', size: 'L', color: null, unitsSoldRecently: 10, suggestedQuantity: 10 },
+        ]
+      }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.sizeCurveReorderSuggestion', { searchTerm: 'Cotton T-Shirt' }, '₹')
+
+    expect(result.headline).toBe('Suggested reorder split for Cotton T-Shirt: 40 units across 2 variants')
+    expect(result.details[0]).toContain('M')
+    expect(result.details[0]).toContain('30 units')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no search term was extracted', async () => {
+    const result = await executeVerticalTemplate('clothing.sizeCurveReorderSuggestion', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(getSizeCurveReorderSuggestion).not.toHaveBeenCalled()
+  })
+
+  it('marks isEmpty true when no product matches the search term', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      product: { findFirst: vi.fn().mockResolvedValue(null) }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.sizeCurveReorderSuggestion', { searchTerm: 'Nonexistent' }, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('marks isEmpty true when the matched product has no configured reorder quantity', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      product: { findFirst: vi.fn().mockResolvedValue({ id: 'prod-1', productName: 'Cotton T-Shirt' }) }
+    } as never)
+    vi.mocked(getSizeCurveReorderSuggestion).mockResolvedValue({ success: false, error: { code: 'VAR-012', message: 'Enter a reorder quantity.' } } as never)
+
+    const result = await executeVerticalTemplate('clothing.sizeCurveReorderSuggestion', { searchTerm: 'Cotton T-Shirt' }, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Clothing: Size × Style Heatmap.
+describe('ai-vertical-templates.service — clothing.sizeStyleHeatmap', () => {
+  it('reports the top-moving style/size combination this month', async () => {
+    vi.mocked(reportService.generateSizeStyleHeatmapReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      styles: ['Cotton T-Shirt'], sizes: ['M', 'L'],
+      cells: [
+        { style: 'Cotton T-Shirt', size: 'M', unitsSold: 10 },
+        { style: 'Cotton T-Shirt', size: 'L', unitsSold: 25 },
+      ],
+      summary: { totalUnitsSold: 35, topCellStyle: 'Cotton T-Shirt', topCellSize: 'L', topCellUnitsSold: 25 }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.sizeStyleHeatmap', {}, '₹')
+
+    expect(result.headline).toBe('Cotton T-Shirt / L is your top-moving combination this month, 25 units')
+    expect(result.details[0]).toContain('Cotton T-Shirt / L')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when there are no variant-tracked cells this month', async () => {
+    vi.mocked(reportService.generateSizeStyleHeatmapReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      styles: [], sizes: [], cells: [],
+      summary: { totalUnitsSold: 0, topCellStyle: null, topCellSize: null, topCellUnitsSold: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.sizeStyleHeatmap', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
 // Phase 67 §9.1 — Retail's simple loyalty punch-card.
 describe('ai-vertical-templates.service — retail.loyaltyProgress', () => {
   it('registers retail.loyaltyProgress for RETAIL alongside the other two Retail intents', async () => {
@@ -1005,5 +1145,404 @@ describe('ai-vertical-templates.service — hardware.fastSlowMoverMatrix', () =>
 
     expect(result.isEmpty).toBe(true)
     expect(result.headline).toBe('No products sold this month yet')
+  })
+})
+
+// Phase 67 §9.1 — General's "Which template fits you?" wizard.
+describe('ai-vertical-templates.service — general.templateSuggestion', () => {
+  it('registers all five GENERAL vertical intents in order', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GENERAL' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['general.templateSuggestion', 'general.customDocumentSummary', 'general.categoryMix', 'general.cashPositionTrend', 'general.quotePipelineSummary'])
+  })
+
+  it('reports the suggested template with its matched signal count', async () => {
+    vi.mocked(getTemplateSuggestion).mockResolvedValue({
+      success: true, data: { businessType: 'HARDWARE', matchedCount: 5, signalKey: 'cartonProducts' }
+    } as never)
+
+    const result = await executeVerticalTemplate('general.templateSuggestion', {}, '₹')
+
+    expect(result.headline).toBe('Your activity looks like a HARDWARE business (5 matching records) — worth checking Settings → Industry')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no suggestion exists yet', async () => {
+    vi.mocked(getTemplateSuggestion).mockResolvedValue({ success: true, data: null } as never)
+
+    const result = await executeVerticalTemplate('general.templateSuggestion', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No specific business template stands out from your activity yet')
+  })
+
+  it('marks isEmpty true when the underlying computation fails', async () => {
+    vi.mocked(getTemplateSuggestion).mockResolvedValue({ success: false, error: { code: 'SYS-001', message: 'db down' } } as never)
+
+    const result = await executeVerticalTemplate('general.templateSuggestion', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — General's Category Mix report.
+describe('ai-vertical-templates.service — general.categoryMix', () => {
+  it('reports the top revenue category with its share this month', async () => {
+    vi.mocked(reportService.generateCategoryMixReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      summary: { totalRevenue: 10000, categoryCount: 3 },
+      rows: [
+        { categoryId: 'c1', categoryName: 'Beverages', unitsSold: 50, revenue: 6000, revenuePercent: 60 },
+        { categoryId: 'c2', categoryName: 'Snacks', unitsSold: 30, revenue: 3000, revenuePercent: 30 },
+        { categoryId: 'c3', categoryName: 'Other', unitsSold: 10, revenue: 1000, revenuePercent: 10 },
+      ],
+    } as never)
+
+    const result = await executeVerticalTemplate('general.categoryMix', {}, '₹')
+
+    expect(result.headline).toBe('Beverages leads with 60% of revenue this month (3 categories total)')
+    expect(result.details).toEqual(['Beverages: 60% of revenue', 'Snacks: 30% of revenue', 'Other: 10% of revenue'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no categorized product sales exist this month', async () => {
+    vi.mocked(reportService.generateCategoryMixReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      summary: { totalRevenue: 0, categoryCount: 0 }, rows: [],
+    } as never)
+
+    const result = await executeVerticalTemplate('general.categoryMix', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No categorized product sales this month')
+  })
+})
+
+// Phase 67 §9.1 — General's Combined Cash Position Trend.
+describe('ai-vertical-templates.service — general.cashPositionTrend', () => {
+  it('reports the net change and opening/closing balance for this month', async () => {
+    vi.mocked(reportService.generateCashPositionTrendReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      points: [{ date: '2024-01-01', balance: 1000 }, { date: '2024-01-31', balance: 1500 }],
+      openingBalance: 1000, closingBalance: 1500, netChange: 500,
+    } as never)
+
+    const result = await executeVerticalTemplate('general.cashPositionTrend', {}, '₹')
+
+    expect(result.headline).toContain('grew')
+    expect(result.headline).toContain('₹1,000.00')
+    expect(result.headline).toContain('₹1,500.00')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('reports a fall when netChange is negative', async () => {
+    vi.mocked(reportService.generateCashPositionTrendReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      points: [{ date: '2024-01-01', balance: 1000 }], openingBalance: 1000, closingBalance: 700, netChange: -300,
+    } as never)
+
+    const result = await executeVerticalTemplate('general.cashPositionTrend', {}, '₹')
+
+    expect(result.headline).toContain('fell')
+  })
+
+  it('marks isEmpty true when there is no cash movement recorded this month', async () => {
+    vi.mocked(reportService.generateCashPositionTrendReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      points: [], openingBalance: 0, closingBalance: 0, netChange: 0,
+    } as never)
+
+    const result = await executeVerticalTemplate('general.cashPositionTrend', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No cash movement recorded this month')
+  })
+})
+
+// Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+describe('ai-vertical-templates.service — general.quotePipelineSummary', () => {
+  it('breaks down this month\'s quotations by conversion path', async () => {
+    const db = { quotation: { findMany: vi.fn().mockResolvedValue([
+      { invoice: { id: 'inv-1' }, salesOrder: null },
+      { invoice: { id: 'inv-2' }, salesOrder: null },
+      { invoice: null, salesOrder: { id: 'so-1' } },
+      { invoice: null, salesOrder: null },
+      { invoice: null, salesOrder: null },
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('general.quotePipelineSummary', {}, '₹')
+
+    expect(result.headline).toBe('5 quotations this month — 2 billed directly, 1 moved to a Sales Order, 2 still pending')
+    expect(result.details).toEqual(['Direct to invoice: 2', 'Via Sales Order: 1', 'Pending: 2'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no quotations were created this month', async () => {
+    const db = { quotation: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('general.quotePipelineSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No quotations created this month')
+  })
+
+  it('uses singular phrasing for exactly one quotation', async () => {
+    const db = { quotation: { findMany: vi.fn().mockResolvedValue([{ invoice: null, salesOrder: null }]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('general.quotePipelineSummary', {}, '₹')
+
+    expect(result.headline).toContain('1 quotation ')
+    expect(result.headline).not.toContain('1 quotations')
+  })
+})
+
+// Phase 67 §9.1 — Electronics: RMA SLA tracker.
+describe('ai-vertical-templates.service — electronics.rmaOverdueSummary', () => {
+  it('registers electronics.rmaOverdueSummary alongside the pre-existing electronics.serialWarranty for ELECTRONICS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRONICS' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['electronics.serialWarranty', 'electronics.rmaOverdueSummary', 'electronics.vendorRecovery', 'electronics.repairTurnaround', 'electronics.serialServiceLookup'])
+  })
+
+  it('reports the count and top overdue units', async () => {
+    const db = {
+      repairTicket: {
+        findMany: vi.fn().mockResolvedValue([
+          { claimNumber: 'RMA-00001', product: { productName: 'Galaxy S24' }, sentToVendorDate: new Date('2026-01-01T00:00:00Z') },
+          { claimNumber: 'RMA-00002', product: { productName: 'iPhone 15' }, sentToVendorDate: new Date('2026-01-05T00:00:00Z') },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('electronics.rmaOverdueSummary', {}, '₹')
+
+    expect(result.headline).toBe('2 units are overdue from vendor RMA (past the 30-day SLA)')
+    expect(result.details[0]).toContain('RMA-00001')
+    expect(result.details[0]).toContain('Galaxy S24')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('uses singular phrasing for exactly one overdue unit', async () => {
+    const db = { repairTicket: { findMany: vi.fn().mockResolvedValue([
+      { claimNumber: 'RMA-00001', product: { productName: 'Galaxy S24' }, sentToVendorDate: new Date() }
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('electronics.rmaOverdueSummary', {}, '₹')
+
+    expect(result.headline).toContain('1 unit is overdue')
+  })
+
+  it('marks isEmpty true when nothing is overdue', async () => {
+    const db = { repairTicket: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await executeVerticalTemplate('electronics.rmaOverdueSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No RMA units are currently overdue')
+  })
+
+  it('queries with the same SENT_TO_VENDOR/AWAITING_PARTS + past-vendorSlaDueDate definition the ticket screen and dashboard alert both use', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = { repairTicket: { findMany } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await executeVerticalTemplate('electronics.rmaOverdueSummary', {}, '₹')
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, vendorSlaDueDate: { lt: expect.any(Date) } }
+    }))
+  })
+})
+
+// Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+describe('ai-vertical-templates.service — electronics.vendorRecovery', () => {
+  it('reports total outstanding and top open claims', async () => {
+    vi.mocked(reportService.generateVendorRecoveryLedgerReport).mockResolvedValue({
+      generatedAt: '2026-08-01T00:00:00Z',
+      rows: [
+        { claimNumber: 'RMA-00001', productName: 'Galaxy S24', vendorName: 'ABC Distributors', claimedAmount: 1000, recoveredAmount: 200, outstandingAmount: 800, isClosed: false, closedAt: null },
+        { claimNumber: 'RMA-00002', productName: 'iPhone 15', vendorName: null, claimedAmount: 500, recoveredAmount: 500, outstandingAmount: 0, isClosed: true, closedAt: '2026-08-01T00:00:00Z' },
+      ],
+      summary: { totalClaimed: 1500, totalRecovered: 700, totalOutstanding: 800, openCount: 1, closedCount: 1 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.vendorRecovery', {}, '₹')
+
+    expect(result.headline).toBe('₹800 outstanding across 1 open vendor claim')
+    expect(result.details[0]).toContain('RMA-00001')
+    expect(result.details[0]).toContain('800')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('uses plural phrasing for more than one open claim', async () => {
+    vi.mocked(reportService.generateVendorRecoveryLedgerReport).mockResolvedValue({
+      generatedAt: '2026-08-01T00:00:00Z',
+      rows: [
+        { claimNumber: 'RMA-1', productName: 'A', vendorName: null, claimedAmount: 100, recoveredAmount: 0, outstandingAmount: 100, isClosed: false, closedAt: null },
+        { claimNumber: 'RMA-2', productName: 'B', vendorName: null, claimedAmount: 200, recoveredAmount: 0, outstandingAmount: 200, isClosed: false, closedAt: null },
+      ],
+      summary: { totalClaimed: 300, totalRecovered: 0, totalOutstanding: 300, openCount: 2, closedCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.vendorRecovery', {}, '₹')
+
+    expect(result.headline).toContain('2 open vendor claims')
+  })
+
+  it('marks isEmpty true and reports no open claims when nothing has ever been claimed', async () => {
+    vi.mocked(reportService.generateVendorRecoveryLedgerReport).mockResolvedValue({
+      generatedAt: '2026-08-01T00:00:00Z', rows: [],
+      summary: { totalClaimed: 0, totalRecovered: 0, totalOutstanding: 0, openCount: 0, closedCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.vendorRecovery', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No open vendor warranty claims')
+  })
+})
+
+// Phase 67 §9.1 — Electronics: repair turnaround by technician.
+describe('ai-vertical-templates.service — electronics.repairTurnaround', () => {
+  it('reports overall average turnaround and the fastest technician', async () => {
+    vi.mocked(reportService.generateRepairTurnaroundByTechnicianReport).mockResolvedValue({
+      generatedAt: '2026-08-20T00:00:00Z',
+      rows: [
+        { technicianId: 'tech-1', technicianName: 'Ravi Kumar', ticketCount: 3, avgTurnaroundDays: 2, minTurnaroundDays: 1, maxTurnaroundDays: 4 },
+        { technicianId: 'tech-2', technicianName: 'Sana Sheikh', ticketCount: 2, avgTurnaroundDays: 5, minTurnaroundDays: 3, maxTurnaroundDays: 7 },
+      ],
+      summary: { technicianCount: 2, totalTicketsCompleted: 5, overallAvgTurnaroundDays: 3.2 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.repairTurnaround', {}, '₹')
+
+    expect(result.headline).toBe('3.2 day avg. repair turnaround across 2 technicians')
+    expect(result.details[0]).toContain('Ravi Kumar')
+    expect(result.details[0]).toContain('2 day avg.')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('uses singular phrasing for exactly one technician', async () => {
+    vi.mocked(reportService.generateRepairTurnaroundByTechnicianReport).mockResolvedValue({
+      generatedAt: '2026-08-20T00:00:00Z',
+      rows: [{ technicianId: 'tech-1', technicianName: 'Ravi Kumar', ticketCount: 3, avgTurnaroundDays: 2, minTurnaroundDays: 1, maxTurnaroundDays: 4 }],
+      summary: { technicianCount: 1, totalTicketsCompleted: 3, overallAvgTurnaroundDays: 2 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.repairTurnaround', {}, '₹')
+
+    expect(result.headline).toContain('1 technician')
+    expect(result.headline).not.toContain('1 technicians')
+  })
+
+  it('marks isEmpty true when no completed ticket has a technician assigned', async () => {
+    vi.mocked(reportService.generateRepairTurnaroundByTechnicianReport).mockResolvedValue({
+      generatedAt: '2026-08-20T00:00:00Z', rows: [],
+      summary: { technicianCount: 0, totalTicketsCompleted: 0, overallAvgTurnaroundDays: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.repairTurnaround', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No completed repair tickets have a technician assigned yet')
+    expect(result.details).toEqual([])
+  })
+})
+
+// Phase 67 §9.1 — Electronics: serial-number service lookup.
+describe('ai-vertical-templates.service — electronics.serialServiceLookup', () => {
+  it('reports the ticket count and purchase info for a resolved serial', async () => {
+    vi.mocked(lookupSerialService).mockResolvedValue({
+      success: true,
+      data: {
+        serial: { id: 'ser-1', serialNumber: 'SN-001', imeiNumber: null, imei2Number: null, status: 'SOLD', warrantyExpiryDate: null, productId: 'prod-1', productName: 'Galaxy S24' },
+        purchase: { invoiceId: 'inv-1', invoiceNumber: 'INV-00001', invoiceDate: '2026-06-01T00:00:00Z', customerName: 'Ramesh Kumar', customerPhone: '9990001111', unitPrice: 25000 },
+        tickets: [{ id: 'rt-1', claimNumber: 'RMA-00001', status: 'RECEIVED', issueDescription: 'Screen cracked', receivedDate: '2026-07-01T00:00:00Z' } as never],
+        replacedOnTicket: null
+      }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.serialServiceLookup', { searchTerm: 'SN-001' }, '₹')
+
+    expect(result.headline).toBe('Galaxy S24 (SN-001) — 1 repair ticket on record')
+    expect(result.details[0]).toContain('INV-00001')
+    expect(result.details[0]).toContain('Ramesh Kumar')
+    expect(result.details[1]).toContain('RMA-00001')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('reports "never sold" when the serial has no linked purchase', async () => {
+    vi.mocked(lookupSerialService).mockResolvedValue({
+      success: true,
+      data: {
+        serial: { id: 'ser-1', serialNumber: 'SN-001', imeiNumber: null, imei2Number: null, status: 'AVAILABLE', warrantyExpiryDate: null, productId: 'prod-1', productName: 'Galaxy S24' },
+        purchase: null, tickets: [], replacedOnTicket: null
+      }
+    } as never)
+
+    const result = await executeVerticalTemplate('electronics.serialServiceLookup', { searchTerm: 'SN-001' }, '₹')
+
+    expect(result.details[0]).toBe('Never sold — still in stock')
+  })
+
+  it('marks isEmpty true when no search term was extracted from the question', async () => {
+    const result = await executeVerticalTemplate('electronics.serialServiceLookup', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(lookupSerialService).not.toHaveBeenCalled()
+  })
+
+  it('marks isEmpty true when the search term matches no device', async () => {
+    vi.mocked(lookupSerialService).mockResolvedValue({ success: false, error: { code: 'RPR-025', message: 'No device found.' } } as never)
+
+    const result = await executeVerticalTemplate('electronics.serialServiceLookup', { searchTerm: 'NOPE' }, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — General's Custom Document Builder.
+describe('ai-vertical-templates.service — general.customDocumentSummary', () => {
+  it('sums entries across every active document type', async () => {
+    vi.mocked(customDocumentService.listTypes).mockResolvedValue({
+      success: true, data: [{ id: 'cdt-1', name: 'Visitor Register' }, { id: 'cdt-2', name: 'Complaint Log' }]
+    } as never)
+    vi.mocked(customDocumentService.listEntries).mockImplementation(async (id: string) =>
+      ({ success: true, data: id === 'cdt-1' ? [{}, {}, {}] : [{}] } as never)
+    )
+
+    const result = await executeVerticalTemplate('general.customDocumentSummary', {}, '₹')
+
+    expect(result.headline).toBe('4 entries logged across 2 custom document types')
+    expect(result.details).toEqual(['Visitor Register: 3 entries', 'Complaint Log: 1 entries'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no document types have been set up yet', async () => {
+    vi.mocked(customDocumentService.listTypes).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('general.customDocumentSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No custom document types have been set up yet')
+  })
+
+  it('marks isEmpty true when total entries across all types is zero', async () => {
+    vi.mocked(customDocumentService.listTypes).mockResolvedValue({ success: true, data: [{ id: 'cdt-1', name: 'Visitor Register' }] } as never)
+    vi.mocked(customDocumentService.listEntries).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('general.customDocumentSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
   })
 })

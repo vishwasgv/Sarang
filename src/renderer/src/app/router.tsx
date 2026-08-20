@@ -31,6 +31,7 @@ import { ApprovalWorkflowsScreen } from '@modules/approvals/ui/ApprovalWorkflows
 import { PricingSchemesScreen } from '@modules/pricing/ui/PricingSchemesScreen'
 import { PriceMarkdownsScreen } from '@modules/pricing/ui/PriceMarkdownsScreen'
 import { LoyaltyProgramScreen } from '@modules/pricing/ui/LoyaltyProgramScreen'
+import { CustomDocumentsScreen } from '@modules/pricing/ui/CustomDocumentsScreen'
 import { SupplierPaymentsScreen } from '@modules/suppliers/ui/SupplierPaymentsScreen'
 import { ChartOfAccountsScreen } from '@modules/accounting/ui/ChartOfAccountsScreen'
 import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScreen'
@@ -309,6 +310,7 @@ export function AppRouter() {
         {/* Phase 67 §9.1 — Retail: time-boxed markdown workflow */}
         <Route path="/pricing/markdowns" element={<ProtectedRoute permission="priceMarkdowns.view"><PriceMarkdownsScreen /></ProtectedRoute>} />
         <Route path="/pricing/loyalty" element={<ProtectedRoute permission="loyaltyProgram.view"><LoyaltyProgramScreen /></ProtectedRoute>} />
+        <Route path="/custom-documents" element={<ProtectedRoute permission="customDocuments.view"><CustomDocumentsScreen /></ProtectedRoute>} />
         <Route path="/supplier-payments" element={<ProtectedRoute permission="supplierPayments.view"><SupplierPaymentsScreen /></ProtectedRoute>} />
         {/* Phase 62 — Banking, Ledger & Compliance Backbone */}
         <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute permission="chartOfAccounts.view"><ChartOfAccountsScreen /></ProtectedRoute>} />

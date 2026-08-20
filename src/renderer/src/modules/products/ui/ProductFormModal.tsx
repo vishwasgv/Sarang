@@ -55,6 +55,9 @@ const schema = z.object({
   standardCost: z.coerce.number().min(0).optional(),
   // Phase 48: apparel gender, surfaced only when variant_tracking is on.
   gender: z.enum(['MENS', 'WOMENS', 'UNISEX']).optional(),
+  // Phase 67 §9.1 — Clothing: season/collection sell-through report. Free
+  // text (a shop's own collection naming), same gate as gender above.
+  season: z.string().max(100).optional(),
   // Phase 54G: rental. rentalRates (an array of {basis, amount} pairs) is
   // deliberately NOT part of this schema — it's managed as separate local
   // state (like PayrollScreen's deduction lines) since a variable-length rate
@@ -107,6 +110,7 @@ interface Product {
   valuationMethod?: string; standardCost?: number | null
   isKit?: boolean
   gender?: string | null
+  season?: string | null
   isPrescriptionRequired?: boolean; defaultSupplierId?: string | null
   expiryAlertLeadDays?: number | null
   isRentable?: boolean; rentalTrackingType?: 'UNIT' | 'BULK' | null; rentalRates?: { basis: string; amount: number }[]; rentalSecurityDeposit?: number | null
@@ -375,6 +379,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           valuationMethod: (product.valuationMethod as FormValues['valuationMethod']) ?? 'WEIGHTED_AVERAGE',
           standardCost: product.standardCost ?? undefined,
           gender: (product.gender as FormValues['gender']) ?? undefined,
+          season: product.season ?? undefined,
           isRentable: product.isRentable ?? false,
           rentalTrackingType: (product.rentalTrackingType as FormValues['rentalTrackingType']) ?? undefined,
           rentalSecurityDeposit: product.rentalSecurityDeposit ?? undefined,
@@ -534,6 +539,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                 <option value="UNISEX">Unisex</option>
               </Select>
             </div>
+          )}
+          {variantTrackingEnabled && (
+            <Input label="Season / Collection" placeholder="e.g. Summer 2026" {...register('season')} error={errors.season?.message} />
           )}
         </div>
 

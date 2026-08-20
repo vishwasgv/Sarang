@@ -6,7 +6,8 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 import { getPrisma } from '../../database/db'
 import {
   createRepairTicket, listRepairTickets, getRepairTicket,
-  getSerialServiceHistory, updateRepairTicketStatus
+  getSerialServiceHistory, lookupSerialService, updateRepairTicketStatus,
+  recordVendorClaim, recordVendorRecovery, writeOffVendorClaim
 } from '../repair-ticket.service'
 
 function makeSerial(overrides: Record<string, unknown> = {}) {
@@ -22,7 +23,8 @@ function makeTicket(overrides: Record<string, unknown> = {}) {
     id: 'rt-1', claimNumber: 'RMA-00001', serialId: 'ser-1', productId: 'prod-1',
     customerId: 'cust-1', issueDescription: 'Screen cracked', status: 'RECEIVED',
     receivedDate: new Date('2026-07-01T00:00:00Z'), deliveredDate: null,
-    vendorId: null, vendorRmaNumber: null, sentToVendorDate: null, vendorResponseDate: null,
+    vendorId: null, vendorRmaNumber: null, sentToVendorDate: null, vendorResponseDate: null, vendorSlaDueDate: null,
+    vendorClaimAmount: null, vendorRecoveredAmount: 0, vendorClaimClosedAt: null,
     replacementSerialId: null, repairCost: null, notes: null, createdById: 'user-1',
     createdAt: new Date('2026-07-01T00:00:00Z'), updatedAt: new Date('2026-07-01T00:00:00Z'),
     serial: { id: 'ser-1', serialNumber: 'SN-001', imeiNumber: null, status: 'SOLD', warrantyExpiryDate: null },
@@ -114,6 +116,17 @@ describe('repairTicketService.createRepairTicket', () => {
       data: expect.objectContaining({ serialId: 'ser-1', productId: 'prod-1', status: 'RECEIVED' })
     }))
   })
+
+  // Phase 67 §9.1 — Electronics: repair turnaround by technician.
+  it('passes technicianId through to the created ticket when provided at intake', async () => {
+    const db = makeMockDb({ serial: makeSerial() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createRepairTicket({ serialId: 'ser-1', issueDescription: 'Screen cracked', technicianId: 'tech-1' })
+    expect(db.repairTicket.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ technicianId: 'tech-1' })
+    }))
+  })
 })
 
 describe('repairTicketService.listRepairTickets / getRepairTicket / getSerialServiceHistory', () => {
@@ -139,6 +152,58 @@ describe('repairTicketService.listRepairTickets / getRepairTicket / getSerialSer
     expect(res.error?.code).toBe('RPR-005')
   })
 
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker.
+  it('returns isOverdue false and daysWithVendor null for a ticket never sent to vendor', async () => {
+    const db = makeMockDb({ ticket: makeTicket({ status: 'DIAGNOSED' }) })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listRepairTickets({})
+    expect(res.data?.tickets[0].isOverdue).toBe(false)
+    expect(res.data?.tickets[0].daysWithVendor).toBeNull()
+  })
+
+  it('returns isOverdue true for a SENT_TO_VENDOR ticket past its SLA due date', async () => {
+    const ticket = makeTicket({
+      status: 'SENT_TO_VENDOR',
+      sentToVendorDate: new Date('2026-01-01T00:00:00Z'),
+      vendorSlaDueDate: new Date('2026-01-31T00:00:00Z'),
+    })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listRepairTickets({})
+    expect(res.data?.tickets[0].isOverdue).toBe(true)
+    expect(typeof res.data?.tickets[0].daysWithVendor).toBe('number')
+  })
+
+  it('returns isOverdue false for a returned ticket even if it came back after its SLA due date', async () => {
+    const ticket = makeTicket({
+      status: 'RETURNED_TO_CUSTOMER',
+      sentToVendorDate: new Date('2026-01-01T00:00:00Z'),
+      vendorResponseDate: new Date('2026-02-15T00:00:00Z'),
+      vendorSlaDueDate: new Date('2026-01-31T00:00:00Z'),
+      deliveredDate: new Date('2026-02-16T00:00:00Z'),
+    })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listRepairTickets({})
+    expect(res.data?.tickets[0].isOverdue).toBe(false)
+  })
+
+  it('freezes daysWithVendor once vendorResponseDate is set, instead of counting to today', async () => {
+    const ticket = makeTicket({
+      status: 'AWAITING_PARTS',
+      sentToVendorDate: new Date('2026-01-01T00:00:00Z'),
+      vendorResponseDate: new Date('2026-01-11T00:00:00Z'),
+    })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listRepairTickets({})
+    expect(res.data?.tickets[0].daysWithVendor).toBe(10)
+  })
+
   it('getSerialServiceHistory returns every ticket opened against that serial', async () => {
     const db = makeMockDb({ ticket: makeTicket() })
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -147,6 +212,97 @@ describe('repairTicketService.listRepairTickets / getRepairTicket / getSerialSer
     expect(res.success).toBe(true)
     expect(res.data?.tickets).toHaveLength(1)
     expect(res.data?.replacedOnTicket).toBeNull()
+  })
+})
+
+// Phase 67 §9.1 — Electronics: serial-number service lookup.
+describe('repairTicketService.lookupSerialService', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeLookupSerial(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'ser-1', productId: 'prod-1', serialNumber: 'SN-001', imeiNumber: '111111111111111', imei2Number: null,
+      status: 'SOLD', invoiceId: 'inv-1', warrantyExpiryDate: null,
+      product: { id: 'prod-1', productName: 'Galaxy S24' },
+      ...overrides,
+    }
+  }
+
+  function makeLookupDb(opts: { serial?: ReturnType<typeof makeLookupSerial> | null; invoice?: Record<string, unknown> | null; tickets?: unknown[] } = {}) {
+    return {
+      productSerial: { findFirst: vi.fn().mockResolvedValue(opts.serial ?? null) },
+      invoice: { findUnique: vi.fn().mockResolvedValue(opts.invoice ?? null) },
+      repairTicket: {
+        findMany: vi.fn().mockResolvedValue(opts.tickets ?? []),
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    }
+  }
+
+  it('rejects an empty search term', async () => {
+    const db = makeLookupDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await lookupSerialService('   ')
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-024')
+  })
+
+  it('returns not-found when no serial matches by serial number or either IMEI', async () => {
+    const db = makeLookupDb({ serial: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await lookupSerialService('NOPE')
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-025')
+  })
+
+  it('searches by serial number, IMEI, or IMEI2 in a single query', async () => {
+    const db = makeLookupDb({ serial: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await lookupSerialService('123456789012345')
+    expect(db.productSerial.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ serialNumber: '123456789012345' }, { imeiNumber: '123456789012345' }, { imei2Number: '123456789012345' }] }
+    }))
+  })
+
+  it('returns purchase info from the linked invoice when the serial has been sold', async () => {
+    const db = makeLookupDb({
+      serial: makeLookupSerial(),
+      invoice: {
+        id: 'inv-1', invoiceNumber: 'INV-00001', invoiceDate: new Date('2026-06-01T00:00:00Z'),
+        customer: { customerName: 'Ramesh Kumar', phone: '9990001111' },
+        items: [{ unitPrice: 25000 }]
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await lookupSerialService('SN-001')
+    expect(res.success).toBe(true)
+    expect(res.data?.purchase).toEqual({
+      invoiceId: 'inv-1', invoiceNumber: 'INV-00001', invoiceDate: new Date('2026-06-01T00:00:00Z').toISOString(),
+      customerName: 'Ramesh Kumar', customerPhone: '9990001111', unitPrice: 25000
+    })
+  })
+
+  it('returns null purchase info when the serial was never sold', async () => {
+    const db = makeLookupDb({ serial: makeLookupSerial({ invoiceId: null }) })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await lookupSerialService('SN-001')
+    expect(res.success).toBe(true)
+    expect(res.data?.purchase).toBeNull()
+  })
+
+  it('includes the full repair ticket history for the resolved serial', async () => {
+    const db = makeLookupDb({ serial: makeLookupSerial({ invoiceId: null }), tickets: [makeTicket()] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await lookupSerialService('SN-001')
+    expect(res.success).toBe(true)
+    expect(res.data?.tickets).toHaveLength(1)
+    expect(res.data?.tickets[0].claimNumber).toBe('RMA-00001')
   })
 })
 
@@ -173,6 +329,32 @@ describe('repairTicketService.updateRepairTicketStatus', () => {
     expect(db.productSerial.update).not.toHaveBeenCalled()
   })
 
+  // Phase 67 §9.1 — Electronics: repair turnaround by technician. Assignable
+  // via a same-status no-op transition, independent of the status-advance
+  // flow — mirrors how vendorRmaNumber can be re-saved this same way.
+  it('reassigns technicianId via a same-status no-op transition', async () => {
+    const ticket = makeTicket({ status: 'DIAGNOSED', technicianId: null })
+    const db = makeMockDb({ ticket, serial: makeSerial() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateRepairTicketStatus({ id: 'rt-1', status: 'DIAGNOSED', technicianId: 'tech-1' })
+    expect(res.success).toBe(true)
+    expect(db.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ technicianId: 'tech-1' })
+    }))
+  })
+
+  it('keeps the existing technicianId when not provided on an update', async () => {
+    const ticket = makeTicket({ status: 'DIAGNOSED', technicianId: 'tech-1' })
+    const db = makeMockDb({ ticket, serial: makeSerial() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateRepairTicketStatus({ id: 'rt-1', status: 'SENT_TO_VENDOR', vendorId: 'sup-1' })
+    expect(db.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ technicianId: 'tech-1' })
+    }))
+  })
+
   it('stamps sentToVendorDate exactly once on SENT_TO_VENDOR', async () => {
     const ticket = makeTicket({ status: 'DIAGNOSED' })
     const db = makeMockDb({ ticket, serial: makeSerial() })
@@ -182,6 +364,33 @@ describe('repairTicketService.updateRepairTicketStatus', () => {
     expect(db.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ sentToVendorDate: expect.any(Date) })
     }))
+  })
+
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker.
+  it('sets vendorSlaDueDate to 30 days out on SENT_TO_VENDOR', async () => {
+    const ticket = makeTicket({ status: 'DIAGNOSED' })
+    const db = makeMockDb({ ticket, serial: makeSerial() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const before = Date.now()
+    await updateRepairTicketStatus({ id: 'rt-1', status: 'SENT_TO_VENDOR', vendorId: 'sup-1', vendorRmaNumber: 'VRMA-1' })
+
+    const call = db.repairTicket.update.mock.calls[0][0] as { data: { vendorSlaDueDate: Date } }
+    const deltaDays = (call.data.vendorSlaDueDate.getTime() - before) / (1000 * 60 * 60 * 24)
+    expect(deltaDays).toBeGreaterThan(29.99)
+    expect(deltaDays).toBeLessThan(30.01)
+  })
+
+  it('does not re-stamp vendorSlaDueDate on a later transition once already sent to vendor', async () => {
+    const existingDue = new Date('2026-08-01T00:00:00Z')
+    const ticket = makeTicket({ status: 'SENT_TO_VENDOR', sentToVendorDate: new Date('2026-07-02T00:00:00Z'), vendorSlaDueDate: existingDue })
+    const db = makeMockDb({ ticket, serial: makeSerial() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateRepairTicketStatus({ id: 'rt-1', status: 'AWAITING_PARTS' })
+
+    const call = db.repairTicket.update.mock.calls[0][0] as { data: { vendorSlaDueDate: Date } }
+    expect(call.data.vendorSlaDueDate).toEqual(existingDue)
   })
 
   it('REPLACED requires a replacementSerialId', async () => {
@@ -290,5 +499,108 @@ describe('repairTicketService.updateRepairTicketStatus', () => {
     const res = await updateRepairTicketStatus({ id: 'missing', status: 'DIAGNOSED' })
     expect(res.success).toBe(false)
     expect(res.error?.code).toBe('RPR-008')
+  })
+})
+
+describe('repairTicketService.recordVendorClaim / recordVendorRecovery / writeOffVendorClaim', () => {
+  it('recordVendorClaim rejects a negative amount', async () => {
+    const db = makeMockDb({ ticket: makeTicket() })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorClaim({ id: 'rt-1', amount: -50 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-017')
+  })
+
+  it('recordVendorClaim returns not-found for a missing ticket id', async () => {
+    const db = makeMockDb({ ticket: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorClaim({ id: 'missing', amount: 1000 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-008')
+  })
+
+  it('recordVendorClaim stamps vendorClaimAmount on the ticket', async () => {
+    const ticket = makeTicket()
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorClaim({ id: 'rt-1', amount: 1200 })
+    expect(res.success).toBe(true)
+    expect(db.repairTicket.update).toHaveBeenCalledWith({ where: { id: 'rt-1' }, data: { vendorClaimAmount: 1200 } })
+  })
+
+  it('recordVendorRecovery rejects a zero or negative amount', async () => {
+    const db = makeMockDb({ ticket: makeTicket({ vendorClaimAmount: 1000 }) })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorRecovery({ id: 'rt-1', amount: 0 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-019')
+  })
+
+  it('recordVendorRecovery rejects when no claim has been recorded yet', async () => {
+    const db = makeMockDb({ ticket: makeTicket({ vendorClaimAmount: null }) })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorRecovery({ id: 'rt-1', amount: 500 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-020')
+  })
+
+  it('recordVendorRecovery accumulates onto vendorRecoveredAmount without closing a partial recovery', async () => {
+    const ticket = makeTicket({ vendorClaimAmount: 1000, vendorRecoveredAmount: 200 })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorRecovery({ id: 'rt-1', amount: 300 })
+    expect(res.success).toBe(true)
+    expect(db.repairTicket.update).toHaveBeenCalledWith({
+      where: { id: 'rt-1' },
+      data: { vendorRecoveredAmount: 500, vendorClaimClosedAt: null }
+    })
+  })
+
+  it('recordVendorRecovery auto-closes the claim once fully recovered', async () => {
+    const ticket = makeTicket({ vendorClaimAmount: 1000, vendorRecoveredAmount: 800 })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorRecovery({ id: 'rt-1', amount: 200 })
+    expect(res.success).toBe(true)
+    expect(db.repairTicket.update).toHaveBeenCalledWith({
+      where: { id: 'rt-1' },
+      data: { vendorRecoveredAmount: 1000, vendorClaimClosedAt: expect.any(Date) }
+    })
+  })
+
+  it('writeOffVendorClaim rejects when no claim has been recorded yet', async () => {
+    const db = makeMockDb({ ticket: makeTicket({ vendorClaimAmount: null }) })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await writeOffVendorClaim({ id: 'rt-1' })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-020')
+  })
+
+  it('writeOffVendorClaim rejects an already-closed claim', async () => {
+    const ticket = makeTicket({ vendorClaimAmount: 1000, vendorRecoveredAmount: 500, vendorClaimClosedAt: new Date('2026-08-01T00:00:00Z') })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await writeOffVendorClaim({ id: 'rt-1' })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('RPR-022')
+  })
+
+  it('writeOffVendorClaim stamps vendorClaimClosedAt without changing vendorRecoveredAmount', async () => {
+    const ticket = makeTicket({ vendorClaimAmount: 1000, vendorRecoveredAmount: 300 })
+    const db = makeMockDb({ ticket })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await writeOffVendorClaim({ id: 'rt-1' })
+    expect(res.success).toBe(true)
+    expect(db.repairTicket.update).toHaveBeenCalledWith({ where: { id: 'rt-1' }, data: { vendorClaimClosedAt: expect.any(Date) } })
   })
 })

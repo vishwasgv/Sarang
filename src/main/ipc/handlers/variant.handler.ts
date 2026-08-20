@@ -1,4 +1,4 @@
-import { listVariants, upsertVariants, deleteVariant, adjustVariantStock, getVariantSummary } from '../../services/variant.service'
+import { listVariants, upsertVariants, deleteVariant, adjustVariantStock, getVariantSummary, getSizeCurveReorderSuggestion } from '../../services/variant.service'
 import { generateVariantBarcode, bulkGenerateMissingVariantBarcodes } from '../../services/barcode.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
@@ -39,6 +39,14 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.view'); if (deny) return deny
     const p = (payload ?? {}) as { productId: string }
     return getVariantSummary(p.productId)
+  })
+
+  // Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+  handle('variants:sizeCurveReorderSuggestion', async (payload) => {
+    const deny = await requirePermission('products.view'); if (deny) return deny
+    const p = (payload ?? {}) as { productId: string; totalReorderQty?: number }
+    if (!p.productId) return { success: false, error: { code: 'VAL-001', message: 'productId is required.' } }
+    return getSizeCurveReorderSuggestion(p.productId, p.totalReorderQty)
   })
 
   // Phase 58 §2 — Clothing/Footwear variant barcode generation

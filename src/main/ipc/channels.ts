@@ -261,6 +261,20 @@ export interface IpcChannels {
     listCards: (payload?: { readyForRewardOnly?: boolean }) => Promise<ApiResponse>
     redeem: (customerId: string) => Promise<ApiResponse>
   }
+  templateSuggestion: {
+    get: () => Promise<ApiResponse>
+    isDismissed: () => Promise<ApiResponse>
+    dismiss: () => Promise<ApiResponse>
+  }
+  customDocuments: {
+    listTypes: (payload?: { activeOnly?: boolean }) => Promise<ApiResponse>
+    createType: (payload: unknown) => Promise<ApiResponse>
+    updateType: (payload: unknown) => Promise<ApiResponse>
+    listEntries: (documentTypeId: string) => Promise<ApiResponse>
+    createEntry: (payload: unknown) => Promise<ApiResponse>
+    updateEntry: (payload: unknown) => Promise<ApiResponse>
+    deleteEntry: (id: string) => Promise<ApiResponse>
+  }
   invoiceTemplates: {
     list: () => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
@@ -401,6 +415,7 @@ export interface IpcChannels {
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     cashFlowProjection: (payload?: { daysBack?: number; daysForward?: number }) => Promise<ApiResponse>
+    cashPositionTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     paymentPerformance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     customerLedger: (payload: unknown) => Promise<ApiResponse>
     supplierLedger: (payload: unknown) => Promise<ApiResponse>
@@ -411,7 +426,10 @@ export interface IpcChannels {
     recipeWasteVariance: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     deadStockClearance: (payload?: { days?: number }) => Promise<ApiResponse>
     categorySellThrough: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    seasonSellThrough: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    sizeStyleHeatmap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     basketComposition: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    categoryMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     fastSlowMoverMatrix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     gstr1: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     hsnSummary: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -459,6 +477,9 @@ export interface IpcChannels {
     attendance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     production: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     serialWarranty: () => Promise<ApiResponse>
+    rmaAging: () => Promise<ApiResponse>
+    vendorRecoveryLedger: () => Promise<ApiResponse>
+    repairTurnaroundByTechnician: () => Promise<ApiResponse>
     variantStock: () => Promise<ApiResponse>
     testScores: (payload?: { dateFrom?: string; dateTo?: string; batchId?: string }) => Promise<ApiResponse>
     complianceTasks: () => Promise<ApiResponse>
@@ -689,11 +710,15 @@ export interface IpcChannels {
   // Phase 58 §2 — Electronics repair/RMA workflow, linked to a specific
   // ProductSerial/IMEI.
   repairTickets: {
-    create: (payload: { serialId: string; customerId?: string; issueDescription: string; vendorId?: string; notes?: string }) => Promise<ApiResponse<{ id: string; claimNumber: string }>>
+    create: (payload: { serialId: string; customerId?: string; issueDescription: string; vendorId?: string; technicianId?: string; notes?: string }) => Promise<ApiResponse<{ id: string; claimNumber: string }>>
     list: (payload?: { status?: string; productId?: string; customerId?: string; search?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
     serviceHistory: (payload: { serialId: string }) => Promise<ApiResponse<{ tickets: unknown[]; replacedOnTicket: { id: string; claimNumber: string } | null; serial: { id: string; serialNumber: string; imeiNumber: string | null; status: string; productId: string; productName: string } | null }>>
-    updateStatus: (payload: { id: string; status: string; vendorId?: string; vendorRmaNumber?: string; replacementSerialId?: string; repairCost?: number; notes?: string }) => Promise<ApiResponse>
+    lookupSerialService: (payload: { search: string }) => Promise<ApiResponse<{ serial: { id: string; serialNumber: string; imeiNumber: string | null; imei2Number: string | null; status: string; warrantyExpiryDate: string | null; productId: string; productName: string }; purchase: { invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string | null; customerPhone: string | null; unitPrice: number } | null; tickets: unknown[]; replacedOnTicket: { id: string; claimNumber: string } | null }>>
+    updateStatus: (payload: { id: string; status: string; vendorId?: string; vendorRmaNumber?: string; replacementSerialId?: string; repairCost?: number; technicianId?: string; notes?: string }) => Promise<ApiResponse>
+    recordVendorClaim: (payload: { id: string; amount: number }) => Promise<ApiResponse>
+    recordVendorRecovery: (payload: { id: string; amount: number }) => Promise<ApiResponse>
+    writeOffVendorClaim: (payload: { id: string }) => Promise<ApiResponse>
   }
   returns: {
     create: (payload: { originalInvoiceId: string; items: Array<{ productId: string; quantity: number }>; reason: string }) => Promise<ApiResponse>
@@ -721,6 +746,8 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     adjustStock: (payload: { variantId: string; quantityDelta: number }) => Promise<ApiResponse>
     summary: (payload: { productId: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+    sizeCurveReorderSuggestion: (payload: { productId: string; totalReorderQty?: number }) => Promise<ApiResponse>
     // Phase 58 §2 — Clothing/Footwear variant barcode generation
     generateBarcode: (payload: { variantId: string }) => Promise<ApiResponse<{ barcode: string }>>
     bulkGenerateMissingBarcodes: (payload: { productId: string }) => Promise<ApiResponse<{ generated: number; totalMissing: number }>>
@@ -949,6 +976,7 @@ export interface IpcChannels {
     exportPdf: (id: string) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
     updateStatus: (payload: { id: string; status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' }) => Promise<ApiResponse>
     convertToInvoice: (id: string) => Promise<ApiResponse>
+    convertToSalesOrder: (id: string) => Promise<ApiResponse>
     convertToRetainer: (id: string) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
   }

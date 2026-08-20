@@ -23,6 +23,7 @@ import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { useNavigate } from 'react-router-dom'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
+import { TemplateSuggestionBanner } from './TemplateSuggestionBanner'
 interface InventoryStats { total: number; inStock: number; lowStock: number; outOfStock: number }
 interface DashboardKpis { todaySales: number; todayTrend: number; weekSales: number; weekTrend: number; monthSales: number; monthTrend: number; totalInvoices: number; outstanding: number; inventoryValue: number; monthExpenses: number; expenseTrend: number; estimatedProfit: number; profitTrend: number; lowStockCount: number; customerCount: number; supplierCount: number; inventoryStats: InventoryStats; occupiedTables?: number; kotPending?: number; kotInProgress?: number }
 interface TrendPoint { label: string; revenue: number; expenses: number }
@@ -407,6 +408,8 @@ export function DashboardScreen() {
         </div>
       )}
 
+      <TemplateSuggestionBanner />
+
       {/* ─── Alerts ───────────────────────────────────────────────────── */}
       <AnimatePresence>
         {alerts.map((alert, i) => (
@@ -432,6 +435,11 @@ export function DashboardScreen() {
             {alert.type === 'RENTAL_OVERDUE' && (
               <button onClick={() => navigate('/rental/bookings')} className="text-xs font-semibold underline shrink-0">
                 {t('dashboard.reviewRentals')}
+              </button>
+            )}
+            {alert.type === 'RMA_OVERDUE' && (
+              <button onClick={() => navigate('/electronics/repair-tickets')} className="text-xs font-semibold underline shrink-0">
+                {t('dashboard.reviewRepairTickets')}
               </button>
             )}
             {(alert.type === 'LICENSE_EXPIRING' || alert.type === 'LICENSE_EXPIRED') && (

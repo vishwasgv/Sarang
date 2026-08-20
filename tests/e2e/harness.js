@@ -270,6 +270,30 @@ function cleanupByNamePrefix(prefix) {
       try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(sid) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(sid) }
     }
 
+    // Phase 67 §9.1 — General: Universal Quote -> Order -> Invoice pipeline
+    // needed the first-ever E2E test SalesOrder AND the first-ever E2E test
+    // Quotation in this codebase. SalesOrder.customerId is a plain (RESTRICT)
+    // FK — deleted first (its items cascade automatically), same reasoning
+    // as the Supplier/PurchaseOrder block above, so the Customer loop below
+    // never gets silently forced into the soft-delete fallback. Quotation
+    // deleted after (its own items cascade automatically too;
+    // Quotation.customerId is SET NULL, not RESTRICT, but deleting it here
+    // regardless keeps no test quotations lingering in the shared dev DB).
+    const soIds = new Set()
+    for (const cid of custIds) {
+      for (const row of db.prepare('SELECT id FROM SalesOrder WHERE customerId = ?').all(cid)) soIds.add(row.id)
+    }
+    for (const soId of soIds) {
+      try { db.prepare('DELETE FROM SalesOrder WHERE id = ?').run(soId) } catch { /* still referenced — leave it, not worth failing cleanup over */ }
+    }
+    const quoteIds = new Set()
+    for (const cid of custIds) {
+      for (const row of db.prepare('SELECT id FROM Quotation WHERE customerId = ?').all(cid)) quoteIds.add(row.id)
+    }
+    for (const qid of quoteIds) {
+      try { db.prepare('DELETE FROM Quotation WHERE id = ?').run(qid) } catch { /* still referenced (e.g. a converted Invoice) — leave it, not worth failing cleanup over */ }
+    }
+
     const invIds = new Set()
     for (const pid of prodIds) {
       for (const row of db.prepare('SELECT invoiceId FROM InvoiceItem WHERE productId = ?').all(pid)) {
@@ -329,7 +353,22 @@ function cleanupByNamePrefix(prefix) {
       try { db.prepare('DELETE FROM ProductCategory WHERE id = ?').run(cid) } catch { /* still referenced — leave it, not worth failing cleanup over */ }
     }
 
-    return { invoicesRemoved: invIds.size, customersHandled: custIds.length, productsHandled: prodIds.length, categoriesHandled: catIds.length, suppliersHandled: supIds.length, purchaseOrdersHandled: poIds.size }
+    // Phase 67 §9.1 — General: Custom Document Builder needed the first-ever
+    // E2E test CustomDocumentType. CustomDocumentEntry.documentTypeId is ON
+    // DELETE RESTRICT, so entries must go first. A document type's own field
+    // definitions live in CustomFieldDefinition under the namespaced
+    // entityType key `CUSTOM_DOCUMENT:<id>` (see custom-document.service.ts's
+    // customDocumentEntityType()) — deleted too, or a leftover field
+    // definition would silently accumulate forever with no name to
+    // prefix-match against on its own.
+    const cdtIds = db.prepare('SELECT id FROM CustomDocumentType WHERE name LIKE ?').all(like).map((r) => r.id)
+    for (const cdtId of cdtIds) {
+      db.prepare('DELETE FROM CustomDocumentEntry WHERE documentTypeId = ?').run(cdtId)
+      db.prepare('DELETE FROM CustomFieldDefinition WHERE entityType = ?').run(`CUSTOM_DOCUMENT:${cdtId}`)
+      try { db.prepare('DELETE FROM CustomDocumentType WHERE id = ?').run(cdtId) } catch { /* still referenced — leave it, not worth failing cleanup over */ }
+    }
+
+    return { invoicesRemoved: invIds.size, customersHandled: custIds.length, productsHandled: prodIds.length, categoriesHandled: catIds.length, suppliersHandled: supIds.length, purchaseOrdersHandled: poIds.size, customDocumentTypesHandled: cdtIds.length, salesOrdersHandled: soIds.size, quotationsHandled: quoteIds.size }
   })
 }
 

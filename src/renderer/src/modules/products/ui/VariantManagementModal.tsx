@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Plus, Trash2, Save, Grid3x3, Barcode, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Save, Grid3x3, Barcode, RefreshCw, TrendingUp } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -45,6 +45,12 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   const [matrixColors, setMatrixColors] = useState('')
   const MAX_MATRIX_COMBOS = 300
   const [generatingBarcodeFor, setGeneratingBarcodeFor] = useState<number | null>(null)
+
+  // Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+  const [showReorderSuggestion, setShowReorderSuggestion] = useState(false)
+  const [reorderQtyInput, setReorderQtyInput] = useState('')
+  const [reorderSuggestion, setReorderSuggestion] = useState<{ totalReorderQty: number; lookbackDays: number; rows: Array<{ variantId: string; size: string | null; color: string | null; unitsSoldRecently: number; suggestedQuantity: number }> } | null>(null)
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false)
 
   const loadVariants = useCallback(async () => {
     if (!productId) return
@@ -139,6 +145,24 @@ export function VariantManagementModal({ open, productId, productName, onClose }
     })
     toastSuccess('Variants Generated', `${newRows.length} variant${newRows.length === 1 ? '' : 's'} added${skipped > 0 ? ` (${skipped} already existed, skipped)` : ''}. Review below, then Save.`)
     setMatrixSizes(''); setMatrixColors('')
+  }
+
+  async function handleSuggestReorder() {
+    setLoadingSuggestion(true)
+    setReorderSuggestion(null)
+    try {
+      const qty = reorderQtyInput.trim() ? Number(reorderQtyInput) : undefined
+      const res = await window.api.variants.sizeCurveReorderSuggestion({ productId, totalReorderQty: qty })
+      if (res.success && res.data) {
+        setReorderSuggestion(res.data as typeof reorderSuggestion)
+      } else {
+        toastError('Could Not Suggest', (res.error as { message?: string })?.message ?? 'Could not compute a reorder suggestion.')
+      }
+    } catch {
+      toastError('Could Not Suggest', 'Could not compute a reorder suggestion.')
+    } finally {
+      setLoadingSuggestion(false)
+    }
   }
 
   async function generateBarcodeForRow(idx: number) {
@@ -244,6 +268,52 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                 <Button size="sm" variant="secondary" onClick={generateMatrix}>Generate</Button>
               </div>
               <p className="text-xs text-slate-400">Leave one field blank to generate a single dimension (e.g. sizes only, no colours). Generated rows still need Save below.</p>
+            </div>
+
+            {/* Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+                A read-only breakdown, not a new ordering mechanism — the
+                owner still places the real order manually via Purchase
+                Orders, informed by this split. */}
+            <div className="mb-4 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
+              <button type="button" onClick={() => setShowReorderSuggestion(s => !s)} className="w-full flex items-center justify-between text-start">
+                <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><TrendingUp size={15} /> Suggested Reorder Split</p>
+                <span className="text-xs text-slate-400">{showReorderSuggestion ? 'Hide' : 'Show'}</span>
+              </button>
+              {showReorderSuggestion && (
+                <div className="space-y-3 pt-1">
+                  <p className="text-xs text-slate-400">Weights a reorder quantity toward the sizes/colours that actually sold in the last {reorderSuggestion?.lookbackDays ?? 90} days, instead of splitting evenly — so you stop over-ordering the slow sizes.</p>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 min-w-[180px]">
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Total quantity to reorder</label>
+                      <input value={reorderQtyInput} onChange={e => setReorderQtyInput(e.target.value)} type="number" min="1" placeholder="Uses this product's own reorder quantity if left blank"
+                        className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={handleSuggestReorder} loading={loadingSuggestion}>Suggest Split</Button>
+                  </div>
+                  {reorderSuggestion && (
+                    <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800">
+                          <tr>
+                            <th className="text-start px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Variant</th>
+                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Sold Recently</th>
+                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Suggested Qty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reorderSuggestion.rows.map(row => (
+                            <tr key={row.variantId} className="border-t border-slate-100 dark:border-slate-800">
+                              <td className="px-3 py-2 text-dark dark:text-slate-100">{[row.size, row.color].filter(Boolean).join(' / ') || '—'}</td>
+                              <td className="px-3 py-2 text-end text-slate-500 dark:text-slate-400">{row.unitsSoldRecently}</td>
+                              <td className="px-3 py-2 text-end font-semibold text-dark dark:text-slate-100">{row.suggestedQuantity}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="overflow-auto flex-1">

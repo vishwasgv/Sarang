@@ -159,6 +159,16 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — General: Combined Cash Position Trend. reports.financial
+  // — same tier as reports:cashBook, the report this most closely sits beside.
+  handle('reports:cashPositionTrend', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateCashPositionTrendReport(p)
+    return { success: true, data }
+  })
+
   // Phase 65 — Payment Performance Report. reports.outstanding — same
   // receivables/collections trust boundary as reports:outstanding/apAging.
   handle('reports:paymentPerformance', async (payload) => {
@@ -233,6 +243,32 @@ export function register(handle: HandleFn): void {
     const p = payload as { dateFrom: string; dateTo: string }
     if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
     const data = await reportService.generateCategorySellThroughReport(p)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report.
+  handle('reports:seasonSellThrough', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateSeasonSellThroughReport(p)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Clothing: Size × Style Heatmap Report.
+  handle('reports:sizeStyleHeatmap', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateSizeStyleHeatmapReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:categoryMix', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateCategoryMixReport(p)
     return { success: true, data }
   })
 
@@ -641,6 +677,32 @@ export function register(handle: HandleFn): void {
   handle('reports:serialWarranty', async () => {
     const deny = await requirePermission('reports.inventory'); if (deny) return deny
     const data = await reportService.generateSerialWarrantyReport()
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Electronics: RMA Aging Report.
+  handle('reports:rmaAging', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateRmaAgingReport()
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Electronics: Vendor Warranty-Claim Recovery Ledger.
+  // reports.financial — this is a money-owed-to-the-shop ledger, same trust
+  // tier as other financial reports, not the plain inventory-status tier
+  // rmaAging/serialWarranty above use.
+  handle('reports:vendorRecoveryLedger', async () => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const data = await reportService.generateVendorRecoveryLedgerReport()
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Electronics: Repair Turnaround by Technician. Same
+  // reports.inventory tier as rmaAging/serialWarranty above — a service-
+  // quality/operations metric, not a money-owed one like vendorRecoveryLedger.
+  handle('reports:repairTurnaroundByTechnician', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateRepairTurnaroundByTechnicianReport()
     return { success: true, data }
   })
 

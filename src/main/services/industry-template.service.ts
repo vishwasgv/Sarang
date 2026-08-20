@@ -209,6 +209,8 @@ export type TemplateModule =
   // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
   | 'price_markdowns'
   | 'loyalty_program'
+  // Phase 67 §9.1 — General: Custom Document Builder.
+  | 'custom_documents'
 
 export interface TemplateConfig {
   businessType: string
@@ -273,7 +275,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   RETAIL:      ['returns', 'price_markdowns', 'loyalty_program', ...LOGISTICS_MODULES],
   HARDWARE:    ['area_pricing', 'credit_limit_enforcement', ...LOGISTICS_MODULES],
   DISTRIBUTOR: ['credit_limit_enforcement', 'bulk_orders', 'outstanding_analytics', 'field_order_capture', ...LOGISTICS_MODULES],
-  GENERAL:     [...LOGISTICS_MODULES],
+  GENERAL:     ['custom_documents', ...LOGISTICS_MODULES],
   // Phase 2
   PHARMACY:    ['batch_tracking', 'expiry_tracking', ...LOGISTICS_MODULES],
   ELECTRONICS: ['serial_tracking', 'imei_tracking', 'warranty_tracking', 'repair_rma', ...LOGISTICS_MODULES],

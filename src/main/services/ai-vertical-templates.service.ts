@@ -27,7 +27,11 @@
 import { getActiveTemplate } from './industry-template.service'
 import { getOccupancyReport } from './hotel.service'
 import { reportService } from './report.service'
+import { lookupSerialService } from './repair-ticket.service'
+import { getSizeCurveReorderSuggestion } from './variant.service'
 import { loyaltyProgramService } from './loyalty-program.service'
+import { getTemplateSuggestion } from './template-suggestion.service'
+import { customDocumentService } from './custom-document.service'
 import { getPlacementKPIs } from './placement.service'
 import { formatAmountForSpeech } from './ai-format.util'
 import { getPrisma } from '../database/db'
@@ -117,9 +121,17 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // gets a matching AI intent per Section 1.2's "any new report gets a
     // matching AI query pattern" rule.
     case 'HARDWARE': return ['hardware.fastSlowMoverMatrix']
+    // Phase 67 §9.1 — General's item 1 ("Which template fits you?" wizard)
+    // gets a matching AI intent per Section 1.2's rule — the same signal
+    // computation the Dashboard banner already surfaces, answerable by
+    // asking the AI directly instead of finding the banner.
+    // Phase 67 §9.1 — General's item 2 (Custom Document Builder) gets its
+    // own matching intent too, same "any new feature gets an AI answer"
+    // rule this item's precedents (e.g. Retail's loyaltyProgress) followed.
+    case 'GENERAL': return ['general.templateSuggestion', 'general.customDocumentSummary', 'general.categoryMix', 'general.cashPositionTrend', 'general.quotePipelineSummary']
     case 'MANUFACTURING': return ['manufacturing.production']
-    case 'ELECTRONICS': return ['electronics.serialWarranty']
-    case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock']
+    case 'ELECTRONICS': return ['electronics.serialWarranty', 'electronics.rmaOverdueSummary', 'electronics.vendorRecovery', 'electronics.repairTurnaround', 'electronics.serialServiceLookup']
+    case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap']
     case 'COACHING_INSTITUTE': return ['coaching.testScores', 'coaching.feeDuesAndAttendance']
     case 'CA_FIRM': case 'COMPANY_SECRETARY': return ['compliance.tasks', 'compliance.upcomingFilings']
     case 'REPAIR': return ['repair.jobCards']
@@ -338,6 +350,58 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         isEmpty: thisMonth.length === 0
       }
     }
+    // Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report.
+    case 'clothing.seasonSellThrough': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateSeasonSellThroughReport({ dateFrom, dateTo })
+      const thisMonth = r.rows.filter(row => row.unitsSold > 0 || row.currentStock > 0)
+      const sorted = [...thisMonth].sort((a, b) => b.sellThroughRate - a.sellThroughRate)
+      const top = sorted[0] ?? null
+      return {
+        headline: top ? `${top.season} leads this month at ${top.sellThroughRate}% sell-through` : 'No season/collection sales this month yet',
+        details: sorted.slice(0, 3).map(row => `${row.season}: ${row.sellThroughRate}% (${row.unitsSold} sold, ${row.currentStock} in stock)`),
+        isEmpty: thisMonth.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Clothing: size-curve reorder suggestion. Requires a
+    // specific product named in the question (unlike this vertical's own
+    // sell-through intent above, which is an aggregate) — reuses the exact
+    // same product-name-or-SKU lookup shape ai-query.service.ts's own
+    // inventory.productCostBasis intent already established.
+    case 'clothing.sizeCurveReorderSuggestion': {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const db = getPrisma()
+      const product = await db.product.findFirst({
+        where: { isActive: true, OR: [{ productName: { contains: term } }, { sku: { contains: term } }] },
+        select: { id: true, productName: true }
+      })
+      if (!product) return { headline: '', details: [], isEmpty: true }
+      const res = await getSizeCurveReorderSuggestion(product.id)
+      if (!res.success || !res.data) return { headline: '', details: [], isEmpty: true }
+      const top = res.data.rows.filter(row => row.suggestedQuantity > 0).slice(0, 5)
+      return {
+        headline: `Suggested reorder split for ${product.productName}: ${res.data.totalReorderQty} units across ${res.data.rows.length} variants`,
+        details: top.map(row => `${[row.size, row.color].filter(Boolean).join('/') || 'Variant'}: ${row.suggestedQuantity} units (${row.unitsSoldRecently} sold recently)`),
+        isEmpty: res.data.rows.every(row => row.suggestedQuantity === 0)
+      }
+    }
+    // Phase 67 §9.1 — Clothing: Size × Style Heatmap. An aggregate whole-
+    // catalog question (unlike item 2's own per-product one above) —
+    // this month's top-selling style/size combination.
+    case 'clothing.sizeStyleHeatmap': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateSizeStyleHeatmapReport({ dateFrom, dateTo })
+      if (r.cells.length === 0) return { headline: '', details: [], isEmpty: true }
+      const top = [...r.cells].sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5)
+      return {
+        headline: r.summary.topCellStyle
+          ? `${r.summary.topCellStyle} / ${r.summary.topCellSize} is your top-moving combination this month, ${r.summary.topCellUnitsSold} units`
+          : 'No variant sales this month yet',
+        details: top.map(c => `${c.style} / ${c.size}: ${c.unitsSold} units`),
+        isEmpty: r.summary.totalUnitsSold === 0
+      }
+    }
     case 'retail.loyaltyProgress': {
       const r = await loyaltyProgramService.getSummary()
       if (!r.success) {
@@ -361,6 +425,81 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: top ? `${top.productAName} + ${top.productBName} bought together in ${top.basketCount} baskets this month` : 'No repeated product pairings found this month',
         details: r.rows.slice(0, 3).map(row => `${row.productAName} + ${row.productBName}: ${row.basketCount} baskets`),
         isEmpty: r.rows.length === 0
+      }
+    }
+    case 'general.templateSuggestion': {
+      const r = await getTemplateSuggestion()
+      if (!r.success || !r.data) {
+        return { headline: 'No specific business template stands out from your activity yet', details: [], isEmpty: true }
+      }
+      const d = r.data
+      return {
+        headline: `Your activity looks like a ${d.businessType} business (${d.matchedCount} matching records) — worth checking Settings → Industry`,
+        details: [`Signal: ${d.signalKey}`],
+        isEmpty: false
+      }
+    }
+    case 'general.cashPositionTrend': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCashPositionTrendReport({ dateFrom, dateTo })
+      return {
+        headline: r.points.length > 0
+          ? `Your cash position ${r.netChange >= 0 ? 'grew' : 'fell'} by ${formatAmountForSpeech(Math.abs(r.netChange), sym)} this month, from ${formatAmountForSpeech(r.openingBalance, sym)} to ${formatAmountForSpeech(r.closingBalance, sym)}`
+          : 'No cash movement recorded this month',
+        details: [`Opening: ${formatAmountForSpeech(r.openingBalance, sym)}`, `Closing: ${formatAmountForSpeech(r.closingBalance, sym)}`],
+        isEmpty: r.points.length === 0
+      }
+    }
+    case 'general.categoryMix': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCategoryMixReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top ? `${top.categoryName} leads with ${top.revenuePercent}% of revenue this month (${r.summary.categoryCount} categories total)` : 'No categorized product sales this month',
+        details: r.rows.slice(0, 3).map(row => `${row.categoryName}: ${row.revenuePercent}% of revenue`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+    // Read-only reporting, same convention as every other vertical AI
+    // intent in this file — reports the funnel, never triggers a conversion
+    // itself (matches the "create a sales order" universal intent's own
+    // established pattern of pointing at the screen, not acting on it).
+    case 'general.quotePipelineSummary': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const db = getPrisma()
+      const quotations = await db.quotation.findMany({
+        where: { createdAt: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } },
+        select: { invoice: { select: { id: true } }, salesOrder: { select: { id: true } } }
+      })
+      const total = quotations.length
+      const toInvoice = quotations.filter(q => q.invoice).length
+      const toSalesOrder = quotations.filter(q => q.salesOrder).length
+      const pending = total - toInvoice - toSalesOrder
+      return {
+        headline: total > 0
+          ? `${total} quotation${total === 1 ? '' : 's'} this month — ${toInvoice} billed directly, ${toSalesOrder} moved to a Sales Order, ${pending} still pending`
+          : 'No quotations created this month',
+        details: [`Direct to invoice: ${toInvoice}`, `Via Sales Order: ${toSalesOrder}`, `Pending: ${pending}`],
+        isEmpty: total === 0
+      }
+    }
+    case 'general.customDocumentSummary': {
+      const typesRes = await customDocumentService.listTypes({ activeOnly: true })
+      if (!typesRes.success) return { headline: '', details: [], isEmpty: true }
+      const types = typesRes.data as { id: string; name: string }[]
+      if (types.length === 0) {
+        return { headline: 'No custom document types have been set up yet', details: [], isEmpty: true }
+      }
+      const counts = await Promise.all(types.map(async (dt) => {
+        const entriesRes = await customDocumentService.listEntries(dt.id)
+        return { name: dt.name, count: entriesRes.success ? (entriesRes.data as unknown[]).length : 0 }
+      }))
+      const total = counts.reduce((s, c) => s + c.count, 0)
+      return {
+        headline: `${total} entries logged across ${types.length} custom document type${types.length === 1 ? '' : 's'}`,
+        details: counts.map((c) => `${c.name}: ${c.count} entries`),
+        isEmpty: total === 0
       }
     }
     case 'hardware.fastSlowMoverMatrix': {
@@ -401,6 +540,78 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${r.summary.inStock} devices in stock, ${r.summary.sold} sold`,
         details: [`Warranty expiring soon: ${r.summary.warrantyExpiringSoon}`, `Warranty already expired: ${r.summary.warrantyExpired}`],
         isEmpty: r.summary.totalSerials === 0
+      }
+    }
+    // Phase 67 §9.1 — Electronics: RMA SLA tracker. Read-only, same
+    // convention as every other vertical AI intent — surfaces the count,
+    // never acts on it.
+    case 'electronics.rmaOverdueSummary': {
+      const db = getPrisma()
+      const overdue = await db.repairTicket.findMany({
+        where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, vendorSlaDueDate: { lt: new Date() } },
+        select: { claimNumber: true, product: { select: { productName: true } }, sentToVendorDate: true },
+        orderBy: { sentToVendorDate: 'asc' },
+        take: 5
+      })
+      const count = overdue.length
+      return {
+        headline: count > 0
+          ? `${count} unit${count === 1 ? ' is' : 's are'} overdue from vendor RMA (past the 30-day SLA)`
+          : 'No RMA units are currently overdue',
+        details: overdue.map(t => `${t.claimNumber} — ${t.product.productName}, sent ${t.sentToVendorDate ? t.sentToVendorDate.toISOString().slice(0, 10) : ''}`),
+        isEmpty: count === 0
+      }
+    }
+    // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+    // A genuinely different question from rmaOverdueSummary (money owed,
+    // not time-with-vendor), so it gets its own intent rather than reusing
+    // the SLA one — see item 2's own explicit non-duplication note above
+    // for the case where reuse WAS the right call.
+    case 'electronics.vendorRecovery': {
+      const r = await reportService.generateVendorRecoveryLedgerReport()
+      return {
+        headline: r.summary.openCount > 0
+          ? `₹${r.summary.totalOutstanding.toFixed(0)} outstanding across ${r.summary.openCount} open vendor claim${r.summary.openCount === 1 ? '' : 's'}`
+          : 'No open vendor warranty claims',
+        details: r.rows.filter(row => !row.isClosed).slice(0, 5).map(row => `${row.claimNumber} — ${row.productName}: ₹${row.outstandingAmount.toFixed(0)} outstanding`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Electronics: repair turnaround by technician. A
+    // service-quality question, distinct from both rmaOverdueSummary
+    // (vendor SLA) and vendorRecovery (money) — this one is about how fast
+    // the shop's OWN staff complete work, its own genuinely new question.
+    case 'electronics.repairTurnaround': {
+      const r = await reportService.generateRepairTurnaroundByTechnicianReport()
+      const fastest = r.rows[0]
+      return {
+        headline: r.rows.length > 0
+          ? `${r.summary.overallAvgTurnaroundDays} day avg. repair turnaround across ${r.summary.technicianCount} technician${r.summary.technicianCount === 1 ? '' : 's'}`
+          : 'No completed repair tickets have a technician assigned yet',
+        details: fastest ? [`Fastest: ${fastest.technicianName} — ${fastest.avgTurnaroundDays} day avg. (${fastest.ticketCount} tickets)`] : [],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Electronics: serial-number service lookup. Unlike
+    // items 1/2/3/4's own aggregate/summary questions, this one needs a
+    // specific serial number or IMEI pulled out of the question text —
+    // reuses the same generic params.searchTerm extraction (a code-like
+    // token) already established for customer/invoice lookups elsewhere in
+    // this file's sibling ai-query.service.ts, rather than inventing a
+    // second extraction mechanism.
+    case 'electronics.serialServiceLookup': {
+      const term = params.searchTerm as string | undefined
+      if (!term) return { headline: '', details: [], isEmpty: true }
+      const res = await lookupSerialService(term)
+      if (!res.success || !res.data) return { headline: '', details: [], isEmpty: true }
+      const { serial, purchase, tickets } = res.data
+      const purchaseLine = purchase
+        ? `Sold on ${purchase.invoiceNumber} (${purchase.invoiceDate.slice(0, 10)})${purchase.customerName ? ` to ${purchase.customerName}` : ''}`
+        : 'Never sold — still in stock'
+      return {
+        headline: `${serial.productName} (${serial.serialNumber}) — ${tickets.length} repair ticket${tickets.length === 1 ? '' : 's'} on record`,
+        details: [purchaseLine, ...tickets.slice(0, 5).map(tk => `${tk.claimNumber} — ${tk.issueDescription} (${tk.status})`)],
+        isEmpty: false
       }
     }
     case 'retail.variantStock': {

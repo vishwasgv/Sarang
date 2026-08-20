@@ -12,7 +12,11 @@ interface CustomFieldDefinition {
 }
 
 
-type CustomFieldEntityType = 'INVOICE' | 'CUSTOMER' | 'SUPPLIER' | 'PRODUCT' | 'EXPENSE'
+// Phase 67 §9.1 — General item 2's Custom Document Builder passes a
+// namespaced `CUSTOM_DOCUMENT:<id>` value here (see custom-field.validation.ts's
+// own widened schema) — widened from the original fixed 5-entity union to
+// also accept that pattern, without loosening it to an arbitrary string.
+type CustomFieldEntityType = 'INVOICE' | 'CUSTOMER' | 'SUPPLIER' | 'PRODUCT' | 'EXPENSE' | `CUSTOM_DOCUMENT:${string}`
 
 // Shared by every entity form's own openEdit() — parses the JSON-string
 // blob a record's own `customFields` column stores back into the plain

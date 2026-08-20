@@ -12,6 +12,7 @@
     "pricingSchemes": "Skema Harga",
     "priceMarkdowns": "Markdown Harga",
     "loyaltyProgram": "Program Loyalitas",
+    "customDocuments": "Dokumen Kustom",
     "recurringProfiles": "Profil Berulang",
     "locations": "Lokasi",
     "approvalWorkflows": "Alur Persetujuan",
@@ -214,7 +215,8 @@
     "monthSales": "Penjualan Bulan Ini",
     "reviewAuditLog": "Tinjau",
     "reviewRentals": "Tinjau",
-    "renewLicense": "Perbarui",
+    "reviewRepairTickets": "Tinjau",
+"renewLicense": "Perbarui",
     "viewUpdate": "Lihat",
     "spotlight": {
       "membershipTitle": "Fokus Keanggotaan",
@@ -276,6 +278,29 @@
       "avgPainScore": "Skor Nyeri Rata-rata",
       "avgFunctionalScore": "Skor Fungsional Rata-rata",
       "chronicRecallTitle": "Fokus Pengingat Kronis"
+    },
+    "templateSuggestion": {
+      "title": "Mencari template yang lebih cocok?",
+      "explore": "Jelajahi template bisnis",
+      "dismiss": "Tutup saran ini",
+      "template": {
+        "HARDWARE": "Hardware",
+        "JEWELLERY": "Perhiasan",
+        "RENTAL": "Rental",
+        "RESTAURANT": "Restoran",
+        "REPAIR": "Bengkel Reparasi",
+        "SERVICE": "Bisnis Jasa",
+        "RETAIL": "Ritel"
+      },
+      "reason": {
+        "cartonProducts": "Anda memiliki {{count}} produk yang diatur dengan penagihan karton/paket — ini terlihat seperti pola {{template}}.",
+        "jewelleryProducts": "Anda memiliki {{count}} produk dengan harga berdasarkan berat logam yang diatur — ini terlihat seperti pola {{template}}.",
+        "rentalProducts": "Anda memiliki {{count}} produk yang ditandai sebagai dapat disewa — ini terlihat seperti pola {{template}}.",
+        "kotOrders": "Anda telah mengirim {{count}} pesanan ke dapur — ini terlihat seperti pola {{template}}.",
+        "repairJobs": "Anda telah mencatat {{count}} tiket reparasi atau pekerjaan — ini terlihat seperti pola {{template}}.",
+        "appointments": "Anda telah memesan {{count}} janji temu — ini terlihat seperti pola {{template}}.",
+        "variantOrLooseProducts": "Anda memiliki {{count}} produk dengan varian ukuran/warna atau harga berdasarkan berat curah — ini terlihat seperti pola {{template}}."
+      }
     }
   },
   "billing": {
@@ -653,6 +678,13 @@
     "bulkImportTitle": "Impor Massal Perangkat",
     "imeiLookup": "Cari IMEI",
     "imeiPlaceholder": "Masukkan nomor IMEI…",
+    "serviceLookup": "Pencarian Layanan",
+    "serviceLookupPlaceholder": "Pindai atau masukkan nomor seri atau IMEI…",
+    "serviceLookupNotFound": "Tidak ada perangkat yang ditemukan dengan nomor seri atau IMEI ini.",
+    "purchaseHistory": "Pembelian",
+    "neverSold": "Belum pernah terjual — masih tersedia di stok.",
+    "repairHistory": "Riwayat Perbaikan",
+    "noRepairHistory": "Belum ada tiket perbaikan untuk unit ini.",
     "deviceSerial": "Perangkat / Serial",
     "warranty": "Garansi",
     "changeStatus": "Ubah Status",
@@ -1231,6 +1263,30 @@
     "couldNotSave": "Tidak dapat menyimpan program loyalitas.",
     "couldNotRedeem": "Tidak dapat menukarkan hadiah."
   },
+  "customDocuments": {
+    "title": "Dokumen Kustom",
+    "subtitle": "Tentukan register dan log Anda sendiri — bidang, entri, semuanya milik Anda",
+    "newType": "Jenis Dokumen Baru",
+    "editType": "Edit Jenis Dokumen",
+    "typeName": "Nama Dokumen",
+    "typeNamePlaceholder": "mis. Register Pengunjung, Log Keluhan",
+    "nameRequired": "Nama wajib diisi.",
+    "noTypesYet": "Belum ada jenis dokumen kustom. Buat satu untuk mulai mencatat entri.",
+    "selectOrCreateType": "Pilih jenis dokumen di sebelah kiri, atau buat yang baru.",
+    "manageFields": "Kelola Bidang",
+    "noFieldsYet": "Belum ada bidang yang ditentukan untuk jenis dokumen ini.",
+    "entries": "{{count}} entri",
+    "newEntry": "Entri Baru",
+    "editEntry": "Edit Entri",
+    "noEntriesYet": "Belum ada entri yang dicatat.",
+    "details": "Detail",
+    "notes": "Catatan",
+    "deleteEntryTitle": "Hapus Entri?",
+    "deleteEntryMessage": "Entri ini akan dihapus secara permanen. Ini tidak dapat dibatalkan.",
+    "couldNotLoad": "Tidak dapat memuat dokumen kustom.",
+    "couldNotSave": "Tidak dapat menyimpan.",
+    "couldNotDelete": "Tidak dapat menghapus entri."
+  },
   "recurringProfiles": {
     "title": "Profil Berulang",
     "subtitle": "{{count}} profil — tagihan dan pengeluaran yang dibuat sendiri sesuai jadwal",
@@ -1565,9 +1621,21 @@
         "label": "Tingkat Penjualan per Kategori",
         "description": "Bulan demi bulan, berapa bagian dari unit terjual-ditambah-stok setiap kategori yang benar-benar terjual — kenali kategori yang bergerak cepat dibanding yang menumpuk"
       },
+      "seasonSellThrough": {
+        "label": "Tingkat Penjualan per Musim/Koleksi",
+        "description": "Bulan demi bulan, berapa bagian dari unit terjual-plus-stok setiap musim atau koleksi yang benar-benar terjual — lihat koleksi mana yang bergerak cepat dan mana yang menumpuk"
+      },
+      "sizeStyleHeatmap": {
+        "label": "Peta Panas Ukuran × Gaya",
+        "description": "Kisi unit terjual berdasarkan gaya dan ukuran — lihat sekilas kombinasi mana yang benar-benar terjual"
+      },
       "basketComposition": {
         "label": "Komposisi Keranjang",
         "description": "Produk mana yang paling sering dibeli bersamaan dalam penjualan yang sama — kenali kombinasi dan pasangan alami yang layak diletakkan berdampingan atau ditawarkan sebagai paket"
+      },
+      "categoryMix": {
+        "label": "Komposisi Kategori",
+        "description": "Berapa persen pendapatan Anda yang berasal dari setiap kategori produk dalam rentang tanggal tertentu — lihat sekilas kategori mana yang mendorong bisnis dan mana yang hanya berkontribusi kecil"
       },
       "fastSlowMoverMatrix": {
         "label": "Matriks Produk Perputaran Cepat vs. Lambat",
@@ -1620,6 +1688,18 @@
       "serialWarranty": {
         "label": "Laporan Serial & Garansi",
         "description": "Nomor seri berdasarkan status garansi — kedaluwarsa, akan kedaluwarsa, aktif"
+      },
+      "rmaAging": {
+        "label": "Laporan Usia RMA",
+        "description": "Setiap unit yang saat ini berada di vendor untuk perbaikan atau penggantian, diurutkan berdasarkan berapa lama sudah pergi — temukan unit yang tersangkut melewati SLA 30 hari"
+      },
+      "vendorRecoveryLedger": {
+        "label": "Buku Besar Pemulihan Vendor",
+        "description": "Klaim garansi yang diajukan terhadap vendor untuk biaya perbaikan — jumlah yang diklaim, jumlah yang dipulihkan, dan yang masih terutang"
+      },
+      "repairTurnaroundByTechnician": {
+        "label": "Waktu Perbaikan berdasarkan Teknisi",
+        "description": "Waktu perbaikan rata-rata, tercepat, dan terlambat per teknisi — metrik kualitas layanan yang nyata"
       },
       "variantStock": {
         "label": "Laporan Stok Varian",
@@ -1749,6 +1829,10 @@
         "label": "Proyeksi Arus Kas",
         "description": "Pergerakan kas aktual bulan lalu, ditambah yang jatuh tempo dan diproyeksikan untuk bulan mendatang"
       },
+      "cashPositionTrend": {
+        "label": "Tren Posisi Kas Gabungan",
+        "description": "Total saldo kas & bank Anda, hari demi hari dalam rentang tanggal — lihat posisi berjalan yang sebenarnya, bukan hanya angka pada satu titik waktu"
+      },
       "paymentPerformance": {
         "label": "Kinerja Pembayaran",
         "description": "Berapa hari pelanggan benar-benar membutuhkan waktu untuk membayar lunas, diurutkan berdasarkan pelanggan"
@@ -1877,10 +1961,20 @@
       "sellThroughByCategoryMonth": "Tingkat Penjualan per Kategori, per Bulan",
       "sellThroughStockNote": "Dibandingkan dengan stok yang tersedia saat ini untuk setiap bulan yang ditampilkan — ini adalah tampilan tren, bukan tingkat stok historis masing-masing bulan.",
       "avgSellThroughByCategory": "Rata-rata Tingkat Penjualan per Kategori",
+      "sellThroughBySeasonMonth": "Tingkat Penjualan per Musim/Koleksi, per Bulan",
+      "avgSellThroughBySeason": "Rata-rata Penjualan per Musim/Koleksi",
+      "overallAverage": "Rata-rata Keseluruhan",
+      "totalUnitsSold": "Total Unit Terjual",
+      "topCombination": "Kombinasi Teratas",
+      "topCombinationUnits": "Unit Kombinasi Teratas",
+      "sizeStyleHeatmap": "Peta Panas Ukuran × Gaya",
       "totalBaskets": "Total Keranjang",
       "avgItemsPerBasket": "Rata-rata Barang per Keranjang",
       "avgBasketValue": "Nilai Rata-rata Keranjang",
       "topProductPairs": "Paling Sering Dibeli Bersama",
+      "categoryCount": "Kategori",
+      "revenueByCategory": "Pendapatan per Kategori",
+      "cashPositionTrend": "Tren Posisi Kas",
       "balanceTrend": "Tren Saldo",
       "balanceTrendSampledNote": "Akun ini memiliki banyak aktivitas — garis tren menampilkan sampel titik yang representatif, bukan setiap entri. Tabel di bawah tetap mencantumkan setiap transaksi.",
       "velocityMedian": "Median Kecepatan",
@@ -1928,6 +2022,13 @@
       "inStock": "Tersedia",
       "warrantyExpiringSoon": "Garansi Akan Berakhir",
       "warrantyExpired": "Garansi Kedaluwarsa",
+      "totalOpen": "Saat Ini di Vendor",
+      "daysWithVendorByUnit": "Hari di Vendor, per Unit",
+      "totalOutstanding": "Total Terutang",
+      "outstandingByClaim": "Jumlah Terutang, per Klaim",
+      "technicianCount": "Teknisi",
+      "totalTicketsCompleted": "Tiket Selesai",
+      "avgTurnaroundByTechnician": "Rata-rata Hari Penyelesaian, per Teknisi",
       "totalVariants": "Total Varian",
       "totalStockQty": "Total Kuantitas Stok",
       "outOfStockVariants": "Varian Kehabisan Stok",
@@ -2119,7 +2220,11 @@
       "recipeWasteVariance": "Tidak ada aktivitas bahan terkait resep ditemukan dalam rentang tanggal ini.",
       "deadStockClearance": "Tidak ada stok mati ditemukan — setiap produk dalam stok telah terjual baru-baru ini.",
       "categorySellThrough": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
+      "seasonSellThrough": "Tidak ada produk yang memiliki musim/koleksi yang diatur, atau tidak ada penjualan yang ditemukan dalam rentang tanggal ini.",
+      "sizeStyleHeatmap": "Tidak ada penjualan dengan pelacakan varian yang ditemukan dalam rentang tanggal ini.",
       "basketComposition": "Tidak ditemukan keranjang dengan 2 atau lebih produk berbeda dalam rentang tanggal ini.",
+      "categoryMix": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
+      "cashPositionTrend": "Tidak ditemukan pergerakan kas dalam rentang tanggal ini.",
       "fastSlowMoverMatrix": "Tidak ada produk yang terjual dalam rentang tanggal ini.",
       "gstr1": "Tidak ada faktur kena pajak ditemukan untuk periode ini.",
       "appointments": "Tidak ada jadwal temu dalam rentang tanggal ini.",
@@ -2132,6 +2237,9 @@
       "attendance": "Tidak ada catatan kehadiran dalam rentang tanggal ini.",
       "productionOrders": "Tidak ada pesanan produksi dalam rentang tanggal ini.",
       "serials": "Tidak ada nomor seri ditemukan.",
+      "rmaAging": "Tidak ada unit yang saat ini berada di vendor untuk perbaikan atau penggantian.",
+      "vendorRecoveryLedger": "Belum ada klaim garansi vendor yang tercatat.",
+      "repairTurnaroundByTechnician": "Belum ada tiket perbaikan selesai yang memiliki teknisi yang ditugaskan.",
       "variants": "Tidak ada varian produk ditemukan.",
       "testScores": "Belum ada nilai ujian tercatat.",
       "complianceTasks": "Tidak ada tugas kepatuhan yang tertunda atau terlambat.",
@@ -2189,6 +2297,7 @@
       "sku": "SKU",
       "product": "Produk",
       "category": "Kategori",
+      "season": "Musim/Koleksi",
       "type": "Jenis",
       "stock": "Stok",
       "costPrice": "Harga Beli",
@@ -2305,6 +2414,9 @@
       "productA": "Produk A",
       "productB": "Produk B",
       "basketCount": "Keranjang",
+      "revenuePercent": "% Pendapatan",
+      "balance": "Saldo",
+      "netChange": "Perubahan Bersih",
       "velocity": "Kecepatan (unit/hari)",
       "shipmentCount": "Pengiriman",
       "freightAmount": "Jumlah Angkutan",
@@ -2317,6 +2429,16 @@
       "completedDate": "Tanggal Selesai",
       "serialNumber": "Nomor Seri",
       "warrantyExpiry": "Kedaluwarsa Garansi",
+      "claimNumber": "No. Klaim",
+      "daysWithVendor": "Hari di Vendor",
+      "claimedAmount": "Jumlah Diklaim",
+      "recoveredAmount": "Jumlah Dipulihkan",
+      "technician": "Teknisi",
+      "ticketCount": "Tiket",
+      "avgTurnaroundDays": "Rata-rata Penyelesaian (hari)",
+      "minTurnaroundDays": "Tercepat (hari)",
+      "maxTurnaroundDays": "Terlambat (hari)",
+      "style": "Gaya",
       "size": "Ukuran",
       "color": "Warna",
       "stockQty": "Kuantitas Stok",
@@ -2413,6 +2535,10 @@
       "atRiskFlag": "⚠ Berisiko",
       "lowFlag": "⚠ Rendah",
       "cartonsAndPieces": "{{cartons}} karton + {{pieces}} pcs",
+      "overdue": "Terlambat",
+      "onTrack": "Sesuai Jadwal",
+      "open": "Terbuka",
+      "closed": "Ditutup",
       "quadrant": {
         "FAST_HIGH_MARGIN": "Cepat, Margin Tinggi",
         "FAST_LOW_MARGIN": "Cepat, Margin Rendah",
@@ -3204,6 +3330,10 @@
         "title": "Program Loyalitas",
         "body": "Atur berapa banyak kunjungan yang menghasilkan hadiah dan apa hadiah itu — cap ditambahkan secara otomatis ke kartu pelanggan pada setiap penjualan yang memenuhi syarat, tanpa langkah tambahan saat checkout. Tukarkan di sini setelah diperoleh."
       },
+      "customDocuments": {
+        "title": "Dokumen Kustom",
+        "body": "Tentukan register Anda sendiri — Log Pengunjung, Buku Keluhan, apa pun yang belum ada — dengan bidang Anda sendiri, lalu catat entri bertanggal untuknya."
+      },
       "recurringProfiles": {
         "title": "Profil Berulang",
         "body": "Atur faktur, tagihan, atau pengeluaran untuk berulang sesuai jadwal — mingguan, bulanan, atau tahunan — sehingga Anda tidak perlu lagi membuat ulang dokumen yang sama secara manual."
@@ -3799,6 +3929,10 @@
     "convertToRetainer": "Ubah menjadi Retainer",
     "convertedToRetainer": "Penawaran diubah menjadi keterlibatan retainer",
     "failedConvertRetainer": "Gagal mengubah menjadi retainer",
+    "convertToSalesOrder": "Ubah menjadi Sales Order",
+    "convertToSalesOrderHint": "Membuat Sales Order dari penawaran ini — tagih secara penuh atau bertahap dari sana, bukan satu faktur langsung.",
+    "convertedToSalesOrder": "Penawaran diubah menjadi Sales Order",
+    "failedConvertSalesOrder": "Gagal mengubah menjadi Sales Order",
     "deleted": "Penawaran dihapus",
     "failedDelete": "Gagal menghapus",
     "deleteTitle": "Hapus Penawaran",

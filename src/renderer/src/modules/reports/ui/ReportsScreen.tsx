@@ -18,7 +18,16 @@ import {
   LineChart as RCLineChart, Line,
   // Phase 67 §9.1 — Hardware's Fast-Mover vs. Slow-Mover Matrix is this
   // file's first scatter plot.
-  ScatterChart, Scatter, ZAxis
+  ScatterChart, Scatter, ZAxis,
+  // Phase 67 §9.1 — General's Category Mix report is this file's first
+  // pie chart; aliased to avoid colliding with the same-named lucide-react
+  // icon already imported above (same reasoning as RCLineChart).
+  PieChart as RCPieChart, Pie,
+  // Phase 67 §9.1 — Clothing's Season Sell-Through report is this file's
+  // first genuine line+bar combo chart (per-season bars, overlaid with an
+  // overall-average trend line), matching the artifact's own "(line + bar
+  // combo)" chart-form note for this item.
+  ComposedChart
 } from 'recharts'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
@@ -110,6 +119,9 @@ interface StatutoryComplianceSummaryReport { periodYear: number; periodMonth: nu
 interface CashFlowDayBucket { date: string; actualNet: number | null; projectedNet: number | null }
 interface CashFlowProjectionReport { asOf: string; daysBack: number; daysForward: number; days: CashFlowDayBucket[] }
 
+interface CashPositionTrendPoint { date: string; balance: number }
+interface CashPositionTrendReport { dateFrom: string; dateTo: string; points: CashPositionTrendPoint[]; openingBalance: number; closingBalance: number; netChange: number }
+
 interface PaymentPerformanceRow { customerId: string; customerName: string; paidInvoiceCount: number; avgDaysToPay: number | null; outstandingInvoiceCount: number; outstandingAmount: number }
 interface PaymentPerformanceReport { dateFrom: string; dateTo: string; rows: PaymentPerformanceRow[]; overallAvgDaysToPay: number | null }
 
@@ -136,9 +148,16 @@ interface DeadStockClearanceReport { asOfDate: string; lookbackDays: number; row
 
 interface CategorySellThroughRow { month: string; categoryId: string; categoryName: string; unitsSold: number; currentStock: number; sellThroughRate: number }
 interface CategorySellThroughReport { dateFrom: string; dateTo: string; rows: CategorySellThroughRow[] }
+interface SeasonSellThroughRow { month: string; season: string; unitsSold: number; currentStock: number; sellThroughRate: number }
+interface SeasonSellThroughReport { dateFrom: string; dateTo: string; rows: SeasonSellThroughRow[] }
+interface SizeStyleHeatmapCell { style: string; size: string; unitsSold: number }
+interface SizeStyleHeatmapReport { dateFrom: string; dateTo: string; styles: string[]; sizes: string[]; cells: SizeStyleHeatmapCell[]; summary: { totalUnitsSold: number; topCellStyle: string | null; topCellSize: string | null; topCellUnitsSold: number } }
 
 interface BasketPairRow { productAId: string; productAName: string; productBId: string; productBName: string; basketCount: number }
 interface BasketCompositionReport { dateFrom: string; dateTo: string; summary: { totalBaskets: number; avgItemsPerBasket: number; avgBasketValue: number }; rows: BasketPairRow[] }
+
+interface CategoryMixRow { categoryId: string; categoryName: string; unitsSold: number; revenue: number; revenuePercent: number }
+interface CategoryMixReport { dateFrom: string; dateTo: string; rows: CategoryMixRow[]; summary: { totalRevenue: number; categoryCount: number } }
 
 type MoverQuadrant = 'FAST_HIGH_MARGIN' | 'FAST_LOW_MARGIN' | 'SLOW_HIGH_MARGIN' | 'SLOW_LOW_MARGIN'
 interface FastSlowMoverRow { productId: string; productName: string; sku: string | null; quantitySold: number; velocity: number; sellingPrice: number; unitCost: number; marginPercent: number; quadrant: MoverQuadrant }
@@ -420,6 +439,12 @@ interface SerialWarrantyReport {
   summary: { totalSerials: number; inStock: number; sold: number; warrantyExpiringSoon: number; warrantyExpired: number }
   buckets: SerialWarrantyBucket[]; rows: SerialWarrantyRow[]
 }
+interface RmaAgingRow { claimNumber: string; productName: string; vendorName: string | null; sentToVendorDate: string; daysWithVendor: number; isOverdue: boolean }
+interface RmaAgingReport { generatedAt: string; rows: RmaAgingRow[]; summary: { totalOpen: number; overdueCount: number } }
+interface VendorRecoveryRow { claimNumber: string; productName: string; vendorName: string | null; claimedAmount: number; recoveredAmount: number; outstandingAmount: number; isClosed: boolean; closedAt: string | null }
+interface VendorRecoveryLedgerReport { generatedAt: string; rows: VendorRecoveryRow[]; summary: { totalClaimed: number; totalRecovered: number; totalOutstanding: number; openCount: number; closedCount: number } }
+interface TechnicianTurnaroundRow { technicianId: string; technicianName: string; ticketCount: number; avgTurnaroundDays: number; minTurnaroundDays: number; maxTurnaroundDays: number }
+interface RepairTurnaroundByTechnicianReport { generatedAt: string; rows: TechnicianTurnaroundRow[]; summary: { technicianCount: number; totalTicketsCompleted: number; overallAvgTurnaroundDays: number } }
 
 interface VariantStockRow { productName: string; size: string | null; color: string | null; sku: string | null; stockQty: number }
 interface VariantStockReport {
@@ -462,10 +487,10 @@ type ReportChart =
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
-  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'basketComposition' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
+  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'basketComposition' | 'categoryMix' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
-  | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'variantStock'
+  | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'rmaAging' | 'vendorRecoveryLedger' | 'repairTurnaroundByTechnician' | 'variantStock'
   | 'testScores' | 'complianceTasks'
   | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'serviceProjects' | 'jobCards'
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
@@ -481,7 +506,7 @@ type ReportType =
   // Phase 61 — Purchase-side reports (Section 3.1 item 5)
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
   // Phase 65 — Cost Centres, Budgets & Payroll Compliance
-  | 'costCentreTreemap' | 'budgetVsActual' | 'statutoryComplianceSummary' | 'cashFlowProjection' | 'paymentPerformance'
+  | 'costCentreTreemap' | 'budgetVsActual' | 'statutoryComplianceSummary' | 'cashFlowProjection' | 'cashPositionTrend' | 'paymentPerformance'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -530,6 +555,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'expenses', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'profitAndLoss', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashBook', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
+  // Phase 67 §9.1 — General: Combined Cash Position Trend. A day-by-day
+  // CUMULATIVE balance for the "Cash & Bank" GL account, distinct from
+  // cashFlowProjection above (daily NET movement, not a running position).
+  { id: 'cashPositionTrend', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial', requiredBusinessType: 'GENERAL' },
   { id: 'trialBalance', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
@@ -542,7 +571,18 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // as Inventory Report/Batch Expiry (requiresDateRange: false).
   { id: 'deadStockClearance', icon: <Boxes size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'RETAIL' },
   { id: 'categorySellThrough', icon: <TrendingUp size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: 'RETAIL' },
+  // Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report. Both
+  // CLOTHING and FOOTWEAR — the audit's own field note flags Footwear as
+  // sharing Clothing's exact module set byte-for-byte.
+  { id: 'seasonSellThrough', icon: <TrendingUp size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
+  // Phase 67 §9.1 — Clothing: Size × Style Heatmap Report. Same icon
+  // convention as the pre-existing Table Turnover heatmap.
+  { id: 'sizeStyleHeatmap', icon: <Table size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
   { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'RETAIL' },
+  // Phase 67 §9.1 — General: Category Mix. What share of revenue each
+  // user-defined ProductCategory contributes over a date range — distinct
+  // from Category Sell-Through's own month-by-month rate-vs-stock view.
+  { id: 'categoryMix', icon: <PieChart size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'GENERAL' },
   // Phase 67 §9.1 — Hardware: Fast-Mover vs. Slow-Mover Matrix. A scatter of
   // velocity x margin, quadrant-split by each axis's own median — see
   // report.service.ts's generateFastSlowMoverMatrixReport for why a median
@@ -568,6 +608,19 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'attendance', icon: <CalendarCheck size={18} />, category: 'admin', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'production', icon: <Factory size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'production_orders' },
   { id: 'serialWarranty', icon: <ScanLine size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'serial_tracking' },
+  // Phase 67 §9.1 — Electronics: RMA Aging Report. Every currently-open
+  // vendor RMA, ranked by days with vendor — a full breakdown, distinct
+  // from the Dashboard's own alert-style overdue-only count.
+  { id: 'rmaAging', icon: <Wrench size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'repair_rma' },
+  // Phase 67 §9.1 — Electronics: Vendor Warranty-Claim Recovery Ledger. A
+  // money-owed-to-the-shop ledger, so category 'finance' + reports.financial
+  // — same pairing cashBook above uses — not the plain inventory-status tier
+  // rmaAging itself sits in.
+  { id: 'vendorRecoveryLedger', icon: <DollarSign size={18} />, category: 'finance', requiresDateRange: false, permission: 'reports.financial', requiredModule: 'repair_rma' },
+  // Phase 67 §9.1 — Electronics: Repair Turnaround by Technician. Same
+  // inventory-status tier + repair_rma gate as rmaAging above — an
+  // operations/service-quality metric, not a financial one.
+  { id: 'repairTurnaroundByTechnician', icon: <Timer size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'repair_rma' },
   { id: 'variantStock', icon: <Shirt size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'variant_tracking' },
   { id: 'testScores', icon: <GraduationCap size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
@@ -835,8 +888,17 @@ export function ReportsScreen() {
         case 'categorySellThrough':
           res = await window.api.reports.categorySellThrough({ dateFrom, dateTo })
           break
+        case 'seasonSellThrough':
+          res = await window.api.reports.seasonSellThrough({ dateFrom, dateTo })
+          break
+        case 'sizeStyleHeatmap':
+          res = await window.api.reports.sizeStyleHeatmap({ dateFrom, dateTo })
+          break
         case 'basketComposition':
           res = await window.api.reports.basketComposition({ dateFrom, dateTo })
+          break
+        case 'categoryMix':
+          res = await window.api.reports.categoryMix({ dateFrom, dateTo })
           break
         case 'fastSlowMoverMatrix':
           res = await window.api.reports.fastSlowMoverMatrix({ dateFrom, dateTo })
@@ -910,6 +972,9 @@ export function ReportsScreen() {
         }
         case 'cashFlowProjection':
           res = await window.api.reports.cashFlowProjection({})
+          break
+        case 'cashPositionTrend':
+          res = await window.api.reports.cashPositionTrend({ dateFrom, dateTo })
           break
         case 'paymentPerformance':
           res = await window.api.reports.paymentPerformance({ dateFrom, dateTo })
@@ -1024,6 +1089,15 @@ export function ReportsScreen() {
           break
         case 'serialWarranty':
           res = await window.api.reports.serialWarranty()
+          break
+        case 'rmaAging':
+          res = await window.api.reports.rmaAging()
+          break
+        case 'vendorRecoveryLedger':
+          res = await window.api.reports.vendorRecoveryLedger()
+          break
+        case 'repairTurnaroundByTechnician':
+          res = await window.api.reports.repairTurnaroundByTechnician()
           break
         case 'variantStock':
           res = await window.api.reports.variantStock()
@@ -1220,11 +1294,32 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.month, r.categoryName, r.unitsSold, r.currentStock, `${r.sellThroughRate}%`])
         }
       }
+      case 'seasonSellThrough': {
+        const d = reportData as SeasonSellThroughReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.season'), t('reports.col.unitsSold'), t('reports.col.stock'), t('reports.col.sellThroughRate')],
+          rows: d.rows.map(r => [r.month, r.season, r.unitsSold, r.currentStock, `${r.sellThroughRate}%`])
+        }
+      }
+      case 'sizeStyleHeatmap': {
+        const d = reportData as SizeStyleHeatmapReport
+        return {
+          headers: [t('reports.col.style'), t('reports.col.size'), t('reports.col.unitsSold')],
+          rows: d.cells.map(c => [c.style, c.size, c.unitsSold])
+        }
+      }
       case 'basketComposition': {
         const d = reportData as BasketCompositionReport
         return {
           headers: [t('reports.col.productA'), t('reports.col.productB'), t('reports.col.basketCount')],
           rows: d.rows.map(r => [r.productAName, r.productBName, r.basketCount])
+        }
+      }
+      case 'categoryMix': {
+        const d = reportData as CategoryMixReport
+        return {
+          headers: [t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.revenue'), t('reports.col.revenuePercent')],
+          rows: d.rows.map(r => [r.categoryName, r.unitsSold, r.revenue, `${r.revenuePercent}%`])
         }
       }
       case 'fastSlowMoverMatrix': {
@@ -1401,6 +1496,13 @@ export function ReportsScreen() {
         return {
           headers: [t('common.date'), `${t('reports.col.actual')} (${currencySymbol})`, `${t('reports.col.projected')} (${currencySymbol})`],
           rows: d.days.map(b => [b.date, b.actualNet ?? '', b.projectedNet ?? ''])
+        }
+      }
+      case 'cashPositionTrend': {
+        const d = reportData as CashPositionTrendReport
+        return {
+          headers: [t('common.date'), `${t('reports.col.balance')} (${currencySymbol})`],
+          rows: d.points.map(p => [p.date, p.balance])
         }
       }
       case 'paymentPerformance': {
@@ -1667,6 +1769,27 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.serialNumber'), t('reports.col.product'), t('common.status'), t('reports.col.warrantyExpiry'), t('reports.col.daysToExpiry')],
           rows: d.rows.map(r => [r.serialNumber, r.productName, r.status, r.warrantyExpiryDate, r.daysToExpiry])
+        }
+      }
+      case 'rmaAging': {
+        const d = reportData as RmaAgingReport
+        return {
+          headers: [t('reports.col.claimNumber'), t('reports.col.product'), t('reports.col.supplier'), t('reports.col.daysWithVendor'), t('common.status')],
+          rows: d.rows.map(r => [r.claimNumber, r.productName, r.vendorName ?? '—', r.daysWithVendor, r.isOverdue ? t('reports.val.overdue') : t('reports.val.onTrack')])
+        }
+      }
+      case 'vendorRecoveryLedger': {
+        const d = reportData as VendorRecoveryLedgerReport
+        return {
+          headers: [t('reports.col.claimNumber'), t('reports.col.product'), t('reports.col.supplier'), t('reports.col.claimedAmount'), t('reports.col.recoveredAmount'), t('reports.col.outstanding'), t('common.status')],
+          rows: d.rows.map(r => [r.claimNumber, r.productName, r.vendorName ?? '—', r.claimedAmount, r.recoveredAmount, r.outstandingAmount, r.isClosed ? t('reports.val.closed') : t('reports.val.open')])
+        }
+      }
+      case 'repairTurnaroundByTechnician': {
+        const d = reportData as RepairTurnaroundByTechnicianReport
+        return {
+          headers: [t('reports.col.technician'), t('reports.col.ticketCount'), t('reports.col.avgTurnaroundDays'), t('reports.col.minTurnaroundDays'), t('reports.col.maxTurnaroundDays')],
+          rows: d.rows.map(r => [r.technicianName, r.ticketCount, r.avgTurnaroundDays, r.minTurnaroundDays, r.maxTurnaroundDays])
         }
       }
       case 'variantStock': {
@@ -2044,6 +2167,14 @@ export function ReportsScreen() {
           { label: t('reports.col.projected'), value: fmt(totalProjected) }
         ]
       }
+      case 'cashPositionTrend': {
+        const d = reportData as CashPositionTrendReport
+        return [
+          { label: t('reports.col.openingBalance'), value: fmt(d.openingBalance) },
+          { label: t('reports.col.closingBalance'), value: fmt(d.closingBalance) },
+          { label: t('reports.col.netChange'), value: fmt(d.netChange) }
+        ]
+      }
       case 'paymentPerformance': {
         const d = reportData as PaymentPerformanceReport
         return [
@@ -2355,6 +2486,29 @@ export function ReportsScreen() {
           { label: t('reports.summary.warrantyExpired'), value: String(d.summary.warrantyExpired) }
         ]
       }
+      case 'rmaAging': {
+        const d = reportData as RmaAgingReport
+        return [
+          { label: t('reports.summary.totalOpen'), value: String(d.summary.totalOpen) },
+          { label: t('reports.val.overdue'), value: String(d.summary.overdueCount) }
+        ]
+      }
+      case 'vendorRecoveryLedger': {
+        const d = reportData as VendorRecoveryLedgerReport
+        return [
+          { label: t('reports.col.claimedAmount'), value: fmt(d.summary.totalClaimed) },
+          { label: t('reports.col.recoveredAmount'), value: fmt(d.summary.totalRecovered) },
+          { label: t('reports.col.outstanding'), value: fmt(d.summary.totalOutstanding) }
+        ]
+      }
+      case 'repairTurnaroundByTechnician': {
+        const d = reportData as RepairTurnaroundByTechnicianReport
+        return [
+          { label: t('reports.summary.technicianCount'), value: String(d.summary.technicianCount) },
+          { label: t('reports.summary.totalTicketsCompleted'), value: String(d.summary.totalTicketsCompleted) },
+          { label: t('reports.col.avgTurnaroundDays'), value: String(d.summary.overallAvgTurnaroundDays) }
+        ]
+      }
       case 'variantStock': {
         const d = reportData as VariantStockReport
         return [
@@ -2493,11 +2647,34 @@ export function ReportsScreen() {
         const avgRows = Array.from(byCategory.entries()).map(([label, e]) => ({ label, value: Math.round((e.total / e.count) * 10) / 10 })).sort((a, b) => b.value - a.value)
         return [{ type: 'bar', title: t('reports.summary.avgSellThroughByCategory'), data: avgRows }]
       }
+      case 'seasonSellThrough': {
+        const d = reportData as SeasonSellThroughReport
+        if (d.rows.length === 0) return []
+        const bySeason = new Map<string, { total: number; count: number }>()
+        for (const r of d.rows) {
+          const e = bySeason.get(r.season) ?? { total: 0, count: 0 }
+          e.total += r.sellThroughRate; e.count += 1
+          bySeason.set(r.season, e)
+        }
+        const avgRows = Array.from(bySeason.entries()).map(([label, e]) => ({ label, value: Math.round((e.total / e.count) * 10) / 10 })).sort((a, b) => b.value - a.value)
+        return [{ type: 'bar', title: t('reports.summary.avgSellThroughBySeason'), data: avgRows }]
+      }
+      // A heatmap grid isn't representable in any of the existing PDF chart
+      // types (bar/line/pie/scatter) — same as the pre-existing Table
+      // Turnover heatmap, the export table already carries every cell.
+      case 'sizeStyleHeatmap': return []
       case 'basketComposition': {
         const d = reportData as BasketCompositionReport
         if (d.rows.length === 0) return []
         const top = [...d.rows].slice(0, 10)
         return [{ type: 'bar', title: t('reports.summary.topProductPairs'), data: top.map(r => ({ label: `${r.productAName} + ${r.productBName}`, value: r.basketCount })) }]
+      }
+      // First use of the 'pie' ReportChart variant in this codebase — fits
+      // Category Mix's "share of revenue" framing better than a bar chart.
+      case 'categoryMix': {
+        const d = reportData as CategoryMixReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'pie', title: t('reports.summary.revenueByCategory'), data: d.rows.map(r => ({ label: r.categoryName, value: r.revenue })), valueIsCurrency: true }]
       }
       // Deliberately no bar/pie/line chart — Table Turnover by Hour IS
       // itself a chart (a day-of-week x hour-of-day heatmap grid), rendered
@@ -2717,6 +2894,23 @@ export function ReportsScreen() {
         const d = reportData as SerialWarrantyReport
         return [{ type: 'bar', orientation: 'vertical', title: t('reports.section.byWarrantyStatus'), data: d.buckets.map(b => ({ label: t(WARRANTY_BUCKET_LABEL_KEY[b.bucket]), value: b.count, color: WARRANTY_BUCKET_COLOR[b.bucket] })) }]
       }
+      case 'rmaAging': {
+        const d = reportData as RmaAgingReport
+        if (d.rows.length === 0) return []
+        const top = d.rows.slice(0, 10)
+        return [{ type: 'bar', orientation: 'vertical', title: t('reports.summary.daysWithVendorByUnit'), data: top.map(r => ({ label: `${r.claimNumber} — ${r.productName}`, value: r.daysWithVendor, color: r.isOverdue ? STATUS_COLORS.dangerDeep : STATUS_COLORS.warning })) }]
+      }
+      case 'vendorRecoveryLedger': {
+        const d = reportData as VendorRecoveryLedgerReport
+        const top = d.rows.filter(r => !r.isClosed).slice(0, 10)
+        if (top.length === 0) return []
+        return [{ type: 'bar', orientation: 'vertical', title: t('reports.summary.outstandingByClaim'), data: top.map(r => ({ label: `${r.claimNumber} — ${r.productName}`, value: r.outstandingAmount, color: STATUS_COLORS.dangerDeep })) }]
+      }
+      case 'repairTurnaroundByTechnician': {
+        const d = reportData as RepairTurnaroundByTechnicianReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', orientation: 'vertical', title: t('reports.summary.avgTurnaroundByTechnician'), data: d.rows.map(r => ({ label: r.technicianName, value: r.avgTurnaroundDays })) }]
+      }
       case 'variantStock': {
         const d = reportData as VariantStockReport
         const byProduct = new Map<string, number>()
@@ -2733,6 +2927,11 @@ export function ReportsScreen() {
         const d = reportData as TestScoreReport
         const data = d.studentSummaries.slice(0, 10).map(s => ({ label: s.studentName, value: s.averagePercentage }))
         return data.length ? [{ type: 'bar', orientation: 'vertical', title: t('reports.section.byStudent'), data }] : []
+      }
+      case 'cashPositionTrend': {
+        const d = reportData as CashPositionTrendReport
+        if (d.points.length === 0) return []
+        return [{ type: 'line', title: t('reports.summary.cashPositionTrend'), data: d.points.map(p => ({ label: p.date, value: p.balance })), valueIsCurrency: true }]
       }
       default: return []
     }
@@ -2943,7 +3142,7 @@ export function ReportsScreen() {
             )}
 
             {/* Optional date range for non-date-required, non-simple reports */}
-            {!def.requiresDateRange && activeReport !== 'inventory' && activeReport !== 'outstanding' && activeReport !== 'backup' && activeReport !== 'batchExpiry' && activeReport !== 'bloodStock' && activeReport !== 'serialWarranty' && activeReport !== 'variantStock' && activeReport !== 'complianceTasks' && (
+            {!def.requiresDateRange && activeReport !== 'inventory' && activeReport !== 'outstanding' && activeReport !== 'backup' && activeReport !== 'batchExpiry' && activeReport !== 'bloodStock' && activeReport !== 'serialWarranty' && activeReport !== 'variantStock' && activeReport !== 'complianceTasks' && activeReport !== 'rmaAging' && activeReport !== 'vendorRecoveryLedger' && activeReport !== 'repairTurnaroundByTechnician' && (
               <>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.dateFrom')}</label>
@@ -3085,7 +3284,10 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'recipeWasteVariance': return <RecipeWasteVarianceView data={data as RecipeWasteVarianceReport} />
     case 'deadStockClearance': return <DeadStockClearanceView data={data as DeadStockClearanceReport} fmt={fmt} />
     case 'categorySellThrough': return <CategorySellThroughView data={data as CategorySellThroughReport} />
+    case 'seasonSellThrough': return <SeasonSellThroughView data={data as SeasonSellThroughReport} />
+    case 'sizeStyleHeatmap': return <SizeStyleHeatmapView data={data as SizeStyleHeatmapReport} />
     case 'basketComposition': return <BasketCompositionView data={data as BasketCompositionReport} />
+    case 'categoryMix': return <CategoryMixView data={data as CategoryMixReport} />
     case 'fastSlowMoverMatrix': return <FastSlowMoverMatrixView data={data as FastSlowMoverMatrixReport} />
     case 'gstr1': return <GSTR1ReportView data={data as GSTR1Report} fmt={fmt} />
     case 'hsnSummary': return <HSNSummaryView data={data as HSNSummaryReport} fmt={fmt} />
@@ -3108,6 +3310,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'budgetVsActual': return <BudgetVsActualView data={data as BudgetVsActualReport} fmt={fmt} />
     case 'statutoryComplianceSummary': return <StatutoryComplianceSummaryView data={data as StatutoryComplianceSummaryReport} fmt={fmt} />
     case 'cashFlowProjection': return <CashFlowProjectionView data={data as CashFlowProjectionReport} fmt={fmt} />
+    case 'cashPositionTrend': return <CashPositionTrendView data={data as CashPositionTrendReport} fmt={fmt} />
     case 'paymentPerformance': return <PaymentPerformanceView data={data as PaymentPerformanceReport} fmt={fmt} />
     case 'batchExpiry': return <BatchExpiryView data={data as BatchExpiryReport} fmt={fmt} />
     case 'labThroughput': return <LabThroughputView data={data as LabThroughputReport} />
@@ -3146,6 +3349,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
     case 'serialWarranty': return <SerialWarrantyView data={data as SerialWarrantyReport} />
+    case 'rmaAging': return <RmaAgingView data={data as RmaAgingReport} />
+    case 'vendorRecoveryLedger': return <VendorRecoveryLedgerView data={data as VendorRecoveryLedgerReport} />
+    case 'repairTurnaroundByTechnician': return <RepairTurnaroundByTechnicianView data={data as RepairTurnaroundByTechnicianReport} />
     case 'variantStock': return <VariantStockView data={data as VariantStockReport} />
     case 'testScores': return <TestScoreView data={data as TestScoreReport} />
     case 'complianceTasks': return <ComplianceTaskView data={data as ComplianceTaskReport} />
@@ -3832,6 +4038,107 @@ function CategorySellThroughView({ data }: { data: CategorySellThroughReport }) 
   )
 }
 
+function SeasonSellThroughView({ data }: { data: SeasonSellThroughReport }) {
+  const { t } = useTranslation()
+  const seasons = Array.from(new Set(data.rows.map(r => r.season))).sort()
+  const months = Array.from(new Set(data.rows.map(r => r.month))).sort()
+  const chartRows = months.map(month => {
+    const row: Record<string, string | number> = { month }
+    let sum = 0; let count = 0
+    for (const r of data.rows) if (r.month === month) { row[r.season] = r.sellThroughRate; sum += r.sellThroughRate; count += 1 }
+    row.overallAvg = count > 0 ? Math.round((sum / count) * 10) / 10 : 0
+    return row
+  })
+  return (
+    <div className="space-y-6">
+      {chartRows.length > 0 && seasons.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">{t('reports.summary.sellThroughBySeasonMonth')}</h3>
+          <p className="text-xs text-slate-400 mb-4">{t('reports.summary.sellThroughStockNote')}</p>
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={chartRows} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {seasons.map((name, i) => (
+                <Bar key={name} dataKey={name} name={name} fill={SELL_THROUGH_PALETTE[i % SELL_THROUGH_PALETTE.length]} radius={[4, 4, 0, 0]} />
+              ))}
+              <Line type="monotone" dataKey="overallAvg" name={t('reports.summary.overallAverage')} stroke={STATUS_COLORS.dangerDeep} strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.month'), t('reports.col.season'), t('reports.col.unitsSold'), t('reports.col.stock'), t('reports.col.sellThroughRate')]}
+        rows={data.rows.map(r => [r.month, r.season, r.unitsSold, r.currentStock, `${r.sellThroughRate}%`])}
+        emptyText={t('reports.empty.seasonSellThrough')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Clothing: Size × Style Heatmap. Same hand-built CSS-grid
+// heatmap approach as the pre-existing Table Turnover heatmap (this
+// codebase has no charting-library heatmap primitive) — rows are styles
+// (capped to the top 15 by net units sold), columns are every size present.
+function SizeStyleHeatmapView({ data }: { data: SizeStyleHeatmapReport }) {
+  const { t } = useTranslation()
+  const maxUnits = Math.max(1, ...data.cells.map(c => c.unitsSold))
+  const cellByStyleSize = new Map(data.cells.map(c => [`${c.style}|${c.size}`, c.unitsSold]))
+  const topCellLabel = data.summary.topCellStyle && data.summary.topCellSize
+    ? `${data.summary.topCellStyle} / ${data.summary.topCellSize}`
+    : '—'
+
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalUnitsSold'), value: String(data.summary.totalUnitsSold) },
+        { label: t('reports.summary.topCombination'), value: topCellLabel },
+        { label: t('reports.summary.topCombinationUnits'), value: String(data.summary.topCellUnitsSold) },
+      ]} />
+      {data.styles.length > 0 && data.sizes.length > 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.sizeStyleHeatmap')}</h3>
+          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `10rem repeat(${data.sizes.length}, 3rem)` }}>
+            <div />
+            {data.sizes.map(size => (
+              <div key={`h-${size}`} className="text-[10px] text-slate-400 text-center">{size}</div>
+            ))}
+            {data.styles.map(style => (
+              <React.Fragment key={`row-${style}`}>
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={style}>{style}</div>
+                {data.sizes.map(size => {
+                  const units = cellByStyleSize.get(`${style}|${size}`) ?? 0
+                  const intensity = units / maxUnits
+                  return (
+                    <div
+                      key={`c-${style}-${size}`}
+                      title={`${style} / ${size} — ${units} ${t('reports.col.unitsSold')}`}
+                      className="h-8 rounded-sm flex items-center justify-center text-[10px]"
+                      style={{ backgroundColor: units === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})`, color: intensity > 0.5 ? '#fff' : undefined }}
+                    >
+                      {units > 0 ? units : ''}
+                    </div>
+                  )
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <EmptyState title={t('reports.empty.sizeStyleHeatmap')} subtitle="" />
+      )}
+      <DataTable
+        headers={[t('reports.col.style'), t('reports.col.size'), t('reports.col.unitsSold')]}
+        rows={data.cells.map(c => [c.style, c.size, c.unitsSold])}
+        emptyText={t('reports.empty.sizeStyleHeatmap')}
+      />
+    </div>
+  )
+}
+
 function BasketCompositionView({ data }: { data: BasketCompositionReport }) {
   const { t } = useTranslation()
   const chartRows = data.rows.slice(0, 10).map(r => ({ label: `${r.productAName} + ${r.productBName}`, value: r.basketCount }))
@@ -3860,6 +4167,47 @@ function BasketCompositionView({ data }: { data: BasketCompositionReport }) {
         headers={[t('reports.col.productA'), t('reports.col.productB'), t('reports.col.basketCount')]}
         rows={data.rows.map(r => [r.productAName, r.productBName, r.basketCount])}
         emptyText={t('reports.empty.basketComposition')}
+      />
+    </div>
+  )
+}
+
+// Category count is user-defined (arbitrary N), unlike QUADRANT_COLORS'
+// fixed 4 keys below — a cycling palette rather than a lookup map. Same
+// hardcoded-not-STATUS_COLORS reasoning: this sits above STATUS_COLORS'
+// own declaration further down the file.
+const CATEGORY_MIX_COLORS = ['#00AEEF', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+// Phase 67 §9.1 — General: Category Mix. This file's first live Pie chart
+// (recharts) — a natural fit for "what share of revenue each category
+// contributes", unlike the bar/scatter/treemap shapes every other Phase 67
+// report above has used.
+function CategoryMixView({ data }: { data: CategoryMixReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: formatCurrency(data.summary.totalRevenue) },
+        { label: t('reports.summary.categoryCount'), value: String(data.summary.categoryCount) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.revenueByCategory')}</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <RCPieChart>
+              <Pie data={data.rows} dataKey="revenue" nameKey="categoryName" cx="50%" cy="50%" outerRadius={110} label={(p: { categoryName?: string; revenuePercent?: number }) => `${p.categoryName} (${p.revenuePercent}%)`}>
+                {data.rows.map((r, i) => <Cell key={r.categoryId} fill={CATEGORY_MIX_COLORS[i % CATEGORY_MIX_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </RCPieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.revenue'), t('reports.col.revenuePercent')]}
+        rows={data.rows.map(r => [r.categoryName, r.unitsSold, formatCurrency(r.revenue), `${r.revenuePercent}%`])}
+        emptyText={t('reports.empty.categoryMix')}
       />
     </div>
   )
@@ -4720,6 +5068,42 @@ function CashFlowProjectionView({ data, fmt }: { data: CashFlowProjectionReport;
         headers={[t('common.date'), t('reports.col.actual'), t('reports.col.projected')]}
         rows={data.days.map(b => [formatDate(b.date), b.actualNet != null ? fmt(b.actualNet) : '—', b.projectedNet != null ? fmt(b.projectedNet) : '—'])}
         emptyText={t('reports.empty.noData')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — General: Combined Cash Position Trend. A single cumulative
+// balance series (unlike CashFlowProjectionView's dual actual/projected
+// split above) — the GL-backed "Cash & Bank" running balance day by day.
+function CashPositionTrendView({ data, fmt }: { data: CashPositionTrendReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const chartData = data.points.map(p => ({ label: p.date.slice(5), balance: p.balance }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.openingBalance'), value: fmt(data.openingBalance) },
+        { label: t('reports.col.closingBalance'), value: fmt(data.closingBalance) },
+        { label: t('reports.col.netChange'), value: fmt(data.netChange) }
+      ]} />
+      {chartData.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.cashPositionTrend')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Area type="monotone" dataKey="balance" name={t('reports.col.balance')} stroke={STATUS_COLORS.brand} fill={STATUS_COLORS.brand} fillOpacity={0.15} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('common.date'), t('reports.col.balance')]}
+        rows={data.points.map(p => [formatDate(p.date), fmt(p.balance)])}
+        emptyText={t('reports.empty.cashPositionTrend')}
       />
     </div>
   )
@@ -6221,6 +6605,114 @@ function SerialWarrantyView({ data }: { data: SerialWarrantyReport }) {
           emptyText={t('reports.empty.serials')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Electronics: RMA Aging Report. Top units by days with
+// vendor — overdue ones colored distinctly (STATUS_COLORS.dangerDeep,
+// matching WARRANTY_BUCKET_COLOR's own "expired" choice above) so the ones
+// past the 30-day SLA stand out at a glance, not just in the table below.
+function RmaAgingView({ data }: { data: RmaAgingReport }) {
+  const { t } = useTranslation()
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: `${r.claimNumber} — ${r.productName}`, value: r.daysWithVendor, isOverdue: r.isOverdue }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOpen'), value: String(data.summary.totalOpen) },
+        { label: t('reports.val.overdue'), value: String(data.summary.overdueCount) },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.daysWithVendorByUnit')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={220} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name={t('reports.col.daysWithVendor')} radius={[0, 4, 4, 0]}>
+                {chartRows.map((r, i) => <Cell key={i} fill={r.isOverdue ? STATUS_COLORS.dangerDeep : STATUS_COLORS.warning} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.claimNumber'), t('reports.col.product'), t('reports.col.supplier'), t('reports.col.daysWithVendor'), t('common.status')]}
+        rows={data.rows.map(r => [r.claimNumber, r.productName, r.vendorName ?? '—', r.daysWithVendor, r.isOverdue ? t('reports.val.overdue') : t('reports.val.onTrack')])}
+        emptyText={t('reports.empty.rmaAging')}
+      />
+    </div>
+  )
+}
+
+function VendorRecoveryLedgerView({ data }: { data: VendorRecoveryLedgerReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.filter(r => !r.isClosed).slice(0, 10).map(r => ({ label: `${r.claimNumber} — ${r.productName}`, value: r.outstandingAmount }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.claimedAmount'), value: formatCurrency(s.totalClaimed) },
+        { label: t('reports.col.recoveredAmount'), value: formatCurrency(s.totalRecovered) },
+        { label: t('reports.summary.totalOutstanding'), value: formatCurrency(s.totalOutstanding) },
+        { label: t('reports.val.open'), value: String(s.openCount) },
+        { label: t('reports.val.closed'), value: String(s.closedCount) }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.outstandingByClaim')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={220} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
+              <Bar dataKey="value" name={t('reports.summary.totalOutstanding')} radius={[0, 4, 4, 0]} fill={STATUS_COLORS.dangerDeep} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.claimNumber'), t('reports.col.product'), t('reports.col.supplier'), t('reports.col.claimedAmount'), t('reports.col.recoveredAmount'), t('reports.summary.totalOutstanding'), t('common.status')]}
+        rows={data.rows.map(r => [r.claimNumber, r.productName, r.vendorName ?? '—', formatCurrency(r.claimedAmount), formatCurrency(r.recoveredAmount), formatCurrency(r.outstandingAmount), r.isClosed ? t('reports.val.closed') : t('reports.val.open')])}
+        emptyText={t('reports.empty.vendorRecoveryLedger')}
+      />
+    </div>
+  )
+}
+
+function RepairTurnaroundByTechnicianView({ data }: { data: RepairTurnaroundByTechnicianReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.map(r => ({ label: r.technicianName, value: r.avgTurnaroundDays }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.technicianCount'), value: String(s.technicianCount) },
+        { label: t('reports.summary.totalTicketsCompleted'), value: String(s.totalTicketsCompleted) },
+        { label: t('reports.col.avgTurnaroundDays'), value: String(s.overallAvgTurnaroundDays) }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.avgTurnaroundByTechnician')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name={t('reports.col.avgTurnaroundDays')} radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.technician'), t('reports.col.ticketCount'), t('reports.col.avgTurnaroundDays'), t('reports.col.minTurnaroundDays'), t('reports.col.maxTurnaroundDays')]}
+        rows={data.rows.map(r => [r.technicianName, r.ticketCount, r.avgTurnaroundDays, r.minTurnaroundDays, r.maxTurnaroundDays])}
+        emptyText={t('reports.empty.repairTurnaroundByTechnician')}
+      />
     </div>
   )
 }

@@ -204,6 +204,12 @@ const PERMISSIONS = [
   // reward both affect real customer-facing value.
   { permissionKey: 'loyaltyProgram.view', permissionName: 'View Loyalty Program' },
   { permissionKey: 'loyaltyProgram.manage', permissionName: 'Manage Loyalty Program' },
+  // Phase 67 §9.1 — General item 2: Custom Document Builder. Same
+  // Manager-tier trust level as the other config-shaped permissions above —
+  // defining a new document type or logging/editing an entry are both
+  // day-to-day operational actions, not Admin-only settings.
+  { permissionKey: 'customDocuments.view', permissionName: 'View Custom Documents' },
+  { permissionKey: 'customDocuments.manage', permissionName: 'Manage Custom Documents' },
   // Phase 63 — editable invoice template system, a branding/settings-level
   // decision, same Manager trust tier as the rest of this phase's own
   // pricing/catalog management permissions.
@@ -580,6 +586,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'pricingSchemes.view', 'pricingSchemes.manage', 'pricingSchemes.resolve',
     'priceMarkdowns.view', 'priceMarkdowns.manage',
     'loyaltyProgram.view', 'loyaltyProgram.manage',
+    'customDocuments.view', 'customDocuments.manage',
     'invoiceTemplates.view', 'invoiceTemplates.manage',
     // approvalWorkflows.manage (configuring workflows) stays Admin-only —
     // not granted here, see the permission definitions' own comment above.

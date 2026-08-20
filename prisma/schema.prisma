@@ -199,6 +199,14 @@ model Product {
   // only meaningful for apparel-style businesses (surfaced in the UI when
   // variant_tracking is enabled, CLOTHING/FOOTWEAR's default flag).
   gender                 String?
+  // Phase 67 §9.1 — Clothing: season/collection sell-through report. A
+  // free-text merchandising label ("Summer 2026", "Diwali Collection"), not
+  // a controlled enum — a shop's own naming for its collections varies too
+  // much to model as a fixed list, same reasoning as other free-text
+  // merchandising fields in this schema. Nullable/unused by every other
+  // vertical, surfaced only when variant_tracking is enabled (same gate as
+  // gender above).
+  season                 String?
   // Phase 58 §2 (2026-07-17) — Restaurant's "86 today" (industry term for a
   // menu item temporarily unavailable, distinct from permanently
   // deactivating it via isActive). Derived/computed at read time against
@@ -2082,6 +2090,31 @@ model RepairTicket {
   // the original. @unique so one replacement unit can never be assigned to
   // two different tickets.
   replacementSerialId String?   @unique
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker. Set automatically when
+  // status becomes SENT_TO_VENDOR (sentToVendorDate + VENDOR_SLA_DAYS);
+  // never touched again after that, even if the ticket later moves on —
+  // it marks the deadline that transition committed to, not a live target.
+  vendorSlaDueDate    DateTime?
+  // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+  // vendorClaimAmount is set once the shop actually files a claim (not
+  // every ticket has one — most in-warranty repairs the vendor just does
+  // for free; a claim exists when the SHOP already repaired/replaced the
+  // unit itself and is owed reimbursement). vendorRecoveredAmount is a
+  // running total, incremented by recordVendorRecovery() each time money
+  // actually comes back — never decremented, matching Invoice.paidAmount's
+  // own running-total convention. vendorClaimClosedAt is set once recovered
+  // reaches (or the shop explicitly writes off) the claimed amount.
+  vendorClaimAmount     Float?
+  vendorRecoveredAmount Float     @default(0)
+  vendorClaimClosedAt   DateTime?
+  // Phase 67 §9.1 — Electronics: Repair turnaround by technician. The
+  // in-house staff member doing the diagnosis/repair work — distinct from
+  // vendorId, which is the external vendor a unit is sent OUT to. Nullable:
+  // most existing tickets (and any ticket that's purely a vendor RMA with
+  // no in-house work at all) have no technician. A single FK, not a JSON
+  // array like CarJobCard's technicianIds — one device, one person doing
+  // the work, unlike a multi-technician vehicle service job.
+  technicianId        String?
   repairCost          Float?
   notes               String?
   createdById         String?
@@ -2093,11 +2126,13 @@ model RepairTicket {
   customer          Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   vendor            Supplier?      @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   replacementSerial ProductSerial? @relation("RepairTicketReplacementSerial", fields: [replacementSerialId], references: [id], onDelete: SetNull)
+  technician        Employee?      @relation(fields: [technicianId], references: [id], onDelete: SetNull)
 
   @@index([serialId])
   @@index([status])
   @@index([customerId])
   @@index([productId])
+  @@index([technicianId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2626,6 +2661,7 @@ model Employee {
   serviceSkills             ServiceProviderSkill[] // Phase 58 §2 — Beauty Salon: which services this staff member can perform
   assignedSessionPacks      ClientSessionPack[]       @relation("SessionPackAssignedTrainer") // Phase 58 §2 — Gym/Studio: PT packages this trainer is the standing assignee for
   treatmentPlansCreated     TreatmentPlan[]           @relation("TreatmentPlanCreatedBy") // Phase 25 — Dental
+  repairTicketsAsTechnician RepairTicket[] // Phase 67 §9.1 — Electronics: repair turnaround by technician
   treatmentPhasesCreated    TreatmentPhase[]          @relation("TreatmentPhaseCreatedBy") // Phase 26 — Physio
   exerciseProgramsCreated   ExerciseProgram[]         @relation("ExerciseProgramCreatedBy") // Phase 26 — Physio
   staffCommissions          StaffCommission[] // Phase 27 — Commission
@@ -2799,9 +2835,11 @@ model Quotation {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  customer Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items    QuotationItem[]
-  invoice  Invoice?        @relation("QuotationToInvoice")
+  customer   Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items      QuotationItem[]
+  invoice    Invoice?        @relation("QuotationToInvoice")
+  // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+  salesOrder SalesOrder?     @relation("QuotationToSalesOrder")
 
   @@index([customerId])
   @@index([status])
@@ -5833,12 +5871,17 @@ model SalesOrder {
   taxAmount    Float     @default(0)
   totalAmount  Float     @default(0)
   notes        String?
+  // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+  // 1:1, same shape as Invoice.quotationId elsewhere in this schema — set
+  // only when this SalesOrder was created via quotationService.convertToSalesOrder().
+  quotationId  String?   @unique
   createdById  String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   customer         Customer          @relation(fields: [customerId], references: [id])
   createdBy        User?             @relation("SalesOrderCreatedBy", fields: [createdById], references: [id])
+  quotation        Quotation?        @relation("QuotationToSalesOrder", fields: [quotationId], references: [id])
   items            SalesOrderItem[]
   invoices         Invoice[]         @relation("SalesOrderInvoices")
   dropShipPOs      PurchaseOrder[]   @relation("DropShipSalesOrder")
@@ -6009,6 +6052,47 @@ model LoyaltyRedemption {
   redeemedBy  User?       @relation("LoyaltyRedeemedBy", fields: [redeemedById], references: [id])
 
   @@index([loyaltyCardId])
+}
+
+// Phase 67 §9.1 — General item 2: Custom Document Builder. The "field
+// builder" half of this item is already fully covered by Phase 66's
+// CustomFieldDefinition/customFields mechanism — deliberately reused here,
+// not rebuilt. A CustomDocumentType is a business-defined document/register
+// (e.g. "Visitor Register", "Complaint Log") that doesn't correspond to any
+// of Sarang's built-in entities; its own field schema is defined via the
+// SAME CustomFieldDefinition table every other entity already uses, keyed
+// by the namespaced `entityType` value `CUSTOM_DOCUMENT:<this row's id>`
+// (see custom-field.validation.ts's own widened schema) — zero new
+// field-definition code needed, only a new convention for the key. Each
+// logged entry's values live in `customFields`, the exact same JSON-string
+// storage convention every other entity's own column already uses.
+model CustomDocumentType {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entries CustomDocumentEntry[]
+
+  @@index([isActive])
+}
+
+model CustomDocumentEntry {
+  id             String   @id @default(cuid())
+  documentTypeId String
+  entryDate      DateTime @default(now())
+  customFields   String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  documentType CustomDocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+
+  @@index([documentTypeId])
+  @@index([entryDate])
 }
 
 // Formal Price Lists — additive alongside the existing, narrower

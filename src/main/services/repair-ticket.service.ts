@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
+import { roundCurrency } from './currency.service'
 import { ServiceError } from '../errors/service-error'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -44,24 +45,46 @@ function turnaroundDays(receivedDate: Date, deliveredDate: Date | null): number 
   return Math.max(0, Math.round((end.getTime() - receivedDate.getTime()) / (1000 * 60 * 60 * 24)))
 }
 
+// Phase 67 §9.1 — Electronics: RMA SLA tracker. A fixed 30-day window from
+// the day a ticket is sent to the vendor — matches the audit's own "4 units
+// over 30 days" framing rather than an arbitrary different number.
+const VENDOR_SLA_DAYS = 30
+
+function daysWithVendor(sentToVendorDate: Date | null, vendorResponseDate: Date | null): number | null {
+  if (!sentToVendorDate) return null
+  const end = vendorResponseDate ?? new Date()
+  return Math.max(0, Math.round((end.getTime() - sentToVendorDate.getTime()) / (1000 * 60 * 60 * 24)))
+}
+
+// Overdue only while genuinely still with the vendor — a ticket that came
+// back late is a fact for the aging report to show, not an ongoing alert.
+function isOverdue(status: string, vendorSlaDueDate: Date | null): boolean {
+  if (!vendorSlaDueDate) return false
+  if (status !== 'SENT_TO_VENDOR' && status !== 'AWAITING_PARTS') return false
+  return new Date() > vendorSlaDueDate
+}
+
 const TICKET_INCLUDE = {
   serial: { select: { id: true, serialNumber: true, imeiNumber: true, status: true, warrantyExpiryDate: true } },
   replacementSerial: { select: { id: true, serialNumber: true, imeiNumber: true, status: true } },
   product: { select: { id: true, productName: true } },
   customer: { select: { id: true, customerName: true, phone: true } },
-  vendor: { select: { id: true, supplierName: true } }
+  vendor: { select: { id: true, supplierName: true } },
+  technician: { select: { id: true, fullName: true } }
 } as const
 
 function toRecord<T extends {
   id: string; claimNumber: string; issueDescription: string; status: string
   receivedDate: Date; deliveredDate: Date | null; vendorRmaNumber: string | null
-  sentToVendorDate: Date | null; vendorResponseDate: Date | null; repairCost: number | null
+  sentToVendorDate: Date | null; vendorResponseDate: Date | null; vendorSlaDueDate: Date | null; repairCost: number | null
+  vendorClaimAmount: number | null; vendorRecoveredAmount: number; vendorClaimClosedAt: Date | null
   notes: string | null; createdAt: Date
   serial: { id: string; serialNumber: string; imeiNumber: string | null; status: string; warrantyExpiryDate: Date | null }
   replacementSerial: { id: string; serialNumber: string; imeiNumber: string | null; status: string } | null
   product: { id: string; productName: string }
   customer: { id: string; customerName: string; phone: string | null } | null
   vendor: { id: string; supplierName: string } | null
+  technician: { id: string; fullName: string } | null
 }>(t: T) {
   return {
     id: t.id,
@@ -74,14 +97,22 @@ function toRecord<T extends {
     vendorRmaNumber: t.vendorRmaNumber,
     sentToVendorDate: t.sentToVendorDate ? t.sentToVendorDate.toISOString() : null,
     vendorResponseDate: t.vendorResponseDate ? t.vendorResponseDate.toISOString() : null,
+    vendorSlaDueDate: t.vendorSlaDueDate ? t.vendorSlaDueDate.toISOString() : null,
+    daysWithVendor: daysWithVendor(t.sentToVendorDate, t.vendorResponseDate),
+    isOverdue: isOverdue(t.status, t.vendorSlaDueDate),
     repairCost: t.repairCost,
+    vendorClaimAmount: t.vendorClaimAmount,
+    vendorRecoveredAmount: t.vendorRecoveredAmount,
+    vendorClaimClosedAt: t.vendorClaimClosedAt ? t.vendorClaimClosedAt.toISOString() : null,
+    vendorClaimOutstanding: t.vendorClaimAmount !== null ? roundCurrency(t.vendorClaimAmount - t.vendorRecoveredAmount) : null,
     notes: t.notes,
     createdAt: t.createdAt.toISOString(),
     serial: t.serial,
     replacementSerial: t.replacementSerial,
     product: t.product,
     customer: t.customer,
-    vendor: t.vendor
+    vendor: t.vendor,
+    technician: t.technician
   }
 }
 
@@ -90,6 +121,7 @@ export async function createRepairTicket(payload: {
   customerId?: string
   issueDescription: string
   vendorId?: string
+  technicianId?: string
   notes?: string
 }, userId?: string): Promise<{ success: boolean; data?: { id: string; claimNumber: string }; error?: { code: string; message: string } }> {
   try {
@@ -110,6 +142,7 @@ export async function createRepairTicket(payload: {
           customerId: payload.customerId,
           issueDescription: payload.issueDescription,
           vendorId: payload.vendorId,
+          technicianId: payload.technicianId,
           notes: payload.notes,
           createdById: userId,
           status: 'RECEIVED'
@@ -208,6 +241,79 @@ export async function getSerialServiceHistory(serialId: string): Promise<{
   }
 }
 
+// Phase 67 §9.1 — Electronics: serial-number service lookup. The audit's own
+// "scan/search a serial to see full purchase-plus-repair history instantly"
+// — a single free-text entry point (serial number OR either IMEI) that
+// resolves straight to everything about that unit, unlike
+// getSerialServiceHistory() above (which needs an already-resolved
+// serialId, and has no concept of the PURCHASE half at all). "Purchase"
+// here means what the CUSTOMER paid this shop, not this shop's own
+// upstream supplier cost — the question a service-desk person actually
+// asks a walk-in customer is "when did you buy this from us, do you still
+// have warranty", not the shop's internal procurement cost.
+export async function lookupSerialService(searchTerm: string): Promise<{
+  success: boolean
+  data?: {
+    serial: { id: string; serialNumber: string; imeiNumber: string | null; imei2Number: string | null; status: string; warrantyExpiryDate: string | null; productId: string; productName: string }
+    purchase: { invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string | null; customerPhone: string | null; unitPrice: number } | null
+    tickets: ReturnType<typeof toRecord>[]
+    replacedOnTicket: { id: string; claimNumber: string } | null
+  }
+  error?: { code: string; message: string }
+}> {
+  try {
+    const term = searchTerm.trim()
+    if (!term) return { success: false, error: { code: 'RPR-024', message: 'Enter a serial number or IMEI to search.' } }
+
+    const db = getPrisma()
+    const serial = await db.productSerial.findFirst({
+      where: { OR: [{ serialNumber: term }, { imeiNumber: term }, { imei2Number: term }] },
+      include: { product: { select: { id: true, productName: true } } }
+    })
+    if (!serial) return { success: false, error: { code: 'RPR-025', message: 'No device found with this serial number or IMEI.' } }
+
+    let purchase: { invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string | null; customerPhone: string | null; unitPrice: number } | null = null
+    if (serial.invoiceId) {
+      const invoice = await db.invoice.findUnique({
+        where: { id: serial.invoiceId },
+        select: {
+          id: true, invoiceNumber: true, invoiceDate: true,
+          customer: { select: { customerName: true, phone: true } },
+          items: { where: { productId: serial.productId }, select: { unitPrice: true }, take: 1 }
+        }
+      })
+      if (invoice) {
+        purchase = {
+          invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, invoiceDate: invoice.invoiceDate.toISOString(),
+          customerName: invoice.customer?.customerName ?? null, customerPhone: invoice.customer?.phone ?? null,
+          unitPrice: invoice.items[0]?.unitPrice ?? 0
+        }
+      }
+    }
+
+    const [tickets, replacedOnTicket] = await Promise.all([
+      db.repairTicket.findMany({ where: { serialId: serial.id }, orderBy: { receivedDate: 'desc' }, include: TICKET_INCLUDE }),
+      db.repairTicket.findUnique({ where: { replacementSerialId: serial.id }, select: { id: true, claimNumber: true } })
+    ])
+
+    return {
+      success: true,
+      data: {
+        serial: {
+          id: serial.id, serialNumber: serial.serialNumber, imeiNumber: serial.imeiNumber, imei2Number: serial.imei2Number,
+          status: serial.status, warrantyExpiryDate: serial.warrantyExpiryDate ? serial.warrantyExpiryDate.toISOString() : null,
+          productId: serial.product.id, productName: serial.product.productName
+        },
+        purchase,
+        tickets: tickets.map(toRecord),
+        replacedOnTicket
+      }
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'RPR-026', message: err instanceof Error ? err.message : 'Failed to look up serial service history.' } }
+  }
+}
+
 export async function updateRepairTicketStatus(payload: {
   id: string
   status: RepairTicketStatus
@@ -215,6 +321,7 @@ export async function updateRepairTicketStatus(payload: {
   vendorRmaNumber?: string
   replacementSerialId?: string
   repairCost?: number
+  technicianId?: string
   notes?: string
 }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   try {
@@ -253,8 +360,12 @@ export async function updateRepairTicketStatus(payload: {
           vendorRmaNumber: payload.vendorRmaNumber ?? existing.vendorRmaNumber,
           replacementSerialId: payload.status === 'REPLACED' ? (payload.replacementSerialId ?? existing.replacementSerialId) : existing.replacementSerialId,
           repairCost: payload.repairCost ?? existing.repairCost,
+          technicianId: payload.technicianId ?? existing.technicianId,
           notes: payload.notes ?? existing.notes,
           sentToVendorDate: payload.status === 'SENT_TO_VENDOR' && !existing.sentToVendorDate ? now : existing.sentToVendorDate,
+          vendorSlaDueDate: payload.status === 'SENT_TO_VENDOR' && !existing.sentToVendorDate
+            ? new Date(now.getTime() + VENDOR_SLA_DAYS * 24 * 60 * 60 * 1000)
+            : existing.vendorSlaDueDate,
           vendorResponseDate: existing.status === 'SENT_TO_VENDOR' && !existing.vendorResponseDate && ['AWAITING_PARTS', 'REPAIRED', 'REPLACED'].includes(payload.status) ? now : existing.vendorResponseDate,
           deliveredDate: payload.status === 'RETURNED_TO_CUSTOMER' && !existing.deliveredDate ? now : existing.deliveredDate
         }
@@ -300,10 +411,85 @@ export async function updateRepairTicketStatus(payload: {
   }
 }
 
+// Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger. Most
+// in-warranty repairs the vendor just does for free — a claim only exists
+// once the SHOP has already repaired or replaced the unit itself and is
+// owed reimbursement, so this is a deliberate, explicit action, not
+// something set automatically on any status transition. Settable/updatable
+// freely (unlike sentToVendorDate's set-once convention) — a shop may
+// revise its own claimed amount before the vendor settles it.
+export async function recordVendorClaim(payload: { id: string; amount: number }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    if (payload.amount < 0) return { success: false, error: { code: 'RPR-017', message: 'Claim amount cannot be negative.' } }
+    const db = getPrisma()
+    const existing = await db.repairTicket.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'RPR-008', message: 'Repair ticket not found.' } }
+
+    await db.repairTicket.update({ where: { id: payload.id }, data: { vendorClaimAmount: roundCurrency(payload.amount) } })
+    await logAction(userId, 'REPAIR_TICKET_VENDOR_CLAIM_RECORDED', 'RepairTicket', payload.id, existing.vendorClaimAmount, payload.amount)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'RPR-018', message: err instanceof Error ? err.message : 'Failed to record vendor claim.' } }
+  }
+}
+
+// A running total, incremented on every real recovery — never decremented,
+// same convention as Invoice.paidAmount. Auto-closes the claim once
+// recovered reaches (or exceeds, e.g. a rounding-favorable settlement) the
+// claimed amount; a shop can also close it early (write-off) by claiming
+// nothing further is coming, which the UI exposes as a separate action
+// rather than folding into this same endpoint (a write-off isn't "money
+// received," conflating the two would misreport actual recovered cash).
+export async function recordVendorRecovery(payload: { id: string; amount: number }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    if (payload.amount <= 0) return { success: false, error: { code: 'RPR-019', message: 'Recovery amount must be greater than zero.' } }
+    const db = getPrisma()
+    const existing = await db.repairTicket.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'RPR-008', message: 'Repair ticket not found.' } }
+    if (existing.vendorClaimAmount === null) return { success: false, error: { code: 'RPR-020', message: 'No vendor claim has been recorded for this ticket yet.' } }
+
+    const newRecovered = roundCurrency(existing.vendorRecoveredAmount + payload.amount)
+    const closed = newRecovered >= existing.vendorClaimAmount
+    await db.repairTicket.update({
+      where: { id: payload.id },
+      data: {
+        vendorRecoveredAmount: newRecovered,
+        vendorClaimClosedAt: closed && !existing.vendorClaimClosedAt ? new Date() : existing.vendorClaimClosedAt
+      }
+    })
+    await logAction(userId, 'REPAIR_TICKET_VENDOR_RECOVERY_RECORDED', 'RepairTicket', payload.id, existing.vendorRecoveredAmount, newRecovered)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'RPR-021', message: err instanceof Error ? err.message : 'Failed to record vendor recovery.' } }
+  }
+}
+
+// Explicit write-off — closes the claim without further recovery, distinct
+// from reaching the claimed amount through recordVendorRecovery() above.
+export async function writeOffVendorClaim(payload: { id: string }, userId?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const existing = await db.repairTicket.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'RPR-008', message: 'Repair ticket not found.' } }
+    if (existing.vendorClaimAmount === null) return { success: false, error: { code: 'RPR-020', message: 'No vendor claim has been recorded for this ticket yet.' } }
+    if (existing.vendorClaimClosedAt) return { success: false, error: { code: 'RPR-022', message: 'This claim is already closed.' } }
+
+    await db.repairTicket.update({ where: { id: payload.id }, data: { vendorClaimClosedAt: new Date() } })
+    await logAction(userId, 'REPAIR_TICKET_VENDOR_CLAIM_WRITTEN_OFF', 'RepairTicket', payload.id, undefined, { outstanding: roundCurrency(existing.vendorClaimAmount - existing.vendorRecoveredAmount) })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'RPR-023', message: err instanceof Error ? err.message : 'Failed to write off vendor claim.' } }
+  }
+}
+
 export const repairTicketService = {
   createRepairTicket,
   listRepairTickets,
   getRepairTicket,
   getSerialServiceHistory,
-  updateRepairTicketStatus
+  lookupSerialService,
+  updateRepairTicketStatus,
+  recordVendorClaim,
+  recordVendorRecovery,
+  writeOffVendorClaim
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Smartphone, Package, CheckCircle2, XCircle, RotateCcw, AlertCircle, Upload, ChevronDown, Wrench } from 'lucide-react'
+import { Plus, Search, Smartphone, Package, CheckCircle2, XCircle, RotateCcw, AlertCircle, Upload, ChevronDown, Wrench, History } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { DataTable } from '@shared/ui/organisms/DataTable'
@@ -24,6 +24,15 @@ interface SerialRow {
   unitCost: number
   status: SerialStatus
   soldDate: string | null
+}
+
+// Phase 67 §9.1 — Electronics: serial-number service lookup.
+interface ServiceLookupTicket { id: string; claimNumber: string; status: string; issueDescription: string; receivedDate: string }
+interface ServiceLookupResult {
+  serial: { id: string; serialNumber: string; imeiNumber: string | null; imei2Number: string | null; status: SerialStatus; warrantyExpiryDate: string | null; productId: string; productName: string }
+  purchase: { invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string | null; customerPhone: string | null; unitPrice: number } | null
+  tickets: ServiceLookupTicket[]
+  replacedOnTicket: { id: string; claimNumber: string } | null
 }
 
 const STATUS_VARIANT: Record<SerialStatus, 'success' | 'neutral' | 'brand' | 'danger'> = {
@@ -121,6 +130,13 @@ export function SerialTrackingScreen() {
   const [statusFilter, setStatusFilter] = useState<SerialStatus | 'ALL'>('ALL')
   const [imeiSearch, setImeiSearch] = useState('')
   const [imeiResult, setImeiResult] = useState<SerialRow | null>(null)
+
+  // Phase 67 §9.1 — Electronics: serial-number service lookup. Distinct from
+  // the imei-only box above — this searches by serial number OR IMEI and
+  // shows the full purchase-plus-repair history, not just current status.
+  const [serviceLookupSearch, setServiceLookupSearch] = useState('')
+  const [serviceLookupResult, setServiceLookupResult] = useState<ServiceLookupResult | null>(null)
+  const [serviceLookupNotFound, setServiceLookupNotFound] = useState(false)
   const [form, setForm] = useState<SerialFormState>({
     productId: '', serialNumber: '', imeiNumber: '', imei2Number: '',
     warrantyMonths: '', purchaseDate: '', unitCost: ''
@@ -168,6 +184,23 @@ export function SerialTrackingScreen() {
     } catch {
       setImeiResult(null)
       toastError('Error', 'Could not search by IMEI. Check your connection and try again.')
+    }
+  }
+
+  async function handleServiceLookup() {
+    if (!serviceLookupSearch.trim()) return
+    try {
+      const res = await window.api.repairTickets.lookupSerialService({ search: serviceLookupSearch.trim() })
+      if (res.success) {
+        setServiceLookupResult(res.data as ServiceLookupResult)
+        setServiceLookupNotFound(false)
+      } else {
+        setServiceLookupResult(null)
+        setServiceLookupNotFound(true)
+      }
+    } catch {
+      setServiceLookupResult(null)
+      setServiceLookupNotFound(true)
     }
   }
 
@@ -379,6 +412,66 @@ export function SerialTrackingScreen() {
               <Badge variant={STATUS_VARIANT[imeiResult.status]} icon={STATUS_STYLES[imeiResult.status].icon}>
                 {STATUS_STYLES[imeiResult.status].label}
               </Badge>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Phase 67 §9.1 — Electronics: serial-number service lookup. Distinct
+          from the IMEI-only box above — searches by serial number OR IMEI,
+          and shows the full purchase-plus-repair history in one place,
+          gated on repair_rma (same module as the Repair Tickets screen and
+          its Reports entries) rather than imei_tracking. */}
+      {repairRmaEnabled && (
+        <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2"><History size={16} /> {t('inventory.serviceLookup')}</p>
+          <div className="flex gap-3">
+            <input value={serviceLookupSearch} onChange={e => setServiceLookupSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleServiceLookup()}
+              placeholder={t('inventory.serviceLookupPlaceholder')}
+              className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+            <Button size="md" variant="outline" onClick={handleServiceLookup}>
+              <Search size={16} className="me-1.5" /> {t('common.search')}
+            </Button>
+          </div>
+          {serviceLookupNotFound && <p className="text-sm text-danger">{t('inventory.serviceLookupNotFound')}</p>}
+          {serviceLookupResult && (
+            <div className="bg-white dark:bg-slate-900 border border-brand/30 rounded-lg p-4 space-y-4">
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-dark dark:text-slate-100">{serviceLookupResult.serial.productName}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">S/N: {serviceLookupResult.serial.serialNumber}</p>
+                {serviceLookupResult.serial.imeiNumber && <p className="text-sm text-slate-500 dark:text-slate-400">IMEI 1: {serviceLookupResult.serial.imeiNumber}</p>}
+                <Badge variant={STATUS_VARIANT[serviceLookupResult.serial.status]} icon={STATUS_STYLES[serviceLookupResult.serial.status].icon}>
+                  {STATUS_STYLES[serviceLookupResult.serial.status].label}
+                </Badge>
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">{t('inventory.purchaseHistory')}</p>
+                {serviceLookupResult.purchase ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {serviceLookupResult.purchase.invoiceNumber} · {formatDate(new Date(serviceLookupResult.purchase.invoiceDate))} · {formatCurrency(serviceLookupResult.purchase.unitPrice)}
+                    {serviceLookupResult.purchase.customerName && ` · ${serviceLookupResult.purchase.customerName}`}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-400">{t('inventory.neverSold')}</p>
+                )}
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">{t('inventory.repairHistory')} ({serviceLookupResult.tickets.length})</p>
+                {serviceLookupResult.tickets.length === 0 && <p className="text-sm text-slate-400">{t('inventory.noRepairHistory')}</p>}
+                <div className="space-y-1.5">
+                  {serviceLookupResult.tickets.map(ticket => (
+                    <button key={ticket.id} onClick={() => navigate(`/electronics/repair-tickets?serialId=${serviceLookupResult.serial.id}`)}
+                      className="w-full flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-start hover:border-brand transition-colors">
+                      <span className="text-sm font-mono text-slate-500 dark:text-slate-400">{ticket.claimNumber}</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-400 truncate mx-2">{ticket.issueDescription}</span>
+                      <span className="text-xs text-slate-400">{formatDate(new Date(ticket.receivedDate))}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

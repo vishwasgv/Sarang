@@ -19,7 +19,10 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // Same gap-tolerant, race-safe pattern purchase-order.service.ts's own
 // generatePONumber already established — see its header comment for why a
 // plain count()+1 is wrong under concurrency and hard-delete both.
-async function generateSONumber(tx: TxClient): Promise<string> {
+// Exported for quotation.service.ts's convertToSalesOrder() — Phase 67 §9.1
+// Universal Quote -> Order -> Invoice pipeline, mirrors billing.service.ts
+// exporting generateInvoiceNumber for the same cross-service reuse reason.
+export async function generateSONumber(tx: TxClient): Promise<string> {
   return generateSequenceNumber(
     tx, 'so_number_sequence', 'SO', 5,
     async () => {

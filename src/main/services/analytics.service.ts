@@ -51,7 +51,7 @@ export interface ActivityItem {
 }
 
 export interface DashboardAlert {
-  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE' | 'LICENSE_EXPIRING' | 'LICENSE_EXPIRED' | 'UPDATE_AVAILABLE'
+  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE' | 'RMA_OVERDUE' | 'LICENSE_EXPIRING' | 'LICENSE_EXPIRED' | 'UPDATE_AVAILABLE'
   message: string
   severity: 'warning' | 'danger'
 }
@@ -531,7 +531,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const db = getPrisma()
   const alerts: DashboardAlert[] = []
 
-  const [allInventory, lastBackup, ledgerAgg, businessProfile, warningThreshold, reminderDays, pendingReminderCount, auditLogFailure, overdueRentalCount] = await Promise.all([
+  const [allInventory, lastBackup, ledgerAgg, businessProfile, warningThreshold, reminderDays, pendingReminderCount, auditLogFailure, overdueRentalCount, overdueRmaCount] = await Promise.all([
     db.inventory.findMany({
       select: { quantity: true, reorderLevel: true },
       where: { product: { isActive: true } }
@@ -556,7 +556,11 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
     // Overdue is never a stored status (see rental.service.ts's header
     // comment) — computed live here the same way, so this count can never
     // drift from what the Rental Bookings screen itself shows.
-    db.rentalBooking.count({ where: { status: 'CHECKED_OUT', endDateTime: { lt: new Date() } } })
+    db.rentalBooking.count({ where: { status: 'CHECKED_OUT', endDateTime: { lt: new Date() } } }),
+    // Phase 67 §9.1 — Electronics: RMA SLA tracker. Same "never a stored
+    // status, computed live" convention as overdueRentalCount above — a
+    // unit still with the vendor past its own vendorSlaDueDate.
+    db.repairTicket.count({ where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, vendorSlaDueDate: { lt: new Date() } } })
   ])
 
   // Low stock alert
@@ -626,6 +630,17 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
       type: 'RENTAL_OVERDUE',
       message: `${overdueRentalCount} rental${overdueRentalCount > 1 ? 's are' : ' is'} overdue for return.`,
       severity: overdueRentalCount >= 5 ? 'danger' : 'warning'
+    })
+  }
+
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker. A unit still sitting with
+  // the vendor past its 30-day SLA — the exact "these 4 units have been
+  // with the vendor over 30 days" scenario the audit's own field note named.
+  if (overdueRmaCount > 0) {
+    alerts.push({
+      type: 'RMA_OVERDUE',
+      message: `${overdueRmaCount} unit${overdueRmaCount > 1 ? 's are' : ' is'} overdue from vendor RMA (past the 30-day SLA).`,
+      severity: overdueRmaCount >= 5 ? 'danger' : 'warning'
     })
   }
 

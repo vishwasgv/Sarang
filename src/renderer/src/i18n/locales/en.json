@@ -12,6 +12,7 @@
     "pricingSchemes": "Pricing Schemes",
     "priceMarkdowns": "Price Markdowns",
     "loyaltyProgram": "Loyalty Program",
+    "customDocuments": "Custom Documents",
     "recurringProfiles": "Recurring Profiles",
     "locations": "Locations",
     "costCentres": "Cost Centres",
@@ -245,6 +246,29 @@
       "avgFunctionalScore": "Avg. Functional Score",
       "chronicRecallTitle": "Chronic Recall Focus"
     },
+    "templateSuggestion": {
+      "title": "Looking for a better fit?",
+      "explore": "Explore business templates",
+      "dismiss": "Dismiss this suggestion",
+      "template": {
+        "HARDWARE": "Hardware",
+        "JEWELLERY": "Jewellery",
+        "RENTAL": "Rental",
+        "RESTAURANT": "Restaurant",
+        "REPAIR": "Repair Shop",
+        "SERVICE": "Service Business",
+        "RETAIL": "Retail"
+      },
+      "reason": {
+        "cartonProducts": "You have {{count}} products set up with carton/pack billing — that looks like a {{template}} pattern.",
+        "jewelleryProducts": "You have {{count}} products with metal-weight pricing set up — that looks like a {{template}} pattern.",
+        "rentalProducts": "You have {{count}} products marked as rentable — that looks like a {{template}} pattern.",
+        "kotOrders": "You've sent {{count}} orders to the kitchen — that looks like a {{template}} pattern.",
+        "repairJobs": "You've logged {{count}} repair or job tickets — that looks like a {{template}} pattern.",
+        "appointments": "You've booked {{count}} appointments — that looks like a {{template}} pattern.",
+        "variantOrLooseProducts": "You have {{count}} products with size/colour variants or loose-weight pricing — that looks like a {{template}} pattern."
+      }
+    },
     "todaySales": "Today's Sales",
     "totalInvoices": "Total Invoices",
     "outstandingBalance": "Outstanding",
@@ -275,6 +299,7 @@
     "reviewReminders": "Review",
     "reviewAuditLog": "Review",
     "reviewRentals": "Review",
+    "reviewRepairTickets": "Review",
     "renewLicense": "Renew",
     "viewUpdate": "View"
   },
@@ -653,6 +678,13 @@
     "bulkImportTitle": "Bulk Import Devices",
     "imeiLookup": "IMEI Lookup",
     "imeiPlaceholder": "Enter IMEI number…",
+    "serviceLookup": "Service Lookup",
+    "serviceLookupPlaceholder": "Scan or enter a serial number or IMEI…",
+    "serviceLookupNotFound": "No device found with this serial number or IMEI.",
+    "purchaseHistory": "Purchase",
+    "neverSold": "Never sold — still in stock.",
+    "repairHistory": "Repair History",
+    "noRepairHistory": "No repair tickets yet for this unit.",
     "deviceSerial": "Device / Serial",
     "warranty": "Warranty",
     "changeStatus": "Change Status",
@@ -1231,6 +1263,30 @@
     "couldNotSave": "Could not save the loyalty program.",
     "couldNotRedeem": "Could not redeem the reward."
   },
+  "customDocuments": {
+    "title": "Custom Documents",
+    "subtitle": "Define your own registers and logs — fields, entries, all yours",
+    "newType": "New Document Type",
+    "editType": "Edit Document Type",
+    "typeName": "Document Name",
+    "typeNamePlaceholder": "e.g. Visitor Register, Complaint Log",
+    "nameRequired": "Name is required.",
+    "noTypesYet": "No custom document types yet. Create one to start logging entries.",
+    "selectOrCreateType": "Select a document type on the left, or create a new one.",
+    "manageFields": "Manage Fields",
+    "noFieldsYet": "No fields defined yet for this document type.",
+    "entries": "{{count}} entries",
+    "newEntry": "New Entry",
+    "editEntry": "Edit Entry",
+    "noEntriesYet": "No entries logged yet.",
+    "details": "Details",
+    "notes": "Notes",
+    "deleteEntryTitle": "Delete Entry?",
+    "deleteEntryMessage": "This entry will be permanently removed. This cannot be undone.",
+    "couldNotLoad": "Could not load custom documents.",
+    "couldNotSave": "Could not save.",
+    "couldNotDelete": "Could not delete the entry."
+  },
   "recurringProfiles": {
     "title": "Recurring Profiles",
     "subtitle": "{{count}} profiles — invoices, bills and expenses that generate themselves on schedule",
@@ -1586,6 +1642,10 @@
         "label": "Cash-Flow Projection",
         "description": "Real cash movement for the past month, plus what's due and forecasted for the month ahead"
       },
+      "cashPositionTrend": {
+        "label": "Combined Cash Position Trend",
+        "description": "Your total cash & bank balance, day by day over a date range — see the real running position, not just a single point-in-time figure"
+      },
       "paymentPerformance": {
         "label": "Payment Performance",
         "description": "How many days customers actually take to pay in full, ranked by customer"
@@ -1638,9 +1698,21 @@
         "label": "Category Sell-Through Rate",
         "description": "Month by month, what share of each category's sold-plus-in-stock units actually sold — spot categories moving fast versus ones piling up"
       },
+      "seasonSellThrough": {
+        "label": "Season/Collection Sell-Through",
+        "description": "Month by month, what share of each season or collection's sold-plus-in-stock units actually sold — spot which collections moved fast and which are piling up"
+      },
+      "sizeStyleHeatmap": {
+        "label": "Size × Style Heatmap",
+        "description": "A grid of units sold by style and size — see exactly which combinations are actually moving, at a glance"
+      },
       "basketComposition": {
         "label": "Basket Composition",
         "description": "Which products are most often bought together in the same sale — spot natural bundles and pairings worth placing side by side or offering as a combo"
+      },
+      "categoryMix": {
+        "label": "Category Mix",
+        "description": "What share of your revenue comes from each product category over a date range — see at a glance which categories drive the business and which are a small slice"
       },
       "fastSlowMoverMatrix": {
         "label": "Fast-Mover vs. Slow-Mover Matrix",
@@ -1777,6 +1849,18 @@
       "serialWarranty": {
         "label": "Serial & Warranty Report",
         "description": "Serial numbers by warranty status — expired, expiring soon, active"
+      },
+      "rmaAging": {
+        "label": "RMA Aging Report",
+        "description": "Every unit currently with a vendor for repair or replacement, ranked by how long it's been gone — spot the ones stuck past the 30-day SLA"
+      },
+      "vendorRecoveryLedger": {
+        "label": "Vendor Recovery Ledger",
+        "description": "Warranty claims raised against vendors for repair costs — amount claimed, amount recovered, and what's still outstanding"
+      },
+      "repairTurnaroundByTechnician": {
+        "label": "Repair Turnaround by Technician",
+        "description": "Average, fastest, and slowest repair turnaround time per technician — a real service-quality metric"
       },
       "variantStock": {
         "label": "Variant Stock Report",
@@ -1944,10 +2028,20 @@
       "sellThroughByCategoryMonth": "Sell-Through Rate by Category, by Month",
       "sellThroughStockNote": "Compared against current stock on hand for every month shown — a trend view, not each month's own historical stock level.",
       "avgSellThroughByCategory": "Average Sell-Through by Category",
+      "sellThroughBySeasonMonth": "Sell-Through Rate by Season/Collection, by Month",
+      "avgSellThroughBySeason": "Average Sell-Through by Season/Collection",
+      "overallAverage": "Overall Average",
+      "totalUnitsSold": "Total Units Sold",
+      "topCombination": "Top Combination",
+      "topCombinationUnits": "Top Combination Units",
+      "sizeStyleHeatmap": "Size × Style Heatmap",
       "totalBaskets": "Total Baskets",
       "avgItemsPerBasket": "Avg. Items per Basket",
       "avgBasketValue": "Avg. Basket Value",
       "topProductPairs": "Most Frequently Bought Together",
+      "categoryCount": "Categories",
+      "revenueByCategory": "Revenue by Category",
+      "cashPositionTrend": "Cash Position Trend",
       "balanceTrend": "Balance Trend",
       "balanceTrendSampledNote": "This account has a lot of activity — the trend line shows a representative sample of points, not every single entry. The table below still lists every transaction.",
       "velocityMedian": "Median Velocity",
@@ -2010,6 +2104,13 @@
       "inStock": "In Stock",
       "warrantyExpiringSoon": "Warranty Expiring Soon",
       "warrantyExpired": "Warranty Expired",
+      "totalOpen": "Currently with Vendor",
+      "daysWithVendorByUnit": "Days with Vendor, by Unit",
+      "totalOutstanding": "Total Outstanding",
+      "outstandingByClaim": "Outstanding Amount, by Claim",
+      "technicianCount": "Technicians",
+      "totalTicketsCompleted": "Tickets Completed",
+      "avgTurnaroundByTechnician": "Avg. Turnaround Days, by Technician",
       "totalVariants": "Total Variants",
       "totalStockQty": "Total Stock Qty",
       "outOfStockVariants": "Out of Stock Variants",
@@ -2162,7 +2263,11 @@
       "recipeWasteVariance": "No recipe-linked ingredient activity found in this date range.",
       "deadStockClearance": "No dead stock found — every product in stock has sold recently.",
       "categorySellThrough": "No categorized product sales found in this date range.",
+      "seasonSellThrough": "No products have a season/collection set, or no sales were found in this date range.",
+      "sizeStyleHeatmap": "No variant-tracked sales found in this date range.",
       "basketComposition": "No baskets with 2 or more different products found in this date range.",
+      "categoryMix": "No categorized product sales found in this date range.",
+      "cashPositionTrend": "No cash movement found in this date range.",
       "fastSlowMoverMatrix": "No products sold in this date range.",
       "gstr1": "No taxable invoices found for this period.",
       "hsnSummary": "No taxable invoices found for this period.",
@@ -2191,6 +2296,9 @@
       "attendance": "No attendance records in this date range.",
       "productionOrders": "No production orders in this date range.",
       "serials": "No serial numbers found.",
+      "rmaAging": "No units are currently with a vendor for repair or replacement.",
+      "vendorRecoveryLedger": "No vendor warranty claims have been recorded yet.",
+      "repairTurnaroundByTechnician": "No completed repair tickets have a technician assigned yet.",
       "variants": "No product variants found.",
       "testScores": "No test scores recorded yet.",
       "complianceTasks": "No pending or overdue compliance tasks.",
@@ -2255,6 +2363,7 @@
       "sku": "SKU",
       "product": "Product",
       "category": "Category",
+      "season": "Season/Collection",
       "type": "Type",
       "stock": "Stock",
       "costPrice": "Cost Price",
@@ -2396,6 +2505,9 @@
       "productA": "Product A",
       "productB": "Product B",
       "basketCount": "Baskets",
+      "revenuePercent": "% of Revenue",
+      "balance": "Balance",
+      "netChange": "Net Change",
       "velocity": "Velocity (units/day)",
       "marginPercent": "Margin %",
       "quadrant": "Quadrant",
@@ -2410,7 +2522,17 @@
       "completedDate": "Completed Date",
       "serialNumber": "Serial Number",
       "warrantyExpiry": "Warranty Expiry",
+      "claimNumber": "Claim #",
+      "daysWithVendor": "Days with Vendor",
+      "claimedAmount": "Claimed Amount",
+      "recoveredAmount": "Recovered Amount",
+      "technician": "Technician",
+      "ticketCount": "Tickets",
+      "avgTurnaroundDays": "Avg. Turnaround (days)",
+      "minTurnaroundDays": "Fastest (days)",
+      "maxTurnaroundDays": "Slowest (days)",
       "size": "Size",
+      "style": "Style",
       "color": "Color",
       "stockQty": "Stock Qty",
       "studentName": "Student",
@@ -2456,6 +2578,10 @@
       "atRiskFlag": "⚠ At Risk",
       "lowFlag": "⚠ Low",
       "cartonsAndPieces": "{{cartons}} cartons + {{pieces}} pcs",
+      "overdue": "Overdue",
+      "onTrack": "On Track",
+      "open": "Open",
+      "closed": "Closed",
       "quadrant": {
         "FAST_HIGH_MARGIN": "Fast, High Margin",
         "FAST_LOW_MARGIN": "Fast, Low Margin",
@@ -3422,6 +3548,10 @@
         "title": "Loyalty Program",
         "body": "Set how many visits earn a reward and what that reward is — a punch is added automatically to a customer's card on every qualifying sale, no extra step at checkout. Redeem here once they've earned it."
       },
+      "customDocuments": {
+        "title": "Custom Documents",
+        "body": "Define your own registers — a Visitor Log, a Complaint Book, anything not already built in — with your own fields, then log dated entries against them."
+      },
       "recurringProfiles": {
         "title": "Recurring Profiles",
         "body": "Set up an invoice, bill, or expense to repeat on a schedule — weekly, monthly, or yearly — so you never have to recreate the same document by hand again."
@@ -4017,6 +4147,10 @@
     "convertToRetainer": "Convert to Retainer",
     "convertedToRetainer": "Quotation converted to a retainer engagement",
     "failedConvertRetainer": "Failed to convert to retainer",
+    "convertToSalesOrder": "Convert to Sales Order",
+    "convertToSalesOrderHint": "Creates a Sales Order from this quotation — bill it fully or in stages from there, instead of one direct invoice.",
+    "convertedToSalesOrder": "Quotation converted to a Sales Order",
+    "failedConvertSalesOrder": "Failed to convert to a Sales Order",
     "deleted": "Quotation deleted",
     "failedDelete": "Failed to delete",
     "deleteTitle": "Delete Quotation",

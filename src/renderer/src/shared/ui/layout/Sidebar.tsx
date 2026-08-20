@@ -193,6 +193,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
   { label: 'Price Markdowns', i18nKey: 'nav.priceMarkdowns', path: '/pricing/markdowns', icon: Clock, permissionKey: 'priceMarkdowns.view', requiredModule: 'price_markdowns' },
   { label: 'Loyalty Program', i18nKey: 'nav.loyaltyProgram', path: '/pricing/loyalty', icon: Award, permissionKey: 'loyaltyProgram.view', requiredModule: 'loyalty_program' },
+  // Phase 67 §9.1 — General: Custom Document Builder.
+  { label: 'Custom Documents', i18nKey: 'nav.customDocuments', path: '/custom-documents', icon: FileStack, permissionKey: 'customDocuments.view', requiredModule: 'custom_documents' },
   { label: 'Recurring Profiles', i18nKey: 'nav.recurringProfiles', path: '/recurring-profiles', icon: Repeat, permissionKey: 'recurringProfiles.view' },
   { label: 'Approval Workflows', i18nKey: 'nav.approvalWorkflows', path: '/approval-workflows', icon: ShieldCheck, permissionKey: 'approvalWorkflows.view' },
   // Phase 61 — Bills (AP: what we owe a supplier) + Payments Made.

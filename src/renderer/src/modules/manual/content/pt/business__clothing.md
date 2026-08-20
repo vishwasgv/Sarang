@@ -6,15 +6,25 @@ Escolher **Clothing** como seu tipo de negócio ativa o **rastreamento de varia�
 
 Um item de vestuário geralmente não é um único número de estoque — "Camiseta Masculina" pode existir em cinco tamanhos e quatro cores, cada uma com sua própria contagem de estoque. Em **Produtos**, toque no ícone de camadas em qualquer produto para abrir **Gerenciar Variações**. Adicione uma linha para cada combinação de tamanho/cor que você realmente estoca (os campos de tamanho e cor sugerem tamanhos comuns de roupas conforme você digita — de XS a 3XL — mas você pode digitar qualquer coisa), cada uma com seu próprio SKU opcional, um preço adicional sobre o preço base do produto caso essa variação custe mais (por exemplo, um tamanho plus size) e sua própria quantidade em estoque. A tela mostra um total corrente de variações e o estoque combinado de todas elas.
 
-Registros de produto para um negócio de Vestuário também têm um campo opcional de **Gênero** (Masculino/Feminino/Unissex) para ajudar a organizar seu catálogo.
+Registros de produto para um negócio de Vestuário também têm um campo opcional de **Gênero** (Masculino/Feminino/Unissex) e um campo de texto livre **Estação / Coleção** (ex. "Verão 2026", "Coleção Diwali") para ajudar a organizar seu catálogo.
 
 Precisa estocar várias combinações de uma vez? Use **Gerar Matriz de Tamanho × Cor** na parte inferior de Gerenciar Variações — digite seus tamanhos e cores como listas separadas por vírgula (por exemplo, "P, M, G" e "Preto, Branco") e o Sarang cria cada combinação como uma nova linha de uma só vez, ignorando qualquer combinação que você já tenha adicionado manualmente.
 
 Cada linha de variação tem seu próprio **código de barras** — gere um por linha, ou use **Gerar Códigos de Barras Ausentes** para preencher toda variação que ainda não tenha um. Ao imprimir etiquetas, um produto com variações rastreadas abre um seletor para que a etiqueta traga o código de barras e o preço exatos daquela variação, não os do produto principal.
 
+Pronto para fazer um novo pedido de um produto, mas não tem certeza de como dividi-lo entre os tamanhos? Abra **Divisão de Reposição Sugerida** na parte inferior de Gerenciar Variações, insira uma quantidade total (ou deixe em branco para usar a quantidade de reposição já configurada do produto), e o Sarang pondera a divisão em direção aos tamanhos e cores que realmente têm vendido nos últimos 90 dias — em vez de dividir igualmente. É a solução para o problema clássico de "esgotou M e L três semanas antes de S e XL, mas repôs todos igualmente mesmo assim". Isso é apenas uma sugestão, não um pedido ao vivo — você ainda faz o Pedido de Compra real você mesmo, informado pela divisão.
+
 ## Vendendo uma variação
 
 No **Faturamento**, adicionar um produto que tem variações configuradas não o adiciona diretamente ao carrinho — abre-se um seletor para você escolher exatamente qual combinação de tamanho/cor está sendo vendida, e é o estoque e o preço daquela variação específica (preço base + seu preço adicional, se houver) que realmente entra no carrinho. Isso mantém suas contagens de estoque por tamanho/cor precisas, em vez de simplesmente decrementar um único número compartilhado para o produto inteiro.
+
+## Relatório de Taxa de Venda por Estação/Coleção
+
+Se você marcar seus produtos com uma **Estação / Coleção**, abra **Relatórios → Taxa de Venda por Estação/Coleção** para ver, mês a mês, qual parcela das unidades vendidas-mais-em-estoque de cada coleção realmente vendeu — uma forma rápida de identificar qual coleção está vendendo e qual está silenciosamente acumulando na prateleira. O gráfico mostra cada coleção como sua própria barra por mês, com uma linha de tendência de média geral sobreposta; o número é comparado com seu estoque atual disponível para cada mês mostrado, então leia como uma tendência contínua, não como um instantâneo histórico exato de cada mês. Produtos sem estação definida são totalmente excluídos deste relatório — marque os que deseja rastrear.
+
+## Relatório de Mapa de Calor Tamanho × Estilo
+
+Abra **Relatórios → Mapa de Calor Tamanho × Estilo** para ver uma grade mostrando exatamente quais combinações de tamanho/produto ("estilo") estão realmente vendendo — cada produto na lateral, cada tamanho no topo, cada célula sombreada de acordo com quantas unidades daquela combinação exata venderam no intervalo de datas escolhido. Células mais escuras significam mais unidades vendidas; uma célula em branco significa que aquele par tamanho/estilo não vendeu nada. Foi feito para identificar padrões que uma lista de vendas simples esconderia — um estilo que só vende em M e L, ou um tamanho que nunca vende não importa o estilo. A grade mostra seus 15 estilos mais vendidos por volume, para permanecer legível mesmo em um catálogo grande.
 
 ## Devoluções
 

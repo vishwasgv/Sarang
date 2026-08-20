@@ -196,6 +196,89 @@ export async function getVariantSummary(productId: string): Promise<{ success: b
   }
 }
 
+// Phase 67 §9.1 — Clothing: size-curve reorder suggestion. "Auto-weights the
+// reorder ratio toward the sizes that actually sell" — the artifact's own
+// example: "you sold out of M and L three weeks before S and XL." This is
+// deliberately a SUGGESTION/breakdown, not a new ordering mechanism —
+// PurchaseOrderItem has no variantId at all (grounded: the PO/GRN pipeline
+// only orders at the parent-Product level), so actually rebuilding
+// variant-level purchasing is a much larger change than this single
+// signature item calls for. The owner sees the suggested split here and
+// still places/adjusts the real order manually.
+const SIZE_CURVE_LOOKBACK_DAYS = 90 // same recency window Dead Stock Clearance already established
+
+export interface SizeCurveReorderRow {
+  variantId: string; size: string | null; color: string | null
+  unitsSoldRecently: number; suggestedQuantity: number
+}
+export interface SizeCurveReorderSuggestion {
+  productId: string; totalReorderQty: number; lookbackDays: number
+  rows: SizeCurveReorderRow[]
+}
+
+export async function getSizeCurveReorderSuggestion(productId: string, totalReorderQty?: number): Promise<{ success: boolean; data?: SizeCurveReorderSuggestion; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const variants = await db.productVariant.findMany({ where: { productId, isActive: true }, select: { id: true, size: true, color: true } })
+    if (variants.length === 0) return { success: false, error: { code: 'VAR-011', message: 'This product has no active variants to suggest a reorder split for.' } }
+
+    let qty = totalReorderQty
+    if (qty === undefined) {
+      const inv = await db.inventory.findUnique({ where: { productId }, select: { reorderQuantity: true } })
+      qty = inv?.reorderQuantity ?? 0
+    }
+    if (!qty || qty <= 0) return { success: false, error: { code: 'VAR-012', message: 'Enter a reorder quantity greater than zero, or set one on this product’s reorder settings.' } }
+
+    const since = new Date(Date.now() - SIZE_CURVE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
+    const items = await db.invoiceItem.findMany({
+      where: { productId, variantId: { not: null }, invoice: { status: 'ACTIVE', invoiceDate: { gte: since } } },
+      select: { variantId: true, quantity: true, invoice: { select: { invoiceType: true } } }
+    })
+    const soldByVariant = new Map<string, number>()
+    for (const it of items) {
+      // Same RETURN sign correction every other report/aggregation in this
+      // codebase already uses — a returned unit is real negative signal,
+      // clamped at 0 per variant so it can never flip a suggestion negative.
+      const sign = it.invoice.invoiceType === 'RETURN' ? -1 : 1
+      const key = it.variantId!
+      soldByVariant.set(key, Math.max(0, (soldByVariant.get(key) ?? 0) + sign * it.quantity))
+    }
+    const totalSold = Array.from(soldByVariant.values()).reduce((s, n) => s + n, 0)
+
+    // No sales signal at all (brand-new product, or nothing sold in the
+    // window) — fall back to a neutral even split rather than suggesting
+    // zero for every size, which would be actively unhelpful.
+    const weights = totalSold > 0
+      ? variants.map(v => ({ variantId: v.id, weight: (soldByVariant.get(v.id) ?? 0) / totalSold }))
+      : variants.map(v => ({ variantId: v.id, weight: 1 / variants.length }))
+
+    // Largest-remainder rounding so the suggested quantities always sum
+    // exactly to qty, never drift a unit or two short/over from rounding.
+    const exact = weights.map(w => ({ variantId: w.variantId, value: w.weight * qty! }))
+    const floors = exact.map(e => ({ variantId: e.variantId, floor: Math.floor(e.value), remainder: e.value - Math.floor(e.value) }))
+    const allocated = floors.reduce((s, f) => s + f.floor, 0)
+    const remaining = qty - allocated
+    const byRemainder = [...floors].sort((a, b) => b.remainder - a.remainder)
+    const bonus = new Map<string, number>()
+    for (let i = 0; i < remaining; i++) bonus.set(byRemainder[i].variantId, (bonus.get(byRemainder[i].variantId) ?? 0) + 1)
+
+    const rows: SizeCurveReorderRow[] = variants
+      .map(v => {
+        const floor = floors.find(f => f.variantId === v.id)!.floor
+        return {
+          variantId: v.id, size: v.size, color: v.color,
+          unitsSoldRecently: soldByVariant.get(v.id) ?? 0,
+          suggestedQuantity: floor + (bonus.get(v.id) ?? 0)
+        }
+      })
+      .sort((a, b) => b.suggestedQuantity - a.suggestedQuantity)
+
+    return { success: true, data: { productId, totalReorderQty: qty, lookbackDays: SIZE_CURVE_LOOKBACK_DAYS, rows } }
+  } catch (err) {
+    return { success: false, error: { code: 'VAR-013', message: err instanceof Error ? err.message : 'Failed to compute size-curve reorder suggestion.' } }
+  }
+}
+
 // Real bug found live (2026-07-28 core-commerce audit): this used to
 // silently clamp at `Math.max(0, ...)` — never rejecting insufficient
 // stock, never distinguishing "just enough" from "not enough," and ignoring

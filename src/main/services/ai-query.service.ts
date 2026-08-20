@@ -194,14 +194,55 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // capital/clearance framing this report specifically adds.
   { template: 'retail.deadStockClearance', patterns: [/capital\s+locked/i, /clearance\s+list/i, /dead[\s-]?stock.*(capital|clearance|money|value)/i] },
   { template: 'retail.categorySellThrough', patterns: [/sell[\s-]?through/i, /category.*(sell|selling)\s+(rate|through)/i] },
+  // Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report.
+  // Deliberately "season"/"collection"-scoped so a bare "sell-through"
+  // question keeps routing to the pre-existing retail.categorySellThrough
+  // pattern above.
+  { template: 'clothing.seasonSellThrough', patterns: [/season.*(sell|selling)[\s-]?(rate|through)/i, /collection.*(sell|selling)[\s-]?(rate|through)/i] },
+  // Deliberately "reorder"/"restock"-scoped and paired with "size"/"split" —
+  // requires a specific product named in the question, resolved via the
+  // same generic params.searchTerm extraction every search-term-dependent
+  // intent in this file already uses.
+  { template: 'clothing.sizeCurveReorderSuggestion', patterns: [/(reorder|restock).*(split|by size|sizes)/i, /size.*(reorder|restock|curve)/i] },
+  // Deliberately "heatmap"/"combination"-scoped so it doesn't collide with
+  // the reorder-suggestion pattern above (both mention "size").
+  { template: 'clothing.sizeStyleHeatmap', patterns: [/(size|style).*heatmap/i, /(top|best).?(selling)?\s*(combination|size.?style)/i] },
   { template: 'retail.loyaltyProgress', patterns: [/loyalty/i, /punch[\s-]?card/i, /ready.*(redeem|reward)/i] },
   { template: 'retail.basketComposition', patterns: [/basket\s+(composition|analysis)/i, /bought\s+together/i, /(products?|items?).*(together|pair)/i] },
   // Phase 67 §9.1 — Hardware's "Fast-mover vs. slow-mover matrix" signature
   // win. Deliberately "mover"-scoped, not a bare "slow sell" phrase — that
   // already belongs to inventory.bottomRevenueProducts above.
   { template: 'hardware.fastSlowMoverMatrix', patterns: [/fast[\s-]?mover/i, /slow[\s-]?mover/i, /sales?\s+velocity/i, /(velocity.*margin|margin.*velocity)/i] },
+  // Phase 67 §9.1 — General's "Which template fits you?" wizard.
+  { template: 'general.templateSuggestion', patterns: [/(which|what)\s+template/i, /(right|better|correct)\s+(business\s+)?template/i, /template.*(fit|suit)/i] },
+  { template: 'general.customDocumentSummary', patterns: [/custom\s+document/i, /(visitor|complaint)\s+(register|log|book)/i, /my\s+(registers?|logs?)\b/i] },
+  // Deliberately narrower than a bare "category" + "revenue" match — the
+  // existing sales.byCategory intent (no fast-path regex of its own,
+  // LLM-routed) already owns plain "top categories by revenue" questions.
+  // This one only fires for the mix/share/breakdown framing this
+  // date-range-scoped report specifically adds.
+  { template: 'general.categoryMix', patterns: [/category\s+mix/i, /revenue\s+by\s+category/i, /(category|categories).*(mix|share|breakdown)/i] },
+  // Deliberately "position"/"trend"-scoped — the existing cashFlow.projectionNextMonth
+  // patterns above already own "cash flow" and "how does my cash look" phrasing.
+  { template: 'general.cashPositionTrend', patterns: [/cash\s+position/i, /combined\s+cash/i, /cash.*(trend|running\s+balance)/i] },
+  { template: 'general.quotePipelineSummary', patterns: [/quot(e|ation).*(pipeline|funnel)/i, /quotes?.*(sales\s+order|converted)/i] },
   { template: 'manufacturing.production', patterns: [/\bproduction\b/i, /production\s+order/i] },
   { template: 'electronics.serialWarranty', patterns: [/warrant(y|ies)/i, /serial\s+number/i] },
+  // Deliberately "RMA"/"vendor return"-scoped, not a bare "overdue" match —
+  // that word alone is already too broad (payments, rentals, tasks).
+  { template: 'electronics.rmaOverdueSummary', patterns: [/rma.*(overdue|late)/i, /(overdue|late).*rma/i, /units?.*(overdue|late).*vendor/i] },
+  // Deliberately "claim"/"recovery"-scoped — distinct from the SLA-overdue
+  // intent above, this one answers "how much do vendors owe us", not "how
+  // long has this been gone".
+  { template: 'electronics.vendorRecovery', patterns: [/vendor.*(recovery|claim)/i, /(recovery|claim).*vendor/i, /warranty\s+claim/i] },
+  // Deliberately "repair"/"technician"-scoped, not a bare "turnaround" match
+  // — that word alone could collide with other turnaround-style metrics.
+  { template: 'electronics.repairTurnaround', patterns: [/repair.*(turnaround|technician)/i, /technician.*(turnaround|repair|performance)/i] },
+  // Search-term-dependent, like customers.byNameOrPhone above — the pattern
+  // only needs to recognize the INTENT ("look up this device"), the actual
+  // serial/IMEI value comes from extractParams's own generic searchTerm
+  // extraction, applied uniformly regardless of which template it feeds.
+  { template: 'electronics.serialServiceLookup', patterns: [/(look\s*up|find|search).*(serial|imei|device)\b/i, /(serial|imei).*(history|lookup)/i] },
   { template: 'retail.variantStock', patterns: [/variant\s+stock/i, /(size|color)\s+stock/i] },
   { template: 'coaching.testScores', patterns: [/test\s+scores?/i, /student.*(score|marks|result)/i] },
   { template: 'compliance.tasks', patterns: [/compliance\s+task/i, /(overdue|pending)\s+complian/i] },

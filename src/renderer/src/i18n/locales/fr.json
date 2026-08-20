@@ -12,6 +12,7 @@
     "pricingSchemes": "Barèmes de Prix",
     "priceMarkdowns": "Démarques de Prix",
     "loyaltyProgram": "Programme de Fidélité",
+    "customDocuments": "Documents Personnalisés",
     "recurringProfiles": "Profils Récurrents",
     "locations": "Emplacements",
     "approvalWorkflows": "Flux d'Approbation",
@@ -214,7 +215,8 @@
     "monthSales": "Ventes du Mois",
     "reviewAuditLog": "Examiner",
     "reviewRentals": "Examiner",
-    "renewLicense": "Renouveler",
+    "reviewRepairTickets": "Examiner",
+"renewLicense": "Renouveler",
     "viewUpdate": "Voir",
     "spotlight": {
       "membershipTitle": "Focus Abonnements",
@@ -276,6 +278,29 @@
       "avgPainScore": "Score de Douleur Moy.",
       "avgFunctionalScore": "Score Fonctionnel Moy.",
       "chronicRecallTitle": "Focus Rappel Chronique"
+    },
+    "templateSuggestion": {
+      "title": "Vous cherchez un modèle plus adapté ?",
+      "explore": "Explorer les modèles d'entreprise",
+      "dismiss": "Rejeter cette suggestion",
+      "template": {
+        "HARDWARE": "Quincaillerie",
+        "JEWELLERY": "Bijouterie",
+        "RENTAL": "Location",
+        "RESTAURANT": "Restaurant",
+        "REPAIR": "Atelier de Réparation",
+        "SERVICE": "Entreprise de Services",
+        "RETAIL": "Commerce de Détail"
+      },
+      "reason": {
+        "cartonProducts": "Vous avez {{count}} produits configurés avec facturation au carton/paquet — cela ressemble à un modèle {{template}}.",
+        "jewelleryProducts": "Vous avez {{count}} produits avec tarification au poids du métal configurée — cela ressemble à un modèle {{template}}.",
+        "rentalProducts": "Vous avez {{count}} produits marqués comme louables — cela ressemble à un modèle {{template}}.",
+        "kotOrders": "Vous avez envoyé {{count}} commandes en cuisine — cela ressemble à un modèle {{template}}.",
+        "repairJobs": "Vous avez enregistré {{count}} tickets de réparation ou de travail — cela ressemble à un modèle {{template}}.",
+        "appointments": "Vous avez réservé {{count}} rendez-vous — cela ressemble à un modèle {{template}}.",
+        "variantOrLooseProducts": "Vous avez {{count}} produits avec variantes de taille/couleur ou tarification au poids en vrac — cela ressemble à un modèle {{template}}."
+      }
     }
   },
   "billing": {
@@ -653,6 +678,13 @@
     "bulkImportTitle": "Importer des Appareils en Masse",
     "imeiLookup": "Recherche IMEI",
     "imeiPlaceholder": "Entrez le numéro IMEI…",
+    "serviceLookup": "Recherche de Service",
+    "serviceLookupPlaceholder": "Scannez ou saisissez un numéro de série ou IMEI…",
+    "serviceLookupNotFound": "Aucun appareil trouvé avec ce numéro de série ou IMEI.",
+    "purchaseHistory": "Achat",
+    "neverSold": "Jamais vendu — encore en stock.",
+    "repairHistory": "Historique de Réparation",
+    "noRepairHistory": "Aucun ticket de réparation pour cette unité pour le moment.",
     "deviceSerial": "Appareil / N° de Série",
     "warranty": "Garantie",
     "changeStatus": "Changer le Statut",
@@ -1231,6 +1263,30 @@
     "couldNotSave": "Impossible d'enregistrer le programme de fidélité.",
     "couldNotRedeem": "Impossible d'échanger la récompense."
   },
+  "customDocuments": {
+    "title": "Documents Personnalisés",
+    "subtitle": "Définissez vos propres registres et journaux — champs, entrées, tout à vous",
+    "newType": "Nouveau Type de Document",
+    "editType": "Modifier le Type de Document",
+    "typeName": "Nom du Document",
+    "typeNamePlaceholder": "ex. Registre des Visiteurs, Journal des Réclamations",
+    "nameRequired": "Le nom est requis.",
+    "noTypesYet": "Aucun type de document personnalisé pour l'instant. Créez-en un pour commencer à enregistrer des entrées.",
+    "selectOrCreateType": "Sélectionnez un type de document à gauche, ou créez-en un nouveau.",
+    "manageFields": "Gérer les Champs",
+    "noFieldsYet": "Aucun champ défini pour ce type de document pour l'instant.",
+    "entries": "{{count}} entrées",
+    "newEntry": "Nouvelle Entrée",
+    "editEntry": "Modifier l'Entrée",
+    "noEntriesYet": "Aucune entrée enregistrée pour l'instant.",
+    "details": "Détails",
+    "notes": "Notes",
+    "deleteEntryTitle": "Supprimer l'Entrée ?",
+    "deleteEntryMessage": "Cette entrée sera définitivement supprimée. Cette action est irréversible.",
+    "couldNotLoad": "Impossible de charger les documents personnalisés.",
+    "couldNotSave": "Impossible d'enregistrer.",
+    "couldNotDelete": "Impossible de supprimer l'entrée."
+  },
   "recurringProfiles": {
     "title": "Profils Récurrents",
     "subtitle": "{{count}} profils — factures et dépenses qui se génèrent automatiquement selon un calendrier",
@@ -1565,9 +1621,21 @@
         "label": "Taux d'Écoulement par Catégorie",
         "description": "Mois par mois, quelle part des unités vendues-plus-en-stock de chaque catégorie s'est réellement vendue — repérez les catégories qui bougent vite face à celles qui s'accumulent"
       },
+      "seasonSellThrough": {
+        "label": "Taux d'Écoulement par Saison/Collection",
+        "description": "Mois par mois, quelle part des unités vendues-plus-en-stock de chaque saison ou collection s'est réellement vendue — repérez quelles collections se vendent vite et lesquelles s'accumulent"
+      },
+      "sizeStyleHeatmap": {
+        "label": "Carte Thermique Taille × Style",
+        "description": "Une grille des unités vendues par style et taille — voyez en un coup d'œil quelles combinaisons se vendent réellement"
+      },
       "basketComposition": {
         "label": "Composition du Panier",
         "description": "Quels produits sont le plus souvent achetés ensemble dans la même vente — repérez les combinaisons et associations naturelles qui méritent d'être placées côte à côte ou proposées en formule"
+      },
+      "categoryMix": {
+        "label": "Répartition par Catégorie",
+        "description": "Quelle part de votre chiffre d'affaires provient de chaque catégorie de produits sur une plage de dates — voyez en un coup d'œil quelles catégories font tourner l'activité et lesquelles ne représentent qu'une petite part"
       },
       "fastSlowMoverMatrix": {
         "label": "Matrice Produits à Rotation Rapide vs. Lente",
@@ -1620,6 +1688,18 @@
       "serialWarranty": {
         "label": "Rapport de Série et Garantie",
         "description": "Numéros de série par statut de garantie — expirée, bientôt expirée, active"
+      },
+      "rmaAging": {
+        "label": "Rapport d'Ancienneté RMA",
+        "description": "Chaque unité actuellement chez un fournisseur pour réparation ou remplacement, classée par durée d'absence — repérez celles bloquées au-delà du SLA de 30 jours"
+      },
+      "vendorRecoveryLedger": {
+        "label": "Grand Livre de Recouvrement Fournisseur",
+        "description": "Réclamations de garantie faites auprès des fournisseurs pour frais de réparation — montant réclamé, montant recouvré, et ce qui reste dû"
+      },
+      "repairTurnaroundByTechnician": {
+        "label": "Délai de Réparation par Technicien",
+        "description": "Délai de réparation moyen, le plus rapide et le plus lent par technicien — un véritable indicateur de qualité de service"
       },
       "variantStock": {
         "label": "Rapport de Stock par Variante",
@@ -1749,6 +1829,10 @@
         "label": "Projection de Trésorerie",
         "description": "Mouvement de trésorerie réel du mois écoulé, plus ce qui est dû et prévu pour le mois à venir"
       },
+      "cashPositionTrend": {
+        "label": "Tendance de Position de Trésorerie Combinée",
+        "description": "Votre solde total de caisse et banque, jour par jour sur une plage de dates — voyez la position réelle dans le temps, pas seulement un chiffre à un instant donné"
+      },
       "paymentPerformance": {
         "label": "Performance de Paiement",
         "description": "Combien de jours les clients mettent réellement à payer intégralement, classés par client"
@@ -1877,10 +1961,20 @@
       "sellThroughByCategoryMonth": "Taux d'Écoulement par Catégorie, par Mois",
       "sellThroughStockNote": "Comparé au stock actuellement disponible pour chaque mois affiché — une vue de tendance, pas le niveau de stock historique propre à chaque mois.",
       "avgSellThroughByCategory": "Taux d'Écoulement Moyen par Catégorie",
+      "sellThroughBySeasonMonth": "Taux d'Écoulement par Saison/Collection, par Mois",
+      "avgSellThroughBySeason": "Écoulement Moyen par Saison/Collection",
+      "overallAverage": "Moyenne Globale",
+      "totalUnitsSold": "Total des Unités Vendues",
+      "topCombination": "Meilleure Combinaison",
+      "topCombinationUnits": "Unités de la Meilleure Combinaison",
+      "sizeStyleHeatmap": "Carte Thermique Taille × Style",
       "totalBaskets": "Total des Paniers",
       "avgItemsPerBasket": "Articles Moy. par Panier",
       "avgBasketValue": "Valeur Moyenne du Panier",
       "topProductPairs": "Les Plus Souvent Achetés Ensemble",
+      "categoryCount": "Catégories",
+      "revenueByCategory": "Chiffre d'Affaires par Catégorie",
+      "cashPositionTrend": "Tendance de Position de Trésorerie",
       "balanceTrend": "Tendance du Solde",
       "balanceTrendSampledNote": "Ce compte a beaucoup d'activité — la courbe de tendance affiche un échantillon représentatif de points, pas chaque entrée individuelle. Le tableau ci-dessous liste toujours chaque transaction.",
       "velocityMedian": "Vélocité Médiane",
@@ -1928,6 +2022,13 @@
       "inStock": "En Stock",
       "warrantyExpiringSoon": "Garantie Bientôt Expirée",
       "warrantyExpired": "Garantie Expirée",
+      "totalOpen": "Actuellement chez le Fournisseur",
+      "daysWithVendorByUnit": "Jours chez le Fournisseur, par Unité",
+      "totalOutstanding": "Total Impayé",
+      "outstandingByClaim": "Montant Impayé, par Réclamation",
+      "technicianCount": "Techniciens",
+      "totalTicketsCompleted": "Tickets Terminés",
+      "avgTurnaroundByTechnician": "Jours de Délai Moyen, par Technicien",
       "totalVariants": "Total des Variantes",
       "totalStockQty": "Quantité Totale en Stock",
       "outOfStockVariants": "Variantes en Rupture de Stock",
@@ -2119,7 +2220,11 @@
       "recipeWasteVariance": "Aucune activité d'ingrédients liée à une recette trouvée dans cette plage de dates.",
       "deadStockClearance": "Aucun stock dormant trouvé — tous les produits en stock ont été vendus récemment.",
       "categorySellThrough": "Aucune vente de produit catégorisé trouvée dans cette plage de dates.",
+      "seasonSellThrough": "Aucun produit n'a de saison/collection définie, ou aucune vente n'a été trouvée dans cette plage de dates.",
+      "sizeStyleHeatmap": "Aucune vente à variantes suivies trouvée dans cette plage de dates.",
       "basketComposition": "Aucun panier avec 2 produits différents ou plus trouvé dans cette plage de dates.",
+      "categoryMix": "Aucune vente de produit catégorisé trouvée dans cette plage de dates.",
+      "cashPositionTrend": "Aucun mouvement de trésorerie trouvé dans cette plage de dates.",
       "fastSlowMoverMatrix": "Aucun produit vendu sur cette période.",
       "gstr1": "Aucune facture imposable trouvée pour cette période.",
       "appointments": "Aucun rendez-vous dans cette plage de dates.",
@@ -2132,6 +2237,9 @@
       "attendance": "Aucun enregistrement de présence sur cette période.",
       "productionOrders": "Aucun ordre de production sur cette période.",
       "serials": "Aucun numéro de série trouvé.",
+      "rmaAging": "Aucune unité n'est actuellement chez un fournisseur pour réparation ou remplacement.",
+      "vendorRecoveryLedger": "Aucune réclamation de garantie fournisseur n'a encore été enregistrée.",
+      "repairTurnaroundByTechnician": "Aucun ticket de réparation terminé n'a encore de technicien assigné.",
       "variants": "Aucune variante de produit trouvée.",
       "testScores": "Aucun résultat de test enregistré pour l'instant.",
       "complianceTasks": "Aucune tâche de conformité en attente ou en retard.",
@@ -2189,6 +2297,7 @@
       "sku": "SKU",
       "product": "Produit",
       "category": "Catégorie",
+      "season": "Saison/Collection",
       "type": "Type",
       "stock": "Stock",
       "costPrice": "Prix Coûtant",
@@ -2305,6 +2414,9 @@
       "productA": "Produit A",
       "productB": "Produit B",
       "basketCount": "Paniers",
+      "revenuePercent": "% du Chiffre d'Affaires",
+      "balance": "Solde",
+      "netChange": "Variation Nette",
       "velocity": "Vélocité (unités/jour)",
       "shipmentCount": "Expéditions",
       "freightAmount": "Montant du Fret",
@@ -2317,6 +2429,16 @@
       "completedDate": "Date d’Achèvement",
       "serialNumber": "Numéro de Série",
       "warrantyExpiry": "Expiration de la Garantie",
+      "claimNumber": "N° de Réclamation",
+      "daysWithVendor": "Jours chez le Fournisseur",
+      "claimedAmount": "Montant Réclamé",
+      "recoveredAmount": "Montant Recouvré",
+      "technician": "Technicien",
+      "ticketCount": "Tickets",
+      "avgTurnaroundDays": "Délai Moyen (jours)",
+      "minTurnaroundDays": "Le Plus Rapide (jours)",
+      "maxTurnaroundDays": "Le Plus Lent (jours)",
+      "style": "Style",
       "size": "Taille",
       "color": "Couleur",
       "stockQty": "Quantité en Stock",
@@ -2413,6 +2535,10 @@
       "atRiskFlag": "⚠ À Risque",
       "lowFlag": "⚠ Faible",
       "cartonsAndPieces": "{{cartons}} cartons + {{pieces}} pièces",
+      "overdue": "En Retard",
+      "onTrack": "Dans les Délais",
+      "open": "Ouvert",
+      "closed": "Fermé",
       "quadrant": {
         "FAST_HIGH_MARGIN": "Rapide, Marge Élevée",
         "FAST_LOW_MARGIN": "Rapide, Marge Faible",
@@ -3204,6 +3330,10 @@
         "title": "Programme de Fidélité",
         "body": "Définissez combien de visites permettent de gagner une récompense et quelle est cette récompense — un tampon est ajouté automatiquement à la carte du client à chaque vente qualifiante, sans étape supplémentaire à la caisse. Échangez-la ici une fois gagnée."
       },
+      "customDocuments": {
+        "title": "Documents Personnalisés",
+        "body": "Définissez vos propres registres — un Registre des Visiteurs, un Livre des Réclamations, tout ce qui n'est pas déjà intégré — avec vos propres champs, puis enregistrez des entrées datées."
+      },
       "recurringProfiles": {
         "title": "Profils Récurrents",
         "body": "Configurez une facture, une facture fournisseur ou une dépense pour qu'elle se répète selon un calendrier — hebdomadaire, mensuel ou annuel — afin de ne plus jamais avoir à recréer le même document à la main."
@@ -3799,6 +3929,10 @@
     "convertToRetainer": "Convertir en Forfait",
     "convertedToRetainer": "Devis converti en engagement de forfait",
     "failedConvertRetainer": "Échec de la conversion en forfait",
+    "convertToSalesOrder": "Convertir en Commande Client",
+    "convertToSalesOrderHint": "Crée une Commande Client à partir de ce devis — facturez-la entièrement ou par étapes depuis là, plutôt qu'une seule facture directe.",
+    "convertedToSalesOrder": "Devis converti en Commande Client",
+    "failedConvertSalesOrder": "Échec de la conversion en Commande Client",
     "deleted": "Devis supprimé",
     "failedDelete": "Échec de la suppression",
     "deleteTitle": "Supprimer le Devis",

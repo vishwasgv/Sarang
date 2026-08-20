@@ -289,6 +289,149 @@ describe('quotationService.convertToInvoice — license gate', () => {
   })
 })
 
+// Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline:
+// the missing middle link (Quotation -> SalesOrder) that lets a Quotation
+// feed into SalesOrder's own existing, partial-invoicing-aware billing flow
+// instead of only ever going straight to a one-shot Invoice.
+describe('quotationService.convertToSalesOrder', () => {
+  function makeSoDb(quotation: Record<string, unknown>, customer: Record<string, unknown> | null = { id: 'cust-1', isActive: true }) {
+    let settingRow: { settingKey: string; settingValue: string } | null = null
+    const txClient: Record<string, any> = {
+      salesOrder: {
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'so-1', ...data })),
+        findMany: vi.fn().mockResolvedValue([])
+      },
+      quotation: { update: vi.fn().mockResolvedValue({}) },
+      setting: {
+        findUnique: vi.fn(async () => settingRow),
+        create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      }
+    }
+    const db: Record<string, any> = {
+      quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
+      customer: { findUnique: vi.fn().mockResolvedValue(customer) },
+      product: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: 'misc-1' }) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
+    return { db, txClient }
+  }
+
+  const baseQuotation = {
+    id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', notes: null, invoice: null, salesOrder: null,
+    items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 2, unitPrice: 100, discount: 0, taxRate: 18 }]
+  }
+
+  it('creates a SalesOrder linked back to the quotation via quotationId', async () => {
+    const { db, txClient } = makeSoDb(baseQuotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    const createCall = txClient.salesOrder.create.mock.calls[0][0] as { data: { quotationId: string; customerId: string; status: string } }
+    expect(createCall.data.quotationId).toBe('qt-1')
+    expect(createCall.data.customerId).toBe('cust-1')
+    expect(createCall.data.status).toBe('DRAFT')
+  })
+
+  it('sets the Quotation status to ACCEPTED in the same transaction', async () => {
+    const { db, txClient } = makeSoDb(baseQuotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(txClient.quotation.update).toHaveBeenCalledWith({ where: { id: 'qt-1' }, data: { status: 'ACCEPTED' } })
+  })
+
+  it('folds a line discount into a reduced effective unit price, since SalesOrderItem has no discount column', async () => {
+    const quotation = {
+      ...baseQuotation,
+      items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 2, unitPrice: 100, discount: 10, taxRate: 0 }]
+    }
+    const { db, txClient } = makeSoDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    const createCall = txClient.salesOrder.create.mock.calls[0][0] as { data: { totalAmount: number; items: { create: { unitPrice: number; total: number }[] } } }
+    // 2 * 100 = 200 gross, 10% discount = 20 off -> 180 net, /2 qty = 90/unit
+    expect(createCall.data.items.create[0].unitPrice).toBe(90)
+    expect(createCall.data.items.create[0].total).toBe(180)
+    expect(createCall.data.totalAmount).toBe(180)
+  })
+
+  it('rejects when the quotation has already been converted to an invoice', async () => {
+    const quotation = { ...baseQuotation, invoice: { id: 'inv-1' } }
+    const { db } = makeSoDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-002')
+  })
+
+  it('rejects when the quotation has already been converted to a sales order', async () => {
+    const quotation = { ...baseQuotation, salesOrder: { id: 'so-existing' } }
+    const { db } = makeSoDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-008')
+  })
+
+  it('rejects a walk-in quotation with no real customer', async () => {
+    const quotation = { ...baseQuotation, customerId: null }
+    const { db } = makeSoDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-007')
+  })
+
+  it('rejects when the customer is archived', async () => {
+    const { db } = makeSoDb(baseQuotation, { id: 'cust-1', isActive: false })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CUST-004')
+  })
+
+  it('returns an honest not-found error for a missing quotation', async () => {
+    const { db } = makeSoDb(null as never)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-missing', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-001')
+  })
+
+  it('falls back to a Misc product when an item has no productId and no name match', async () => {
+    const quotation = {
+      ...baseQuotation,
+      items: [{ id: 'qi-1', productId: null, productName: 'Untracked Service', sku: null, quantity: 1, unitPrice: 500, discount: 0, taxRate: 0 }]
+    }
+    const { db, txClient } = makeSoDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    const createCall = txClient.salesOrder.create.mock.calls[0][0] as { data: { items: { create: { productId: string }[] } } }
+    expect(createCall.data.items.create[0].productId).toBe('misc-1')
+  })
+})
+
 // Phase 63 — Estimate → auto-create Retainer Invoice on accept.
 describe('quotationService.convertToRetainer', () => {
   function makeRetainerDb(overrides: Record<string, unknown> = {}) {

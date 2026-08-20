@@ -7,6 +7,9 @@ const WEIGHT_UNIT = z.enum(['kg', 'g', 'L', 'mL'])
 // Phase 48: apparel gender — nullable/optional, only meaningful for CLOTHING/
 // FOOTWEAR-style businesses (surfaced in the UI when variant_tracking is on).
 const GENDER = z.enum(['MENS', 'WOMENS', 'UNISEX']).optional().nullable()
+// Phase 67 §9.1 — Clothing: season/collection sell-through report. Free
+// text, same gate as GENDER above.
+const SEASON = z.string().max(100).optional().nullable()
 
 // Phase 38: a 13-digit barcode is validated as EAN-13 (catches fat-finger typos and
 // bad scans); anything else (UPC-A, Code39, etc.) passes through unchecked since we
@@ -154,6 +157,7 @@ export const CreateProductSchema = z
     defaultSupplierId: z.string().optional().nullable(),
     openingQuantity: z.number().min(0).default(0),
     gender: GENDER,
+    season: SEASON,
     // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag
     isPrescriptionRequired: z.boolean().optional(),
     // Phase 58 §2 — Agri Inputs category-specific expiry alert lead time.
@@ -195,6 +199,7 @@ export const UpdateProductSchema = z
     reorderQuantity: z.number().min(0).default(0),
     defaultSupplierId: z.string().optional().nullable(),
     gender: GENDER,
+    season: SEASON,
     isPrescriptionRequired: z.boolean().optional(),
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
     customFields: CustomFieldValuesSchema,

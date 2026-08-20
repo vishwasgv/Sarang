@@ -3,8 +3,20 @@ import { z } from 'zod'
 export const CUSTOM_FIELD_ENTITY_TYPES = ['INVOICE', 'CUSTOMER', 'SUPPLIER', 'PRODUCT', 'EXPENSE'] as const
 export const CUSTOM_FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'SELECT'] as const
 
+// Phase 67 §9.1 — General item 2: a CustomDocumentType's own field schema
+// reuses this exact table, keyed by a namespaced entityType value instead
+// of one of the 5 fixed built-in literals — widened from a strict enum to
+// a union so a typo'd built-in literal is still caught (unlike a fully
+// free-form string), while the new pattern is still precisely validated
+// (a real cuid, not arbitrary text).
+export const CUSTOM_DOCUMENT_ENTITY_TYPE_PATTERN = /^CUSTOM_DOCUMENT:[a-z0-9]{20,30}$/
+const EntityTypeSchema = z.union([
+  z.enum(CUSTOM_FIELD_ENTITY_TYPES),
+  z.string().regex(CUSTOM_DOCUMENT_ENTITY_TYPE_PATTERN, 'Invalid entity type.')
+])
+
 export const CreateCustomFieldDefinitionSchema = z.object({
-  entityType: z.enum(CUSTOM_FIELD_ENTITY_TYPES),
+  entityType: EntityTypeSchema,
   fieldName: z.string().min(1, 'Field name is required').max(100),
   fieldType: z.enum(CUSTOM_FIELD_TYPES),
   selectOptions: z.array(z.string().min(1)).max(50).optional(),
@@ -22,7 +34,7 @@ export const UpdateCustomFieldDefinitionSchema = z.object({
 })
 
 export const ListCustomFieldDefinitionsSchema = z.object({
-  entityType: z.enum(CUSTOM_FIELD_ENTITY_TYPES).optional(),
+  entityType: EntityTypeSchema.optional(),
   activeOnly: z.boolean().optional(),
 }).optional()
 

@@ -25,6 +25,8 @@ import { register as registerRecurringProfiles } from './handlers/recurring-prof
 import { register as registerPricingSchemes } from './handlers/pricing-scheme.handler'
 import { register as registerPriceMarkdowns } from './handlers/price-markdown.handler'
 import { register as registerLoyaltyProgram } from './handlers/loyalty-program.handler'
+import { register as registerTemplateSuggestion } from './handlers/template-suggestion.handler'
+import { register as registerCustomDocuments } from './handlers/custom-document.handler'
 import { register as registerInvoiceTemplates } from './handlers/invoice-template.handler'
 import { register as registerApprovalWorkflows } from './handlers/approval-workflow.handler'
 import { register as registerExpenses } from './handlers/expenses.handler'
@@ -211,6 +213,8 @@ export function registerAllIpcHandlers(): void {
   registerPricingSchemes(h)
   registerPriceMarkdowns(h)
   registerLoyaltyProgram(h)
+  registerTemplateSuggestion(h)
+  registerCustomDocuments(h)
   registerInvoiceTemplates(h)
   registerApprovalWorkflows(h)
   registerExpenses(h)

@@ -39,9 +39,17 @@ vi.mock('../report.service', () => ({
     generateBudgetVsActualReport: vi.fn(),
     generateCashFlowProjection: vi.fn(),
     generatePaymentPerformanceReport: vi.fn(),
-    generateStatutoryComplianceSummaryReport: vi.fn()
+    generateStatutoryComplianceSummaryReport: vi.fn(),
+    generateCategoryMixReport: vi.fn(),
+    generateCashPositionTrendReport: vi.fn(),
+    generateVendorRecoveryLedgerReport: vi.fn(),
+    generateRepairTurnaroundByTechnicianReport: vi.fn(),
+    generateSeasonSellThroughReport: vi.fn(),
+    generateSizeStyleHeatmapReport: vi.fn()
   }
 }))
+vi.mock('../repair-ticket.service', () => ({ lookupSerialService: vi.fn() }))
+vi.mock('../variant.service', () => ({ getSizeCurveReorderSuggestion: vi.fn() }))
 vi.mock('../analytics.service', () => ({
   getDashboardKpis: vi.fn(),
   getOutstandingAmount: vi.fn(),
@@ -70,6 +78,8 @@ import { getPrisma } from '../../database/db'
 import { getReadOnlyPrisma } from '../../database/ai-readonly-db'
 import { isModuleEnabled, getActiveTemplate } from '../industry-template.service'
 import { reportService } from '../report.service'
+import { lookupSerialService } from '../repair-ticket.service'
+import { getSizeCurveReorderSuggestion } from '../variant.service'
 import { getDashboardKpis, getOutstandingAmount, getDashboardAlerts } from '../analytics.service'
 import { getDeadStock, getTopSuppliersByPurchaseVolume } from '../ai-aggregations.service'
 import { getPlacementKPIs } from '../placement.service'
@@ -264,6 +274,242 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('manufacturing.production')
     expect(res.data?.answer).toContain('12 production orders')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — General's Category Mix report. Locks in that "category
+  // mix" routes to the new date-range-scoped report, not the pre-existing
+  // all-time sales.byCategory intent (which has no fast-path pattern of its
+  // own and would otherwise be reachable only via the LLM classifier).
+  it('routes "show me category mix" to general.categoryMix via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GENERAL' } as never })
+    vi.mocked(reportService.generateCategoryMixReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-13',
+      summary: { totalRevenue: 10000, categoryCount: 2 },
+      rows: [{ categoryId: 'c1', categoryName: 'Beverages', unitsSold: 50, revenue: 6000, revenuePercent: 60 }],
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me category mix')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('general.categoryMix')
+    expect(res.data?.answer).toContain('Beverages')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+  it('routes "show me the quote pipeline" to general.quotePipelineSummary via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GENERAL' } as never })
+    // Extends beforeEach's makeMockDb() baseline (businessProfile/aiQueryLog/
+    // bill) rather than replacing it — this intent calls getPrisma()
+    // directly (not through a mocked report.service function), so the rest
+    // of askQuestion's own pipeline (refreshAiNumberFormat, query logging)
+    // still needs those tables mocked too.
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) },
+      quotation: { findMany: vi.fn().mockResolvedValue([{ invoice: { id: 'inv-1' }, salesOrder: null }]) }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me the quote pipeline')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('general.quotePipelineSummary')
+    expect(res.data?.answer).toContain('billed directly')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker.
+  it('routes "any RMA overdue" to electronics.rmaOverdueSummary via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRONICS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) },
+      repairTicket: { findMany: vi.fn().mockResolvedValue([{ claimNumber: 'RMA-00001', product: { productName: 'Galaxy S24' }, sentToVendorDate: new Date() }]) }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Is any RMA overdue right now?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('electronics.rmaOverdueSummary')
+    expect(res.data?.answer).toContain('overdue')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+  it('routes "vendor claim recovery" to electronics.vendorRecovery via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRONICS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateVendorRecoveryLedgerReport).mockResolvedValue({
+      generatedAt: '2026-08-01T00:00:00Z',
+      rows: [{ claimNumber: 'RMA-00001', productName: 'Galaxy S24', vendorName: null, claimedAmount: 1000, recoveredAmount: 0, outstandingAmount: 1000, isClosed: false, closedAt: null }],
+      summary: { totalClaimed: 1000, totalRecovered: 0, totalOutstanding: 1000, openCount: 1, closedCount: 0 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('How much vendor claim recovery is still outstanding?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('electronics.vendorRecovery')
+    expect(res.data?.answer).toContain('outstanding')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Electronics: repair turnaround by technician.
+  it('routes "repair turnaround by technician" to electronics.repairTurnaround via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRONICS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateRepairTurnaroundByTechnicianReport).mockResolvedValue({
+      generatedAt: '2026-08-20T00:00:00Z',
+      rows: [{ technicianId: 'tech-1', technicianName: 'Ravi Kumar', ticketCount: 3, avgTurnaroundDays: 2, minTurnaroundDays: 1, maxTurnaroundDays: 4 }],
+      summary: { technicianCount: 1, totalTicketsCompleted: 3, overallAvgTurnaroundDays: 2 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is the repair turnaround by technician?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('electronics.repairTurnaround')
+    expect(res.data?.answer).toContain('turnaround')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Electronics: serial-number service lookup.
+  it('routes "look up serial SN12345" to electronics.serialServiceLookup via the fast-path, with the serial extracted as searchTerm', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRONICS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(lookupSerialService).mockResolvedValue({
+      success: true,
+      data: {
+        serial: { id: 'ser-1', serialNumber: 'SN12345', imeiNumber: null, imei2Number: null, status: 'SOLD', warrantyExpiryDate: null, productId: 'prod-1', productName: 'Galaxy S24' },
+        purchase: null, tickets: [], replacedOnTicket: null
+      }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Look up serial SN12345')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('electronics.serialServiceLookup')
+    expect(res.data?.answer).toContain('Galaxy S24')
+    expect(lookupSerialService).toHaveBeenCalledWith('SN12345')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Clothing: Season/Collection Sell-Through Report.
+  it('routes "season sell-through rate" to clothing.seasonSellThrough via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateSeasonSellThroughReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-31',
+      rows: [{ month: '2026-08', season: 'Summer 2026', unitsSold: 40, currentStock: 10, sellThroughRate: 80 }]
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is the season sell-through rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('clothing.seasonSellThrough')
+    expect(res.data?.answer).toContain('Summer 2026')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+  it('routes "reorder split by size for Cotton T-Shirt" to clothing.sizeCurveReorderSuggestion via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) },
+      product: { findFirst: vi.fn().mockResolvedValue({ id: 'prod-1', productName: 'Cotton T-Shirt' }) }
+    } as never)
+    vi.mocked(getSizeCurveReorderSuggestion).mockResolvedValue({
+      success: true,
+      data: { productId: 'prod-1', totalReorderQty: 40, lookbackDays: 90, rows: [{ variantId: 'var-m', size: 'M', color: null, unitsSoldRecently: 30, suggestedQuantity: 30 }] }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is the reorder split by size for Cotton T-Shirt?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('clothing.sizeCurveReorderSuggestion')
+    expect(res.data?.answer).toContain('Cotton T-Shirt')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Clothing: Size × Style Heatmap.
+  it('routes "size style heatmap" to clothing.sizeStyleHeatmap via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateSizeStyleHeatmapReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-31',
+      styles: ['Cotton T-Shirt'], sizes: ['L'],
+      cells: [{ style: 'Cotton T-Shirt', size: 'L', unitsSold: 25 }],
+      summary: { totalUnitsSold: 25, topCellStyle: 'Cotton T-Shirt', topCellSize: 'L', topCellUnitsSold: 25 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me the size style heatmap')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('clothing.sizeStyleHeatmap')
+    expect(res.data?.answer).toContain('Cotton T-Shirt')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — General's Combined Cash Position Trend. Locks in that
+  // "cash position" routes here, not the pre-existing cashFlow.projectionNextMonth
+  // intent (daily net movement, not a cumulative running position).
+  it('routes "what is my cash position" to general.cashPositionTrend via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GENERAL' } as never })
+    vi.mocked(reportService.generateCashPositionTrendReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-13',
+      points: [{ date: '2026-07-01', balance: 1000 }], openingBalance: 1000, closingBalance: 1500, netChange: 500,
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is my cash position?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('general.cashPositionTrend')
+    expect(res.data?.answer).toContain('grew')
     expect(classifySpy).not.toHaveBeenCalled()
   })
 

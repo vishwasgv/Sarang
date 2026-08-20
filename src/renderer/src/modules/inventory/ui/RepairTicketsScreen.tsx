@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, Wrench, Clock, Truck, PackageCheck, RotateCcw, XCircle, History, ArrowRight } from 'lucide-react'
+import { Plus, Search, Wrench, Clock, Truck, PackageCheck, RotateCcw, XCircle, History, ArrowRight, DollarSign } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@shared/ui/organisms/DataTable'
 import { Button } from '@shared/ui/atoms/Button'
@@ -9,6 +9,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatDate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 
 type RepairStatus =
   | 'RECEIVED' | 'DIAGNOSED' | 'SENT_TO_VENDOR' | 'AWAITING_PARTS'
@@ -26,7 +27,14 @@ interface TicketRow {
   vendorRmaNumber: string | null
   sentToVendorDate: string | null
   vendorResponseDate: string | null
+  vendorSlaDueDate: string | null
+  daysWithVendor: number | null
+  isOverdue: boolean
   repairCost: number | null
+  vendorClaimAmount: number | null
+  vendorRecoveredAmount: number
+  vendorClaimClosedAt: string | null
+  vendorClaimOutstanding: number | null
   notes: string | null
   createdAt: string
   serial: SerialLite
@@ -34,6 +42,7 @@ interface TicketRow {
   product: { id: string; productName: string }
   customer: { id: string; customerName: string; phone: string | null } | null
   vendor: { id: string; supplierName: string } | null
+  technician: { id: string; fullName: string } | null
 }
 
 const STATUS_LABELS: Record<RepairStatus, string> = {
@@ -169,6 +178,7 @@ export function RepairTicketsScreen() {
   const serialFilter = searchParams.get('serialId')
 
   const [tickets, setTickets] = useState<TicketRow[]>([])
+  const overdueCount = tickets.filter(t => t.isOverdue).length
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<RepairStatus | 'ALL'>('ALL')
@@ -181,6 +191,8 @@ export function RepairTicketsScreen() {
   const [issueDescription, setIssueDescription] = useState('')
   const [vendors, setVendors] = useState<Array<{ id: string; supplierName: string }>>([])
   const [createVendorId, setCreateVendorId] = useState('')
+  const [technicians, setTechnicians] = useState<Array<{ id: string; fullName: string }>>([])
+  const [createTechnicianId, setCreateTechnicianId] = useState('')
 
   const [selected, setSelected] = useState<TicketRow | null>(null)
   const [updating, setUpdating] = useState(false)
@@ -190,6 +202,17 @@ export function RepairTicketsScreen() {
   const [replacementSerialId, setReplacementSerialId] = useState('')
   const [repairCost, setRepairCost] = useState('')
   const [notes, setNotes] = useState('')
+
+  // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+  const [claimAmountInput, setClaimAmountInput] = useState('')
+  const [recoveryAmountInput, setRecoveryAmountInput] = useState('')
+  const [savingClaim, setSavingClaim] = useState(false)
+
+  // Phase 67 §9.1 — Electronics: repair turnaround by technician. Assignable
+  // independently of the status-advance flow — a technician is often
+  // decided at intake, before any status transition happens at all.
+  const [assignedTechnicianId, setAssignedTechnicianId] = useState('')
+  const [savingTechnician, setSavingTechnician] = useState(false)
 
   const [history, setHistory] = useState<TicketRow[] | null>(null)
   const [historyFor, setHistoryFor] = useState<string | null>(null)
@@ -225,6 +248,12 @@ export function RepairTicketsScreen() {
         setVendors(Array.isArray(d) ? d : (d.suppliers ?? []))
       }
     })
+    window.api.hr.listEmployees({ isActive: true }).then(res => {
+      if (res.success && res.data) {
+        const d = res.data as { employees?: Array<{ id: string; fullName: string }> } | Array<{ id: string; fullName: string }>
+        setTechnicians(Array.isArray(d) ? d : (d.employees ?? []))
+      }
+    })
   }, [])
 
   // Arrived via SerialTrackingScreen's "Repair" button (?serialId=...) — load
@@ -246,6 +275,7 @@ export function RepairTicketsScreen() {
     setPickedCustomer(null)
     setIssueDescription('')
     setCreateVendorId('')
+    setCreateTechnicianId('')
     setShowCreate(true)
   }
 
@@ -259,6 +289,7 @@ export function RepairTicketsScreen() {
         customerId: pickedCustomer?.id,
         issueDescription: issueDescription.trim(),
         vendorId: createVendorId || undefined,
+        technicianId: createTechnicianId || undefined,
       })
       if (res.success) {
         const d = res.data as { claimNumber: string }
@@ -288,6 +319,69 @@ export function RepairTicketsScreen() {
     setReplacementSerialId('')
     setRepairCost(t.repairCost != null ? String(t.repairCost) : '')
     setNotes(t.notes ?? '')
+    setClaimAmountInput(t.vendorClaimAmount != null ? String(t.vendorClaimAmount) : '')
+    setRecoveryAmountInput('')
+    setAssignedTechnicianId(t.technician?.id ?? '')
+  }
+
+  async function handleAssignTechnician() {
+    if (!selected) return
+    setSavingTechnician(true)
+    try {
+      const res = await window.api.repairTickets.updateStatus({
+        id: selected.id,
+        status: selected.status,
+        technicianId: assignedTechnicianId || undefined,
+      })
+      if (res.success) {
+        toastSuccess('Saved', 'Technician assignment updated.')
+        refreshSelected()
+      } else {
+        toastError('Failed', res.error?.message ?? 'Could not assign technician.')
+      }
+    } catch {
+      toastError('Failed', 'Could not assign technician.')
+    } finally {
+      setSavingTechnician(false)
+    }
+  }
+
+  // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
+  async function refreshSelected() {
+    if (!selected) return
+    const res = await window.api.repairTickets.get({ id: selected.id })
+    if (res.success && res.data) setSelected(res.data as TicketRow)
+    loadData()
+  }
+
+  async function handleRecordClaim() {
+    if (!selected || !claimAmountInput) return
+    setSavingClaim(true)
+    try {
+      const res = await window.api.repairTickets.recordVendorClaim({ id: selected.id, amount: parseFloat(claimAmountInput) })
+      if (res.success) { toastSuccess('Claim Recorded', `${selected.claimNumber} — vendor claim updated`); await refreshSelected() }
+      else toastError('Failed', res.error?.message ?? 'Could not record vendor claim.')
+    } finally { setSavingClaim(false) }
+  }
+
+  async function handleRecordRecovery() {
+    if (!selected || !recoveryAmountInput) return
+    setSavingClaim(true)
+    try {
+      const res = await window.api.repairTickets.recordVendorRecovery({ id: selected.id, amount: parseFloat(recoveryAmountInput) })
+      if (res.success) { toastSuccess('Recovery Recorded', `${selected.claimNumber} — payment received`); setRecoveryAmountInput(''); await refreshSelected() }
+      else toastError('Failed', res.error?.message ?? 'Could not record vendor recovery.')
+    } finally { setSavingClaim(false) }
+  }
+
+  async function handleWriteOffClaim() {
+    if (!selected) return
+    setSavingClaim(true)
+    try {
+      const res = await window.api.repairTickets.writeOffVendorClaim({ id: selected.id })
+      if (res.success) { toastSuccess('Claim Closed', `${selected.claimNumber} — written off`); await refreshSelected() }
+      else toastError('Failed', res.error?.message ?? 'Could not write off vendor claim.')
+    } finally { setSavingClaim(false) }
   }
 
   async function handleUpdateStatus() {
@@ -362,8 +456,19 @@ export function RepairTicketsScreen() {
     {
       id: 'vendor',
       header: () => 'Vendor RMA',
+      // Phase 67 §9.1 — Electronics: RMA SLA tracker. Overdue only while the
+      // unit is still genuinely with the vendor (isOverdue already encodes
+      // that server-side) — a returned-late ticket doesn't keep flashing red.
       cell: ({ row }) => row.original.vendor
-        ? <div><p className="text-base text-dark dark:text-slate-100">{row.original.vendor.supplierName}</p>{row.original.vendorRmaNumber && <p className="text-sm font-mono text-slate-400">{row.original.vendorRmaNumber}</p>}</div>
+        ? (
+          <div>
+            <p className="text-base text-dark dark:text-slate-100">{row.original.vendor.supplierName}</p>
+            {row.original.vendorRmaNumber && <p className="text-sm font-mono text-slate-400">{row.original.vendorRmaNumber}</p>}
+            {row.original.isOverdue && (
+              <Badge variant="danger" size="sm">Overdue — {row.original.daysWithVendor}d with vendor</Badge>
+            )}
+          </div>
+        )
         : <span className="text-sm text-slate-400">—</span>
     },
     {
@@ -394,7 +499,10 @@ export function RepairTicketsScreen() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-dark dark:text-slate-100">Repair Tickets</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{total} ticket(s)</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {total} ticket(s)
+              {overdueCount > 0 && <span className="text-danger font-semibold"> · {overdueCount} overdue from vendor RMA</span>}
+            </p>
           </div>
         </div>
         <Button size="md" onClick={() => openCreateForSerial()}>
@@ -469,6 +577,10 @@ export function RepairTicketsScreen() {
             <Select label="Vendor (optional)" value={createVendorId} onChange={e => setCreateVendorId(e.target.value)}>
               <option value="">— None yet —</option>
               {vendors.map(v => <option key={v.id} value={v.id}>{v.supplierName}</option>)}
+            </Select>
+            <Select label="Technician (optional)" value={createTechnicianId} onChange={e => setCreateTechnicianId(e.target.value)}>
+              <option value="">— Unassigned —</option>
+              {technicians.map(tech => <option key={tech.id} value={tech.id}>{tech.fullName}</option>)}
             </Select>
             <div className="flex gap-3 pt-2">
               <Button size="md" className="flex-1" onClick={handleCreate} disabled={creating}>{creating ? 'Saving…' : 'Create Ticket'}</Button>
@@ -549,6 +661,65 @@ export function RepairTicketsScreen() {
                 </div>
               </div>
             )}
+
+            {/* Phase 67 §9.1 — Electronics: repair turnaround by technician.
+                Independent of the status-advance flow above — who's doing
+                the work is often decided at intake, before any transition. */}
+            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Select label="Technician" value={assignedTechnicianId} onChange={e => setAssignedTechnicianId(e.target.value)}>
+                    <option value="">— Unassigned —</option>
+                    {technicians.map(tech => <option key={tech.id} value={tech.id}>{tech.fullName}</option>)}
+                  </Select>
+                </div>
+                <Button size="md" variant="outline" onClick={handleAssignTechnician} disabled={savingTechnician}>Save</Button>
+              </div>
+            </div>
+
+            {/* Phase 67 §9.1 — Electronics: vendor warranty-claim recovery
+                ledger. Independent of the status-advance flow above — a
+                claim can be recorded/tracked at any point once the shop has
+                already repaired or replaced the unit itself. */}
+            <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><DollarSign size={14} /> Vendor Recovery</p>
+              {selected.vendorClaimAmount == null ? (
+                <div className="flex gap-2">
+                  <input type="number" value={claimAmountInput} onChange={e => setClaimAmountInput(e.target.value)}
+                    placeholder="Claim amount" min="0" step="0.01"
+                    className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <Button size="md" onClick={handleRecordClaim} disabled={savingClaim || !claimAmountInput}>Record Claim</Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                      <p className="text-xs text-slate-400">Claimed</p>
+                      <p className="text-sm font-semibold text-dark dark:text-slate-100">{formatCurrency(selected.vendorClaimAmount)}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                      <p className="text-xs text-slate-400">Recovered</p>
+                      <p className="text-sm font-semibold text-success">{formatCurrency(selected.vendorRecoveredAmount)}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                      <p className="text-xs text-slate-400">Outstanding</p>
+                      <p className="text-sm font-semibold text-danger">{formatCurrency(selected.vendorClaimOutstanding ?? 0)}</p>
+                    </div>
+                  </div>
+                  {selected.vendorClaimClosedAt ? (
+                    <Badge variant="success">Closed {formatDate(new Date(selected.vendorClaimClosedAt))}</Badge>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input type="number" value={recoveryAmountInput} onChange={e => setRecoveryAmountInput(e.target.value)}
+                        placeholder="Amount received" min="0" step="0.01"
+                        className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                      <Button size="md" onClick={handleRecordRecovery} disabled={savingClaim || !recoveryAmountInput}>Record Recovery</Button>
+                      <Button size="md" variant="outline" onClick={handleWriteOffClaim} disabled={savingClaim}>Write Off</Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
               <Button size="md" variant="outline" className="flex-1" onClick={() => setSelected(null)}>Close</Button>

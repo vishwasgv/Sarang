@@ -6,15 +6,25 @@ Choisir **Vêtements** comme type d'entreprise active le **suivi des variantes d
 
 Un article de vêtement n'est généralement pas une seule référence de stock — « T-shirt homme » peut exister en cinq tailles et quatre couleurs, chacune avec son propre compte de stock. Depuis **Produits**, appuyez sur l'icône de couches sur n'importe quel produit pour ouvrir **Gérer les variantes**. Ajoutez une ligne par combinaison taille/couleur que vous stockez réellement (les champs taille et couleur suggèrent des tailles de vêtements courantes au fur et à mesure que vous tapez — de XS à 3XL — mais vous pouvez taper n'importe quoi), chacune avec son propre SKU facultatif, un prix supplémentaire par rapport au prix de base du produit si cette variante coûte plus cher (par ex. une grande taille), et sa propre quantité de stock. L'écran affiche un total courant des variantes et du stock combiné pour toutes.
 
-Les fiches produit pour une entreprise Vêtements obtiennent aussi un champ **Genre** facultatif (Homme/Femme/Unisexe) pour vous aider à organiser votre catalogue.
+Les fiches produit pour une entreprise Vêtements obtiennent aussi un champ **Genre** facultatif (Homme/Femme/Unisexe) et un champ de texte libre **Saison / Collection** (par ex. « Été 2026 », « Collection Diwali ») pour vous aider à organiser votre catalogue.
 
 Vous stockez beaucoup de combinaisons à la fois ? Utilisez **Générer une Matrice Taille × Couleur** en bas de Gérer les variantes — saisissez vos tailles et couleurs sous forme de listes séparées par des virgules (par ex. « S, M, L » et « Noir, Blanc ») et Sarang crée chaque combinaison comme une nouvelle ligne en une seule fois, en ignorant toute paire que vous avez déjà ajoutée manuellement.
 
 Chaque ligne de variante a son propre **code-barres** — générez-en un par ligne, ou utilisez **Générer les Codes-barres Manquants** pour compléter chaque variante qui n'en a pas encore. Lors de l'impression des étiquettes, un produit à variantes ouvre un sélecteur afin que l'étiquette porte le code-barres et le prix propres à cette variante exacte, et non ceux du produit parent.
 
+Prêt à réapprovisionner un produit mais vous ne savez pas comment le répartir entre les tailles ? Ouvrez **Répartition de Réapprovisionnement Suggérée** en bas de Gérer les variantes, saisissez une quantité totale (ou laissez vide pour utiliser la quantité de réapprovisionnement déjà configurée du produit), et Sarang pondère la répartition vers les tailles et couleurs qui se sont réellement vendues au cours des 90 derniers jours — au lieu de répartir également. C'est la solution au problème classique « rupture de stock en M et L trois semaines avant S et XL, mais tout réapprovisionné également quand même ». Il s'agit uniquement d'une suggestion, pas d'une commande réelle — vous passez toujours la véritable Commande d'Achat vous-même, éclairé par cette répartition.
+
 ## Vendre une variante
 
 Dans **Facturation**, ajouter un produit ayant des variantes configurées ne l'ajoute pas directement au panier — cela ouvre un sélecteur pour choisir la combinaison exacte taille/couleur vendue, et c'est le stock et le prix de cette variante spécifique (prix de base + son prix supplémentaire, le cas échéant) qui entre réellement dans le panier. Cela garde vos comptes de stock par taille/couleur exacts plutôt que de simplement décrémenter un seul chiffre partagé pour tout le produit.
+
+## Rapport de Taux d'Écoulement par Saison/Collection
+
+Si vous étiquetez vos produits avec une **Saison / Collection**, ouvrez **Rapports → Taux d'Écoulement par Saison/Collection** pour voir, mois par mois, quelle part des unités vendues-plus-en-stock de chaque collection s'est réellement vendue — un moyen rapide de repérer quelle collection se vend et laquelle s'accumule discrètement en rayon. Le graphique montre chaque collection comme sa propre barre par mois, avec une ligne de tendance de moyenne globale superposée ; le chiffre est comparé à votre stock actuel disponible pour chaque mois affiché, donc lisez-le comme une tendance continue, pas comme un instantané historique exact de chaque mois. Les produits sans saison définie sont entièrement exclus de ce rapport — étiquetez ceux que vous voulez suivre.
+
+## Rapport de Carte Thermique Taille × Style
+
+Ouvrez **Rapports → Carte Thermique Taille × Style** pour voir une grille montrant exactement quelles combinaisons taille/produit (« style ») se vendent réellement — chaque produit sur le côté, chaque taille en haut, chaque cellule ombrée selon le nombre d'unités de cette combinaison exacte vendues dans la plage de dates que vous choisissez. Les cellules plus foncées signifient plus d'unités vendues ; une cellule vide signifie que cette paire taille/style ne s'est pas vendue du tout. C'est conçu pour repérer des tendances qu'une simple liste de ventes enterrerait — un style qui ne se vend qu'en M et L, ou une taille qui ne se vend jamais quel que soit le style. La grille affiche vos 15 styles les plus vendus en volume, pour rester lisible même sur un grand catalogue.
 
 ## Retours
 

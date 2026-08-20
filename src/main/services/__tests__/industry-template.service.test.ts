@@ -88,12 +88,14 @@ describe('seedDefaultTemplates', () => {
   })
 
   it('does not call update when an existing row already has every default module', async () => {
-    // GENERAL's defaults are exactly LOGISTICS_MODULES — a row already
-    // matching TEMPLATE_DEFAULTS must be left alone entirely (no spurious
-    // writes on every app launch).
+    // GENERAL's defaults are custom_documents (Phase 67 §9.1's Custom
+    // Document Builder) plus LOGISTICS_MODULES — a row already matching
+    // TEMPLATE_DEFAULTS must be left alone entirely (no spurious writes on
+    // every app launch).
     const { db, updateCalls } = makeMockDb({
       GENERAL: {
         enabledModules: JSON.stringify([
+          'custom_documents',
           'logistics_fleet', 'logistics_carriers', 'logistics_shipments',
           'logistics_grn', 'logistics_challan', 'logistics_freight', 'logistics_analytics',
         ]),

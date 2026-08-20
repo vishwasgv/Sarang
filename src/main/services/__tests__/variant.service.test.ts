@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { decrementVariantStockTx, adjustVariantStock } from '../variant.service'
+import { decrementVariantStockTx, adjustVariantStock, getSizeCurveReorderSuggestion } from '../variant.service'
 
 function makeTx(variant: { id: string; stockQty: number } | null, allowNegative: boolean) {
   const updateCalls: unknown[] = []
@@ -128,5 +128,131 @@ describe('adjustVariantStock', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('VAR-005')
+  })
+})
+
+// Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
+describe('getSizeCurveReorderSuggestion', () => {
+  function makeVariant(overrides: Record<string, unknown> = {}) {
+    return { id: 'var-1', size: 'M', color: 'Blue', ...overrides }
+  }
+
+  function makeDb(opts: { variants?: unknown[]; reorderQuantity?: number | null; items?: unknown[] }) {
+    return {
+      productVariant: { findMany: vi.fn().mockResolvedValue(opts.variants ?? [makeVariant()]) },
+      inventory: { findUnique: vi.fn().mockResolvedValue(opts.reorderQuantity !== undefined ? { reorderQuantity: opts.reorderQuantity } : null) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue(opts.items ?? []) }
+    }
+  }
+
+  it('rejects a product with no active variants', async () => {
+    const db = makeDb({ variants: [] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 100)
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('VAR-011')
+  })
+
+  it('rejects when no quantity is provided and the product has no configured reorderQuantity', async () => {
+    const db = makeDb({ reorderQuantity: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('VAR-012')
+  })
+
+  it('falls back to the product own reorderQuantity when none is explicitly provided', async () => {
+    const db = makeDb({ reorderQuantity: 50 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.totalReorderQty).toBe(50)
+  })
+
+  it('weights the suggested quantity toward the variant that sold more, proportionally', async () => {
+    const db = makeDb({
+      variants: [makeVariant({ id: 'var-m', size: 'M' }), makeVariant({ id: 'var-l', size: 'L' })],
+      items: [
+        { variantId: 'var-m', quantity: 30, invoice: { invoiceType: 'SALE' } },
+        { variantId: 'var-l', quantity: 10, invoice: { invoiceType: 'SALE' } },
+      ]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 40)
+
+    expect(res.success).toBe(true)
+    const m = res.data?.rows.find(r => r.variantId === 'var-m')
+    const l = res.data?.rows.find(r => r.variantId === 'var-l')
+    expect(m?.suggestedQuantity).toBe(30) // 30/40 of sales -> 30/40 of qty
+    expect(l?.suggestedQuantity).toBe(10)
+  })
+
+  it('sums the suggested quantities exactly to the requested total, even with rounding', async () => {
+    const db = makeDb({
+      variants: [makeVariant({ id: 'var-a' }), makeVariant({ id: 'var-b' }), makeVariant({ id: 'var-c' })],
+      items: [
+        { variantId: 'var-a', quantity: 1, invoice: { invoiceType: 'SALE' } },
+        { variantId: 'var-b', quantity: 1, invoice: { invoiceType: 'SALE' } },
+        { variantId: 'var-c', quantity: 1, invoice: { invoiceType: 'SALE' } },
+      ]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 10) // 10/3 each, doesn't divide evenly
+
+    const total = res.data?.rows.reduce((s, r) => s + r.suggestedQuantity, 0)
+    expect(total).toBe(10)
+  })
+
+  it('falls back to an even split when no variant has any recent sales signal', async () => {
+    const db = makeDb({
+      variants: [makeVariant({ id: 'var-a' }), makeVariant({ id: 'var-b' })],
+      items: []
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 20)
+
+    const a = res.data?.rows.find(r => r.variantId === 'var-a')
+    const b = res.data?.rows.find(r => r.variantId === 'var-b')
+    expect(a?.suggestedQuantity).toBe(10)
+    expect(b?.suggestedQuantity).toBe(10)
+  })
+
+  it('applies the same RETURN sign correction as every other report/aggregation, clamped at zero per variant', async () => {
+    const db = makeDb({
+      variants: [makeVariant({ id: 'var-a' }), makeVariant({ id: 'var-b' })],
+      items: [
+        { variantId: 'var-a', quantity: 10, invoice: { invoiceType: 'SALE' } },
+        { variantId: 'var-a', quantity: 10, invoice: { invoiceType: 'RETURN' } },
+        { variantId: 'var-b', quantity: 5, invoice: { invoiceType: 'SALE' } },
+      ]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 10)
+
+    const a = res.data?.rows.find(r => r.variantId === 'var-a')
+    expect(a?.unitsSoldRecently).toBe(0) // 10 - 10, clamped
+  })
+
+  it('queries only ACTIVE invoices within the lookback window for this product', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = makeDb({ reorderQuantity: 10 })
+    db.invoiceItem.findMany = findMany
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getSizeCurveReorderSuggestion('prod-1')
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ productId: 'prod-1', variantId: { not: null }, invoice: expect.objectContaining({ status: 'ACTIVE' }) })
+    }))
   })
 })

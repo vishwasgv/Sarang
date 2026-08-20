@@ -6,15 +6,25 @@ Elegir **Ropa** como su tipo de negocio activa el **seguimiento de variantes de 
 
 Un artículo de ropa por lo general no es un único número de stock — "Camiseta de Hombre" podría existir en cinco tallas y cuatro colores, cada uno con su propio conteo de stock. Desde **Productos**, toque el ícono de capas en cualquier producto para abrir **Gestionar Variantes**. Agregue una fila por cada combinación de talla/color que realmente tiene en stock (los campos de talla y color sugieren tallas de ropa comunes mientras escribe — de XS a 3XL — pero puede escribir cualquier cosa), cada una con su propio SKU opcional, un precio adicional sobre el precio base del producto si esa variante cuesta más (p. ej. una talla grande), y su propia cantidad de stock. La pantalla muestra un total corriente de variantes y el stock combinado de todas ellas.
 
-Los registros de producto para un negocio de Ropa también obtienen un campo opcional de **Género** (Hombre/Mujer/Unisex) para ayudarlo a organizar su catálogo.
+Los registros de producto para un negocio de Ropa también obtienen un campo opcional de **Género** (Hombre/Mujer/Unisex) y un campo de texto libre **Temporada / Colección** (p. ej. "Verano 2026", "Colección Diwali") para ayudarlo a organizar su catálogo.
 
 ¿Necesita cargar muchas combinaciones a la vez? Use **Generate Size × Colour Matrix** al final de Manage Variants — escriba sus tallas y colores como listas separadas por comas (p. ej. "S, M, L" y "Negro, Blanco") y Sarang crea cada combinación como una fila nueva de una sola vez, omitiendo cualquier par que ya haya agregado a mano.
 
 Cada fila de variante tiene su propio **código de barras** — genere uno por fila, o use **Generate Missing Barcodes** para completar todas las variantes que aún no tienen uno. Al imprimir etiquetas, un producto con seguimiento de variantes abre un selector para que la etiqueta lleve el código de barras y el precio propios de esa variante exacta, no los del producto principal.
 
+¿Listo para reordenar un producto pero no está seguro de cómo dividirlo entre las tallas? Abra **División de Reorden Sugerida** en la parte inferior de Gestionar Variantes, ingrese una cantidad total (o déjelo en blanco para usar la cantidad de reorden ya configurada del producto), y Sarang pondera la división hacia las tallas y colores que realmente se han estado vendiendo en los últimos 90 días — en lugar de dividir uniformemente. Es la solución al clásico problema de "se agotaron las tallas M y L tres semanas antes que S y XL, pero se reordenaron todas por igual de todos modos". Esto es solo una sugerencia, no un pedido en vivo — usted todavía coloca la Orden de Compra real, informado por la división.
+
 ## Vender una variante
 
 En **Facturación**, agregar un producto que tiene variantes configuradas no lo agrega directamente al carrito — abre un selector para que elija la combinación exacta de talla/color que se vende, y el stock y precio de esa variante específica (precio base + su precio adicional, si lo hay) es lo que realmente entra al carrito. Esto mantiene sus conteos de stock por talla/color precisos, en lugar de simplemente decrementar un número compartido para todo el producto.
+
+## Informe de Venta por Temporada/Colección
+
+Si etiqueta sus productos con una **Temporada / Colección**, abra **Informes → Venta por Temporada/Colección** para ver, mes a mes, qué parte de las unidades vendidas-más-en-stock de cada colección realmente se vendió — una forma rápida de detectar qué colección se está moviendo y cuál se está acumulando silenciosamente en el estante. El gráfico muestra cada colección como su propia barra por mes, con una línea de tendencia de promedio general superpuesta; el número se compara con su stock actual disponible para cada mes mostrado, así que léalo como una tendencia continua, no como una instantánea histórica exacta de cada mes. Los productos sin temporada configurada quedan completamente excluidos de este informe — etiquete los que quiera rastrear.
+
+## Informe de Mapa de Calor Talla × Estilo
+
+Abra **Informes → Mapa de Calor Talla × Estilo** para ver una cuadrícula que muestra exactamente qué combinaciones de talla/producto ("estilo") realmente se están vendiendo — cada producto en el lateral, cada talla en la parte superior, cada celda sombreada según cuántas unidades de esa combinación exacta se vendieron en el rango de fechas que elija. Las celdas más oscuras significan más unidades vendidas; una celda en blanco significa que esa combinación talla/estilo no se vendió en absoluto. Está diseñado para detectar patrones que una simple lista de ventas ocultaría — un estilo que solo se vende en M y L, o una talla que nunca se vende sin importar el estilo. La cuadrícula muestra sus 15 estilos más vendidos por volumen, para que se mantenga legible incluso en un catálogo grande.
 
 ## Devoluciones
 

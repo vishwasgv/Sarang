@@ -5,6 +5,7 @@ import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
 import { generateInvoiceNumber, postInvoiceJournalEntry } from './billing.service'
+import { generateSONumber } from './sales-order.service'
 import { generateSequenceNumber } from './sequence.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
 import { ServiceError } from '../errors/service-error'
@@ -119,7 +120,16 @@ export const quotationService = {
     const [quotations, total] = await Promise.all([
       db.quotation.findMany({
         where,
-        include: { customer: true, _count: { select: { items: true } } },
+        // Real bug found live (Phase 67 §9.1): this list query never
+        // included `invoice`, even though QuotationsScreen.tsx's own list
+        // row branches on `q.invoice` to decide whether to show a link to
+        // the converted invoice or the "Convert to Invoice" button — always
+        // undefined here, so an already-converted quotation kept showing
+        // "Convert to Invoice" on the list screen until the backend
+        // rejected the repeat attempt with QT-002. Fixed by including both
+        // conversion targets, adding `salesOrder` at the same time for this
+        // phase's new Quote -> Order -> Invoice pipeline.
+        include: { customer: true, invoice: true, salesOrder: true, _count: { select: { items: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit
@@ -167,9 +177,16 @@ export const quotationService = {
     }
 
     const db = getPrisma()
-    const q = await db.quotation.findUnique({ where: { id }, include: { items: true, invoice: true } })
+    const q = await db.quotation.findUnique({ where: { id }, include: { items: true, invoice: true, salesOrder: true } })
     if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
     if (q.invoice) return { success: false, error: { code: 'QT-002', message: 'Quotation already converted to an invoice.' } }
+    // Phase 67 §9.1 — Universal Quote -> Order -> Invoice pipeline. Once a
+    // Quotation has become a SalesOrder, billing must go through THAT
+    // SalesOrder's own createInvoiceFromSalesOrder() (which tracks partial
+    // invoicing via SalesOrderItem.invoicedQty) — going straight to Invoice
+    // here instead would silently bypass that tracking and double-book the
+    // same quoted items across two independent, disconnected invoices.
+    if (q.salesOrder) return { success: false, error: { code: 'QT-006', message: 'Quotation already converted to a Sales Order. Invoice from the Sales Order instead.' } }
 
     const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
@@ -300,6 +317,116 @@ export const quotationService = {
 
       await logAction({ userId, action: 'CONVERT_QUOTATION', entityType: 'Invoice', entityId: invoice.id, newValue: `From quotation ${q.quotationNumber}` })
       return { success: true, data: invoice }
+    } catch (err) {
+      if (err instanceof ServiceError) {
+        return { success: false, error: { code: err.code, message: err.message } }
+      }
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+    }
+  },
+
+  // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
+  // Quotation already converts straight to Invoice (convertToInvoice above),
+  // and SalesOrder already converts to Invoice (salesOrderService's own
+  // createInvoiceFromSalesOrder, partial-invoicing aware) — but nothing ever
+  // connected the two, so there was no way to chain all three. This is the
+  // missing middle link: turns an accepted Quotation into a real SalesOrder
+  // (SalesOrder.quotationId), which can then be invoiced (fully or in
+  // stages) through the existing SalesOrder flow.
+  //
+  // Mirrors convertToInvoice()'s own product-resolution logic exactly
+  // (same-product / find-by-name / Misc fallback) rather than reusing
+  // salesOrderService.createSalesOrder() — that function expects a fresh
+  // caller-supplied payload, not an existing quotation's already-priced
+  // items, and this needs the SAME transaction to also flip the
+  // Quotation's own status, matching convertToInvoice's own shape.
+  //
+  // SalesOrderItem has no discount column at all (confirmed via schema —
+  // unlike QuotationItem/InvoiceItem). Rather than silently dropping a
+  // quotation's line discounts or adding a new column just for this,
+  // each discount is folded into a reduced effective unit price so the
+  // Sales Order's own total still exactly matches what the customer agreed
+  // to on the quotation — the Sales Order simply reflects the final
+  // negotiated per-unit price, with no separate discount line to show.
+  async convertToSalesOrder(id: string, userId: string) {
+    const db = getPrisma()
+    const q = await db.quotation.findUnique({ where: { id }, include: { items: true, invoice: true, salesOrder: true } })
+    if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
+    if (q.invoice) return { success: false, error: { code: 'QT-002', message: 'Quotation already converted to an invoice.' } }
+    if (q.salesOrder) return { success: false, error: { code: 'QT-008', message: 'Quotation already converted to a Sales Order.' } }
+    if (!q.customerId) return { success: false, error: { code: 'QT-007', message: 'A Sales Order requires a real customer, not a walk-in name.' } }
+
+    const customer = await db.customer.findUnique({ where: { id: q.customerId } })
+    if (!customer) return { success: false, error: { code: 'CUST-001', message: 'Customer not found.' } }
+    if (!customer.isActive) return { success: false, error: { code: 'CUST-004', message: 'Cannot create a Sales Order for an archived customer.' } }
+
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+
+    const resolvedItems = await Promise.all(q.items.map(async (item) => {
+      if (item.productId) {
+        return { ...item, resolvedProductId: item.productId as string | null }
+      }
+      const byName = await db.product.findFirst({ where: { productName: item.productName, isActive: true } })
+      if (byName) return { ...item, resolvedProductId: byName.id }
+      let misc = await db.product.findFirst({ where: { productName: '__MISC_ITEM__' } })
+      if (!misc) {
+        misc = await db.product.create({
+          data: { productName: '__MISC_ITEM__', sellingPrice: 0, taxRate: 0, productType: 'SERVICE', unit: 'PCS', isActive: true }
+        })
+      }
+      return { ...item, resolvedProductId: misc.id }
+    }))
+
+    const lineRows = resolvedItems.map((item) => {
+      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
+      const lineDiscountAmount = roundCurrency(lineGross * (item.discount / 100), currencyDecimals)
+      // Effective net-of-discount unit price — the SalesOrder line's own
+      // total (quantity * effectiveUnitPrice, taxed) reproduces the
+      // quotation line's already-agreed total with no separate discount field.
+      const effectiveUnitPrice = item.quantity > 0 ? roundCurrency((lineGross - lineDiscountAmount) / item.quantity, currencyDecimals) : item.unitPrice
+      const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, effectiveUnitPrice, 0, item.taxRate, currencyDecimals)
+      return { item, effectiveUnitPrice, lineTaxAmount, lineTotal }
+    })
+    const soSubtotal = sumCurrency(lineRows.map(r => roundCurrency(r.item.quantity * r.effectiveUnitPrice, currencyDecimals)), currencyDecimals)
+    const soTaxAmount = sumCurrency(lineRows.map(r => r.lineTaxAmount), currencyDecimals)
+    const soTotalAmount = roundCurrency(soSubtotal + soTaxAmount, currencyDecimals)
+
+    try {
+      const salesOrder = await db.$transaction(async (tx) => {
+        const soNumber = await generateSONumber(tx)
+
+        const so = await tx.salesOrder.create({
+          data: {
+            soNumber,
+            customerId: q.customerId!,
+            status: 'DRAFT',
+            subtotal: soSubtotal,
+            taxAmount: soTaxAmount,
+            totalAmount: soTotalAmount,
+            notes: q.notes ? `Converted from quotation ${q.quotationNumber}. ${q.notes}` : `Converted from quotation ${q.quotationNumber}.`,
+            quotationId: q.id,
+            createdById: userId,
+            items: {
+              create: lineRows.map(({ item, effectiveUnitPrice, lineTaxAmount, lineTotal }) => ({
+                productId: item.resolvedProductId,
+                quantity: item.quantity,
+                unitPrice: effectiveUnitPrice,
+                taxRate: item.taxRate,
+                taxAmount: lineTaxAmount,
+                total: lineTotal
+              }))
+            }
+          }
+        })
+
+        await tx.quotation.update({ where: { id }, data: { status: 'ACCEPTED' } })
+
+        return so
+      })
+
+      await logAction({ userId, action: 'CONVERT_QUOTATION_TO_SO', entityType: 'SalesOrder', entityId: salesOrder.id, newValue: `From quotation ${q.quotationNumber}` })
+      return { success: true, data: salesOrder }
     } catch (err) {
       if (err instanceof ServiceError) {
         return { success: false, error: { code: err.code, message: err.message } }

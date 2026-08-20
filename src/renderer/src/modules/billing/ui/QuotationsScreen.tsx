@@ -22,6 +22,7 @@ interface Quotation {
   id: string; quotationNumber: string; customerName?: string | null; status: string
   totalAmount: number; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
   invoice?: { id: string; invoiceNumber: string } | null
+  salesOrder?: { id: string; soNumber: string } | null
   customer?: { id: string; customerName: string; phone?: string | null; email?: string | null } | null
   retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED' | null
 }
@@ -112,6 +113,23 @@ export function QuotationsScreen() {
       }
     } catch {
       toastError(t('quotations.failedConvert'))
+    } finally {
+      setConverting(null)
+    }
+  }
+
+  async function convertToSalesOrder(q: Quotation) {
+    setConverting(q.id)
+    try {
+      const res = await window.api.quotations.convertToSalesOrder(q.id)
+      if (res.success) {
+        toastSuccess(t('quotations.convertedToSalesOrder'))
+        loadData()
+      } else {
+        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvertSalesOrder'))
+      }
+    } catch {
+      toastError(t('quotations.failedConvertSalesOrder'))
     } finally {
       setConverting(null)
     }
@@ -239,6 +257,15 @@ export function QuotationsScreen() {
                   className="text-xs text-success font-semibold whitespace-nowrap">
                   {q.invoice.invoiceNumber} <ChevronRight size={12} className="inline" />
                 </button>
+              ) : q.salesOrder ? (
+                // Phase 67 §9.1 — Universal Quote -> Order -> Invoice pipeline.
+                // Once converted to a Sales Order, billing continues from
+                // there (its own invoicing flow tracks partial fulfillment) —
+                // no "Convert to Invoice" button shown here anymore.
+                <button onClick={() => navigate(`/sales-orders/${q.salesOrder!.id}`)}
+                  className="text-xs text-success font-semibold whitespace-nowrap">
+                  {q.salesOrder.soNumber} <ChevronRight size={12} className="inline" />
+                </button>
               ) : q.status !== 'EXPIRED' && canCreate ? (
                 <div className="flex items-center gap-2">
                   <button
@@ -248,6 +275,16 @@ export function QuotationsScreen() {
                     <ArrowRightCircle size={13} />
                     {converting === q.id ? t('quotations.converting') : t('quotations.convertToInvoice')}
                   </button>
+                  {!q.retainerType && (
+                    <button
+                      onClick={() => convertToSalesOrder(q)}
+                      disabled={converting === q.id}
+                      title={t('quotations.convertToSalesOrderHint') as string}
+                      className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline disabled:opacity-50 whitespace-nowrap">
+                      <ArrowRightCircle size={13} />
+                      {converting === q.id ? t('quotations.converting') : t('quotations.convertToSalesOrder')}
+                    </button>
+                  )}
                   {q.retainerType && (
                     <button
                       onClick={() => convertToRetainer(q)}

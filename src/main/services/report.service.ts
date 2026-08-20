@@ -1432,6 +1432,78 @@ async function generateCashFlowProjection(params: { daysBack?: number; daysForwa
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Combined Cash Position Trend (General template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A day-by-day CUMULATIVE balance trend for the single "Cash & Bank"
+// ChartOfAccounts row (accountCode '1000') — genuinely different from both
+// existing cash reports above: generateCashFlowProjection shows daily NET
+// movement (in minus out, split into actual/projected halves), never a
+// running position; generateCashBookReport shows a running balance too, but
+// synthesizes it from three transactional tables directly (Payment/Expense/
+// SupplierLedger) rather than the real posted GL — the same distinction
+// that motivated generateTrialBalanceReport's own Phase 62 rewrite away
+// from synthesized figures once a real GL existed to read from. "Combined"
+// because every distinct cash-touching transaction type (Payments,
+// Expenses, SupplierPayments, Bills, POS sales, PDC clears, etc.) posts to
+// this SAME single GL bucket by construction (see generateCashFlowProjection's
+// own comment above on this), so this trend is inherently the consolidated
+// position across all of them, not per-instrument.
+export interface CashPositionTrendPoint { date: string; balance: number }
+export interface CashPositionTrendReport {
+  dateFrom: string; dateTo: string
+  points: CashPositionTrendPoint[]
+  openingBalance: number; closingBalance: number; netChange: number
+}
+
+async function generateCashPositionTrendReport(params: { dateFrom: string; dateTo: string }): Promise<CashPositionTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const cashAccount = await db.chartOfAccounts.findFirst({ where: { accountCode: '1000' } })
+  if (!cashAccount) return { dateFrom: params.dateFrom, dateTo: params.dateTo, points: [], openingBalance: 0, closingBalance: 0, netChange: 0 }
+
+  const [priorLines, rangeLines] = await Promise.all([
+    db.journalEntryLine.findMany({
+      where: { accountId: cashAccount.id, journalEntry: { entryDate: { lt: from } } },
+      select: { debitAmount: true, creditAmount: true }
+    }),
+    db.journalEntryLine.findMany({
+      where: { accountId: cashAccount.id, journalEntry: { entryDate: { gte: from, lte: to } } },
+      select: { debitAmount: true, creditAmount: true, journalEntry: { select: { entryDate: true } } }
+    })
+  ])
+
+  // Cash is a debit-normal ASSET account — same sign convention as
+  // generateTrialBalanceReport's own net = debit − credit.
+  const openingBalance = roundCurrency(
+    sumCurrency(priorLines.map((l) => l.debitAmount)) - sumCurrency(priorLines.map((l) => l.creditAmount))
+  )
+
+  const netByDate = new Map<string, number>()
+  for (const line of rangeLines) {
+    const date = toLocalISODate(line.journalEntry.entryDate)
+    netByDate.set(date, (netByDate.get(date) ?? 0) + line.debitAmount - line.creditAmount)
+  }
+
+  const points: CashPositionTrendPoint[] = []
+  let running = openingBalance
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+    const date = toLocalISODate(d)
+    running = roundCurrency(running + (netByDate.get(date) ?? 0))
+    points.push({ date, balance: running })
+  }
+
+  const closingBalance = points.length > 0 ? points[points.length - 1].balance : openingBalance
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, points,
+    openingBalance, closingBalance,
+    netChange: roundCurrency(closingBalance - openingBalance)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Phase 65 — Payment Performance Report
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1971,6 +2043,260 @@ async function generateCategorySellThroughReport(params: { dateFrom: string; dat
     .sort((a, b) => a.month === b.month ? a.categoryName.localeCompare(b.categoryName) : a.month.localeCompare(b.month))
 
   return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Season/Collection Sell-Through Report (Clothing template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Byte-for-byte the same shape and same disclosed simplification as
+// generateCategorySellThroughReport above (current stock compared against
+// every month in range, not that month's own historical stock level) —
+// grouped by the new free-text Product.season field instead of
+// ProductCategory. Products with no season set are excluded entirely
+// (there's no meaningful "season" bucket for them), same as the category
+// report excludes uncategorized products.
+export interface SeasonSellThroughRow {
+  month: string; season: string
+  unitsSold: number; currentStock: number; sellThroughRate: number
+}
+export interface SeasonSellThroughReport {
+  dateFrom: string; dateTo: string; rows: SeasonSellThroughRow[]
+}
+
+async function generateSeasonSellThroughReport(params: { dateFrom: string; dateTo: string }): Promise<SeasonSellThroughReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const seasonRows = await db.product.findMany({ where: { isActive: true, season: { not: null } }, select: { season: true }, distinct: ['season'] })
+  const seasons = seasonRows.map(r => r.season!).filter(Boolean)
+  if (seasons.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [] }
+
+  const seasonProducts = await db.product.findMany({ where: { isActive: true, season: { not: null } }, select: { id: true, season: true } })
+  const stockRows = await db.inventory.findMany({ where: { productId: { in: seasonProducts.map(p => p.id) } }, select: { productId: true, quantity: true } })
+  const stockByProduct = new Map(stockRows.map(r => [r.productId, r.quantity]))
+  const stockBySeason = new Map<string, number>()
+  for (const p of seasonProducts) {
+    if (!p.season) continue
+    stockBySeason.set(p.season, (stockBySeason.get(p.season) ?? 0) + (stockByProduct.get(p.id) ?? 0))
+  }
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      product: { season: { not: null } }
+    },
+    select: {
+      quantity: true,
+      invoice: { select: { invoiceType: true, invoiceDate: true } },
+      product: { select: { season: true } }
+    }
+  })
+
+  const byKey = new Map<string, { month: string; season: string; unitsSold: number }>()
+  const cursor = new Date(from.getFullYear(), from.getMonth(), 1)
+  const end = new Date(to.getFullYear(), to.getMonth(), 1)
+  while (cursor <= end) {
+    const month = groupLabel(cursor, 'month')
+    for (const s of seasons) byKey.set(`${month}|${s}`, { month, season: s, unitsSold: 0 })
+    cursor.setMonth(cursor.getMonth() + 1)
+  }
+
+  for (const item of items) {
+    if (!item.product.season) continue
+    const month = groupLabel(item.invoice.invoiceDate, 'month')
+    const key = `${month}|${item.product.season}`
+    const existing = byKey.get(key)
+    if (!existing) continue
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    existing.unitsSold += sign * item.quantity
+  }
+
+  const rows: SeasonSellThroughRow[] = Array.from(byKey.values())
+    .map(r => {
+      const currentStock = stockBySeason.get(r.season) ?? 0
+      const unitsSold = Math.max(0, r.unitsSold)
+      const denom = unitsSold + currentStock
+      return {
+        month: r.month, season: r.season,
+        unitsSold: r.unitsSold, currentStock,
+        sellThroughRate: denom > 0 ? Math.round((unitsSold / denom) * 1000) / 10 : 0
+      }
+    })
+    .sort((a, b) => a.month === b.month ? a.season.localeCompare(b.season) : a.month.localeCompare(b.month))
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Size × Style Heatmap Report (Clothing template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "Visualizes exactly which combinations move" — Product IS the "style"
+// (no separate style field needed), ProductVariant.size is the size, so this
+// is a live grouping over existing InvoiceItem rows, same as Category Mix's
+// own no-new-capture-needed precedent. Resolves size via a real
+// ProductVariant join by variantId, not InvoiceItem.variantInfo's own
+// free-text sale-time snapshot ("M / Blue") — that string is ambiguous to
+// re-parse (color-only vs. size-only vs. both) and ProductVariant.size is
+// the actual source of truth. Capped to the top 15 styles by net units sold
+// so the grid stays legible on a catalog with hundreds of products, matching
+// the same table.head-scaling instinct as this file's other bounded reports.
+const CLOTHING_SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
+const MAX_HEATMAP_STYLES = 15
+
+function compareSizes(a: string, b: string): number {
+  const aNum = Number(a); const bNum = Number(b)
+  if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum
+  const aIdx = CLOTHING_SIZE_ORDER.indexOf(a.toUpperCase())
+  const bIdx = CLOTHING_SIZE_ORDER.indexOf(b.toUpperCase())
+  if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+  if (aIdx !== -1) return -1
+  if (bIdx !== -1) return 1
+  return a.localeCompare(b)
+}
+
+export interface SizeStyleHeatmapCell { style: string; size: string; unitsSold: number }
+export interface SizeStyleHeatmapReport {
+  dateFrom: string; dateTo: string
+  styles: string[]; sizes: string[]
+  cells: SizeStyleHeatmapCell[]
+  summary: { totalUnitsSold: number; topCellStyle: string | null; topCellSize: string | null; topCellUnitsSold: number }
+}
+
+async function generateSizeStyleHeatmapReport(params: { dateFrom: string; dateTo: string }): Promise<SizeStyleHeatmapReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      variantId: { not: null }
+    },
+    select: {
+      quantity: true, variantId: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { productName: true } }
+    }
+  })
+  if (items.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, styles: [], sizes: [], cells: [], summary: { totalUnitsSold: 0, topCellStyle: null, topCellSize: null, topCellUnitsSold: 0 } }
+
+  const variantIds = [...new Set(items.map(i => i.variantId!))]
+  const variants = await db.productVariant.findMany({ where: { id: { in: variantIds } }, select: { id: true, size: true } })
+  const sizeByVariantId = new Map(variants.map(v => [v.id, v.size]))
+
+  const byKey = new Map<string, { style: string; size: string; unitsSold: number }>()
+  const styleTotals = new Map<string, number>()
+  for (const item of items) {
+    const size = sizeByVariantId.get(item.variantId!)
+    if (!size) continue
+    const style = item.product.productName
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const key = `${style}|${size}`
+    const existing = byKey.get(key) ?? { style, size, unitsSold: 0 }
+    existing.unitsSold += sign * item.quantity
+    byKey.set(key, existing)
+    styleTotals.set(style, (styleTotals.get(style) ?? 0) + sign * item.quantity)
+  }
+
+  const topStyles = Array.from(styleTotals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_HEATMAP_STYLES)
+    .map(([style]) => style)
+  const topStyleSet = new Set(topStyles)
+
+  const cells: SizeStyleHeatmapCell[] = Array.from(byKey.values())
+    .filter(c => topStyleSet.has(c.style))
+    .map(c => ({ ...c, unitsSold: Math.max(0, c.unitsSold) }))
+
+  const sizes = Array.from(new Set(cells.map(c => c.size))).sort(compareSizes)
+  const totalUnitsSold = cells.reduce((s, c) => s + c.unitsSold, 0)
+  const topCell = [...cells].sort((a, b) => b.unitsSold - a.unitsSold)[0] ?? null
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    styles: topStyles, sizes, cells,
+    summary: {
+      totalUnitsSold,
+      topCellStyle: topCell?.style ?? null, topCellSize: topCell?.size ?? null, topCellUnitsSold: topCell?.unitsSold ?? 0
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category Mix Report (General template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "What share of my business comes from each category" — a single-period
+// revenue+unit breakdown by ProductCategory, unlike Category Sell-Through's
+// own month-by-month rate-vs-stock view above (a different question this
+// codebase already answers). `ProductCategory` is user-defined, hence
+// "user-defined category mix" — no new capture needed, this is purely a
+// live grouping over existing InvoiceItem rows, confirmed via grounding
+// (the Sales report's own chart groups by day/hour only, never by
+// category; only the separate Inventory Report chart happens to group
+// stock VALUE by category — no report anywhere groups REVENUE by category
+// before this one). `lineTotal` is already signed correctly for a RETURN
+// invoice item (only `quantity` is always stored positive) — same
+// convention `getBottomRevenueProducts` (ai-aggregations.service.ts)
+// already established, mirrored here rather than re-deriving it.
+export interface CategoryMixRow {
+  categoryId: string; categoryName: string
+  unitsSold: number; revenue: number; revenuePercent: number
+}
+export interface CategoryMixReport {
+  dateFrom: string; dateTo: string
+  rows: CategoryMixRow[]
+  summary: { totalRevenue: number; categoryCount: number }
+}
+
+async function generateCategoryMixReport(params: { dateFrom: string; dateTo: string }): Promise<CategoryMixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const categories = await db.productCategory.findMany({ select: { id: true, name: true } })
+  if (categories.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalRevenue: 0, categoryCount: 0 } }
+  const categoryNameById = new Map(categories.map(c => [c.id, c.name]))
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      product: { categoryId: { not: null } }
+    },
+    select: {
+      quantity: true, lineTotal: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { categoryId: true } }
+    }
+  })
+
+  const byCategory = new Map<string, { unitsSold: number; revenue: number }>()
+  for (const item of items) {
+    const catId = item.product.categoryId
+    if (!catId) continue
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const existing = byCategory.get(catId) ?? { unitsSold: 0, revenue: 0 }
+    existing.unitsSold += sign * item.quantity
+    existing.revenue += item.lineTotal
+    byCategory.set(catId, existing)
+  }
+
+  const totalRevenue = sumCurrency(Array.from(byCategory.values()).map(v => v.revenue))
+  const rows: CategoryMixRow[] = Array.from(byCategory.entries())
+    .map(([categoryId, v]) => ({
+      categoryId, categoryName: categoryNameById.get(categoryId) ?? '',
+      unitsSold: v.unitsSold, revenue: roundCurrency(v.revenue),
+      revenuePercent: totalRevenue !== 0 ? Math.round((v.revenue / totalRevenue) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalRevenue, categoryCount: rows.length }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3401,6 +3727,188 @@ async function generateSerialWarrantyReport(): Promise<SerialWarrantyReport> {
       { bucket: 'noWarranty', count: noWarranty },
     ],
     rows,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RMA Aging Report (Electronics template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Every currently-open (SENT_TO_VENDOR / AWAITING_PARTS) RepairTicket, ranked
+// by how long it's actually been with the vendor — the audit's own named
+// "4 units over 30 days" framing, but as a full ranked breakdown rather than
+// just the alert-style count generateDashboardAlerts()/electronics.rmaOverdueSummary
+// already surface. Deliberately reuses the exact same daysWithVendor/isOverdue
+// definitions repair-ticket.service.ts's toRecord() already established
+// (vendorSlaDueDate set once on SENT_TO_VENDOR, VENDOR_SLA_DAYS = 30) rather
+// than re-deriving a second, driftable copy of the same rule.
+export interface RmaAgingRow {
+  claimNumber: string; productName: string; vendorName: string | null
+  sentToVendorDate: string; daysWithVendor: number; isOverdue: boolean
+}
+export interface RmaAgingReport {
+  generatedAt: string
+  rows: RmaAgingRow[]
+  summary: { totalOpen: number; overdueCount: number }
+}
+
+async function generateRmaAgingReport(): Promise<RmaAgingReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const tickets = await db.repairTicket.findMany({
+    where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, sentToVendorDate: { not: null } },
+    select: {
+      claimNumber: true, sentToVendorDate: true, vendorSlaDueDate: true,
+      product: { select: { productName: true } },
+      vendor: { select: { supplierName: true } }
+    }
+  })
+
+  const rows: RmaAgingRow[] = tickets
+    .map(t => {
+      const daysWithVendor = Math.max(0, Math.round((now.getTime() - t.sentToVendorDate!.getTime()) / (1000 * 60 * 60 * 24)))
+      const isOverdue = !!t.vendorSlaDueDate && now > t.vendorSlaDueDate
+      return {
+        claimNumber: t.claimNumber, productName: t.product.productName,
+        vendorName: t.vendor?.supplierName ?? null,
+        sentToVendorDate: t.sentToVendorDate!.toISOString(), daysWithVendor, isOverdue
+      }
+    })
+    .sort((a, b) => b.daysWithVendor - a.daysWithVendor)
+
+  return {
+    generatedAt: now.toISOString(),
+    rows,
+    summary: { totalOpen: rows.length, overdueCount: rows.filter(r => r.isOverdue).length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor Warranty-Claim Recovery Ledger (Electronics template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Every RepairTicket with a real vendor claim ever recorded (open or
+// closed), claimed/recovered/outstanding — the actual "ledger" the item's
+// own name calls for, distinct from item 1's SLA due-date tracking and item
+// 2's own days-with-vendor aging (neither one has any concept of money at
+// all). Deliberately includes CLOSED claims too, not just open ones — a
+// ledger that hides its own settled history isn't a ledger, it's just a
+// to-do list; the report's own summary separates open vs. closed so the
+// "what still needs chasing" question stays answerable at a glance.
+export interface VendorRecoveryRow {
+  claimNumber: string; productName: string; vendorName: string | null
+  claimedAmount: number; recoveredAmount: number; outstandingAmount: number
+  isClosed: boolean; closedAt: string | null
+}
+export interface VendorRecoveryLedgerReport {
+  generatedAt: string
+  rows: VendorRecoveryRow[]
+  summary: { totalClaimed: number; totalRecovered: number; totalOutstanding: number; openCount: number; closedCount: number }
+}
+
+async function generateVendorRecoveryLedgerReport(): Promise<VendorRecoveryLedgerReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const tickets = await db.repairTicket.findMany({
+    where: { vendorClaimAmount: { not: null } },
+    select: {
+      claimNumber: true, vendorClaimAmount: true, vendorRecoveredAmount: true, vendorClaimClosedAt: true,
+      product: { select: { productName: true } },
+      vendor: { select: { supplierName: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  const rows: VendorRecoveryRow[] = tickets.map(t => {
+    const claimedAmount = t.vendorClaimAmount!
+    const outstandingAmount = roundCurrency(claimedAmount - t.vendorRecoveredAmount)
+    return {
+      claimNumber: t.claimNumber, productName: t.product.productName,
+      vendorName: t.vendor?.supplierName ?? null,
+      claimedAmount, recoveredAmount: roundCurrency(t.vendorRecoveredAmount), outstandingAmount,
+      isClosed: !!t.vendorClaimClosedAt, closedAt: t.vendorClaimClosedAt ? t.vendorClaimClosedAt.toISOString() : null
+    }
+  }).sort((a, b) => {
+    if (a.isClosed !== b.isClosed) return a.isClosed ? 1 : -1
+    return b.outstandingAmount - a.outstandingAmount
+  })
+
+  return {
+    generatedAt: now.toISOString(),
+    rows,
+    summary: {
+      totalClaimed: roundCurrency(sumCurrency(rows.map(r => r.claimedAmount))),
+      totalRecovered: roundCurrency(sumCurrency(rows.map(r => r.recoveredAmount))),
+      totalOutstanding: roundCurrency(sumCurrency(rows.filter(r => !r.isClosed).map(r => r.outstandingAmount))),
+      openCount: rows.filter(r => !r.isClosed).length,
+      closedCount: rows.filter(r => r.isClosed).length
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Repair Turnaround by Technician (Electronics template) — Phase 67 §9.1
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Only tickets with BOTH a technician assigned AND a real completion date
+// (deliveredDate) count — a still-open ticket has no finished turnaround to
+// measure yet, and a ticket nobody was ever assigned to can't be attributed
+// to anyone's performance. Turnaround reuses the exact receivedDate→
+// deliveredDate span repair-ticket.service.ts's own turnaroundDays()
+// already computes per-ticket — this report is the aggregate view of that
+// same number, grouped by who did the work, not a second definition of it.
+export interface TechnicianTurnaroundRow {
+  technicianId: string; technicianName: string
+  ticketCount: number; avgTurnaroundDays: number; minTurnaroundDays: number; maxTurnaroundDays: number
+}
+export interface RepairTurnaroundByTechnicianReport {
+  generatedAt: string
+  rows: TechnicianTurnaroundRow[]
+  summary: { technicianCount: number; totalTicketsCompleted: number; overallAvgTurnaroundDays: number }
+}
+
+async function generateRepairTurnaroundByTechnicianReport(): Promise<RepairTurnaroundByTechnicianReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const tickets = await db.repairTicket.findMany({
+    where: { technicianId: { not: null }, deliveredDate: { not: null } },
+    select: {
+      technicianId: true, receivedDate: true, deliveredDate: true,
+      technician: { select: { fullName: true } }
+    }
+  })
+
+  const byTechnician = new Map<string, { name: string; days: number[] }>()
+  for (const t of tickets) {
+    const days = Math.max(0, Math.round((t.deliveredDate!.getTime() - t.receivedDate.getTime()) / (1000 * 60 * 60 * 24)))
+    const bucket = byTechnician.get(t.technicianId!) ?? { name: t.technician!.fullName, days: [] }
+    bucket.days.push(days)
+    byTechnician.set(t.technicianId!, bucket)
+  }
+
+  const avgOf = (nums: number[]) => Math.round((nums.reduce((s, n) => s + n, 0) / nums.length) * 10) / 10
+
+  const rows: TechnicianTurnaroundRow[] = Array.from(byTechnician.entries()).map(([technicianId, { name, days }]) => ({
+    technicianId, technicianName: name,
+    ticketCount: days.length,
+    avgTurnaroundDays: avgOf(days),
+    minTurnaroundDays: Math.min(...days),
+    maxTurnaroundDays: Math.max(...days)
+  })).sort((a, b) => a.avgTurnaroundDays - b.avgTurnaroundDays || b.ticketCount - a.ticketCount)
+
+  const allDays = tickets.map(t => Math.max(0, Math.round((t.deliveredDate!.getTime() - t.receivedDate.getTime()) / (1000 * 60 * 60 * 24))))
+
+  return {
+    generatedAt: now.toISOString(),
+    rows,
+    summary: {
+      technicianCount: rows.length,
+      totalTicketsCompleted: allDays.length,
+      overallAvgTurnaroundDays: allDays.length > 0 ? avgOf(allDays) : 0
+    }
   }
 }
 
@@ -5319,6 +5827,7 @@ export const reportService = {
   generateBudgetVsActualReport,
   generateStatutoryComplianceSummaryReport,
   generateCashFlowProjection,
+  generateCashPositionTrendReport,
   generatePaymentPerformanceReport,
   generateAuditReport,
   generateFoodCostReport,
@@ -5327,6 +5836,9 @@ export const reportService = {
   generateRecipeWasteVarianceReport,
   generateDeadStockClearanceReport,
   generateCategorySellThroughReport,
+  generateSeasonSellThroughReport,
+  generateSizeStyleHeatmapReport,
+  generateCategoryMixReport,
   generateBasketCompositionReport,
   generateFastSlowMoverMatrixReport,
   generateGSTR1,
@@ -5348,6 +5860,9 @@ export const reportService = {
   generateAttendanceReport,
   generateProductionReport,
   generateSerialWarrantyReport,
+  generateRmaAgingReport,
+  generateVendorRecoveryLedgerReport,
+  generateRepairTurnaroundByTechnicianReport,
   generateVariantStockReport,
   generateTestScoreReport,
   generateComplianceTaskReport,

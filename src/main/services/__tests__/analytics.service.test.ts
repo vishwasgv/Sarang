@@ -51,6 +51,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     restaurantTable: { count: vi.fn().mockResolvedValue(0) },
     kOT: { count: vi.fn().mockResolvedValue(0) },
     rentalBooking: { count: vi.fn().mockResolvedValue(0) },
+    repairTicket: { count: vi.fn().mockResolvedValue(0) },
     businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
     setting: { findUnique: vi.fn().mockResolvedValue(null) },
     ...overrides
@@ -396,6 +397,49 @@ describe('getDashboardAlerts', () => {
 
     expect(db.rentalBooking.count).toHaveBeenCalledWith({
       where: { status: 'CHECKED_OUT', endDateTime: { lt: expect.any(Date) } }
+    })
+  })
+
+  // Phase 67 §9.1 — Electronics: RMA SLA tracker.
+  it('raises RMA_OVERDUE at warning severity for 1-4 overdue RMA units', async () => {
+    const db = makeDb()
+    db.repairTicket.count = vi.fn().mockResolvedValue(3)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const alerts = await getDashboardAlerts()
+
+    const alert = alerts.find(a => a.type === 'RMA_OVERDUE')
+    expect(alert?.severity).toBe('warning')
+    expect(alert?.message).toContain('3')
+  })
+
+  it('escalates RMA_OVERDUE to danger severity at 5+ overdue RMA units', async () => {
+    const db = makeDb()
+    db.repairTicket.count = vi.fn().mockResolvedValue(5)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const alerts = await getDashboardAlerts()
+
+    expect(alerts.find(a => a.type === 'RMA_OVERDUE')?.severity).toBe('danger')
+  })
+
+  it('does not raise RMA_OVERDUE when nothing is overdue', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const alerts = await getDashboardAlerts()
+
+    expect(alerts.some(a => a.type === 'RMA_OVERDUE')).toBe(false)
+  })
+
+  it('counts overdue RMA units using the same SENT_TO_VENDOR/AWAITING_PARTS + past-vendorSlaDueDate definition the ticket itself uses, computed live rather than a stored flag', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getDashboardAlerts()
+
+    expect(db.repairTicket.count).toHaveBeenCalledWith({
+      where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, vendorSlaDueDate: { lt: expect.any(Date) } }
     })
   })
 })

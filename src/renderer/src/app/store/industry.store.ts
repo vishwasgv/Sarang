@@ -117,6 +117,8 @@ export type TemplateModule =
   // Phase 67 §9.1 — Retail: time-boxed markdown workflow.
   | 'price_markdowns'
   | 'loyalty_program'
+  // Phase 67 §9.1 — General: Custom Document Builder.
+  | 'custom_documents'
 
 interface IndustryState {
   businessType: string
