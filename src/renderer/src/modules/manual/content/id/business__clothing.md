@@ -26,9 +26,15 @@ Jika Anda memberi tag produk Anda dengan **Musim / Koleksi**, buka **Laporan →
 
 Buka **Laporan → Peta Panas Ukuran × Gaya** untuk melihat kisi yang menunjukkan dengan tepat kombinasi ukuran/produk ("gaya") mana yang benar-benar terjual — setiap produk di samping, setiap ukuran di atas, setiap sel diberi warna sesuai jumlah unit dari kombinasi persis itu yang terjual dalam rentang tanggal yang Anda pilih. Sel yang lebih gelap berarti lebih banyak unit terjual; sel kosong berarti pasangan ukuran/gaya itu tidak terjual sama sekali. Ini dirancang untuk menemukan pola yang akan terkubur dalam daftar penjualan biasa — gaya yang hanya terjual di M dan L, atau ukuran yang tidak pernah terjual apa pun gayanya. Kisi ini menampilkan 15 gaya terlaris teratas berdasarkan volume, agar tetap mudah dibaca bahkan pada katalog besar.
 
+## Laporan Margin berdasarkan Merek/Vendor
+
+Tetapkan **Vendor/Pemasok** ke produk Anda (layar Produk — bidang yang sama yang digunakan untuk pembelian) dan buka **Laporan → Margin berdasarkan Merek/Vendor** untuk melihat pendapatan, biaya, dan margin yang dipecah berdasarkan pemasok asal setiap produk yang terjual. Ini menjawab pertanyaan yang berbeda dari tampilan nilai-stok-per-produk milik Laporan Inventaris sendiri — ini tentang merek/vendor mana yang benar-benar menguntungkan untuk dipertahankan, bukan hanya mana yang paling laris. Vendor yang marginnya negatif ditampilkan secara jujur sebagai kerugian, tidak disembunyikan atau dibatasi ke nol — itulah tepatnya kasus yang perlu ditangkap. Produk tanpa vendor/pemasok yang ditetapkan sepenuhnya dikecualikan dari laporan ini — tetapkan yang ingin Anda lacak.
+
 ## Returns
 
 Clothing juga mendapatkan layar **Retur** standar — cari faktur lampau berdasarkan nomor, pilih item dan kuantitas mana yang akan diretur (dibatasi pada apa yang benar-benar masih bisa diretur, memperhitungkan apa pun yang sudah diretur sebelumnya), berikan alasan, dan kirim. Lihat bagian *Returns* dari bab Retail untuk perilaku lengkapnya — bekerja identik di sini.
+
+Untuk baris yang terlacak variannya (produk apa pun yang dijual dengan ukuran/warna), layar Retur juga menyediakan tombol **Tukar** di samping pengatur kuantitas retur — untuk saat pelanggan menginginkan ukuran atau warna berbeda, bukan pengembalian dana. Pilih kuantitas, pilih ukuran/warna pengganti dari yang saat ini tersedia di stok, berikan alasan, dan konfirmasi. Di baliknya, ini membuat dua transaksi yang tertaut dan sepenuhnya nyata dalam satu langkah: faktur retur untuk barang yang diserahkan (mengembalikannya ke stok dan mengkredit pelanggan persis seperti retur biasa) dan faktur penjualan baru untuk barang pengganti, dengan harga saat ini milik barang pengganti itu sendiri — bukan harga barang lama, sehingga perubahan harga tercermin secara jujur. Sarang langsung menampilkan selisih pastinya: jika barang pengganti lebih mahal, berapa tambahan yang harus ditagih; jika lebih murah, berapa yang harus dikembalikan; dan jika harganya persis sama, tidak ada saldo yang harus dibayar.
 
 ## Logistics & Supply Chain
 

@@ -430,6 +430,8 @@ export interface IpcChannels {
     sizeStyleHeatmap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     basketComposition: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     categoryMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report.
+    vendorMargin: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     fastSlowMoverMatrix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     gstr1: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     hsnSummary: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -724,6 +726,10 @@ export interface IpcChannels {
     create: (payload: { originalInvoiceId: string; items: Array<{ productId: string; quantity: number }>; reason: string }) => Promise<ApiResponse>
     list: (payload?: { originalInvoiceId?: string }) => Promise<ApiResponse>
     todaySummary: () => Promise<ApiResponse<{ count: number; totalRefunded: number }>>
+  }
+  // Phase 67 §9.1 — Clothing item 4: size/color exchange workflow.
+  exchange: {
+    create: (payload: { originalInvoiceId: string; oldProductId: string; oldVariantId: string; quantity: number; newVariantId: string; reason: string; paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT' }) => Promise<ApiResponse<{ returnInvoiceId: string; returnInvoiceNumber: string; newInvoiceId: string; newInvoiceNumber: string; netAmountDue: number }>>
   }
   // Phase 2 — Industry Expansion
   batches: {

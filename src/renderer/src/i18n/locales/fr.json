@@ -1637,6 +1637,10 @@
         "label": "Répartition par Catégorie",
         "description": "Quelle part de votre chiffre d'affaires provient de chaque catégorie de produits sur une plage de dates — voyez en un coup d'œil quelles catégories font tourner l'activité et lesquelles ne représentent qu'une petite part"
       },
+      "vendorMargin": {
+        "label": "Marge par Marque/Fournisseur",
+        "description": "Revenus, coût et marge répartis selon le fournisseur/la marque d'origine de chaque produit vendu — voyez d'un coup d'œil quels fournisseurs sont réellement rentables et lesquels sont en perte"
+      },
       "fastSlowMoverMatrix": {
         "label": "Matrice Produits à Rotation Rapide vs. Lente",
         "description": "Un nuage de points de la vélocité des ventes par rapport à la marge, réparti en quatre quadrants — voyez en un coup d'œil quels produits méritent d'être réapprovisionnés rapidement, lesquels sont un effort à faible marge, et quels produits à rotation lente valent la peine d'être conservés pour leur marge"
@@ -2053,6 +2057,8 @@
       "metalsWithNoRateSet": "Métaux Sans Tarif Défini",
       "revenue": "Revenus",
       "cogs": "Coût des Marchandises Vendues",
+      "totalMargin": "Marge Totale",
+      "marginByVendor": "Marge par Fournisseur",
       "grossProfit": "Marge Brute",
       "netProfit": "Bénéfice Net",
       "totalProjects": "Total des Projets",
@@ -2224,6 +2230,7 @@
       "sizeStyleHeatmap": "Aucune vente à variantes suivies trouvée dans cette plage de dates.",
       "basketComposition": "Aucun panier avec 2 produits différents ou plus trouvé dans cette plage de dates.",
       "categoryMix": "Aucune vente de produit catégorisé trouvée dans cette plage de dates.",
+      "vendorMargin": "Aucune vente trouvée pour des produits avec un fournisseur/marque assigné dans cette plage de dates.",
       "cashPositionTrend": "Aucun mouvement de trésorerie trouvé dans cette plage de dates.",
       "fastSlowMoverMatrix": "Aucun produit vendu sur cette période.",
       "gstr1": "Aucune facture imposable trouvée pour cette période.",
@@ -2631,7 +2638,29 @@
     "invoiceNumberLabel": "Numéro de Facture",
     "processAnother": "Traiter un Autre Retour",
     "searchPlaceholder": "ex. INV-00042",
-    "searchError": "Impossible de rechercher les factures."
+    "searchError": "Impossible de rechercher les factures.",
+    "exchange": {
+      "action": "Échange",
+      "title": "Échanger contre une autre taille/couleur",
+      "newVariant": "Taille/couleur de remplacement",
+      "selectVariant": "Sélectionnez un remplacement",
+      "outOfStock": "en rupture de stock",
+      "quantity": "Quantité",
+      "paymentMethod": "Régler le solde via",
+      "reason": "Motif de l'Échange",
+      "reasonPlaceholder": "ex. Mauvaise taille, le client souhaite une autre couleur",
+      "reasonRequired": "Le motif de l'échange est requis.",
+      "variantRequired": "Sélectionnez une variante de remplacement.",
+      "noVariants": "Aucune autre taille/couleur disponible pour ce produit.",
+      "submit": "Confirmer l'Échange",
+      "cancel": "Annuler",
+      "success": "Échange Traité",
+      "successMsg": "Le retour {{returnNumber}} et la nouvelle vente {{newNumber}} ont été créés.",
+      "amountDue": "Montant supplémentaire dû",
+      "amountRefund": "Montant à rembourser",
+      "amountEven": "Aucun solde dû — échange exact",
+      "error": "Impossible de traiter l'échange. Veuillez réessayer."
+    }
   },
   "documents": {
     "title": "Documents",

@@ -1485,6 +1485,22 @@ model Invoice {
   // the original (now status='SPLIT') invoice it was divided from, mirroring
   // originalInvoiceId's return-lineage pattern above.
   splitFromInvoiceId String?
+  // Phase 67 — Clothing item 4 (size/color exchange workflow). Set only on
+  // the NEW replacement-item sale invoice an exchange produces — a real FK
+  // back to the invoiceType='RETURN' invoice created for the surrendered
+  // item, mirroring originalInvoiceId's/splitFromInvoiceId's own lineage
+  // pattern above. Deliberately NOT a single combined "EXCHANGE" invoice
+  // type carrying both legs on one document: this codebase's revenue/tax/
+  // analytics reports (report.service.ts, analytics.service.ts,
+  // ai-aggregations.service.ts) all derive an item's sign purely from its
+  // invoice's OWN invoiceType ('RETURN' = -1, everything else = +1) — a
+  // single document mixing a returned-away line and an acquired line would
+  // need every one of those call sites rewritten to branch per-line instead
+  // of per-invoice. Two ordinary, already-correct documents (a real RETURN
+  // + a real RETAIL sale) linked by this pointer gets the same cashier-
+  // facing "one exchange" workflow (see exchange.service.ts) for zero
+  // report-layer risk.
+  exchangeReturnId   String?
   // Phase 61 — moved onto the Invoice itself, independent of whether the
   // opt-in Logistics module is on (was previously LogisticsShipment-only,
   // so absent for every service vertical and any product vertical that
@@ -1523,6 +1539,8 @@ model Invoice {
   occupiedTables   RestaurantTable[] @relation("TableCurrentInvoice")
   splitFromInvoice Invoice?          @relation("InvoiceSplitLineage", fields: [splitFromInvoiceId], references: [id])
   splitInvoices    Invoice[]         @relation("InvoiceSplitLineage")
+  exchangeReturn   Invoice?          @relation("InvoiceExchangeLineage", fields: [exchangeReturnId], references: [id])
+  exchangeReplacements Invoice[]     @relation("InvoiceExchangeLineage")
   salesOrder       SalesOrder?       @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
   invoiceTemplate  InvoiceTemplate?  @relation(fields: [invoiceTemplateId], references: [id])
   loyaltyPunchEvents LoyaltyPunchEvent[] // Phase 67 §9.1 — Retail: which invoice earned a given punch, if any
@@ -1538,6 +1556,7 @@ model Invoice {
   @@index([originalInvoiceId])
   @@index([tableId])
   @@index([splitFromInvoiceId])
+  @@index([exchangeReturnId])
   @@index([costCentreId])
 }
 

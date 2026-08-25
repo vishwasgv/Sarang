@@ -26,9 +26,15 @@ If you tag your products with a **Season / Collection**, open **Reports → Seas
 
 Open **Reports → Size × Style Heatmap** to see a grid of exactly which size/product combinations are actually selling — every product ("style") down the side, every size across the top, each cell shaded by how many units of that exact combination sold in the date range you pick. Darker cells mean more units moved; a blank cell means that size/style pairing didn't sell at all. It's built for spotting patterns a plain sales list would bury — a style that only moves in M and L, or a size that never sells no matter the style. The grid shows your top 15 best-selling styles by volume, so it stays readable even on a large catalog.
 
+## Margin by Brand/Vendor Report
+
+Assign a **Vendor/Supplier** to your products (Products screen — the same field used for purchasing) and open **Reports → Margin by Brand/Vendor** to see revenue, cost, and margin broken down by which supplier each sold product came from. This answers a different question than the Inventory Report's own stock-value-by-product view — it's about which brands/vendors are actually profitable to carry, not just which sell the most. A vendor whose margin comes out negative is shown honestly as a loss, not hidden or floored at zero — that's exactly the case worth catching. Products with no vendor/supplier assigned are left out of this report entirely — assign the ones you want to track.
+
 ## Returns
 
 Clothing also gets the standard **Returns** screen — search a past invoice by number, select which items and quantities to return (capped at what's actually still returnable, accounting for anything already returned earlier), give a reason, and submit. See the *Returns* section of the Retail chapter for the full behavior — it works identically here.
+
+For a variant-tracked line (any product sold with a size/colour), the Returns screen also offers an **Exchange** button next to the return quantity stepper — for when a customer wants a different size or colour, not a refund. Pick a quantity, choose the replacement size/colour from what's currently in stock, give a reason, and confirm. Behind the scenes this creates two linked, fully real transactions in one step: a return invoice for the surrendered item (restocking it and crediting the customer exactly as an ordinary return would) and a new sale invoice for the replacement, priced at the replacement's own current price — not the old item's price, so a since-changed price is reflected honestly. Sarang shows you the exact difference immediately: if the replacement costs more, it tells you how much more to collect; if less, how much to refund; if the prices match exactly, no balance is due at all.
 
 ## Logistics & Supply Chain
 

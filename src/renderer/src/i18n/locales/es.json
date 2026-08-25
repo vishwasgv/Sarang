@@ -1649,6 +1649,10 @@
         "label": "Mezcla de Categorías",
         "description": "Qué porcentaje de tus ingresos proviene de cada categoría de producto en un rango de fechas — vea de un vistazo qué categorías impulsan el negocio y cuáles representan una parte pequeña"
       },
+      "vendorMargin": {
+        "label": "Margen por Marca/Proveedor",
+        "description": "Ingresos, costo y margen desglosados según de qué proveedor/marca provino cada producto vendido — vea de un vistazo qué proveedores son realmente rentables y cuáles generan pérdidas"
+      },
       "fastSlowMoverMatrix": {
         "label": "Matriz de Movimiento Rápido vs. Lento",
         "description": "Un gráfico de dispersión de la velocidad de ventas frente al margen, dividido en cuatro cuadrantes — vea de un vistazo qué productos vale la pena reabastecer rápido, cuáles son un esfuerzo de bajo margen, y qué productos de movimiento lento vale la pena mantener por su margen"
@@ -1931,6 +1935,8 @@
       "records": "Registros",
       "revenue": "Ingresos",
       "cogs": "Costo de Bienes Vendidos",
+      "totalMargin": "Margen Total",
+      "marginByVendor": "Margen por Proveedor",
       "grossProfit": "Beneficio Bruto",
       "netProfit": "Beneficio Neto",
       "totalProjects": "Total de Proyectos",
@@ -2225,6 +2231,7 @@
       "sizeStyleHeatmap": "No se encontraron ventas con seguimiento de variantes en este rango de fechas.",
       "basketComposition": "No se encontraron cestas con 2 o más productos diferentes en este rango de fechas.",
       "categoryMix": "No se encontraron ventas de productos categorizados en este rango de fechas.",
+      "vendorMargin": "No se encontraron ventas de productos con un proveedor/marca asignado en este rango de fechas.",
       "cashPositionTrend": "No se encontraron movimientos de caja en este rango de fechas.",
       "fastSlowMoverMatrix": "No se vendió ningún producto en este rango de fechas.",
       "gstr1": "No se encontraron facturas gravables para este período.",
@@ -2631,7 +2638,29 @@
     "reasonRequired": "El motivo de la devolución es obligatorio.",
     "returnProcessed": "Devolución Procesada",
     "returnProcessedMsg": "Se creó la factura de devolución {{number}}. El inventario ha sido restablecido y el saldo del cliente actualizado.",
-    "processAnother": "Procesar Otra Devolución"
+    "processAnother": "Procesar Otra Devolución",
+    "exchange": {
+      "action": "Cambio",
+      "title": "Cambiar por otra talla/color",
+      "newVariant": "Talla/color de reemplazo",
+      "selectVariant": "Seleccione un reemplazo",
+      "outOfStock": "agotado",
+      "quantity": "Cantidad",
+      "paymentMethod": "Liquidar saldo mediante",
+      "reason": "Motivo del Cambio",
+      "reasonPlaceholder": "ej. Talla incorrecta, el cliente quiere otro color",
+      "reasonRequired": "El motivo del cambio es obligatorio.",
+      "variantRequired": "Seleccione una variante de reemplazo.",
+      "noVariants": "No hay otras tallas/colores disponibles para este producto.",
+      "submit": "Confirmar Cambio",
+      "cancel": "Cancelar",
+      "success": "Cambio Procesado",
+      "successMsg": "Se han creado la devolución {{returnNumber}} y la nueva venta {{newNumber}}.",
+      "amountDue": "Importe adicional a pagar",
+      "amountRefund": "Importe a reembolsar",
+      "amountEven": "Sin saldo pendiente — cambio exacto",
+      "error": "No se pudo procesar el cambio. Inténtelo de nuevo."
+    }
   },
   "documents": {
     "title": "Documentos",

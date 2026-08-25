@@ -1637,6 +1637,10 @@
         "label": "Composição de Categorias",
         "description": "Qual a percentagem da sua receita que vem de cada categoria de produto num intervalo de datas — veja rapidamente quais categorias impulsionam o negócio e quais representam uma pequena fatia"
       },
+      "vendorMargin": {
+        "label": "Margem por Marca/Fornecedor",
+        "description": "Receita, custo e margem divididos por qual fornecedor/marca cada produto vendido veio — veja rapidamente quais fornecedores são realmente rentáveis e quais dão prejuízo"
+      },
       "fastSlowMoverMatrix": {
         "label": "Matriz de Produtos de Giro Rápido vs. Lento",
         "description": "Um gráfico de dispersão da velocidade de vendas em relação à margem, dividido em quatro quadrantes — veja rapidamente quais produtos vale a pena reabastecer rápido, quais são um esforço de baixa margem, e quais produtos de giro lento vale a pena manter pela sua margem"
@@ -2053,6 +2057,8 @@
       "metalsWithNoRateSet": "Metais Sem Taxa Definida",
       "revenue": "Receita",
       "cogs": "Custo das Mercadorias Vendidas",
+      "totalMargin": "Margem Total",
+      "marginByVendor": "Margem por Fornecedor",
       "grossProfit": "Lucro Bruto",
       "netProfit": "Lucro Líquido",
       "totalProjects": "Total de Projetos",
@@ -2224,6 +2230,7 @@
       "sizeStyleHeatmap": "Nenhuma venda com rastreamento de variação encontrada neste intervalo de datas.",
       "basketComposition": "Nenhuma cesta com 2 ou mais produtos diferentes encontrada neste intervalo de datas.",
       "categoryMix": "Nenhuma venda de produto categorizado encontrada neste intervalo de datas.",
+      "vendorMargin": "Nenhuma venda encontrada para produtos com um fornecedor/marca atribuído neste intervalo de datas.",
       "cashPositionTrend": "Nenhum movimento de caixa encontrado neste intervalo de datas.",
       "fastSlowMoverMatrix": "Nenhum produto vendido neste período.",
       "gstr1": "Nenhuma fatura tributável encontrada para este período.",
@@ -2631,7 +2638,29 @@
     "invoiceNumberLabel": "Número da Nota",
     "processAnother": "Processar Outra Devolução",
     "searchPlaceholder": "ex. INV-00042",
-    "searchError": "Não foi possível pesquisar as notas."
+    "searchError": "Não foi possível pesquisar as notas.",
+    "exchange": {
+      "action": "Troca",
+      "title": "Trocar por outro tamanho/cor",
+      "newVariant": "Tamanho/cor de substituição",
+      "selectVariant": "Selecione uma substituição",
+      "outOfStock": "sem stock",
+      "quantity": "Quantidade",
+      "paymentMethod": "Liquidar saldo via",
+      "reason": "Motivo da Troca",
+      "reasonPlaceholder": "ex. Tamanho errado, cliente quer outra cor",
+      "reasonRequired": "O motivo da troca é obrigatório.",
+      "variantRequired": "Selecione uma variante de substituição.",
+      "noVariants": "Não há outros tamanhos/cores disponíveis para este produto.",
+      "submit": "Confirmar Troca",
+      "cancel": "Cancelar",
+      "success": "Troca Processada",
+      "successMsg": "A devolução {{returnNumber}} e a nova venda {{newNumber}} foram criadas.",
+      "amountDue": "Valor adicional devido",
+      "amountRefund": "Valor a reembolsar",
+      "amountEven": "Sem saldo devido — troca exata",
+      "error": "Não foi possível processar a troca. Tente novamente."
+    }
   },
   "documents": {
     "title": "Documentos",

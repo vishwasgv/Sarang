@@ -13,6 +13,17 @@ export const CreateReturnSchema = z.object({
   reason: z.string().min(1, 'Reason is required'),
 })
 
+// Phase 67 §9.1 — Clothing item 4: size/color exchange workflow.
+export const CreateExchangeSchema = z.object({
+  originalInvoiceId: z.string().min(1, 'Original invoice ID is required'),
+  oldProductId: z.string().min(1, 'Product ID is required'),
+  oldVariantId: z.string().min(1, 'Original variant is required'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  newVariantId: z.string().min(1, 'Replacement variant is required'),
+  reason: z.string().min(1, 'Reason is required'),
+  paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT']),
+})
+
 export const CashCloseCreateSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   actualCash: z.number().nonnegative('Actual cash cannot be negative').finite(),
@@ -20,4 +31,5 @@ export const CashCloseCreateSchema = z.object({
 })
 
 export type CreateReturnPayload = z.infer<typeof CreateReturnSchema>
+export type CreateExchangePayload = z.infer<typeof CreateExchangeSchema>
 export type CashCloseCreatePayload = z.infer<typeof CashCloseCreateSchema>

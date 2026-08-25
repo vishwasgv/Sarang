@@ -7,7 +7,7 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn() } }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn(), generateVendorMarginReport: vi.fn() } }))
 vi.mock('../template-suggestion.service', () => ({ getTemplateSuggestion: vi.fn() }))
 vi.mock('../custom-document.service', () => ({ customDocumentService: { listTypes: vi.fn(), listEntries: vi.fn() } }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
@@ -1026,6 +1026,88 @@ describe('ai-vertical-templates.service — clothing.sizeStyleHeatmap', () => {
     const result = await executeVerticalTemplate('clothing.sizeStyleHeatmap', {}, '₹')
 
     expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Clothing item 4: size/color exchange workflow.
+describe('ai-vertical-templates.service — clothing.exchangeSummary', () => {
+  it('registers clothing.exchangeSummary for CLOTHING and FOOTWEAR alongside the other Clothing intents', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } } as never)
+    const clothingNames = await getActiveVerticalTemplateNames()
+    expect(clothingNames).toContain('clothing.exchangeSummary')
+    expect(clothingNames).toContain('clothing.sizeStyleHeatmap')
+
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const footwearNames = await getActiveVerticalTemplateNames()
+    expect(footwearNames).toContain('clothing.exchangeSummary')
+  })
+
+  it('counts only exchange-linked invoices (exchangeReturnId set), not plain returns', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ totalAmount: 650 }, { totalAmount: 400 }])
+    vi.mocked(getPrisma).mockReturnValue({ invoice: { findMany } } as never)
+
+    const result = await executeVerticalTemplate('clothing.exchangeSummary', {}, '₹')
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ exchangeReturnId: { not: null } })
+    }))
+    expect(result.headline).toBe('2 size/colour exchanges processed this month, replacement items totaling ₹1,050.00')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and uses singular phrasing for exactly one exchange', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ invoice: { findMany: vi.fn().mockResolvedValue([{ totalAmount: 500 }]) } } as never)
+    const one = await executeVerticalTemplate('clothing.exchangeSummary', {}, '₹')
+    expect(one.headline).toContain('1 size/colour exchange ')
+    expect(one.isEmpty).toBe(false)
+
+    vi.mocked(getPrisma).mockReturnValue({ invoice: { findMany: vi.fn().mockResolvedValue([]) } } as never)
+    const none = await executeVerticalTemplate('clothing.exchangeSummary', {}, '₹')
+    expect(none.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report, its 5th
+// and final signature item.
+describe('ai-vertical-templates.service — clothing.vendorMargin', () => {
+  it('registers clothing.vendorMargin for CLOTHING and FOOTWEAR alongside the other Clothing intents', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } } as never)
+    const clothingNames = await getActiveVerticalTemplateNames()
+    expect(clothingNames).toContain('clothing.vendorMargin')
+    expect(clothingNames).toContain('clothing.exchangeSummary')
+
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const footwearNames = await getActiveVerticalTemplateNames()
+    expect(footwearNames).toContain('clothing.vendorMargin')
+  })
+
+  it('reports the leading vendor by margin this month, sorted highest first', async () => {
+    vi.mocked(reportService.generateVendorMarginReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      rows: [
+        { supplierId: 's2', supplierName: 'Bright Threads', revenue: 900, cogs: 100, margin: 800, marginPercent: 89 },
+        { supplierId: 's1', supplierName: 'Acme Apparel', revenue: 500, cogs: 300, margin: 200, marginPercent: 40 },
+      ],
+      summary: { totalRevenue: 1400, totalCogs: 400, totalMargin: 1000, vendorCount: 2 }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.vendorMargin', {}, '₹')
+
+    expect(result.headline).toBe('Bright Threads leads with ₹800.00 margin this month (89%)')
+    expect(result.details).toEqual(['Bright Threads: ₹800.00 margin (89%)', 'Acme Apparel: ₹200.00 margin (40%)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when no vendor-assigned products sold this month', async () => {
+    vi.mocked(reportService.generateVendorMarginReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31', rows: [],
+      summary: { totalRevenue: 0, totalCogs: 0, totalMargin: 0, vendorCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('clothing.vendorMargin', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No sales this month for products with an assigned vendor/brand')
   })
 })
 

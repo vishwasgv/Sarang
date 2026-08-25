@@ -272,6 +272,14 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  handle('reports:vendorMargin', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateVendorMarginReport(p)
+    return { success: true, data }
+  })
+
   handle('reports:basketComposition', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const p = payload as { dateFrom: string; dateTo: string }

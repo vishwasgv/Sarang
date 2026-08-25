@@ -26,9 +26,15 @@ Se você marcar seus produtos com uma **Estação / Coleção**, abra **Relatór
 
 Abra **Relatórios → Mapa de Calor Tamanho × Estilo** para ver uma grade mostrando exatamente quais combinações de tamanho/produto ("estilo") estão realmente vendendo — cada produto na lateral, cada tamanho no topo, cada célula sombreada de acordo com quantas unidades daquela combinação exata venderam no intervalo de datas escolhido. Células mais escuras significam mais unidades vendidas; uma célula em branco significa que aquele par tamanho/estilo não vendeu nada. Foi feito para identificar padrões que uma lista de vendas simples esconderia — um estilo que só vende em M e L, ou um tamanho que nunca vende não importa o estilo. A grade mostra seus 15 estilos mais vendidos por volume, para permanecer legível mesmo em um catálogo grande.
 
+## Relatório de Margem por Marca/Fornecedor
+
+Atribua um **Fornecedor** aos seus produtos (ecrã Produtos — o mesmo campo usado para compras) e abra **Relatórios → Margem por Marca/Fornecedor** para ver a receita, o custo e a margem divididos por qual fornecedor cada produto vendido veio. Isto responde a uma pergunta diferente da própria vista de valor-de-stock-por-produto do Relatório de Inventário — trata-se de quais marcas/fornecedores são realmente rentáveis de manter, não apenas quais vendem mais. Um fornecedor cuja margem resulta negativa é mostrado honestamente como um prejuízo, sem ser escondido ou limitado a zero — é exatamente esse o caso que vale a pena detetar. Produtos sem fornecedor atribuído ficam totalmente excluídos deste relatório — atribua um aos que quiser acompanhar.
+
 ## Devoluções
 
 Vestuário também tem a tela padrão de **Devoluções** — busque uma nota anterior pelo número, selecione quais itens e quantidades devolver (limitado ao que ainda é realmente devolvível, considerando o que já foi devolvido antes), informe um motivo e envie. Veja a seção *Devoluções* do capítulo de Varejo para o comportamento completo — funciona de forma idêntica aqui.
+
+Para uma linha com variante (qualquer produto vendido com tamanho/cor), a tela de Devoluções também oferece um botão de **Troca** ao lado do seletor de quantidade a devolver — para quando o cliente quer um tamanho ou cor diferente, não um reembolso. Escolha uma quantidade, selecione o tamanho/cor de substituição entre o que está atualmente em stock, informe um motivo e confirme. Nos bastidores, isso cria em uma única etapa duas transações vinculadas e totalmente reais: uma nota de devolução para o item entregue (repondo-o no stock e creditando o cliente exatamente como uma devolução normal faria) e uma nova nota de venda para o item de substituição, com o preço atual próprio desse item — não o preço do item antigo, para que um preço já alterado seja refletido honestamente. O Sarang mostra imediatamente a diferença exata: se a substituição custar mais, quanto cobrar a mais; se custar menos, quanto reembolsar; e se os preços coincidirem exatamente, nenhum saldo fica devido.
 
 ## Logística e Cadeia de Suprimentos
 

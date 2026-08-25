@@ -2300,6 +2300,93 @@ async function generateCategoryMixReport(params: { dateFrom: string; dateTo: str
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Margin by Brand/Vendor Report (Clothing/Footwear template) — Phase 67 §9.1,
+// item 5, closing the Clothing vertical's 5-item signature-win set.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "Which vendor's/brand's lines are actually profitable" — a single-period
+// revenue+COGS+margin breakdown by SUPPLIER, reusing the pre-existing
+// Product.defaultSupplierId as "vendor/brand" per the audit's own field
+// note (no dedicated brand field exists in this schema, and none is needed
+// — a clothing shop's "brand" for margin purposes IS which vendor supplies
+// it). Structurally mirrors generateCategoryMixReport's own grouping shape
+// exactly, just keyed by supplier instead of category, with COGS added via
+// getProductCostsBatch() — the same valuation-method-aware resolver
+// generateProfitAndLossReport already uses, rather than the stale
+// hand-edited Product.costPrice field.
+export interface VendorMarginRow {
+  supplierId: string; supplierName: string
+  revenue: number; cogs: number; margin: number; marginPercent: number
+}
+export interface VendorMarginReport {
+  dateFrom: string; dateTo: string
+  rows: VendorMarginRow[]
+  summary: { totalRevenue: number; totalCogs: number; totalMargin: number; vendorCount: number }
+}
+
+async function generateVendorMarginReport(params: { dateFrom: string; dateTo: string }): Promise<VendorMarginReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const suppliers = await db.supplier.findMany({ select: { id: true, supplierName: true } })
+  if (suppliers.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalRevenue: 0, totalCogs: 0, totalMargin: 0, vendorCount: 0 } }
+  const supplierNameById = new Map(suppliers.map(s => [s.id, s.supplierName]))
+
+  // Same "leave uncaptured rows out entirely rather than bucket them as
+  // Unassigned" convention generateCategoryMixReport already established
+  // for its own uncategorized-product case.
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      product: { defaultSupplierId: { not: null } }
+    },
+    select: {
+      productId: true, quantity: true, lineTotal: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { defaultSupplierId: true } }
+    }
+  })
+
+  const costs = await getProductCostsBatch(items.map(it => it.productId))
+
+  const bySupplier = new Map<string, { revenue: number; cogs: number }>()
+  for (const item of items) {
+    const supplierId = item.product.defaultSupplierId
+    if (!supplierId) continue
+    // Same RETURN sign correction generateProfitAndLossReport's own COGS
+    // computation uses — quantity is always stored positive (used to
+    // restock inventory), so a return's COGS must drop too, not rise as a
+    // second sale; item.lineTotal is already correctly signed for revenue.
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const existing = bySupplier.get(supplierId) ?? { revenue: 0, cogs: 0 }
+    existing.revenue += item.lineTotal
+    existing.cogs += sign * item.quantity * (costs.get(item.productId) ?? 0)
+    bySupplier.set(supplierId, existing)
+  }
+
+  const totalRevenue = sumCurrency(Array.from(bySupplier.values()).map(v => v.revenue))
+  const totalCogs = sumCurrency(Array.from(bySupplier.values()).map(v => v.cogs))
+  const rows: VendorMarginRow[] = Array.from(bySupplier.entries())
+    .map(([supplierId, v]) => {
+      const revenue = roundCurrency(v.revenue)
+      const cogs = roundCurrency(v.cogs)
+      const margin = roundCurrency(revenue - cogs)
+      return {
+        supplierId, supplierName: supplierNameById.get(supplierId) ?? '',
+        revenue, cogs, margin,
+        marginPercent: revenue !== 0 ? Math.round((margin / revenue) * 1000) / 10 : 0
+      }
+    })
+    .sort((a, b) => b.margin - a.margin)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalRevenue, totalCogs, totalMargin: roundCurrency(totalRevenue - totalCogs), vendorCount: rows.length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Basket Composition Report (Retail template) — Phase 67 §9.1
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -5839,6 +5926,7 @@ export const reportService = {
   generateSeasonSellThroughReport,
   generateSizeStyleHeatmapReport,
   generateCategoryMixReport,
+  generateVendorMarginReport,
   generateBasketCompositionReport,
   generateFastSlowMoverMatrixReport,
   generateGSTR1,

@@ -421,7 +421,6 @@ export function CustomDocumentsScreen() {
           title={t('customDocuments.deleteEntryTitle')}
           message={t('customDocuments.deleteEntryMessage')}
           confirmLabel={t('common.delete')}
-          danger
           loading={deleting}
           onConfirm={handleDeleteEntry}
           onClose={() => setDeleteTarget(null)}

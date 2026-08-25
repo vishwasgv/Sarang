@@ -45,7 +45,8 @@ vi.mock('../report.service', () => ({
     generateVendorRecoveryLedgerReport: vi.fn(),
     generateRepairTurnaroundByTechnicianReport: vi.fn(),
     generateSeasonSellThroughReport: vi.fn(),
-    generateSizeStyleHeatmapReport: vi.fn()
+    generateSizeStyleHeatmapReport: vi.fn(),
+    generateVendorMarginReport: vi.fn()
   }
 }))
 vi.mock('../repair-ticket.service', () => ({ lookupSerialService: vi.fn() }))
@@ -489,6 +490,54 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('clothing.sizeStyleHeatmap')
     expect(res.data?.answer).toContain('Cotton T-Shirt')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Clothing item 4: size/color exchange workflow. Locks in
+  // that "exchange" wording routes here, not the existing bare "return"
+  // pattern sales.returnsAndRefunds already owns.
+  it('routes "how many exchanges this month" to clothing.exchangeSummary via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) },
+      invoice: { findMany: vi.fn().mockResolvedValue([{ totalAmount: 650 }]) }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('How many exchanges this month?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('clothing.exchangeSummary')
+    expect(res.data?.answer).toContain('1 size/colour exchange')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report. Locks
+  // in that "vendor margin" wording routes here, not the existing bare
+  // "margin" pattern fastSlowMoverMatrix already owns.
+  it('routes "margin by vendor" to clothing.vendorMargin via the fast-path', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateVendorMarginReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-31',
+      rows: [{ supplierId: 's1', supplierName: 'Acme Apparel', revenue: 500, cogs: 300, margin: 200, marginPercent: 40 }],
+      summary: { totalRevenue: 500, totalCogs: 300, totalMargin: 200, vendorCount: 1 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me margin by vendor')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('clothing.vendorMargin')
+    expect(res.data?.answer).toContain('Acme Apparel')
     expect(classifySpy).not.toHaveBeenCalled()
   })
 

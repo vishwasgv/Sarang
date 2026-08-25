@@ -99,17 +99,7 @@ export async function createReturn(
       // (fresh-audit fix) rather than a notes-substring match — the old
       // `notes: { contains: originalInvoiceId }` could false-match if one
       // invoice's cuid ever appeared as a substring of another's notes text.
-      const priorReturns = await tx.invoice.findMany({
-        where: { invoiceType: 'RETURN', originalInvoiceId },
-        include: { items: true }
-      })
-      const alreadyReturned = new Map<string, number>()
-      for (const pr of priorReturns) {
-        for (const it of pr.items) {
-          const key = itemKey(it.productId, it.variantId)
-          alreadyReturned.set(key, (alreadyReturned.get(key) ?? 0) + it.quantity)
-        }
-      }
+      const alreadyReturned = await getReturnedAwayQuantities(tx, originalInvoiceId)
       for (const ri of items) {
         const origItem = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
         const key = itemKey(ri.productId, ri.variantId)
@@ -331,6 +321,36 @@ export async function listReturns(originalInvoiceId?: string) {
   } catch (err) {
     return { success: false, error: { code: 'RET-010', message: err instanceof Error ? err.message : 'Could not list returns.' } }
   }
+}
+
+// Phase 67 — Clothing item 4 (size/color exchange workflow). Shared by
+// createReturn's own already-returned guard above AND exchange.service.ts's
+// analogous guard, so the two workflows can't be combined to double-dip on
+// the same original line (return it via ReturnScreen, THEN exchange the
+// "same" quantity again, or vice versa). An EXCHANGE invoice's own two
+// InvoiceItem rows are told apart by sign: the surrendered/old leg always
+// has a negative lineTotal (mirroring a RETURN row's own convention
+// exactly), the acquired/new leg a positive one — so filtering to
+// lineTotal < 0 picks out only the "given back" side of an exchange,
+// leaving the "taken instead" side (a different product/variant key
+// entirely) uncounted here, right where it belongs.
+export async function getReturnedAwayQuantities(
+  tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
+  originalInvoiceId: string
+): Promise<Map<string, number>> {
+  const priorDocs = await tx.invoice.findMany({
+    where: { invoiceType: { in: ['RETURN', 'EXCHANGE'] }, originalInvoiceId },
+    include: { items: true }
+  })
+  const returnedAway = new Map<string, number>()
+  for (const doc of priorDocs) {
+    for (const it of doc.items) {
+      if (it.lineTotal >= 0) continue
+      const key = itemKey(it.productId, it.variantId)
+      returnedAway.set(key, (returnedAway.get(key) ?? 0) + it.quantity)
+    }
+  }
+  return returnedAway
 }
 
 // Retail's dashboard widget deliverable (spec §9.3) — a lightweight,

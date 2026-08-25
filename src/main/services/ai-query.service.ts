@@ -207,6 +207,13 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // Deliberately "heatmap"/"combination"-scoped so it doesn't collide with
   // the reorder-suggestion pattern above (both mention "size").
   { template: 'clothing.sizeStyleHeatmap', patterns: [/(size|style).*heatmap/i, /(top|best).?(selling)?\s*(combination|size.?style)/i] },
+  // Deliberately "exchange"-scoped so it doesn't collide with the existing
+  // bare "return"/"refund" wording sales.returnsAndRefunds already owns.
+  { template: 'clothing.exchangeSummary', patterns: [/exchange/i, /(swap|traded?).*(size|colou?r)/i] },
+  // Phase 67 §9.1 — Clothing item 5. Deliberately "vendor"/"brand"-scoped so
+  // it doesn't collide with the existing bare "margin" wording other
+  // margin-bearing intents (e.g. fastSlowMoverMatrix) already own.
+  { template: 'clothing.vendorMargin', patterns: [/(vendor|brand|supplier).*margin/i, /margin.*(vendor|brand|supplier)/i] },
   { template: 'retail.loyaltyProgress', patterns: [/loyalty/i, /punch[\s-]?card/i, /ready.*(redeem|reward)/i] },
   { template: 'retail.basketComposition', patterns: [/basket\s+(composition|analysis)/i, /bought\s+together/i, /(products?|items?).*(together|pair)/i] },
   // Phase 67 §9.1 — Hardware's "Fast-mover vs. slow-mover matrix" signature

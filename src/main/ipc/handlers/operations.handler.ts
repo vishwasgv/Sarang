@@ -1,8 +1,9 @@
 import * as returnsService from '../../services/returns.service'
+import { createExchange } from '../../services/exchange.service'
 import { cashCloseService } from '../../services/cash-close.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateReturnSchema, CashCloseCreateSchema } from '../../validation/operations.validation'
+import { CreateReturnSchema, CreateExchangeSchema, CashCloseCreateSchema } from '../../validation/operations.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -12,6 +13,13 @@ export function register(handle: HandleFn): void {
     const parsed = CreateReturnSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return returnsService.createReturn(parsed.data.originalInvoiceId, parsed.data.items, parsed.data.reason, getCurrentSession()?.userId)
+  })
+
+  handle('exchange:create', async (payload) => {
+    const deny = await requirePermission('billing.manageReturns'); if (deny) return deny
+    const parsed = CreateExchangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return createExchange(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('returns:list', async (payload) => {

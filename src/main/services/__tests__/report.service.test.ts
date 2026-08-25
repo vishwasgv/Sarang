@@ -2531,6 +2531,165 @@ describe('reportService.generateCategoryMixReport', () => {
   })
 })
 
+// Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report, the
+// vertical's 5th and final signature item. Structurally the same grouping
+// shape as generateCategoryMixReport's own tests above, keyed by supplier
+// instead of category, with COGS added via the real getProductCostsBatch()
+// (valuation.service) rather than a static cost field.
+describe('reportService.generateVendorMarginReport', () => {
+  function makeSuppliers() {
+    return [{ id: 's1', supplierName: 'Acme Apparel' }, { id: 's2', supplierName: 'Bright Threads' }]
+  }
+  function makeMarginItem(overrides: Record<string, unknown> = {}) {
+    return {
+      productId: 'p1', quantity: 5, lineTotal: 500,
+      invoice: { invoiceType: 'SALE' },
+      product: { defaultSupplierId: 's1' },
+      ...overrides
+    }
+  }
+  // costPrice 60, WEIGHTED_AVERAGE with no inventory row (falls back to
+  // costPrice directly) — same simplification generateProfitAndLossReport's
+  // own tests already lean on for getProductCostsBatch.
+  function makeProducts() {
+    return [{ id: 'p1', costPrice: 60, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]
+  }
+
+  it('groups revenue, COGS, and margin by vendor/supplier', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([makeMarginItem()]) },
+      product: { findMany: vi.fn().mockResolvedValue(makeProducts()) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    // revenue 500, cogs = 5 * 60 = 300, margin = 200
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ supplierId: 's1', supplierName: 'Acme Apparel', revenue: 500, cogs: 300, margin: 200, marginPercent: 40 })
+    expect(result.summary).toEqual({ totalRevenue: 500, totalCogs: 300, totalMargin: 200, vendorCount: 1 })
+  })
+
+  it('sign-corrects RETURN quantity for COGS but not lineTotal (already signed at the DB level)', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          makeMarginItem({ quantity: 10, lineTotal: 1000, invoice: { invoiceType: 'SALE' } }),
+          makeMarginItem({ quantity: 2, lineTotal: -200, invoice: { invoiceType: 'RETURN' } }),
+        ])
+      },
+      product: { findMany: vi.fn().mockResolvedValue(makeProducts()) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    // revenue: 1000 + (-200) = 800; cogs: (10 - 2) * 60 = 480
+    expect(result.rows[0].revenue).toBe(800)
+    expect(result.rows[0].cogs).toBe(480)
+    expect(result.rows[0].margin).toBe(320)
+  })
+
+  it('sorts rows by margin descending', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          makeMarginItem({ productId: 'p1', lineTotal: 200, product: { defaultSupplierId: 's1' } }),
+          makeMarginItem({ productId: 'p2', lineTotal: 900, product: { defaultSupplierId: 's2' } }),
+        ])
+      },
+      product: { findMany: vi.fn().mockResolvedValue([...makeProducts(), { id: 'p2', costPrice: 10, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    // s1 margin: 200 - 5*60 = -100; s2 margin: 900 - 5*10 = 850 — s2 leads
+    expect(result.rows[0].supplierId).toBe('s2')
+    expect(result.rows[1].supplierId).toBe('s1')
+  })
+
+  it('can report a negative margin honestly for a loss-making vendor', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([makeMarginItem({ quantity: 5, lineTotal: 100 })]) },
+      product: { findMany: vi.fn().mockResolvedValue(makeProducts()) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    // revenue 100, cogs 300 -> margin -200, marginPercent -200%
+    expect(result.rows[0].margin).toBe(-200)
+    expect(result.rows[0].marginPercent).toBe(-200)
+  })
+
+  it('returns an honest empty result when there are no suppliers at all', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue([]) },
+      invoiceItem: { findMany: vi.fn() }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalRevenue: 0, totalCogs: 0, totalMargin: 0, vendorCount: 0 })
+  })
+
+  it('returns marginPercent 0 when revenue is zero (avoids division by zero)', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          makeMarginItem({ quantity: 3, lineTotal: 300 }),
+          makeMarginItem({ quantity: 3, lineTotal: -300, invoice: { invoiceType: 'RETURN' } }),
+        ])
+      },
+      product: { findMany: vi.fn().mockResolvedValue(makeProducts()) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary.totalRevenue).toBe(0)
+    expect(result.rows[0].marginPercent).toBe(0)
+  })
+
+  it('excludes items whose product has no vendor/supplier assigned', async () => {
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const findManySpy = db.invoiceItem.findMany as ReturnType<typeof vi.fn>
+    await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(findManySpy).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ product: { defaultSupplierId: { not: null } } })
+    }))
+  })
+
+  it('only counts ACTIVE invoices within the date range', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = makeDb({
+      supplier: { findMany: vi.fn().mockResolvedValue(makeSuppliers()) },
+      invoiceItem: { findMany }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateVendorMarginReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ invoice: expect.objectContaining({ status: 'ACTIVE' }) })
+    }))
+  })
+})
+
 // Phase 67 §9.1 — Hardware: Fast-Mover vs. Slow-Mover Matrix. Quadrant split
 // by the MEDIAN of each axis, computed only over products that actually sold
 // — not a fixed threshold, since that would be meaningless across

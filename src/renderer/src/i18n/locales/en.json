@@ -1714,6 +1714,10 @@
         "label": "Category Mix",
         "description": "What share of your revenue comes from each product category over a date range — see at a glance which categories drive the business and which are a small slice"
       },
+      "vendorMargin": {
+        "label": "Margin by Brand/Vendor",
+        "description": "Revenue, cost, and margin broken down by which supplier/brand each sold product came from — see at a glance which vendors are actually profitable and which are a loss"
+      },
       "fastSlowMoverMatrix": {
         "label": "Fast-Mover vs. Slow-Mover Matrix",
         "description": "A scatter of sales velocity against margin, split into four quadrants — see at a glance which products are worth restocking fast, which are a low-margin grind, and which slow movers are worth keeping anyway for their margin"
@@ -1972,6 +1976,8 @@
       "records": "Records",
       "revenue": "Revenue",
       "cogs": "Cost of Goods Sold",
+      "totalMargin": "Total Margin",
+      "marginByVendor": "Margin by Vendor",
       "grossProfit": "Gross Profit",
       "netProfit": "Net Profit",
       "totalProjects": "Total Projects",
@@ -2267,6 +2273,7 @@
       "sizeStyleHeatmap": "No variant-tracked sales found in this date range.",
       "basketComposition": "No baskets with 2 or more different products found in this date range.",
       "categoryMix": "No categorized product sales found in this date range.",
+      "vendorMargin": "No sales found for products with an assigned vendor/brand in this date range.",
       "cashPositionTrend": "No cash movement found in this date range.",
       "fastSlowMoverMatrix": "No products sold in this date range.",
       "gstr1": "No taxable invoices found for this period.",
@@ -2674,7 +2681,29 @@
     "reasonRequired": "Return reason is required.",
     "returnProcessed": "Return Processed",
     "returnProcessedMsg": "Return invoice {{number}} has been created. Inventory has been restocked and customer balance updated.",
-    "processAnother": "Process Another Return"
+    "processAnother": "Process Another Return",
+    "exchange": {
+      "action": "Exchange",
+      "title": "Exchange for a different size/colour",
+      "newVariant": "Replacement size/colour",
+      "selectVariant": "Select a replacement",
+      "outOfStock": "out of stock",
+      "quantity": "Quantity",
+      "paymentMethod": "Settle balance via",
+      "reason": "Exchange Reason",
+      "reasonPlaceholder": "e.g. Wrong size, customer wants a different colour",
+      "reasonRequired": "Exchange reason is required.",
+      "variantRequired": "Select a replacement variant.",
+      "noVariants": "No other size/colour variants available for this product.",
+      "submit": "Confirm Exchange",
+      "cancel": "Cancel",
+      "success": "Exchange Processed",
+      "successMsg": "Return {{returnNumber}} and new sale {{newNumber}} have been created.",
+      "amountDue": "Additional amount due",
+      "amountRefund": "Amount to refund",
+      "amountEven": "No balance due — exact exchange",
+      "error": "Could not process exchange. Please try again."
+    }
   },
   "documents": {
     "title": "Documents",

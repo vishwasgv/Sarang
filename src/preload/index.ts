@@ -353,6 +353,7 @@ const api: IpcChannels = {
     sizeStyleHeatmap: (p) => invoke('reports:sizeStyleHeatmap', p),
     basketComposition: (p) => invoke('reports:basketComposition', p),
     categoryMix: (p) => invoke('reports:categoryMix', p),
+    vendorMargin: (p) => invoke('reports:vendorMargin', p),
     fastSlowMoverMatrix: (p) => invoke('reports:fastSlowMoverMatrix', p),
     gstr1: (p) => invoke('reports:gstr1', p),
     hsnSummary: (p) => invoke('reports:hsnSummary', p),
@@ -570,6 +571,10 @@ const api: IpcChannels = {
     create: (p) => invoke('returns:create', p),
     list: (p) => invoke('returns:list', p),
     todaySummary: () => invoke('returns:todaySummary'),
+  },
+  // Phase 67 §9.1 — Clothing item 4: size/color exchange workflow.
+  exchange: {
+    create: (p) => invoke('exchange:create', p),
   },
   // Phase 2 — Industry Expansion
   batches: {

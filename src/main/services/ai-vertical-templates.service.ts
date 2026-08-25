@@ -35,6 +35,7 @@ import { customDocumentService } from './custom-document.service'
 import { getPlacementKPIs } from './placement.service'
 import { formatAmountForSpeech } from './ai-format.util'
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { listLegalCases } from './legal-case.service'
 import { listHearings } from './hearing.service'
 import { listROCFilings } from './roc-filing.service'
@@ -131,7 +132,15 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     case 'GENERAL': return ['general.templateSuggestion', 'general.customDocumentSummary', 'general.categoryMix', 'general.cashPositionTrend', 'general.quotePipelineSummary']
     case 'MANUFACTURING': return ['manufacturing.production']
     case 'ELECTRONICS': return ['electronics.serialWarranty', 'electronics.rmaOverdueSummary', 'electronics.vendorRecovery', 'electronics.repairTurnaround', 'electronics.serialServiceLookup']
-    case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap']
+    // Phase 67 §9.1 — Clothing item 4 (size/color exchange workflow) gets a
+    // matching AI intent per Section 1.2's rule. Distinct from the generic
+    // sales.returnsAndRefunds intent (ai-query.service.ts), which already
+    // counts an exchange's own RETURN leg alongside plain refund returns
+    // without telling them apart — this one answers the genuinely different
+    // question of how many were actual size/colour exchanges specifically.
+    // Phase 67 §9.1 — Clothing item 5 (Margin by Brand/Vendor Report), its
+    // 5th and final signature item, closing the vertical's own list.
+    case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap', 'clothing.exchangeSummary', 'clothing.vendorMargin']
     case 'COACHING_INSTITUTE': return ['coaching.testScores', 'coaching.feeDuesAndAttendance']
     case 'CA_FIRM': case 'COMPANY_SECRETARY': return ['compliance.tasks', 'compliance.upcomingFilings']
     case 'REPAIR': return ['repair.jobCards']
@@ -400,6 +409,40 @@ export async function executeVerticalTemplate(template: string, params: Record<s
           : 'No variant sales this month yet',
         details: top.map(c => `${c.style} / ${c.size}: ${c.unitsSold} units`),
         isEmpty: r.summary.totalUnitsSold === 0
+      }
+    }
+    // Phase 67 §9.1 — Clothing item 4 (size/color exchange workflow). Counts
+    // the NEW/replacement-item invoices an exchange produces (each carries
+    // a real exchangeReturnId back to its paired RETURN leg) — an
+    // unambiguous, precise signal distinct from sales.returnsAndRefunds'
+    // own count, which bundles an exchange's RETURN leg together with every
+    // plain refund return and can't tell them apart.
+    case 'clothing.exchangeSummary': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const db = getPrisma()
+      const exchanges = await db.invoice.findMany({
+        where: { exchangeReturnId: { not: null }, invoiceDate: { gte: parseLocalDateStart(dateFrom), lte: parseLocalDateEnd(dateTo) } },
+        select: { totalAmount: true }
+      })
+      const totalValue = exchanges.reduce((s, e) => s + e.totalAmount, 0)
+      return {
+        headline: `${exchanges.length} size/colour exchange${exchanges.length === 1 ? '' : 's'} processed this month, replacement items totaling ${formatAmountForSpeech(totalValue, sym)}`,
+        details: [],
+        isEmpty: exchanges.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report, the
+    // vertical's 5th and final signature item. Reuses formatAmountForSpeech
+    // for the top vendor's own margin figure, matching every other
+    // currency-bearing headline in this file.
+    case 'clothing.vendorMargin': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateVendorMarginReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top ? `${top.supplierName} leads with ${formatAmountForSpeech(top.margin, sym)} margin this month (${top.marginPercent}%)` : 'No sales this month for products with an assigned vendor/brand',
+        details: r.rows.slice(0, 3).map(row => `${row.supplierName}: ${formatAmountForSpeech(row.margin, sym)} margin (${row.marginPercent}%)`),
+        isEmpty: r.rows.length === 0
       }
     }
     case 'retail.loyaltyProgress': {

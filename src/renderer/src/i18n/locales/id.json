@@ -1637,6 +1637,10 @@
         "label": "Komposisi Kategori",
         "description": "Berapa persen pendapatan Anda yang berasal dari setiap kategori produk dalam rentang tanggal tertentu — lihat sekilas kategori mana yang mendorong bisnis dan mana yang hanya berkontribusi kecil"
       },
+      "vendorMargin": {
+        "label": "Margin berdasarkan Merek/Vendor",
+        "description": "Pendapatan, biaya, dan margin dipecah berdasarkan pemasok/merek asal setiap produk yang terjual — lihat sekilas vendor mana yang benar-benar menguntungkan dan mana yang merugi"
+      },
       "fastSlowMoverMatrix": {
         "label": "Matriks Produk Perputaran Cepat vs. Lambat",
         "description": "Sebaran kecepatan penjualan terhadap margin, dibagi menjadi empat kuadran — lihat sekilas produk mana yang layak untuk segera diisi ulang stoknya, mana yang merupakan usaha bermargin rendah, dan produk perputaran lambat mana yang layak dipertahankan karena marginnya"
@@ -2053,6 +2057,8 @@
       "metalsWithNoRateSet": "Logam Tanpa Tarif Diatur",
       "revenue": "Pendapatan",
       "cogs": "Harga Pokok Penjualan",
+      "totalMargin": "Total Margin",
+      "marginByVendor": "Margin berdasarkan Vendor",
       "grossProfit": "Laba Kotor",
       "netProfit": "Laba Bersih",
       "totalProjects": "Total Proyek",
@@ -2224,6 +2230,7 @@
       "sizeStyleHeatmap": "Tidak ada penjualan dengan pelacakan varian yang ditemukan dalam rentang tanggal ini.",
       "basketComposition": "Tidak ditemukan keranjang dengan 2 atau lebih produk berbeda dalam rentang tanggal ini.",
       "categoryMix": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
+      "vendorMargin": "Tidak ditemukan penjualan untuk produk dengan vendor/merek yang ditetapkan dalam rentang tanggal ini.",
       "cashPositionTrend": "Tidak ditemukan pergerakan kas dalam rentang tanggal ini.",
       "fastSlowMoverMatrix": "Tidak ada produk yang terjual dalam rentang tanggal ini.",
       "gstr1": "Tidak ada faktur kena pajak ditemukan untuk periode ini.",
@@ -2631,7 +2638,29 @@
     "invoiceNumberLabel": "Nomor Faktur",
     "processAnother": "Proses Pengembalian Lain",
     "searchPlaceholder": "mis. INV-00042",
-    "searchError": "Tidak dapat mencari faktur."
+    "searchError": "Tidak dapat mencari faktur.",
+    "exchange": {
+      "action": "Tukar",
+      "title": "Tukar dengan ukuran/warna lain",
+      "newVariant": "Ukuran/warna pengganti",
+      "selectVariant": "Pilih pengganti",
+      "outOfStock": "stok habis",
+      "quantity": "Jumlah",
+      "paymentMethod": "Selesaikan saldo melalui",
+      "reason": "Alasan Penukaran",
+      "reasonPlaceholder": "mis. Ukuran salah, pelanggan ingin warna lain",
+      "reasonRequired": "Alasan penukaran wajib diisi.",
+      "variantRequired": "Pilih varian pengganti.",
+      "noVariants": "Tidak ada ukuran/warna lain yang tersedia untuk produk ini.",
+      "submit": "Konfirmasi Penukaran",
+      "cancel": "Batal",
+      "success": "Penukaran Diproses",
+      "successMsg": "Retur {{returnNumber}} dan penjualan baru {{newNumber}} telah dibuat.",
+      "amountDue": "Jumlah tambahan yang harus dibayar",
+      "amountRefund": "Jumlah yang harus dikembalikan",
+      "amountEven": "Tidak ada saldo terutang — penukaran tepat",
+      "error": "Penukaran tidak dapat diproses. Silakan coba lagi."
+    }
   },
   "documents": {
     "title": "Dokumen",

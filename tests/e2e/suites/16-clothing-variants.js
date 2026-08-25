@@ -344,6 +344,197 @@ async function run() {
       }
     })
 
+    // ─── Phase 67 §9.1 item 4: Size/Color Exchange Workflow ─────────────────
+    await r.step('size-color-exchange-via-real-api-restocks-old-decrements-new-nets-zero', async () => {
+      if (!productId || !customerId) return r.log('size-color-exchange-via-real-api-restocks-old-decrements-new-nets-zero', false, 'no productId/customerId captured')
+
+      const beforeRes = await page.evaluate((pid) => window.api.variants.list({ productId: pid }), productId)
+      const beforeVariants = beforeRes?.data || []
+      const mBlueBefore = beforeVariants.find((v) => v.size === 'M' && v.color === 'Blue')
+      const lRedBefore = beforeVariants.find((v) => v.size === 'L' && v.color === 'Red')
+
+      // A fresh, not-yet-returned/-exchanged sale — the earlier M/Blue line
+      // on the suite's original invoice was already fully returned in an
+      // earlier step, so exchanging against it again would correctly be
+      // rejected by the same already-returned guard a plain double-return
+      // would hit.
+      const saleRes = await page.evaluate(({ pid, cid, variantId }) => window.api.billing.createInvoice({
+        customerId: cid, paymentMethod: 'CASH',
+        items: [{ productId: pid, variantId, quantity: 1, unitPrice: 500, taxRate: 5 }],
+      }), { pid: productId, cid: customerId, variantId: lRedBefore?.id })
+      r.log('exchange-source-sale-created', !!saleRes?.success, JSON.stringify(saleRes?.error || ''))
+      const sourceInvoiceId = saleRes?.data?.id
+
+      const exchangeRes = await page.evaluate(({ originalInvoiceId, pid, oldVariantId, newVariantId }) => window.api.exchange.create({
+        originalInvoiceId, oldProductId: pid, oldVariantId, quantity: 1, newVariantId,
+        reason: 'E2E API exchange — wrong size', paymentMethod: 'CASH',
+      }), { originalInvoiceId: sourceInvoiceId, pid: productId, oldVariantId: lRedBefore?.id, newVariantId: mBlueBefore?.id })
+      r.log('exchange-api-succeeded', !!exchangeRes?.success, JSON.stringify(exchangeRes?.error || ''))
+      r.log('exchange-return-invoice-number-prefixed-ret', !!exchangeRes?.data?.returnInvoiceNumber?.startsWith('RET-'), JSON.stringify(exchangeRes?.data))
+      r.log('exchange-new-invoice-number-present', !!exchangeRes?.data?.newInvoiceNumber)
+      // Same base price (500) and tax rate (5%) for both M/Blue and L/Red —
+      // no additionalPrice difference configured on either variant — so the
+      // exchange should net to exactly zero.
+      r.log('exchange-net-amount-due-is-zero-same-price', exchangeRes?.data?.netAmountDue === 0, `netAmountDue=${exchangeRes?.data?.netAmountDue}`)
+
+      const afterRes = await page.evaluate((pid) => window.api.variants.list({ productId: pid }), productId)
+      const afterVariants = afterRes?.data || []
+      const mBlueAfter = afterVariants.find((v) => v.size === 'M' && v.color === 'Blue')
+      const lRedAfter = afterVariants.find((v) => v.size === 'L' && v.color === 'Red')
+      r.log('old-variant-l-red-restored', lRedAfter?.stockQty === lRedBefore?.stockQty, `before=${lRedBefore?.stockQty} after=${lRedAfter?.stockQty}`)
+      r.log('new-variant-m-blue-decremented-by-one', mBlueAfter?.stockQty === (mBlueBefore?.stockQty ?? 0) - 1, `before=${mBlueBefore?.stockQty} after=${mBlueAfter?.stockQty}`)
+
+      // The linked new invoice really does carry exchangeReturnId back to
+      // the real return invoice created above — verified via a real DB read
+      // rather than trusting the API response alone.
+      if (exchangeRes?.data?.newInvoiceId) {
+        const linked = h.withDb((db) => db.prepare('SELECT exchangeReturnId FROM Invoice WHERE id = ?').get(exchangeRes.data.newInvoiceId))
+        r.log('new-invoice-linked-to-return-invoice-in-db', linked?.exchangeReturnId === exchangeRes?.data?.returnInvoiceId, JSON.stringify(linked))
+      }
+
+      // A second exchange attempt against the SAME already-exchanged line
+      // must be rejected — the shared already-returned-away guard
+      // (getReturnedAwayQuantities) must see the exchange's own RETURN leg,
+      // not just plain Returns.
+      const dupeRes = await page.evaluate(({ originalInvoiceId, pid, oldVariantId, newVariantId }) => window.api.exchange.create({
+        originalInvoiceId, oldProductId: pid, oldVariantId, quantity: 1, newVariantId,
+        reason: 'E2E duplicate exchange attempt', paymentMethod: 'CASH',
+      }), { originalInvoiceId: sourceInvoiceId, pid: productId, oldVariantId: lRedBefore?.id, newVariantId: mBlueBefore?.id })
+      r.log('duplicate-exchange-on-same-line-rejected', dupeRes?.success === false && dupeRes?.error?.code === 'RET-007', JSON.stringify(dupeRes?.error))
+    })
+
+    await r.step('size-color-exchange-via-real-ui-returns-screen', async () => {
+      if (!productId || !customerId) return r.log('size-color-exchange-via-real-ui-returns-screen', false, 'no productId/customerId captured')
+
+      const variantsRes = await page.evaluate((pid) => window.api.variants.list({ productId: pid }), productId)
+      const lRed = (variantsRes?.data || []).find((v) => v.size === 'L' && v.color === 'Red')
+      const mBlueBefore = (variantsRes?.data || []).find((v) => v.size === 'M' && v.color === 'Blue')
+
+      const saleRes = await page.evaluate(({ pid, cid, variantId }) => window.api.billing.createInvoice({
+        customerId: cid, paymentMethod: 'CASH',
+        items: [{ productId: pid, variantId, quantity: 1, unitPrice: 500, taxRate: 5 }],
+      }), { pid: productId, cid: customerId, variantId: lRed?.id })
+      r.log('ui-exchange-source-sale-created', !!saleRes?.success, JSON.stringify(saleRes?.error || ''))
+      const invRes = await page.evaluate((id) => window.api.billing.getInvoice(id), saleRes?.data?.id)
+      const sourceInvoiceNumber = invRes?.data?.invoiceNumber
+      r.log('ui-exchange-source-invoice-number-resolved', !!sourceInvoiceNumber)
+
+      await h.gotoHash(page, '#/returns')
+      await page.waitForTimeout(700)
+      // Real E2E test-authoring bug found+fixed here: getByRole('button',
+      // { name: 'Search' }) resolves to TWO elements on this screen — the
+      // app's own global header search (Ctrl+K) AND this screen's own
+      // Search button, both accessible-named "Search". Pressing Enter in
+      // the invoice-number input (wired to the same handleSearch()) avoids
+      // the ambiguity entirely rather than trying to scope the locator.
+      const invoiceNumberInput = page.locator('input[placeholder="e.g. INV-00042"]')
+      await invoiceNumberInput.fill(sourceInvoiceNumber || '')
+      await invoiceNumberInput.press('Enter')
+      await page.waitForTimeout(700)
+
+      const exchangeBtn = page.locator('button', { hasText: 'Exchange' }).first()
+      r.log('exchange-button-present-on-variant-row', await exchangeBtn.count() > 0)
+      await exchangeBtn.click()
+      await page.waitForTimeout(500)
+      await h.shot(page, 'clothing-exchange-panel-open')
+
+      const variantSelect = page.locator('select').filter({ has: page.locator(`option[value="${mBlueBefore?.id}"]`) })
+      await variantSelect.selectOption(mBlueBefore?.id)
+      const reasonBox = page.getByPlaceholder('e.g. Wrong size, customer wants a different colour')
+      await reasonBox.fill('E2E UI exchange — customer wants M/Blue instead')
+
+      const confirmBtn = page.locator('button', { hasText: 'Confirm Exchange' })
+      await confirmBtn.click()
+      await page.waitForTimeout(1200)
+      r.log('ui-exchange-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('ui-exchange-success-banner-shown', /Exchange Processed/i.test(bodyText), bodyText.slice(0, 400))
+      await h.shot(page, 'clothing-exchange-success')
+
+      const afterRes = await page.evaluate((pid) => window.api.variants.list({ productId: pid }), productId)
+      const mBlueAfter = (afterRes?.data || []).find((v) => v.size === 'M' && v.color === 'Blue')
+      r.log('ui-exchange-new-variant-decremented', mBlueAfter?.stockQty === (mBlueBefore?.stockQty ?? 0) - 1, `before=${mBlueBefore?.stockQty} after=${mBlueAfter?.stockQty}`)
+    })
+
+    // ─── Phase 67 §9.1 item 5: Margin by Brand/Vendor Report ────────────────
+    await r.step('vendor-margin-report-computes-and-renders-correctly', async () => {
+      if (!productId || !customerId) return r.log('vendor-margin-report-computes-and-renders-correctly', false, 'no productId/customerId captured')
+
+      const supRes = await page.evaluate(() => window.api.suppliers.create({
+        supplierName: 'E2E Cloth Vendor', phone: `9${String(Date.now()).slice(-9)}`,
+      }))
+      r.log('vendor-margin-supplier-created', !!supRes?.success, JSON.stringify(supRes?.error || ''))
+      const supplierId = supRes?.data?.id
+
+      const updateRes = await page.evaluate(({ pid, sid }) => window.api.products.update({
+        id: pid, productName: 'E2E Cloth TShirt', unit: 'PCS', sellingPrice: 500, costPrice: 250, taxRate: 5, productType: 'STANDARD', season: 'Summer 2026', defaultSupplierId: sid,
+      }), { pid: productId, sid: supplierId })
+      r.log('vendor-margin-product-vendor-assigned', !!updateRes?.success, JSON.stringify(updateRes?.error || ''))
+
+      // RULE I007 (product.service.ts): a product created with zero opening
+      // quantity deliberately keeps Inventory.averageCost at 0 forever,
+      // until a real GRN/purchase establishes it — this test product was
+      // created with no opening quantity, so getProductCostsBatch() would
+      // otherwise correctly (per that same rule) resolve its cost as 0, not
+      // costPrice. Seed a real averageCost directly, same "simulate real
+      // state via direct DB write" precedent the RMA SLA item established,
+      // so this step can verify actual non-zero margin math end-to-end.
+      h.withDb((db) => db.prepare('UPDATE Inventory SET averageCost = 250 WHERE productId = ?').run(productId))
+
+      // A fresh, deterministic sale specifically for this item: 3 units of
+      // L/Red at the product's own real price/cost (500 sell, 250 cost) —
+      // independent of every other sale/return/exchange this suite has
+      // already made against this product this month.
+      const variantsRes = await page.evaluate((pid) => window.api.variants.list({ productId: pid }), productId)
+      const lRed = (variantsRes?.data || []).find((v) => v.size === 'L' && v.color === 'Red')
+      const saleRes = await page.evaluate(({ pid, cid, variantId }) => window.api.billing.createInvoice({
+        customerId: cid, paymentMethod: 'CASH',
+        items: [{ productId: pid, variantId, quantity: 3, unitPrice: 500, taxRate: 5 }],
+      }), { pid: productId, cid: customerId, variantId: lRed?.id })
+      r.log('vendor-margin-extra-sale-created', !!saleRes?.success, JSON.stringify(saleRes?.error || ''))
+
+      const now = new Date()
+      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+
+      const reportRes = await page.evaluate((args) => window.api.reports.vendorMargin(args), { dateFrom, dateTo })
+      r.log('vendor-margin-api-succeeded', !!reportRes?.success, JSON.stringify(reportRes?.error || ''))
+      const row = (reportRes?.data?.rows || []).find((rr) => rr.supplierId === supplierId)
+      r.log('vendor-margin-includes-our-vendor-this-month', !!row, JSON.stringify(row))
+      if (row) {
+        // Internal consistency, not a hardcoded absolute number — this
+        // product has accumulated many other sales/returns/exchanges
+        // earlier in this same suite run this month, so the exact revenue
+        // figure isn't independently predictable, but the math must hold.
+        r.log('vendor-margin-math-is-consistent', Math.abs(row.revenue - row.cogs - row.margin) < 0.01, JSON.stringify(row))
+        r.log('vendor-margin-percent-matches-margin-over-revenue', row.revenue === 0 ? row.marginPercent === 0 : Math.abs(row.marginPercent - Math.round((row.margin / row.revenue) * 1000) / 10) < 0.2, JSON.stringify(row))
+        // The 3-unit sale we just made is definitely in there: at minimum
+        // 3*500=1500 revenue and 3*250=750 cost were just added (cost basis
+        // seeded to a real 250/unit above, per RULE I007's own convention).
+        r.log('vendor-margin-includes-the-fresh-sale', row.revenue >= 1500 && row.cogs >= 750, JSON.stringify(row))
+        r.log('vendor-margin-is-not-a-degenerate-zero-cost-row', row.cogs > 0, JSON.stringify(row))
+      }
+
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button', { hasText: 'Margin by Brand/Vendor' }).first()
+      r.log('vendor-margin-tile-present', await tile.count() > 0)
+      if (await tile.count()) {
+        await tile.click()
+        await page.waitForTimeout(500)
+        const genBtn = page.getByRole('button', { name: 'Generate Report' })
+        if (await genBtn.count()) {
+          await genBtn.click()
+          await page.waitForTimeout(1000)
+        }
+        r.log('vendor-margin-renders-no-crash', !(await h.hasErrorBoundary(page)))
+        const bodyText = await page.locator('body').innerText().catch(() => '')
+        r.log('vendor-margin-shows-vendor-name', bodyText.includes('E2E Cloth Vendor'))
+        await h.shot(page, 'clothing-vendor-margin-report')
+      }
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'CLOTHING') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)

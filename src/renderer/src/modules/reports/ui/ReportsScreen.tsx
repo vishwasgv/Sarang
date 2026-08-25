@@ -159,6 +159,10 @@ interface BasketCompositionReport { dateFrom: string; dateTo: string; summary: {
 interface CategoryMixRow { categoryId: string; categoryName: string; unitsSold: number; revenue: number; revenuePercent: number }
 interface CategoryMixReport { dateFrom: string; dateTo: string; rows: CategoryMixRow[]; summary: { totalRevenue: number; categoryCount: number } }
 
+// Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report.
+interface VendorMarginRow { supplierId: string; supplierName: string; revenue: number; cogs: number; margin: number; marginPercent: number }
+interface VendorMarginReport { dateFrom: string; dateTo: string; rows: VendorMarginRow[]; summary: { totalRevenue: number; totalCogs: number; totalMargin: number; vendorCount: number } }
+
 type MoverQuadrant = 'FAST_HIGH_MARGIN' | 'FAST_LOW_MARGIN' | 'SLOW_HIGH_MARGIN' | 'SLOW_LOW_MARGIN'
 interface FastSlowMoverRow { productId: string; productName: string; sku: string | null; quantitySold: number; velocity: number; sellingPrice: number; unitCost: number; marginPercent: number; quadrant: MoverQuadrant }
 interface FastSlowMoverMatrixReport { dateFrom: string; dateTo: string; days: number; velocityMedian: number; marginMedian: number; rows: FastSlowMoverRow[] }
@@ -487,7 +491,7 @@ type ReportChart =
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
-  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'basketComposition' | 'categoryMix' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
+  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
   | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'rmaAging' | 'vendorRecoveryLedger' | 'repairTurnaroundByTechnician' | 'variantStock'
@@ -578,6 +582,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 67 §9.1 — Clothing: Size × Style Heatmap Report. Same icon
   // convention as the pre-existing Table Turnover heatmap.
   { id: 'sizeStyleHeatmap', icon: <Table size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
+  // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report — its
+  // 5th and final signature item, closing the vertical out. "Vendor/brand"
+  // reuses the pre-existing Product.defaultSupplierId (no new field).
+  { id: 'vendorMargin', icon: <TrendingUp size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
   { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'RETAIL' },
   // Phase 67 §9.1 — General: Category Mix. What share of revenue each
   // user-defined ProductCategory contributes over a date range — distinct
@@ -899,6 +907,9 @@ export function ReportsScreen() {
           break
         case 'categoryMix':
           res = await window.api.reports.categoryMix({ dateFrom, dateTo })
+          break
+        case 'vendorMargin':
+          res = await window.api.reports.vendorMargin({ dateFrom, dateTo })
           break
         case 'fastSlowMoverMatrix':
           res = await window.api.reports.fastSlowMoverMatrix({ dateFrom, dateTo })
@@ -1320,6 +1331,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.revenue'), t('reports.col.revenuePercent')],
           rows: d.rows.map(r => [r.categoryName, r.unitsSold, r.revenue, `${r.revenuePercent}%`])
+        }
+      }
+      case 'vendorMargin': {
+        const d = reportData as VendorMarginReport
+        return {
+          headers: [t('reports.col.supplier'), t('reports.col.revenue'), t('reports.summary.cogs'), t('reports.col.margin'), t('reports.col.marginPercent')],
+          rows: d.rows.map(r => [r.supplierName, r.revenue, r.cogs, r.margin, `${r.marginPercent}%`])
         }
       }
       case 'fastSlowMoverMatrix': {
@@ -2676,6 +2694,13 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'pie', title: t('reports.summary.revenueByCategory'), data: d.rows.map(r => ({ label: r.categoryName, value: r.revenue })), valueIsCurrency: true }]
       }
+      // Phase 67 §9.1 — Clothing item 5. Bar chart per the audit's own
+      // chart-form note — rows already sort by margin descending.
+      case 'vendorMargin': {
+        const d = reportData as VendorMarginReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.summary.marginByVendor'), data: d.rows.slice(0, 10).map(r => ({ label: r.supplierName, value: r.margin })), valueIsCurrency: true }]
+      }
       // Deliberately no bar/pie/line chart — Table Turnover by Hour IS
       // itself a chart (a day-of-week x hour-of-day heatmap grid), rendered
       // directly in TableTurnoverHeatmapView below rather than through this
@@ -3288,6 +3313,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'sizeStyleHeatmap': return <SizeStyleHeatmapView data={data as SizeStyleHeatmapReport} />
     case 'basketComposition': return <BasketCompositionView data={data as BasketCompositionReport} />
     case 'categoryMix': return <CategoryMixView data={data as CategoryMixReport} />
+    case 'vendorMargin': return <VendorMarginView data={data as VendorMarginReport} />
     case 'fastSlowMoverMatrix': return <FastSlowMoverMatrixView data={data as FastSlowMoverMatrixReport} />
     case 'gstr1': return <GSTR1ReportView data={data as GSTR1Report} fmt={fmt} />
     case 'hsnSummary': return <HSNSummaryView data={data as HSNSummaryReport} fmt={fmt} />
@@ -4182,6 +4208,50 @@ const CATEGORY_MIX_COLORS = ['#00AEEF', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF
 // (recharts) — a natural fit for "what share of revenue each category
 // contributes", unlike the bar/scatter/treemap shapes every other Phase 67
 // report above has used.
+// Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report, its 5th
+// and final signature item. Bar chart per the audit's own chart-form note
+// (unlike Category Mix's pie above — margin can go negative, which a pie
+// slice can't honestly represent) — same horizontal-bar structural pattern
+// RmaAgingView/VendorRecoveryLedgerView already established, coloring
+// negative-margin vendors distinctly rather than letting a loss-making
+// vendor blend in with a merely-thin-margin one.
+function VendorMarginView({ data }: { data: VendorMarginReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: r.supplierName, value: r.margin, isLoss: r.margin < 0 }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: formatCurrency(s.totalRevenue) },
+        { label: t('reports.summary.cogs'), value: formatCurrency(s.totalCogs) },
+        { label: t('reports.summary.totalMargin'), value: formatCurrency(s.totalMargin) },
+        { label: t('reports.summary.vendorCount'), value: String(s.vendorCount) },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.marginByVendor')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
+              <Bar dataKey="value" name={t('reports.summary.totalMargin')} radius={[0, 4, 4, 0]}>
+                {chartRows.map((r, i) => <Cell key={i} fill={r.isLoss ? STATUS_COLORS.dangerDeep : STATUS_COLORS.success} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.supplier'), t('reports.col.revenue'), t('reports.summary.cogs'), t('reports.col.margin'), t('reports.col.marginPercent')]}
+        rows={data.rows.map(r => [r.supplierName, formatCurrency(r.revenue), formatCurrency(r.cogs), formatCurrency(r.margin), `${r.marginPercent}%`])}
+        emptyText={t('reports.empty.vendorMargin')}
+      />
+    </div>
+  )
+}
+
 function CategoryMixView({ data }: { data: CategoryMixReport }) {
   const { t } = useTranslation()
   return (
