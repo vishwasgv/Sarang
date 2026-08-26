@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { HardHat, Plus, Trash2, RefreshCw, Paperclip, ChevronDown, ChevronUp, MapPin, FlaskConical } from 'lucide-react'
+import { HardHat, Plus, Trash2, RefreshCw, Paperclip, ChevronDown, ChevronUp, MapPin, FlaskConical, Receipt } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -15,6 +15,7 @@ interface SiteVisit {
   findings: string | null; weatherConditions: string | null
   recordedBy: { id: string; fullName: string } | null
   latitude: number | null; longitude: number | null; locationAccuracy: number | null
+  billableAmount: number | null; invoiceId: string | null
 }
 
 interface MaterialTestResult {
@@ -50,11 +51,13 @@ export function SiteVisitsScreen(): React.JSX.Element {
   const [visitType, setVisitType] = useState('INSPECTION')
   const [findings, setFindings] = useState('')
   const [weatherConditions, setWeatherConditions] = useState('')
+  const [billableAmount, setBillableAmount] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [invoicingId, setInvoicingId] = useState<string | null>(null)
 
   // Phase 58 §2 — GPS tagging
   const [latitude, setLatitude] = useState('')
@@ -98,7 +101,7 @@ export function SiteVisitsScreen(): React.JSX.Element {
   useEffect(() => { void load(projectId) }, [projectId, load])
 
   function resetForm() {
-    setVisitDate(new Date().toISOString().slice(0, 10)); setVisitType('INSPECTION'); setFindings(''); setWeatherConditions(''); setError('')
+    setVisitDate(new Date().toISOString().slice(0, 10)); setVisitType('INSPECTION'); setFindings(''); setWeatherConditions(''); setBillableAmount(''); setError('')
     setLatitude(''); setLongitude(''); setLocationAccuracy(null); setLocationError('')
   }
 
@@ -137,6 +140,7 @@ export function SiteVisitsScreen(): React.JSX.Element {
         latitude: latitude.trim() ? Number(latitude) : undefined,
         longitude: longitude.trim() ? Number(longitude) : undefined,
         locationAccuracy: locationAccuracy ?? undefined,
+        billableAmount: billableAmount.trim() ? Number(billableAmount) : undefined,
       })
       if (res.success) {
         toastSuccess('Site Visit Recorded', `${visitType.replace(/_/g, ' ')} logged.`)
@@ -210,6 +214,19 @@ export function SiteVisitsScreen(): React.JSX.Element {
     }
   }
 
+  async function handleGenerateInvoice(siteVisitId: string) {
+    setInvoicingId(siteVisitId)
+    try {
+      const res = await window.api.siteVisit.generateInvoice({ siteVisitId })
+      if (res.success) { toastSuccess('Invoice Generated', 'The site visit has been invoiced.'); await load(projectId) }
+      else toastError('Error', res.error?.message ?? 'Could not generate invoice.')
+    } catch {
+      toastError('Error', 'Could not generate invoice.')
+    } finally {
+      setInvoicingId(null)
+    }
+  }
+
   async function handleDelete(id: string) {
     setDeleting(true)
     try {
@@ -253,7 +270,10 @@ export function SiteVisitsScreen(): React.JSX.Element {
               {VISIT_TYPES.map((v) => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
             </Select>
           </div>
-          <Input label="Weather Conditions" placeholder="Optional" value={weatherConditions} onChange={(e) => setWeatherConditions(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Weather Conditions" placeholder="Optional" value={weatherConditions} onChange={(e) => setWeatherConditions(e.target.value)} />
+            <Input label="Billable Amount" type="number" placeholder="Optional callout fee" value={billableAmount} onChange={(e) => setBillableAmount(e.target.value)} />
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Findings</label>
             <textarea value={findings} onChange={(e) => setFindings(e.target.value)} rows={3} placeholder="What was observed on site…"
@@ -305,6 +325,11 @@ export function SiteVisitsScreen(): React.JSX.Element {
                       <span className="font-semibold text-gray-900 text-sm dark:text-slate-100">{new Date(v.visitDate).toLocaleDateString()}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400">{v.visitType.replace(/_/g, ' ')}</span>
                       {v.weatherConditions && <span className="text-xs text-slate-400">{v.weatherConditions}</span>}
+                      {v.billableAmount != null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.invoiceId ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'}`}>
+                          ₹{v.billableAmount.toLocaleString('en-IN')} {v.invoiceId ? 'Billed' : 'Unbilled'}
+                        </span>
+                      )}
                     </div>
                     {v.findings && <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{v.findings}</div>}
                     {v.recordedBy && <div className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">Recorded by {v.recordedBy.fullName}</div>}
@@ -322,6 +347,11 @@ export function SiteVisitsScreen(): React.JSX.Element {
                     <button onClick={() => setExpandedId(expandedId === v.id ? null : v.id)} className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-500 dark:text-slate-400 hover:text-brand rounded-lg hover:bg-brand/5">
                       <Paperclip size={13} /> Files {expandedId === v.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
+                    {canManage && v.billableAmount != null && !v.invoiceId && (
+                      <button onClick={() => void handleGenerateInvoice(v.id)} disabled={invoicingId === v.id} className="flex items-center gap-1 px-2 py-1.5 text-xs text-brand border border-brand/30 rounded-lg hover:bg-brand/5 disabled:opacity-50">
+                        <Receipt size={13} /> {invoicingId === v.id ? 'Generating…' : 'Generate Invoice'}
+                      </button>
+                    )}
                     {canManage && (
                       <button onClick={() => setDeleteTargetId(v.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:text-slate-500"><Trash2 size={14} /></button>
                     )}

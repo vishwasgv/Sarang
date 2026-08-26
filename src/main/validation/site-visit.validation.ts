@@ -10,6 +10,7 @@ export const CreateSiteVisitSchema = z.object({
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   locationAccuracy: z.number().nonnegative().optional(),
+  billableAmount: z.number().nonnegative('Billable amount cannot be negative').finite().optional(),
 })
 
 export const UpdateSiteVisitSchema = z.object({
@@ -21,10 +22,15 @@ export const UpdateSiteVisitSchema = z.object({
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
   locationAccuracy: z.number().nonnegative().nullable().optional(),
+  billableAmount: z.number().nonnegative('Billable amount cannot be negative').finite().nullable().optional(),
 })
 
 export const DeleteSiteVisitSchema = z.object({
   id: z.string().min(1, 'Site visit ID is required'),
+})
+
+export const GenerateSiteVisitInvoiceSchema = z.object({
+  siteVisitId: z.string().min(1, 'Site visit ID is required'),
 })
 
 export const AddMaterialTestResultSchema = z.object({

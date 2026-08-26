@@ -1,11 +1,13 @@
 import {
   listSiteVisits, createSiteVisit, updateSiteVisit, deleteSiteVisit,
   listMaterialTestResults, addMaterialTestResult, updateMaterialTestResult, deleteMaterialTestResult,
+  generateSiteVisitInvoice,
 } from '../../services/site-visit.service'
 import { requirePermission } from '../permission-guard'
 import {
   CreateSiteVisitSchema, UpdateSiteVisitSchema, DeleteSiteVisitSchema,
   AddMaterialTestResultSchema, UpdateMaterialTestResultSchema, DeleteMaterialTestResultSchema, ListMaterialTestResultsSchema,
+  GenerateSiteVisitInvoiceSchema,
 } from '../../validation/site-visit.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -64,5 +66,12 @@ export function register(handle: HandleFn): void {
     const parsed = DeleteMaterialTestResultSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteMaterialTestResult(parsed.data.id)
+  })
+
+  handle('siteVisit:generateInvoice', async (payload) => {
+    const deny = await requirePermission('siteVisitLog.manage'); if (deny) return deny
+    const parsed = GenerateSiteVisitInvoiceSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return generateSiteVisitInvoice(parsed.data.siteVisitId)
   })
 }

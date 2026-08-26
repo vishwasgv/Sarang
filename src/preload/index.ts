@@ -439,6 +439,8 @@ const api: IpcChannels = {
     feeRealization: () => invoke('reports:feeRealization'),
     drawingApprovalCycleTime: () => invoke('reports:drawingApprovalCycleTime'),
     projectStageProgress: () => invoke('reports:projectStageProgress'),
+    siteVisitBilling: () => invoke('reports:siteVisitBilling'),
+    materialTestResults: () => invoke('reports:materialTestResults'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -873,6 +875,7 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('siteVisit:create', p),
     update: (p: unknown) => invoke('siteVisit:update', p),
     delete: (p: unknown) => invoke('siteVisit:delete', p),
+    generateInvoice: (p: unknown) => invoke('siteVisit:generateInvoice', p),
   },
   materialTestResult: {
     list: (p: unknown) => invoke('materialTestResult:list', p),

@@ -6067,6 +6067,83 @@ async function generateSiteVisitLogReport(params: { dateFrom: string; dateTo: st
   }
 }
 
+// Phase 68 §9.1 — Civil Engineer items 1/2: visits billed vs. unbilled. A
+// current-state worklist (like every other billed/unbilled-style report in
+// this phase) of every site visit with a real billableAmount set —
+// unbilled first, so the practice sees exactly what it can invoice today.
+export interface SiteVisitBillingRow {
+  siteVisitId: string; projectName: string; visitDate: string; visitType: string
+  billableAmount: number; isBilled: boolean
+}
+export interface SiteVisitBillingReport {
+  rows: SiteVisitBillingRow[]
+  summary: { totalBillableAmount: number; totalBilledAmount: number; totalUnbilledAmount: number; unbilledCount: number }
+}
+
+async function generateSiteVisitBillingReport(): Promise<SiteVisitBillingReport> {
+  const db = getPrisma()
+  const visits = await db.siteVisit.findMany({
+    where: { billableAmount: { not: null } },
+    include: { project: { select: { projectName: true } } },
+    orderBy: { visitDate: 'desc' },
+  })
+
+  const rows: SiteVisitBillingRow[] = visits.map((v) => ({
+    siteVisitId: v.id, projectName: v.project.projectName, visitDate: toLocalISODate(v.visitDate), visitType: v.visitType,
+    billableAmount: roundCurrency(Number(v.billableAmount)),
+    isBilled: !!v.invoiceId,
+  })).sort((a, b) => Number(a.isBilled) - Number(b.isBilled))
+
+  const totalBillableAmount = roundCurrency(rows.reduce((s, r) => s + r.billableAmount, 0))
+  const totalBilledAmount = roundCurrency(rows.filter((r) => r.isBilled).reduce((s, r) => s + r.billableAmount, 0))
+  return {
+    rows,
+    summary: {
+      totalBillableAmount, totalBilledAmount,
+      totalUnbilledAmount: roundCurrency(totalBillableAmount - totalBilledAmount),
+      unbilledCount: rows.filter((r) => !r.isBilled).length,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Civil Engineer item 5: material-testing results. Every
+// recorded test, FAILED ones surfaced first (the actionable signal — a
+// PASS needs no follow-up, a FAIL does), with a plain pass-rate summary.
+export interface MaterialTestResultsRow {
+  projectName: string; testType: string; materialDescription: string | null
+  testValue: number | null; unit: string | null; requiredMinValue: number | null
+  result: string; testedDate: string | null
+}
+export interface MaterialTestResultsReport {
+  rows: MaterialTestResultsRow[]
+  summary: { totalTests: number; passCount: number; failCount: number; pendingCount: number; passRatePercent: number }
+}
+
+async function generateMaterialTestResultsReport(): Promise<MaterialTestResultsReport> {
+  const db = getPrisma()
+  const results = await db.materialTestResult.findMany({
+    include: { siteVisit: { select: { project: { select: { projectName: true } } } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const RESULT_PRIORITY: Record<string, number> = { FAIL: 0, PENDING: 1, PASS: 2 }
+  const rows: MaterialTestResultsRow[] = results.map((r) => ({
+    projectName: r.siteVisit.project.projectName, testType: r.testType, materialDescription: r.materialDescription,
+    testValue: r.testValue == null ? null : Number(r.testValue),
+    unit: r.unit, requiredMinValue: r.requiredMinValue == null ? null : Number(r.requiredMinValue),
+    result: r.result, testedDate: r.testedDate ? toLocalISODate(r.testedDate) : null,
+  })).sort((a, b) => (RESULT_PRIORITY[a.result] ?? 3) - (RESULT_PRIORITY[b.result] ?? 3))
+
+  const passCount = rows.filter((r) => r.result === 'PASS').length
+  const failCount = rows.filter((r) => r.result === 'FAIL').length
+  const pendingCount = rows.filter((r) => r.result === 'PENDING').length
+  const decidedCount = passCount + failCount
+  return {
+    rows,
+    summary: { totalTests: rows.length, passCount, failCount, pendingCount, passRatePercent: decidedCount > 0 ? Math.round((passCount / decidedCount) * 1000) / 10 : 0 },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-drug sales register.
 // Sourced from InvoiceItem's prescription snapshot fields (see
@@ -7814,4 +7891,6 @@ export const reportService = {
   generateFeeRealizationReport,
   generateDrawingApprovalCycleTimeReport,
   generateProjectStageProgressReport,
+  generateSiteVisitBillingReport,
+  generateMaterialTestResultsReport,
 }

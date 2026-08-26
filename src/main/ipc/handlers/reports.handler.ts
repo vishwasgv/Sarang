@@ -991,4 +991,18 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateProjectStageProgressReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Civil Engineer items 1/2: Site Visit Billing.
+  handle('reports:siteVisitBilling', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateSiteVisitBillingReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Civil Engineer item 5: Material Test Results.
+  handle('reports:materialTestResults', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateMaterialTestResultsReport()
+    return { success: true, data }
+  })
 }

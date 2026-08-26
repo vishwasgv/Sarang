@@ -240,6 +240,14 @@ interface DrawingApprovalCycleTimeReport { rows: DrawingApprovalCycleRow[]; byDi
 interface ProjectStageProgressRow { projectId: string; projectName: string; clientName: string; stage: string; stageProgressPercent: number | null; daysInStage: number }
 interface ProjectStageProgressReport { rows: ProjectStageProgressRow[]; summary: { totalActiveProjects: number; avgDaysInStage: number } }
 
+// Phase 68 §9.1 — Civil Engineer items 1/2: Site Visit Billing.
+interface SiteVisitBillingRow { siteVisitId: string; projectName: string; visitDate: string; visitType: string; billableAmount: number; isBilled: boolean }
+interface SiteVisitBillingReport { rows: SiteVisitBillingRow[]; summary: { totalBillableAmount: number; totalBilledAmount: number; totalUnbilledAmount: number; unbilledCount: number } }
+
+// Phase 68 §9.1 — Civil Engineer item 5: Material Test Results.
+interface MaterialTestResultsRow { projectName: string; testType: string; materialDescription: string | null; testValue: number | null; unit: string | null; requiredMinValue: number | null; result: string; testedDate: string | null }
+interface MaterialTestResultsReport { rows: MaterialTestResultsRow[]; summary: { totalTests: number; passCount: number; failCount: number; pendingCount: number; passRatePercent: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -648,6 +656,8 @@ type ReportType =
   | 'feeRealization'
   // Phase 68 §9.1 — Architect items 2 & 4
   | 'drawingApprovalCycleTime' | 'projectStageProgress'
+  // Phase 68 §9.1 — Civil Engineer items 1/2 & 5
+  | 'siteVisitBilling' | 'materialTestResults'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -863,6 +873,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'drawingApprovalCycleTime', icon: <Timer size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'drawing_register' },
   // Phase 68 §9.1 — Architect/Civil item 4. Current-state worklist, no date range.
   { id: 'projectStageProgress', icon: <Target size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'service_projects' },
+  // Phase 68 §9.1 — Civil Engineer items 1/2. Current-state, no date range.
+  { id: 'siteVisitBilling', icon: <HandCoins size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'site_visit_log' },
+  // Phase 68 §9.1 — Civil Engineer item 5. Current-state, no date range.
+  { id: 'materialTestResults', icon: <HardHat size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'site_visit_log' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1293,6 +1307,12 @@ export function ReportsScreen() {
           break
         case 'projectStageProgress':
           res = await window.api.reports.projectStageProgress()
+          break
+        case 'siteVisitBilling':
+          res = await window.api.reports.siteVisitBilling()
+          break
+        case 'materialTestResults':
+          res = await window.api.reports.materialTestResults()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2049,6 +2069,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.projectName'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.stageProgress'), t('reports.col.daysInStage')],
           rows: d.rows.map(r => [r.projectName, r.clientName, r.stage, r.stageProgressPercent ?? '—', r.daysInStage])
+        }
+      }
+      case 'siteVisitBilling': {
+        const d = reportData as SiteVisitBillingReport
+        return {
+          headers: [t('reports.col.projectName'), t('reports.col.visitDate'), t('reports.col.visitType'), `${t('reports.col.billableAmount')} (${currencySymbol})`, t('reports.col.billedStatus')],
+          rows: d.rows.map(r => [r.projectName, r.visitDate, r.visitType, r.billableAmount.toFixed(2), r.isBilled ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'materialTestResults': {
+        const d = reportData as MaterialTestResultsReport
+        return {
+          headers: [t('reports.col.projectName'), t('reports.col.testType'), t('reports.col.materialDescription'), t('reports.col.testValue'), t('reports.col.unit'), t('reports.col.requiredMinValue'), t('reports.col.result'), t('reports.col.testedDate')],
+          rows: d.rows.map(r => [r.projectName, r.testType, r.materialDescription ?? '—', r.testValue ?? '—', r.unit ?? '—', r.requiredMinValue ?? '—', r.result, r.testedDate ?? '—'])
         }
       }
       case 'serviceProjects': {
@@ -3666,6 +3700,8 @@ export function ReportsScreen() {
       case 'feeRealization': return []
       case 'drawingApprovalCycleTime': return []
       case 'projectStageProgress': return []
+      case 'siteVisitBilling': return []
+      case 'materialTestResults': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4183,6 +4219,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'feeRealization': return <FeeRealizationView data={data as FeeRealizationReport} fmt={fmt} />
     case 'drawingApprovalCycleTime': return <DrawingApprovalCycleTimeView data={data as DrawingApprovalCycleTimeReport} />
     case 'projectStageProgress': return <ProjectStageProgressView data={data as ProjectStageProgressReport} />
+    case 'siteVisitBilling': return <SiteVisitBillingView data={data as SiteVisitBillingReport} fmt={fmt} />
+    case 'materialTestResults': return <MaterialTestResultsView data={data as MaterialTestResultsReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6059,6 +6097,45 @@ function ProjectStageProgressView({ data }: { data: ProjectStageProgressReport }
         headers={[t('reports.col.projectName'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.stageProgress'), t('reports.col.daysInStage')]}
         rows={data.rows.map(r => [r.projectName, r.clientName, r.stage, r.stageProgressPercent != null ? `${r.stageProgressPercent}%` : '—', r.daysInStage])}
         emptyText={t('reports.empty.projectStageProgress')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Civil Engineer items 1/2: Site Visit Billing.
+function SiteVisitBillingView({ data, fmt }: { data: SiteVisitBillingReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalBillableAmount'), value: fmt(data.summary.totalBillableAmount) },
+        { label: t('reports.summary.totalUnbilledAmount'), value: fmt(data.summary.totalUnbilledAmount) },
+        { label: t('reports.summary.unbilledCount'), value: String(data.summary.unbilledCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.projectName'), t('reports.col.visitDate'), t('reports.col.visitType'), t('common.amount'), t('reports.col.billedStatus')]}
+        rows={data.rows.map(r => [r.projectName, r.visitDate, r.visitType, fmt(r.billableAmount), r.isBilled ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.siteVisitBilling')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Civil Engineer item 5: Material Test Results.
+function MaterialTestResultsView({ data }: { data: MaterialTestResultsReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.passRatePercent'), value: `${data.summary.passRatePercent}%` },
+        { label: t('reports.summary.passCount'), value: String(data.summary.passCount) },
+        { label: t('reports.summary.failCount'), value: String(data.summary.failCount) },
+        { label: t('reports.summary.pendingCount'), value: String(data.summary.pendingCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.projectName'), t('reports.col.testType'), t('reports.col.materialDescription'), t('reports.col.testValue'), t('reports.col.unit'), t('reports.col.requiredMinValue'), t('reports.col.result'), t('reports.col.testedDate')]}
+        rows={data.rows.map(r => [r.projectName, r.testType, r.materialDescription ?? '—', r.testValue ?? '—', r.unit ?? '—', r.requiredMinValue ?? '—', r.result, r.testedDate ?? '—'])}
+        emptyText={t('reports.empty.materialTestResults')}
       />
     </div>
   )

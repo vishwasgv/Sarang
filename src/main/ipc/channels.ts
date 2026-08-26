@@ -537,6 +537,10 @@ export interface IpcChannels {
     drawingApprovalCycleTime: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Architect/Civil item 4: Project Stage Progress.
     projectStageProgress: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Civil Engineer items 1/2: Site Visit Billing.
+    siteVisitBilling: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Civil Engineer item 5: Material Test Results.
+    materialTestResults: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1067,9 +1071,10 @@ export interface IpcChannels {
   }
   siteVisit: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>
-    create: (payload: { projectId: string; visitDate: string; visitType?: string; findings?: string; weatherConditions?: string; latitude?: number; longitude?: number; locationAccuracy?: number }) => Promise<ApiResponse>
-    update: (payload: { id: string; visitDate?: string; visitType?: string; findings?: string | null; weatherConditions?: string | null; latitude?: number | null; longitude?: number | null; locationAccuracy?: number | null }) => Promise<ApiResponse>
+    create: (payload: { projectId: string; visitDate: string; visitType?: string; findings?: string; weatherConditions?: string; latitude?: number; longitude?: number; locationAccuracy?: number; billableAmount?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; visitDate?: string; visitType?: string; findings?: string | null; weatherConditions?: string | null; latitude?: number | null; longitude?: number | null; locationAccuracy?: number | null; billableAmount?: number | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { siteVisitId: string }) => Promise<ApiResponse>
   }
   materialTestResult: {
     list: (payload: { siteVisitId: string }) => Promise<ApiResponse>

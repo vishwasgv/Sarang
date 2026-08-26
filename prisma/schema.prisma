@@ -4899,6 +4899,14 @@ model SiteVisit {
   latitude          Float?
   longitude         Float?
   locationAccuracy  Float? // meters, as reported by the Geolocation API
+  // Phase 68 §9.1 — Civil Engineer items 1/2: site-visit-to-invoice linkage
+  // + visits billed vs. unbilled. Same shape as ServiceProjectMilestone's
+  // own milestoneAmount/invoiceId — a per-visit callout fee, billed
+  // individually rather than folded into the project's overall
+  // totalContractValue (a civil engineer's site inspections are commonly
+  // billed per-visit, distinct from the project's fixed design fee).
+  billableAmount    Decimal?
+  invoiceId         String?
 
   project             ServiceProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   recordedBy          Employee?            @relation("SiteVisitRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)

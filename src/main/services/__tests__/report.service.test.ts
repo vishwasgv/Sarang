@@ -8097,3 +8097,90 @@ describe('reportService.generateProjectStageProgressReport', () => {
     expect(result.summary).toEqual({ totalActiveProjects: 0, avgDaysInStage: 0 })
   })
 })
+
+describe('reportService.generateSiteVisitBillingReport', () => {
+  it('splits billed vs. unbilled by whether invoiceId is set, unbilled first', async () => {
+    const db = {
+      siteVisit: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'sv1', visitType: 'INSPECTION', visitDate: new Date(2026, 7, 1), billableAmount: 2000, invoiceId: 'inv-1', project: { projectName: 'Bridge Repair' } },
+          { id: 'sv2', visitType: 'SURVEY', visitDate: new Date(2026, 7, 5), billableAmount: 1500, invoiceId: null, project: { projectName: 'Bridge Repair' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSiteVisitBillingReport()
+
+    expect(result.rows.map((r) => r.siteVisitId)).toEqual(['sv2', 'sv1'])
+    expect(result.summary).toEqual({ totalBillableAmount: 3500, totalBilledAmount: 2000, totalUnbilledAmount: 1500, unbilledCount: 1 })
+  })
+
+  it('only queries visits with a real billableAmount set', async () => {
+    const db = { siteVisit: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateSiteVisitBillingReport()
+
+    expect(db.siteVisit.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { billableAmount: { not: null } },
+    }))
+  })
+
+  it('returns an honest empty result when there are no billable visits', async () => {
+    const db = { siteVisit: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSiteVisitBillingReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalBillableAmount: 0, totalBilledAmount: 0, totalUnbilledAmount: 0, unbilledCount: 0 })
+  })
+})
+
+describe('reportService.generateMaterialTestResultsReport', () => {
+  it('sorts FAILED results first, then PENDING, then PASS', async () => {
+    const db = {
+      materialTestResult: {
+        findMany: vi.fn().mockResolvedValue([
+          { testType: 'CONCRETE_CUBE_STRENGTH', materialDescription: null, testValue: 30, unit: 'MPa', requiredMinValue: 25, result: 'PASS', testedDate: new Date(), siteVisit: { project: { projectName: 'P1' } } },
+          { testType: 'SLUMP_TEST', materialDescription: null, testValue: null, unit: null, requiredMinValue: null, result: 'PENDING', testedDate: null, siteVisit: { project: { projectName: 'P1' } } },
+          { testType: 'STEEL_TENSILE', materialDescription: null, testValue: 18, unit: 'MPa', requiredMinValue: 25, result: 'FAIL', testedDate: new Date(), siteVisit: { project: { projectName: 'P1' } } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMaterialTestResultsReport()
+
+    expect(result.rows.map((r) => r.result)).toEqual(['FAIL', 'PENDING', 'PASS'])
+  })
+
+  it('computes passRatePercent from decided (PASS+FAIL) tests only, excluding PENDING', async () => {
+    const db = {
+      materialTestResult: {
+        findMany: vi.fn().mockResolvedValue([
+          { testType: 'A', materialDescription: null, testValue: 1, unit: null, requiredMinValue: null, result: 'PASS', testedDate: null, siteVisit: { project: { projectName: 'P1' } } },
+          { testType: 'B', materialDescription: null, testValue: 1, unit: null, requiredMinValue: null, result: 'PASS', testedDate: null, siteVisit: { project: { projectName: 'P1' } } },
+          { testType: 'C', materialDescription: null, testValue: 1, unit: null, requiredMinValue: null, result: 'FAIL', testedDate: null, siteVisit: { project: { projectName: 'P1' } } },
+          { testType: 'D', materialDescription: null, testValue: null, unit: null, requiredMinValue: null, result: 'PENDING', testedDate: null, siteVisit: { project: { projectName: 'P1' } } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMaterialTestResultsReport()
+
+    expect(result.summary).toEqual({ totalTests: 4, passCount: 2, failCount: 1, pendingCount: 1, passRatePercent: 66.7 })
+  })
+
+  it('returns an honest empty result when no tests are recorded', async () => {
+    const db = { materialTestResult: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMaterialTestResultsReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalTests: 0, passCount: 0, failCount: 0, pendingCount: 0, passRatePercent: 0 })
+  })
+})

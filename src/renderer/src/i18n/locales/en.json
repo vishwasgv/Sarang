@@ -1836,6 +1836,14 @@
         "label": "Project Stage Progress",
         "description": "Every active project, ranked by how long it's been stuck in its current stage"
       },
+      "siteVisitBilling": {
+        "label": "Site Visit Billing",
+        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+      },
+      "materialTestResults": {
+        "label": "Material Test Results",
+        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2113,6 +2121,15 @@
       "avgDaysToApprove": "Avg. Days to Approve",
       "totalActiveProjects": "Active Projects",
       "avgDaysInStage": "Avg. Days in Stage",
+      "totalBillableAmount": "Total Billable",
+      "totalBilledAmount": "Total Billed",
+      "totalUnbilledAmount": "Total Unbilled",
+      "unbilledCount": "Unbilled Visits",
+      "totalTests": "Total Tests",
+      "passCount": "Passed",
+      "failCount": "Failed",
+      "pendingCount": "Pending",
+      "passRatePercent": "Pass Rate %",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2560,7 +2577,9 @@
       "lawyerBillableHours": "No time entries logged against a case in this date range.",
       "feeRealization": "No active, priced engagements right now.",
       "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now."
+      "projectStageProgress": "No active projects with a stage set right now.",
+      "siteVisitBilling": "No billable site visits recorded yet.",
+      "materialTestResults": "No material test results recorded yet."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2893,7 +2912,16 @@
       "stage": "Stage",
       "recallType": "Recall Type",
       "vaccineName": "Vaccine",
-      "doses": "Doses"
+      "doses": "Doses",
+      "visitType": "Visit Type",
+      "billableAmount": "Billable Amount",
+      "billedStatus": "Billed Status",
+      "testType": "Test Type",
+      "materialDescription": "Material",
+      "testValue": "Test Value",
+      "requiredMinValue": "Pass Minimum",
+      "result": "Result",
+      "testedDate": "Tested Date"
     },
     "legend": {
       "schemeCost": "Scheme Cost",
