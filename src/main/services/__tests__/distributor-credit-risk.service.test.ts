@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { getCustomerCreditRisk, getEffectiveCreditLimit, getCreditRiskOverview } from '../distributor-credit-risk.service'
+import { getCustomerCreditRisk, getCreditRiskOverview } from '../distributor-credit-risk.service'
 
 // Phase 67 §9.1 — Distributor item 5: Auto Risk-Scored Retailer Credit. Key
 // non-trivial logic: tier boundaries (HIGH >30 days overdue OR >20 avg days
@@ -89,14 +89,6 @@ describe('distributor-credit-risk.service.getCustomerCreditRisk', () => {
 
     const res = await getCustomerCreditRisk('cust-1')
     expect(res.data?.effectiveCreditLimit).toBe(125000)
-  })
-
-  it('getEffectiveCreditLimit falls back to the raw limit when the risk lookup fails, never blocking or loosening a sale on a transient error', async () => {
-    const db = { customer: { findUnique: vi.fn().mockResolvedValue(null) } }
-    vi.mocked(getPrisma).mockReturnValue(db as never)
-
-    const limit = await getEffectiveCreditLimit('missing', 75000)
-    expect(limit).toBe(75000)
   })
 
   it('getCreditRiskOverview only scores customers with a credit limit set, and counts HIGH-risk ones', async () => {

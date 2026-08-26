@@ -6,12 +6,14 @@ vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.f
 vi.mock('../customer-ledger.service', () => ({ customerLedgerService: { addEntry: vi.fn() } }))
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../notification.service', () => ({ createNotification: vi.fn() }))
+vi.mock('../distributor-credit-risk.service', () => ({ getCustomerCreditRisk: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled } from '../industry-template.service'
 import { inventoryService } from '../inventory.service'
 import { billingService } from '../billing.service'
 import { generateLicenseKey } from '../license.service'
+import { getCustomerCreditRisk } from '../distributor-credit-risk.service'
 
 function makeProduct(overrides: Record<string, unknown> = {}) {
   return {
@@ -106,6 +108,13 @@ const basePayload = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Neutral default (UNRATED, 1.0x multiplier) matching what the real
+  // distributor-credit-risk.service would return for a customer with no
+  // invoice history — every pre-existing credit-limit test in this file
+  // was written against that real, un-mocked behavior, so this default
+  // keeps them exercising the exact same effective limit as before
+  // (creditLimit * 1.0) without each test having to set it up itself.
+  vi.mocked(getCustomerCreditRisk).mockResolvedValue({ success: true, data: { riskTier: 'UNRATED', riskMultiplier: 1.0 } } as never)
 })
 
 describe('billingService.createInvoice — Phase 65 Reporting Tags / Cost & Profit Centres', () => {
@@ -450,6 +459,53 @@ describe('billingService.createInvoice', () => {
       items: [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 0 }],
     })
 
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CUST-003')
+  })
+
+  // Phase 67 §9.1 — Distributor item 5: Auto Risk-Scored Retailer Credit.
+  // Closes a real coverage gap: the E2E suite already proves the HIGH-risk
+  // (0.5x) blocking case live end-to-end, but nothing at the unit level had
+  // ever asserted billing.service.ts's own integration point — that a LOW-
+  // risk customer's effective limit is genuinely LARGER than the static
+  // number, not just that the multiplier constant exists somewhere.
+  it('a LOW-risk customer gets a risk-adjusted limit ABOVE the static creditLimit, allowing a sale a static check would have blocked', async () => {
+    vi.mocked(isModuleEnabled).mockResolvedValue(true)
+    vi.mocked(getCustomerCreditRisk).mockResolvedValue({ success: true, data: { riskTier: 'LOW', riskMultiplier: 1.25 } } as never)
+    const db = makeMockDb()
+    // Static limit 500, outstanding 400 + this 200 sale = 600 — a plain
+    // static check would reject this (600 > 500), but LOW risk's 1.25x
+    // raises the effective limit to 625, which the sale fits under.
+    db.customer.findUnique = vi.fn().mockResolvedValue({ id: 'cust-1', creditLimit: 500, outstandingBalance: 400 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      paymentMethod: 'CREDIT',
+      customerId: 'cust-1',
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(true)
+  })
+
+  it('falls back to the neutral 1.0x multiplier (static limit) when the risk lookup itself fails, never blocking or loosening a sale on a transient error', async () => {
+    vi.mocked(isModuleEnabled).mockResolvedValue(true)
+    vi.mocked(getCustomerCreditRisk).mockResolvedValue({ success: false, error: { code: 'CRISK-002', message: 'boom' } } as never)
+    const db = makeMockDb()
+    db.customer.findUnique = vi.fn().mockResolvedValue({ id: 'cust-1', creditLimit: 500, outstandingBalance: 400 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      paymentMethod: 'CREDIT',
+      customerId: 'cust-1',
+      items: [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 0 }],
+    })
+
+    // 400 + 200 = 600 > the static 500 limit -> still correctly blocked,
+    // proving the failure fell back to 1.0x (the raw static limit) rather
+    // than silently defaulting to something looser.
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('CUST-003')
   })

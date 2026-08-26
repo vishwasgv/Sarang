@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber, SequenceContendedError } from './sequence.service'
 import { billingService } from './billing.service'
 import { inventoryService } from './inventory.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export interface JobCardRecord {
   id: string
@@ -194,7 +195,7 @@ export async function createJobCard(payload: {
           customerId: payload.customerId ?? null,
           assignedToId: payload.assignedToId ?? null,
           estimatedCost: payload.estimatedCost ?? 0,
-          expectedDate: payload.expectedDate ? new Date(payload.expectedDate) : null,
+          expectedDate: payload.expectedDate ? parseLocalDateStart(payload.expectedDate) : null,
           notes: payload.notes ?? null,
           internalNotes: payload.internalNotes ?? null,
           createdById: userId ?? null,
@@ -271,8 +272,8 @@ export async function updateJobCard(payload: {
     if ('assignedToId' in payload) data.assignedToId = payload.assignedToId ?? null
     if (payload.estimatedCost !== undefined) data.estimatedCost = payload.estimatedCost
     if (payload.actualCost !== undefined) data.actualCost = payload.actualCost
-    if ('expectedDate' in payload) data.expectedDate = payload.expectedDate ? new Date(payload.expectedDate) : null
-    if ('deliveredDate' in payload) data.deliveredDate = payload.deliveredDate ? new Date(payload.deliveredDate) : null
+    if ('expectedDate' in payload) data.expectedDate = payload.expectedDate ? parseLocalDateStart(payload.expectedDate) : null
+    if ('deliveredDate' in payload) data.deliveredDate = payload.deliveredDate ? parseLocalDateStart(payload.deliveredDate) : null
     if (payload.notes !== undefined) data.notes = payload.notes
     if (payload.internalNotes !== undefined) data.internalNotes = payload.internalNotes
     if ('conditionOnArrival' in payload) data.conditionOnArrival = payload.conditionOnArrival ?? null

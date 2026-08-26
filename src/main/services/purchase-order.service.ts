@@ -181,7 +181,7 @@ export const purchaseOrderService = {
       where: { reorderLevel: { gt: 0 }, reorderQuantity: { gt: 0 } },
       // Phase 67 §9.1 — Hardware: sellByPack/unitsPerPack needed for the
       // carton-aware reorder rounding below.
-      include: { product: { select: { id: true, productName: true, isActive: true, defaultSupplierId: true, costPrice: true, taxRate: true, sellByPack: true, unitsPerPack: true } } }
+      include: { product: { select: { id: true, productName: true, isActive: true, defaultSupplierId: true, costPrice: true, taxRate: true, sellByPack: true, unitsPerPack: true, expiryAlertLeadDays: true } } }
     })
     const due = lowStock.filter(inv => inv.quantity <= inv.reorderLevel && inv.product.isActive)
 
@@ -211,19 +211,34 @@ export const purchaseOrderService = {
     // to any batch-tracked product in any vertical (Pharmacy, Agri Inputs),
     // not a Pharmacy-only special case, matching this function's own
     // already-generic design.
-    const EXPIRY_WINDOW_DAYS = 30
+    //
+    // Mirrors batch.service.ts's own getExpiryAlerts() in two ways a first
+    // draft of this got wrong: (1) respects each product's own
+    // expiryAlertLeadDays override (e.g. a seed/fertilizer product wanting a
+    // 90-day heads-up, not the generic 30-day default) rather than a single
+    // hardcoded window for every product, and (2) excludes ALREADY-expired
+    // batches from "near-expiry" — expired stock is a separate, existing
+    // concept (Batch Management's own "Expired" list) with its own sale
+    // block; conflating it into this figure would silently double-count and
+    // mislabel dead stock as merely "expiring soon."
+    const DEFAULT_EXPIRY_WINDOW_DAYS = 30
     const VELOCITY_LOOKBACK_DAYS = 30
     const now = Date.now()
-    const expiryHorizon = new Date(now + EXPIRY_WINDOW_DAYS * 86400000)
+    const nowDate = new Date(now)
     const candidateIds = toOrder.map(inv => inv.product.id)
-    const expiringBatches = candidateIds.length
+    const leadDaysByProduct = new Map(toOrder.map(inv => [inv.product.id, inv.product.expiryAlertLeadDays ?? DEFAULT_EXPIRY_WINDOW_DAYS]))
+    const candidateBatches = candidateIds.length
       ? await db.productBatch.findMany({
-          where: { productId: { in: candidateIds }, isActive: true, quantityRemaining: { gt: 0 }, expiryDate: { lte: expiryHorizon } },
+          where: { productId: { in: candidateIds }, isActive: true, quantityRemaining: { gt: 0 } },
           select: { productId: true, quantityRemaining: true, expiryDate: true }
         })
       : []
     const expiringByProduct = new Map<string, { qty: number; earliestExpiry: Date }>()
-    for (const b of expiringBatches) {
+    for (const b of candidateBatches) {
+      if (b.expiryDate < nowDate) continue // already expired — a separate, existing concept, not "near-expiry"
+      const leadDays = leadDaysByProduct.get(b.productId) ?? DEFAULT_EXPIRY_WINDOW_DAYS
+      const cutoff = new Date(now + leadDays * 86400000)
+      if (b.expiryDate > cutoff) continue // not within THIS product's own lead-time window
       const existing = expiringByProduct.get(b.productId)
       if (!existing) expiringByProduct.set(b.productId, { qty: b.quantityRemaining, earliestExpiry: b.expiryDate })
       else {

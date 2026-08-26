@@ -60,6 +60,22 @@ describe('pricingSchemeService.createPricingScheme', () => {
       data: expect.objectContaining({ slabBreakpoints: JSON.stringify([{ minQty: 10, discountPercent: 5 }, { minQty: 50, discountPercent: 10 }]) })
     }))
   })
+
+  it('parses startDate at LOCAL midnight and endDate at LOCAL end-of-day (not raw UTC), so the scheme is active for the full calendar day on both ends in a positive-UTC-offset timezone', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await pricingSchemeService.createPricingScheme({
+      name: 'Happy Hour', ruleType: 'FLAT_PERCENT_OFF', productId: 'prod-1',
+      flatDiscountPercent: 10, startDate: '2026-08-01', endDate: '2026-08-10'
+    } as never)
+
+    const data = db.pricingScheme.create.mock.calls[0][0].data
+    expect(data.startDate.getFullYear()).toBe(2026); expect(data.startDate.getMonth()).toBe(7); expect(data.startDate.getDate()).toBe(1)
+    expect(data.startDate.getHours()).toBe(0)
+    expect(data.endDate.getFullYear()).toBe(2026); expect(data.endDate.getMonth()).toBe(7); expect(data.endDate.getDate()).toBe(10)
+    expect(data.endDate.getHours()).toBe(23); expect(data.endDate.getMinutes()).toBe(59)
+  })
 })
 
 describe('pricingSchemeService.evaluateCart — BUY_X_GET_Y_FREE', () => {

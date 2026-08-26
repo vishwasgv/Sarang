@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. Sarang's
 // stock model already decrements ProductVariant.stockQty ONLY at actual
@@ -102,8 +103,8 @@ export async function getTrialConversionSummary(
     const where: { createdAt?: { gte?: Date; lte?: Date } } = {}
     if (dateFrom || dateTo) {
       where.createdAt = {}
-      if (dateFrom) where.createdAt.gte = new Date(dateFrom)
-      if (dateTo) where.createdAt.lte = new Date(dateTo)
+      if (dateFrom) where.createdAt.gte = parseLocalDateStart(dateFrom)
+      if (dateTo) where.createdAt.lte = parseLocalDateEnd(dateTo)
     }
 
     const sessions = await db.trialSession.findMany({ where, select: { triedVariantIds: true, purchasedVariantId: true } })

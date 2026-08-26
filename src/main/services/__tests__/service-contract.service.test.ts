@@ -71,6 +71,19 @@ describe('service-contract.service — createServiceContract', () => {
     expect(res.error?.code).toBe('SCT-002')
     expect(db.serviceContract.create).not.toHaveBeenCalled()
   })
+
+  it('parses startDate at LOCAL midnight and endDate at LOCAL end-of-day (not raw UTC), so the contract covers the full calendar day on both ends in a positive-UTC-offset timezone', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createServiceContract({ customerId: 'cust-1', startDate: '2026-08-01', endDate: '2026-08-31', contractValue: 10000 })
+
+    const data = db.serviceContract.create.mock.calls[0][0].data
+    expect(data.startDate.getFullYear()).toBe(2026); expect(data.startDate.getMonth()).toBe(7); expect(data.startDate.getDate()).toBe(1)
+    expect(data.startDate.getHours()).toBe(0)
+    expect(data.endDate.getFullYear()).toBe(2026); expect(data.endDate.getMonth()).toBe(7); expect(data.endDate.getDate()).toBe(31)
+    expect(data.endDate.getHours()).toBe(23); expect(data.endDate.getMinutes()).toBe(59)
+  })
 })
 
 describe('service-contract.service — updateServiceContract', () => {

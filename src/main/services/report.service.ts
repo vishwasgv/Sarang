@@ -5335,11 +5335,20 @@ async function generateFieldRepLeaderboardReport(params: { dateFrom: string; dat
   const rows: FieldRepLeaderboardRow[] = Array.from(byRep.entries()).map(([repName, stats]) => {
     const planned = plannedStopsByRep.get(repName)
     const plannedStops = planned ? planned.size : null
-    const visited = planned ? [...stats.customerIds].filter((cid) => planned.has(cid)).length : stats.customerIds.size
+    // distinctCustomersVisited is the rep's real total — every distinct
+    // customer they actually got an order from this period, regardless of
+    // whether that customer happens to be on their formal beat plan (a rep
+    // can genuinely pick up an off-plan customer). The hit-rate below needs
+    // a NARROWER intersection (visited AND planned) to mean "% of planned
+    // stops actually hit" — that's a separate figure, not this one; an
+    // earlier version of this function wrongly reused the same filtered
+    // count for both, silently undercounting a rep's own real activity
+    // whenever they had an active beat and any off-plan customer.
+    const plannedStopsHit = planned ? [...stats.customerIds].filter((cid) => planned.has(cid)).length : 0
     return {
       repName, ordersBooked: stats.ordersBooked, totalValue: round1(stats.totalValue),
-      plannedStops, distinctCustomersVisited: visited,
-      hitRatePercent: plannedStops && plannedStops > 0 ? round1((visited / plannedStops) * 100) : null,
+      plannedStops, distinctCustomersVisited: stats.customerIds.size,
+      hitRatePercent: plannedStops && plannedStops > 0 ? round1((plannedStopsHit / plannedStops) * 100) : null,
     }
   }).sort((a, b) => b.totalValue - a.totalValue)
 
@@ -6808,9 +6817,9 @@ async function generateSecondOpinionConversionReport(params: { dateFrom: string;
     if (nextAppointment) convertedCount++
     rows.push({
       patientName: n.patientName,
-      visitDate: visitDate.toISOString().slice(0, 10),
+      visitDate: toLocalISODate(visitDate),
       converted: !!nextAppointment,
-      nextVisitDate: nextAppointment ? nextAppointment.scheduledDate.toISOString().slice(0, 10) : null,
+      nextVisitDate: nextAppointment ? toLocalISODate(nextAppointment.scheduledDate) : null,
     })
   }
 

@@ -137,5 +137,21 @@ describe('trial-session.service', () => {
       // converted sessions tried 2 + 2 = 4 pairs across 2 conversions
       expect(res.data?.avgPairsTriedPerConversion).toBe(2)
     })
+
+    it('uses LOCAL midnight/end-of-day (not raw UTC) for the date range, so the full end date is included and an early-morning start-date session is not silently excluded', async () => {
+      const findMany = vi.fn().mockResolvedValue([])
+      const db = makeMockDb({ trialSession: { findMany } })
+      vi.mocked(getPrisma).mockReturnValue(db as any)
+
+      await getTrialConversionSummary('2026-08-01', '2026-08-31')
+
+      const callArgs = findMany.mock.calls[0][0]
+      const gte: Date = callArgs.where.createdAt.gte
+      const lte: Date = callArgs.where.createdAt.lte
+      expect(gte.getFullYear()).toBe(2026); expect(gte.getMonth()).toBe(7); expect(gte.getDate()).toBe(1)
+      expect(gte.getHours()).toBe(0); expect(gte.getMinutes()).toBe(0)
+      expect(lte.getFullYear()).toBe(2026); expect(lte.getMonth()).toBe(7); expect(lte.getDate()).toBe(31)
+      expect(lte.getHours()).toBe(23); expect(lte.getMinutes()).toBe(59)
+    })
   })
 })

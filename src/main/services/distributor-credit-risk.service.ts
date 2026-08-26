@@ -98,15 +98,6 @@ export async function getCustomerCreditRisk(customerId: string): Promise<{ succe
   }
 }
 
-// Thin wrapper billing.service.ts's own enforcement check calls — returns
-// just the number, defaulting to the customer's raw static limit if the
-// risk computation itself fails for any reason, so a transient error here
-// can never accidentally block (or loosen) a real sale.
-export async function getEffectiveCreditLimit(customerId: string, fallbackLimit: number): Promise<number> {
-  const res = await getCustomerCreditRisk(customerId)
-  return res.success && res.data ? res.data.effectiveCreditLimit : fallbackLimit
-}
-
 // Portfolio-wide view for the AI assistant ("which retailers are high
 // risk?") — every customer WITH a credit limit set (creditLimit === 0 means
 // no credit extended, so risk-scoring it is meaningless), scored the same

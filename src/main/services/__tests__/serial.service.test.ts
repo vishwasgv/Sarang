@@ -117,9 +117,12 @@ describe('serial.service.updateSerialServiceInfo', () => {
     const res = await updateSerialServiceInfo({ id: 'ser-1', nextServiceDueDate: '2026-09-01', lastServicedDate: '2026-03-01' })
 
     expect(res.success).toBe(true)
+    // Local midnight, not new Date('2026-09-01') (UTC midnight) — a
+    // date-only ISO string parses as UTC, the wrong calendar day in a
+    // positive-UTC-offset timezone (this app's primary market is IST).
     expect(update).toHaveBeenCalledWith({
       where: { id: 'ser-1' },
-      data: { nextServiceDueDate: new Date('2026-09-01'), lastServicedDate: new Date('2026-03-01') }
+      data: { nextServiceDueDate: new Date(2026, 8, 1), lastServicedDate: new Date(2026, 2, 1) }
     })
   })
 

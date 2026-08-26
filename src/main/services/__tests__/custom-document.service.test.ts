@@ -95,6 +95,17 @@ describe('customDocumentService.createEntry', () => {
     const callArg = db.customDocumentEntry.create.mock.calls[0][0]
     expect(callArg.data.entryDate).toBeInstanceOf(Date)
   })
+
+  it('parses an explicit entryDate at LOCAL midnight (not raw UTC), so it lands on the calendar date the user actually picked in a positive-UTC-offset timezone', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await customDocumentService.createEntry({ documentTypeId: 'cdt-1', entryDate: '2026-08-01' } as never)
+
+    const entryDate: Date = db.customDocumentEntry.create.mock.calls[0][0].data.entryDate
+    expect(entryDate.getFullYear()).toBe(2026); expect(entryDate.getMonth()).toBe(7); expect(entryDate.getDate()).toBe(1)
+    expect(entryDate.getHours()).toBe(0)
+  })
 })
 
 describe('customDocumentService.listEntries', () => {

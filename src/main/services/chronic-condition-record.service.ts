@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listChronicConditions(filters?: {
   patientId?: string
@@ -136,7 +137,7 @@ export async function generateChronicRecallComplianceReport(params?: { months?: 
     if (params?.dateFrom) {
       // Explicit range — the Reports screen's own date-range picker, matching
       // every other report's `{dateFrom, dateTo}` convention.
-      since = new Date(params.dateFrom)
+      since = parseLocalDateStart(params.dateFrom)
       until = params.dateTo ? new Date(`${params.dateTo}T23:59:59.999`) : undefined
     } else {
       // No explicit range — trailing N months, the GP Clinic list screen's own

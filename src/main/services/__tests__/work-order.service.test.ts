@@ -199,6 +199,22 @@ describe('work-order.service — downtime capture', () => {
     expect(res.success).toBe(true)
     expect(res.data).toEqual({ totalMinutes: 0, byReason: [] })
   })
+
+  it('uses LOCAL midnight (not UTC midnight) as the range start, so an early-morning downtime entry on dateFrom is not silently excluded in a positive-UTC-offset timezone', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = { workOrderDowntimeEntry: { findMany } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getDowntimeSummary({ dateFrom: '2026-08-01', dateTo: '2026-08-01' })
+
+    const callArgs = findMany.mock.calls[0][0]
+    const gte: Date = callArgs.where.createdAt.gte
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(7)
+    expect(gte.getDate()).toBe(1)
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
+  })
 })
 
 // Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck flag.
@@ -260,6 +276,22 @@ describe('work-order.service.getWorkOrderBottleneckFlag', () => {
 
     await getWorkOrderBottleneckFlag()
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: 'COMPLETED' }) }))
+  })
+
+  it('uses LOCAL midnight (not UTC midnight) as the range start, so an early-morning order on dateFrom is not silently excluded in a positive-UTC-offset timezone', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = { productionOrder: { findMany } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getWorkOrderBottleneckFlag({ dateFrom: '2026-08-01', dateTo: '2026-08-01' })
+
+    const callArgs = findMany.mock.calls[0][0]
+    const gte: Date = callArgs.where.completedDate.gte
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(7)
+    expect(gte.getDate()).toBe(1)
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
   })
 })
 

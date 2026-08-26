@@ -743,5 +743,86 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
       expect(result.data?.suppressedExpiringStock).toHaveLength(1)
       expect(result.data?.suppressedExpiringStock[0].recentDailyVelocity).toBe(0)
     })
+
+    // Real bug caught during Phase 67's own final audit: the first version
+    // of this feature hardcoded a 30-day window for every product, ignoring
+    // Product.expiryAlertLeadDays — the same per-product override
+    // batch.service.ts's own getExpiryAlerts() already respects (e.g. a
+    // seed/fertilizer product wanting a 90-day heads-up, not medicine's
+    // 30-day default). A batch 60 days out would have been silently missed
+    // for such a product.
+    it('respects a product\'s own expiryAlertLeadDays override, not a hardcoded 30-day window', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow({
+          product: { id: 'prod-a', productName: 'Wheat Seeds', productType: 'STANDARD', isActive: true, defaultSupplierId: 'sup-1', costPrice: 50, taxRate: 18, expiryAlertLeadDays: 90 }
+        })],
+        [],
+        // 60 days out — outside the generic 30-day default, but well within this product's own 90-day lead time.
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 60 * 86400000) }],
+        [] // no sales -> zero velocity
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.created).toHaveLength(0)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(1)
+    })
+
+    it('does NOT flag a batch 60 days out for a product with no override (falls back to the generic 30-day default)', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()], // no expiryAlertLeadDays set
+        [],
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 60 * 86400000) }],
+        []
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.created).toHaveLength(1)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(0)
+    })
+
+    // Real bug caught during Phase 67's own final audit: an ALREADY-expired
+    // batch (a separate, existing concept — Batch Management's own
+    // "Expired" list, which blocks sale outright) was being folded into
+    // "near-expiry" stock, double-counting dead stock as merely expiring
+    // soon and suppressing a reorder that a live, sellable near-expiry
+    // batch alone wouldn't have justified.
+    it('excludes an already-expired batch from the near-expiry calculation entirely', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() - 5 * 86400000) }], // already expired
+        []
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      // No genuinely near-expiry stock remains once the expired batch is excluded -> not suppressed.
+      expect(result.data?.suppressedExpiringStock).toHaveLength(0)
+      expect(result.data?.created).toHaveLength(1)
+    })
+
+    it('counts only the near-expiry portion when a product has both an expired batch and a genuinely near-expiry one', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        [
+          { productId: 'prod-a', quantityRemaining: 999, expiryDate: new Date(Date.now() - 5 * 86400000) }, // expired — excluded entirely
+          { productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 10 * 86400000) }, // genuinely near-expiry
+        ],
+        [] // zero velocity -> suppressed
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.suppressedExpiringStock).toHaveLength(1)
+      // 40, not 1039 — the expired batch's 999 units must not leak into this figure.
+      expect(result.data?.suppressedExpiringStock[0].expiringSoonQty).toBe(40)
+    })
   })
 })

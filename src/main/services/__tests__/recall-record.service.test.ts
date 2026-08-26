@@ -149,7 +149,25 @@ describe('recall-record.service — generateDentalRecallComplianceReport', () =>
     await generateDentalRecallComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
     const callArgs = db.recallComplianceLog.findMany.mock.calls[0][0]
-    expect(callArgs.where.scheduledDate.gte).toEqual(new Date('2026-01-01'))
+    // Local midnight, not new Date('2026-01-01') (UTC midnight) — a
+    // date-only ISO string parses as UTC, the wrong calendar day in any
+    // positive-UTC-offset timezone (this app's primary market is IST).
+    expect(callArgs.where.scheduledDate.gte).toEqual(new Date(2026, 0, 1))
     expect(callArgs.where.scheduledDate.lte).toEqual(new Date('2026-01-31T23:59:59.999'))
+  })
+
+  it('uses LOCAL midnight (not UTC midnight) as the range start, so an early-day record is not silently excluded in a positive-UTC-offset timezone', async () => {
+    const { db } = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await generateDentalRecallComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const callArgs = db.recallComplianceLog.findMany.mock.calls[0][0]
+    const gte: Date = callArgs.where.scheduledDate.gte
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(0)
+    expect(gte.getDate()).toBe(1)
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
   })
 })

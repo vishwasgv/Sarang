@@ -148,7 +148,7 @@ export async function upsertRecall(payload: {
 export async function generateDentalRecallComplianceReport(params: { dateFrom: string; dateTo: string }) {
   try {
     const db = getPrisma()
-    const since = new Date(params.dateFrom)
+    const since = parseLocalDateStart(params.dateFrom)
     const until = new Date(`${params.dateTo}T23:59:59.999`)
 
     const logs = await db.recallComplianceLog.findMany({

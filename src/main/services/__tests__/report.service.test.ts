@@ -6050,6 +6050,39 @@ describe('reportService.generateFieldRepLeaderboardReport', () => {
     expect(noBeat?.hitRatePercent).toBeNull()
   })
 
+  // Real bug caught during Phase 67's own final audit: distinctCustomersVisited
+  // was wrongly filtered to only customers ALSO on the rep's beat plan,
+  // silently undercounting a rep's true activity whenever they picked up a
+  // genuine off-plan customer. It must always be the rep's real total —
+  // the hit-rate (a SEPARATE figure) is the only thing that should be
+  // narrowed to the planned/visited intersection.
+  it('distinctCustomersVisited counts every real customer the rep ordered from, including ones NOT on their beat plan', async () => {
+    const db = {
+      fieldOrderRequest: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'Ravi', customerId: 'c1', invoiceId: null }, // on-plan
+          { repName: 'Ravi', customerId: 'c9', invoiceId: null }, // OFF-plan
+        ]),
+      },
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      distributorBeat: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'Ravi', stops: [{ customerId: 'c1' }, { customerId: 'c2' }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFieldRepLeaderboardReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const ravi = result.rows.find(r => r.repName === 'Ravi')
+    // Real total: 2 distinct customers (c1 + c9), NOT narrowed to the 1 that's on-plan.
+    expect(ravi?.distinctCustomersVisited).toBe(2)
+    // Hit-rate stays correctly scoped to the plan: only c1 of the 2 planned stops (c1, c2) was hit.
+    expect(ravi?.plannedStops).toBe(2)
+    expect(ravi?.hitRatePercent).toBe(50)
+  })
+
   it('returns an honest empty result when no field orders were accepted in range', async () => {
     const db = {
       fieldOrderRequest: { findMany: vi.fn().mockResolvedValue([]) },
@@ -6696,9 +6729,12 @@ describe('reportService.generateChronicRecallComplianceReport', () => {
     expect(result.totalRecallsClosed).toBe(2)
     expect(result.overallPercent).toBe(50)
     expect(result.byCondition).toEqual([{ conditionName: 'Diabetes', total: 2, onTime: 1, percent: 50 }])
-    // The adapter passed the date range through, not the trailing-months default
+    // The adapter passed the date range through, not the trailing-months default.
+    // Local midnight, not new Date('2026-08-01') (UTC midnight) — a date-only
+    // ISO string parses as UTC, the wrong calendar day in a positive-UTC-offset
+    // timezone (this app's primary market is IST).
     const callArgs = db.chronicRecallComplianceLog.findMany.mock.calls[0][0]
-    expect(callArgs.where.scheduledDate.gte).toEqual(new Date('2026-08-01'))
+    expect(callArgs.where.scheduledDate.gte).toEqual(new Date(2026, 7, 1))
   })
 
   it('throws when the underlying service reports failure, so the IPC handler surfaces a real error instead of silently returning undefined', async () => {

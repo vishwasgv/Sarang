@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { serializeCustomFieldValues, parseCustomFieldValues } from './custom-field.service'
+import { parseLocalDateStart } from '../utils/date.util'
 import type {
   CreateCustomDocumentTypePayload, UpdateCustomDocumentTypePayload,
   CreateCustomDocumentEntryPayload, UpdateCustomDocumentEntryPayload
@@ -63,7 +64,7 @@ export const customDocumentService = {
     const created = await db.customDocumentEntry.create({
       data: {
         documentTypeId: payload.documentTypeId,
-        entryDate: payload.entryDate ? new Date(payload.entryDate) : new Date(),
+        entryDate: payload.entryDate ? parseLocalDateStart(payload.entryDate) : new Date(),
         notes: payload.notes?.trim() || null,
         customFields: serializeCustomFieldValues(payload.customFields),
       }
@@ -77,7 +78,7 @@ export const customDocumentService = {
     const existing = await db.customDocumentEntry.findUnique({ where: { id: payload.id } })
     if (!existing) return { success: false, error: { code: 'CD-002', message: 'Custom document entry not found.' } }
     const data: Record<string, unknown> = {}
-    if (payload.entryDate !== undefined) data.entryDate = new Date(payload.entryDate)
+    if (payload.entryDate !== undefined) data.entryDate = parseLocalDateStart(payload.entryDate)
     if (payload.notes !== undefined) data.notes = payload.notes?.trim() || null
     if (payload.customFields !== undefined) data.customFields = serializeCustomFieldValues(payload.customFields)
     const updated = await db.customDocumentEntry.update({ where: { id: payload.id }, data })

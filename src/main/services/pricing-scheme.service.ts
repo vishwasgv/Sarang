@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { roundCurrency } from './currency.service'
 import { logAction } from './audit.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import type { CreatePricingSchemePayload, UpdatePricingSchemePayload, EvaluateCartPayload } from '../validation/pricing-scheme.validation'
 
 // The scheme engine — buy-X-get-Y-free and slab discounts, the second
@@ -32,8 +33,8 @@ export const pricingSchemeService = {
           freeQuantity: payload.freeQuantity ?? null,
           slabBreakpoints: payload.slabBreakpoints ? JSON.stringify(payload.slabBreakpoints) : '[]',
           flatDiscountPercent: payload.flatDiscountPercent ?? null,
-          startDate: payload.startDate ? new Date(payload.startDate) : null,
-          endDate: payload.endDate ? new Date(payload.endDate) : null,
+          startDate: payload.startDate ? parseLocalDateStart(payload.startDate) : null,
+          endDate: payload.endDate ? parseLocalDateEnd(payload.endDate) : null,
           startTimeMinutes: payload.startTimeMinutes ?? null,
           endTimeMinutes: payload.endTimeMinutes ?? null,
         }
@@ -55,7 +56,7 @@ export const pricingSchemeService = {
         data: {
           name: payload.name ?? existing.name,
           isActive: payload.isActive ?? existing.isActive,
-          endDate: payload.endDate !== undefined ? (payload.endDate ? new Date(payload.endDate) : null) : existing.endDate
+          endDate: payload.endDate !== undefined ? (payload.endDate ? parseLocalDateEnd(payload.endDate) : null) : existing.endDate
         }
       })
       await logAction({ userId, action: 'PRICING_SCHEME_UPDATED', entityType: 'PricingScheme', entityId: payload.id, newValue: payload })

@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -66,8 +67,8 @@ export async function createServiceContract(payload: {
           customerId: payload.customerId,
           scope: payload.scope?.trim() || null,
           serviceFrequency: payload.serviceFrequency ?? 'MONTHLY',
-          startDate: new Date(payload.startDate),
-          endDate: payload.endDate ? new Date(payload.endDate) : null,
+          startDate: parseLocalDateStart(payload.startDate),
+          endDate: payload.endDate ? parseLocalDateEnd(payload.endDate) : null,
           contractValue: payload.contractValue,
           notes: payload.notes?.trim() || null,
           createdById: payload.createdById ?? null,
@@ -93,7 +94,7 @@ export async function updateServiceContract(payload: { id: string; status?: stri
       where: { id: payload.id },
       data: {
         status: payload.status,
-        endDate: payload.endDate !== undefined ? (payload.endDate ? new Date(payload.endDate) : null) : undefined,
+        endDate: payload.endDate !== undefined ? (payload.endDate ? parseLocalDateEnd(payload.endDate) : null) : undefined,
         contractValue: payload.contractValue,
         notes: payload.notes !== undefined ? (payload.notes?.trim() || null) : undefined,
       },

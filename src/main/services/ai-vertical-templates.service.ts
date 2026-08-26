@@ -918,7 +918,7 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       const { dateFrom, dateTo } = thisMonthRange(params)
       const db = getPrisma()
       const quotations = await db.quotation.findMany({
-        where: { createdAt: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } },
+        where: { createdAt: { gte: parseLocalDateStart(dateFrom), lte: parseLocalDateEnd(dateTo) } },
         select: { invoice: { select: { id: true } }, salesOrder: { select: { id: true } } }
       })
       const total = quotations.length

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export interface WorkOrderRecord {
   id: string
@@ -209,8 +210,8 @@ export async function getDowntimeSummary(params?: { dateFrom?: string; dateTo?: 
     const where: { createdAt?: { gte?: Date; lte?: Date } } = {}
     if (params?.dateFrom || params?.dateTo) {
       where.createdAt = {}
-      if (params.dateFrom) where.createdAt.gte = new Date(params.dateFrom)
-      if (params.dateTo) where.createdAt.lte = new Date(new Date(params.dateTo).setHours(23, 59, 59, 999))
+      if (params.dateFrom) where.createdAt.gte = parseLocalDateStart(params.dateFrom)
+      if (params.dateTo) where.createdAt.lte = parseLocalDateEnd(params.dateTo)
     }
     const rows = await db.workOrderDowntimeEntry.findMany({ where, select: { reason: true, minutes: true } })
 
@@ -257,8 +258,8 @@ export async function getWorkOrderBottleneckFlag(
     if (params?.productId) where.productId = params.productId
     if (params?.dateFrom || params?.dateTo) {
       where.completedDate = {}
-      if (params.dateFrom) where.completedDate.gte = new Date(params.dateFrom)
-      if (params.dateTo) where.completedDate.lte = new Date(new Date(params.dateTo).setHours(23, 59, 59, 999))
+      if (params.dateFrom) where.completedDate.gte = parseLocalDateStart(params.dateFrom)
+      if (params.dateTo) where.completedDate.lte = parseLocalDateEnd(params.dateTo)
     }
 
     const orders = await db.productionOrder.findMany({

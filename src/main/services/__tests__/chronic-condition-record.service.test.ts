@@ -217,7 +217,32 @@ describe('chronic-condition-record.service — compliance report', () => {
     await generateChronicRecallComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
     const callArgs = db.chronicRecallComplianceLog.findMany.mock.calls[0][0]
-    expect(callArgs.where.scheduledDate.gte).toEqual(new Date('2026-01-01'))
+    // Local midnight, not new Date('2026-01-01') (UTC midnight) — a
+    // date-only ISO string parses as UTC, which is the wrong calendar day
+    // in any positive-UTC-offset timezone (this app's primary market is
+    // IST). See parseLocalDateStart in utils/date.util.ts.
+    expect(callArgs.where.scheduledDate.gte).toEqual(new Date(2026, 0, 1))
     expect(callArgs.where.scheduledDate.lte).toEqual(new Date('2026-01-31T23:59:59.999'))
+  })
+
+  it('uses LOCAL midnight (not UTC midnight) as the range start, so a record scheduled early on dateFrom in a positive-UTC-offset timezone is not silently excluded', async () => {
+    const { db } = makeDb({
+      chronicRecallComplianceLog: {
+        findMany: vi.fn().mockResolvedValue([
+          { onTime: true, record: { conditionName: 'Diabetes' } },
+        ]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await generateChronicRecallComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const callArgs = db.chronicRecallComplianceLog.findMany.mock.calls[0][0]
+    const gte: Date = callArgs.where.scheduledDate.gte
+    expect(gte.getFullYear()).toBe(2026)
+    expect(gte.getMonth()).toBe(0)
+    expect(gte.getDate()).toBe(1)
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
   })
 })

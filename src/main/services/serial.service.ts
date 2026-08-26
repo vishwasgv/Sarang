@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
 
@@ -344,8 +345,8 @@ export async function updateSerialServiceInfo(
     await db.productSerial.update({
       where: { id: payload.id },
       data: {
-        ...(payload.nextServiceDueDate !== undefined ? { nextServiceDueDate: payload.nextServiceDueDate ? new Date(payload.nextServiceDueDate) : null } : {}),
-        ...(payload.lastServicedDate !== undefined ? { lastServicedDate: payload.lastServicedDate ? new Date(payload.lastServicedDate) : null } : {})
+        ...(payload.nextServiceDueDate !== undefined ? { nextServiceDueDate: payload.nextServiceDueDate ? parseLocalDateStart(payload.nextServiceDueDate) : null } : {}),
+        ...(payload.lastServicedDate !== undefined ? { lastServicedDate: payload.lastServicedDate ? parseLocalDateStart(payload.lastServicedDate) : null } : {})
       }
     })
     await logAction(userId, 'SERIAL_SERVICE_INFO_UPDATED', 'ProductSerial', payload.id, undefined, payload)
