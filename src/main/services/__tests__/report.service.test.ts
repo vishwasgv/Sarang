@@ -5087,6 +5087,197 @@ describe('reportService.generateTestScoreReport', () => {
 
     expect(result.summary).toEqual({ totalTests: 0, averagePercentage: 0, belowFiftyCount: 0, studentCount: 0 })
   })
+
+  // Real bug found+fixed (Phase 68 §9.1 — Coaching Institute): testDate was
+  // returned as a raw `.toISOString()` string. The DataTable view round-trips
+  // this safely (formatDate() re-parses via toLocaleDateString), but the CSV
+  // export path puts the row value in verbatim — showing the wrong calendar
+  // day for any test taken before 5:30am IST. Fixed to toLocalISODate, same
+  // as every other report's row-level date field in this file.
+  it('returns testDate as a local-calendar-day string, not a raw UTC-shifted ISO string', async () => {
+    const db = {
+      studentTestScore: {
+        findMany: vi.fn().mockResolvedValue([
+          makeScoreRow({ testDate: new Date(2026, 6, 1) }), // local July 1, 2026 midnight
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTestScoreReport({})
+
+    expect(result.rows[0].testDate).toBe('2026-07-01')
+  })
+})
+
+// ─── Attendance vs. Performance Correlation (Phase 68 §9.1 — Coaching Institute item 3) ─
+
+describe('reportService.generateAttendancePerformanceCorrelationReport', () => {
+  function makeEnrollment(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'enr-1', batchId: 'batch-1', studentId: 'stu-1', enrolledDate: new Date('2026-01-01'),
+      student: { customerName: 'Riya Sharma' }, batch: { batchName: 'Batch A' },
+      ...overrides,
+    }
+  }
+  function makeAttendanceRow(present: string[], absent: string[]) {
+    return { presentStudentIds: JSON.stringify(present), absentStudentIds: JSON.stringify(absent) }
+  }
+
+  it('pairs each student\'s real attendance % against their average test %', async () => {
+    const db = {
+      coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([makeEnrollment()]) },
+      coachingBatchAttendance: {
+        findMany: vi.fn().mockResolvedValue([
+          makeAttendanceRow(['stu-1'], []), makeAttendanceRow(['stu-1'], []), makeAttendanceRow([], ['stu-1']),
+        ]),
+      },
+      studentTestScore: { findMany: vi.fn().mockResolvedValue([{ marksObtained: 40, maxMarks: 50 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateAttendancePerformanceCorrelationReport()
+
+    expect(result.rows[0]).toMatchObject({ studentName: 'Riya Sharma', batchName: 'Batch A', attendancePercent: 67, avgTestPercentage: 80 })
+  })
+
+  it('sorts worst average-percentage first', async () => {
+    const db = {
+      coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+        makeEnrollment({ id: 'enr-1', studentId: 'stu-1', student: { customerName: 'High Scorer' } }),
+        makeEnrollment({ id: 'enr-2', studentId: 'stu-2', student: { customerName: 'Low Scorer' } }),
+      ]) },
+      coachingBatchAttendance: { findMany: vi.fn().mockResolvedValue([]) },
+      studentTestScore: { findMany: vi.fn()
+        .mockResolvedValueOnce([{ marksObtained: 45, maxMarks: 50 }])
+        .mockResolvedValueOnce([{ marksObtained: 10, maxMarks: 50 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateAttendancePerformanceCorrelationReport()
+
+    expect(result.rows.map(r => r.studentName)).toEqual(['Low Scorer', 'High Scorer'])
+  })
+
+  it('filters by batchId', async () => {
+    const db = {
+      coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([]) },
+      coachingBatchAttendance: { findMany: vi.fn() },
+      studentTestScore: { findMany: vi.fn() },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateAttendancePerformanceCorrelationReport('batch-1')
+
+    expect(db.coachingBatchEnrollment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { batchId: 'batch-1' } }))
+  })
+
+  it('computes a real Pearson correlation coefficient across paired data (perfect positive correlation)', async () => {
+    const db = {
+      coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+        makeEnrollment({ id: 'enr-1', studentId: 'stu-1', student: { customerName: 'A' } }),
+        makeEnrollment({ id: 'enr-2', studentId: 'stu-2', student: { customerName: 'B' } }),
+        makeEnrollment({ id: 'enr-3', studentId: 'stu-3', student: { customerName: 'C' } }),
+      ]) },
+      coachingBatchAttendance: { findMany: vi.fn()
+        .mockResolvedValueOnce([makeAttendanceRow(['stu-1'], []), makeAttendanceRow([], ['stu-1'])]) // 50%
+        .mockResolvedValueOnce([makeAttendanceRow(['stu-2'], [])]) // 100%
+        .mockResolvedValueOnce([makeAttendanceRow([], ['stu-3'])]) // 0%
+      },
+      studentTestScore: { findMany: vi.fn()
+        .mockResolvedValueOnce([{ marksObtained: 25, maxMarks: 50 }]) // 50%
+        .mockResolvedValueOnce([{ marksObtained: 50, maxMarks: 50 }]) // 100%
+        .mockResolvedValueOnce([{ marksObtained: 0, maxMarks: 50 }])  // 0%
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateAttendancePerformanceCorrelationReport()
+
+    expect(result.summary.studentCount).toBe(3)
+    expect(result.summary.correlationCoefficient).toBe(1)
+  })
+
+  it('returns null correlation when fewer than 2 students have paired data', async () => {
+    const db = {
+      coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([makeEnrollment()]) },
+      coachingBatchAttendance: { findMany: vi.fn().mockResolvedValue([makeAttendanceRow(['stu-1'], [])]) },
+      studentTestScore: { findMany: vi.fn().mockResolvedValue([{ marksObtained: 40, maxMarks: 50 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateAttendancePerformanceCorrelationReport()
+
+    expect(result.summary.correlationCoefficient).toBeNull()
+  })
+})
+
+// ─── Fee-Due + Underperformance Alert (Phase 68 §9.1 — Coaching Institute item 4) ─
+
+describe('reportService.generateFeeDueUnderperformanceAlertReport', () => {
+  function makeEnrollment(overrides: Record<string, unknown> = {}) {
+    return {
+      student: { customerName: 'Riya Sharma' }, batch: { batchName: 'Batch A' },
+      feeRecords: [{ amountDue: 3000, amountReceived: 1000 }],
+      testScores: [{ marksObtained: 20, maxMarks: 50 }], // 40% — below threshold
+      ...overrides,
+    }
+  }
+
+  it('flags a student who both owes fees AND is below the 50% threshold', async () => {
+    const db = { coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([makeEnrollment()]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeDueUnderperformanceAlertReport()
+
+    expect(result.rows).toEqual([{ studentName: 'Riya Sharma', batchName: 'Batch A', feeDueAmount: 2000, avgTestPercentage: 40 }])
+    expect(result.summary.alertCount).toBe(1)
+  })
+
+  it('excludes a student with fee due but average score at or above 50% (AND condition, not OR)', async () => {
+    const db = { coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+      makeEnrollment({ testScores: [{ marksObtained: 25, maxMarks: 50 }] }), // exactly 50% — boundary, not "below"
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeDueUnderperformanceAlertReport()
+
+    expect(result.rows).toHaveLength(0)
+  })
+
+  it('excludes a student who is underperforming but has no fee due', async () => {
+    const db = { coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+      makeEnrollment({ feeRecords: [{ amountDue: 3000, amountReceived: 3000 }] }),
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeDueUnderperformanceAlertReport()
+
+    expect(result.rows).toHaveLength(0)
+  })
+
+  it('excludes a student with fee due but no test scores recorded yet', async () => {
+    const db = { coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+      makeEnrollment({ testScores: [] }),
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeDueUnderperformanceAlertReport()
+
+    expect(result.rows).toHaveLength(0)
+  })
+
+  it('sorts worst average-percentage first', async () => {
+    const db = { coachingBatchEnrollment: { findMany: vi.fn().mockResolvedValue([
+      makeEnrollment({ student: { customerName: 'Less Bad' }, testScores: [{ marksObtained: 24, maxMarks: 50 }] }), // 48%
+      makeEnrollment({ student: { customerName: 'Worse' }, testScores: [{ marksObtained: 5, maxMarks: 50 }] }), // 10%
+    ]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeDueUnderperformanceAlertReport()
+
+    expect(result.rows.map(r => r.studentName)).toEqual(['Worse', 'Less Bad'])
+  })
 })
 
 // ─── Compliance Task Report (Phase 54F — F.9's report companion) ────────────

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@renderer/services/ipc-client'
-import { UserPlus, Search, Edit2, Trash2, CheckCircle, XCircle, Printer } from 'lucide-react'
+import { UserPlus, Search, Edit2, Trash2, CheckCircle, XCircle, Printer, MessageCircle } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -105,6 +105,46 @@ ${batchesHtml || '<p class="muted">Not enrolled in any batch yet.</p>'}
   win.print()
 }
 
+// Phase 68 §9.1 — Coaching Institute item 5: one-tap WhatsApp report card.
+// The report is per-enrollment (one batch), so when a student has several
+// batches this sends the most recently enrolled active one — matching the
+// "one tap, no picker" pattern used elsewhere (e.g. clientDocumentChecklist.chase).
+async function sendProgressReportWhatsApp(student: StudentProfile, onError: (msg: string) => void) {
+  let res
+  try {
+    res = await api.coachingProgress.getReport({ studentId: student.customerId })
+  } catch {
+    onError('Could not load progress report.')
+    return
+  }
+  if (!res.success || !res.data) { onError(res.error?.message ?? 'Could not load progress report.'); return }
+  const report = res.data as ProgressReport
+  if (report.batches.length === 0) { onError('Not enrolled in any batch yet.'); return }
+
+  const target = [...report.batches]
+    .sort((a, b) => {
+      const activeDiff = Number(b.enrollmentStatus === 'ACTIVE') - Number(a.enrollmentStatus === 'ACTIVE')
+      if (activeDiff !== 0) return activeDiff
+      return new Date(b.enrolledDate).getTime() - new Date(a.enrolledDate).getTime()
+    })[0]
+
+  let sendRes
+  try {
+    sendRes = await api.coachingProgress.sendWhatsApp({ enrollmentId: target.enrollmentId })
+  } catch {
+    onError('Could not send the WhatsApp report card.')
+    return
+  }
+  if (!sendRes.success || !sendRes.data) { onError(sendRes.error?.message ?? 'Could not send the WhatsApp report card.'); return }
+  const link = (sendRes.data as { link: string }).link
+  window.open(link, '_blank')
+}
+
+function todayLocalDateStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const EMPTY_FORM = {
   customerName: '',
   phone: '',
@@ -113,7 +153,7 @@ const EMPTY_FORM = {
   classOrGrade: '',
   schoolName: '',
   parentPhone: '',
-  enrollmentDate: new Date().toISOString().split('T')[0],
+  enrollmentDate: todayLocalDateStr(),
 }
 
 export default function StudentsScreen() {
@@ -339,6 +379,9 @@ export default function StudentsScreen() {
                   <div className="flex items-center gap-2 justify-end">
                     <button onClick={() => printProgressReport(s, (msg) => toastError('Error', msg))} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Print progress report">
                       <Printer size={14} />
+                    </button>
+                    <button onClick={() => sendProgressReportWhatsApp(s, (msg) => toastError('Error', msg))} className="p-1.5 text-gray-400 hover:text-green-600 rounded dark:text-slate-500" title="Send report card via WhatsApp">
+                      <MessageCircle size={14} />
                     </button>
                     <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500" title="Edit">
                       <Edit2 size={14} />

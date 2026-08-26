@@ -17,6 +17,24 @@ function serializeTestScore<T extends { testDate: Date }>(s: T): T {
   return { ...s, testDate: toLocalDateOnlyIso(s.testDate) as unknown as Date }
 }
 
+// Phase 68 §9.1 — Coaching Institute item 1: auto-calculated grade. A fixed,
+// documented percentage-threshold scale — computed ONLY when the caller
+// doesn't supply an explicit grade (a teacher's own override, e.g. for a
+// viva/practical component this scale doesn't fit, always wins).
+const GRADE_THRESHOLDS: Array<{ minPercent: number; grade: string }> = [
+  { minPercent: 90, grade: 'A+' },
+  { minPercent: 80, grade: 'A' },
+  { minPercent: 70, grade: 'B' },
+  { minPercent: 60, grade: 'C' },
+  { minPercent: 50, grade: 'D' },
+  { minPercent: 0, grade: 'F' },
+]
+
+function computeGrade(marksObtained: number, maxMarks: number): string {
+  const percent = (marksObtained / maxMarks) * 100
+  return (GRADE_THRESHOLDS.find((t) => percent >= t.minPercent) ?? GRADE_THRESHOLDS[GRADE_THRESHOLDS.length - 1]).grade
+}
+
 export async function listTestScores(filters?: { enrollmentId?: string; batchId?: string }) {
   try {
     const db = getPrisma()
@@ -71,7 +89,7 @@ export async function createTestScore(payload: {
         marksObtained: payload.marksObtained,
         maxMarks: payload.maxMarks,
         testDate: parseLocalDateStart(payload.testDate),
-        grade: payload.grade?.trim() || null,
+        grade: payload.grade?.trim() || computeGrade(payload.marksObtained, payload.maxMarks),
         notes: payload.notes?.trim() || null,
       },
     })
@@ -107,13 +125,21 @@ export async function updateTestScore(payload: {
     }
 
     const { id, testDate, subject, grade, notes, ...rest } = payload
+    // An explicit grade in THIS call always wins (e.g. a teacher's own
+    // override); otherwise, if marks/maxMarks changed, recompute from the
+    // new values so the grade never silently goes stale — same "explicit
+    // wins, otherwise recompute from current effective values" discipline
+    // as driving.service.ts's computeResult.
+    const gradeUpdate = grade !== undefined
+      ? { grade: grade?.trim() || null }
+      : (payload.marksObtained !== undefined || payload.maxMarks !== undefined ? { grade: computeGrade(nextMarks, nextMax) } : {})
     const score = await db.studentTestScore.update({
       where: { id },
       data: {
         ...rest,
         ...(testDate !== undefined ? { testDate: parseLocalDateStart(testDate) } : {}),
         ...(subject !== undefined ? { subject: subject?.trim() || null } : {}),
-        ...(grade !== undefined ? { grade: grade?.trim() || null } : {}),
+        ...gradeUpdate,
         ...(notes !== undefined ? { notes: notes?.trim() || null } : {}),
       },
     })

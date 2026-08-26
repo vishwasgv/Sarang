@@ -183,6 +183,85 @@ describe('student-test-score.service — testDate IPC serialization', () => {
   })
 })
 
+// Phase 68 §9.1 — Coaching Institute item 1: auto-calculated grade.
+describe('student-test-score.service — computeGrade auto-calculation', () => {
+  it.each([
+    [45, 50, 'A+'],  // 90%
+    [40, 50, 'A'],   // 80%
+    [35, 50, 'B'],   // 70%
+    [30, 50, 'C'],   // 60%
+    [25, 50, 'D'],   // 50%
+    [24, 50, 'F'],   // 49% — just below the D threshold
+    [0, 50, 'F'],
+  ])('assigns grade for %i/%i => %s', async (marksObtained, maxMarks, expectedGrade) => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTestScore({ enrollmentId: 'enr-1', testName: 'Test', marksObtained, maxMarks, testDate: '2026-07-01' })
+
+    expect(res.success).toBe(true)
+    expect(db.studentTestScore.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ grade: expectedGrade })
+    }))
+  })
+
+  it('an explicit grade always wins over auto-calculation on create', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createTestScore({ enrollmentId: 'enr-1', testName: 'Test', marksObtained: 45, maxMarks: 50, testDate: '2026-07-01', grade: 'Distinction' })
+
+    expect(db.studentTestScore.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ grade: 'Distinction' })
+    }))
+  })
+
+  it('recomputes the grade on update when marksObtained changes and no explicit grade is given', async () => {
+    // existing score is maxMarks 50, grade 'A' (via makeScore()) — pushing
+    // marksObtained down to 30/50 (60%) should recompute to 'C', not stay 'A'.
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTestScore({ id: 'sts-1', marksObtained: 30 })
+
+    expect(db.studentTestScore.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ grade: 'C' })
+    }))
+  })
+
+  it('an explicit grade on update always wins, even when marks also changed', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTestScore({ id: 'sts-1', marksObtained: 30, grade: 'Needs Improvement' })
+
+    expect(db.studentTestScore.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ grade: 'Needs Improvement' })
+    }))
+  })
+
+  it('leaves the grade untouched on update when neither marks nor grade are part of the payload', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTestScore({ id: 'sts-1', notes: 'Late submission' })
+
+    const call = db.studentTestScore.update.mock.calls[0][0]
+    expect(call.data).not.toHaveProperty('grade')
+  })
+
+  it('clears the grade on update when an explicit null/blank grade is given', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTestScore({ id: 'sts-1', grade: null })
+
+    expect(db.studentTestScore.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ grade: null })
+    }))
+  })
+})
+
 describe('student-test-score.service — list/delete', () => {
   it('lists scores filtered by batch via the enrollment relation', async () => {
     const db = makeMockDb()

@@ -456,6 +456,8 @@ const api: IpcChannels = {
     equipmentCheckout: () => invoke('reports:equipmentCheckout'),
     vendorCostVsBudget: () => invoke('reports:vendorCostVsBudget'),
     vendorPerformanceHistory: () => invoke('reports:vendorPerformanceHistory'),
+    attendancePerformanceCorrelation: (p?: unknown) => invoke('reports:attendancePerformanceCorrelation', p),
+    feeDueUnderperformanceAlert: () => invoke('reports:feeDueUnderperformanceAlert'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1397,6 +1399,7 @@ const api: IpcChannels = {
   },
   coachingProgress: {
     getReport: (p: unknown) => invoke('coachingProgress:getReport', p),
+    sendWhatsApp: (p: unknown) => invoke('coachingProgress:sendWhatsApp', p),
   },
   performance: {
     list: (p?: unknown) => invoke('performance:list', p),

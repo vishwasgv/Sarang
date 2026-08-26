@@ -5,6 +5,7 @@ import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils
 import { getProductCostsBatch } from './valuation.service'
 import { generateChronicRecallComplianceReport as generateChronicRecallComplianceReportImpl } from './chronic-condition-record.service'
 import { generateDentalRecallComplianceReport as generateDentalRecallComplianceReportImpl } from './recall-record.service'
+import { attendancePercentFor } from './coaching-progress.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -4939,7 +4940,13 @@ async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: str
     maxMarks: s.maxMarks,
     percentage: Math.round((s.marksObtained / s.maxMarks) * 1000) / 10,
     grade: s.grade,
-    testDate: s.testDate.toISOString(),
+    // Real bug found live (2026-08-27 Phase 68 audit): a raw `.toISOString()`
+    // on a LOCAL-midnight-stored testDate shifts to the PREVIOUS calendar
+    // day in UTC for IST — the DataTable view's own formatDate() round-trips
+    // this safely back to the right day, but the CSV export puts the raw
+    // string in verbatim, showing the wrong day there. toLocalISODate
+    // matches every other report's row-level date field in this file.
+    testDate: toLocalISODate(s.testDate),
   }))
 
   const byStudent = new Map<string, { count: number; pctSum: number }>()
@@ -4966,6 +4973,107 @@ async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: str
     studentSummaries,
     rows,
   }
+}
+
+// Phase 68 §9.1 — Coaching Institute item 4: attendance-vs-performance
+// correlation. Per enrollment: real attendance % (attendancePercentFor,
+// shared with coaching-progress.service.ts's own parent-facing report — one
+// source of truth) against average test %, PLUS a real Pearson correlation
+// coefficient across the batch — not a fabricated composite score, an
+// honestly-computed statistic from the same paired data shown in the rows.
+export interface AttendancePerformanceRow {
+  studentName: string; batchName: string; attendancePercent: number | null; avgTestPercentage: number | null
+}
+export interface AttendancePerformanceReport {
+  rows: AttendancePerformanceRow[]
+  summary: { studentCount: number; correlationCoefficient: number | null }
+}
+
+function pearsonCorrelation(xs: number[], ys: number[]): number | null {
+  const n = xs.length
+  if (n < 2) return null
+  const meanX = xs.reduce((s, x) => s + x, 0) / n
+  const meanY = ys.reduce((s, y) => s + y, 0) / n
+  let cov = 0, varX = 0, varY = 0
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - meanX, dy = ys[i] - meanY
+    cov += dx * dy; varX += dx * dx; varY += dy * dy
+  }
+  if (varX === 0 || varY === 0) return null
+  return Math.round((cov / Math.sqrt(varX * varY)) * 100) / 100
+}
+
+async function generateAttendancePerformanceCorrelationReport(batchId?: string): Promise<AttendancePerformanceReport> {
+  const db = getPrisma()
+  const enrollments = await db.coachingBatchEnrollment.findMany({
+    where: batchId ? { batchId } : {},
+    include: { student: { select: { customerName: true } }, batch: { select: { batchName: true } } },
+  })
+
+  const rows: AttendancePerformanceRow[] = await Promise.all(enrollments.map(async (enr) => {
+    const [attendanceRows, testScores] = await Promise.all([
+      db.coachingBatchAttendance.findMany({
+        where: { batchId: enr.batchId, attendanceDate: { gte: enr.enrolledDate } },
+        select: { presentStudentIds: true, absentStudentIds: true },
+      }),
+      db.studentTestScore.findMany({ where: { enrollmentId: enr.id }, select: { marksObtained: true, maxMarks: true } }),
+    ])
+    const attendance = attendancePercentFor(enr.studentId, attendanceRows)
+    const avgTestPercentage = testScores.length > 0
+      ? Math.round((testScores.reduce((s, t) => s + (Number(t.marksObtained) / Number(t.maxMarks)) * 100, 0) / testScores.length) * 10) / 10
+      : null
+    return { studentName: enr.student.customerName, batchName: enr.batch.batchName, attendancePercent: attendance.percent, avgTestPercentage }
+  }))
+  rows.sort((a, b) => (a.avgTestPercentage ?? 101) - (b.avgTestPercentage ?? 101))
+
+  const paired = rows.filter((r): r is AttendancePerformanceRow & { attendancePercent: number; avgTestPercentage: number } => r.attendancePercent != null && r.avgTestPercentage != null)
+  return {
+    rows,
+    summary: {
+      studentCount: rows.length,
+      correlationCoefficient: pearsonCorrelation(paired.map((r) => r.attendancePercent), paired.map((r) => r.avgTestPercentage)),
+    },
+  }
+}
+
+// Phase 68 §9.1 — Coaching Institute item 5: combined fee-due +
+// underperformance alert. Deliberately a genuine AND condition (both must
+// be true) — this is the highest-priority "call the parent" list, distinct
+// from a plain fee-overdue list or a plain low-scorer list separately.
+// 50% underperformance threshold matches generateTestScoreReport's own
+// belowFiftyCount convention, for consistency.
+const UNDERPERFORMANCE_THRESHOLD_PERCENT = 50
+
+export interface FeeDueUnderperformanceRow {
+  studentName: string; batchName: string; feeDueAmount: number; avgTestPercentage: number
+}
+export interface FeeDueUnderperformanceReport {
+  rows: FeeDueUnderperformanceRow[]
+  summary: { alertCount: number }
+}
+
+async function generateFeeDueUnderperformanceAlertReport(): Promise<FeeDueUnderperformanceReport> {
+  const db = getPrisma()
+  const enrollments = await db.coachingBatchEnrollment.findMany({
+    include: {
+      student: { select: { customerName: true } },
+      batch: { select: { batchName: true } },
+      feeRecords: { where: { status: { in: ['PENDING', 'PARTIAL'] } }, select: { amountDue: true, amountReceived: true } },
+      testScores: { select: { marksObtained: true, maxMarks: true } },
+    },
+  })
+
+  const rows: FeeDueUnderperformanceRow[] = []
+  for (const enr of enrollments) {
+    const feeDueAmount = roundCurrency(enr.feeRecords.reduce((s, f) => s + (Number(f.amountDue) - Number(f.amountReceived)), 0))
+    if (feeDueAmount <= 0 || enr.testScores.length === 0) continue
+    const avgTestPercentage = Math.round((enr.testScores.reduce((s, t) => s + (Number(t.marksObtained) / Number(t.maxMarks)) * 100, 0) / enr.testScores.length) * 10) / 10
+    if (avgTestPercentage >= UNDERPERFORMANCE_THRESHOLD_PERCENT) continue
+    rows.push({ studentName: enr.student.customerName, batchName: enr.batch.batchName, feeDueAmount, avgTestPercentage })
+  }
+  rows.sort((a, b) => a.avgTestPercentage - b.avgTestPercentage)
+
+  return { rows, summary: { alertCount: rows.length } }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8573,4 +8681,6 @@ export const reportService = {
   generateEquipmentCheckoutReport,
   generateVendorCostVsBudgetReport,
   generateVendorPerformanceHistoryReport,
+  generateAttendancePerformanceCorrelationReport,
+  generateFeeDueUnderperformanceAlertReport,
 }

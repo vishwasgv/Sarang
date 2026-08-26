@@ -1118,4 +1118,19 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateVendorPerformanceHistoryReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Coaching Institute item 4: Attendance-vs-Performance Correlation.
+  handle('reports:attendancePerformanceCorrelation', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const { batchId } = (payload ?? {}) as { batchId?: string }
+    const data = await reportService.generateAttendancePerformanceCorrelationReport(batchId)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Coaching Institute item 5: Fee-Due + Underperformance Alert.
+  handle('reports:feeDueUnderperformanceAlert', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateFeeDueUnderperformanceAlertReport()
+    return { success: true, data }
+  })
 }

@@ -651,6 +651,24 @@ interface TestScoreReport {
   rows: TestScoreReportRow[]
 }
 
+// Phase 68 §9.1 — Coaching Institute item 3: Attendance vs. Performance Correlation.
+interface AttendancePerformanceRow {
+  studentName: string; batchName: string; attendancePercent: number | null; avgTestPercentage: number | null
+}
+interface AttendancePerformanceReport {
+  rows: AttendancePerformanceRow[]
+  summary: { studentCount: number; correlationCoefficient: number | null }
+}
+
+// Phase 68 §9.1 — Coaching Institute item 4: Fee-Due + Underperformance Alert.
+interface FeeDueUnderperformanceRow {
+  studentName: string; batchName: string; feeDueAmount: number; avgTestPercentage: number
+}
+interface FeeDueUnderperformanceReport {
+  rows: FeeDueUnderperformanceRow[]
+  summary: { alertCount: number }
+}
+
 interface ComplianceTaskReportRow {
   clientName: string; title: string; category: string; dueDate: string
   daysUntilDue: number; status: string; priority: string
@@ -728,6 +746,8 @@ type ReportType =
   | 'deliveryPipeline' | 'shootTypeRevenueMix' | 'equipmentCheckout'
   // Phase 68 §9.1 — Event Management items 2 & 5
   | 'vendorCostVsBudget' | 'vendorPerformanceHistory'
+  // Phase 68 §9.1 — Coaching Institute items 3 & 4
+  | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -883,6 +903,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'repairTurnaroundByTechnician', icon: <Timer size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'repair_rma' },
   { id: 'variantStock', icon: <Shirt size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'variant_tracking' },
   { id: 'testScores', icon: <GraduationCap size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
+  // Phase 68 §9.1 — Coaching Institute item 3. Current-state, no date range.
+  { id: 'attendancePerformanceCorrelation', icon: <LineChart size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
+  // Phase 68 §9.1 — Coaching Institute item 4. Current-state, no date range.
+  { id: 'feeDueUnderperformanceAlert', icon: <AlertCircle size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
   { id: 'rentalStatus', icon: <CalendarClock size={18} />, category: 'rental', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'rentalRevenue', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
@@ -1584,6 +1608,12 @@ export function ReportsScreen() {
           break
         case 'testScores':
           res = await window.api.reports.testScores({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
+          break
+        case 'attendancePerformanceCorrelation':
+          res = await window.api.reports.attendancePerformanceCorrelation()
+          break
+        case 'feeDueUnderperformanceAlert':
+          res = await window.api.reports.feeDueUnderperformanceAlert()
           break
         case 'complianceTasks':
           res = await window.api.reports.complianceTasks()
@@ -2615,6 +2645,20 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.studentName, r.batchName, r.subject, r.testName, r.marksObtained, r.maxMarks, r.percentage, r.grade, r.testDate])
         }
       }
+      case 'attendancePerformanceCorrelation': {
+        const d = reportData as AttendancePerformanceReport
+        return {
+          headers: [t('reports.col.studentName'), t('reports.col.batchName'), t('reports.col.attendancePercent'), t('reports.col.avgTestPercentage')],
+          rows: d.rows.map(r => [r.studentName, r.batchName, r.attendancePercent ?? '—', r.avgTestPercentage ?? '—'])
+        }
+      }
+      case 'feeDueUnderperformanceAlert': {
+        const d = reportData as FeeDueUnderperformanceReport
+        return {
+          headers: [t('reports.col.studentName'), t('reports.col.batchName'), `${t('reports.col.feeDueAmount')} (${currencySymbol})`, t('reports.col.avgTestPercentage')],
+          rows: d.rows.map(r => [r.studentName, r.batchName, r.feeDueAmount.toFixed(2), r.avgTestPercentage])
+        }
+      }
       case 'complianceTasks': {
         const d = reportData as ComplianceTaskReport
         return {
@@ -3500,6 +3544,19 @@ export function ReportsScreen() {
           { label: t('reports.summary.studentCount'), value: String(d.summary.studentCount) }
         ]
       }
+      case 'attendancePerformanceCorrelation': {
+        const d = reportData as AttendancePerformanceReport
+        return [
+          { label: t('reports.summary.studentCount'), value: String(d.summary.studentCount) },
+          { label: t('reports.summary.correlationCoefficient'), value: d.summary.correlationCoefficient != null ? d.summary.correlationCoefficient.toFixed(2) : '—' }
+        ]
+      }
+      case 'feeDueUnderperformanceAlert': {
+        const d = reportData as FeeDueUnderperformanceReport
+        return [
+          { label: t('reports.summary.alertCount'), value: String(d.summary.alertCount) }
+        ]
+      }
       case 'complianceTasks': {
         const d = reportData as ComplianceTaskReport
         return [
@@ -3953,6 +4010,13 @@ export function ReportsScreen() {
       case 'equipmentCheckout': return []
       case 'vendorCostVsBudget': return []
       case 'vendorPerformanceHistory': return []
+      // Phase 68 §9.1 — Coaching Institute items 3 & 4. Deliberately
+      // chart-free: correlation is a scatter-shaped relationship the
+      // existing bar/line/pie types can't honestly represent (same
+      // reasoning as complianceTasks below), and the fee-due alert is a
+      // worklist, not an aggregate metric.
+      case 'attendancePerformanceCorrelation': return []
+      case 'feeDueUnderperformanceAlert': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4563,6 +4627,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'repairTurnaroundByTechnician': return <RepairTurnaroundByTechnicianView data={data as RepairTurnaroundByTechnicianReport} />
     case 'variantStock': return <VariantStockView data={data as VariantStockReport} />
     case 'testScores': return <TestScoreView data={data as TestScoreReport} />
+    case 'attendancePerformanceCorrelation': return <AttendancePerformanceCorrelationView data={data as AttendancePerformanceReport} />
+    case 'feeDueUnderperformanceAlert': return <FeeDueUnderperformanceAlertView data={data as FeeDueUnderperformanceReport} fmt={fmt} />
     case 'complianceTasks': return <ComplianceTaskView data={data as ComplianceTaskReport} />
     default: return null
   }
@@ -9602,6 +9668,51 @@ function TestScoreView({ data }: { data: TestScoreReport }) {
           headers={[t('reports.col.studentName'), t('reports.col.batchName'), t('reports.col.subject'), t('reports.col.testName'), t('reports.col.marksObtained'), t('reports.col.maxMarks'), t('reports.col.percentage'), t('reports.col.grade'), t('common.date')]}
           rows={data.rows.map(r => [r.studentName, r.batchName, r.subject, r.testName, r.marksObtained, r.maxMarks, `${r.percentage}%`, r.grade, formatDate(r.testDate)])}
           emptyText={t('reports.empty.testScores')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Coaching Institute item 3: Attendance vs. Performance
+// Correlation. Deliberately no chart (see the return-[] comment in the
+// chart-config switch above) — a real Pearson coefficient is shown in the
+// summary card instead of a fabricated visual.
+function AttendancePerformanceCorrelationView({ data }: { data: AttendancePerformanceReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.studentCount'), value: String(s.studentCount) },
+        { label: t('reports.summary.correlationCoefficient'), value: s.correlationCoefficient != null ? s.correlationCoefficient.toFixed(2) : '—' }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.attendancePerformanceDetails')}</h3>
+        <DataTable
+          headers={[t('reports.col.studentName'), t('reports.col.batchName'), t('reports.col.attendancePercent'), t('reports.col.avgTestPercentage')]}
+          rows={data.rows.map(r => [r.studentName, r.batchName, r.attendancePercent != null ? `${r.attendancePercent}%` : '—', r.avgTestPercentage != null ? `${r.avgTestPercentage}%` : '—'])}
+          emptyText={t('reports.empty.attendancePerformanceCorrelation')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Coaching Institute item 4: Fee-Due + Underperformance Alert.
+function FeeDueUnderperformanceAlertView({ data, fmt }: { data: FeeDueUnderperformanceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.alertCount'), value: String(data.summary.alertCount) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.feeDueUnderperformanceDetails')}</h3>
+        <DataTable
+          headers={[t('reports.col.studentName'), t('reports.col.batchName'), t('reports.col.feeDueAmount'), t('reports.col.avgTestPercentage')]}
+          rows={data.rows.map(r => [r.studentName, r.batchName, fmt(r.feeDueAmount), `${r.avgTestPercentage}%`])}
+          emptyText={t('reports.empty.feeDueUnderperformanceAlert')}
         />
       </div>
     </div>

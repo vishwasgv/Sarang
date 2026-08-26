@@ -2096,6 +2096,14 @@
         "label": "Test Score Report",
         "description": "Student test/exam scores across every batch — averages, below-50% flags"
       },
+      "attendancePerformanceCorrelation": {
+        "label": "Attendance vs. Performance",
+        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+      },
+      "feeDueUnderperformanceAlert": {
+        "label": "Fee-Due Underperformance Alert",
+        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+      },
       "complianceTasks": {
         "label": "Compliance Task Report",
         "description": "Pending and overdue statutory tasks across every client"
@@ -2435,6 +2443,8 @@
       "averagePercentage": "Average Score",
       "belowFiftyCount": "Below 50%",
       "studentCount": "Students",
+      "correlationCoefficient": "Attendance–Performance Correlation",
+      "alertCount": "Students Flagged",
       "totalOpen": "Open Tasks",
       "overdueCount": "Overdue",
       "dueThisWeekCount": "Due This Week",
@@ -2552,6 +2562,8 @@
       "salesByHour": "Sales by Hour of Day",
       "testScoreDetails": "Test Score Details",
       "byStudent": "By Student",
+      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
+      "feeDueUnderperformanceDetails": "Flagged Students",
       "complianceTaskDetails": "Compliance Task Details",
       "labTATChart": "Turnaround Time by Test",
       "testVolumeByPanelChart": "Test Volume Trend",
@@ -2641,6 +2653,8 @@
       "repairTurnaroundByTechnician": "No completed repair tickets have a technician assigned yet.",
       "variants": "No product variants found.",
       "testScores": "No test scores recorded yet.",
+      "attendancePerformanceCorrelation": "No enrolled students yet.",
+      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
       "complianceTasks": "No pending or overdue compliance tasks.",
       "prescriptionDrugSales": "No prescription drug sales in this date range.",
       "scheduleH1XRegister": "No Schedule H1/X sales in this date range.",
@@ -2996,6 +3010,9 @@
       "maxMarks": "Max Marks",
       "percentage": "Percentage",
       "grade": "Grade",
+      "attendancePercent": "Attendance %",
+      "avgTestPercentage": "Avg. Test %",
+      "feeDueAmount": "Fee Due",
       "title": "Task",
       "dueDate": "Due Date",
       "daysUntilDue": "Days Until Due",

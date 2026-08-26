@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
 
 import { getPrisma } from '../../database/db'
-import { getStudentProgressReport } from '../coaching-progress.service'
+import { buildWhatsAppLink } from '../notification-queue.service'
+import { getStudentProgressReport, sendProgressReportWhatsApp } from '../coaching-progress.service'
 
 // Phase 58 §2 — Coaching Institute: a real parent-facing progress report.
 // The one genuinely non-trivial piece of logic here is the per-student
@@ -127,5 +129,86 @@ describe('coaching-progress.service — getStudentProgressReport', () => {
     const batch = (res as { data: { batches: Array<{ testScores: Array<{ marksObtained: unknown; maxMarks: unknown }>; feeRecords: Array<{ amountDue: unknown; amountReceived: unknown }> }> } }).data.batches[0]
     expect(typeof batch.testScores[0].marksObtained).toBe('number')
     expect(typeof batch.feeRecords[0].amountDue).toBe('number')
+  })
+})
+
+// Phase 68 §9.1 — Coaching Institute item 5: one-tap WhatsApp report card.
+function makeWhatsAppMockDb(overrides: Record<string, any> = {}) {
+  const db: Record<string, any> = {
+    coachingBatchEnrollment: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: 'enr-1', batchId: 'batch-1', studentId: 'stu-1', enrolledDate: new Date('2026-01-01'),
+        student: { id: 'stu-1', customerName: 'Test Student', phone: '9999999999' },
+        batch: { batchName: 'Batch A', subjectOrCourse: 'Maths' },
+      }),
+    },
+    coachingBatchAttendance: { findMany: vi.fn().mockResolvedValue([]) },
+    studentTestScore: { findMany: vi.fn().mockResolvedValue([]) },
+    coachingFeeRecord: { findMany: vi.fn().mockResolvedValue([]) },
+    ...overrides,
+  }
+  return db
+}
+
+describe('coaching-progress.service — sendProgressReportWhatsApp', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a missing enrollment', async () => {
+    const db = makeWhatsAppMockDb({ coachingBatchEnrollment: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await sendProgressReportWhatsApp('missing')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PROG-003')
+  })
+
+  it('rejects when the student has no phone number on file', async () => {
+    const db = makeWhatsAppMockDb({
+      coachingBatchEnrollment: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'enr-1', batchId: 'batch-1', studentId: 'stu-1', enrolledDate: new Date('2026-01-01'),
+          student: { id: 'stu-1', customerName: 'Test Student', phone: null },
+          batch: { batchName: 'Batch A', subjectOrCourse: 'Maths' },
+        }),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await sendProgressReportWhatsApp('enr-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PROG-004')
+  })
+
+  it('builds the WhatsApp link with the attendance/test/fee summary and returns it', async () => {
+    const db = makeWhatsAppMockDb({
+      studentTestScore: {
+        findMany: vi.fn().mockResolvedValue([{ testName: 'Unit Test', marksObtained: 45, maxMarks: 50, grade: 'A' }]),
+      },
+      coachingFeeRecord: {
+        findMany: vi.fn().mockResolvedValue([{ status: 'DUE', amountDue: 3000, amountReceived: 1000 }]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await sendProgressReportWhatsApp('enr-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { link: string } }).data.link).toBe('https://wa.me/919999999999?text=hi')
+    expect(buildWhatsAppLink).toHaveBeenCalledWith('9999999999', expect.stringContaining('Test Student'))
+    const message = vi.mocked(buildWhatsAppLink).mock.calls[0][1]
+    expect(message).toContain('Unit Test: 45/50 (A)')
+    expect(message).toContain('Fee: ₹2000 due (DUE)')
+  })
+
+  it('reports fees as up to date when nothing is owed', async () => {
+    const db = makeWhatsAppMockDb({
+      coachingFeeRecord: { findMany: vi.fn().mockResolvedValue([{ status: 'PAID', amountDue: 3000, amountReceived: 3000 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await sendProgressReportWhatsApp('enr-1')
+
+    const message = vi.mocked(buildWhatsAppLink).mock.calls[0][1]
+    expect(message).toContain('Fee: up to date (PAID)')
   })
 })

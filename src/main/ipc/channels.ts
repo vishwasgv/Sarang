@@ -571,6 +571,10 @@ export interface IpcChannels {
     vendorCostVsBudget: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
     vendorPerformanceHistory: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Coaching Institute item 4: Attendance-vs-Performance Correlation.
+    attendancePerformanceCorrelation: (payload?: { batchId?: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Coaching Institute item 5: Fee-Due + Underperformance Alert.
+    feeDueUnderperformanceAlert: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1640,6 +1644,7 @@ export interface IpcChannels {
   }
   coachingProgress: {
     getReport: (payload: { studentId: string }) => Promise<ApiResponse>
+    sendWhatsApp: (payload: { enrollmentId: string }) => Promise<ApiResponse>
   }
   performance: {
     list: (payload: { batchId?: string }) => Promise<ApiResponse>
