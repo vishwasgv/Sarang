@@ -4422,19 +4422,51 @@ model LegalCase {
   limitationDate    DateTime? // statute-of-limitations / filing deadline, reminders scheduled the same way as hearings
   feeAgreed         Decimal?
   feeCollected      Decimal   @default(0)
+  // Phase 68 §9.1 — Lawyer item 3: case-stage tracker. A fixed litigation-
+  // lifecycle stage (not the same as `status` above, which is
+  // active/closed/stayed — a case can be ACTIVE while moving through
+  // several stages). caseStageUpdatedAt is set only when caseStage itself
+  // changes, so "days in current stage" (the aging report's own metric) is
+  // a plain now-minus-timestamp, no separate history table needed.
+  caseStage         String    @default("FILING") // FILING|WRITTEN_STATEMENT|EVIDENCE|ARGUMENTS|JUDGMENT|APPEAL|EXECUTION
+  caseStageUpdatedAt DateTime @default(now())
   notes             String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  client      Customer    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  advocate    Employee?   @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
-  hearings    Hearing[]
-  timeEntries TimeEntry[]
+  client        Customer          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  advocate      Employee?         @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
+  hearings      Hearing[]
+  timeEntries   TimeEntry[]
+  disbursements CaseDisbursement[]
 
   @@index([clientId])
   @@index([status])
   @@index([advocateId])
   @@index([nextHearingDate])
+}
+
+// Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking. Money the
+// firm pays OUT on the case's behalf (court fees, stamp duty, expert
+// witness fees, travel) -- a genuinely different concept from
+// LegalCase.feeAgreed/feeCollected above (the ADVOCATE's own professional
+// fee). isBilledToClient tracks whether this specific disbursement has been
+// passed through to the client yet (e.g. added as a line on their next
+// invoice) -- a simple boolean, not a full reimbursement-invoice link,
+// matching this phase's "informational worklist" scope for disbursements.
+model CaseDisbursement {
+  id              String   @id @default(cuid())
+  caseId          String
+  description     String
+  amount          Decimal
+  paidDate        DateTime
+  isBilledToClient Boolean @default(false)
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  case LegalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }
 
 model Hearing {

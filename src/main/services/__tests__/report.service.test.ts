@@ -7777,3 +7777,121 @@ describe('reportService.generateLearnerProgressFunnelReport', () => {
     expect(result.summary).toEqual({ totalEnrolled: 0, dlPassedCount: 0, overallCompletionPercent: 0 })
   })
 })
+
+// Phase 68 §9.1 — Lawyer item 4: Case Aging.
+describe('reportService.generateCaseAgingReport', () => {
+  it('sorts worst-first by days stuck in the CURRENT stage, not overall case age', async () => {
+    const db = {
+      legalCase: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'c1', caseNumber: 'CASE-001', caseTitle: 'Old but moving', caseStage: 'EVIDENCE', caseStageUpdatedAt: new Date(Date.now() - 5 * 86400000), filingDate: new Date(Date.now() - 400 * 86400000), client: { customerName: 'Client A' } },
+          { id: 'c2', caseNumber: 'CASE-002', caseTitle: 'Young but stalled', caseStage: 'FILING', caseStageUpdatedAt: new Date(Date.now() - 120 * 86400000), filingDate: new Date(Date.now() - 130 * 86400000), client: { customerName: 'Client B' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCaseAgingReport()
+
+    expect(result.rows.map((r) => r.caseId)).toEqual(['c2', 'c1'])
+    expect(result.rows[0].daysInCurrentStage).toBeGreaterThan(result.rows[1].daysInCurrentStage)
+  })
+
+  it('excludes CLOSED and DISPOSED cases from the query', async () => {
+    const db = { legalCase: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateCaseAgingReport()
+
+    expect(db.legalCase.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { notIn: ['CLOSED', 'DISPOSED'] } }),
+    }))
+  })
+
+  it('counts a case as stale only at 90+ days in its current stage', async () => {
+    const db = {
+      legalCase: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'c1', caseNumber: 'C1', caseTitle: 'T1', caseStage: 'FILING', caseStageUpdatedAt: new Date(Date.now() - 95 * 86400000), filingDate: null, client: { customerName: 'A' } },
+          { id: 'c2', caseNumber: 'C2', caseTitle: 'T2', caseStage: 'FILING', caseStageUpdatedAt: new Date(Date.now() - 30 * 86400000), filingDate: null, client: { customerName: 'B' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCaseAgingReport()
+
+    expect(result.summary.staleCaseCount).toBe(1)
+  })
+
+  it('returns an honest empty result when there are no open cases', async () => {
+    const db = { legalCase: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCaseAgingReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalOpenCases: 0, avgDaysInCurrentStage: 0, staleCaseCount: 0 })
+  })
+})
+
+// Phase 68 §9.1 — Lawyer item 2: Billable Hours.
+describe('reportService.generateLawyerBillableHoursReport', () => {
+  it('separates billable (ratePerHour > 0) from non-billable (pro-bono) hours', async () => {
+    const db = {
+      timeEntry: {
+        findMany: vi.fn().mockResolvedValue([
+          { hours: 3, ratePerHour: 2000, amount: 6000, isBilled: false, employee: { fullName: 'Adv. Sharma' } },
+          { hours: 2, ratePerHour: 0, amount: 0, isBilled: false, employee: { fullName: 'Adv. Sharma' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLawyerBillableHoursReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const row = result.rows[0]
+    expect(row.billableHours).toBe(3)
+    expect(row.nonBillableHours).toBe(2)
+    expect(row.billableAmount).toBe(6000)
+  })
+
+  it('splits billable amount into billed vs unbilled', async () => {
+    const db = {
+      timeEntry: {
+        findMany: vi.fn().mockResolvedValue([
+          { hours: 3, ratePerHour: 2000, amount: 6000, isBilled: true, employee: { fullName: 'Adv. Sharma' } },
+          { hours: 1, ratePerHour: 2000, amount: 2000, isBilled: false, employee: { fullName: 'Adv. Sharma' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLawyerBillableHoursReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows[0].billedAmount).toBe(6000)
+    expect(result.rows[0].unbilledAmount).toBe(2000)
+    expect(result.summary.totalUnbilledAmount).toBe(2000)
+  })
+
+  it('only queries TimeEntry rows linked to a case (caseId not null)', async () => {
+    const db = { timeEntry: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateLawyerBillableHoursReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(db.timeEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ caseId: { not: null } }),
+    }))
+  })
+
+  it('returns an honest empty result when nothing matches the range', async () => {
+    const db = { timeEntry: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLawyerBillableHoursReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalBillableHours: 0, totalBillableAmount: 0, totalUnbilledAmount: 0 })
+  })
+})

@@ -31,6 +31,7 @@ interface LegalCase {
   feeAgreed: number | null
   feeCollected: number
   notes: string | null
+  caseStage: string
   client: { id: string; customerName: string; phone: string | null }
   advocate: { id: string; fullName: string } | null
   _count: { hearings: number; timeEntries: number }
@@ -39,6 +40,19 @@ interface LegalCase {
 interface LegalCaseDetail extends LegalCase {
   hearings: Hearing[]
   timeEntries: TimeEntry[]
+}
+
+// Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+const CASE_STAGES = ['FILING', 'WRITTEN_STATEMENT', 'EVIDENCE', 'ARGUMENTS', 'JUDGMENT', 'APPEAL', 'EXECUTION'] as const
+const CASE_STAGE_LABELS: Record<string, string> = {
+  FILING: 'Filing', WRITTEN_STATEMENT: 'Written Statement', EVIDENCE: 'Evidence',
+  ARGUMENTS: 'Arguments', JUDGMENT: 'Judgment', APPEAL: 'Appeal', EXECUTION: 'Execution',
+}
+
+// Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+interface CaseDisbursement {
+  id: string; caseId: string; description: string; amount: number; paidDate: string
+  isBilledToClient: boolean; notes: string | null
 }
 
 interface Hearing {
@@ -122,6 +136,12 @@ export function LegalCasesScreen() {
   const [error, setError] = useState<string | null>(null)
   const [selectedCase, setSelectedCase] = useState<LegalCaseDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+
+  // Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+  const [disbursements, setDisbursements] = useState<CaseDisbursement[]>([])
+  const [showDisbursementForm, setShowDisbursementForm] = useState(false)
+  const [disbursementForm, setDisbursementForm] = useState({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' })
+  const [savingDisbursement, setSavingDisbursement] = useState(false)
 
   // New Case form
   const [showCaseForm, setShowCaseForm] = useState(false)
@@ -245,7 +265,58 @@ export function LegalCasesScreen() {
     } finally {
       setLoadingDetail(false)
     }
+    // Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+    try {
+      const dRes = await api.caseDisbursement.list({ caseId: id })
+      if (dRes.success) setDisbursements(dRes.data as CaseDisbursement[])
+    } catch { /* disbursements panel is supplementary — case detail itself already surfaces load errors */ }
   }, [toastError])
+
+  // Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+  async function handleCaseStageChange(caseStage: string) {
+    if (!selectedCase) return
+    try {
+      const res = await api.legalCase.updateStage({ id: selectedCase.id, caseStage })
+      if (res.success) loadCaseDetail(selectedCase.id)
+      else toastError('Error', res.error?.message ?? 'Could not update case stage.')
+    } catch {
+      toastError('Error', 'Could not update case stage.')
+    }
+  }
+
+  async function handleAddDisbursement() {
+    if (!selectedCase || !disbursementForm.description.trim() || !disbursementForm.amount) return
+    setSavingDisbursement(true)
+    try {
+      const res = await api.caseDisbursement.create({
+        caseId: selectedCase.id, description: disbursementForm.description.trim(),
+        amount: Number(disbursementForm.amount), paidDate: disbursementForm.paidDate,
+        notes: disbursementForm.notes.trim() || undefined,
+      })
+      if (res.success) {
+        setShowDisbursementForm(false)
+        setDisbursementForm({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' })
+        loadCaseDetail(selectedCase.id)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not save disbursement.')
+      }
+    } catch {
+      toastError('Error', 'Could not save disbursement.')
+    } finally {
+      setSavingDisbursement(false)
+    }
+  }
+
+  async function handleToggleDisbursementBilled(id: string, isBilledToClient: boolean) {
+    if (!selectedCase) return
+    try {
+      const res = await api.caseDisbursement.markBilled({ id, isBilledToClient })
+      if (res.success) loadCaseDetail(selectedCase.id)
+      else toastError('Error', res.error?.message ?? 'Could not update disbursement.')
+    } catch {
+      toastError('Error', 'Could not update disbursement.')
+    }
+  }
 
   const loadKpiStats = useCallback(async () => {
     try {
@@ -687,6 +758,14 @@ export function LegalCasesScreen() {
                       )}
                     </div>
 
+                    {/* Phase 68 §9.1 — Lawyer item 3: case-stage tracker */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Case Stage</label>
+                      <select value={selectedCase.caseStage} onChange={(e) => handleCaseStageChange(e.target.value)} className="w-full h-9 px-2 rounded-lg border border-border bg-background text-foreground text-sm">
+                        {CASE_STAGES.map((s) => <option key={s} value={s}>{CASE_STAGE_LABELS[s]}</option>)}
+                      </select>
+                    </div>
+
                     {selectedCase.status === 'ACTIVE' && (
                       <div className="flex gap-2 pt-1">
                         <button onClick={() => handleCaseStatusChange(selectedCase.id, 'CLOSED')} className="flex-1 h-8 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/50">Close Case</button>
@@ -789,6 +868,52 @@ export function LegalCasesScreen() {
                           </div>
                         ))
                       )}
+                    </div>
+                  </Card>
+
+                  {/* Disbursements — Phase 68 §9.1 Lawyer item 5 */}
+                  <Card padding="lg" className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-foreground text-sm">Court Fees / Disbursements ({disbursements.length})</p>
+                      <button
+                        onClick={() => { setShowDisbursementForm(true); setDisbursementForm({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' }) }}
+                        className="h-7 px-2 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
+                      >
+                        <Plus size={11} /> Add
+                      </button>
+                    </div>
+
+                    {showDisbursementForm && (
+                      <div className="border border-border rounded-xl p-3 space-y-2 bg-muted/10">
+                        <input value={disbursementForm.description} onChange={(e) => setDisbursementForm({ ...disbursementForm, description: e.target.value })} placeholder="e.g. Court filing fee, Stamp duty" className="w-full h-9 px-2 rounded-lg border border-border bg-background text-foreground text-sm" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="number" value={disbursementForm.amount} onChange={(e) => setDisbursementForm({ ...disbursementForm, amount: e.target.value })} placeholder="Amount" className="w-full h-9 px-2 rounded-lg border border-border bg-background text-foreground text-sm" />
+                          <input type="date" value={disbursementForm.paidDate} onChange={(e) => setDisbursementForm({ ...disbursementForm, paidDate: e.target.value })} className="w-full h-9 px-2 rounded-lg border border-border bg-background text-foreground text-sm" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => setShowDisbursementForm(false)} className="flex-1 h-8 rounded-lg border border-border text-xs text-muted-foreground">Cancel</button>
+                          <button onClick={handleAddDisbursement} disabled={savingDisbursement} className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">{savingDisbursement ? 'Saving...' : 'Save'}</button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      {disbursements.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-3">No disbursements recorded yet</p>
+                      ) : disbursements.map((d) => (
+                        <div key={d.id} className="flex items-center justify-between border border-border rounded-lg px-3 py-2">
+                          <div>
+                            <p className="text-sm text-foreground">{d.description}</p>
+                            <p className="text-xs text-muted-foreground">₹{d.amount.toLocaleString('en-IN')} · {formatDate(d.paidDate)}</p>
+                          </div>
+                          <button
+                            onClick={() => handleToggleDisbursementBilled(d.id, !d.isBilledToClient)}
+                            className={cn('text-xs rounded-lg px-2 py-1 border', d.isBilledToClient ? 'bg-success/10 text-success border-success/30' : 'border-border text-muted-foreground hover:bg-muted/30')}
+                          >
+                            {d.isBilledToClient ? 'Billed' : 'Not Billed'}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </Card>
 

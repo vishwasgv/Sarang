@@ -19,7 +19,7 @@ import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 // fetch (hearings/time entries included) via the surrounding try/catch.
 // Same bug class as compliance-task.service.ts's serializeTask — see
 // date.util.ts's toLocalDateOnlyIso for the shared fix.
-function serializeCase<T extends { feeAgreed: unknown; feeCollected: unknown; filingDate: Date | null; nextHearingDate: Date | null; limitationDate: Date | null; createdAt: Date; updatedAt: Date }>(c: T): T {
+function serializeCase<T extends { feeAgreed: unknown; feeCollected: unknown; filingDate: Date | null; nextHearingDate: Date | null; limitationDate: Date | null; createdAt: Date; updatedAt: Date; caseStageUpdatedAt?: Date }>(c: T): T {
   return {
     ...c,
     feeAgreed: c.feeAgreed == null ? null : Number(c.feeAgreed),
@@ -29,6 +29,7 @@ function serializeCase<T extends { feeAgreed: unknown; feeCollected: unknown; fi
     limitationDate: (c.limitationDate ? toLocalDateOnlyIso(c.limitationDate) : null) as unknown as Date,
     createdAt: c.createdAt.toISOString() as unknown as Date,
     updatedAt: c.updatedAt.toISOString() as unknown as Date,
+    ...(c.caseStageUpdatedAt ? { caseStageUpdatedAt: c.caseStageUpdatedAt.toISOString() as unknown as Date } : {}),
   }
 }
 
@@ -358,6 +359,37 @@ async function scheduleLimitationReminder(caseId: string, limitationDate: Date) 
     }
   } catch {
     // Non-critical — silently ignore reminder scheduling failures
+  }
+}
+
+// Phase 68 §9.1 — Lawyer item 3: case-stage tracker. Deliberately a fixed
+// litigation-lifecycle stage list, distinct from `status` (a case can be
+// ACTIVE while moving through several stages). caseStageUpdatedAt is only
+// touched when the stage actually CHANGES, so a no-op "reassert the same
+// stage" call never resets the aging clock the report below relies on.
+export const CASE_STAGES = ['FILING', 'WRITTEN_STATEMENT', 'EVIDENCE', 'ARGUMENTS', 'JUDGMENT', 'APPEAL', 'EXECUTION'] as const
+
+export async function updateCaseStage(payload: { id: string; caseStage: string }) {
+  try {
+    if (!CASE_STAGES.includes(payload.caseStage as (typeof CASE_STAGES)[number])) {
+      return { success: false, error: { code: 'LC28-007', message: 'Unknown case stage.' } }
+    }
+    const db = getPrisma()
+    const existing = await db.legalCase.findUnique({ where: { id: payload.id }, select: { caseStage: true } })
+    if (!existing) return { success: false, error: { code: 'LC28-NOT-FOUND', message: 'Case not found.' } }
+
+    const legalCase = await db.legalCase.update({
+      where: { id: payload.id },
+      data: existing.caseStage === payload.caseStage
+        ? {}
+        : { caseStage: payload.caseStage, caseStageUpdatedAt: new Date() },
+    })
+    await db.auditLog.create({
+      data: { action: 'STAGE_UPDATED', entityType: 'LegalCase', entityId: payload.id, newValue: JSON.stringify({ caseStage: payload.caseStage }) },
+    }).catch(() => {})
+    return { success: true, data: serializeCase(legalCase) }
+  } catch (err) {
+    return { success: false, error: { code: 'LC28-008', message: err instanceof Error ? err.message : 'Could not update case stage.' } }
   }
 }
 

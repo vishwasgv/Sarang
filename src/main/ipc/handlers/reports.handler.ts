@@ -954,4 +954,20 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateLearnerProgressFunnelReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Lawyer item 4: Case Aging.
+  handle('reports:caseAging', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateCaseAgingReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Lawyer item 2: Billable Hours.
+  handle('reports:lawyerBillableHours', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateLawyerBillableHoursReport(parsed.data)
+    return { success: true, data }
+  })
 }

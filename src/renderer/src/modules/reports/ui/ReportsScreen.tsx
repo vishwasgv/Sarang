@@ -219,6 +219,14 @@ interface ClassAttendanceHeatmapReport { dateFrom: string; dateTo: string; class
 interface LearnerProgressFunnelStage { stage: string; learnerCount: number }
 interface LearnerProgressFunnelReport { stages: LearnerProgressFunnelStage[]; summary: { totalEnrolled: number; dlPassedCount: number; overallCompletionPercent: number } }
 
+// Phase 68 §9.1 — Lawyer item 4: Case Aging.
+interface CaseAgingRow { caseId: string; caseNumber: string; caseTitle: string; clientName: string; caseStage: string; daysInCurrentStage: number; daysSinceFiling: number | null }
+interface CaseAgingReport { rows: CaseAgingRow[]; summary: { totalOpenCases: number; avgDaysInCurrentStage: number; staleCaseCount: number } }
+
+// Phase 68 §9.1 — Lawyer item 2: Billable Hours.
+interface LawyerBillableHoursRow { advocateName: string; billableHours: number; nonBillableHours: number; billableAmount: number; billedAmount: number; unbilledAmount: number }
+interface LawyerBillableHoursReport { dateFrom: string; dateTo: string; rows: LawyerBillableHoursRow[]; summary: { totalBillableHours: number; totalBillableAmount: number; totalUnbilledAmount: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -621,6 +629,8 @@ type ReportType =
   | 'membershipRenewalFunnel' | 'classAttendanceHeatmap'
   // Phase 68 §9.1 — Driving School item 4
   | 'learnerProgressFunnel'
+  // Phase 68 §9.1 — Lawyer items 2 & 4
+  | 'caseAging' | 'lawyerBillableHours'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -824,6 +834,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'classAttendanceHeatmap', icon: <Table size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'batch_classes' },
   // Phase 68 §9.1 — Driving School item 4. Current-state snapshot, no date range.
   { id: 'learnerProgressFunnel', icon: <Target size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'learner_profiles' },
+  // Phase 68 §9.1 — Lawyer item 4. Current-state worklist, no date range.
+  { id: 'caseAging', icon: <Clock size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'legal_cases' },
+  // Phase 68 §9.1 — Lawyer item 2.
+  { id: 'lawyerBillableHours', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'legal_cases' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1239,6 +1253,12 @@ export function ReportsScreen() {
           break
         case 'learnerProgressFunnel':
           res = await window.api.reports.learnerProgressFunnel()
+          break
+        case 'caseAging':
+          res = await window.api.reports.caseAging()
+          break
+        case 'lawyerBillableHours':
+          res = await window.api.reports.lawyerBillableHours({ dateFrom, dateTo })
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1960,6 +1980,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.stage'), t('reports.col.learnerCount')],
           rows: d.stages.map(s => [s.stage, s.learnerCount])
+        }
+      }
+      case 'caseAging': {
+        const d = reportData as CaseAgingReport
+        return {
+          headers: [t('reports.col.caseNumber'), t('reports.col.caseTitle'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.daysInStage'), t('reports.col.daysSinceFiling')],
+          rows: d.rows.map(r => [r.caseNumber, r.caseTitle, r.clientName, r.caseStage, r.daysInCurrentStage, r.daysSinceFiling ?? '—'])
+        }
+      }
+      case 'lawyerBillableHours': {
+        const d = reportData as LawyerBillableHoursReport
+        return {
+          headers: [t('reports.col.advocate'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.billedAmount'), t('reports.col.unbilledAmount')],
+          rows: d.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, r.billableAmount.toFixed(2), r.billedAmount.toFixed(2), r.unbilledAmount.toFixed(2)])
         }
       }
       case 'serviceProjects': {
@@ -2794,6 +2828,13 @@ export function ReportsScreen() {
           { label: t('reports.col.renewalRatePercent'), value: `${d.summary.overallRenewalRatePercent}%` }
         ]
       }
+      case 'lawyerBillableHours': {
+        const d = reportData as LawyerBillableHoursReport
+        return [
+          { label: t('reports.col.billableHours'), value: String(d.summary.totalBillableHours) },
+          { label: `${t('common.amount')} (${currencySymbol})`, value: d.summary.totalBillableAmount.toFixed(2) }
+        ]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         return [
@@ -3566,6 +3607,12 @@ export function ReportsScreen() {
       }
       case 'classAttendanceHeatmap': return []
       case 'learnerProgressFunnel': return []
+      case 'caseAging': return []
+      case 'lawyerBillableHours': {
+        const d = reportData as LawyerBillableHoursReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.lawyerBillableHours.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.advocateName, value: r.billableHours })) }]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         if (d.byStatus.length === 0) return []
@@ -4073,6 +4120,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'membershipRenewalFunnel': return <MembershipRenewalFunnelView data={data as MembershipRenewalFunnelReport} />
     case 'classAttendanceHeatmap': return <ClassAttendanceHeatmapView data={data as ClassAttendanceHeatmapReport} />
     case 'learnerProgressFunnel': return <LearnerProgressFunnelView data={data as LearnerProgressFunnelReport} />
+    case 'caseAging': return <CaseAgingView data={data as CaseAgingReport} />
+    case 'lawyerBillableHours': return <LawyerBillableHoursView data={data as LawyerBillableHoursReport} fmt={fmt} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5826,6 +5875,61 @@ function LearnerProgressFunnelView({ data }: { data: LearnerProgressFunnelReport
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Lawyer item 4: Case Aging. A worklist, not a chart-shaped
+// report — the ranked table itself IS the actionable artifact, same
+// treatment this phase's other pure-worklist reports (e.g. Expiring
+// Memberships) already get.
+function CaseAgingView({ data }: { data: CaseAgingReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOpenCases'), value: String(data.summary.totalOpenCases) },
+        { label: t('reports.summary.avgDaysInCurrentStage'), value: String(data.summary.avgDaysInCurrentStage) },
+        { label: t('reports.summary.staleCaseCount'), value: String(data.summary.staleCaseCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.caseNumber'), t('reports.col.caseTitle'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.daysInStage'), t('reports.col.daysSinceFiling')]}
+        rows={data.rows.map(r => [r.caseNumber, r.caseTitle, r.clientName, r.caseStage, r.daysInCurrentStage, r.daysSinceFiling ?? '—'])}
+        emptyText={t('reports.empty.caseAging')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Lawyer item 2: Billable Hours.
+function LawyerBillableHoursView({ data, fmt }: { data: LawyerBillableHoursReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.billableHours'), value: String(data.summary.totalBillableHours) },
+        { label: t('common.amount'), value: fmt(data.summary.totalBillableAmount) },
+        { label: t('reports.col.unbilledAmount'), value: fmt(data.summary.totalUnbilledAmount) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.lawyerBillableHours.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="advocateName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="billableHours" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.advocate'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('common.amount'), t('reports.col.billedAmount'), t('reports.col.unbilledAmount')]}
+        rows={data.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, fmt(r.billableAmount), fmt(r.billedAmount), fmt(r.unbilledAmount)])}
+        emptyText={t('reports.empty.lawyerBillableHours')}
+      />
     </div>
   )
 }

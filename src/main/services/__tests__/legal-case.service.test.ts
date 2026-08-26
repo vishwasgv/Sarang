@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/test') }))
 
 import { getPrisma } from '../../database/db'
-import { listLegalCases, getLegalCase, createLegalCase, updateLegalCase, checkConflictOfInterest } from '../legal-case.service'
+import { listLegalCases, getLegalCase, createLegalCase, updateLegalCase, checkConflictOfInterest, updateCaseStage } from '../legal-case.service'
 import { parseLocalDateStart } from '../../utils/date.util'
 
 // Regression coverage for the Phase 28 re-audit finding: LegalCase.feeAgreed/
@@ -330,5 +330,54 @@ describe('legal-case.service.checkConflictOfInterest', () => {
     expect(res.success).toBe(true)
     expect((res as { data: { conflicts: unknown[] } }).data.conflicts).toHaveLength(0)
     expect(db.legalCase.findMany).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+describe('legal-case.service.updateCaseStage', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects an unknown stage', async () => {
+    const db = makeMockDb([makeCase({ caseStage: 'FILING' })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateCaseStage({ id: 'case-1', caseStage: 'MADE_UP_STAGE' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LC28-007')
+  })
+
+  it('returns not-found for a nonexistent case', async () => {
+    const db = makeMockDb([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateCaseStage({ id: 'ghost', caseStage: 'EVIDENCE' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LC28-NOT-FOUND')
+  })
+
+  it('advances caseStageUpdatedAt when the stage actually changes', async () => {
+    const db = makeMockDb([makeCase({ caseStage: 'FILING' })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const before = Date.now()
+    await updateCaseStage({ id: 'case-1', caseStage: 'EVIDENCE' })
+    const after = Date.now()
+
+    const updateCall = db.legalCase.update.mock.calls[0][0] as { data: { caseStage: string; caseStageUpdatedAt: Date } }
+    expect(updateCall.data.caseStage).toBe('EVIDENCE')
+    expect(updateCall.data.caseStageUpdatedAt.getTime()).toBeGreaterThanOrEqual(before)
+    expect(updateCall.data.caseStageUpdatedAt.getTime()).toBeLessThanOrEqual(after)
+  })
+
+  it('does NOT reset caseStageUpdatedAt when re-asserting the same stage (a no-op should not restart the aging clock)', async () => {
+    const db = makeMockDb([makeCase({ caseStage: 'EVIDENCE' })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateCaseStage({ id: 'case-1', caseStage: 'EVIDENCE' })
+
+    const updateCall = db.legalCase.update.mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(updateCall.data).toEqual({})
   })
 })

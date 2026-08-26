@@ -434,6 +434,8 @@ const api: IpcChannels = {
     classAttendanceHeatmap: (p) => invoke('reports:classAttendanceHeatmap', p),
     membershipRenewalFunnel: (p) => invoke('reports:membershipRenewalFunnel', p),
     learnerProgressFunnel: () => invoke('reports:learnerProgressFunnel'),
+    caseAging: () => invoke('reports:caseAging'),
+    lawyerBillableHours: (p) => invoke('reports:lawyerBillableHours', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1204,6 +1206,13 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('legalCase:update', p),
     delete: (p: unknown) => invoke('legalCase:delete', p),
     checkConflict: (p: unknown) => invoke('legalCase:checkConflict', p),
+    updateStage: (p: unknown) => invoke('legalCase:updateStage', p),
+  },
+  caseDisbursement: {
+    list: (p: unknown) => invoke('caseDisbursement:list', p),
+    create: (p: unknown) => invoke('caseDisbursement:create', p),
+    markBilled: (p: unknown) => invoke('caseDisbursement:markBilled', p),
+    delete: (p: unknown) => invoke('caseDisbursement:delete', p),
   },
   hearing: {
     list: (p?: unknown) => invoke('hearing:list', p),

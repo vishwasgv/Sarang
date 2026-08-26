@@ -1,4 +1,5 @@
 import { requirePermission } from '../permission-guard'
+import { getCurrentSession } from '../../services/auth.service'
 import {
   listLegalCases,
   getLegalCase,
@@ -6,8 +7,13 @@ import {
   updateLegalCase,
   deleteLegalCase,
   checkConflictOfInterest,
+  updateCaseStage,
 } from '../../services/legal-case.service'
-import { CreateLegalCaseSchema, UpdateLegalCaseSchema, CheckConflictOfInterestSchema } from '../../validation/legal-case.validation'
+import { listCaseDisbursements, createCaseDisbursement, markDisbursementBilled, deleteCaseDisbursement } from '../../services/case-disbursement.service'
+import {
+  CreateLegalCaseSchema, UpdateLegalCaseSchema, CheckConflictOfInterestSchema, UpdateCaseStageSchema,
+  ListCaseDisbursementsSchema, CreateCaseDisbursementSchema, MarkDisbursementBilledSchema, DeleteCaseDisbursementSchema,
+} from '../../validation/legal-case.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -49,5 +55,45 @@ export function register(handle: HandleFn): void {
     const parsed = CheckConflictOfInterestSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return checkConflictOfInterest(parsed.data)
+  })
+
+  // Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+  handle('legalCase:updateStage', async (raw) => {
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
+    const parsed = UpdateCaseStageSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return updateCaseStage(parsed.data)
+  })
+
+  // Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+  handle('caseDisbursement:list', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = ListCaseDisbursementsSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return listCaseDisbursements(parsed.data.caseId)
+  })
+
+  handle('caseDisbursement:create', async (raw) => {
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
+    const parsed = CreateCaseDisbursementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return createCaseDisbursement(parsed.data, session?.userId)
+  })
+
+  handle('caseDisbursement:markBilled', async (raw) => {
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
+    const parsed = MarkDisbursementBilledSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return markDisbursementBilled(parsed.data.id, parsed.data.isBilledToClient, session?.userId)
+  })
+
+  handle('caseDisbursement:delete', async (raw) => {
+    const deny = await requirePermission('legalCases.manage'); if (deny) return deny
+    const parsed = DeleteCaseDisbursementSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return deleteCaseDisbursement(parsed.data.id, session?.userId)
   })
 }

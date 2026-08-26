@@ -1816,6 +1816,14 @@
         "label": "Learner Progress Funnel",
         "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
       },
+      "caseAging": {
+        "label": "Case Aging",
+        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+      },
+      "lawyerBillableHours": {
+        "label": "Billable Hours",
+        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2086,6 +2094,9 @@
       "notBalanced": "Not Balanced",
       "totalEnrolled": "Total Enrolled",
       "overallCompletionPercent": "DL Completion Rate %",
+      "totalOpenCases": "Open Cases",
+      "avgDaysInCurrentStage": "Avg. Days in Stage",
+      "staleCaseCount": "Stale Cases (90+ days)",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2528,7 +2539,9 @@
       "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
       "retailAttachRate": "No invoiced appointments in this date range.",
       "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range."
+      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
+      "caseAging": "No open cases right now.",
+      "lawyerBillableHours": "No time entries logged against a case in this date range."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2571,6 +2584,14 @@
       "className": "Class",
       "checkInCount": "Check-Ins",
       "learnerCount": "Learners",
+      "caseNumber": "Case Number",
+      "caseTitle": "Case Title",
+      "clientName": "Client",
+      "daysInStage": "Days in Stage",
+      "daysSinceFiling": "Days Since Filing",
+      "advocate": "Advocate",
+      "billedAmount": "Billed",
+      "unbilledAmount": "Unbilled",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",

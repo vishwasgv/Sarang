@@ -43,6 +43,35 @@ export const CheckConflictOfInterestSchema = z.object({
   excludeCaseId: z.string().optional(),
 })
 
+// Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+export const UpdateCaseStageSchema = z.object({
+  id: z.string().min(1, 'Case ID is required'),
+  caseStage: z.string().min(1, 'Stage is required'),
+})
+
+// Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+export const ListCaseDisbursementsSchema = z.object({
+  caseId: z.string().min(1, 'Case is required'),
+})
+
+export const CreateCaseDisbursementSchema = z.object({
+  caseId: z.string().min(1, 'Case is required'),
+  description: z.string().min(1, 'Description is required').max(500),
+  amount: z.coerce.number().positive('Amount must be greater than zero'),
+  paidDate: z.string().min(1, 'Paid date is required'),
+  notes: z.string().max(2000).optional(),
+})
+
+export const MarkDisbursementBilledSchema = z.object({
+  id: z.string().min(1, 'Disbursement ID is required'),
+  isBilledToClient: z.boolean(),
+})
+
+export const DeleteCaseDisbursementSchema = z.object({
+  id: z.string().min(1, 'Disbursement ID is required'),
+})
+
 export type CreateLegalCasePayload = z.infer<typeof CreateLegalCaseSchema>
 export type UpdateLegalCasePayload = z.infer<typeof UpdateLegalCaseSchema>
 export type CheckConflictOfInterestPayload = z.infer<typeof CheckConflictOfInterestSchema>
+export type CreateCaseDisbursementPayload = z.infer<typeof CreateCaseDisbursementSchema>

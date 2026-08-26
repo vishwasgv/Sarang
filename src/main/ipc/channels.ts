@@ -527,6 +527,10 @@ export interface IpcChannels {
     membershipRenewalFunnel: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
     learnerProgressFunnel: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Lawyer item 4: Case Aging.
+    caseAging: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Lawyer item 2: Billable Hours.
+    lawyerBillableHours: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1418,6 +1422,15 @@ export interface IpcChannels {
     update: (payload: { id: string; caseNumber?: string; caseTitle?: string; caseType?: string; courtName?: string; courtDistrict?: string | null; courtState?: string | null; eCourtId?: string | null; advocateId?: string | null; status?: string; filingDate?: string | null; nextHearingDate?: string | null; opposingPartyName?: string | null; limitationDate?: string | null; feeAgreed?: number | null; feeCollected?: number; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     checkConflict: (payload: { clientId?: string; opposingPartyName?: string; excludeCaseId?: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Lawyer item 3: case-stage tracker.
+    updateStage: (payload: { id: string; caseStage: string }) => Promise<ApiResponse>
+  }
+  // Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
+  caseDisbursement: {
+    list: (payload: { caseId: string }) => Promise<ApiResponse>
+    create: (payload: { caseId: string; description: string; amount: number; paidDate: string; notes?: string }) => Promise<ApiResponse>
+    markBilled: (payload: { id: string; isBilledToClient: boolean }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   hearing: {
     list: (payload?: { caseId?: string; status?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>

@@ -7439,6 +7439,114 @@ async function generateLearnerProgressFunnelReport(): Promise<LearnerProgressFun
   }
 }
 
+// Phase 68 §9.1 — Lawyer item 4: Case Aging. A live current-state worklist
+// (no date range — same "current-state, not a trend" reasoning every other
+// aging-style report in this phase already uses) — every non-CLOSED/
+// DISPOSED case, ranked by days stuck in its CURRENT stage
+// (LegalCase.caseStageUpdatedAt), worst-first. Distinct from days-since-
+// filing (also shown, but not the sort key) — a case can be old overall yet
+// moving fine, or young overall yet badly stalled in one stage; the stage-
+// aging number is the real "needs attention" signal.
+export interface CaseAgingRow {
+  caseId: string; caseNumber: string; caseTitle: string; clientName: string
+  caseStage: string; daysInCurrentStage: number; daysSinceFiling: number | null
+}
+export interface CaseAgingReport {
+  rows: CaseAgingRow[]
+  summary: { totalOpenCases: number; avgDaysInCurrentStage: number; staleCaseCount: number }
+}
+
+async function generateCaseAgingReport(): Promise<CaseAgingReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const STALE_THRESHOLD_DAYS = 90
+
+  const cases = await db.legalCase.findMany({
+    where: { status: { notIn: ['CLOSED', 'DISPOSED'] } },
+    select: {
+      id: true, caseNumber: true, caseTitle: true, caseStage: true, caseStageUpdatedAt: true, filingDate: true,
+      client: { select: { customerName: true } },
+    },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: CaseAgingRow[] = cases.map((c) => ({
+    caseId: c.id, caseNumber: c.caseNumber, caseTitle: c.caseTitle, clientName: c.client.customerName,
+    caseStage: c.caseStage,
+    daysInCurrentStage: Math.floor((now.getTime() - c.caseStageUpdatedAt.getTime()) / 86400000),
+    daysSinceFiling: c.filingDate ? Math.floor((now.getTime() - c.filingDate.getTime()) / 86400000) : null,
+  })).sort((a, b) => b.daysInCurrentStage - a.daysInCurrentStage)
+
+  const avgDaysInCurrentStage = rows.length > 0 ? round1(rows.reduce((s, r) => s + r.daysInCurrentStage, 0) / rows.length) : 0
+  return {
+    rows,
+    summary: { totalOpenCases: rows.length, avgDaysInCurrentStage, staleCaseCount: rows.filter((r) => r.daysInCurrentStage >= STALE_THRESHOLD_DAYS).length },
+  }
+}
+
+// Phase 68 §9.1 — Lawyer item 2: Billable Hours. TimeEntry rows linked to a
+// LegalCase specifically (caseId not null — the same field that
+// distinguishes a Lawyer time entry from a CA/Architect/Consultant one
+// logged against the generic ServiceProject instead), grouped by advocate.
+// "Billable" here means ratePerHour > 0 — a genuinely pro-bono/non-
+// chargeable entry logged at a 0 rate is real hours worked but never
+// billable revenue, so it's counted separately rather than inflating the
+// billable total.
+export interface LawyerBillableHoursRow {
+  advocateName: string; billableHours: number; nonBillableHours: number
+  billableAmount: number; billedAmount: number; unbilledAmount: number
+}
+export interface LawyerBillableHoursReport {
+  dateFrom: string; dateTo: string
+  rows: LawyerBillableHoursRow[]
+  summary: { totalBillableHours: number; totalBillableAmount: number; totalUnbilledAmount: number }
+}
+
+async function generateLawyerBillableHoursReport(params: { dateFrom: string; dateTo: string }): Promise<LawyerBillableHoursReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const entries = await db.timeEntry.findMany({
+    where: { caseId: { not: null }, date: { gte: from, lte: to } },
+    select: { hours: true, ratePerHour: true, amount: true, isBilled: true, employee: { select: { fullName: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byAdvocate = new Map<string, { billableHours: number; nonBillableHours: number; billableAmount: number; billedAmount: number; unbilledAmount: number }>()
+  for (const e of entries) {
+    const key = e.employee?.fullName ?? 'Unassigned'
+    const entry = byAdvocate.get(key) ?? { billableHours: 0, nonBillableHours: 0, billableAmount: 0, billedAmount: 0, unbilledAmount: 0 }
+    const hours = Number(e.hours)
+    const amount = Number(e.amount)
+    if (Number(e.ratePerHour) > 0) {
+      entry.billableHours += hours
+      entry.billableAmount += amount
+      if (e.isBilled) entry.billedAmount += amount
+      else entry.unbilledAmount += amount
+    } else {
+      entry.nonBillableHours += hours
+    }
+    byAdvocate.set(key, entry)
+  }
+
+  const rows: LawyerBillableHoursRow[] = Array.from(byAdvocate.entries())
+    .map(([advocateName, v]) => ({
+      advocateName, billableHours: round1(v.billableHours), nonBillableHours: round1(v.nonBillableHours),
+      billableAmount: roundCurrency(v.billableAmount), billedAmount: roundCurrency(v.billedAmount), unbilledAmount: roundCurrency(v.unbilledAmount),
+    }))
+    .sort((a, b) => b.billableAmount - a.billableAmount)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalBillableHours: round1(rows.reduce((s, r) => s + r.billableHours, 0)),
+      totalBillableAmount: roundCurrency(rows.reduce((s, r) => s + r.billableAmount, 0)),
+      totalUnbilledAmount: roundCurrency(rows.reduce((s, r) => s + r.unbilledAmount, 0)),
+    },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7556,4 +7664,6 @@ export const reportService = {
   generateClassAttendanceHeatmapReport,
   generateMembershipRenewalFunnelReport,
   generateLearnerProgressFunnelReport,
+  generateCaseAgingReport,
+  generateLawyerBillableHoursReport,
 }
