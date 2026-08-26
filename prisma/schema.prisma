@@ -2906,6 +2906,7 @@ model Employee {
   drivingSessionsTaught     DrivingSession[]          @relation("DrivingSessionInstructor") // Phase 27 — Driving
   drivingVehiclesAssigned   DrivingVehicle[]          @relation("VehicleInstructor") // Phase 27 — Driving
   drivingTestsInstructed    DrivingTest[]             @relation("DrivingTestInstructor") // Phase 58 §2 — Driving
+  learnerSkillsAssessed     LearnerSkillAssessment[]  @relation("LearnerSkillAssessedBy") // Phase 68 §9.1 — Driving
   legalCasesAsAdvocate      LegalCase[]               @relation("CaseAdvocate") // Phase 28 — Legal
   timeEntries               TimeEntry[] // Phase 28 — Legal
   complianceTasks           ComplianceTask[]          @relation("TaskStaff") // Phase 29 — CA/CS
@@ -4225,7 +4226,33 @@ model LearnerProfile {
   updatedAt              DateTime  @updatedAt
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  skillAssessments LearnerSkillAssessment[]
 
+  @@index([customerId])
+}
+
+// Phase 68 §9.1 — Driving School item 3: learner skill-mastery checklist.
+// skillKey is a fixed, code-defined standard (STANDARD_DRIVING_SKILLS in
+// driving.service.ts), not a shop-configurable list — a driving school's
+// core skill curriculum (basic controls, parking, highway, night driving,
+// traffic rules) doesn't vary per-shop the way a service catalog does. Only
+// a customerId with an actual assessment row gets one; a learner with none
+// yet is treated as NOT_STARTED for every skill by the read side, not
+// backfilled with empty rows.
+model LearnerSkillAssessment {
+  id             String    @id @default(cuid())
+  customerId     String
+  skillKey       String
+  masteryLevel   String    @default("NOT_STARTED") // NOT_STARTED|LEARNING|MASTERED
+  assessedById   String?
+  notes          String?
+  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime  @default(now())
+
+  learner    LearnerProfile @relation(fields: [customerId], references: [customerId], onDelete: Cascade)
+  assessedBy Employee?      @relation("LearnerSkillAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
+
+  @@unique([customerId, skillKey])
   @@index([customerId])
 }
 

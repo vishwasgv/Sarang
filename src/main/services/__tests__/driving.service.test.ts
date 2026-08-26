@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/link') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -21,6 +22,10 @@ import {
   createDrivingTest,
   getInstructorPassRates,
   getUpcomingTestsAndLowBalanceKPIs,
+  getLearnerSkillChecklist,
+  upsertLearnerSkillAssessment,
+  scheduleTestReminder,
+  STANDARD_DRIVING_SKILLS,
 } from '../driving.service'
 
 // Regression coverage for the Phase 27 re-audit finding: createDrivingSession
@@ -794,6 +799,16 @@ describe('driving.service — DrivingTest.instructorId', () => {
     expect(res.success).toBe(true)
     expect((res as { data: { instructorId: string | null } }).data.instructorId).toBeNull()
   })
+
+  it('stores testDate at LOCAL midnight, not UTC midnight (same bug class as createDrivingSession, found on a later pass)', async () => {
+    const db = makeTestMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createDrivingTest({ learnerId: 'learner-1', testType: 'LL_TEST', testDate: '2026-08-15', testCenter: 'RTO' })
+
+    const call = db.drivingTest.create.mock.calls[0][0] as { data: { testDate: Date } }
+    expect(call.data.testDate).toEqual(new Date(2026, 7, 15))
+  })
 })
 
 describe('driving.service — getInstructorPassRates', () => {
@@ -867,5 +882,145 @@ describe('driving.service — getUpcomingTestsAndLowBalanceKPIs', () => {
 
     expect(res.success).toBe(false)
     expect(res.error?.message).toBe('DB unavailable')
+  })
+})
+
+// Phase 68 §9.1 — Driving School item 3: learner skill-mastery checklist.
+describe('driving.service — getLearnerSkillChecklist / upsertLearnerSkillAssessment', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('defaults every standard skill to NOT_STARTED for a learner with zero assessment rows', async () => {
+    const db = { learnerSkillAssessment: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getLearnerSkillChecklist('learner-1')
+
+    expect(res.success).toBe(true)
+    const data = (res as any).data
+    expect(data.checklist).toHaveLength(STANDARD_DRIVING_SKILLS.length)
+    expect(data.checklist.every((c: any) => c.masteryLevel === 'NOT_STARTED')).toBe(true)
+    expect(data.masteredCount).toBe(0)
+  })
+
+  it('merges real assessment rows into the standard checklist by skillKey', async () => {
+    const db = {
+      learnerSkillAssessment: {
+        findMany: vi.fn().mockResolvedValue([
+          { skillKey: 'PARKING', masteryLevel: 'MASTERED', notes: 'Great parallel parking', updatedAt: new Date(), assessedBy: { fullName: 'Instructor Raj' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getLearnerSkillChecklist('learner-1')
+
+    const parking = (res as any).data.checklist.find((c: any) => c.key === 'PARKING')
+    expect(parking.masteryLevel).toBe('MASTERED')
+    expect(parking.assessedByName).toBe('Instructor Raj')
+    expect((res as any).data.masteredCount).toBe(1)
+  })
+
+  it('rejects an unknown skill key', async () => {
+    const db = { learnerProfile: { findUnique: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await upsertLearnerSkillAssessment({ customerId: 'learner-1', skillKey: 'MADE_UP_SKILL', masteryLevel: 'MASTERED' })
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('LSA68-002')
+  })
+
+  it('rejects assessing a learner with no driving-school profile yet', async () => {
+    const db = { learnerProfile: { findUnique: vi.fn().mockResolvedValue(null) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await upsertLearnerSkillAssessment({ customerId: 'learner-1', skillKey: 'PARKING', masteryLevel: 'MASTERED' })
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('LSA68-003')
+  })
+
+  it('upserts a real assessment for a valid learner and skill', async () => {
+    const db = {
+      learnerProfile: { findUnique: vi.fn().mockResolvedValue({ customerId: 'learner-1' }) },
+      learnerSkillAssessment: { upsert: vi.fn().mockResolvedValue({ id: 'lsa-1', masteryLevel: 'LEARNING' }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await upsertLearnerSkillAssessment({ customerId: 'learner-1', skillKey: 'PARKING', masteryLevel: 'LEARNING' })
+
+    expect(res.success).toBe(true)
+    expect(db.learnerSkillAssessment.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { customerId_skillKey: { customerId: 'learner-1', skillKey: 'PARKING' } },
+    }))
+  })
+})
+
+// Phase 68 §9.1 — Driving School item 1: RTO test-slot reminder.
+describe('driving.service — scheduleTestReminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeTest(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'test-1', learnerId: 'learner-1', testType: 'LL_TEST', result: 'PENDING',
+      testCenter: 'RTO Office', testDate: new Date(Date.now() + 10 * 86400000),
+      learner: { customerName: 'Riya', phone: '9999999999' },
+      ...overrides,
+    }
+  }
+
+  it('returns not-found for a nonexistent test', async () => {
+    const db = { drivingTest: { findUnique: vi.fn().mockResolvedValue(null) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleTestReminder('missing')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('DT68-001')
+  })
+
+  it('rejects scheduling a reminder for an already-decided test', async () => {
+    const db = { drivingTest: { findUnique: vi.fn().mockResolvedValue(makeTest({ result: 'PASSED' })) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleTestReminder('test-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('DT68-002')
+  })
+
+  it('rejects when the reminder date has already passed', async () => {
+    const db = { drivingTest: { findUnique: vi.fn().mockResolvedValue(makeTest({ testDate: new Date(Date.now() + 12 * 3600000) })) } } // 12h away
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleTestReminder('test-1', 1) // 1 day before a test 12h away = already past
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('DT68-003')
+  })
+
+  it('schedules a real WhatsApp reminder for a valid upcoming test', async () => {
+    const db = {
+      drivingTest: { findUnique: vi.fn().mockResolvedValue(makeTest()) },
+      notificationQueue: { create: vi.fn().mockResolvedValue({ id: 'nq-1' }) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleTestReminder('test-1', 1)
+
+    expect(res.success).toBe(true)
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'DRIVING_TEST_REMINDER', customerPhone: '9999999999' }),
+    }))
+  })
+
+  it('returns success with no notification when the learner has no phone on file', async () => {
+    const db = { drivingTest: { findUnique: vi.fn().mockResolvedValue(makeTest({ learner: { customerName: 'Riya', phone: null } })) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleTestReminder('test-1')
+
+    expect(res.success).toBe(true)
+    expect((res as any).data).toBeNull()
   })
 })

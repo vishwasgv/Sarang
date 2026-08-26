@@ -525,6 +525,8 @@ export interface IpcChannels {
     classAttendanceHeatmap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
     membershipRenewalFunnel: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
+    learnerProgressFunnel: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1265,6 +1267,11 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     resolve: (payload: { id: string }) => Promise<ApiResponse>
   }
+  // Phase 68 §9.1 — Driving School item 3: learner skill-mastery checklist.
+  learnerSkill: {
+    checklist: (payload: { customerId: string }) => Promise<ApiResponse>
+    upsert: (payload: { customerId: string; skillKey: string; masteryLevel: 'NOT_STARTED' | 'LEARNING' | 'MASTERED'; notes?: string }) => Promise<ApiResponse>
+  }
   treatmentPlan: {
     list: (payload: { patientId: string }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
@@ -1388,6 +1395,8 @@ export interface IpcChannels {
     createTest: (payload: { learnerId: string; testType: string; testDate: string; testCenter: string; notes?: string; instructorId?: string }) => Promise<ApiResponse>
     updateTest: (payload: { id: string; result?: string; retestDate?: string | null; notes?: string | null; instructorId?: string | null }) => Promise<ApiResponse>
     instructorPassRates: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Driving School item 1: RTO test-slot reminder.
+    scheduleTestReminder: (payload: { id: string; daysBefore?: number }) => Promise<ApiResponse>
   }
   drivingPackage: {
     list: (payload?: { isActive?: boolean }) => Promise<ApiResponse>

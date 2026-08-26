@@ -7722,3 +7722,58 @@ describe('reportService.generateMembershipRenewalFunnelReport', () => {
     expect(result.summary).toEqual({ totalExpired: 0, totalRenewed: 0, overallRenewalRatePercent: 0 })
   })
 })
+
+// Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
+describe('reportService.generateLearnerProgressFunnelReport', () => {
+  it('each stage is a distinct-learner count, monotonically non-increasing down the funnel', async () => {
+    const db = {
+      learnerProfile: { findMany: vi.fn().mockResolvedValue([{ customerId: 'l1' }, { customerId: 'l2' }, { customerId: 'l3' }]) },
+      drivingSession: { findMany: vi.fn().mockResolvedValue([{ learnerId: 'l1' }, { learnerId: 'l2' }]) },
+      drivingTest: {
+        findMany: vi.fn().mockResolvedValue([
+          { learnerId: 'l1', testType: 'LL_TEST', result: 'PASSED' },
+          { learnerId: 'l2', testType: 'LL_TEST', result: 'FAILED' },
+          { learnerId: 'l1', testType: 'DL_TEST', result: 'PASSED' },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLearnerProgressFunnelReport()
+
+    expect(result.stages).toEqual([
+      { stage: 'Enrolled', learnerCount: 3 },
+      { stage: 'Sessions Started', learnerCount: 2 },
+      { stage: 'LL Test Taken', learnerCount: 2 },
+      { stage: 'LL Test Passed', learnerCount: 1 },
+      { stage: 'DL Test Passed', learnerCount: 1 },
+    ])
+    expect(result.summary).toEqual({ totalEnrolled: 3, dlPassedCount: 1, overallCompletionPercent: 33.3 })
+  })
+
+  it('a session from a learner with no LearnerProfile row is not counted at "Sessions Started"', async () => {
+    const db = {
+      learnerProfile: { findMany: vi.fn().mockResolvedValue([{ customerId: 'l1' }]) },
+      drivingSession: { findMany: vi.fn().mockResolvedValue([{ learnerId: 'ghost-learner' }]) },
+      drivingTest: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLearnerProgressFunnelReport()
+
+    expect(result.stages.find((s) => s.stage === 'Sessions Started')?.learnerCount).toBe(0)
+  })
+
+  it('returns an honest all-zero result when there are no learners at all', async () => {
+    const db = {
+      learnerProfile: { findMany: vi.fn().mockResolvedValue([]) },
+      drivingSession: { findMany: vi.fn().mockResolvedValue([]) },
+      drivingTest: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLearnerProgressFunnelReport()
+
+    expect(result.summary).toEqual({ totalEnrolled: 0, dlPassedCount: 0, overallCompletionPercent: 0 })
+  })
+})

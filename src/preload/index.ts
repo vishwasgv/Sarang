@@ -433,6 +433,7 @@ const api: IpcChannels = {
     retailAttachRate: (p) => invoke('reports:retailAttachRate', p),
     classAttendanceHeatmap: (p) => invoke('reports:classAttendanceHeatmap', p),
     membershipRenewalFunnel: (p) => invoke('reports:membershipRenewalFunnel', p),
+    learnerProgressFunnel: () => invoke('reports:learnerProgressFunnel'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1056,6 +1057,10 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('serviceCombo:delete', p),
     resolve: (p: unknown) => invoke('serviceCombo:resolve', p),
   },
+  learnerSkill: {
+    checklist: (p: unknown) => invoke('learnerSkill:checklist', p),
+    upsert: (p: unknown) => invoke('learnerSkill:upsert', p),
+  },
   treatmentPlan: {
     list: (p: unknown) => invoke('treatmentPlan:list', p),
     get: (p: unknown) => invoke('treatmentPlan:get', p),
@@ -1177,6 +1182,7 @@ const api: IpcChannels = {
     createTest: (p: unknown) => invoke('drivingSession:createTest', p),
     updateTest: (p: unknown) => invoke('drivingSession:updateTest', p),
     instructorPassRates: () => invoke('drivingSession:instructorPassRates'),
+    scheduleTestReminder: (p: unknown) => invoke('drivingSession:scheduleTestReminder', p),
   },
   drivingPackage: {
     list: (p?: unknown) => invoke('drivingPackage:list', p),

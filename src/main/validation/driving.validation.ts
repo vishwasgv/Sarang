@@ -147,6 +147,26 @@ export const GenerateDrivingPackageInvoiceSchema = z.object({
   id: z.string().min(1, 'Enrollment ID is required'),
 })
 
+// ── LearnerSkillAssessment (Phase 68 §9.1 item 3) ───────────────────────────
+
+export const GetLearnerSkillChecklistSchema = z.object({
+  customerId: z.string().min(1, 'Learner is required'),
+})
+
+export const UpsertLearnerSkillAssessmentSchema = z.object({
+  customerId: z.string().min(1, 'Learner is required'),
+  skillKey: z.string().min(1, 'Skill is required'),
+  masteryLevel: z.enum(['NOT_STARTED', 'LEARNING', 'MASTERED']),
+  notes: z.string().max(2000).optional(),
+})
+
+// ── Test reminder (Phase 68 §9.1 item 1) ────────────────────────────────────
+
+export const ScheduleTestReminderSchema = z.object({
+  id: z.string().min(1, 'Test ID is required'),
+  daysBefore: z.number().finite().positive().optional(),
+})
+
 export type UpsertLearnerProfilePayload = z.infer<typeof UpsertLearnerProfileSchema>
 export type CreateDrivingVehiclePayload = z.infer<typeof CreateDrivingVehicleSchema>
 export type UpdateDrivingVehiclePayload = z.infer<typeof UpdateDrivingVehicleSchema>

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
+import { buildWhatsAppLink } from './notification-queue.service'
 
 // DrivingSession.sessionFee and DrivingPackage.price/DrivingPackageEnrollment
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -85,8 +86,8 @@ export async function upsertLearnerProfile(payload: {
     const { customerId, learnerLicenseDate, permanentLicenseDate, ...rest } = payload
     const data = {
       ...rest,
-      ...(learnerLicenseDate !== undefined ? { learnerLicenseDate: learnerLicenseDate ? new Date(learnerLicenseDate) : null } : {}),
-      ...(permanentLicenseDate !== undefined ? { permanentLicenseDate: permanentLicenseDate ? new Date(permanentLicenseDate) : null } : {}),
+      ...(learnerLicenseDate !== undefined ? { learnerLicenseDate: learnerLicenseDate ? parseLocalDateStart(learnerLicenseDate) : null } : {}),
+      ...(permanentLicenseDate !== undefined ? { permanentLicenseDate: permanentLicenseDate ? parseLocalDateStart(permanentLicenseDate) : null } : {}),
     }
     const profile = await db.learnerProfile.upsert({
       where: { customerId },
@@ -97,6 +98,112 @@ export async function upsertLearnerProfile(payload: {
     return { success: true, data: profile }
   } catch (err) {
     return { success: false, error: { code: 'LP27-002', message: err instanceof Error ? err.message : 'Could not save learner profile.' } }
+  }
+}
+
+// Phase 68 §9.1 — Driving School item 3: learner skill-mastery checklist. A
+// fixed, code-defined curriculum (not shop-configurable, per the schema
+// comment on LearnerSkillAssessment) — every driving school teaches
+// substantially the same core skill set.
+export const STANDARD_DRIVING_SKILLS: Array<{ key: string; label: string }> = [
+  { key: 'BASIC_CONTROLS', label: 'Basic Controls (clutch, gear, brake)' },
+  { key: 'STEERING_AND_TURNING', label: 'Steering & Turning' },
+  { key: 'PARKING', label: 'Parking (parallel & reverse)' },
+  { key: 'REVERSING', label: 'Reversing & Three-Point Turn' },
+  { key: 'CITY_TRAFFIC', label: 'City Traffic Driving' },
+  { key: 'HIGHWAY_DRIVING', label: 'Highway Driving' },
+  { key: 'NIGHT_DRIVING', label: 'Night Driving' },
+  { key: 'TRAFFIC_RULES', label: 'Traffic Rules & Signs' },
+  { key: 'EMERGENCY_HANDLING', label: 'Emergency Handling' },
+]
+
+export interface LearnerSkillRow { key: string; label: string; masteryLevel: string; assessedByName: string | null; notes: string | null; updatedAt: string | null }
+
+// A learner with zero assessment rows gets every skill defaulted to
+// NOT_STARTED here — never backfilled with real rows, so a fresh learner
+// costs nothing in the DB.
+export async function getLearnerSkillChecklist(customerId: string) {
+  try {
+    const db = getPrisma()
+    const rows = await db.learnerSkillAssessment.findMany({
+      where: { customerId },
+      include: { assessedBy: { select: { fullName: true } } },
+    })
+    const byKey = new Map(rows.map((r) => [r.skillKey, r]))
+    const checklist: LearnerSkillRow[] = STANDARD_DRIVING_SKILLS.map((s) => {
+      const row = byKey.get(s.key)
+      return {
+        key: s.key, label: s.label,
+        masteryLevel: row?.masteryLevel ?? 'NOT_STARTED',
+        assessedByName: row?.assessedBy?.fullName ?? null,
+        notes: row?.notes ?? null,
+        updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
+      }
+    })
+    const masteredCount = checklist.filter((c) => c.masteryLevel === 'MASTERED').length
+    return { success: true, data: { checklist, masteredCount, totalSkills: STANDARD_DRIVING_SKILLS.length } }
+  } catch (err) {
+    return { success: false, error: { code: 'LSA68-001', message: err instanceof Error ? err.message : 'Could not load skill checklist.' } }
+  }
+}
+
+export async function upsertLearnerSkillAssessment(payload: {
+  customerId: string
+  skillKey: string
+  masteryLevel: 'NOT_STARTED' | 'LEARNING' | 'MASTERED'
+  notes?: string
+  assessedById?: string
+}) {
+  try {
+    if (!STANDARD_DRIVING_SKILLS.some((s) => s.key === payload.skillKey)) {
+      return { success: false, error: { code: 'LSA68-002', message: 'Unknown skill.' } }
+    }
+    const db = getPrisma()
+    const profile = await db.learnerProfile.findUnique({ where: { customerId: payload.customerId }, select: { customerId: true } })
+    if (!profile) return { success: false, error: { code: 'LSA68-003', message: 'This learner has no driving-school profile yet — create one before assessing skills.' } }
+
+    const row = await db.learnerSkillAssessment.upsert({
+      where: { customerId_skillKey: { customerId: payload.customerId, skillKey: payload.skillKey } },
+      create: { customerId: payload.customerId, skillKey: payload.skillKey, masteryLevel: payload.masteryLevel, notes: payload.notes ?? null, assessedById: payload.assessedById ?? null },
+      update: { masteryLevel: payload.masteryLevel, notes: payload.notes ?? null, assessedById: payload.assessedById ?? null },
+    })
+    return { success: true, data: row }
+  } catch (err) {
+    return { success: false, error: { code: 'LSA68-004', message: err instanceof Error ? err.message : 'Could not save skill assessment.' } }
+  }
+}
+
+// Phase 68 §9.1 — Driving School item 1: RTO test-slot reminder half (the
+// booking half already existed via createDrivingTest). Mirrors
+// serial.service.ts's scheduleEquipmentServiceReminder shape exactly.
+export async function scheduleTestReminder(testId: string, daysBefore = 1) {
+  try {
+    const db = getPrisma()
+    const test = await db.drivingTest.findUnique({
+      where: { id: testId },
+      include: { learner: { select: { customerName: true, phone: true } } },
+    })
+    if (!test) return { success: false, error: { code: 'DT68-001', message: 'Test not found.' } }
+    if (test.result !== 'PENDING') return { success: false, error: { code: 'DT68-002', message: 'Only a pending test needs a reminder.' } }
+    if (!test.learner.phone) return { success: true, data: null }
+
+    const scheduledFor = new Date(test.testDate.getTime() - daysBefore * 86400000)
+    if (scheduledFor <= new Date()) return { success: false, error: { code: 'DT68-003', message: 'The reminder date has already passed — the test is too close (or in the past) to schedule ahead.' } }
+
+    const testDateStr = test.testDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const testLabel = test.testType === 'LL_TEST' ? 'Learner\'s License test' : 'Driving License test'
+    const message = `Dear ${test.learner.customerName}, your ${testLabel} is scheduled at ${test.testCenter} on ${testDateStr}. All the best! Powered by Sarang | www.aszurex.com`
+    const link = await buildWhatsAppLink(test.learner.phone, message)
+
+    const notification = await db.notificationQueue.create({
+      data: {
+        customerId: test.learnerId, customerName: test.learner.customerName, customerPhone: test.learner.phone,
+        notificationType: 'DRIVING_TEST_REMINDER', templateBody: message, whatsappLink: link, scheduledFor,
+      },
+    })
+    return { success: true, data: notification }
+  } catch (err) {
+    return { success: false, error: { code: 'DT68-004', message: err instanceof Error ? err.message : 'Could not schedule test reminder.' } }
   }
 }
 
@@ -210,7 +317,7 @@ export async function logVehicleMaintenance(payload: {
     const vehicle = await db.drivingVehicle.findUnique({ where: { id: payload.vehicleId }, select: { id: true, odometerKm: true } })
     if (!vehicle) return { success: false, error: { code: 'DVM58-001', message: 'Vehicle not found.' } }
 
-    const serviceDate = payload.serviceDate ? new Date(payload.serviceDate) : new Date()
+    const serviceDate = payload.serviceDate ? parseLocalDateStart(payload.serviceDate) : new Date()
     const [log] = await db.$transaction([
       db.drivingVehicleMaintenanceLog.create({
         data: {
@@ -676,7 +783,7 @@ export async function createDrivingPackageEnrollment(payload: {
       data: {
         learnerId: payload.learnerId,
         packageId: payload.packageId,
-        purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : new Date(),
+        purchaseDate: payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : new Date(),
         notes: payload.notes ?? null,
       },
       include: { learner: { select: { id: true, customerName: true } }, package: true },
@@ -849,7 +956,14 @@ export async function createDrivingTest(payload: {
       data: {
         learnerId: payload.learnerId,
         testType: payload.testType,
-        testDate: new Date(payload.testDate),
+        // Real bug found live (2026-08-27 Phase 68 audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — the same
+        // recurring bug class this file's own createDrivingSession already
+        // documents at length. getUpcomingTestsAndLowBalanceKPIs compares
+        // testDate against a real Date-time `now`/`cutoff`, so a
+        // UTC-midnight-stored test date shows up ~5.5h later than it
+        // should in IST, right at the boundary of the 14-day window.
+        testDate: parseLocalDateStart(payload.testDate),
         testCenter: payload.testCenter,
         notes: payload.notes ?? null,
         instructorId: payload.instructorId ?? null,
@@ -878,7 +992,7 @@ export async function updateDrivingTest(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(retestDate !== undefined ? { retestDate: retestDate ? new Date(retestDate) : null } : {}),
+        ...(retestDate !== undefined ? { retestDate: retestDate ? parseLocalDateStart(retestDate) : null } : {}),
       },
       include: { instructor: { select: { id: true, fullName: true } } },
     })

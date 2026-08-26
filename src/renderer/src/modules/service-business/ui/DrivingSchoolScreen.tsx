@@ -135,7 +135,7 @@ function formatDate(iso: string) {
 }
 
 export function DrivingSchoolScreen() {
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const location = useLocation()
   const [tab, setTab] = useState<'learners' | 'sessions' | 'vehicles' | 'tests' | 'packages'>(
     location.pathname === '/driving/sessions' ? 'sessions' : 'learners'
@@ -144,6 +144,8 @@ export function DrivingSchoolScreen() {
   // Learners
   const [learnerSearch, setLearnerSearch] = useState('')
   const [selectedLearner, setSelectedLearner] = useState<LearnerProfile | null>(null)
+  // Phase 68 §9.1 — Driving School item 3: learner skill-mastery checklist.
+  const [skillChecklist, setSkillChecklist] = useState<Array<{ key: string; label: string; masteryLevel: string }>>([])
   const [learnerForm, setLearnerForm] = useState({ dlApplicationNumber: '', learnerLicenseNumber: '', learnerLicenseDate: '', permanentLicenseNumber: '', permanentLicenseDate: '', licenseClass: 'LMV', vehicleClassPreference: '' })
   const [savingLearner, setSavingLearner] = useState(false)
   const [learnerError, setLearnerError] = useState<string | null>(null)
@@ -327,8 +329,29 @@ export function DrivingSchoolScreen() {
     })
   }, [sessions])
 
+  async function loadSkillChecklist(customerId: string) {
+    try {
+      const res = await api.learnerSkill.checklist({ customerId })
+      if (res.success && res.data) setSkillChecklist((res.data as { checklist: typeof skillChecklist }).checklist)
+      else setSkillChecklist([])
+    } catch {
+      setSkillChecklist([])
+    }
+  }
+
+  async function handleUpdateSkill(customerId: string, skillKey: string, masteryLevel: 'NOT_STARTED' | 'LEARNING' | 'MASTERED') {
+    try {
+      const res = await api.learnerSkill.upsert({ customerId, skillKey, masteryLevel })
+      if (res.success) loadSkillChecklist(customerId)
+      else toastError('Error', res.error?.message ?? 'Could not update skill.')
+    } catch {
+      toastError('Error', 'Could not update skill.')
+    }
+  }
+
   async function handleSelectLearner(customerId: string) {
     const c = customers.find((cu) => cu.id === customerId)
+    loadSkillChecklist(customerId)
     try {
       const res = await api.learnerProfile.get({ customerId })
       if (res.success && res.data) {
@@ -570,6 +593,17 @@ export function DrivingSchoolScreen() {
     }
   }
 
+  // Phase 68 §9.1 — Driving School item 1: RTO test-slot reminder.
+  async function handleSendTestReminder(id: string) {
+    try {
+      const res = await api.drivingSession.scheduleTestReminder({ id })
+      if (res.success) toastSuccess('Reminder scheduled', res.data ? '' : 'This learner has no phone number on file.')
+      else toastError('Error', res.error?.message ?? 'Could not schedule reminder.')
+    } catch {
+      toastError('Error', 'Could not schedule reminder.')
+    }
+  }
+
   // ── Packages (Phase 41) ─────────────────────────────────────────────────────
 
   function openPackageForm(pkg?: DrivingPackage) {
@@ -784,6 +818,36 @@ export function DrivingSchoolScreen() {
               <button onClick={handleSaveLearner} disabled={savingLearner} className="h-11 px-6 bg-primary text-primary-foreground rounded-xl text-sm font-medium disabled:opacity-50">
                 {savingLearner ? 'Saving...' : 'Save Profile'}
               </button>
+
+              {/* Phase 68 §9.1 — Driving School item 3: skill-mastery checklist */}
+              {selectedLearner.id && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-sm font-semibold text-foreground mb-3">Skill Mastery</p>
+                  <div className="space-y-2">
+                    {skillChecklist.map((s) => (
+                      <div key={s.key} className="flex items-center justify-between gap-3 border border-border rounded-xl px-3 py-2">
+                        <span className="text-sm text-foreground">{s.label}</span>
+                        <div className="flex gap-1">
+                          {(['NOT_STARTED', 'LEARNING', 'MASTERED'] as const).map((level) => (
+                            <button
+                              key={level}
+                              onClick={() => handleUpdateSkill(selectedLearner.customerId, s.key, level)}
+                              className={cn(
+                                'text-xs rounded-lg px-2 py-1 border transition-colors',
+                                s.masteryLevel === level
+                                  ? level === 'MASTERED' ? 'bg-success/10 text-success border-success/30' : level === 'LEARNING' ? 'bg-warning/10 text-warning border-warning/30' : 'bg-muted/30 text-muted-foreground border-border'
+                                  : 'border-border text-muted-foreground hover:bg-muted/30'
+                              )}
+                            >
+                              {level === 'NOT_STARTED' ? 'Not Started' : level === 'LEARNING' ? 'Learning' : 'Mastered'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           ) : (
             <Card className="flex-1 flex items-center justify-center">
@@ -1010,6 +1074,7 @@ export function DrivingSchoolScreen() {
                     <td className="px-4 py-3 text-center">
                       {t.result === 'PENDING' && (
                         <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleSendTestReminder(t.id)} className="text-xs text-foreground border border-border rounded-lg px-2 py-1 hover:bg-muted/50">Remind</button>
                           <button onClick={() => handleUpdateTestResult(t.id, 'PASSED')} className="text-xs text-success border border-success/30 rounded-lg px-2 py-1 hover:bg-success/5">Pass</button>
                           <button onClick={() => handleUpdateTestResult(t.id, 'FAILED')} className="text-xs text-danger border border-danger/30 rounded-lg px-2 py-1 hover:bg-danger/5">Fail</button>
                         </div>

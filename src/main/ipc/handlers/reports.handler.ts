@@ -947,4 +947,11 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateMembershipRenewalFunnelReport(parsed.data)
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
+  handle('reports:learnerProgressFunnel', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateLearnerProgressFunnelReport()
+    return { success: true, data }
+  })
 }

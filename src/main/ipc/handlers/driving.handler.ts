@@ -1,4 +1,5 @@
 import { requirePermission } from '../permission-guard'
+import { getCurrentSession } from '../../services/auth.service'
 import {
   getLearnerProfile,
   upsertLearnerProfile,
@@ -24,6 +25,9 @@ import {
   createDrivingPackageEnrollment,
   deleteDrivingPackageEnrollment,
   generateDrivingPackageInvoice,
+  getLearnerSkillChecklist,
+  upsertLearnerSkillAssessment,
+  scheduleTestReminder,
 } from '../../services/driving.service'
 import {
   UpsertLearnerProfileSchema,
@@ -43,6 +47,9 @@ import {
   CreateDrivingPackageEnrollmentSchema,
   DeleteDrivingPackageEnrollmentSchema,
   GenerateDrivingPackageInvoiceSchema,
+  GetLearnerSkillChecklistSchema,
+  UpsertLearnerSkillAssessmentSchema,
+  ScheduleTestReminderSchema,
 } from '../../validation/driving.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -225,5 +232,29 @@ export function register(handle: HandleFn): void {
     const parsed = GenerateDrivingPackageInvoiceSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateDrivingPackageInvoice(parsed.data.id)
+  })
+
+  // ── Learner skill-mastery checklist (Phase 68 §9.1 item 3) ──────────────────
+  handle('learnerSkill:checklist', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const parsed = GetLearnerSkillChecklistSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return getLearnerSkillChecklist(parsed.data.customerId)
+  })
+
+  handle('learnerSkill:upsert', async (raw) => {
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
+    const parsed = UpsertLearnerSkillAssessmentSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const session = getCurrentSession()
+    return upsertLearnerSkillAssessment({ ...parsed.data, assessedById: session?.userId })
+  })
+
+  // ── RTO test-slot reminder (Phase 68 §9.1 item 1) ───────────────────────────
+  handle('drivingSession:scheduleTestReminder', async (raw) => {
+    const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
+    const parsed = ScheduleTestReminderSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return scheduleTestReminder(parsed.data.id, parsed.data.daysBefore)
   })
 }

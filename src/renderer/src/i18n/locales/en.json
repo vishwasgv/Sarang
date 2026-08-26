@@ -1812,6 +1812,10 @@
         "label": "Class Attendance Heatmap",
         "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
       },
+      "learnerProgressFunnel": {
+        "label": "Learner Progress Funnel",
+        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2080,6 +2084,8 @@
     "summary": {
       "balanced": "Balanced",
       "notBalanced": "Not Balanced",
+      "totalEnrolled": "Total Enrolled",
+      "overallCompletionPercent": "DL Completion Rate %",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2564,6 +2570,7 @@
       "renewalRatePercent": "Renewal Rate %",
       "className": "Class",
       "checkInCount": "Check-Ins",
+      "learnerCount": "Learners",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",

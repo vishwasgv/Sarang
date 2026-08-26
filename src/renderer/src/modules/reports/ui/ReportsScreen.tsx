@@ -215,6 +215,10 @@ interface MembershipRenewalFunnelReport { dateFrom: string; dateTo: string; rows
 interface ClassAttendanceHeatmapCell { className: string; dayOfWeek: string; checkInCount: number }
 interface ClassAttendanceHeatmapReport { dateFrom: string; dateTo: string; classNames: string[]; daysOfWeek: string[]; cells: ClassAttendanceHeatmapCell[]; summary: { totalCheckIns: number; busiestClassName: string | null; busiestDay: string | null } }
 
+// Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
+interface LearnerProgressFunnelStage { stage: string; learnerCount: number }
+interface LearnerProgressFunnelReport { stages: LearnerProgressFunnelStage[]; summary: { totalEnrolled: number; dlPassedCount: number; overallCompletionPercent: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -615,6 +619,8 @@ type ReportType =
   | 'stylistRepeatClient' | 'retailAttachRate'
   // Phase 68 §9.1 — Gym/Studio items 1/2 & 4
   | 'membershipRenewalFunnel' | 'classAttendanceHeatmap'
+  // Phase 68 §9.1 — Driving School item 4
+  | 'learnerProgressFunnel'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -816,6 +822,8 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Gym/Studio items 1/2 & 4.
   { id: 'membershipRenewalFunnel', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'memberships' },
   { id: 'classAttendanceHeatmap', icon: <Table size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'batch_classes' },
+  // Phase 68 §9.1 — Driving School item 4. Current-state snapshot, no date range.
+  { id: 'learnerProgressFunnel', icon: <Target size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'learner_profiles' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1228,6 +1236,9 @@ export function ReportsScreen() {
           break
         case 'classAttendanceHeatmap':
           res = await window.api.reports.classAttendanceHeatmap({ dateFrom, dateTo })
+          break
+        case 'learnerProgressFunnel':
+          res = await window.api.reports.learnerProgressFunnel()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1942,6 +1953,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.className'), t('reports.col.dayOfWeek'), t('reports.col.checkInCount')],
           rows: d.cells.map(c => [c.className, c.dayOfWeek, c.checkInCount])
+        }
+      }
+      case 'learnerProgressFunnel': {
+        const d = reportData as LearnerProgressFunnelReport
+        return {
+          headers: [t('reports.col.stage'), t('reports.col.learnerCount')],
+          rows: d.stages.map(s => [s.stage, s.learnerCount])
         }
       }
       case 'serviceProjects': {
@@ -3547,6 +3565,7 @@ export function ReportsScreen() {
         return [{ type: 'bar', title: t('reports.defs.membershipRenewalFunnel.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.planName, value: r.renewalRatePercent })) }]
       }
       case 'classAttendanceHeatmap': return []
+      case 'learnerProgressFunnel': return []
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         if (d.byStatus.length === 0) return []
@@ -4053,6 +4072,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'retailAttachRate': return <RetailAttachRateView data={data as RetailAttachRateReport} />
     case 'membershipRenewalFunnel': return <MembershipRenewalFunnelView data={data as MembershipRenewalFunnelReport} />
     case 'classAttendanceHeatmap': return <ClassAttendanceHeatmapView data={data as ClassAttendanceHeatmapReport} />
+    case 'learnerProgressFunnel': return <LearnerProgressFunnelView data={data as LearnerProgressFunnelReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5776,6 +5796,36 @@ function ClassAttendanceHeatmapView({ data }: { data: ClassAttendanceHeatmapRepo
       ) : (
         <EmptyState title={t('reports.empty.classAttendanceHeatmap')} subtitle="" />
       )}
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
+function LearnerProgressFunnelView({ data }: { data: LearnerProgressFunnelReport }) {
+  const { t } = useTranslation()
+  const maxCount = Math.max(1, ...data.stages.map(s => s.learnerCount))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalEnrolled'), value: String(data.summary.totalEnrolled) },
+        { label: t('reports.summary.overallCompletionPercent'), value: `${data.summary.overallCompletionPercent}%` },
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.learnerProgressFunnel.label')}</h3>
+        <div className="space-y-3">
+          {data.stages.map((s) => (
+            <div key={s.stage}>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                <span>{s.stage}</span>
+                <span className="font-semibold text-dark dark:text-slate-100">{s.learnerCount}</span>
+              </div>
+              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.learnerCount / maxCount) * 100 : 0}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

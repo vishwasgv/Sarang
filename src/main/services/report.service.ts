@@ -7393,6 +7393,52 @@ async function generateRetailAttachRateReport(params: { dateFrom: string; dateTo
   }
 }
 
+// Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel. A
+// CURRENT-STATE snapshot across every learner ever enrolled (no date range —
+// a funnel counts stage reach, not a trend over time, same reasoning
+// generateSizeAvailabilityHeatmapReport's own current-state stock snapshot
+// already established). Each stage is cumulative-distinct-learner-count,
+// strictly monotonically non-increasing by construction (a learner counted
+// at a later stage necessarily has a LearnerProfile row too).
+export interface LearnerProgressFunnelStage { stage: string; learnerCount: number }
+export interface LearnerProgressFunnelReport {
+  stages: LearnerProgressFunnelStage[]
+  summary: { totalEnrolled: number; dlPassedCount: number; overallCompletionPercent: number }
+}
+
+async function generateLearnerProgressFunnelReport(): Promise<LearnerProgressFunnelReport> {
+  const db = getPrisma()
+
+  const [profiles, sessions, tests] = await Promise.all([
+    db.learnerProfile.findMany({ select: { customerId: true } }),
+    db.drivingSession.findMany({ select: { learnerId: true }, distinct: ['learnerId'] }),
+    db.drivingTest.findMany({ select: { learnerId: true, testType: true, result: true } }),
+  ])
+
+  const enrolledIds = new Set(profiles.map((p) => p.customerId))
+  const sessionsStartedIds = new Set(sessions.map((s) => s.learnerId).filter((id) => enrolledIds.has(id)))
+  const llTakenIds = new Set(tests.filter((t) => t.testType === 'LL_TEST').map((t) => t.learnerId))
+  const llPassedIds = new Set(tests.filter((t) => t.testType === 'LL_TEST' && t.result === 'PASSED').map((t) => t.learnerId))
+  const dlPassedIds = new Set(tests.filter((t) => t.testType === 'DL_TEST' && t.result === 'PASSED').map((t) => t.learnerId))
+
+  const stages: LearnerProgressFunnelStage[] = [
+    { stage: 'Enrolled', learnerCount: enrolledIds.size },
+    { stage: 'Sessions Started', learnerCount: sessionsStartedIds.size },
+    { stage: 'LL Test Taken', learnerCount: llTakenIds.size },
+    { stage: 'LL Test Passed', learnerCount: llPassedIds.size },
+    { stage: 'DL Test Passed', learnerCount: dlPassedIds.size },
+  ]
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  return {
+    stages,
+    summary: {
+      totalEnrolled: enrolledIds.size, dlPassedCount: dlPassedIds.size,
+      overallCompletionPercent: enrolledIds.size > 0 ? round1((dlPassedIds.size / enrolledIds.size) * 100) : 0,
+    },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7509,4 +7555,5 @@ export const reportService = {
   generateRetailAttachRateReport,
   generateClassAttendanceHeatmapReport,
   generateMembershipRenewalFunnelReport,
+  generateLearnerProgressFunnelReport,
 }
