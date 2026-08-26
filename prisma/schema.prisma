@@ -1444,6 +1444,7 @@ model FixedAsset {
   updatedAt               DateTime  @updatedAt
 
   depreciationRuns FixedAssetDepreciation[]
+  checkouts        EquipmentCheckout[]
 
   @@index([status])
   @@index([category])
@@ -2931,6 +2932,7 @@ model Employee {
   labItemsCriticalNotified  LabTestOrderItem[]        @relation("LabItemCriticalNotifiedBy") // Phase 58 §2
   salaryPayments            SalaryPayment[] // Phase 54F.16
   siteVisitsRecorded        SiteVisit[]               @relation("SiteVisitRecordedBy") // Fresh-audit build — Civil Engineer
+  equipmentCheckouts        EquipmentCheckout[] // Phase 68 §9.1 — Photo Studio
 
   @@index([isActive])
   @@index([department])
@@ -5290,6 +5292,7 @@ model ShootBooking {
   delivery   DeliveryTracker?
   checklist  ShootChecklistItem[] // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist
   addOnItems ShootAddOnItem[] // Phase 58 §2 — Photo Studio: itemized add-ons
+  equipmentCheckouts EquipmentCheckout[]
 
   @@index([clientId])
   @@index([shootDate])
@@ -5306,11 +5309,44 @@ model DeliveryTracker {
   finalDeliveredDate    DateTime?
   deliveryFormat        String?
   deliveredPhotosCount  Int? // Phase 58 §2 — Photo Studio: actual delivered count, vs. ShootBooking.expectedPhotosCount
+  // Phase 68 §9.1 — Photo Studio item 5: revision-round tracker. How many
+  // times the client sent the album/edits back for changes after the
+  // proof/album-proof was sent — a real, incrementing counter (never
+  // guessed), since a studio's repeated-revision clients are a genuine
+  // profitability/scoping signal.
+  revisionRounds        Int       @default(0)
   notes                 String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   shootBooking ShootBooking @relation(fields: [shootBookingId], references: [id], onDelete: Cascade)
+}
+
+// Phase 68 §9.1 — Photo Studio item 3: studio-owned equipment rental-and-
+// return tracking. Reuses FixedAsset as the equipment registry (a camera/
+// lens/drone the studio owns IS a fixed asset) rather than a parallel
+// "Equipment" entity — this is the checkout/return EVENT log on top of it.
+// shootBookingId is optional — equipment can be checked out without being
+// tied to one specific booking (e.g. a multi-day rental to a freelancer).
+model EquipmentCheckout {
+  id                 String    @id @default(cuid())
+  fixedAssetId       String
+  shootBookingId     String?
+  checkedOutToId     String? // Employee
+  checkedOutDate     DateTime
+  expectedReturnDate DateTime?
+  actualReturnDate   DateTime? // null = still checked out
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  fixedAsset   FixedAsset    @relation(fields: [fixedAssetId], references: [id], onDelete: Cascade)
+  shootBooking ShootBooking? @relation(fields: [shootBookingId], references: [id], onDelete: SetNull)
+  checkedOutTo Employee?     @relation(fields: [checkedOutToId], references: [id], onDelete: SetNull)
+
+  @@index([fixedAssetId])
+  @@index([shootBookingId])
+  @@index([actualReturnDate])
 }
 
 // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist, per booking

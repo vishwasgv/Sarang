@@ -1884,6 +1884,18 @@
         "label": "Sprint Billing",
         "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
       },
+      "deliveryPipeline": {
+        "label": "Delivery Pipeline",
+        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+      },
+      "shootTypeRevenueMix": {
+        "label": "Shoot-Type Revenue Mix",
+        "description": "Revenue, booking count, and average ticket per shoot type"
+      },
+      "equipmentCheckout": {
+        "label": "Equipment Checkout",
+        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2191,6 +2203,11 @@
       "totalNonBillableHours": "Total Non-Billable Hours",
       "totalCompletedSprints": "Completed Sprints",
       "unlinkedCount": "Unbilled Sprints",
+      "totalActive": "Active Bookings",
+      "deliveredCount": "Delivered",
+      "avgRevisionRounds": "Avg. Revision Rounds",
+      "totalBookings": "Total Bookings",
+      "totalOutstanding": "Outstanding",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2648,7 +2665,10 @@
       "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
       "issueAging": "No open issues right now.",
       "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet."
+      "sprintBilling": "No completed sprints yet.",
+      "deliveryPipeline": "No bookings with a revision round logged yet.",
+      "shootTypeRevenueMix": "No priced bookings in this date range.",
+      "equipmentCheckout": "No equipment currently checked out."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -3020,7 +3040,17 @@
       "sprintNumber": "Sprint #",
       "sprintName": "Sprint Name",
       "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount"
+      "milestoneAmount": "Milestone Amount",
+      "shootType": "Shoot Type",
+      "revisionRounds": "Revision Rounds",
+      "bookingCount": "Bookings",
+      "avgTicket": "Avg. Ticket",
+      "assetName": "Equipment",
+      "checkedOutToName": "Checked Out To",
+      "checkedOutDate": "Checked Out",
+      "expectedReturnDate": "Expected Return",
+      "daysOut": "Days Out",
+      "isOverdue": "Overdue"
     },
     "legend": {
       "schemeCost": "Scheme Cost",

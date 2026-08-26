@@ -6332,6 +6332,151 @@ async function generateShootBookingReport(params: { dateFrom: string; dateTo: st
   }
 }
 
+// Phase 68 §9.1 — Photo Studio items 1/2/5: post-production/delivery
+// pipeline status + revision-round tracker. "Stage" is derived from which
+// DeliveryTracker date fields are actually set (never guessed from status
+// alone — a booking can sit in EDITING for weeks with no dates logged yet).
+// revisionRounds worklist (item 5) lives in the SAME report since it's the
+// same underlying entity and both are "how is this delivery actually
+// progressing" signals, not two independent data domains.
+const PIPELINE_STAGE_ORDER = ['NOT_STARTED', 'PROOFS_SENT', 'SELECTION_RECEIVED', 'EDITING', 'ALBUM_PROOF_SENT', 'DELIVERED'] as const
+
+function deliveryStage(d: { proofsSentDate: Date | null; selectionReceivedDate: Date | null; editingStartedDate: Date | null; albumProofSentDate: Date | null; finalDeliveredDate: Date | null } | null): string {
+  if (!d) return 'NOT_STARTED'
+  if (d.finalDeliveredDate) return 'DELIVERED'
+  if (d.albumProofSentDate) return 'ALBUM_PROOF_SENT'
+  if (d.editingStartedDate) return 'EDITING'
+  if (d.selectionReceivedDate) return 'SELECTION_RECEIVED'
+  if (d.proofsSentDate) return 'PROOFS_SENT'
+  return 'NOT_STARTED'
+}
+
+export interface DeliveryPipelineStage { stage: string; count: number }
+export interface DeliveryPipelineRevisionRow {
+  bookingId: string; clientName: string; shootType: string; revisionRounds: number; stage: string
+}
+export interface DeliveryPipelineReport {
+  stages: DeliveryPipelineStage[]
+  revisionRows: DeliveryPipelineRevisionRow[]
+  summary: { totalActive: number; deliveredCount: number; overdueCount: number; avgRevisionRounds: number }
+}
+
+async function generateDeliveryPipelineReport(): Promise<DeliveryPipelineReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const bookings = await db.shootBooking.findMany({
+    where: { status: { not: 'CANCELLED' } },
+    include: { client: { select: { customerName: true } }, delivery: true },
+  })
+
+  const byStage = new Map<string, number>()
+  for (const s of PIPELINE_STAGE_ORDER) byStage.set(s, 0)
+  let overdueCount = 0
+  const revisionRows: DeliveryPipelineRevisionRow[] = []
+  for (const b of bookings) {
+    const stage = deliveryStage(b.delivery)
+    byStage.set(stage, (byStage.get(stage) ?? 0) + 1)
+    if (stage !== 'DELIVERED' && b.deliveryDeadline && b.deliveryDeadline < now) overdueCount += 1
+    if (b.delivery && b.delivery.revisionRounds > 0) {
+      revisionRows.push({ bookingId: b.id, clientName: b.client.customerName, shootType: b.shootType, revisionRounds: b.delivery.revisionRounds, stage })
+    }
+  }
+  revisionRows.sort((a, b) => b.revisionRounds - a.revisionRounds)
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const withDelivery = bookings.filter((b) => b.delivery)
+  const avgRevisionRounds = withDelivery.length > 0 ? round1(withDelivery.reduce((s, b) => s + (b.delivery?.revisionRounds ?? 0), 0) / withDelivery.length) : 0
+
+  return {
+    stages: PIPELINE_STAGE_ORDER.map((stage) => ({ stage, count: byStage.get(stage) ?? 0 })),
+    revisionRows,
+    summary: { totalActive: bookings.length, deliveredCount: byStage.get('DELIVERED') ?? 0, overdueCount, avgRevisionRounds },
+  }
+}
+
+// Phase 68 §9.1 — Photo Studio item 4: shoot-type revenue mix. Revenue,
+// booking count, and average ticket per shoot type, ranked by revenue
+// share — distinct from the pre-existing generateShootBookingReport's
+// byShootType (a plain count, no revenue cross-cut).
+export interface ShootTypeRevenueMixRow {
+  shootType: string; bookingCount: number; totalRevenue: number; avgTicket: number; revenueSharePercent: number
+}
+export interface ShootTypeRevenueMixReport {
+  dateFrom: string; dateTo: string
+  rows: ShootTypeRevenueMixRow[]
+  summary: { totalRevenue: number; totalBookings: number }
+}
+
+async function generateShootTypeRevenueMixReport(params: { dateFrom: string; dateTo: string }): Promise<ShootTypeRevenueMixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bookings = await db.shootBooking.findMany({
+    where: { createdAt: { gte: from, lte: to }, finalAmount: { not: null } },
+    select: { shootType: true, finalAmount: true },
+  })
+
+  const byType = new Map<string, { count: number; revenue: number }>()
+  for (const b of bookings) {
+    const existing = byType.get(b.shootType) ?? { count: 0, revenue: 0 }
+    existing.count += 1
+    existing.revenue += Number(b.finalAmount)
+    byType.set(b.shootType, existing)
+  }
+
+  const totalRevenue = roundCurrency(Array.from(byType.values()).reduce((s, v) => s + v.revenue, 0))
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ShootTypeRevenueMixRow[] = Array.from(byType.entries())
+    .map(([shootType, v]) => ({
+      shootType, bookingCount: v.count, totalRevenue: roundCurrency(v.revenue),
+      avgTicket: v.count > 0 ? roundCurrency(v.revenue / v.count) : 0,
+      revenueSharePercent: totalRevenue > 0 ? round1((v.revenue / totalRevenue) * 100) : 0,
+    }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalRevenue, totalBookings: bookings.length },
+  }
+}
+
+// Phase 68 §9.1 — Photo Studio item 3: studio-owned equipment
+// rental-and-return tracking. Every currently-outstanding checkout
+// (actualReturnDate still null), overdue ones (past expectedReturnDate)
+// first — the real "what's out and late" worklist.
+export interface EquipmentCheckoutRow {
+  checkoutId: string; assetName: string; checkedOutToName: string | null
+  checkedOutDate: string; expectedReturnDate: string | null; daysOut: number; isOverdue: boolean
+}
+export interface EquipmentCheckoutReport {
+  rows: EquipmentCheckoutRow[]
+  summary: { totalOutstanding: number; overdueCount: number }
+}
+
+async function generateEquipmentCheckoutReport(): Promise<EquipmentCheckoutReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const checkouts = await db.equipmentCheckout.findMany({
+    where: { actualReturnDate: null },
+    include: { fixedAsset: { select: { assetName: true } }, checkedOutTo: { select: { fullName: true } } },
+    orderBy: { checkedOutDate: 'asc' },
+  })
+
+  const rows: EquipmentCheckoutRow[] = checkouts.map((c) => ({
+    checkoutId: c.id, assetName: c.fixedAsset.assetName, checkedOutToName: c.checkedOutTo?.fullName ?? null,
+    checkedOutDate: toLocalISODate(c.checkedOutDate),
+    expectedReturnDate: c.expectedReturnDate ? toLocalISODate(c.expectedReturnDate) : null,
+    daysOut: Math.floor((now.getTime() - c.checkedOutDate.getTime()) / 86400000),
+    isOverdue: !!c.expectedReturnDate && c.expectedReturnDate < now,
+  })).sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue))
+
+  return {
+    rows,
+    summary: { totalOutstanding: rows.length, overdueCount: rows.filter((r) => r.isOverdue).length },
+  }
+}
+
 // ── Event Management — event bookings ──────────────────────────────────────
 
 export interface EventBookingReportRow {
@@ -8336,4 +8481,7 @@ export const reportService = {
   generateIssueAgingReport,
   generateTeamUtilizationReport,
   generateSprintBillingReport,
+  generateDeliveryPipelineReport,
+  generateShootTypeRevenueMixReport,
+  generateEquipmentCheckoutReport,
 }

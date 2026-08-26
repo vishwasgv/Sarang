@@ -451,6 +451,9 @@ const api: IpcChannels = {
     issueAging: () => invoke('reports:issueAging'),
     teamUtilization: (p: unknown) => invoke('reports:teamUtilization', p),
     sprintBilling: () => invoke('reports:sprintBilling'),
+    deliveryPipeline: () => invoke('reports:deliveryPipeline'),
+    shootTypeRevenueMix: (p: unknown) => invoke('reports:shootTypeRevenueMix', p),
+    equipmentCheckout: () => invoke('reports:equipmentCheckout'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1418,6 +1421,13 @@ const api: IpcChannels = {
   deliveryTracker: {
     get: (p: unknown) => invoke('deliveryTracker:get', p),
     upsert: (p: unknown) => invoke('deliveryTracker:upsert', p),
+    incrementRevision: (p: unknown) => invoke('deliveryTracker:incrementRevision', p),
+  },
+  equipmentCheckout: {
+    list: (p?: unknown) => invoke('equipmentCheckout:list', p),
+    checkOut: (p: unknown) => invoke('equipmentCheckout:checkOut', p),
+    return: (p: unknown) => invoke('equipmentCheckout:return', p),
+    delete: (p: unknown) => invoke('equipmentCheckout:delete', p),
   },
   shootChecklist: {
     list: (p: unknown) => invoke('shootChecklist:list', p),

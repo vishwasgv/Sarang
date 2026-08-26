@@ -561,6 +561,12 @@ export interface IpcChannels {
     teamUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Software Agency item 5: Sprint Billing.
     sprintBilling: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Photo Studio items 1/2/5: Delivery Pipeline.
+    deliveryPipeline: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Photo Studio item 4: Shoot-Type Revenue Mix.
+    shootTypeRevenueMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Photo Studio item 3: Equipment Checkout.
+    equipmentCheckout: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1656,6 +1662,13 @@ export interface IpcChannels {
   deliveryTracker: {
     get: (payload: string) => Promise<ApiResponse>
     upsert: (payload: { shootBookingId: string; proofsSentDate?: string | null; selectionReceivedDate?: string | null; editingStartedDate?: string | null; albumProofSentDate?: string | null; finalDeliveredDate?: string | null; deliveryFormat?: string | null; deliveredPhotosCount?: number | null; notes?: string | null }) => Promise<ApiResponse>
+    incrementRevision: (payload: string) => Promise<ApiResponse>
+  }
+  equipmentCheckout: {
+    list: (payload?: { fixedAssetId?: string; shootBookingId?: string; outstandingOnly?: boolean }) => Promise<ApiResponse>
+    checkOut: (payload: { fixedAssetId: string; shootBookingId?: string; checkedOutToId?: string; checkedOutDate: string; expectedReturnDate?: string; notes?: string }) => Promise<ApiResponse>
+    return: (payload: { id: string; actualReturnDate: string; notes?: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   shootChecklist: {
     list: (payload: { shootBookingId: string }) => Promise<ApiResponse>

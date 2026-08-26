@@ -1081,4 +1081,27 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateSprintBillingReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Photo Studio items 1/2/5: Delivery Pipeline.
+  handle('reports:deliveryPipeline', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateDeliveryPipelineReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Photo Studio item 4: Shoot-Type Revenue Mix.
+  handle('reports:shootTypeRevenueMix', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateShootTypeRevenueMixReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Photo Studio item 3: Equipment Checkout.
+  handle('reports:equipmentCheckout', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateEquipmentCheckoutReport()
+    return { success: true, data }
+  })
 }

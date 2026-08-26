@@ -287,6 +287,19 @@ interface TeamUtilizationReport { dateFrom: string; dateTo: string; rows: TeamUt
 interface SprintBillingRow { projectName: string; sprintNumber: number; sprintName: string | null; milestoneStatus: string | null; milestoneAmount: number | null }
 interface SprintBillingReport { rows: SprintBillingRow[]; summary: { totalCompletedSprints: number; unlinkedCount: number } }
 
+// Phase 68 §9.1 — Photo Studio items 1/2/5: Delivery Pipeline.
+interface DeliveryPipelineStage { stage: string; count: number }
+interface DeliveryPipelineRevisionRow { bookingId: string; clientName: string; shootType: string; revisionRounds: number; stage: string }
+interface DeliveryPipelineReport { stages: DeliveryPipelineStage[]; revisionRows: DeliveryPipelineRevisionRow[]; summary: { totalActive: number; deliveredCount: number; overdueCount: number; avgRevisionRounds: number } }
+
+// Phase 68 §9.1 — Photo Studio item 4: Shoot-Type Revenue Mix.
+interface ShootTypeRevenueMixRow { shootType: string; bookingCount: number; totalRevenue: number; avgTicket: number; revenueSharePercent: number }
+interface ShootTypeRevenueMixReport { dateFrom: string; dateTo: string; rows: ShootTypeRevenueMixRow[]; summary: { totalRevenue: number; totalBookings: number } }
+
+// Phase 68 §9.1 — Photo Studio item 3: Equipment Checkout.
+interface EquipmentCheckoutRow { checkoutId: string; assetName: string; checkedOutToName: string | null; checkedOutDate: string; expectedReturnDate: string | null; daysOut: number; isOverdue: boolean }
+interface EquipmentCheckoutReport { rows: EquipmentCheckoutRow[]; summary: { totalOutstanding: number; overdueCount: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -703,6 +716,8 @@ type ReportType =
   | 'campaignROI' | 'deliverableStatusPipeline' | 'channelPerformance' | 'retainerWorkDelivered'
   // Phase 68 §9.1 — Software Agency items 1, 4 & 5
   | 'issueAging' | 'teamUtilization' | 'sprintBilling'
+  // Phase 68 §9.1 — Photo Studio items 1/2/5, 3 & 4
+  | 'deliveryPipeline' | 'shootTypeRevenueMix' | 'equipmentCheckout'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -887,6 +902,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'realEstatePipeline', icon: <Home size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'properties' },
   { id: 'retainers', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'retainers' },
   { id: 'shootBookings', icon: <Camera size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
+  // Phase 68 §9.1 — Photo Studio items 1/2/5. Current-state, no date range.
+  { id: 'deliveryPipeline', icon: <CalendarClock size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
+  // Phase 68 §9.1 — Photo Studio item 4.
+  { id: 'shootTypeRevenueMix', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
+  // Phase 68 §9.1 — Photo Studio item 3. Current-state, no date range.
+  { id: 'equipmentCheckout', icon: <PackageSearch size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
   { id: 'eventBookings', icon: <PartyPopper size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'event_bookings' },
   { id: 'placements', icon: <UsersRound size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'placement_agency' },
   { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
@@ -1408,6 +1429,15 @@ export function ReportsScreen() {
           break
         case 'sprintBilling':
           res = await window.api.reports.sprintBilling()
+          break
+        case 'deliveryPipeline':
+          res = await window.api.reports.deliveryPipeline()
+          break
+        case 'shootTypeRevenueMix':
+          res = await window.api.reports.shootTypeRevenueMix({ dateFrom, dateTo })
+          break
+        case 'equipmentCheckout':
+          res = await window.api.reports.equipmentCheckout()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2234,6 +2264,27 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.projectName'), t('reports.col.sprintNumber'), t('reports.col.sprintName'), t('reports.col.milestoneStatus'), `${t('reports.col.milestoneAmount')} (${currencySymbol})`],
           rows: d.rows.map(r => [r.projectName, r.sprintNumber, r.sprintName ?? '—', r.milestoneStatus ?? 'Not billed', r.milestoneAmount ?? '—'])
+        }
+      }
+      case 'deliveryPipeline': {
+        const d = reportData as DeliveryPipelineReport
+        return {
+          headers: [t('reports.col.client'), t('reports.col.shootType'), t('reports.col.stage'), t('reports.col.revisionRounds')],
+          rows: d.revisionRows.map(r => [r.clientName, r.shootType, r.stage, r.revisionRounds])
+        }
+      }
+      case 'shootTypeRevenueMix': {
+        const d = reportData as ShootTypeRevenueMixReport
+        return {
+          headers: [t('reports.col.shootType'), t('reports.col.bookingCount'), `${t('common.amount')} (${currencySymbol})`, `${t('reports.col.avgTicket')} (${currencySymbol})`, t('reports.col.revenueSharePercent')],
+          rows: d.rows.map(r => [r.shootType, r.bookingCount, r.totalRevenue.toFixed(2), r.avgTicket.toFixed(2), r.revenueSharePercent])
+        }
+      }
+      case 'equipmentCheckout': {
+        const d = reportData as EquipmentCheckoutReport
+        return {
+          headers: [t('reports.col.assetName'), t('reports.col.checkedOutToName'), t('reports.col.checkedOutDate'), t('reports.col.expectedReturnDate'), t('reports.col.daysOut'), t('reports.col.isOverdue')],
+          rows: d.rows.map(r => [r.assetName, r.checkedOutToName ?? '—', r.checkedOutDate, r.expectedReturnDate ?? '—', r.daysOut, r.isOverdue ? t('common.yes') : t('common.no')])
         }
       }
       case 'serviceProjects': {
@@ -3863,6 +3914,9 @@ export function ReportsScreen() {
       case 'issueAging': return []
       case 'teamUtilization': return []
       case 'sprintBilling': return []
+      case 'deliveryPipeline': return []
+      case 'shootTypeRevenueMix': return []
+      case 'equipmentCheckout': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4392,6 +4446,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'issueAging': return <IssueAgingView data={data as IssueAgingReport} />
     case 'teamUtilization': return <TeamUtilizationView data={data as TeamUtilizationReport} />
     case 'sprintBilling': return <SprintBillingView data={data as SprintBillingReport} fmt={fmt} />
+    case 'deliveryPipeline': return <DeliveryPipelineView data={data as DeliveryPipelineReport} />
+    case 'shootTypeRevenueMix': return <ShootTypeRevenueMixView data={data as ShootTypeRevenueMixReport} fmt={fmt} />
+    case 'equipmentCheckout': return <EquipmentCheckoutView data={data as EquipmentCheckoutReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6498,6 +6555,79 @@ function SprintBillingView({ data, fmt }: { data: SprintBillingReport; fmt: (n: 
         headers={[t('reports.col.projectName'), t('reports.col.sprintNumber'), t('reports.col.sprintName'), t('reports.col.milestoneStatus'), t('common.amount')]}
         rows={data.rows.map(r => [r.projectName, r.sprintNumber, r.sprintName ?? '—', r.milestoneStatus ?? 'Not billed', r.milestoneAmount != null ? fmt(r.milestoneAmount) : '—'])}
         emptyText={t('reports.empty.sprintBilling')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Photo Studio items 1/2/5: Delivery Pipeline.
+function DeliveryPipelineView({ data }: { data: DeliveryPipelineReport }) {
+  const { t } = useTranslation()
+  const maxCount = Math.max(1, ...data.stages.map(s => s.count))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalActive'), value: String(data.summary.totalActive) },
+        { label: t('reports.summary.deliveredCount'), value: String(data.summary.deliveredCount) },
+        { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
+        { label: t('reports.summary.avgRevisionRounds'), value: String(data.summary.avgRevisionRounds) },
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.deliveryPipeline.label')}</h3>
+        <div className="space-y-3">
+          {data.stages.map((s) => (
+            <div key={s.stage}>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                <span>{s.stage.replace(/_/g, ' ')}</span>
+                <span className="font-semibold text-dark dark:text-slate-100">{s.count}</span>
+              </div>
+              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.count / maxCount) * 100 : 0}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <DataTable
+        headers={[t('reports.col.client'), t('reports.col.shootType'), t('reports.col.stage'), t('reports.col.revisionRounds')]}
+        rows={data.revisionRows.map(r => [r.clientName, r.shootType, r.stage.replace(/_/g, ' '), r.revisionRounds])}
+        emptyText={t('reports.empty.deliveryPipeline')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Photo Studio item 4: Shoot-Type Revenue Mix.
+function ShootTypeRevenueMixView({ data, fmt }: { data: ShootTypeRevenueMixReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: fmt(data.summary.totalRevenue) },
+        { label: t('reports.summary.totalBookings'), value: String(data.summary.totalBookings) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.shootType'), t('reports.col.bookingCount'), t('common.amount'), t('reports.col.avgTicket'), t('reports.col.revenueSharePercent')]}
+        rows={data.rows.map(r => [r.shootType, r.bookingCount, fmt(r.totalRevenue), fmt(r.avgTicket), `${r.revenueSharePercent}%`])}
+        emptyText={t('reports.empty.shootTypeRevenueMix')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Photo Studio item 3: Equipment Checkout.
+function EquipmentCheckoutView({ data }: { data: EquipmentCheckoutReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOutstanding'), value: String(data.summary.totalOutstanding) },
+        { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.assetName'), t('reports.col.checkedOutToName'), t('reports.col.checkedOutDate'), t('reports.col.expectedReturnDate'), t('reports.col.daysOut'), t('reports.col.isOverdue')]}
+        rows={data.rows.map(r => [r.assetName, r.checkedOutToName ?? '—', r.checkedOutDate, r.expectedReturnDate ?? '—', r.daysOut, r.isOverdue ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.equipmentCheckout')}
       />
     </div>
   )

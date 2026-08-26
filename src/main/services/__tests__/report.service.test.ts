@@ -8649,3 +8649,158 @@ describe('reportService.generateSprintBillingReport', () => {
     expect(result.summary).toEqual({ totalCompletedSprints: 0, unlinkedCount: 0 })
   })
 })
+
+describe('reportService.generateDeliveryPipelineReport', () => {
+  it('derives stage from which DeliveryTracker date fields are actually set, never guessed from status', async () => {
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 's1', status: 'EDITING', deliveryDeadline: null, client: { customerName: 'A' }, shootType: 'WEDDING', delivery: { proofsSentDate: new Date(), selectionReceivedDate: new Date(), editingStartedDate: new Date(), albumProofSentDate: null, finalDeliveredDate: null, revisionRounds: 0 } },
+          { id: 's2', status: 'EDITING', deliveryDeadline: null, client: { customerName: 'B' }, shootType: 'PORTFOLIO', delivery: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliveryPipelineReport()
+
+    expect(result.stages.find((s) => s.stage === 'EDITING')?.count).toBe(1)
+    expect(result.stages.find((s) => s.stage === 'NOT_STARTED')?.count).toBe(1)
+  })
+
+  it('flags overdue only for non-delivered bookings past their deliveryDeadline', async () => {
+    const past = new Date(Date.now() - 5 * 86400000)
+    const future = new Date(Date.now() + 5 * 86400000)
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 's1', status: 'EDITING', deliveryDeadline: past, client: { customerName: 'A' }, shootType: 'WEDDING', delivery: null },
+          { id: 's2', status: 'DELIVERED', deliveryDeadline: past, client: { customerName: 'B' }, shootType: 'WEDDING', delivery: { proofsSentDate: new Date(), selectionReceivedDate: new Date(), editingStartedDate: new Date(), albumProofSentDate: new Date(), finalDeliveredDate: new Date(), revisionRounds: 0 } },
+          { id: 's3', status: 'EDITING', deliveryDeadline: future, client: { customerName: 'C' }, shootType: 'WEDDING', delivery: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliveryPipelineReport()
+
+    expect(result.summary.overdueCount).toBe(1)
+  })
+
+  it('lists bookings with revisionRounds > 0, worst (highest) first', async () => {
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 's1', status: 'EDITING', deliveryDeadline: null, client: { customerName: 'Low' }, shootType: 'WEDDING', delivery: { proofsSentDate: null, selectionReceivedDate: null, editingStartedDate: null, albumProofSentDate: null, finalDeliveredDate: null, revisionRounds: 1 } },
+          { id: 's2', status: 'EDITING', deliveryDeadline: null, client: { customerName: 'High' }, shootType: 'WEDDING', delivery: { proofsSentDate: null, selectionReceivedDate: null, editingStartedDate: null, albumProofSentDate: null, finalDeliveredDate: null, revisionRounds: 4 } },
+          { id: 's3', status: 'EDITING', deliveryDeadline: null, client: { customerName: 'None' }, shootType: 'WEDDING', delivery: { proofsSentDate: null, selectionReceivedDate: null, editingStartedDate: null, albumProofSentDate: null, finalDeliveredDate: null, revisionRounds: 0 } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliveryPipelineReport()
+
+    expect(result.revisionRows.map((r) => r.clientName)).toEqual(['High', 'Low'])
+  })
+
+  it('only queries non-CANCELLED bookings', async () => {
+    const db = { shootBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateDeliveryPipelineReport()
+
+    expect(db.shootBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { not: 'CANCELLED' } },
+    }))
+  })
+})
+
+describe('reportService.generateShootTypeRevenueMixReport', () => {
+  it('computes revenueSharePercent per shoot type, ranked by revenue', async () => {
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { shootType: 'WEDDING', finalAmount: 80000 },
+          { shootType: 'PORTFOLIO', finalAmount: 20000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateShootTypeRevenueMixReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map((r) => r.shootType)).toEqual(['WEDDING', 'PORTFOLIO'])
+    expect(result.rows[0].revenueSharePercent).toBe(80)
+  })
+
+  it('excludes bookings with no finalAmount set', async () => {
+    const db = { shootBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateShootTypeRevenueMixReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.shootBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ finalAmount: { not: null } }),
+    }))
+  })
+
+  it('computes avgTicket per shoot type', async () => {
+    const db = {
+      shootBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { shootType: 'WEDDING', finalAmount: 60000 },
+          { shootType: 'WEDDING', finalAmount: 40000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateShootTypeRevenueMixReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ bookingCount: 2, totalRevenue: 100000, avgTicket: 50000 })
+  })
+})
+
+describe('reportService.generateEquipmentCheckoutReport', () => {
+  it('flags overdue only when past expectedReturnDate', async () => {
+    const past = new Date(Date.now() - 3 * 86400000)
+    const future = new Date(Date.now() + 3 * 86400000)
+    const db = {
+      equipmentCheckout: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'c1', checkedOutDate: new Date(Date.now() - 10 * 86400000), expectedReturnDate: past, fixedAsset: { assetName: 'Drone' }, checkedOutTo: null },
+          { id: 'c2', checkedOutDate: new Date(Date.now() - 2 * 86400000), expectedReturnDate: future, fixedAsset: { assetName: 'Tripod' }, checkedOutTo: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateEquipmentCheckoutReport()
+
+    expect(result.rows.find((r) => r.checkoutId === 'c1')?.isOverdue).toBe(true)
+    expect(result.rows.find((r) => r.checkoutId === 'c2')?.isOverdue).toBe(false)
+    expect(result.summary.overdueCount).toBe(1)
+  })
+
+  it('only queries outstanding (not yet returned) checkouts', async () => {
+    const db = { equipmentCheckout: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateEquipmentCheckoutReport()
+
+    expect(db.equipmentCheckout.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { actualReturnDate: null },
+    }))
+  })
+
+  it('returns an honest empty result when nothing is checked out', async () => {
+    const db = { equipmentCheckout: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateEquipmentCheckoutReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalOutstanding: 0, overdueCount: 0 })
+  })
+})

@@ -109,6 +109,34 @@ describe('shoot-booking.service — Decimal serialization', () => {
     expect((res as { error: { code: string } }).error.code).toBe('SHT-006')
     expect(db.shootBooking.update).not.toHaveBeenCalled()
   })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('createShootBooking stores shootDate/deliveryDeadline at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createShootBooking({
+      clientId: 'cust-1', shootType: 'WEDDING', shootDate: '2026-08-15', shootLocation: 'Venue',
+      estimatedDurationHours: 4, deliveryDeadline: '2026-09-01',
+    })
+
+    expect(db.shootBooking.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ shootDate: new Date(2026, 7, 15), deliveryDeadline: new Date(2026, 8, 1) }),
+    }))
+  })
+
+  it('updateShootBooking stores an updated shootDate at local midnight too', async () => {
+    const db = makeMockDb(makeBooking())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateShootBooking({ id: 'shoot-1', shootDate: '2026-09-01' })
+
+    expect(db.shootBooking.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ shootDate: new Date(2026, 8, 1) }),
+    }))
+  })
 })
 
 // Phase 40 — generateShootInvoice

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // ShootBooking.estimatedDurationHours is a Prisma Decimal field —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -65,13 +66,16 @@ export async function createShootBooking(payload: {
     data: {
       clientId: payload.clientId,
       shootType: payload.shootType,
-      shootDate: new Date(payload.shootDate),
+      // Real bug found live (2026-08-27 Phase 68 audit): a bare
+      // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+      // with this app's own parseLocalDateStart convention.
+      shootDate: parseLocalDateStart(payload.shootDate),
       shootTime: payload.shootTime || null,
       shootLocation: payload.shootLocation,
       estimatedDurationHours: payload.estimatedDurationHours,
       deliverableType: payload.deliverableType ?? 'DIGITAL_ONLY',
       expectedPhotosCount: payload.expectedPhotosCount ?? null,
-      deliveryDeadline: payload.deliveryDeadline ? new Date(payload.deliveryDeadline) : null,
+      deliveryDeadline: payload.deliveryDeadline ? parseLocalDateStart(payload.deliveryDeadline) : null,
       photographerIds: JSON.stringify(payload.photographerIds ?? []),
       editorAssignedId: payload.editorAssignedId || null,
       notes: payload.notes || null,
@@ -111,8 +115,8 @@ export async function updateShootBooking(payload: {
     where: { id },
     data: {
       ...rest,
-      ...(shootDate !== undefined ? { shootDate: new Date(shootDate) } : {}),
-      ...(deliveryDeadline !== undefined ? { deliveryDeadline: deliveryDeadline ? new Date(deliveryDeadline) : null } : {}),
+      ...(shootDate !== undefined ? { shootDate: parseLocalDateStart(shootDate) } : {}),
+      ...(deliveryDeadline !== undefined ? { deliveryDeadline: deliveryDeadline ? parseLocalDateStart(deliveryDeadline) : null } : {}),
       ...(photographerIds !== undefined ? { photographerIds: JSON.stringify(photographerIds) } : {}),
     },
     include: {

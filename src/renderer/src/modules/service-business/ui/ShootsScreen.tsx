@@ -23,6 +23,7 @@ interface DeliveryTracker {
   finalDeliveredDate: string | null
   deliveryFormat: string | null
   deliveredPhotosCount: number | null
+  revisionRounds: number
   notes: string | null
 }
 interface ShootChecklistItem {
@@ -38,6 +39,15 @@ interface ShootAddOnItem {
   description: string
   quantity: number
   unitPrice: number
+}
+interface EquipmentCheckout {
+  id: string
+  fixedAssetId: string
+  shootBookingId: string | null
+  checkedOutDate: string
+  expectedReturnDate: string | null
+  actualReturnDate: string | null
+  fixedAsset: { id: string; assetName: string }
 }
 interface ShootBooking {
   id: string
@@ -84,7 +94,25 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'info' | 'brand' | 'warning' | 
 
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-IN') : '-'
 const fmtLabel = (s: string) => s.replace(/_/g, ' ')
-const toDateInput = (d: string | null) => d ? new Date(d).toISOString().split('T')[0] : ''
+// Real bug found live (2026-08-27 Phase 68 audit): `new Date(d).toISOString()`
+// shifts a LOCAL-midnight-stored date back to the PREVIOUS calendar day in
+// UTC for IST. Extracts local Y/M/D components directly instead — same fix
+// as the server-side toLocalISODate this mirrors.
+const toDateInput = (d: string | null) => {
+  if (!d) return ''
+  const dt = new Date(d)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+// Today's date as a bare local "YYYY-MM-DD" string — matches the date-only
+// convention every other date field in this form already uses, instead of
+// a full ISO timestamp (which parseLocalDateStart on the service side
+// cannot parse).
+function todayLocalDateStr(): string {
+  const dt = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
 
 // ─── Delivery Milestone Row ───────────────────────────────────────────────────
 
@@ -95,7 +123,7 @@ function MilestoneRow({
   return (
     <div className={`flex items-center gap-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0 ${error ? 'bg-red-50 dark:bg-red-900/20 -mx-2 px-2 rounded' : ''}`}>
       <button
-        onClick={() => onToggle(done ? null : new Date().toISOString())}
+        onClick={() => onToggle(done ? null : todayLocalDateStr())}
         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${done ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-slate-600 hover:border-green-400'}`}
       >
         {done && <Check size={12} className="text-white" />}
@@ -354,6 +382,13 @@ export default function ShootsScreen() {
   const [checklistSaving, setChecklistSaving] = useState(false)
   const [addOnSaving, setAddOnSaving] = useState(false)
 
+  // Phase 68 §9.1 — Photo Studio item 3: studio-owned equipment
+  // rental-and-return tracking, scoped to the shoot booking currently expanded.
+  const [fixedAssets, setFixedAssets] = useState<{ id: string; assetName: string }[]>([])
+  const [checkoutMap, setCheckoutMap] = useState<Record<string, EquipmentCheckout[]>>({})
+  const [checkoutForm, setCheckoutForm] = useState({ fixedAssetId: '', checkedOutDate: '', expectedReturnDate: '' })
+  const [checkoutSaving, setCheckoutSaving] = useState(false)
+
   const loadBookings = useCallback(async (filter?: string) => {
     try {
       const res = await api.shootBooking.list(filter ? { status: filter } : {})
@@ -379,6 +414,10 @@ export default function ShootsScreen() {
           if (!r.success) return
           const d = r.data as { employees?: Employee[] } | Employee[]
           setEmployees(Array.isArray(d) ? d : (d.employees ?? []))
+        }),
+        api.fixedAssets.list({ status: 'ACTIVE' }).then((r: { success: boolean; data?: unknown }) => {
+          if (!r.success) return
+          setFixedAssets((r.data as { id: string; assetName: string }[]) ?? [])
         }),
       ])
       setLoading(false)
@@ -441,6 +480,20 @@ export default function ShootsScreen() {
     }
   }
 
+  // Phase 68 §9.1 — Photo Studio item 5: revision-round tracker
+  async function handleIncrementRevision(shootBookingId: string) {
+    try {
+      const res = await api.deliveryTracker.incrementRevision(shootBookingId)
+      if (res.success) {
+        setBookings(bs => bs.map(b => (b.id !== shootBookingId ? b : { ...b, delivery: (res.data as DeliveryTracker) })))
+      } else {
+        setActionError(res.error?.message ?? 'Could not record a revision round.')
+      }
+    } catch {
+      setActionError('Could not record a revision round.')
+    }
+  }
+
   // ── Equipment/Crew checklist ────────────────────────────────────────────────
 
   const loadChecklist = useCallback(async (shootBookingId: string) => {
@@ -463,14 +516,52 @@ export default function ShootsScreen() {
     }
   }, [])
 
+  const loadCheckouts = useCallback(async (shootBookingId: string) => {
+    try {
+      const res = await api.equipmentCheckout.list({ shootBookingId })
+      if (res.success) setCheckoutMap(prev => ({ ...prev, [shootBookingId]: (res.data as EquipmentCheckout[]) ?? [] }))
+    } catch { /* non-critical panel */ }
+  }, [])
+
   function toggleExpand(id: string) {
     const next = expandedId === id ? null : id
     setExpandedId(next)
     if (next) {
       setChecklistForm({ label: '', category: 'EQUIPMENT' })
       setAddOnForm({ description: '', quantity: '1', unitPrice: '' })
+      setCheckoutForm({ fixedAssetId: '', checkedOutDate: todayLocalDateStr(), expectedReturnDate: '' })
       void loadChecklist(next)
       void loadAddOns(next)
+      void loadCheckouts(next)
+    }
+  }
+
+  // Phase 68 §9.1 — Photo Studio item 3: studio-owned equipment
+  // rental-and-return tracking
+  async function handleCheckOutEquipment(shootBookingId: string) {
+    if (!checkoutForm.fixedAssetId || !checkoutForm.checkedOutDate) return
+    setCheckoutSaving(true)
+    try {
+      const res = await api.equipmentCheckout.checkOut({
+        fixedAssetId: checkoutForm.fixedAssetId, shootBookingId,
+        checkedOutDate: checkoutForm.checkedOutDate, expectedReturnDate: checkoutForm.expectedReturnDate || undefined,
+      })
+      if (res.success) { setCheckoutForm({ fixedAssetId: '', checkedOutDate: todayLocalDateStr(), expectedReturnDate: '' }); void loadCheckouts(shootBookingId) }
+      else setActionError(res.error?.message ?? 'Could not check out equipment.')
+    } catch {
+      setActionError('Could not check out equipment.')
+    } finally {
+      setCheckoutSaving(false)
+    }
+  }
+
+  async function handleReturnEquipment(shootBookingId: string, checkoutId: string) {
+    try {
+      const res = await api.equipmentCheckout.return({ id: checkoutId, actualReturnDate: todayLocalDateStr() })
+      if (res.success) void loadCheckouts(shootBookingId)
+      else setActionError(res.error?.message ?? 'Could not record equipment return.')
+    } catch {
+      setActionError('Could not record equipment return.')
     }
   }
 
@@ -725,6 +816,20 @@ export default function ShootsScreen() {
                     {b.expectedPhotosCount != null && <span className="text-xs text-gray-400 dark:text-slate-500">of {b.expectedPhotosCount} expected</span>}
                   </div>
 
+                  {/* Phase 68 §9.1 — Photo Studio item 5: revision-round tracker */}
+                  <div className="flex items-center gap-3 mt-2 pt-2" onClick={e => e.stopPropagation()}>
+                    <label className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Revision Rounds</label>
+                    <span className={`text-xs font-semibold ${(b.delivery?.revisionRounds ?? 0) > 1 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-slate-300'}`}>
+                      {b.delivery?.revisionRounds ?? 0}
+                    </span>
+                    <button
+                      onClick={() => void handleIncrementRevision(b.id)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    >
+                      + Log Revision Round
+                    </button>
+                  </div>
+
                   {/* Phase 58 §2 — shoot-day equipment/crew checklist */}
                   <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 dark:text-slate-400 flex items-center gap-1.5">
@@ -755,6 +860,43 @@ export default function ShootsScreen() {
                         placeholder="e.g. 2nd camera body, 50mm lens..."
                         className="flex-1 h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
                       <button onClick={() => handleAddChecklistItem(b.id)} disabled={checklistSaving || !checklistForm.label.trim()}
+                        className="px-2.5 h-8 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Phase 68 §9.1 — Photo Studio item 3: studio-owned equipment rental-and-return tracking */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 dark:text-slate-400">Equipment Checked Out</p>
+                    {(checkoutMap[b.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">No equipment checked out for this shoot.</p>
+                    ) : (
+                      <div className="space-y-1 mb-2">
+                        {(checkoutMap[b.id] ?? []).map(c => (
+                          <div key={c.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-900 rounded px-2 py-1.5 border border-gray-100 dark:border-slate-800">
+                            <span className="flex-1 text-gray-700 dark:text-slate-300">{c.fixedAsset.assetName}</span>
+                            <span className="text-gray-400 dark:text-slate-500">Out {fmtDate(c.checkedOutDate)}</span>
+                            {c.actualReturnDate ? (
+                              <span className="text-green-600 dark:text-green-400 font-medium">Returned {fmtDate(c.actualReturnDate)}</span>
+                            ) : (
+                              <button onClick={() => void handleReturnEquipment(b.id, c.id)} className="px-2 py-0.5 text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/20 dark:border-amber-800">
+                                Mark Returned
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <select value={checkoutForm.fixedAssetId} onChange={e => setCheckoutForm(f => ({ ...f, fixedAssetId: e.target.value }))}
+                        className="flex-1 h-8 px-1.5 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                        <option value="">Select equipment…</option>
+                        {fixedAssets.map(a => <option key={a.id} value={a.id}>{a.assetName}</option>)}
+                      </select>
+                      <input type="date" value={checkoutForm.checkedOutDate} onChange={e => setCheckoutForm(f => ({ ...f, checkedOutDate: e.target.value }))}
+                        className="h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                      <button onClick={() => void handleCheckOutEquipment(b.id)} disabled={checkoutSaving || !checkoutForm.fixedAssetId || !checkoutForm.checkedOutDate}
                         className="px-2.5 h-8 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
                         <Plus size={13} />
                       </button>

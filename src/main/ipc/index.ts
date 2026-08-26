@@ -139,6 +139,7 @@ import { register as registerStudentTestScore } from './handlers/student-test-sc
 import { registerShootBooking } from './handlers/shoot-booking.handler'
 import { registerDeliveryTracker } from './handlers/delivery-tracker.handler'
 import { registerShootChecklist } from './handlers/shoot-checklist.handler'
+import { registerEquipmentCheckout } from './handlers/equipment-checkout.handler'
 import { registerShootAddOn } from './handlers/shoot-addon.handler'
 import { registerEventBooking } from './handlers/event-booking.handler'
 import { registerEventVendorBooking } from './handlers/event-vendor-booking.handler'
@@ -325,6 +326,7 @@ export function registerAllIpcHandlers(): void {
   // Phase 32 — Photography, Event Management, Real Estate
   registerShootBooking(h)
   registerDeliveryTracker(h)
+  registerEquipmentCheckout(h)
   registerShootChecklist(h)
   registerShootAddOn(h)
   registerEventBooking(h)
