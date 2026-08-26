@@ -2068,6 +2068,26 @@
         "label": "Placement Report",
         "description": "Candidate placements, joining status, and commission — for Placement Agencies"
       },
+      "candidatePipelineFunnel": {
+        "label": "Candidate Pipeline Funnel",
+        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+      },
+      "jobOrderFunnel": {
+        "label": "Job Order Funnel",
+        "description": "Open client job orders by status — the fill-progress view from the client side"
+      },
+      "feePercentage": {
+        "label": "Client Fee-Percentage Tracking",
+        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+      },
+      "timeToFill": {
+        "label": "Time to Fill",
+        "description": "How many days it actually takes from job order to a candidate joining"
+      },
+      "sourceEffectiveness": {
+        "label": "Source Effectiveness",
+        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+      },
       "drawingRegister": {
         "label": "Drawing Register",
         "description": "Every drawing revision by discipline and approval status — for Architects"

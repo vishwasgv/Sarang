@@ -7140,6 +7140,221 @@ async function generatePlacementReport(params: { dateFrom: string; dateTo: strin
   }
 }
 
+// Phase 68 §9.1 — Placement Agency item 1: candidate pipeline funnel. A
+// CURRENT-STATE snapshot across every candidate ever added (no date range,
+// same reasoning as Driving School's own generateLearnerProgressFunnelReport)
+// — each stage is a cumulative-distinct-candidate count, monotonically
+// non-increasing by construction.
+export interface CandidatePipelineFunnelStage { stage: string; candidateCount: number }
+export interface CandidatePipelineFunnelReport {
+  stages: CandidatePipelineFunnelStage[]
+  summary: { totalCandidates: number; placedCount: number; overallConversionPercent: number }
+}
+
+async function generateCandidatePipelineFunnelReport(): Promise<CandidatePipelineFunnelReport> {
+  const db = getPrisma()
+
+  const [candidates, interviewRounds, placements] = await Promise.all([
+    db.candidate.findMany({ select: { id: true } }),
+    db.interviewRound.findMany({ select: { candidateId: true }, distinct: ['candidateId'] }),
+    db.placement.findMany({ select: { candidateId: true, status: true } }),
+  ])
+
+  const totalIds = new Set(candidates.map((c) => c.id))
+  const interviewingIds = new Set(interviewRounds.map((r) => r.candidateId).filter((id) => totalIds.has(id)))
+  const offeredIds = new Set(placements.filter((p) => p.status !== 'CANCELLED').map((p) => p.candidateId))
+  const placedIds = new Set(placements.filter((p) => p.status === 'JOINED' || p.status === 'INVOICED').map((p) => p.candidateId))
+
+  const stages: CandidatePipelineFunnelStage[] = [
+    { stage: 'Total Candidates', candidateCount: totalIds.size },
+    { stage: 'Interviewing', candidateCount: interviewingIds.size },
+    { stage: 'Offered', candidateCount: offeredIds.size },
+    { stage: 'Placed', candidateCount: placedIds.size },
+  ]
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  return {
+    stages,
+    summary: {
+      totalCandidates: totalIds.size, placedCount: placedIds.size,
+      overallConversionPercent: totalIds.size > 0 ? round1((placedIds.size / totalIds.size) * 100) : 0,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Placement Agency item 2 (the second, distinct "Pipeline
+// funnel" item): job orders by status — the CLIENT-side fill-progress view,
+// distinct from the candidate-side funnel above. A plain current-state
+// bucket count, not cumulative (a job order's status is a single terminal-
+// or-in-progress state, not a monotonic ladder).
+const JOB_ORDER_STAGES = ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'CLOSED', 'CANCELLED'] as const
+
+export interface JobOrderFunnelStage { status: typeof JOB_ORDER_STAGES[number]; count: number; positions: number }
+export interface JobOrderFunnelReport {
+  stages: JobOrderFunnelStage[]
+  summary: { totalJobOrders: number; openPositions: number }
+}
+
+async function generateJobOrderFunnelReport(): Promise<JobOrderFunnelReport> {
+  const db = getPrisma()
+  const jobOrders = await db.jobOrder.findMany({ select: { status: true, numberOfPositions: true } })
+
+  const buckets = new Map<typeof JOB_ORDER_STAGES[number], { count: number; positions: number }>(
+    JOB_ORDER_STAGES.map((s) => [s, { count: 0, positions: 0 }])
+  )
+  for (const jo of jobOrders) {
+    const bucket = buckets.get(jo.status as typeof JOB_ORDER_STAGES[number])
+    if (!bucket) continue
+    bucket.count += 1
+    bucket.positions += jo.numberOfPositions
+  }
+
+  return {
+    stages: JOB_ORDER_STAGES.map((status) => ({ status, ...buckets.get(status)! })),
+    summary: {
+      totalJobOrders: jobOrders.length,
+      openPositions: (buckets.get('OPEN')!.positions) + (buckets.get('IN_PROGRESS')!.positions),
+    },
+  }
+}
+
+// Phase 68 §9.1 — Placement Agency item 3: client fee-percentage tracking.
+// Compares the AGREED fee (JobOrder.commissionValue, when commissionType is
+// PERCENTAGE) against the REALIZED rate actually collected on a resulting
+// placement (commissionAmount / offeredSalary × 100) — a real variance
+// signal, not a fabricated one, same "quoted vs actual" shape as Car
+// Service Center's parts-variance report. FIXED-type job orders are
+// excluded — there is no percentage to compare a fixed fee against.
+export interface FeePercentageRow {
+  jobOrderNumber: string; clientName: string; agreedFeePercent: number
+  realizedFeePercent: number | null; placementCount: number
+}
+export interface FeePercentageReport {
+  rows: FeePercentageRow[]
+  summary: { jobOrderCount: number; avgAgreedFeePercent: number; avgRealizedFeePercent: number | null }
+}
+
+async function generateFeePercentageReport(): Promise<FeePercentageReport> {
+  const db = getPrisma()
+  const jobOrders = await db.jobOrder.findMany({
+    where: { commissionType: 'PERCENTAGE' },
+    include: {
+      client: { select: { customerName: true } },
+      placements: { where: { status: { not: 'CANCELLED' } }, select: { offeredSalary: true, commissionAmount: true } },
+    },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: FeePercentageRow[] = jobOrders.map((jo) => {
+    const realizedRates = jo.placements
+      .filter((p) => Number(p.offeredSalary) > 0)
+      .map((p) => (Number(p.commissionAmount) / Number(p.offeredSalary)) * 100)
+    const realizedFeePercent = realizedRates.length > 0 ? round1(realizedRates.reduce((s, r) => s + r, 0) / realizedRates.length) : null
+    return {
+      jobOrderNumber: jo.orderNumber, clientName: jo.client.customerName,
+      agreedFeePercent: Number(jo.commissionValue), realizedFeePercent, placementCount: jo.placements.length,
+    }
+  })
+
+  const withRealized = rows.filter((r) => r.realizedFeePercent != null)
+  return {
+    rows,
+    summary: {
+      jobOrderCount: rows.length,
+      avgAgreedFeePercent: rows.length > 0 ? round1(rows.reduce((s, r) => s + r.agreedFeePercent, 0) / rows.length) : 0,
+      avgRealizedFeePercent: withRealized.length > 0 ? round1(withRealized.reduce((s, r) => s + r.realizedFeePercent!, 0) / withRealized.length) : null,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Placement Agency item 4: time-to-fill. Only job orders
+// that reached a REAL fill (a JOINED/INVOICED placement) are counted — no
+// estimate for still-open orders.
+export interface TimeToFillRow {
+  jobOrderNumber: string; jobTitle: string; clientName: string; daysToFill: number
+  jobOrderCreatedAt: string; joiningDate: string
+}
+export interface TimeToFillReport {
+  dateFrom: string; dateTo: string
+  rows: TimeToFillRow[]
+  summary: { filledCount: number; avgDaysToFill: number; minDaysToFill: number; maxDaysToFill: number }
+}
+
+async function generateTimeToFillReport(params: { dateFrom: string; dateTo: string }): Promise<TimeToFillReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const placements = await db.placement.findMany({
+    where: { status: { in: ['JOINED', 'INVOICED'] }, joiningDate: { gte: from, lte: to } },
+    include: {
+      jobOrder: { select: { orderNumber: true, jobTitle: true, createdAt: true } },
+      client: { select: { customerName: true } },
+    },
+  })
+
+  const rows: TimeToFillRow[] = placements.map((p) => ({
+    jobOrderNumber: p.jobOrder.orderNumber, jobTitle: p.jobOrder.jobTitle, clientName: p.client.customerName,
+    daysToFill: Math.round((p.joiningDate.getTime() - p.jobOrder.createdAt.getTime()) / 86400000),
+    jobOrderCreatedAt: toLocalISODate(p.jobOrder.createdAt), joiningDate: toLocalISODate(p.joiningDate),
+  })).sort((a, b) => b.daysToFill - a.daysToFill)
+
+  const days = rows.map((r) => r.daysToFill)
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows,
+    summary: {
+      filledCount: rows.length,
+      avgDaysToFill: days.length > 0 ? round1(days.reduce((s, d) => s + d, 0) / days.length) : 0,
+      minDaysToFill: days.length > 0 ? Math.min(...days) : 0,
+      maxDaysToFill: days.length > 0 ? Math.max(...days) : 0,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Placement Agency item 5: source-effectiveness tracking. A
+// REAL conversion rate — placedCount comes from actual Placement outcomes
+// per candidate, not an estimate.
+export interface SourceEffectivenessRow {
+  source: string; totalCandidates: number; placedCount: number; placementRatePercent: number
+}
+export interface SourceEffectivenessReport {
+  rows: SourceEffectivenessRow[]
+  summary: { totalCandidates: number; overallPlacementRatePercent: number }
+}
+
+async function generateSourceEffectivenessReport(): Promise<SourceEffectivenessReport> {
+  const db = getPrisma()
+  const [candidates, placements] = await Promise.all([
+    db.candidate.findMany({ select: { id: true, source: true } }),
+    db.placement.findMany({ where: { status: { in: ['JOINED', 'INVOICED'] } }, select: { candidateId: true } }),
+  ])
+
+  const placedIds = new Set(placements.map((p) => p.candidateId))
+  const bySource = new Map<string, { total: number; placed: number }>()
+  for (const c of candidates) {
+    const entry = bySource.get(c.source) ?? { total: 0, placed: 0 }
+    entry.total += 1
+    if (placedIds.has(c.id)) entry.placed += 1
+    bySource.set(c.source, entry)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: SourceEffectivenessRow[] = Array.from(bySource.entries())
+    .map(([source, v]) => ({ source, totalCandidates: v.total, placedCount: v.placed, placementRatePercent: v.total > 0 ? round1((v.placed / v.total) * 100) : 0 }))
+    .sort((a, b) => b.placementRatePercent - a.placementRatePercent)
+
+  const totalPlaced = candidates.filter((c) => placedIds.has(c.id)).length
+  return {
+    rows,
+    summary: {
+      totalCandidates: candidates.length,
+      overallPlacementRatePercent: candidates.length > 0 ? round1((totalPlaced / candidates.length) * 100) : 0,
+    },
+  }
+}
+
 // ── Architect — drawing register ────────────────────────────────────────────
 
 export interface DrawingRegisterRow {
@@ -9025,6 +9240,11 @@ export const reportService = {
   generateShootBookingReport,
   generateEventBookingReport,
   generatePlacementReport,
+  generateCandidatePipelineFunnelReport,
+  generateJobOrderFunnelReport,
+  generateFeePercentageReport,
+  generateTimeToFillReport,
+  generateSourceEffectivenessReport,
   generateDrawingRegisterReport,
   generateSiteVisitLogReport,
   generatePrescriptionDrugSalesReport,

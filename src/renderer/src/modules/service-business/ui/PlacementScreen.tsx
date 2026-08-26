@@ -88,9 +88,17 @@ const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n)
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 // DateTime fields survive Electron's IPC as real Date instances (not strings),
 // so a direct `.slice(0, 10)` throws "d.slice is not a function".
+//
+// Real bug found+fixed (Phase 68 §9.1 — Placement Agency): the previous
+// version did `d.toISOString().slice(0, 10)` for a real Date instance,
+// which converts to UTC first — showing the wrong (previous) calendar day
+// for anything before 5:30am IST. Same renderer-local-date-helper bug class
+// confirmed across every Phase 68 vertical touched this session. Extract
+// LOCAL Y/M/D components directly instead.
 const dateSlice = (d: unknown): string => {
   if (!d) return ''
-  return (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10)
+  if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return String(d).slice(0, 10)
 }
 
 // ── Empty form factories ───────────────────────────────────────────────────────

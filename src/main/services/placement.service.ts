@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { serializeJobOrder } from './job-order.service'
 import { generateSequenceNumber } from './sequence.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -84,7 +85,7 @@ export async function createPlacement(payload: {
         candidateId: payload.candidateId,
         jobOrderId: payload.jobOrderId,
         clientId: payload.clientId,
-        joiningDate: new Date(payload.joiningDate),
+        joiningDate: parseLocalDateStart(payload.joiningDate),
         offeredSalary: payload.offeredSalary,
         commissionAmount: payload.commissionAmount,
         notes: payload.notes ?? null,
@@ -114,7 +115,7 @@ export async function updatePlacement(payload: {
   const db = getPrisma()
   const { id, joiningDate, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
-  if (joiningDate !== undefined) data.joiningDate = new Date(joiningDate)
+  if (joiningDate !== undefined) data.joiningDate = parseLocalDateStart(joiningDate)
 
   // When advancing to JOINED mark candidate as PLACED (never overwrite BLACKLISTED)
   if (payload.status === 'JOINED') {

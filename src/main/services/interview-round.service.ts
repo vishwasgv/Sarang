@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listInterviewRounds(filters: { candidateId?: string; jobOrderId?: string }) {
   const db = getPrisma()
@@ -46,7 +47,7 @@ export async function createInterviewRound(payload: {
       jobOrderId: payload.jobOrderId,
       roundNumber,
       roundType: payload.roundType ?? 'PHONE_SCREEN',
-      scheduledDate: payload.scheduledDate ? new Date(payload.scheduledDate) : null,
+      scheduledDate: payload.scheduledDate ? parseLocalDateStart(payload.scheduledDate) : null,
       interviewerName: payload.interviewerName || null,
       notes: payload.notes || null,
     },
@@ -71,7 +72,7 @@ export async function updateInterviewRound(payload: {
     where: { id },
     data: {
       ...rest,
-      ...(scheduledDate !== undefined ? { scheduledDate: scheduledDate ? new Date(scheduledDate) : null } : {}),
+      ...(scheduledDate !== undefined ? { scheduledDate: scheduledDate ? parseLocalDateStart(scheduledDate) : null } : {}),
     },
     include: { jobOrder: { select: { id: true, orderNumber: true, jobTitle: true } } },
   })

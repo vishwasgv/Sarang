@@ -484,6 +484,11 @@ export interface IpcChannels {
     shootBookings: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     eventBookings: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     placements: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    candidatePipelineFunnel: () => Promise<ApiResponse>
+    jobOrderFunnel: () => Promise<ApiResponse>
+    feePercentage: () => Promise<ApiResponse>
+    timeToFill: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    sourceEffectiveness: () => Promise<ApiResponse>
     drawingRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     siteVisitLog: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     prescriptionDrugSales: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>

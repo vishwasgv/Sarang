@@ -7054,6 +7054,228 @@ describe('reportService.generatePlacementReport', () => {
   })
 })
 
+// ─── Candidate Pipeline Funnel (Phase 68 §9.1 — Placement Agency item 1) ───────
+
+describe('reportService.generateCandidatePipelineFunnelReport', () => {
+  it('computes cumulative-distinct-candidate counts per stage', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }]) },
+      interviewRound: { findMany: vi.fn().mockResolvedValue([{ candidateId: 'c1' }, { candidateId: 'c2' }]) },
+      placement: { findMany: vi.fn().mockResolvedValue([
+        { candidateId: 'c1', status: 'OFFERED' },
+        { candidateId: 'c2', status: 'JOINED' },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCandidatePipelineFunnelReport()
+
+    const byStage = Object.fromEntries(result.stages.map(s => [s.stage, s.candidateCount]))
+    expect(byStage['Total Candidates']).toBe(3)
+    expect(byStage['Interviewing']).toBe(2)
+    expect(byStage['Offered']).toBe(2) // c1 (OFFERED) and c2 (JOINED, which implies offered)
+    expect(byStage['Placed']).toBe(1) // only c2 (JOINED)
+    expect(result.summary).toEqual({ totalCandidates: 3, placedCount: 1, overallConversionPercent: 33.3 })
+  })
+
+  it('excludes a CANCELLED placement from the Offered stage', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([{ id: 'c1' }]) },
+      interviewRound: { findMany: vi.fn().mockResolvedValue([]) },
+      placement: { findMany: vi.fn().mockResolvedValue([{ candidateId: 'c1', status: 'CANCELLED' }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCandidatePipelineFunnelReport()
+
+    const byStage = Object.fromEntries(result.stages.map(s => [s.stage, s.candidateCount]))
+    expect(byStage['Offered']).toBe(0)
+  })
+
+  it('returns all-zero stages when there are no candidates', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([]) },
+      interviewRound: { findMany: vi.fn().mockResolvedValue([]) },
+      placement: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCandidatePipelineFunnelReport()
+
+    expect(result.stages.every(s => s.candidateCount === 0)).toBe(true)
+    expect(result.summary).toEqual({ totalCandidates: 0, placedCount: 0, overallConversionPercent: 0 })
+  })
+})
+
+// ─── Job Order Funnel (Phase 68 §9.1 — Placement Agency item 2) ────────────────
+
+describe('reportService.generateJobOrderFunnelReport', () => {
+  it('buckets job orders by status and sums positions per bucket', async () => {
+    const db = {
+      jobOrder: { findMany: vi.fn().mockResolvedValue([
+        { status: 'OPEN', numberOfPositions: 2 },
+        { status: 'OPEN', numberOfPositions: 1 },
+        { status: 'IN_PROGRESS', numberOfPositions: 3 },
+        { status: 'CLOSED', numberOfPositions: 1 },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobOrderFunnelReport()
+
+    const byStatus = Object.fromEntries(result.stages.map(s => [s.status, s]))
+    expect(byStatus.OPEN).toEqual({ status: 'OPEN', count: 2, positions: 3 })
+    expect(byStatus.IN_PROGRESS).toEqual({ status: 'IN_PROGRESS', count: 1, positions: 3 })
+    expect(byStatus.CLOSED).toEqual({ status: 'CLOSED', count: 1, positions: 1 })
+    expect(result.summary).toEqual({ totalJobOrders: 4, openPositions: 6 })
+  })
+
+  it('returns all-zero buckets when there are no job orders', async () => {
+    const db = { jobOrder: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobOrderFunnelReport()
+
+    expect(result.stages.every(s => s.count === 0)).toBe(true)
+    expect(result.summary).toEqual({ totalJobOrders: 0, openPositions: 0 })
+  })
+})
+
+// ─── Client Fee-Percentage Tracking (Phase 68 §9.1 — Placement Agency item 3) ──
+
+describe('reportService.generateFeePercentageReport', () => {
+  it('only includes PERCENTAGE-type job orders', async () => {
+    const db = { jobOrder: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateFeePercentageReport()
+
+    expect(db.jobOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { commissionType: 'PERCENTAGE' }
+    }))
+  })
+
+  it('computes the realized fee % from actual commission vs offered salary', async () => {
+    const db = {
+      jobOrder: { findMany: vi.fn().mockResolvedValue([
+        { orderNumber: 'JO-1', client: { customerName: 'Acme' }, commissionValue: 10, placements: [{ offeredSalary: 1000000, commissionAmount: 120000 }] },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeePercentageReport()
+
+    expect(result.rows[0]).toMatchObject({ agreedFeePercent: 10, realizedFeePercent: 12, placementCount: 1 })
+  })
+
+  it('reports realizedFeePercent as null when the job order has no placements yet', async () => {
+    const db = {
+      jobOrder: { findMany: vi.fn().mockResolvedValue([
+        { orderNumber: 'JO-1', client: { customerName: 'Acme' }, commissionValue: 10, placements: [] },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeePercentageReport()
+
+    expect(result.rows[0].realizedFeePercent).toBeNull()
+    expect(result.summary.avgRealizedFeePercent).toBeNull()
+  })
+})
+
+// ─── Time to Fill (Phase 68 §9.1 — Placement Agency item 4) ────────────────────
+
+describe('reportService.generateTimeToFillReport', () => {
+  it('only counts JOINED/INVOICED placements as real fills', async () => {
+    const db = { placement: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateTimeToFillReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.placement.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ['JOINED', 'INVOICED'] } })
+    }))
+  })
+
+  it('computes daysToFill from jobOrder.createdAt to joiningDate', async () => {
+    const db = {
+      placement: { findMany: vi.fn().mockResolvedValue([
+        { jobOrder: { orderNumber: 'JO-1', jobTitle: 'Dev', createdAt: new Date('2026-01-01') }, client: { customerName: 'Acme' }, joiningDate: new Date('2026-01-15') },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTimeToFillReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0].daysToFill).toBe(14)
+  })
+
+  it('sorts slowest-first and computes avg/min/max', async () => {
+    const db = {
+      placement: { findMany: vi.fn().mockResolvedValue([
+        { jobOrder: { orderNumber: 'JO-1', jobTitle: 'Dev', createdAt: new Date('2026-01-01') }, client: { customerName: 'A' }, joiningDate: new Date('2026-01-06') }, // 5
+        { jobOrder: { orderNumber: 'JO-2', jobTitle: 'QA', createdAt: new Date('2026-01-01') }, client: { customerName: 'B' }, joiningDate: new Date('2026-01-21') }, // 20
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTimeToFillReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map(r => r.jobOrderNumber)).toEqual(['JO-2', 'JO-1'])
+    expect(result.summary).toMatchObject({ filledCount: 2, avgDaysToFill: 12.5, minDaysToFill: 5, maxDaysToFill: 20 })
+  })
+})
+
+// ─── Source Effectiveness (Phase 68 §9.1 — Placement Agency item 5) ────────────
+
+describe('reportService.generateSourceEffectivenessReport', () => {
+  it('computes a real placement rate per source from actual placement outcomes', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([
+        { id: 'c1', source: 'REFERRAL' }, { id: 'c2', source: 'REFERRAL' }, { id: 'c3', source: 'LINKEDIN' },
+      ]) },
+      placement: { findMany: vi.fn().mockResolvedValue([{ candidateId: 'c1' }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSourceEffectivenessReport()
+
+    const referral = result.rows.find(r => r.source === 'REFERRAL')
+    const linkedin = result.rows.find(r => r.source === 'LINKEDIN')
+    expect(referral).toMatchObject({ totalCandidates: 2, placedCount: 1, placementRatePercent: 50 })
+    expect(linkedin).toMatchObject({ totalCandidates: 1, placedCount: 0, placementRatePercent: 0 })
+    expect(result.summary).toEqual({ totalCandidates: 3, overallPlacementRatePercent: 33.3 })
+  })
+
+  it('only queries JOINED/INVOICED placements as real outcomes', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([]) },
+      placement: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateSourceEffectivenessReport()
+
+    expect(db.placement.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { in: ['JOINED', 'INVOICED'] } }
+    }))
+  })
+
+  it('sorts by placement rate descending', async () => {
+    const db = {
+      candidate: { findMany: vi.fn().mockResolvedValue([
+        { id: 'c1', source: 'LOW' }, { id: 'c2', source: 'LOW' }, { id: 'c3', source: 'HIGH' },
+      ]) },
+      placement: { findMany: vi.fn().mockResolvedValue([{ candidateId: 'c3' }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSourceEffectivenessReport()
+
+    expect(result.rows.map(r => r.source)).toEqual(['HIGH', 'LOW'])
+  })
+})
+
 describe('reportService.generateDrawingRegisterReport', () => {
   it('reads the project name via the nested project relation and groups by status', async () => {
     const db = {

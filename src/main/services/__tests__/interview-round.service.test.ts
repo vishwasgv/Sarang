@@ -107,3 +107,33 @@ describe('interview-round.service', () => {
     expect(res.success).toBe(true)
   })
 })
+
+// Real bug found+fixed (Phase 68 §9.1 — Placement Agency): scheduledDate was
+// written via a bare `new Date(dateOnlyString)`, which parses as UTC
+// midnight — wrong for IST writes, the same dominant bug class fixed across
+// every other Phase 68 vertical this session. Fixed to parseLocalDateStart.
+describe('interview-round.service — scheduledDate stores local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createInterviewRound stores scheduledDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createInterviewRound({ candidateId: 'cand-1', jobOrderId: 'jo-1', scheduledDate: '2026-03-15' })
+
+    const call = db.interviewRound.create.mock.calls[0][0].data
+    expect((call.scheduledDate as Date).getDate()).toBe(15)
+    expect((call.scheduledDate as Date).getHours()).toBe(0)
+  })
+
+  it('updateInterviewRound stores a changed scheduledDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateInterviewRound({ id: 'ir-1', scheduledDate: '2026-04-20' })
+
+    const call = db.interviewRound.update.mock.calls[0][0].data
+    expect((call.scheduledDate as Date).getDate()).toBe(20)
+    expect((call.scheduledDate as Date).getHours()).toBe(0)
+  })
+})

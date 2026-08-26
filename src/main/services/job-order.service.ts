@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { generateSequenceNumber } from './sequence.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -105,7 +106,7 @@ export async function createJobOrder(payload: {
         salaryBudgetMax: payload.salaryBudgetMax ?? null,
         location: payload.location ?? null,
         numberOfPositions: payload.numberOfPositions ?? 1,
-        targetDate: payload.targetDate ? new Date(payload.targetDate) : null,
+        targetDate: payload.targetDate ? parseLocalDateStart(payload.targetDate) : null,
         commissionType: payload.commissionType ?? 'PERCENTAGE',
         commissionValue: payload.commissionValue ?? 0,
         feeAgreementTerms: payload.feeAgreementTerms ?? null,
@@ -147,7 +148,7 @@ export async function updateJobOrder(payload: {
   const { id, requiredSkills, targetDate, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
   if (requiredSkills !== undefined) data.requiredSkills = JSON.stringify(requiredSkills)
-  if (targetDate !== undefined) data.targetDate = targetDate ? new Date(targetDate) : null
+  if (targetDate !== undefined) data.targetDate = targetDate ? parseLocalDateStart(targetDate) : null
   const order = await db.jobOrder.update({
     where: { id },
     data,

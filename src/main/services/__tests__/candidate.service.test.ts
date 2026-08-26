@@ -126,3 +126,33 @@ describe('candidate.service — Decimal serialization', () => {
     expect(data.currentSalary).toBeNull()
   })
 })
+
+// Real bug found+fixed (Phase 68 §9.1 — Placement Agency): availableFrom
+// was written via a bare `new Date(dateOnlyString)`, which parses as UTC
+// midnight — wrong for IST writes, the same dominant bug class fixed across
+// every other Phase 68 vertical this session. Fixed to parseLocalDateStart.
+describe('candidate.service — availableFrom stores local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createCandidate stores availableFrom at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createCandidate({ fullName: 'Ravi Shankar', availableFrom: '2026-03-15' })
+
+    const call = db.candidate.create.mock.calls[0][0].data
+    expect((call.availableFrom as Date).getDate()).toBe(15)
+    expect((call.availableFrom as Date).getHours()).toBe(0)
+  })
+
+  it('updateCandidate stores a changed availableFrom at local midnight', async () => {
+    const db = makeMockDb(makeCandidate())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateCandidate({ id: 'cnd-1', availableFrom: '2026-04-20' })
+
+    const call = db.candidate.update.mock.calls[0][0].data
+    expect((call.availableFrom as Date).getDate()).toBe(20)
+    expect((call.availableFrom as Date).getHours()).toBe(0)
+  })
+})

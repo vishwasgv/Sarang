@@ -195,3 +195,33 @@ describe('job-order.service — fee-agreement/replacement-guarantee terms', () =
     expect(db.jobOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ replacementGuaranteeDays: null }) }))
   })
 })
+
+// Real bug found+fixed (Phase 68 §9.1 — Placement Agency): targetDate was
+// written via a bare `new Date(dateOnlyString)`, which parses as UTC
+// midnight — wrong for IST writes, the same dominant bug class fixed across
+// every other Phase 68 vertical this session. Fixed to parseLocalDateStart.
+describe('job-order.service — targetDate stores local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createJobOrder stores targetDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createJobOrder({ clientId: 'cust-1', jobTitle: 'Senior Engineer', targetDate: '2026-03-15' })
+
+    const call = db.jobOrder.create.mock.calls[0][0].data
+    expect((call.targetDate as Date).getDate()).toBe(15)
+    expect((call.targetDate as Date).getHours()).toBe(0)
+  })
+
+  it('updateJobOrder stores a changed targetDate at local midnight', async () => {
+    const db = makeMockDb(makeJobOrder())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateJobOrder({ id: 'jo-1', targetDate: '2026-04-20' })
+
+    const call = db.jobOrder.update.mock.calls[0][0].data
+    expect((call.targetDate as Date).getDate()).toBe(20)
+    expect((call.targetDate as Date).getHours()).toBe(0)
+  })
+})

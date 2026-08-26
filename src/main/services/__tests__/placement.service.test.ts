@@ -213,3 +213,33 @@ describe('placement.service.generatePlacementInvoice — invoice-claim atomicity
     expect(db.placement.update).toHaveBeenCalledWith({ where: { id: 'plc-1' }, data: { invoiceId: null } })
   })
 })
+
+// Real bug found+fixed (Phase 68 §9.1 — Placement Agency): joiningDate was
+// written via a bare `new Date(dateOnlyString)`, which parses as UTC
+// midnight — wrong for IST writes, the same dominant bug class fixed across
+// every other Phase 68 vertical this session. Fixed to parseLocalDateStart.
+describe('placement.service — joiningDate stores local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createPlacement stores joiningDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPlacement({ candidateId: 'cnd-1', jobOrderId: 'jo-1', clientId: 'cust-1', joiningDate: '2026-03-15', offeredSalary: 1200000, commissionAmount: 100000 })
+
+    const call = db.placement.create.mock.calls[0][0].data
+    expect((call.joiningDate as Date).getDate()).toBe(15)
+    expect((call.joiningDate as Date).getHours()).toBe(0)
+  })
+
+  it('updatePlacement stores a changed joiningDate at local midnight', async () => {
+    const db = makeMockDb(makePlacement())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updatePlacement({ id: 'plc-1', joiningDate: '2026-04-20' })
+
+    const call = db.placement.update.mock.calls[0][0].data
+    expect((call.joiningDate as Date).getDate()).toBe(20)
+    expect((call.joiningDate as Date).getHours()).toBe(0)
+  })
+})

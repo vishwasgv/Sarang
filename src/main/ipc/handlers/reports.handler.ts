@@ -655,6 +655,38 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  handle('reports:candidatePipelineFunnel', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateCandidatePipelineFunnelReport()
+    return { success: true, data }
+  })
+
+  handle('reports:jobOrderFunnel', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateJobOrderFunnelReport()
+    return { success: true, data }
+  })
+
+  handle('reports:feePercentage', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateFeePercentageReport()
+    return { success: true, data }
+  })
+
+  handle('reports:timeToFill', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTimeToFillReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:sourceEffectiveness', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateSourceEffectivenessReport()
+    return { success: true, data }
+  })
+
   handle('reports:drawingRegister', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)

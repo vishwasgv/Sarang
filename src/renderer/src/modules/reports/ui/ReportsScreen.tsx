@@ -474,6 +474,26 @@ interface EventBookingReport { dateFrom: string; dateTo: string; summary: { tota
 interface PlacementReportRow { placementNumber: string; candidateName: string; jobTitle: string; clientName: string; status: string; joiningDate: string; offeredSalary: number; commissionAmount: number }
 interface PlacementReport { dateFrom: string; dateTo: string; summary: { totalPlacements: number; joined: number; invoiced: number; totalCommission: number }; rows: PlacementReportRow[] }
 
+// Phase 68 §9.1 — Placement Agency item 1: candidate pipeline funnel.
+interface CandidatePipelineFunnelStage { stage: string; candidateCount: number }
+interface CandidatePipelineFunnelReport { stages: CandidatePipelineFunnelStage[]; summary: { totalCandidates: number; placedCount: number; overallConversionPercent: number } }
+
+// Phase 68 §9.1 — Placement Agency item 2: job order (client-side) funnel.
+interface JobOrderFunnelStage { status: 'OPEN' | 'IN_PROGRESS' | 'ON_HOLD' | 'CLOSED' | 'CANCELLED'; count: number; positions: number }
+interface JobOrderFunnelReport { stages: JobOrderFunnelStage[]; summary: { totalJobOrders: number; openPositions: number } }
+
+// Phase 68 §9.1 — Placement Agency item 3: client fee-percentage tracking.
+interface FeePercentageRow { jobOrderNumber: string; clientName: string; agreedFeePercent: number; realizedFeePercent: number | null; placementCount: number }
+interface FeePercentageReport { rows: FeePercentageRow[]; summary: { jobOrderCount: number; avgAgreedFeePercent: number; avgRealizedFeePercent: number | null } }
+
+// Phase 68 §9.1 — Placement Agency item 4: time-to-fill.
+interface TimeToFillRow { jobOrderNumber: string; jobTitle: string; clientName: string; daysToFill: number; jobOrderCreatedAt: string; joiningDate: string }
+interface TimeToFillReport { dateFrom: string; dateTo: string; rows: TimeToFillRow[]; summary: { filledCount: number; avgDaysToFill: number; minDaysToFill: number; maxDaysToFill: number } }
+
+// Phase 68 §9.1 — Placement Agency item 5: source-effectiveness tracking.
+interface SourceEffectivenessRow { source: string; totalCandidates: number; placedCount: number; placementRatePercent: number }
+interface SourceEffectivenessReport { rows: SourceEffectivenessRow[]; summary: { totalCandidates: number; overallPlacementRatePercent: number } }
+
 interface DrawingRegisterRow { drawingNumber: string; title: string; projectName: string; discipline: string; revisionNumber: string; status: string; issuedDate: string | null }
 interface DrawingRegisterByStatus { status: string; count: number }
 interface DrawingRegisterReport { dateFrom: string; dateTo: string; summary: { totalDrawings: number; approved: number; pendingReview: number }; byStatus: DrawingRegisterByStatus[]; rows: DrawingRegisterRow[] }
@@ -787,6 +807,8 @@ type ReportType =
   | 'orderTurnaround' | 'fittingStageTracker' | 'fabricPopularity'
   // Phase 68 §9.1 — Pest Control items 2, 3 & 4
   | 'renewalFunnel' | 'chemicalUsageCompliance' | 'pestRecurringValueTrend'
+  // Phase 68 §9.1 — Placement Agency items 1-5
+  | 'candidatePipelineFunnel' | 'jobOrderFunnel' | 'feePercentage' | 'timeToFill' | 'sourceEffectiveness'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -1003,6 +1025,13 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Event Management item 5. Current-state, no date range.
   { id: 'vendorPerformanceHistory', icon: <Award size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'event_bookings' },
   { id: 'placements', icon: <UsersRound size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  // Phase 68 §9.1 — Placement Agency items 1-5. All current-state except
+  // timeToFill, which has real date-bounded fill events.
+  { id: 'candidatePipelineFunnel', icon: <Users size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  { id: 'jobOrderFunnel', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  { id: 'feePercentage', icon: <DollarSign size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  { id: 'timeToFill', icon: <Timer size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'placement_agency' },
+  { id: 'sourceEffectiveness', icon: <TrendingUp size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'placement_agency' },
   { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
   { id: 'siteVisitLog', icon: <HardHat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'site_visit_log' },
   { id: 'prescriptionDrugSales', icon: <Pill size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PHARMACY' },
@@ -1591,6 +1620,21 @@ export function ReportsScreen() {
           break
         case 'placements':
           res = await window.api.reports.placements({ dateFrom, dateTo })
+          break
+        case 'candidatePipelineFunnel':
+          res = await window.api.reports.candidatePipelineFunnel()
+          break
+        case 'jobOrderFunnel':
+          res = await window.api.reports.jobOrderFunnel()
+          break
+        case 'feePercentage':
+          res = await window.api.reports.feePercentage()
+          break
+        case 'timeToFill':
+          res = await window.api.reports.timeToFill({ dateFrom, dateTo })
+          break
+        case 'sourceEffectiveness':
+          res = await window.api.reports.sourceEffectiveness()
           break
         case 'drawingRegister':
           res = await window.api.reports.drawingRegister({ dateFrom, dateTo })
@@ -2556,6 +2600,41 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.placementNumber, r.candidateName, r.jobTitle, r.clientName, r.status, r.joiningDate, r.offeredSalary, r.commissionAmount])
         }
       }
+      case 'candidatePipelineFunnel': {
+        const d = reportData as CandidatePipelineFunnelReport
+        return {
+          headers: ['Stage', 'Candidates'],
+          rows: d.stages.map(s => [s.stage, s.candidateCount])
+        }
+      }
+      case 'jobOrderFunnel': {
+        const d = reportData as JobOrderFunnelReport
+        return {
+          headers: [t('common.status'), 'Job Orders', 'Positions'],
+          rows: d.stages.map(s => [s.status, s.count, s.positions])
+        }
+      }
+      case 'feePercentage': {
+        const d = reportData as FeePercentageReport
+        return {
+          headers: ['Job Order #', t('reports.col.client'), 'Agreed Fee %', 'Realized Fee %', 'Placements'],
+          rows: d.rows.map(r => [r.jobOrderNumber, r.clientName, r.agreedFeePercent, r.realizedFeePercent ?? '—', r.placementCount])
+        }
+      }
+      case 'timeToFill': {
+        const d = reportData as TimeToFillReport
+        return {
+          headers: ['Job Order #', 'Job Title', t('reports.col.client'), 'Days to Fill', 'Job Order Created', 'Joining Date'],
+          rows: d.rows.map(r => [r.jobOrderNumber, r.jobTitle, r.clientName, r.daysToFill, r.jobOrderCreatedAt, r.joiningDate])
+        }
+      }
+      case 'sourceEffectiveness': {
+        const d = reportData as SourceEffectivenessReport
+        return {
+          headers: ['Source', 'Total Candidates', 'Placed', 'Placement Rate %'],
+          rows: d.rows.map(r => [r.source, r.totalCandidates, r.placedCount, r.placementRatePercent])
+        }
+      }
       case 'drawingRegister': {
         const d = reportData as DrawingRegisterReport
         return {
@@ -3484,6 +3563,45 @@ export function ReportsScreen() {
           { label: 'Total Commission', value: fmt(d.summary.totalCommission) }
         ]
       }
+      case 'candidatePipelineFunnel': {
+        const d = reportData as CandidatePipelineFunnelReport
+        return [
+          { label: 'Total Candidates', value: String(d.summary.totalCandidates) },
+          { label: 'Placed', value: String(d.summary.placedCount) },
+          { label: 'Conversion %', value: `${d.summary.overallConversionPercent}%` }
+        ]
+      }
+      case 'jobOrderFunnel': {
+        const d = reportData as JobOrderFunnelReport
+        return [
+          { label: 'Total Job Orders', value: String(d.summary.totalJobOrders) },
+          { label: 'Open Positions', value: String(d.summary.openPositions) }
+        ]
+      }
+      case 'feePercentage': {
+        const d = reportData as FeePercentageReport
+        return [
+          { label: 'Job Orders', value: String(d.summary.jobOrderCount) },
+          { label: 'Avg. Agreed Fee %', value: `${d.summary.avgAgreedFeePercent}%` },
+          { label: 'Avg. Realized Fee %', value: d.summary.avgRealizedFeePercent != null ? `${d.summary.avgRealizedFeePercent}%` : '—' }
+        ]
+      }
+      case 'timeToFill': {
+        const d = reportData as TimeToFillReport
+        return [
+          { label: 'Filled', value: String(d.summary.filledCount) },
+          { label: 'Avg. Days to Fill', value: String(d.summary.avgDaysToFill) },
+          { label: 'Fastest (days)', value: String(d.summary.minDaysToFill) },
+          { label: 'Slowest (days)', value: String(d.summary.maxDaysToFill) }
+        ]
+      }
+      case 'sourceEffectiveness': {
+        const d = reportData as SourceEffectivenessReport
+        return [
+          { label: 'Total Candidates', value: String(d.summary.totalCandidates) },
+          { label: 'Overall Placement Rate %', value: `${d.summary.overallPlacementRatePercent}%` }
+        ]
+      }
       case 'drawingRegister': {
         const d = reportData as DrawingRegisterReport
         return [
@@ -4379,6 +4497,27 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'line', title: 'Recurring Value Trend', data: d.rows.map(r => ({ label: r.period, value: r.totalValue })), valueIsCurrency: true }]
       }
+      // Phase 68 §9.1 — Placement Agency items 1, 2 & 5: real bar charts of
+      // the honest bucket/group counts.
+      case 'candidatePipelineFunnel': {
+        const d = reportData as CandidatePipelineFunnelReport
+        if (d.summary.totalCandidates === 0) return []
+        return [{ type: 'bar', title: 'Candidate Pipeline', data: d.stages.map(s => ({ label: s.stage, value: s.candidateCount })) }]
+      }
+      case 'jobOrderFunnel': {
+        const d = reportData as JobOrderFunnelReport
+        if (d.summary.totalJobOrders === 0) return []
+        return [{ type: 'bar', title: 'Job Orders by Status', data: d.stages.map(s => ({ label: s.status, value: s.count })) }]
+      }
+      // Phase 68 §9.1 — Placement Agency items 3 & 4. Chart-free — both are
+      // per-row detail worklists, not aggregate metrics.
+      case 'feePercentage': return []
+      case 'timeToFill': return []
+      case 'sourceEffectiveness': {
+        const d = reportData as SourceEffectivenessReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: 'Placement Rate by Source', data: d.rows.map(r => ({ label: r.source, value: r.placementRatePercent })) }]
+      }
       default: return []
     }
   }
@@ -4825,6 +4964,11 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'shootBookings': return <ShootBookingReportView data={data as ShootBookingReport} fmt={fmt} />
     case 'eventBookings': return <EventBookingReportView data={data as EventBookingReport} fmt={fmt} />
     case 'placements': return <PlacementReportView data={data as PlacementReport} fmt={fmt} />
+    case 'candidatePipelineFunnel': return <CandidatePipelineFunnelView data={data as CandidatePipelineFunnelReport} />
+    case 'jobOrderFunnel': return <JobOrderFunnelView data={data as JobOrderFunnelReport} />
+    case 'feePercentage': return <FeePercentageView data={data as FeePercentageReport} />
+    case 'timeToFill': return <TimeToFillView data={data as TimeToFillReport} />
+    case 'sourceEffectiveness': return <SourceEffectivenessView data={data as SourceEffectivenessReport} />
     case 'drawingRegister': return <DrawingRegisterReportView data={data as DrawingRegisterReport} fmt={fmt} />
     case 'siteVisitLog': return <SiteVisitLogReportView data={data as SiteVisitLogReport} fmt={fmt} />
     case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
@@ -8867,6 +9011,122 @@ function PlacementReportView({ data, fmt }: { data: PlacementReport; fmt: (n: nu
           headers={['Placement #', 'Candidate', 'Job Title', t('reports.col.client'), t('common.status'), 'Commission']}
           rows={data.rows.map(r => [r.placementNumber, r.candidateName, r.jobTitle, r.clientName, r.status, fmt(r.commissionAmount)])}
           emptyText={t('reports.empty.placements')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Placement Agency item 1: candidate pipeline funnel.
+function CandidatePipelineFunnelView({ data }: { data: CandidatePipelineFunnelReport }) {
+  const maxCount = Math.max(1, ...data.stages.map(s => s.candidateCount))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Candidates', value: String(data.summary.totalCandidates) },
+        { label: 'Placed', value: String(data.summary.placedCount) },
+        { label: 'Conversion %', value: `${data.summary.overallConversionPercent}%` }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Candidate Pipeline</h3>
+        <div className="space-y-3">
+          {data.stages.map((s) => (
+            <div key={s.stage}>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                <span>{s.stage}</span>
+                <span className="font-semibold text-dark dark:text-slate-100">{s.candidateCount}</span>
+              </div>
+              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.candidateCount / maxCount) * 100 : 0}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Placement Agency item 2: job order (client-side) funnel.
+function JobOrderFunnelView({ data }: { data: JobOrderFunnelReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Job Orders', value: String(data.summary.totalJobOrders) },
+        { label: 'Open Positions', value: String(data.summary.openPositions) }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Job Orders by Status</h3>
+        <div className="space-y-2">
+          {data.stages.map(s => (
+            <div key={s.status} className="flex items-center justify-between text-sm">
+              <span className="text-gray-700 dark:text-slate-300">{s.status.replace(/_/g, ' ')}</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{s.count} order(s), {s.positions} position(s)</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Placement Agency item 3: client fee-percentage tracking.
+function FeePercentageView({ data }: { data: FeePercentageReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Job Orders', value: String(data.summary.jobOrderCount) },
+        { label: 'Avg. Agreed Fee %', value: `${data.summary.avgAgreedFeePercent}%` },
+        { label: 'Avg. Realized Fee %', value: data.summary.avgRealizedFeePercent != null ? `${data.summary.avgRealizedFeePercent}%` : '—' }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Fee Percentage Details</h3>
+        <DataTable
+          headers={['Job Order #', 'Client', 'Agreed Fee %', 'Realized Fee %', 'Placements']}
+          rows={data.rows.map(r => [r.jobOrderNumber, r.clientName, `${r.agreedFeePercent}%`, r.realizedFeePercent != null ? `${r.realizedFeePercent}%` : '—', r.placementCount])}
+          emptyText="No percentage-based job orders yet."
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Placement Agency item 4: time-to-fill.
+function TimeToFillView({ data }: { data: TimeToFillReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Filled', value: String(data.summary.filledCount) },
+        { label: 'Avg. Days to Fill', value: String(data.summary.avgDaysToFill) },
+        { label: 'Fastest (days)', value: String(data.summary.minDaysToFill) },
+        { label: 'Slowest (days)', value: String(data.summary.maxDaysToFill) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Time-to-Fill Details</h3>
+        <DataTable
+          headers={['Job Order #', 'Job Title', 'Client', 'Days to Fill', 'Job Order Created', 'Joining Date']}
+          rows={data.rows.map(r => [r.jobOrderNumber, r.jobTitle, r.clientName, r.daysToFill, r.jobOrderCreatedAt, r.joiningDate])}
+          emptyText="No positions filled in this date range."
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Placement Agency item 5: source-effectiveness tracking.
+function SourceEffectivenessView({ data }: { data: SourceEffectivenessReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Candidates', value: String(data.summary.totalCandidates) },
+        { label: 'Overall Placement Rate %', value: `${data.summary.overallPlacementRatePercent}%` }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Source</h3>
+        <DataTable
+          headers={['Source', 'Total Candidates', 'Placed', 'Placement Rate %']}
+          rows={data.rows.map(r => [r.source, r.totalCandidates, r.placedCount, `${r.placementRatePercent}%`])}
+          emptyText="No candidates recorded yet."
         />
       </div>
     </div>

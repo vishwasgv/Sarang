@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { generateSequenceNumber } from './sequence.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -90,7 +91,7 @@ export async function createCandidate(payload: {
         resumeNotes: payload.resumeNotes ?? null,
         expectedSalary: payload.expectedSalary ?? null,
         currentSalary: payload.currentSalary ?? null,
-        availableFrom: payload.availableFrom ? new Date(payload.availableFrom) : null,
+        availableFrom: payload.availableFrom ? parseLocalDateStart(payload.availableFrom) : null,
         source: payload.source ?? 'WALKIN',
         notes: payload.notes ?? null,
       },
@@ -126,7 +127,7 @@ export async function updateCandidate(payload: {
   const data: Record<string, unknown> = { ...rest }
   if (skills !== undefined) data.skills = JSON.stringify(skills)
   if (preferredLocations !== undefined) data.preferredLocations = JSON.stringify(preferredLocations)
-  if (availableFrom !== undefined) data.availableFrom = availableFrom ? new Date(availableFrom) : null
+  if (availableFrom !== undefined) data.availableFrom = availableFrom ? parseLocalDateStart(availableFrom) : null
   const candidate = await db.candidate.update({ where: { id }, data })
   await db.auditLog.create({
     data: { action: 'UPDATE', entityType: 'Candidate', entityId: id },
