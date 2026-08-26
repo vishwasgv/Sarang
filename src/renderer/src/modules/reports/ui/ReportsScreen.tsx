@@ -259,6 +259,22 @@ interface ProposalWinRateReport { dateFrom: string; dateTo: string; summary: { w
 interface ClientRevenueConcentrationRow { clientName: string; revenue: number; revenueSharePercent: number; cumulativeSharePercent: number }
 interface ClientRevenueConcentrationReport { dateFrom: string; dateTo: string; rows: ClientRevenueConcentrationRow[]; summary: { totalRevenue: number; topClientSharePercent: number; top3SharePercent: number } }
 
+// Phase 68 §9.1 — Marketing Agency item 1: Campaign ROI/budget tracking.
+interface CampaignROIRow { projectName: string; clientName: string; targetChannel: string | null; adSpendBudget: number | null; actualSpend: number; budgetVariancePercent: number | null; conversions: number; costPerConversion: number | null }
+interface CampaignROIReport { rows: CampaignROIRow[]; summary: { totalCampaigns: number; totalBudget: number; totalActualSpend: number; overBudgetCount: number } }
+
+// Phase 68 §9.1 — Marketing Agency item 3: Deliverable Status Pipeline.
+interface DeliverableStatusPipelineStage { status: string; count: number }
+interface DeliverableStatusPipelineReport { stages: DeliverableStatusPipelineStage[]; summary: { totalDeliverables: number; overdueCount: number } }
+
+// Phase 68 §9.1 — Marketing Agency item 4: Channel Performance.
+interface ChannelPerformanceRow { channel: string; campaignCount: number; totalImpressions: number; totalClicks: number; totalConversions: number; totalActualSpend: number; ctrPercent: number | null; costPerConversion: number | null }
+interface ChannelPerformanceReport { rows: ChannelPerformanceRow[] }
+
+// Phase 68 §9.1 — Marketing Agency item 5: Retainer Work Delivered.
+interface RetainerWorkDeliveredRow { title: string; clientName: string; monthlyAmount: number; deliveredCount: number; billedThisPeriod: boolean }
+interface RetainerWorkDeliveredReport { period: string; rows: RetainerWorkDeliveredRow[]; summary: { totalRetainers: number; zeroDeliveredCount: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -671,6 +687,8 @@ type ReportType =
   | 'siteVisitBilling' | 'materialTestResults'
   // Phase 68 §9.1 — Independent Consultant items 1, 3 & 4
   | 'retainerUtilization' | 'proposalWinRate' | 'clientRevenueConcentration'
+  // Phase 68 §9.1 — Marketing Agency items 1, 3, 4 & 5
+  | 'campaignROI' | 'deliverableStatusPipeline' | 'channelPerformance' | 'retainerWorkDelivered'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -896,6 +914,14 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'proposalWinRate', icon: <Target size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   // Phase 68 §9.1 — Independent Consultant item 4.
   { id: 'clientRevenueConcentration', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
+  // Phase 68 §9.1 — Marketing Agency item 1. Current-state, no date range.
+  { id: 'campaignROI', icon: <LineChart size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
+  // Phase 68 §9.1 — Marketing Agency item 3. Current-state, no date range.
+  { id: 'deliverableStatusPipeline', icon: <CalendarCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
+  // Phase 68 §9.1 — Marketing Agency item 4. Current-state, no date range.
+  { id: 'channelPerformance', icon: <Share2 size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
+  // Phase 68 §9.1 — Marketing Agency item 5. Current period, no date range.
+  { id: 'retainerWorkDelivered', icon: <Repeat size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1341,6 +1367,18 @@ export function ReportsScreen() {
           break
         case 'clientRevenueConcentration':
           res = await window.api.reports.clientRevenueConcentration({ dateFrom, dateTo })
+          break
+        case 'campaignROI':
+          res = await window.api.reports.campaignROI()
+          break
+        case 'deliverableStatusPipeline':
+          res = await window.api.reports.deliverableStatusPipeline()
+          break
+        case 'channelPerformance':
+          res = await window.api.reports.channelPerformance()
+          break
+        case 'retainerWorkDelivered':
+          res = await window.api.reports.retainerWorkDelivered()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2125,6 +2163,27 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.client'), `${t('reports.col.revenue')} (${currencySymbol})`, t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')],
           rows: d.rows.map(r => [r.clientName, r.revenue.toFixed(2), r.revenueSharePercent, r.cumulativeSharePercent])
+        }
+      }
+      case 'campaignROI': {
+        const d = reportData as CampaignROIReport
+        return {
+          headers: [t('reports.col.projectName'), t('reports.col.client'), t('reports.col.targetChannel'), `${t('reports.col.adSpendBudget')} (${currencySymbol})`, `${t('reports.col.actualSpend')} (${currencySymbol})`, t('reports.col.budgetVariancePercent'), t('reports.col.conversions'), t('reports.col.costPerConversion')],
+          rows: d.rows.map(r => [r.projectName, r.clientName, r.targetChannel ?? '—', r.adSpendBudget ?? '—', r.actualSpend.toFixed(2), r.budgetVariancePercent ?? '—', r.conversions, r.costPerConversion ?? '—'])
+        }
+      }
+      case 'channelPerformance': {
+        const d = reportData as ChannelPerformanceReport
+        return {
+          headers: [t('reports.col.targetChannel'), t('reports.col.campaignCount'), t('reports.col.totalImpressions'), t('reports.col.totalClicks'), t('reports.col.totalConversions'), `${t('reports.col.totalActualSpend')} (${currencySymbol})`, t('reports.col.ctrPercent'), t('reports.col.costPerConversion')],
+          rows: d.rows.map(r => [r.channel, r.campaignCount, r.totalImpressions, r.totalClicks, r.totalConversions, r.totalActualSpend.toFixed(2), r.ctrPercent ?? '—', r.costPerConversion ?? '—'])
+        }
+      }
+      case 'retainerWorkDelivered': {
+        const d = reportData as RetainerWorkDeliveredReport
+        return {
+          headers: [t('reports.col.title'), t('reports.col.client'), `${t('reports.col.monthlyAmount')} (${currencySymbol})`, t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')],
+          rows: d.rows.map(r => [r.title, r.clientName, r.monthlyAmount.toFixed(2), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])
         }
       }
       case 'serviceProjects': {
@@ -3747,6 +3806,10 @@ export function ReportsScreen() {
       case 'retainerUtilization': return []
       case 'proposalWinRate': return []
       case 'clientRevenueConcentration': return []
+      case 'campaignROI': return []
+      case 'deliverableStatusPipeline': return []
+      case 'channelPerformance': return []
+      case 'retainerWorkDelivered': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4269,6 +4332,10 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'retainerUtilization': return <RetainerUtilizationView data={data as RetainerUtilizationReport} fmt={fmt} />
     case 'proposalWinRate': return <ProposalWinRateView data={data as ProposalWinRateReport} fmt={fmt} />
     case 'clientRevenueConcentration': return <ClientRevenueConcentrationView data={data as ClientRevenueConcentrationReport} fmt={fmt} />
+    case 'campaignROI': return <CampaignROIView data={data as CampaignROIReport} fmt={fmt} />
+    case 'deliverableStatusPipeline': return <DeliverableStatusPipelineView data={data as DeliverableStatusPipelineReport} />
+    case 'channelPerformance': return <ChannelPerformanceView data={data as ChannelPerformanceReport} fmt={fmt} />
+    case 'retainerWorkDelivered': return <RetainerWorkDeliveredView data={data as RetainerWorkDeliveredReport} fmt={fmt} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6238,6 +6305,88 @@ function ClientRevenueConcentrationView({ data, fmt }: { data: ClientRevenueConc
         headers={[t('reports.col.client'), t('common.amount'), t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')]}
         rows={data.rows.map(r => [r.clientName, fmt(r.revenue), `${r.revenueSharePercent}%`, `${r.cumulativeSharePercent}%`])}
         emptyText={t('reports.empty.clientRevenueConcentration')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Marketing Agency item 1: Campaign ROI/budget tracking.
+function CampaignROIView({ data, fmt }: { data: CampaignROIReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalCampaigns'), value: String(data.summary.totalCampaigns) },
+        { label: t('reports.summary.totalBudget'), value: fmt(data.summary.totalBudget) },
+        { label: t('reports.summary.totalActualSpend'), value: fmt(data.summary.totalActualSpend) },
+        { label: t('reports.summary.overBudgetCount'), value: String(data.summary.overBudgetCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.projectName'), t('reports.col.client'), t('reports.col.targetChannel'), t('reports.col.adSpendBudget'), t('reports.col.actualSpend'), t('reports.col.budgetVariancePercent'), t('reports.col.conversions'), t('reports.col.costPerConversion')]}
+        rows={data.rows.map(r => [r.projectName, r.clientName, r.targetChannel ?? '—', r.adSpendBudget != null ? fmt(r.adSpendBudget) : '—', fmt(r.actualSpend), r.budgetVariancePercent != null ? `${r.budgetVariancePercent}%` : '—', r.conversions, r.costPerConversion != null ? fmt(r.costPerConversion) : '—'])}
+        emptyText={t('reports.empty.campaignROI')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Marketing Agency item 3: Deliverable Status Pipeline.
+function DeliverableStatusPipelineView({ data }: { data: DeliverableStatusPipelineReport }) {
+  const { t } = useTranslation()
+  const maxCount = Math.max(1, ...data.stages.map(s => s.count))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalDeliverables'), value: String(data.summary.totalDeliverables) },
+        { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.deliverableStatusPipeline.label')}</h3>
+        <div className="space-y-3">
+          {data.stages.map((s) => (
+            <div key={s.status}>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                <span>{s.status.replace(/_/g, ' ')}</span>
+                <span className="font-semibold text-dark dark:text-slate-100">{s.count}</span>
+              </div>
+              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.count / maxCount) * 100 : 0}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Marketing Agency item 4: Channel Performance.
+function ChannelPerformanceView({ data, fmt }: { data: ChannelPerformanceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <DataTable
+        headers={[t('reports.col.targetChannel'), t('reports.col.campaignCount'), t('reports.col.totalImpressions'), t('reports.col.totalClicks'), t('reports.col.totalConversions'), t('common.amount'), t('reports.col.ctrPercent'), t('reports.col.costPerConversion')]}
+        rows={data.rows.map(r => [r.channel, r.campaignCount, r.totalImpressions, r.totalClicks, r.totalConversions, fmt(r.totalActualSpend), r.ctrPercent != null ? `${r.ctrPercent}%` : '—', r.costPerConversion != null ? fmt(r.costPerConversion) : '—'])}
+        emptyText={t('reports.empty.channelPerformance')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Marketing Agency item 5: Retainer Work Delivered.
+function RetainerWorkDeliveredView({ data, fmt }: { data: RetainerWorkDeliveredReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRetainers'), value: String(data.summary.totalRetainers) },
+        { label: t('reports.summary.zeroDeliveredCount'), value: String(data.summary.zeroDeliveredCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.title'), t('reports.col.client'), t('common.amount'), t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')]}
+        rows={data.rows.map(r => [r.title, r.clientName, fmt(r.monthlyAmount), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.retainerWorkDelivered')}
       />
     </div>
   )

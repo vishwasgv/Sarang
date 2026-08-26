@@ -108,6 +108,31 @@ describe('marketing-campaign.service — campaign performance entries', () => {
     expect(res.success).toBe(true)
     expect(typeof (res as { data: { actualSpend: unknown } }).data.actualSpend).toBe('number')
   })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('addCampaignPerformanceEntry stores periodStart/periodEnd at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await addCampaignPerformanceEntry({ projectId: 'proj-1', periodStart: '2026-08-15', periodEnd: '2026-08-21' })
+
+    expect(db.campaignPerformanceEntry.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ periodStart: new Date(2026, 7, 15), periodEnd: new Date(2026, 7, 21) }),
+    }))
+  })
+
+  it('updateCampaignPerformanceEntry stores an updated periodStart at local midnight too', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateCampaignPerformanceEntry({ id: 'cpe-1', periodStart: '2026-09-01' })
+
+    expect(db.campaignPerformanceEntry.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ periodStart: new Date(2026, 8, 1) }),
+    }))
+  })
 })
 
 describe('marketing-campaign.service.getCampaignPerformanceSummary', () => {
@@ -159,6 +184,23 @@ describe('marketing-campaign.service.getCampaignPerformanceSummary', () => {
     const data = (res as { data: any }).data
     expect(data.entryCount).toBe(0)
     expect(data.totalImpressions).toBe(0)
+  })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a raw `.toISOString()`
+  // here would shift a locally-stored midnight date (periodStart/periodEnd,
+  // written via parseLocalDateStart) back to the PREVIOUS calendar day in
+  // UTC for IST — same bug class as compliance-task.service.ts's
+  // serializeTask. Fixed to toLocalDateOnlyIso.
+  it('returns periodStart/periodEnd on the correct LOCAL calendar day, not shifted back a day via UTC', async () => {
+    const db = makeMockDb([makeEntry({ periodStart: new Date(2026, 7, 15), periodEnd: new Date(2026, 7, 21) })])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getCampaignPerformanceSummary('proj-1')
+
+    expect(res.success).toBe(true)
+    const entry = (res as { data: { entries: Array<{ periodStart: string; periodEnd: string }> } }).data.entries[0]
+    expect(entry.periodStart.slice(0, 10)).toBe('2026-08-15')
+    expect(entry.periodEnd.slice(0, 10)).toBe('2026-08-21')
   })
 })
 
@@ -219,5 +261,30 @@ describe('marketing-campaign.service — content calendar', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await deleteContentCalendarItem('cci-1')
     expect(res.success).toBe(true)
+  })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('createContentCalendarItem stores scheduledDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createContentCalendarItem({ projectId: 'proj-1', scheduledDate: '2026-08-15', title: 'Diwali offer post' })
+
+    expect(db.contentCalendarItem.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ scheduledDate: new Date(2026, 7, 15) }),
+    }))
+  })
+
+  it('updateContentCalendarItem stores an updated scheduledDate at local midnight too', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateContentCalendarItem({ id: 'cci-1', scheduledDate: '2026-09-01' })
+
+    expect(db.contentCalendarItem.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ scheduledDate: new Date(2026, 8, 1) }),
+    }))
   })
 })

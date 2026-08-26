@@ -444,6 +444,10 @@ const api: IpcChannels = {
     retainerUtilization: () => invoke('reports:retainerUtilization'),
     proposalWinRate: (p: unknown) => invoke('reports:proposalWinRate', p),
     clientRevenueConcentration: (p: unknown) => invoke('reports:clientRevenueConcentration', p),
+    campaignROI: () => invoke('reports:campaignROI'),
+    deliverableStatusPipeline: () => invoke('reports:deliverableStatusPipeline'),
+    channelPerformance: () => invoke('reports:channelPerformance'),
+    retainerWorkDelivered: () => invoke('reports:retainerWorkDelivered'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),

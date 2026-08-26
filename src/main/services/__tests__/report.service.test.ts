@@ -8357,3 +8357,168 @@ describe('reportService.generateClientRevenueConcentrationReport', () => {
     expect(result.summary).toEqual({ totalRevenue: 0, topClientSharePercent: 0, top3SharePercent: 0 })
   })
 })
+
+describe('reportService.generateCampaignROIReport', () => {
+  it('computes budgetVariancePercent as overspend/underspend against the planned adSpendBudget', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { projectName: 'Diwali Push', client: { customerName: 'Client A' }, targetChannel: 'Meta Ads', adSpendBudget: 10000, campaignPerformanceEntries: [{ actualSpend: 12000, conversions: 20 }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCampaignROIReport()
+
+    expect(result.rows[0].budgetVariancePercent).toBe(20)
+    expect(result.rows[0].costPerConversion).toBe(600)
+    expect(result.summary.overBudgetCount).toBe(1)
+  })
+
+  it('leaves budgetVariancePercent null when no budget was ever set — never fabricates a variance', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { projectName: 'Untracked Campaign', client: { customerName: 'Client B' }, targetChannel: null, adSpendBudget: null, campaignPerformanceEntries: [{ actualSpend: 5000, conversions: 10 }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCampaignROIReport()
+
+    expect(result.rows[0].budgetVariancePercent).toBeNull()
+  })
+
+  it('only queries MARKETING_CAMPAIGN projects', async () => {
+    const db = { serviceProject: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateCampaignROIReport()
+
+    expect(db.serviceProject.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { projectType: 'MARKETING_CAMPAIGN' },
+    }))
+  })
+})
+
+describe('reportService.generateDeliverableStatusPipelineReport', () => {
+  it('groups deliverables by status and counts overdue PLANNED/IN_PROGRESS items only', async () => {
+    const now = Date.now()
+    const db = {
+      contentCalendarItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { status: 'PLANNED', scheduledDate: new Date(now - 5 * 86400000) }, // overdue
+          { status: 'IN_PROGRESS', scheduledDate: new Date(now + 5 * 86400000) }, // not yet due
+          { status: 'PUBLISHED', scheduledDate: new Date(now - 5 * 86400000) }, // done, not "overdue"
+          { status: 'CANCELLED', scheduledDate: new Date(now - 5 * 86400000) }, // cancelled, not "overdue"
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliverableStatusPipelineReport()
+
+    expect(result.summary).toEqual({ totalDeliverables: 4, overdueCount: 1 })
+    expect(result.stages.find((s) => s.status === 'PLANNED')?.count).toBe(1)
+  })
+
+  it('returns an honest empty result when no deliverables are recorded', async () => {
+    const db = { contentCalendarItem: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliverableStatusPipelineReport()
+
+    expect(result.stages).toEqual([])
+    expect(result.summary).toEqual({ totalDeliverables: 0, overdueCount: 0 })
+  })
+})
+
+describe('reportService.generateChannelPerformanceReport', () => {
+  it('aggregates performance entries across every campaign sharing the same channel', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { targetChannel: 'Meta Ads', campaignPerformanceEntries: [{ impressions: 10000, clicks: 500, conversions: 25, actualSpend: 5000 }] },
+          { targetChannel: 'Meta Ads', campaignPerformanceEntries: [{ impressions: 20000, clicks: 1000, conversions: 50, actualSpend: 10000 }] },
+          { targetChannel: 'Google Ads', campaignPerformanceEntries: [{ impressions: 5000, clicks: 100, conversions: 5, actualSpend: 2000 }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateChannelPerformanceReport()
+
+    const meta = result.rows.find((r) => r.channel === 'Meta Ads')
+    expect(meta).toMatchObject({ campaignCount: 2, totalImpressions: 30000, totalClicks: 1500, totalConversions: 75, totalActualSpend: 15000 })
+    expect(meta?.ctrPercent).toBe(5)
+  })
+
+  it('only queries MARKETING_CAMPAIGN projects with a channel set', async () => {
+    const db = { serviceProject: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateChannelPerformanceReport()
+
+    expect(db.serviceProject.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { projectType: 'MARKETING_CAMPAIGN', targetChannel: { not: null } },
+    }))
+  })
+})
+
+describe('reportService.generateRetainerWorkDeliveredReport', () => {
+  it('counts only PUBLISHED deliverables within the current period, sorted worst (fewest delivered) first', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { title: 'High Output', monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client A', serviceProjects: [{ id: 'proj-a' }] } },
+          { title: 'Low Output', monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client B', serviceProjects: [{ id: 'proj-b' }] } },
+        ]),
+      },
+      contentCalendarItem: {
+        count: vi.fn().mockImplementation(({ where }: { where: { projectId: { in: string[] } } }) =>
+          Promise.resolve(where.projectId.in[0] === 'proj-a' ? 8 : 1)
+        ),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerWorkDeliveredReport()
+
+    expect(result.rows.map((r) => r.title)).toEqual(['Low Output', 'High Output'])
+  })
+
+  it('excludes retainers whose client has no MARKETING_CAMPAIGN project at all', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { title: 'Non-Marketing Retainer', monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client C', serviceProjects: [] } },
+        ]),
+      },
+      contentCalendarItem: { count: vi.fn() },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerWorkDeliveredReport()
+
+    expect(result.rows).toEqual([])
+    expect(db.contentCalendarItem.count).not.toHaveBeenCalled()
+  })
+
+  it('flags zeroDeliveredCount for a retainer with no published deliverables this period', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { title: 'Stalled Retainer', monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client D', serviceProjects: [{ id: 'proj-d' }] } },
+        ]),
+      },
+      contentCalendarItem: { count: vi.fn().mockResolvedValue(0) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerWorkDeliveredReport()
+
+    expect(result.summary.zeroDeliveredCount).toBe(1)
+  })
+})

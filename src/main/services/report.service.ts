@@ -5997,6 +5997,174 @@ async function generateClientRevenueConcentrationReport(params: { dateFrom: stri
   }
 }
 
+// Phase 68 §9.1 — Marketing Agency item 1: Campaign ROI/budget tracking.
+// Deliberately a PLANNED-vs-ACTUAL spend + cost-efficiency report, not a
+// fabricated dollar "ROI" — this system captures ad spend and conversions
+// per campaign but has no attributed-revenue data (no e-commerce/sales
+// linkage back to a specific campaign), so a real $-ROI figure would be
+// invented, not measured. Budget variance + cost-per-conversion (from the
+// same source getCampaignPerformanceSummary already computes) are the
+// honest signals available: is this campaign overspending its planned
+// budget, and is it converting efficiently.
+export interface CampaignROIRow {
+  projectName: string; clientName: string; targetChannel: string | null
+  adSpendBudget: number | null; actualSpend: number; budgetVariancePercent: number | null
+  conversions: number; costPerConversion: number | null
+}
+export interface CampaignROIReport {
+  rows: CampaignROIRow[]
+  summary: { totalCampaigns: number; totalBudget: number; totalActualSpend: number; overBudgetCount: number }
+}
+
+async function generateCampaignROIReport(): Promise<CampaignROIReport> {
+  const db = getPrisma()
+  const campaigns = await db.serviceProject.findMany({
+    where: { projectType: 'MARKETING_CAMPAIGN' },
+    include: { client: { select: { customerName: true } }, campaignPerformanceEntries: { select: { actualSpend: true, conversions: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: CampaignROIRow[] = campaigns.map((c) => {
+    const actualSpend = roundCurrency(c.campaignPerformanceEntries.reduce((s, e) => s + Number(e.actualSpend ?? 0), 0))
+    const conversions = c.campaignPerformanceEntries.reduce((s, e) => s + (e.conversions ?? 0), 0)
+    const adSpendBudget = c.adSpendBudget == null ? null : Number(c.adSpendBudget)
+    return {
+      projectName: c.projectName, clientName: c.client.customerName, targetChannel: c.targetChannel,
+      adSpendBudget, actualSpend,
+      budgetVariancePercent: adSpendBudget != null && adSpendBudget > 0 ? round1(((actualSpend - adSpendBudget) / adSpendBudget) * 100) : null,
+      conversions, costPerConversion: conversions > 0 ? roundCurrency(actualSpend / conversions) : null,
+    }
+  }).sort((a, b) => (b.budgetVariancePercent ?? -Infinity) - (a.budgetVariancePercent ?? -Infinity))
+
+  return {
+    rows,
+    summary: {
+      totalCampaigns: rows.length,
+      totalBudget: roundCurrency(rows.reduce((s, r) => s + (r.adSpendBudget ?? 0), 0)),
+      totalActualSpend: roundCurrency(rows.reduce((s, r) => s + r.actualSpend, 0)),
+      overBudgetCount: rows.filter((r) => (r.budgetVariancePercent ?? 0) > 0).length,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Marketing Agency item 3: deliverable-status pipeline. A
+// current-state distribution of every ContentCalendarItem's status, plus
+// how many are overdue (scheduledDate already passed but still
+// PLANNED/IN_PROGRESS — the real "stuck deliverable" signal, distinct from
+// a raw status count).
+export interface DeliverableStatusPipelineStage { status: string; count: number }
+export interface DeliverableStatusPipelineReport {
+  stages: DeliverableStatusPipelineStage[]
+  summary: { totalDeliverables: number; overdueCount: number }
+}
+
+async function generateDeliverableStatusPipelineReport(): Promise<DeliverableStatusPipelineReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const items = await db.contentCalendarItem.findMany({ select: { status: true, scheduledDate: true } })
+
+  const byStatus = new Map<string, number>()
+  for (const i of items) byStatus.set(i.status, (byStatus.get(i.status) ?? 0) + 1)
+
+  return {
+    stages: Array.from(byStatus.entries()).map(([status, count]) => ({ status, count })),
+    summary: {
+      totalDeliverables: items.length,
+      overdueCount: items.filter((i) => (i.status === 'PLANNED' || i.status === 'IN_PROGRESS') && i.scheduledDate < now).length,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Marketing Agency item 4: channel performance. Aggregates
+// CampaignPerformanceEntry data across ALL campaigns sharing the same
+// ServiceProject.targetChannel — the missing cross-campaign view (the
+// pre-existing getCampaignPerformanceSummary is per-project only).
+export interface ChannelPerformanceRow {
+  channel: string; campaignCount: number; totalImpressions: number; totalClicks: number
+  totalConversions: number; totalActualSpend: number; ctrPercent: number | null; costPerConversion: number | null
+}
+export interface ChannelPerformanceReport {
+  rows: ChannelPerformanceRow[]
+}
+
+async function generateChannelPerformanceReport(): Promise<ChannelPerformanceReport> {
+  const db = getPrisma()
+  const campaigns = await db.serviceProject.findMany({
+    where: { projectType: 'MARKETING_CAMPAIGN', targetChannel: { not: null } },
+    select: { targetChannel: true, campaignPerformanceEntries: { select: { impressions: true, clicks: true, conversions: true, actualSpend: true } } },
+  })
+
+  const byChannel = new Map<string, { campaignCount: number; impressions: number; clicks: number; conversions: number; actualSpend: number }>()
+  for (const c of campaigns) {
+    const channel = c.targetChannel as string
+    const existing = byChannel.get(channel) ?? { campaignCount: 0, impressions: 0, clicks: 0, conversions: 0, actualSpend: 0 }
+    existing.campaignCount += 1
+    for (const e of c.campaignPerformanceEntries) {
+      existing.impressions += e.impressions ?? 0
+      existing.clicks += e.clicks ?? 0
+      existing.conversions += e.conversions ?? 0
+      existing.actualSpend += Number(e.actualSpend ?? 0)
+    }
+    byChannel.set(channel, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ChannelPerformanceRow[] = Array.from(byChannel.entries())
+    .map(([channel, v]) => ({
+      channel, campaignCount: v.campaignCount, totalImpressions: v.impressions, totalClicks: v.clicks,
+      totalConversions: v.conversions, totalActualSpend: roundCurrency(v.actualSpend),
+      ctrPercent: v.impressions > 0 ? round1((v.clicks / v.impressions) * 100) : null,
+      costPerConversion: v.conversions > 0 ? roundCurrency(v.actualSpend / v.conversions) : null,
+    }))
+    .sort((a, b) => b.totalActualSpend - a.totalActualSpend)
+
+  return { rows }
+}
+
+// Phase 68 §9.1 — Marketing Agency item 5: retainer-vs-work-delivered
+// tracker. For each ACTIVE retainer whose client has at least one
+// MARKETING_CAMPAIGN project, how many deliverables were actually
+// PUBLISHED this month against the fee being billed — a real "are we
+// delivering what we're charging for" signal, distinct from Independent
+// Consultant's hours-based utilization report (this is output-count based,
+// since a marketing retainer isn't necessarily hourly).
+export interface RetainerWorkDeliveredRow {
+  title: string; clientName: string; monthlyAmount: number; deliveredCount: number; billedThisPeriod: boolean
+}
+export interface RetainerWorkDeliveredReport {
+  period: string
+  rows: RetainerWorkDeliveredRow[]
+  summary: { totalRetainers: number; zeroDeliveredCount: number }
+}
+
+async function generateRetainerWorkDeliveredReport(): Promise<RetainerWorkDeliveredReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const retainers = await db.retainerAgreement.findMany({
+    where: { status: 'ACTIVE' },
+    include: { client: { select: { customerName: true, serviceProjects: { where: { projectType: 'MARKETING_CAMPAIGN' }, select: { id: true } } } } },
+  })
+  const marketingRetainers = retainers.filter((r) => r.client.serviceProjects.length > 0)
+
+  const rows: RetainerWorkDeliveredRow[] = await Promise.all(marketingRetainers.map(async (r) => {
+    const projectIds = r.client.serviceProjects.map((p) => p.id)
+    const deliveredCount = await db.contentCalendarItem.count({
+      where: { projectId: { in: projectIds }, status: 'PUBLISHED', scheduledDate: { gte: periodStart, lte: periodEnd } },
+    })
+    return { title: r.title, clientName: r.client.customerName, monthlyAmount: Number(r.monthlyAmount), deliveredCount, billedThisPeriod: r.lastInvoicedPeriod === period }
+  }))
+  rows.sort((a, b) => a.deliveredCount - b.deliveredCount)
+
+  return {
+    period, rows,
+    summary: { totalRetainers: rows.length, zeroDeliveredCount: rows.filter((r) => r.deliveredCount === 0).length },
+  }
+}
+
 // ── Photo Studio — shoot bookings by type ──────────────────────────────────
 
 export interface ShootBookingReportRow {
@@ -8036,4 +8204,8 @@ export const reportService = {
   generateRetainerUtilizationReport,
   generateProposalWinRateReport,
   generateClientRevenueConcentrationReport,
+  generateCampaignROIReport,
+  generateDeliverableStatusPipelineReport,
+  generateChannelPerformanceReport,
+  generateRetainerWorkDeliveredReport,
 }

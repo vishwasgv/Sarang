@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Phase 58 §2 — Marketing Agency: real campaign performance data entry
 // (impressions/clicks/conversions/actual spend per period) and a real
@@ -34,7 +35,11 @@ export async function addCampaignPerformanceEntry(payload: {
 }) {
   try {
     if (!payload.periodStart || !payload.periodEnd) return { success: false, error: { code: 'CPE-002', message: 'Period start and end are required.' } }
-    if (new Date(payload.periodEnd) < new Date(payload.periodStart)) return { success: false, error: { code: 'CPE-003', message: 'Period end cannot be before period start.' } }
+    // Real bug found live (2026-08-27 Phase 68 audit): a bare
+    // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+    // this app's own parseLocalDateStart convention used everywhere else
+    // for a date-only write.
+    if (parseLocalDateStart(payload.periodEnd) < parseLocalDateStart(payload.periodStart)) return { success: false, error: { code: 'CPE-003', message: 'Period end cannot be before period start.' } }
     const db = getPrisma()
     const project = await db.serviceProject.findUnique({ where: { id: payload.projectId }, select: { id: true } })
     if (!project) return { success: false, error: { code: 'CPE-004', message: 'Campaign (project) not found.' } }
@@ -42,8 +47,8 @@ export async function addCampaignPerformanceEntry(payload: {
     const entry = await db.campaignPerformanceEntry.create({
       data: {
         projectId: payload.projectId,
-        periodStart: new Date(payload.periodStart),
-        periodEnd: new Date(payload.periodEnd),
+        periodStart: parseLocalDateStart(payload.periodStart),
+        periodEnd: parseLocalDateStart(payload.periodEnd),
         impressions: payload.impressions ?? null,
         clicks: payload.clicks ?? null,
         conversions: payload.conversions ?? null,
@@ -75,8 +80,8 @@ export async function updateCampaignPerformanceEntry(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(periodStart !== undefined ? { periodStart: new Date(periodStart) } : {}),
-        ...(periodEnd !== undefined ? { periodEnd: new Date(periodEnd) } : {}),
+        ...(periodStart !== undefined ? { periodStart: parseLocalDateStart(periodStart) } : {}),
+        ...(periodEnd !== undefined ? { periodEnd: parseLocalDateStart(periodEnd) } : {}),
       },
     })
     await logAction({ action: 'CAMPAIGN_PERFORMANCE_ENTRY_UPDATED', entityType: 'CampaignPerformanceEntry', entityId: id }).catch(() => {})
@@ -142,8 +147,12 @@ export async function getCampaignPerformanceSummary(projectId: string): Promise<
         costPerConversion: totalConversions > 0 ? totalActualSpend / totalConversions : null,
         entries: entries.map((e) => ({
           id: e.id,
-          periodStart: e.periodStart.toISOString(),
-          periodEnd: e.periodEnd.toISOString(),
+          // periodStart/periodEnd are stored at LOCAL midnight
+          // (parseLocalDateStart) — a raw .toISOString() would shift to
+          // the PREVIOUS calendar day in UTC for IST, same bug class as
+          // compliance-task.service.ts's serializeTask.
+          periodStart: toLocalDateOnlyIso(e.periodStart),
+          periodEnd: toLocalDateOnlyIso(e.periodEnd),
           impressions: e.impressions,
           clicks: e.clicks,
           conversions: e.conversions,
@@ -187,7 +196,10 @@ export async function createContentCalendarItem(payload: {
     const item = await db.contentCalendarItem.create({
       data: {
         projectId: payload.projectId,
-        scheduledDate: new Date(payload.scheduledDate),
+        // Real bug found live (2026-08-27 Phase 68 audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this app's own parseLocalDateStart convention.
+        scheduledDate: parseLocalDateStart(payload.scheduledDate),
         contentType: payload.contentType ?? 'SOCIAL_POST',
         title: payload.title.trim(),
         platform: payload.platform?.trim() || null,
@@ -218,7 +230,7 @@ export async function updateContentCalendarItem(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(scheduledDate !== undefined ? { scheduledDate: new Date(scheduledDate) } : {}),
+        ...(scheduledDate !== undefined ? { scheduledDate: parseLocalDateStart(scheduledDate) } : {}),
       },
     })
     await logAction({ action: 'CONTENT_CALENDAR_ITEM_UPDATED', entityType: 'ContentCalendarItem', entityId: id }).catch(() => {})

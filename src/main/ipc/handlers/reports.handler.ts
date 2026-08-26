@@ -1030,4 +1030,32 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateClientRevenueConcentrationReport(parsed.data)
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Marketing Agency item 1: Campaign ROI/budget tracking.
+  handle('reports:campaignROI', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateCampaignROIReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Marketing Agency item 3: Deliverable Status Pipeline.
+  handle('reports:deliverableStatusPipeline', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateDeliverableStatusPipelineReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Marketing Agency item 4: Channel Performance.
+  handle('reports:channelPerformance', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateChannelPerformanceReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Marketing Agency item 5: Retainer Work Delivered.
+  handle('reports:retainerWorkDelivered', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateRetainerWorkDeliveredReport()
+    return { success: true, data }
+  })
 }

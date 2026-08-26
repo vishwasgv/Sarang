@@ -547,6 +547,14 @@ export interface IpcChannels {
     proposalWinRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Independent Consultant item 4: Client Revenue Concentration.
     clientRevenueConcentration: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Marketing Agency item 1: Campaign ROI/budget tracking.
+    campaignROI: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Marketing Agency item 3: Deliverable Status Pipeline.
+    deliverableStatusPipeline: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Marketing Agency item 4: Channel Performance.
+    channelPerformance: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Marketing Agency item 5: Retainer Work Delivered.
+    retainerWorkDelivered: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
