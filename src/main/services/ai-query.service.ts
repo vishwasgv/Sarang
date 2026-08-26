@@ -171,7 +171,32 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // Same fix shape as the original latency-driving fast-path: deterministic
   // keyword match wins over model judgment for the clearest phrasings.
   { template: 'hotel.occupancy', patterns: [/room[s]?\s+(occupied|occupancy|available)/i, /occupancy/i] },
+  // Phase 67 §9.1 — Jewellery items 1/2/3/4/5. Placed BEFORE
+  // jewellery.stockAndSales's own broad `/making[\s-]charge/i` pattern below
+  // (first-match-wins by array order) so a specific margin/split question
+  // routes to the new per-sale breakdown instead of the older blended
+  // summary — a bare "making charge" question with none of these extra
+  // words still falls through to stockAndSales unchanged.
+  { template: 'jewellery.goldSavingsSummary', patterns: [/gold\s+saving|savings?\s+scheme|chit\s+scheme/i] },
+  { template: 'jewellery.makingChargeMargin', patterns: [/making[\s-]charge.*(margin|split|breakdown|vs\.?|versus)/i, /margin.*making[\s-]charge/i] },
+  { template: 'jewellery.hallmarkCompliance', patterns: [/hallmark|huid|compliance\s+register/i] },
+  { template: 'jewellery.metalRateVsSalesVolume', patterns: [/(metal|gold|silver)\s+rate.*(vs\.?|versus|against)?\s*(sales|volume)/i, /rate.*volume.*correlat/i] },
+  { template: 'jewellery.purityAdjustedExchange', patterns: [/purity[\s-]adjusted|pure[\s-](metal[\s-])?equivalent|exchange\s+analytics/i] },
   { template: 'jewellery.stockAndSales', patterns: [/(gold|silver|metal|jewellery)\s+stock/i, /making[\s-]charge/i] },
+  // Phase 67 §9.1 — Service items 1-5.
+  { template: 'service.slaBreaches', patterns: [/sla\s+(breach|breaches|overdue|timer)/i] },
+  { template: 'service.resolutionTime', patterns: [/resolution\s+time/i, /how\s+(long|fast).*(resolve|resolution)/i] },
+  { template: 'service.contractSummary', patterns: [/service\s+contracts?/i, /amc\b/i, /recurring\s+contract/i] },
+  { template: 'service.repeatBusinessRate', patterns: [/repeat[\s-]business/i, /(customer\s+)?retention\s+rate/i] },
+  { template: 'service.quoteToJobConversion', patterns: [/quote[\s-]to[\s-]job/i, /(quotation|quote).*conversion/i] },
+  // Phase 67 §9.1 — Consultant items 1-5. Safe to overlap in wording with
+  // SERVICE's own patterns above — tryFastPathClassify only considers
+  // templates registered for the currently active business type.
+  { template: 'consultant.engagementConversion', patterns: [/engagement[\s-]letter/i, /(proposal|engagement).*(convert|conversion)/i] },
+  { template: 'consultant.utilization', patterns: [/utili[sz]ation\s+rate/i, /billable\s+(vs\.?|versus)\s+non-?billable/i] },
+  { template: 'consultant.retainerBurnDown', patterns: [/retainer\s+(burn|burn-down|hours|usage)/i] },
+  { template: 'consultant.clientProfitability', patterns: [/client\s+profitability/i, /(most|least)\s+profitable\s+client/i, /client.*(most|least)\s+profitable/i] },
+  { template: 'consultant.proposalWinRate', patterns: [/proposal\s+win[\s-]rate/i, /win\s+rate/i] },
   { template: 'rental.status', patterns: [/(checked\s+out|rented\s+out|overdue\s+rental)/i] },
   // Real gap found live 2026-07-16 (full 109-template packaged-app battery):
   // "What's my rental revenue this month?" fell through to the LLM classify
@@ -181,8 +206,16 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // patterns aren't actually triggered by the word "revenue" alone, so no
   // ordering conflict, but placed here for category grouping regardless.
   { template: 'rental.revenue', patterns: [/rental\s+revenue/i, /revenue.*rental/i] },
+  // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+  // Deliberately "asset"/"utilization"-scoped, not a bare "revenue" match —
+  // rental.revenue above already owns that.
+  { template: 'rental.assetUtilization', patterns: [/asset\s+utilization/i, /utilization.*(rate|asset)/i, /which\s+(asset|unit|vehicle)s?.*(idle|underused|earn)/i] },
   { template: 'lab.throughput', patterns: [/test\s+orders?/i, /(lab|sample)\s+(throughput|turnaround)/i] },
   { template: 'bloodBank.stock', patterns: [/blood\s+(stock|units|group)/i] },
+  // Phase 67 §9.1 — Blood Bank items 1, 3, 4.
+  { template: 'bloodBank.donorsDueForRecall', patterns: [/donors?.*(due|eligible|recall)/i, /(due|eligible|recall).*donors?/i, /donors?.*(cooldown|can donate again)/i] },
+  { template: 'bloodBank.campTurnout', patterns: [/camp.*(turnout|donors?)/i, /(turnout|donors?).*camp/i, /donation\s+(camp|drive)/i] },
+  { template: 'bloodBank.donationToIssueCycleTime', patterns: [/donation.?to.?issue/i, /cycle\s*time/i, /how\s+fast.*(units|blood).*(used|issued)/i] },
   { template: 'restaurant.foodCost', patterns: [/(food|ingredient)\s+cost/i] },
   { template: 'restaurant.orderVolume', patterns: [/order\s+volume/i, /(qr|table)\s+orders?/i] },
   { template: 'restaurant.dishContributionMargin', patterns: [/(dish|menu\s+item)s?\s+(margin|contribution)/i, /contribution\s+margin/i] },
@@ -214,6 +247,21 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // it doesn't collide with the existing bare "margin" wording other
   // margin-bearing intents (e.g. fastSlowMoverMatrix) already own.
   { template: 'clothing.vendorMargin', patterns: [/(vendor|brand|supplier).*margin/i, /margin.*(vendor|brand|supplier)/i] },
+  // Phase 67 §9.1 — Footwear item 2. Same underlying regex shape as
+  // clothing.vendorMargin above (plus a "return rate" phrasing of its
+  // own) — safe to overlap since tryFastPathClassify only considers
+  // templates already registered for the CURRENT business type, and
+  // CLOTHING/FOOTWEAR register mutually exclusive templates for this slot.
+  { template: 'footwear.brandMarginReturnRate', patterns: [/(vendor|brand|supplier).*margin/i, /margin.*(vendor|brand|supplier)/i, /return.?rate.*(vendor|brand|supplier)/i, /(vendor|brand|supplier).*return.?rate/i] },
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow.
+  { template: 'footwear.trialConversionRate', patterns: [/trial.*(convert|conversion)/i, /(convert|conversion).*trial/i, /trial.*(pair|session)/i, /how many (pairs|sizes).*tri/i] },
+  // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap. Deliberately
+  // avoids the word "heatmap" so this never collides with the earlier
+  // clothing.sizeStyleHeatmap entry's own broad /(size|style).*heatmap/i
+  // pattern — both are registered for FOOTWEAR, and first-match-wins.
+  { template: 'footwear.sizeAvailabilityHeatmap', patterns: [/which siz\w*.*(out|sold out|unavailable)/i, /siz\w*.*(out of stock|stock.?out)/i, /(out of stock|low stock).*siz\w*/i, /siz\w* availab/i] },
+  // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+  { template: 'footwear.seasonalReorderStatus', patterns: [/season\w*.*reorder/i, /reorder.*season\w*/i, /(what|which) season\w*.*(now|coming|upcoming)/i, /season\w*.*calendar/i] },
   { template: 'retail.loyaltyProgress', patterns: [/loyalty/i, /punch[\s-]?card/i, /ready.*(redeem|reward)/i] },
   { template: 'retail.basketComposition', patterns: [/basket\s+(composition|analysis)/i, /bought\s+together/i, /(products?|items?).*(together|pair)/i] },
   // Phase 67 §9.1 — Hardware's "Fast-mover vs. slow-mover matrix" signature
@@ -234,6 +282,20 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'general.cashPositionTrend', patterns: [/cash\s+position/i, /combined\s+cash/i, /cash.*(trend|running\s+balance)/i] },
   { template: 'general.quotePipelineSummary', patterns: [/quot(e|ation).*(pipeline|funnel)/i, /quotes?.*(sales\s+order|converted)/i] },
   { template: 'manufacturing.production', patterns: [/\bproduction\b/i, /production\s+order/i] },
+  // Phase 67 §9.1 — Manufacturing items 1-5.
+  { template: 'manufacturing.landedCostPerUnit', patterns: [/landed cost/i, /cost per unit/i, /(true|real) cost.*(unit|finished)/i] },
+  { template: 'manufacturing.rejectionRateTrend', patterns: [/rejection rate/i, /reject(ed|ion)?.*(rate|percent)/i, /qc.*(reject|fail)/i] },
+  { template: 'manufacturing.downtimeSummary', patterns: [/downtime/i, /down.?time/i, /machine.*(idle|stopped)/i] },
+  { template: 'manufacturing.bottleneckFlag', patterns: [/bottleneck/i, /slowest stage/i, /which stage.*(slow|delay)/i] },
+  // Phase 67 §9.1 — Agri Inputs items 2-5.
+  { template: 'agriInputs.seasonalCreditExposure', patterns: [/seasonal\s+credit/i, /credit\s+exposure/i, /(credit|due).*harvest/i, /outstanding.*season\w*/i] },
+  { template: 'agriInputs.farmerRepayment', patterns: [/farmer.*(repay|repayment)/i, /repayment.*farmer/i, /farmer.*(purchase|history|ledger)/i, /riskiest\s+farmer/i] },
+  // Deliberately excludes the bare word "heatmap" (clothing.sizeStyleHeatmap
+  // already owns that) and the word "season" alone (footwear.seasonalReorderStatus
+  // and agriInputs.seasonalCreditExposure above already own that) — scoped
+  // to "crop"/"advisory" framing specifically.
+  { template: 'agriInputs.cropAdvisory', patterns: [/crop.*(advisory|advice|recommend)/i, /(advisory|advice|recommend).*crop/i, /which\s+(fertili[sz]er|pesticide|product).*crop/i, /products?\s+for\s+\w+\s+crop/i] },
+  { template: 'agriInputs.equipmentServiceDue', patterns: [/equipment.*(service|amc)/i, /(service|amc).*equipment/i, /(tractor|sprayer).*(service|due)/i, /equipment\s+due/i] },
   { template: 'electronics.serialWarranty', patterns: [/warrant(y|ies)/i, /serial\s+number/i] },
   // Deliberately "RMA"/"vendor return"-scoped, not a bare "overdue" match —
   // that word alone is already too broad (payments, rentals, tasks).

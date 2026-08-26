@@ -12,6 +12,7 @@ const COMPONENT_TYPES = ['WHOLE_BLOOD', 'PACKED_RBC', 'PLATELETS', 'PLASMA', 'CR
 type ScreeningStatus = 'PENDING' | 'PASSED' | 'FAILED'
 
 interface Donor { id: string; fullName: string; donorCode: string; bloodGroup: string | null }
+interface DonationCamp { id: string; campName: string; campDate: string }
 interface DonationRecord {
   id: string
   donationNumber: string
@@ -28,7 +29,7 @@ interface DonationRecord {
 const STATUS_TABS: (ScreeningStatus | 'ALL')[] = ['ALL', 'PENDING', 'PASSED', 'FAILED']
 const STATUS_VARIANT: Record<ScreeningStatus, 'neutral' | 'success' | 'danger'> = { PENDING: 'neutral', PASSED: 'success', FAILED: 'danger' }
 
-const BLANK_FORM = { donorId: '', bloodGroup: '', componentType: 'WHOLE_BLOOD', volumeMl: '450', notes: '' }
+const BLANK_FORM = { donorId: '', campId: '', bloodGroup: '', componentType: 'WHOLE_BLOOD', volumeMl: '450', notes: '' }
 
 export function DonationsScreen() {
   const { hasPermission } = useAuthStore()
@@ -38,6 +39,7 @@ export function DonationsScreen() {
 
   const [records, setRecords] = useState<DonationRecord[]>([])
   const [donors, setDonors] = useState<Donor[]>([])
+  const [camps, setCamps] = useState<DonationCamp[]>([])
   const [activeTab, setActiveTab] = useState<ScreeningStatus | 'ALL'>('ALL')
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -50,9 +52,10 @@ export function DonationsScreen() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [rRes, dRes] = await Promise.all([
+      const [rRes, dRes, cRes] = await Promise.all([
         api.bloodBank.listDonationRecords({ limit: 200 }),
         api.bloodBank.listDonors({ limit: 500 }),
+        api.bloodBank.listDonationCamps(),
       ])
       if (rRes.success && rRes.data) {
         const d = rRes.data as { records: DonationRecord[]; total: number }
@@ -65,6 +68,9 @@ export function DonationsScreen() {
         setDonors(d.donors ?? [])
       } else {
         toastError('Failed', dRes.error?.message ?? 'Could not load donors.')
+      }
+      if (cRes.success && cRes.data) {
+        setCamps((cRes.data as DonationCamp[]) ?? [])
       }
     } catch {
       toastError('Failed', 'Could not load donations data.')
@@ -93,6 +99,7 @@ export function DonationsScreen() {
     try {
       const res = await api.bloodBank.createDonationRecord({
         donorId: form.donorId,
+        campId: form.campId || undefined,
         bloodGroup: form.bloodGroup,
         componentType: form.componentType,
         volumeMl: form.volumeMl ? Number(form.volumeMl) : undefined,
@@ -233,6 +240,17 @@ export function DonationsScreen() {
                     {COMPONENT_TYPES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
                   </select>
                 </div>
+              </div>
+              {/* Phase 67 §9.1 — Blood Bank item 3: optional camp/drive link,
+                  so a donation collected at a scheduled camp counts toward
+                  that camp's own turnout tracking. */}
+              <div>
+                <label className="block text-sm font-semibold text-text-primary mb-1">Donation Camp (optional)</label>
+                <select value={form.campId} onChange={(e) => setForm((f) => ({ ...f, campId: e.target.value }))}
+                  className="w-full h-12 px-4 rounded-xl border border-border text-base bg-white dark:bg-slate-900">
+                  <option value="">Walk-in / not from a camp</option>
+                  {camps.map((c) => <option key={c.id} value={c.id}>{c.campName} — {formatDate(c.campDate)}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-text-primary mb-1">Volume (ml)</label>

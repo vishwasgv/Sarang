@@ -32,13 +32,21 @@ Buka **Tukar Tambah Logam Lama** untuk mencatat seorang pelanggan yang menukar e
 
 Untuk menggunakannya, klik **Terapkan Tukar Tambah Logam Lama** saat menagih pelanggan tersebut — Sarang menampilkan kredit itu dan langsung memasukkannya ke dalam diskon faktur saat penjualan dibuat, serta menandai pertukaran tersebut sebagai sudah terpakai sehingga tidak bisa secara tidak sengaja diterapkan kedua kalinya ke faktur yang berbeda.
 
+Setiap catatan tukar tambah juga menampilkan **berat setara murni** di samping berat kotornya — berat bersih dinormalisasi menurut kemurnian (potongan 24g pada 22K adalah 22g emas murni), sehingga tukar tambah 22K dan tukar tambah 18K dapat langsung dibandingkan sekilas, bukan hanya dalam gram kotor.
+
+## Tabungan Emas
+
+Buka **Tabungan Emas** di sidebar untuk menjalankan skema arisan pelanggan — setoran bulanan tetap untuk pembelian di masa depan. Buat skema dengan jumlah bulanan, jangka waktu dalam bulan, dan tanggal mulai, lalu catat setiap **cicilan** saat pelanggan membayarnya; total setoran skema diperbarui secara otomatis.
+
+Ketika pelanggan siap membeli, **tukarkan** skema tersebut — secara opsional menambahkan jumlah bonus jika ketentuan skema itu sendiri menyertakan satu (mis. "bayar 11 bulan, dapatkan bulan ke-12 gratis") — lalu terapkan total yang ditukarkan sebagai diskon pada faktur pembelian pelanggan sendiri di Penagihan, dengan cara yang sama seperti kredit tukar tambah logam lama diterapkan.
+
 ## Returns
 
 Jewellery memiliki modul Returns yang diaktifkan, alur kerja pemrosesan-retur yang sama yang digunakan Retail, Clothing, dan Footwear.
 
 ## Reports
 
-**Laporan** mencakup laporan stok perhiasan yang menunjukkan berat bersih, tarif saat ini, dan total penilaian dikelompokkan berdasarkan jenis logam dan kadar.
+**Reports** mencakup laporan stok perhiasan yang menampilkan berat bersih, harga saat ini, dan penilaian total dikelompokkan berdasarkan jenis logam dan kemurnian, ditambah empat lainnya: **Margin Biaya Pembuatan vs. Nilai Logam** merinci margin sebenarnya per penjualan — berapa banyak dari setiap faktur yang merupakan nilai logam versus biaya pembuatan, bukan satu angka gabungan untuk seluruh periode. **Register Kepatuhan Cap / HUID** mencantumkan setiap barang perhiasan aktif dan menandai mana yang tidak memiliki nomor cap BIS/HUID, sehingga kesenjangan dapat ditemukan dan diperbaiki sebelum inspeksi, bukan sesudahnya. **Harga Logam vs. Volume Penjualan** mengorelasikan fluktuasi harga dengan apa yang benar-benar Anda jual, secara otomatis memilih logam dan kemurnian yang paling banyak bergerak pada periode tersebut. **Analisis Tukar Tambah Disesuaikan Kemurnian** membawa tukar tambah logam lama lebih jauh dari sekadar log dasar — menormalisasi setiap tukar tambah ke berat setara logam murni sehingga tukar tambah dengan kemurnian berbeda dapat dibandingkan dan dilihat trennya secara adil.
 
 ## Bahasa
 

@@ -57,6 +57,14 @@ export function BloodIssueScreen() {
   const [overrideIncompatibility, setOverrideIncompatibility] = useState(false)
   const [overrideReason, setOverrideReason] = useState('')
 
+  // Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search. Resolves
+  // "I need N units of O+ packed RBC" as one query instead of a staffer
+  // scrolling the flat unit list and mentally cross-checking each row.
+  const [fastMatchComponent, setFastMatchComponent] = useState('')
+  const [fastMatchQty, setFastMatchQty] = useState('1')
+  const [fastMatching, setFastMatching] = useState(false)
+  const [fastMatchResult, setFastMatchResult] = useState<{ matchedCount: number; requestedQuantity: number; fulfilled: boolean; shortfall: number } | null>(null)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -118,6 +126,31 @@ export function BloodIssueScreen() {
     return () => { cancelled = true }
   }, [form.recipientBloodGroup, selectedUnitIds, stockUnits, toastError])
 
+  async function handleFastMatch() {
+    if (!form.recipientBloodGroup) { toastError('Missing Blood Group', 'Select the recipient blood group first.'); return }
+    const quantity = Number(fastMatchQty)
+    if (!quantity || quantity < 1) { toastError('Invalid Quantity', 'Enter how many units are needed.'); return }
+    setFastMatching(true)
+    try {
+      const res = await api.bloodBank.fastMatchSearch({
+        recipientBloodGroup: form.recipientBloodGroup,
+        componentType: fastMatchComponent || undefined,
+        quantity,
+      })
+      if (res.success && res.data) {
+        const d = res.data as { matched: Array<{ donationRecordId: string }>; matchedCount: number; requestedQuantity: number; fulfilled: boolean; shortfall: number }
+        setSelectedUnitIds(d.matched.map((u) => u.donationRecordId))
+        setFastMatchResult({ matchedCount: d.matchedCount, requestedQuantity: d.requestedQuantity, fulfilled: d.fulfilled, shortfall: d.shortfall })
+      } else {
+        toastError('Failed', res.error?.message ?? 'Could not run fast-match search.')
+      }
+    } catch {
+      toastError('Failed', 'Could not run fast-match search.')
+    } finally {
+      setFastMatching(false)
+    }
+  }
+
   async function handleCreate() {
     if (!form.recipientName.trim()) { toastError('Missing Recipient', "Enter the recipient's name."); return }
     if (selectedUnitIds.length === 0) { toastError('No Units Selected', 'Select at least one unit to issue.'); return }
@@ -153,6 +186,9 @@ export function BloodIssueScreen() {
         setSelectedUnitIds([])
         setOverrideIncompatibility(false)
         setOverrideReason('')
+        setFastMatchResult(null)
+        setFastMatchComponent('')
+        setFastMatchQty('1')
         load()
       } else {
         toastError('Failed', (res.error as { message: string })?.message ?? 'Could not issue units.')
@@ -280,7 +316,7 @@ export function BloodIssueScreen() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-text-primary mb-1">Recipient Blood Group</label>
-                  <select value={form.recipientBloodGroup} onChange={(e) => setForm((f) => ({ ...f, recipientBloodGroup: e.target.value }))}
+                  <select value={form.recipientBloodGroup} onChange={(e) => { setForm((f) => ({ ...f, recipientBloodGroup: e.target.value })); setFastMatchResult(null) }}
                     className="w-full h-12 px-4 rounded-xl border border-border text-base bg-white dark:bg-slate-900">
                     <option value="">Unknown</option>
                     {BLOOD_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -306,6 +342,35 @@ export function BloodIssueScreen() {
                   <input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                     placeholder="0" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
+              </div>
+
+              {/* Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search. */}
+              <div className="bg-brand/5 border border-brand/20 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-brand">Fast Match — find compatible units by group/component/quantity</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select value={fastMatchComponent} onChange={(e) => setFastMatchComponent(e.target.value)}
+                    className="h-9 px-3 rounded-lg border border-border text-xs bg-white dark:bg-slate-900">
+                    <option value="">Any component</option>
+                    <option value="WHOLE_BLOOD">Whole Blood</option>
+                    <option value="PACKED_RBC">Packed RBC</option>
+                    <option value="PLATELETS">Platelets</option>
+                    <option value="PLASMA">Plasma</option>
+                    <option value="CRYOPRECIPITATE">Cryoprecipitate</option>
+                  </select>
+                  <input type="number" min="1" value={fastMatchQty} onChange={(e) => setFastMatchQty(e.target.value)}
+                    className="w-20 h-9 px-3 rounded-lg border border-border text-xs" placeholder="Qty" />
+                  <button onClick={handleFastMatch} disabled={fastMatching}
+                    className="h-9 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
+                    {fastMatching ? 'Matching…' : 'Find & Select'}
+                  </button>
+                </div>
+                {fastMatchResult && (
+                  <p className={`text-xs ${fastMatchResult.fulfilled ? 'text-success' : 'text-danger'}`}>
+                    {fastMatchResult.fulfilled
+                      ? `Matched all ${fastMatchResult.matchedCount} unit(s) requested.`
+                      : `Only ${fastMatchResult.matchedCount} of ${fastMatchResult.requestedQuantity} compatible unit(s) available — short by ${fastMatchResult.shortfall}.`}
+                  </p>
+                )}
               </div>
 
               <div>

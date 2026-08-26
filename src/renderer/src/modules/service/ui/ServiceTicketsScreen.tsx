@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Customer { id: string; customerName: string }
 interface User { id: string; fullName: string }
+interface Quotation { id: string; quotationNumber: string; customerName: string | null }
 interface Ticket {
   id: string; ticketNumber: string; title: string; description: string | null
   status: string; priority: string; category: string | null
@@ -19,6 +20,8 @@ interface Ticket {
   assignedToId: string | null; assignedToName: string | null
   resolvedAt: string | null; closedAt: string | null; resolution: string | null
   invoiceId: string | null
+  slaDueAt: string | null; isSlaBreached: boolean
+  quotationId: string | null; quotationNumber: string | null
   createdAt: string
 }
 
@@ -43,7 +46,7 @@ const STATUS_ACTIONS: Record<string, string[]> = {
   CLOSED: []
 }
 
-const BLANK_FORM = { title: '', description: '', priority: 'MEDIUM', category: '', customerId: '', assignedToId: '' }
+const BLANK_FORM = { title: '', description: '', priority: 'MEDIUM', category: '', customerId: '', assignedToId: '', quotationId: '' }
 
 export function ServiceTicketsScreen() {
   const { t } = useTranslation()
@@ -51,6 +54,7 @@ export function ServiceTicketsScreen() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [acceptedQuotations, setAcceptedQuotations] = useState<Quotation[]>([])
   const [activeTab, setActiveTab] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -67,10 +71,11 @@ export function ServiceTicketsScreen() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [tRes, cRes, uRes] = await Promise.all([
+      const [tRes, cRes, uRes, qRes] = await Promise.all([
         api.tickets.list({}),
         api.customers.list({ limit: 500 }),
-        api.users.list()
+        api.users.list(),
+        api.quotations.list({ status: 'ACCEPTED' })
       ])
       if (tRes.success && tRes.data) {
         const d = tRes.data as { tickets: Ticket[] }
@@ -84,6 +89,14 @@ export function ServiceTicketsScreen() {
       }
       if (uRes.success && Array.isArray(uRes.data)) {
         setUsers(uRes.data as User[])
+      }
+      // Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking.
+      // Server-side createTicket() is the real guard against double-
+      // converting an already-linked quotation — this list is just the
+      // picker's own candidate set, not itself filtered by conversion state.
+      if (qRes.success && qRes.data) {
+        const d = qRes.data as { quotations: Quotation[] }
+        setAcceptedQuotations(d.quotations ?? [])
       }
     } catch {
       toastError(t('common.error'), t('common.error'))
@@ -111,7 +124,8 @@ export function ServiceTicketsScreen() {
         priority: form.priority,
         category: form.category || undefined,
         customerId: form.customerId || undefined,
-        assignedToId: form.assignedToId || undefined
+        assignedToId: form.assignedToId || undefined,
+        quotationId: form.quotationId || undefined
       })
       if (res.success) {
         toastSuccess(t('service.ticketCreated'))
@@ -193,6 +207,7 @@ export function ServiceTicketsScreen() {
 
   const urgentOpen = tickets.filter(t => t.priority === 'URGENT' && t.status !== 'RESOLVED' && t.status !== 'CLOSED').length
   const activeCount = tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length
+  const slaBreachedCount = tickets.filter(t => t.isSlaBreached).length
 
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -204,7 +219,9 @@ export function ServiceTicketsScreen() {
               {t('service.tickets')}
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
-              {urgentOpen > 0 ? (
+              {slaBreachedCount > 0 ? (
+                <span className="text-red-600 font-semibold">{slaBreachedCount} {t('service.slaBreachedCount')}</span>
+              ) : urgentOpen > 0 ? (
                 <span className="text-red-600 font-semibold">{urgentOpen} {t('service.urgentOpen')}</span>
               ) : `${activeCount} ${t('service.activeTickets')}`}
             </p>
@@ -253,6 +270,7 @@ export function ServiceTicketsScreen() {
                       <Badge variant={STATUS_VARIANT[ticket.status] ?? 'neutral'} size="sm">{t(STATUS_LABEL_KEY[ticket.status] ?? ticket.status)}</Badge>
                       <Badge variant={PRIORITY_VARIANT[ticket.priority] ?? 'neutral'} size="sm">{ticket.priority}</Badge>
                       {ticket.category && <span className="text-xs text-text-secondary border border-border rounded-full px-2 py-0.5">{ticket.category}</span>}
+                      {ticket.isSlaBreached && <Badge variant="danger" size="sm">{t('service.slaBreached')}</Badge>}
                     </div>
                     <p className="mt-1 font-semibold text-text-primary">{ticket.title}</p>
                     <div className="flex items-center gap-3 mt-1">
@@ -260,7 +278,7 @@ export function ServiceTicketsScreen() {
                       <span className="text-xs text-text-secondary">{formatDate(ticket.createdAt)}</span>
                     </div>
                   </div>
-                  {ticket.priority === 'URGENT' && ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
+                  {(ticket.isSlaBreached || (ticket.priority === 'URGENT' && ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED')) && (
                     <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
                   )}
                 </div>
@@ -314,6 +332,14 @@ export function ServiceTicketsScreen() {
                   </Select>
                 </div>
               )}
+              {acceptedQuotations.length > 0 && (
+                <div>
+                  <Select label={t('service.convertFromQuotation')} value={form.quotationId} onChange={e => setForm(f => ({ ...f, quotationId: e.target.value }))}>
+                    <option value="">{t('service.notFromQuotation')}</option>
+                    {acceptedQuotations.map(q => <option key={q.id} value={q.id}>{q.quotationNumber}{q.customerName ? ` — ${q.customerName}` : ''}</option>)}
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="px-6 pb-6 flex gap-3">
               <button onClick={() => { setShowCreate(false); setForm({ ...BLANK_FORM }) }}
@@ -337,6 +363,7 @@ export function ServiceTicketsScreen() {
                   <span className="font-mono text-xs text-text-secondary">{detail.ticketNumber}</span>
                   <Badge variant={STATUS_VARIANT[detail.status] ?? 'neutral'} size="sm">{t(STATUS_LABEL_KEY[detail.status] ?? detail.status)}</Badge>
                   <Badge variant={PRIORITY_VARIANT[detail.priority] ?? 'neutral'} size="sm">{detail.priority}</Badge>
+                  {detail.isSlaBreached && <Badge variant="danger" size="sm">{t('service.slaBreached')}</Badge>}
                 </div>
                 <h2 className="text-lg font-bold text-text-primary mt-1">{detail.title}</h2>
               </div>
@@ -360,6 +387,15 @@ export function ServiceTicketsScreen() {
                   <span className="text-text-secondary">{t('service.createdLabel')}</span>
                   <span className="text-text-primary font-medium">{formatDate(detail.createdAt)}</span>
                 </div>
+                {detail.slaDueAt && !detail.resolvedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">{t('service.slaDueLabel')}</span>
+                    <span className={detail.isSlaBreached ? 'text-red-600 font-semibold' : 'text-text-primary font-medium'}>{formatDate(detail.slaDueAt)}</span>
+                  </div>
+                )}
+                {detail.quotationNumber && (
+                  <div className="flex justify-between"><span className="text-text-secondary">{t('service.convertedFromQuotation')}</span><span className="text-text-primary font-medium">{detail.quotationNumber}</span></div>
+                )}
                 {detail.resolvedAt && (
                   <div className="flex justify-between"><span className="text-text-secondary">{t('service.resolvedLabel')}</span><span className="text-green-600 font-medium">{formatDate(detail.resolvedAt)}</span></div>
                 )}

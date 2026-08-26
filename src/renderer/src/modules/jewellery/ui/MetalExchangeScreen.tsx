@@ -32,6 +32,26 @@ interface MetalExchange {
 
 const METAL_TYPES = ['GOLD', 'SILVER', 'PLATINUM']
 
+// Phase 67 §9.1 — Jewellery item 5: purity-adjusted display, "beyond a basic
+// exchange log" per the audit — normalizes to a pure-metal-equivalent weight
+// so a 22K and an 18K exchange are directly comparable at a glance, not just
+// in the aggregate Reports tile. Mirrors report.service.ts's own
+// purityToFineness() exactly; kept local since this is a tiny display-only
+// helper, not shared business logic.
+function purityToFineness(purity: string): number | null {
+  const karat = /^(\d{1,2})\s*K$/i.exec(purity.trim())
+  if (karat) {
+    const k = parseInt(karat[1], 10)
+    return k > 0 && k <= 24 ? k / 24 : null
+  }
+  const perMille = /^(\d{3})$/.exec(purity.trim())
+  if (perMille) {
+    const v = parseInt(perMille[1], 10)
+    return v > 0 && v <= 999 ? v / 1000 : null
+  }
+  return null
+}
+
 // Fresh-audit build (2026-07-12) — Jewellery vertical, old-metal exchange
 // (buyback/trade-in). Deliberately standalone record-keeping, not wired
 // into billing.service.ts's invoice creation — see MetalExchange's own
@@ -229,6 +249,10 @@ export function MetalExchangeScreen(): React.JSX.Element {
                   <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{x.customer?.customerName ?? x.customerName ?? t('billing.walkIn')}</div>
                   <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
                     <span>{t('jewellery.netWeightRate', { weight: x.netWeight.toFixed(3), rate: `${sym}${x.ratePerGram}` })}</span>
+                    {(() => {
+                      const fineness = purityToFineness(x.purity)
+                      return fineness !== null ? <span>{t('jewellery.pureEquivalent', { weight: (x.netWeight * fineness).toFixed(3) })}</span> : null
+                    })()}
                     <span className="font-semibold text-dark dark:text-slate-100">{sym}{x.valueGiven.toFixed(2)} {t('jewellery.credit')}</span>
                     <span>{new Date(x.createdAt).toLocaleDateString()}</span>
                   </div>

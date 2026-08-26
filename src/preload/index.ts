@@ -351,9 +351,11 @@ const api: IpcChannels = {
     categorySellThrough: (p) => invoke('reports:categorySellThrough', p),
     seasonSellThrough: (p) => invoke('reports:seasonSellThrough', p),
     sizeStyleHeatmap: (p) => invoke('reports:sizeStyleHeatmap', p),
+    sizeAvailabilityHeatmap: (p) => invoke('reports:sizeAvailabilityHeatmap', p),
     basketComposition: (p) => invoke('reports:basketComposition', p),
     categoryMix: (p) => invoke('reports:categoryMix', p),
     vendorMargin: (p) => invoke('reports:vendorMargin', p),
+    brandMarginReturnRate: (p) => invoke('reports:brandMarginReturnRate', p),
     fastSlowMoverMatrix: (p) => invoke('reports:fastSlowMoverMatrix', p),
     gstr1: (p) => invoke('reports:gstr1', p),
     hsnSummary: (p) => invoke('reports:hsnSummary', p),
@@ -367,8 +369,17 @@ const api: IpcChannels = {
     batchExpiry: () => invoke('reports:batchExpiry'),
     labThroughput: (p) => invoke('reports:labThroughput', p),
     bloodStock: () => invoke('reports:bloodStock'),
+    donationToIssueCycleTime: () => invoke('reports:donationToIssueCycleTime'),
     jewellery: (p) => invoke('reports:jewellery', p),
+    makingChargeMargin: (p) => invoke('reports:makingChargeMargin', p),
+    hallmarkCompliance: () => invoke('reports:hallmarkCompliance'),
+    metalRateVsSalesVolume: (p) => invoke('reports:metalRateVsSalesVolume', p),
+    purityAdjustedExchange: (p) => invoke('reports:purityAdjustedExchange', p),
     projects: (p) => invoke('reports:projects', p),
+    serviceResolutionTime: (p) => invoke('reports:serviceResolutionTime', p),
+    repeatBusinessRate: (p) => invoke('reports:repeatBusinessRate', p),
+    consultantUtilization: (p) => invoke('reports:consultantUtilization', p),
+    clientProfitability: (p) => invoke('reports:clientProfitability', p),
     serviceProjects: (p) => invoke('reports:serviceProjects', p),
     jobCards: (p) => invoke('reports:jobCards', p),
     carJobCards: (p) => invoke('reports:carJobCards', p),
@@ -400,6 +411,10 @@ const api: IpcChannels = {
     logistics: (p) => invoke('reports:logistics', p),
     attendance: (p) => invoke('reports:attendance', p),
     production: (p) => invoke('reports:production', p),
+    landedCostPerUnit: (p) => invoke('reports:landedCostPerUnit', p),
+    rejectionRateTrend: (p) => invoke('reports:rejectionRateTrend', p),
+    seasonalCreditExposure: () => invoke('reports:seasonalCreditExposure'),
+    farmerRepayment: () => invoke('reports:farmerRepayment'),
     serialWarranty: () => invoke('reports:serialWarranty'),
     rmaAging: () => invoke('reports:rmaAging'),
     vendorRecoveryLedger: () => invoke('reports:vendorRecoveryLedger'),
@@ -409,6 +424,7 @@ const api: IpcChannels = {
     complianceTasks: () => invoke('reports:complianceTasks'),
     rentalStatus: () => invoke('reports:rentalStatus'),
     rentalRevenue: (p) => invoke('reports:rentalRevenue', p),
+    assetUtilization: (p) => invoke('reports:assetUtilization', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -576,6 +592,32 @@ const api: IpcChannels = {
   exchange: {
     create: (p) => invoke('exchange:create', p),
   },
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow.
+  trialSession: {
+    record: (p) => invoke('trialSession:record', p),
+    conversionSummary: (p) => invoke('trialSession:conversionSummary', p),
+  },
+  // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+  seasonalCycle: {
+    list: () => invoke('seasonalCycle:list'),
+    create: (p) => invoke('seasonalCycle:create', p),
+    update: (p) => invoke('seasonalCycle:update', p),
+    delete: (p) => invoke('seasonalCycle:delete', p),
+    calendar: (p) => invoke('seasonalCycle:calendar', p),
+  },
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
+  cropSeason: {
+    list: () => invoke('cropSeason:list'),
+    create: (p) => invoke('cropSeason:create', p),
+    update: (p) => invoke('cropSeason:update', p),
+    delete: (p) => invoke('cropSeason:delete', p),
+    resolveDueDate: (p) => invoke('cropSeason:resolveDueDate', p),
+  },
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+  cropAdvisory: {
+    listCrops: () => invoke('cropAdvisory:listCrops'),
+    productsForCrop: (p) => invoke('cropAdvisory:productsForCrop', p),
+  },
   // Phase 2 — Industry Expansion
   batches: {
     list: (p) => invoke('batches:list', p),
@@ -590,6 +632,10 @@ const api: IpcChannels = {
     bulkCreate: (p) => invoke('serials:bulkCreate', p),
     updateStatus: (p) => invoke('serials:updateStatus', p),
     searchByImei: (p) => invoke('serials:searchByImei', p),
+    // Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+    updateServiceInfo: (p) => invoke('serials:updateServiceInfo', p),
+    dueForService: (p) => invoke('serials:dueForService', p),
+    scheduleServiceReminder: (p) => invoke('serials:scheduleServiceReminder', p),
   },
   variants: {
     list: (p) => invoke('variants:list', p),
@@ -632,6 +678,10 @@ const api: IpcChannels = {
     list: (p) => invoke('workOrders:list', p),
     upsert: (p) => invoke('workOrders:upsert', p),
     updateStatus: (p) => invoke('workOrders:updateStatus', p),
+    logDowntime: (p) => invoke('workOrders:logDowntime', p),
+    listDowntime: (p) => invoke('workOrders:listDowntime', p),
+    downtimeSummary: (p) => invoke('workOrders:downtimeSummary', p),
+    bottleneckFlag: (p) => invoke('workOrders:bottleneckFlag', p),
   },
   dispatch: {
     list: (p) => invoke('dispatch:list', p),
@@ -646,6 +696,7 @@ const api: IpcChannels = {
     update: (p) => invoke('projects:update', p),
     delete: (p) => invoke('projects:delete', p),
     generateInvoice: (p) => invoke('projects:generateInvoice', p),
+    getProposalWinRateStats: () => invoke('projects:getProposalWinRateStats'),
     tasks: {
       list: (p) => invoke('projects:tasks:list', p),
       create: (p) => invoke('projects:tasks:create', p),
@@ -659,6 +710,14 @@ const api: IpcChannels = {
     update: (p) => invoke('tickets:update', p),
     delete: (p) => invoke('tickets:delete', p),
     generateInvoice: (p) => invoke('tickets:generateInvoice', p),
+    getConversionStats: () => invoke('tickets:getConversionStats'),
+  },
+  serviceContracts: {
+    list: (p?) => invoke('serviceContracts:list', p),
+    get: (p) => invoke('serviceContracts:get', p),
+    create: (p) => invoke('serviceContracts:create', p),
+    update: (p) => invoke('serviceContracts:update', p),
+    generateInvoice: (p) => invoke('serviceContracts:generateInvoice', p),
   },
   jobCards: {
     list: (p) => invoke('jobCards:list', p),
@@ -768,6 +827,13 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('metalExchange:create', p),
     linkToInvoice: (p: unknown) => invoke('metalExchange:linkToInvoice', p),
     delete: (p: unknown) => invoke('metalExchange:delete', p),
+  },
+  goldSavings: {
+    list: (p?: unknown) => invoke('goldSavings:list', p),
+    create: (p: unknown) => invoke('goldSavings:create', p),
+    recordInstallment: (p: unknown) => invoke('goldSavings:recordInstallment', p),
+    redeem: (p: unknown) => invoke('goldSavings:redeem', p),
+    linkToInvoice: (p: unknown) => invoke('goldSavings:linkToInvoice', p),
   },
   drawingRevision: {
     list: (p: unknown) => invoke('drawingRevision:list', p),
@@ -938,6 +1004,7 @@ const api: IpcChannels = {
     updateDonor: (p: unknown) => invoke('bloodBank:updateDonor', p),
     deactivateDonor: (p: unknown) => invoke('bloodBank:deactivateDonor', p),
     sendDonorRecall: (p: unknown) => invoke('bloodBank:sendDonorRecall', p),
+    listDonorsDueForRecall: () => invoke('bloodBank:listDonorsDueForRecall'),
     createDonationCamp: (p: unknown) => invoke('bloodBank:createDonationCamp', p),
     listDonationCamps: () => invoke('bloodBank:listDonationCamps'),
     createDonationRecord: (p: unknown) => invoke('bloodBank:createDonationRecord', p),
@@ -945,6 +1012,7 @@ const api: IpcChannels = {
     updateScreeningStatus: (p: unknown) => invoke('bloodBank:updateScreeningStatus', p),
     getBloodStock: () => invoke('bloodBank:getBloodStock'),
     checkCompatibilityBatch: (p: unknown) => invoke('bloodBank:checkCompatibilityBatch', p),
+    fastMatchSearch: (p: unknown) => invoke('bloodBank:fastMatchSearch', p),
     createIssue: (p: unknown) => invoke('bloodBank:createIssue', p),
     listIssues: (p?: unknown) => invoke('bloodBank:listIssues', p),
     getIssue: (p: unknown) => invoke('bloodBank:getIssue', p),

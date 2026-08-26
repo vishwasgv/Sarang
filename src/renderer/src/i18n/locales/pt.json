@@ -216,7 +216,7 @@
     "reviewAuditLog": "Revisar",
     "reviewRentals": "Revisar",
     "reviewRepairTickets": "Revisar",
-"renewLicense": "Renovar",
+    "renewLicense": "Renovar",
     "viewUpdate": "Ver",
     "spotlight": {
       "membershipTitle": "Foco em Associações",
@@ -1629,6 +1629,14 @@
         "label": "Mapa de Calor Tamanho × Estilo",
         "description": "Uma grade de unidades vendidas por estilo e tamanho — veja rapidamente quais combinações realmente estão vendendo"
       },
+      "sizeAvailabilityHeatmap": {
+        "label": "Mapa de Calor de Disponibilidade de Numeração",
+        "description": "Uma grade de estoque ao vivo por estilo e numeração — veja de relance quais numerações estão esgotadas ou acabando para um determinado estilo"
+      },
+      "seasonalReorderCalendar": {
+        "label": "Calendário Sazonal de Reposição",
+        "description": "Defina seus próprios ciclos de compra (monção, temporada de casamentos, temporada esportiva, ou o que você realmente estoca) e veja quais precisam ser repostos agora, com base no prazo de entrega"
+      },
       "basketComposition": {
         "label": "Composição da Cesta",
         "description": "Quais produtos são mais frequentemente comprados juntos na mesma venda — identifique combinações e pareamentos naturais que vale a pena colocar lado a lado ou oferecer como combo"
@@ -1640,6 +1648,10 @@
       "vendorMargin": {
         "label": "Margem por Marca/Fornecedor",
         "description": "Receita, custo e margem divididos por qual fornecedor/marca cada produto vendido veio — veja rapidamente quais fornecedores são realmente rentáveis e quais dão prejuízo"
+      },
+      "brandMarginReturnRate": {
+        "label": "Margem e Taxa de Devolução por Marca",
+        "description": "Margem e taxa de devolução lado a lado para cada marca/fornecedor — as devoluções de calçado tendem a ser mais altas do que as de vestuário, por isso uma marca com margem saudável ainda pode estar a perder dinheiro silenciosamente devido a uma taxa de devolução acima da média"
       },
       "fastSlowMoverMatrix": {
         "label": "Matriz de Produtos de Giro Rápido vs. Lento",
@@ -1677,6 +1689,10 @@
         "label": "Relatório de Estoque de Sangue",
         "description": "Unidades de sangue disponíveis por grupo, com alertas de validade próxima"
       },
+      "donationToIssueCycleTime": {
+        "label": "Tempo de Ciclo de Doação até Emissão",
+        "description": "Quão rápido as unidades doadas são realmente usadas, por tipo de componente — um indicador de risco de desperdício"
+      },
       "logistics": {
         "label": "Relatório de Logística",
         "description": "Remessas, custo de frete, taxa de entrega e principais transportadoras"
@@ -1688,6 +1704,22 @@
       "production": {
         "label": "Relatório de Produção",
         "description": "Ordens de produção por status, quantidade planejada vs. produzida"
+      },
+      "landedCostPerUnit": {
+        "label": "Custo Real de Chegada por Unidade Acabada",
+        "description": "Custo de material, mão de obra e despesas gerais por unidade produzida, lado a lado — o custo real de um produto acabado, não apenas seus materiais"
+      },
+      "rejectionRateTrend": {
+        "label": "Tendência da Taxa de Rejeição",
+        "description": "Taxa de rejeição de qualidade ao longo do tempo e por etapa de produção — veja qual etapa está realmente perdendo boas unidades"
+      },
+      "seasonalCreditExposure": {
+        "label": "Exposição de Crédito Sazonal",
+        "description": "Faturas de crédito pendentes agrupadas por mês de vencimento e por temporada de colheita vinculada — veja quando você está mais exposto durante o ano"
+      },
+      "farmerRepayment": {
+        "label": "Histórico de Compras e Pagamentos por Agricultor",
+        "description": "Cada cliente de crédito classificado pela taxa de reembolso — contas de maior risco primeiro"
       },
       "serialWarranty": {
         "label": "Relatório de Série e Garantia",
@@ -1737,9 +1769,29 @@
         "label": "Receita e Utilização de Aluguel",
         "description": "Receita por item de aluguel, além da taxa de utilização para unidades rastreadas individualmente"
       },
+      "assetUtilization": {
+        "label": "Taxa de Utilização de Ativos",
+        "description": "Dias alugados versus dias disponíveis para cada unidade rastreada individualmente — quais ativos realmente valem a pena"
+      },
       "jewellery": {
         "label": "Relatório de Joalheria",
         "description": "Avaliação do estoque de metal por pureza, receita de custo de fabricação e resumo de troca de metal usado"
+      },
+      "makingChargeMargin": {
+        "label": "Margem de Taxa de Mão de Obra vs. Valor do Metal",
+        "description": "A verdadeira divisão de margem por venda — quanto de cada fatura é valor do metal versus taxa de mão de obra"
+      },
+      "hallmarkCompliance": {
+        "label": "Registro de Conformidade de Marca / HUID",
+        "description": "Cada item de joalheria ativo, sinalizando quais estão sem um número de marca BIS/HUID"
+      },
+      "metalRateVsSalesVolume": {
+        "label": "Taxa do Metal vs. Volume de Vendas",
+        "description": "Correlaciona as oscilações da taxa do ouro com o volume de vendas, para orientar o momento de reabastecimento e precificação"
+      },
+      "purityAdjustedExchange": {
+        "label": "Análise de Troca Ajustada por Pureza",
+        "description": "Trocas de metal usado normalizadas para peso equivalente em metal puro, além do registro básico de trocas"
       },
       "profitAndLoss": {
         "label": "Demonstração de Resultados",
@@ -1748,6 +1800,22 @@
       "projects": {
         "label": "Relatório de Projetos",
         "description": "Cada projeto por status e valor do contrato — para negócios de Serviços/Consultoria/Agência"
+      },
+      "serviceResolutionTime": {
+        "label": "Tempo de Resolução por Categoria",
+        "description": "Uma métrica real de qualidade de serviço — tempo de resolução médio, mais rápido e mais lento por categoria de ticket"
+      },
+      "repeatBusinessRate": {
+        "label": "Taxa de Negócios Recorrentes",
+        "description": "O indicador de retenção que este ramo nunca teve — qual parcela de clientes a cada mês é recorrente versus nova"
+      },
+      "consultantUtilization": {
+        "label": "Taxa de Utilização",
+        "description": "A métrica de consultoria nº 1, atualmente invisível — horas faturáveis vs. não faturáveis por membro da equipe"
+      },
+      "clientProfitability": {
+        "label": "Rentabilidade do Cliente",
+        "description": "Quais clientes realmente valem a pena manter — receita vs. horas gastas, por cliente"
       },
       "jobCards": {
         "label": "Relatório de Ordens de Serviço",
@@ -1904,6 +1972,8 @@
     },
     "summary": {
       "totalRevenue": "Receita Total",
+      "totalUnits": "Total de Unidades",
+      "idleUnitCount": "Unidades Ociosas",
       "totalInvoices": "Faturas Totais",
       "totalTaxAmount": "Imposto Total",
       "avgOrderValue": "Valor Médio do Pedido",
@@ -1972,6 +2042,11 @@
       "topCombination": "Melhor Combinação",
       "topCombinationUnits": "Unidades da Melhor Combinação",
       "sizeStyleHeatmap": "Mapa de Calor Tamanho × Estilo",
+      "sizeAvailabilityHeatmap": "Mapa de Calor de Disponibilidade de Numeração",
+      "totalStyles": "Estilos Exibidos",
+      "outOfStockCells": "Numerações Esgotadas",
+      "lowStockCells": "Numerações com Estoque Baixo",
+      "styleWithMostGaps": "Estilo com Mais Faltas",
       "totalBaskets": "Total de Cestas",
       "avgItemsPerBasket": "Méd. de Itens por Cesta",
       "avgBasketValue": "Valor Médio da Cesta",
@@ -2012,6 +2087,9 @@
       "totalAvailableUnits": "Total de Unidades Disponíveis",
       "expiringSoon": "Vencendo em Breve",
       "groupsOutOfStock": "Grupos Sem Estoque",
+      "totalIssuedUnits": "Total de Unidades Emitidas",
+      "overallAvgDays": "Tempo de Ciclo Médio Geral",
+      "avgCycleTimeByComponent": "Tempo de Ciclo Médio por Componente",
       "totalShipments": "Total de Remessas",
       "deliveryRate": "Taxa de Entrega",
       "totalFreight": "Frete Total",
@@ -2022,13 +2100,22 @@
       "overallAttendanceRate": "Taxa de Presença",
       "inProgress": "Em Andamento",
       "completionRate": "Taxa de Conclusão",
+      "totalProducedQty": "Qtd. Total Produzida",
+      "landedCostPerUnitByProduct": "Custo de Chegada por Unidade por Produto",
+      "overallRejectionRate": "Taxa de Rejeição Geral",
+      "rejectionRateTrend": "Tendência da Taxa de Rejeição",
+      "totalOutstanding": "Total Pendente",
+      "peakMonth": "Mês de Pico",
+      "seasonalCreditExposureByMonth": "Exposição de Crédito Sazonal por Mês",
+      "totalFarmers": "Total de Agricultores",
+      "overallRepaymentRate": "Taxa de Reembolso Geral",
+      "repaymentRateByFarmer": "Taxa de Reembolso por Agricultor",
       "totalSerials": "Total de Séries",
       "inStock": "Em Estoque",
       "warrantyExpiringSoon": "Garantia Vencendo em Breve",
       "warrantyExpired": "Garantia Vencida",
-      "totalOpen": "Atualmente com o Fornecedor",
+      "totalOpen": "Tarefas Abertas",
       "daysWithVendorByUnit": "Dias com o Fornecedor, por Unidade",
-      "totalOutstanding": "Total Pendente",
       "outstandingByClaim": "Valor Pendente, por Reivindicação",
       "technicianCount": "Técnicos",
       "totalTicketsCompleted": "Tickets Concluídos",
@@ -2040,7 +2127,6 @@
       "averagePercentage": "Nota Média",
       "belowFiftyCount": "Abaixo de 50%",
       "studentCount": "Alunos",
-      "totalOpen": "Tarefas Abertas",
       "overdueCount": "Atrasadas",
       "dueThisWeekCount": "Vence Esta Semana",
       "clientCount": "Clientes",
@@ -2055,10 +2141,23 @@
       "totalExchangeCount": "Trocas Registradas",
       "totalExchangeValueGiven": "Valor de Troca Concedido",
       "metalsWithNoRateSet": "Metais Sem Taxa Definida",
+      "totalMetalValue": "Valor Total do Metal",
+      "totalMakingCharge": "Total de Taxa de Mão de Obra",
+      "avgMakingChargePercent": "% Méd. Taxa de Mão de Obra",
+      "totalItems": "Total de Itens",
+      "compliantCount": "Conformes",
+      "nonCompliantCount": "Não Conformes",
+      "totalPureEquivalentGrams": "Equivalente em Metal Puro",
+      "unparsablePurityCount": "Pureza Não Reconhecida",
+      "totalResolved": "Tickets Resolvidos",
+      "overallAvgHours": "Tempo Médio de Resolução",
+      "repeatRatePercent": "Taxa de Recorrência",
+      "overallUtilizationPercent": "Utilização Geral",
       "revenue": "Receita",
       "cogs": "Custo das Mercadorias Vendidas",
       "totalMargin": "Margem Total",
       "marginByVendor": "Margem por Fornecedor",
+      "brandMarginReturnRate": "Margem e Taxa de Devolução por Marca",
       "grossProfit": "Lucro Bruto",
       "netProfit": "Lucro Líquido",
       "totalProjects": "Total de Projetos",
@@ -2161,6 +2260,8 @@
       "attendanceDetails": "Detalhes de Presença",
       "byOrderStatus": "Por Status do Pedido",
       "productionOrderDetails": "Detalhes da Ordem de Produção",
+      "rejectionRateByStage": "Taxa de Rejeição por Etapa",
+      "bySeason": "Por Temporada de Colheita",
       "byWarrantyStatus": "Por Status de Garantia",
       "serialDetails": "Detalhes da Série",
       "salesByHour": "Vendas por Hora do Dia",
@@ -2182,6 +2283,7 @@
       "table32": "Tabela 3.2 — Fornecimentos Interestaduais a Pessoas Não Registradas",
       "notCovered": "Não Coberto por Este Relatório",
       "stockByMetal": "Avaliação de Estoque por Metal",
+      "pureEquivalentTrend": "Tendência do Equivalente em Metal Puro",
       "plSummary": "Receita, Lucro Bruto, Despesas e Lucro Líquido",
       "projectDetails": "Detalhes do Projeto",
       "jobCardDetails": "Detalhes da Ordem de Serviço",
@@ -2228,9 +2330,11 @@
       "categorySellThrough": "Nenhuma venda de produto categorizado encontrada neste intervalo de datas.",
       "seasonSellThrough": "Nenhum produto tem uma estação/coleção definida, ou nenhuma venda foi encontrada neste intervalo de datas.",
       "sizeStyleHeatmap": "Nenhuma venda com rastreamento de variação encontrada neste intervalo de datas.",
+      "sizeAvailabilityHeatmap": "Nenhum estoque com variantes rastreadas encontrado.",
       "basketComposition": "Nenhuma cesta com 2 ou mais produtos diferentes encontrada neste intervalo de datas.",
       "categoryMix": "Nenhuma venda de produto categorizado encontrada neste intervalo de datas.",
       "vendorMargin": "Nenhuma venda encontrada para produtos com um fornecedor/marca atribuído neste intervalo de datas.",
+      "brandMarginReturnRate": "Nenhuma venda encontrada para produtos com um fornecedor/marca atribuído neste intervalo de datas.",
       "cashPositionTrend": "Nenhum movimento de caixa encontrado neste intervalo de datas.",
       "fastSlowMoverMatrix": "Nenhum produto vendido neste período.",
       "gstr1": "Nenhuma fatura tributável encontrada para este período.",
@@ -2241,8 +2345,13 @@
       "batches": "Nenhum lote ativo com estoque restante.",
       "labOrders": "Nenhum pedido de teste de laboratório neste período.",
       "bloodUnits": "Nenhuma unidade de sangue disponível.",
+      "donationToIssueCycleTime": "Nenhuma unidade emitida ainda.",
       "attendance": "Nenhum registro de presença neste período.",
       "productionOrders": "Nenhuma ordem de produção neste período.",
+      "landedCostPerUnit": "Nenhuma ordem de produção concluída neste intervalo de datas.",
+      "rejectionRateTrend": "Nenhuma contagem de inspeção de qualidade registrada neste intervalo de datas.",
+      "seasonalCreditExposure": "Nenhuma fatura de crédito pendente com data de vencimento no momento.",
+      "farmerRepayment": "Nenhuma atividade de crédito de agricultor registrada ainda.",
       "serials": "Nenhum número de série encontrado.",
       "rmaAging": "Nenhuma unidade está atualmente com um fornecedor para reparação ou substituição.",
       "vendorRecoveryLedger": "Nenhuma reivindicação de garantia de fornecedor foi registrada ainda.",
@@ -2253,6 +2362,14 @@
       "hsnSummary": "Nenhuma fatura tributável encontrada para este período.",
       "documentSummary": "Nenhum documento emitido neste período.",
       "jewelleryStock": "Ainda não há produtos de joalheria com peso de metal registrado.",
+      "makingChargeMargin": "Nenhuma venda de joalheria neste período.",
+      "hallmarkCompliance": "Ainda não há itens de joalheria ativos.",
+      "metalRateVsSalesVolume": "Nenhuma venda de joalheria ou histórico de taxa de metal neste período.",
+      "purityAdjustedExchange": "Nenhuma troca de metal usado registrada neste período.",
+      "serviceResolutionTime": "Nenhum ticket resolvido neste período.",
+      "repeatBusinessRate": "Nenhum ticket de cliente neste período.",
+      "consultantUtilization": "Nenhum trabalho faturável registrado neste período.",
+      "clientProfitability": "Nenhuma receita de projeto de cliente neste período.",
       "projects": "Nenhum projeto neste período.",
       "jobCards": "Nenhuma ordem de serviço neste período.",
       "prescriptionDrugSales": "Nenhuma venda de medicamento sob prescrição neste período.",
@@ -2286,6 +2403,29 @@
       "vetCaseTypeVolume": "Nenhum caso registrado neste período."
     },
     "col": {
+      "invoiceNumber": "Número da Fatura",
+      "date": "Data",
+      "metalValue": "Valor do Metal",
+      "makingCharge": "Taxa de Mão de Obra",
+      "makingChargePercent": "Taxa de Mão de Obra %",
+      "compliant": "Conforme",
+      "nonCompliant": "Não Conforme",
+      "salesWeightGrams": "Peso Vendido (g)",
+      "exchangeCount": "Trocas",
+      "rawWeightGrams": "Peso Bruto (g)",
+      "pureEquivalentGrams": "Equivalente Puro (g)",
+      "avgHours": "Horas Médias",
+      "minHours": "Mais Rápido (h)",
+      "maxHours": "Mais Lento (h)",
+      "newCustomers": "Novos Clientes",
+      "repeatCustomers": "Clientes Recorrentes",
+      "repeatRatePercent": "Taxa de Recorrência %",
+      "billableHours": "Horas Faturáveis",
+      "nonBillableHours": "Horas Não Faturáveis",
+      "staffMember": "Membro da Equipe",
+      "utilizationPercent": "Utilização",
+      "hoursSpent": "Horas Gastas",
+      "revenuePerHour": "Receita/Hora",
       "invoiceNo": "N.º Fatura",
       "invoiceDate": "Data da Fatura",
       "doctorName": "Médico",
@@ -2304,7 +2444,7 @@
       "sku": "SKU",
       "product": "Produto",
       "category": "Categoria",
-      "season": "Estação/Coleção",
+      "season": "Temporada",
       "type": "Tipo",
       "stock": "Estoque",
       "costPrice": "Preço de Custo",
@@ -2316,7 +2456,7 @@
       "taxName": "Nome do Imposto",
       "ratePercent": "Taxa %",
       "taxableAmount": "Valor Tributável",
-      "invoiceCount": "N.º de Faturas",
+      "invoiceCount": "Faturas",
       "invoicesShort": "Faturas",
       "name": "Nome",
       "outstanding": "Pendente",
@@ -2415,8 +2555,14 @@
       "bloodGroup": "Grupo Sanguíneo",
       "componentType": "Componente",
       "expiringSoonQ": "Vencendo em Breve?",
+      "unitCount": "Unidades",
+      "avgDays": "Dias Médios",
+      "minDays": "Mais Rápido (dias)",
+      "maxDays": "Mais Lento (dias)",
       "month": "Mês",
       "unitsSold": "Unidades Vendidas",
+      "unitsReturned": "Unidades Devolvidas",
+      "returnRatePercent": "Taxa de Devolução %",
       "sellThroughRate": "Taxa de Giro",
       "productA": "Produto A",
       "productB": "Produto B",
@@ -2432,6 +2578,18 @@
       "checkOut": "Saída",
       "plannedQty": "Qtd. Planejada",
       "producedQty": "Qtd. Produzida",
+      "materialCostPerUnit": "Custo de Material / Unidade",
+      "laborCostPerUnit": "Custo de Mão de Obra / Unidade",
+      "overheadCostPerUnit": "Custo Indireto / Unidade",
+      "totalCostPerUnit": "Custo Total / Unidade",
+      "qtyInspected": "Qtd. Inspecionada",
+      "qtyRejected": "Qtd. Rejeitada",
+      "rejectionRatePercent": "Taxa de Rejeição",
+      "outstandingAmount": "Valor Pendente",
+      "totalPurchased": "Total Comprado",
+      "totalRepaid": "Total Reembolsado",
+      "outstandingBalance": "Saldo Pendente",
+      "repaymentRatePercent": "Taxa de Reembolso",
       "startDate": "Data de Início",
       "completedDate": "Data de Conclusão",
       "serialNumber": "Número de Série",
@@ -2449,6 +2607,10 @@
       "size": "Tamanho",
       "color": "Cor",
       "stockQty": "Qtd. em Estoque",
+      "status": "Status",
+      "nextStartDate": "Próxima Data de Início",
+      "reorderByDate": "Repor Até",
+      "lowStockCount": "Produtos com Pouco/Sem Estoque",
       "studentName": "Aluno",
       "batchName": "Turma",
       "subject": "Matéria",
@@ -2471,6 +2633,8 @@
       "totalCount": "Contagem Total",
       "cancelledCount": "Contagem Cancelada",
       "bookingCount": "Reservas",
+      "rentedDays": "Dias Alugados",
+      "availableDays": "Dias Disponíveis",
       "netWeightGrams": "Peso Líquido (g)",
       "ratePerGram": "Taxa/Grama",
       "valuation": "Avaliação",
@@ -2531,6 +2695,41 @@
     "legend": {
       "schemeCost": "Custo do Esquema",
       "coveredVolume": "Volume de Produto Coberto"
+    },
+    "status": {
+      "out": "Esgotado",
+      "low": "Estoque baixo",
+      "in": "Em estoque"
+    },
+    "seasonalCalendar": {
+      "nameRequired": "O nome da temporada é obrigatório.",
+      "saveFailed": "Não foi possível salvar esta temporada.",
+      "saved": "Temporada salva.",
+      "deleteFailed": "Não foi possível excluir esta temporada.",
+      "manageSeasons": "Gerenciar Temporadas",
+      "hideManager": "Ocultar Gerenciador de Temporadas",
+      "name": "Nome da Temporada",
+      "namePlaceholder": "ex. Monção",
+      "startMonth": "Mês de Início",
+      "startDay": "Dia de Início",
+      "endMonth": "Mês de Término",
+      "endDay": "Dia de Término",
+      "leadTimeDays": "Prazo de Entrega (dias)",
+      "update": "Atualizar",
+      "add": "Adicionar",
+      "editAction": "Editar",
+      "deleteAction": "Excluir",
+      "daysUntilStart": "Faltam {{count}} dias para esta temporada começar",
+      "reorderBy": "Repor até",
+      "taggedProducts": "Produtos marcados",
+      "lowStock": "Pouco/sem estoque",
+      "empty": "Ainda nenhum ciclo de compra sazonal definido.",
+      "emptySubtitle": "Adicione um abaixo para começar a rastrear o tempo de reposição dele.",
+      "status": {
+        "reorderNow": "Repor Agora",
+        "inSeason": "Na Temporada",
+        "upcoming": "Próxima"
+      }
     },
     "schemeCostVsVolume": {
       "disclaimer": "Isto mostra o custo do esquema e o volume de vendas dos produtos cobertos lado a lado para que você mesmo julgue a correlação — não calcula (nem pode calcular) qual teria sido o volume sem o esquema."
@@ -3602,7 +3801,26 @@
     "receiveBatchTitle": "Receber Lote de Matéria-Prima",
     "batchReceived": "Lote recebido.",
     "noBatchesYet": "Nenhum lote recebido ainda para este material.",
-    "remainingQty": "Restante"
+    "remainingQty": "Restante",
+    "qc": {
+      "qtyInspected": "Qtd. Inspecionada",
+      "qtyRejected": "Qtd. Rejeitada",
+      "rejectedExceedsInspected": "A quantidade rejeitada não pode exceder a quantidade inspecionada."
+    },
+    "downtime": {
+      "title": "Registrar Tempo Parado",
+      "log": "Registrar Tempo Parado",
+      "logShort": "+ Tempo Parado",
+      "reason": "Motivo",
+      "reasonPlaceholder": "ex. Quebra de máquina, falta de material",
+      "minutes": "Minutos",
+      "totalMinutes": "{{minutes}} min de tempo parado registrados",
+      "reasonRequired": "O motivo do tempo parado é obrigatório.",
+      "minutesRequired": "Os minutos de tempo parado devem ser maiores que zero."
+    },
+    "bottleneck": {
+      "message": "\"{{stage}}\" é sua etapa mais lenta, com média de {{hours}}h ({{percent}}% do tempo total de entrega)."
+    }
   },
   "service": {
     "projects": "Projetos",
@@ -3731,6 +3949,42 @@
     "couldNotUpdateStatus": "Não foi possível atualizar o status.",
     "couldNotCancel": "Não foi possível cancelar.",
     "couldNotUpdateTicket": "Não foi possível atualizar o ticket.",
+    "slaBreached": "SLA Violado",
+    "slaBreachedCount": "ticket(s) além do SLA",
+    "slaDueLabel": "Prazo do SLA",
+    "convertedFromQuotation": "Convertido de Orçamento",
+    "convertFromQuotation": "Converter de Orçamento",
+    "notFromQuotation": "Não veio de um orçamento",
+    "proposalWinRate": "taxa de sucesso de propostas",
+    "serviceContracts": "Contratos de Serviço",
+    "serviceContractsDesc": "Acordos recorrentes tipo contrato de manutenção para clientes recorrentes — valor fixo, faturado conforme um cronograma.",
+    "newContract": "Novo Contrato",
+    "selectCustomer": "Selecione um cliente.",
+    "validContractValueRequired": "Insira um valor de contrato válido maior que zero.",
+    "contractScope": "Escopo do Trabalho",
+    "serviceFrequency": "Frequência do Serviço",
+    "frequency": {
+      "MONTHLY": "Mensal",
+      "QUARTERLY": "Trimestral",
+      "HALF_YEARLY": "Semestral",
+      "YEARLY": "Anual"
+    },
+    "contractValue": "Valor do Contrato",
+    "createContract": "Criar Contrato",
+    "contractCreated": "Contrato Criado",
+    "contractCreatedDesc": "{{number}} criado.",
+    "generateContractInvoiceTitle": "Gerar fatura para {{number}}",
+    "generateContractInvoiceHint": "Faturará {{amount}} para o período atual.",
+    "generateInvoice": "Gerar Fatura",
+    "noContracts": "Ainda não há contratos de serviço",
+    "contractStatus": {
+      "ACTIVE": "Ativo",
+      "EXPIRED": "Expirado",
+      "CANCELLED": "Cancelado"
+    },
+    "lastInvoicedFor": "Última fatura: {{period}}",
+    "contractInvoiced": "Fatura Gerada",
+    "contractInvoicedDesc": "A fatura do período do contrato foi criada.",
     "selectEntity": "Selecione um projeto, ticket ou ordem de serviço.",
     "couldNotDeleteLog": "Não foi possível excluir o registro.",
     "jobStReceived": "Recebido",
@@ -4471,6 +4725,7 @@
       "CANCELLED": "Cancelado",
       "OVERDUE": "Atrasado",
       "AVAILABLE": "Disponível",
+      "RENTED": "Alugado",
       "MAINTENANCE": "Manutenção",
       "RETIRED": "Aposentado"
     },
@@ -4527,9 +4782,11 @@
     },
     "daysOverdue": "Dias de Atraso",
     "utilization": "Utilização",
+    "overdueAging": "Antiguidade de Atrasados",
     "empty": {
       "status": "Nada está retirado no momento.",
-      "revenue": "Nenhuma receita de aluguel neste período."
+      "revenue": "Nenhuma receita de aluguel neste período.",
+      "utilization": "Ainda não há unidades de aluguel rastreadas."
     },
     "serviceIntervalRentals": "Intervalo de manutenção (aluguéis)",
     "serviceIntervalDays": "Intervalo de manutenção (dias)",
@@ -4623,7 +4880,45 @@
     "exchangeSearchPlaceholder": "Pesquisar por número da troca...",
     "noUnlinkedExchanges": "Nenhuma troca não vinculada encontrada para este cliente.",
     "exchangeApplied": "Troca {{number}} — um crédito de {{amount}} será aplicado no pagamento.",
-    "removeExchange": "Remover"
+    "removeExchange": "Remover",
+    "goldSavings": "Poupança em Ouro",
+    "goldSavingsDesc": "Depósitos mensais fixos para uma compra futura — resgatáveis como desconto na fatura do cliente.",
+    "newScheme": "Novo Plano",
+    "selectCustomer": "Selecione um cliente.",
+    "validAmountRequired": "Insira um valor válido maior que zero.",
+    "validTenureRequired": "Insira uma duração válida — um número inteiro de meses.",
+    "monthlyAmount": "Valor Mensal",
+    "tenureMonths": "Duração (meses)",
+    "startDate": "Data de Início",
+    "createScheme": "Criar Plano",
+    "schemeCreated": "Plano Criado",
+    "schemeCreatedDesc": "{{number}} criado. Registre as parcelas à medida que o cliente pagar a cada mês.",
+    "recordInstallmentTitle": "Registrar uma parcela para {{number}}",
+    "installmentAmount": "Valor da Parcela",
+    "record": "Registrar",
+    "installmentRecorded": "Parcela Registrada",
+    "installmentRecordedDesc": "{{amount}} adicionado ao total deste plano.",
+    "redeemSchemeTitle": "Resgatar {{number}}",
+    "redeemHint": "Total depositado até agora: {{amount}}. Aplique o valor resgatado como desconto na fatura de compra do cliente você mesmo em Faturamento.",
+    "bonusAmount": "Valor do Bônus",
+    "redeem": "Resgatar",
+    "schemeRedeemed": "Plano Resgatado",
+    "schemeRedeemedDesc": "Aplique o valor resgatado como desconto na fatura de compra do cliente.",
+    "noSchemes": "Ainda não há planos de poupança em ouro",
+    "schemeStatus": {
+      "ACTIVE": "Ativo",
+      "REDEEMED": "Resgatado",
+      "CLOSED": "Encerrado"
+    },
+    "monthlyOverTenure": "{{amount}}/mês × {{tenure}} meses",
+    "deposited": "Depositado: {{amount}}",
+    "redeemedFor": "Resgatado por {{amount}}",
+    "addInstallment": "Adicionar Parcela",
+    "pureEquivalent": "Equivalente puro {{weight}}g",
+    "makingChargeMargin": "Margem de Taxa de Mão de Obra vs. Valor do Metal",
+    "hallmarkCompliance": "Conformidade de Marca / HUID",
+    "metalRateVsSalesVolume": "Taxa do Metal vs. Volume de Vendas",
+    "purityAdjustedExchange": "Análise de Troca Ajustada por Pureza"
   },
   "manual": {
     "yourType": "Seu",

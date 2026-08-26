@@ -216,7 +216,7 @@
     "reviewAuditLog": "مراجعة",
     "reviewRentals": "مراجعة",
     "reviewRepairTickets": "مراجعة",
-"renewLicense": "تجديد",
+    "renewLicense": "تجديد",
     "viewUpdate": "عرض",
     "spotlight": {
       "membershipTitle": "تركيز العضويات",
@@ -1629,6 +1629,14 @@
         "label": "خريطة حرارية للمقاس × الطراز",
         "description": "شبكة من الوحدات المباعة حسب الطراز والمقاس — شاهد بلمحة أي مجموعة تتحرك فعليًا"
       },
+      "sizeAvailabilityHeatmap": {
+        "label": "خريطة حرارية لتوفر المقاسات",
+        "description": "شبكة مخزون حية حسب الطراز والمقاس — اطّلع بلمحة واحدة على المقاسات النافدة أو التي أوشكت على النفاد لطراز معين"
+      },
+      "seasonalReorderCalendar": {
+        "label": "تقويم إعادة الطلب الموسمي",
+        "description": "حدد دورات الشراء الخاصة بك (الرياح الموسمية، موسم الأعراس، الموسم الرياضي، أو أي شيء تخزّنه فعليًا) وشاهد أيها يحتاج لإعادة الطلب الآن، بناءً على مدة التوريد"
+      },
       "basketComposition": {
         "label": "تركيبة السلة",
         "description": "ما هي المنتجات التي تُشترى معًا في نفس عملية البيع بشكل أكثر تكرارًا — حدد التركيبات والأزواج الطبيعية التي تستحق وضعها جنبًا إلى جنب أو تقديمها كعرض مجمّع"
@@ -1640,6 +1648,10 @@
       "vendorMargin": {
         "label": "الهامش حسب العلامة التجارية/المورد",
         "description": "تقسيم الإيرادات والتكلفة والهامش حسب المورد/العلامة التجارية التي جاء منها كل منتج مباع — اطّلع بنظرة واحدة على الموردين المربحين فعليًا والذين يحققون خسارة"
+      },
+      "brandMarginReturnRate": {
+        "label": "الهامش ومعدل الإرجاع حسب العلامة التجارية",
+        "description": "الهامش ومعدل الإرجاع جنبًا إلى جنب لكل علامة تجارية/مورد — مرتجعات الأحذية عادة أعلى من الملابس، لذا فإن العلامة التجارية ذات الهامش الصحي قد تخسر أموالًا بصمت بسبب معدل إرجاع أعلى من المتوسط"
       },
       "fastSlowMoverMatrix": {
         "label": "مصفوفة المنتجات سريعة الحركة مقابل بطيئة الحركة",
@@ -1677,6 +1689,10 @@
         "label": "تقرير مخزون الدم",
         "description": "وحدات الدم المتاحة حسب الفصيلة، مع تنبيهات قرب الانتهاء"
       },
+      "donationToIssueCycleTime": {
+        "label": "الوقت من التبرع إلى الصرف",
+        "description": "مدى سرعة استخدام الوحدات المتبرع بها فعليًا، حسب نوع المكون — مؤشر لمخاطر الهدر"
+      },
       "logistics": {
         "label": "تقرير اللوجستيات",
         "description": "الشحنات وتكلفة الشحن ومعدل التسليم وأفضل شركات النقل"
@@ -1688,6 +1704,22 @@
       "production": {
         "label": "تقرير الإنتاج",
         "description": "أوامر الإنتاج حسب الحالة، الكمية المخططة مقابل المنتجة"
+      },
+      "landedCostPerUnit": {
+        "label": "التكلفة الفعلية للوحدة النهائية",
+        "description": "تكلفة المواد والعمالة والنفقات العامة لكل وحدة منتجة، جنبًا إلى جنب — التكلفة الحقيقية للمنتج النهائي، وليس موادها فقط"
+      },
+      "rejectionRateTrend": {
+        "label": "اتجاه معدل الرفض",
+        "description": "معدل رفض الجودة بمرور الوقت وحسب مرحلة الإنتاج — اكتشف أي مرحلة تُفقدك بالفعل وحدات جيدة"
+      },
+      "seasonalCreditExposure": {
+        "label": "التعرض الائتماني الموسمي",
+        "description": "فواتير الائتمان المستحقة مقسمة حسب شهر الاستحقاق والموسم الزراعي المرتبط — تعرف على وقت تعرضك الأكبر خلال العام"
+      },
+      "farmerRepayment": {
+        "label": "سجل المشتريات والسداد لكل مزارع",
+        "description": "كل عميل ائتمان مرتب حسب معدل السداد — الحسابات الأكثر خطورة أولاً"
       },
       "serialWarranty": {
         "label": "تقرير الرقم التسلسلي والضمان",
@@ -1737,9 +1769,29 @@
         "label": "إيرادات واستخدام التأجير",
         "description": "الإيرادات حسب عنصر التأجير، بالإضافة إلى معدل الاستخدام للوحدات المتعقبة بشكل فردي"
       },
+      "assetUtilization": {
+        "label": "معدل استخدام الأصول",
+        "description": "الأيام المؤجرة مقابل الأيام المتاحة لكل وحدة متتبعة على حدة — أي الأصول تكسب تكلفتها فعليًا"
+      },
       "jewellery": {
         "label": "تقرير المجوهرات",
         "description": "تقييم مخزون المعدن حسب النقاء، إيرادات أجرة التصنيع، وملخص استبدال المعدن القديم"
+      },
+      "makingChargeMargin": {
+        "label": "هامش المصنعية مقابل قيمة المعدن",
+        "description": "تقسيم الهامش الحقيقي لكل عملية بيع — ما مقدار قيمة المعدن مقابل المصنعية في كل فاتورة"
+      },
+      "hallmarkCompliance": {
+        "label": "سجل الامتثال لدمغة الجودة / HUID",
+        "description": "كل قطعة مجوهرات نشطة، مع تحديد أيها يفتقر إلى رقم دمغة BIS/HUID"
+      },
+      "metalRateVsSalesVolume": {
+        "label": "سعر المعدن مقابل حجم المبيعات",
+        "description": "يربط تقلبات سعر الذهب بحجم المبيعات، لتوجيه توقيت التخزين والتسعير"
+      },
+      "purityAdjustedExchange": {
+        "label": "تحليل الاستبدال المعدّل حسب النقاء",
+        "description": "استبدال المعدن القديم مُطبَّع إلى وزن معادل للمعدن النقي، أبعد من سجل الاستبدال الأساسي"
       },
       "profitAndLoss": {
         "label": "بيان الأرباح والخسائر",
@@ -1748,6 +1800,22 @@
       "projects": {
         "label": "تقرير المشاريع",
         "description": "كل مشروع حسب الحالة وقيمة العقد — لشركات الخدمات/الاستشارات/الوكالات"
+      },
+      "serviceResolutionTime": {
+        "label": "وقت الحل حسب الفئة",
+        "description": "مقياس حقيقي لجودة الخدمة — متوسط وأسرع وأبطأ وقت حل لكل فئة تذاكر"
+      },
+      "repeatBusinessRate": {
+        "label": "معدل تكرار الأعمال",
+        "description": "مؤشر الاحتفاظ بالعملاء الذي لم يكن موجودًا في هذا القسم من قبل — نسبة العملاء العائدين مقابل الجدد كل شهر"
+      },
+      "consultantUtilization": {
+        "label": "معدل الاستغلال",
+        "description": "المقياس الاستشاري الأول، غير مرئي حاليًا — الساعات القابلة للفوترة مقابل غير القابلة للفوترة لكل موظف"
+      },
+      "clientProfitability": {
+        "label": "ربحية العميل",
+        "description": "أي العملاء يستحقون الاحتفاظ بهم فعليًا — الإيرادات مقابل الساعات المستغرقة لكل عميل"
       },
       "jobCards": {
         "label": "تقرير بطاقات العمل",
@@ -1904,6 +1972,8 @@
     },
     "summary": {
       "totalRevenue": "الإيراد الإجمالي",
+      "totalUnits": "إجمالي الوحدات",
+      "idleUnitCount": "الوحدات الخاملة",
       "totalInvoices": "إجمالي الفواتير",
       "totalTaxAmount": "إجمالي الضريبة",
       "avgOrderValue": "متوسط قيمة الطلب",
@@ -1972,6 +2042,11 @@
       "topCombination": "أفضل مجموعة",
       "topCombinationUnits": "وحدات أفضل مجموعة",
       "sizeStyleHeatmap": "خريطة حرارية للمقاس × الطراز",
+      "sizeAvailabilityHeatmap": "خريطة حرارية لتوفر المقاسات",
+      "totalStyles": "الطرازات المعروضة",
+      "outOfStockCells": "المقاسات النافدة",
+      "lowStockCells": "المقاسات منخفضة المخزون",
+      "styleWithMostGaps": "الطراز الأكثر نقصًا",
       "totalBaskets": "إجمالي السلال",
       "avgItemsPerBasket": "متوسط العناصر لكل سلة",
       "avgBasketValue": "متوسط قيمة السلة",
@@ -2012,6 +2087,9 @@
       "totalAvailableUnits": "إجمالي الوحدات المتاحة",
       "expiringSoon": "قريب الانتهاء",
       "groupsOutOfStock": "الفصائل نافدة المخزون",
+      "totalIssuedUnits": "إجمالي الوحدات المصروفة",
+      "overallAvgDays": "متوسط وقت الدورة الإجمالي",
+      "avgCycleTimeByComponent": "متوسط وقت الدورة حسب المكون",
       "totalShipments": "إجمالي الشحنات",
       "deliveryRate": "معدل التسليم",
       "totalFreight": "إجمالي الشحن",
@@ -2022,13 +2100,22 @@
       "overallAttendanceRate": "معدل الحضور",
       "inProgress": "قيد التنفيذ",
       "completionRate": "معدل الإنجاز",
+      "totalProducedQty": "إجمالي الكمية المنتجة",
+      "landedCostPerUnitByProduct": "التكلفة الفعلية للوحدة حسب المنتج",
+      "overallRejectionRate": "معدل الرفض الإجمالي",
+      "rejectionRateTrend": "اتجاه معدل الرفض",
+      "totalOutstanding": "إجمالي المستحق",
+      "peakMonth": "شهر الذروة",
+      "seasonalCreditExposureByMonth": "التعرض الائتماني الموسمي حسب الشهر",
+      "totalFarmers": "إجمالي المزارعين",
+      "overallRepaymentRate": "معدل السداد الإجمالي",
+      "repaymentRateByFarmer": "معدل السداد لكل مزارع",
       "totalSerials": "إجمالي الأرقام التسلسلية",
       "inStock": "متوفر",
       "warrantyExpiringSoon": "الضمان قريب الانتهاء",
       "warrantyExpired": "انتهى الضمان",
-      "totalOpen": "حاليًا لدى المورّد",
+      "totalOpen": "المهام المفتوحة",
       "daysWithVendorByUnit": "الأيام لدى المورّد، حسب الوحدة",
-      "totalOutstanding": "إجمالي المستحق",
       "outstandingByClaim": "المبلغ المستحق حسب المطالبة",
       "technicianCount": "الفنيون",
       "totalTicketsCompleted": "التذاكر المكتملة",
@@ -2040,7 +2127,6 @@
       "averagePercentage": "متوسط الدرجات",
       "belowFiftyCount": "أقل من 50%",
       "studentCount": "الطلاب",
-      "totalOpen": "المهام المفتوحة",
       "overdueCount": "متأخرة",
       "dueThisWeekCount": "مستحقة هذا الأسبوع",
       "clientCount": "العملاء",
@@ -2055,10 +2141,23 @@
       "totalExchangeCount": "عمليات الاستبدال المسجلة",
       "totalExchangeValueGiven": "قيمة الاستبدال الممنوحة",
       "metalsWithNoRateSet": "معادن بدون سعر محدد",
+      "totalMetalValue": "إجمالي قيمة المعدن",
+      "totalMakingCharge": "إجمالي المصنعية",
+      "avgMakingChargePercent": "متوسط نسبة المصنعية %",
+      "totalItems": "إجمالي القطع",
+      "compliantCount": "ممتثل",
+      "nonCompliantCount": "غير ممتثل",
+      "totalPureEquivalentGrams": "المعادل النقي",
+      "unparsablePurityCount": "نقاء غير معروف",
+      "totalResolved": "التذاكر المحلولة",
+      "overallAvgHours": "متوسط وقت الحل",
+      "repeatRatePercent": "معدل التكرار",
+      "overallUtilizationPercent": "الاستغلال الإجمالي",
       "revenue": "الإيرادات",
       "cogs": "تكلفة البضاعة المباعة",
       "totalMargin": "إجمالي الهامش",
       "marginByVendor": "الهامش حسب المورد",
+      "brandMarginReturnRate": "الهامش ومعدل الإرجاع حسب العلامة التجارية",
       "grossProfit": "إجمالي الربح",
       "netProfit": "صافي الربح",
       "totalProjects": "إجمالي المشاريع",
@@ -2161,6 +2260,8 @@
       "attendanceDetails": "تفاصيل الحضور",
       "byOrderStatus": "حسب حالة الأمر",
       "productionOrderDetails": "تفاصيل أمر الإنتاج",
+      "rejectionRateByStage": "معدل الرفض حسب المرحلة",
+      "bySeason": "حسب الموسم الزراعي",
       "byWarrantyStatus": "حسب حالة الضمان",
       "serialDetails": "تفاصيل الرقم التسلسلي",
       "salesByHour": "المبيعات حسب ساعة اليوم",
@@ -2182,6 +2283,7 @@
       "table32": "الجدول 3.2 — الإمدادات بين الولايات للأشخاص غير المسجلين",
       "notCovered": "غير مشمول بهذا التقرير",
       "stockByMetal": "تقييم المخزون حسب المعدن",
+      "pureEquivalentTrend": "اتجاه المعادل النقي",
       "plSummary": "الإيرادات، إجمالي الربح، المصروفات وصافي الربح",
       "projectDetails": "تفاصيل المشروع",
       "jobCardDetails": "تفاصيل بطاقة العمل",
@@ -2228,9 +2330,11 @@
       "categorySellThrough": "لم يتم العثور على مبيعات منتجات مصنفة في هذا النطاق الزمني.",
       "seasonSellThrough": "لا يوجد منتج تم تعيين موسم/مجموعة له، أو لم يتم العثور على مبيعات في نطاق التاريخ هذا.",
       "sizeStyleHeatmap": "لم يتم العثور على مبيعات متتبَّعة بالمتغيرات في نطاق التاريخ هذا.",
+      "sizeAvailabilityHeatmap": "لم يتم العثور على مخزون متتبَّع بالمتغيرات.",
       "basketComposition": "لم يتم العثور على سلال تحتوي على منتجين مختلفين أو أكثر في هذا النطاق الزمني.",
       "categoryMix": "لم يتم العثور على مبيعات منتجات مصنفة في هذا النطاق الزمني.",
       "vendorMargin": "لم يتم العثور على مبيعات لمنتجات لها مورد/علامة تجارية معيّنة في هذا النطاق الزمني.",
+      "brandMarginReturnRate": "لم يتم العثور على مبيعات لمنتجات لها مورد/علامة تجارية معيّنة في هذا النطاق الزمني.",
       "cashPositionTrend": "لم يتم العثور على أي حركة نقدية في هذا النطاق الزمني.",
       "fastSlowMoverMatrix": "لم يُباع أي منتج في هذا النطاق الزمني.",
       "gstr1": "لم يتم العثور على فواتير خاضعة للضريبة لهذه الفترة.",
@@ -2241,8 +2345,13 @@
       "batches": "لا توجد دفعات نشطة بها مخزون متبقٍ.",
       "labOrders": "لا توجد طلبات فحص مختبر في هذا النطاق الزمني.",
       "bloodUnits": "لا توجد وحدات دم متاحة.",
+      "donationToIssueCycleTime": "لم يتم صرف أي وحدات بعد.",
       "attendance": "لا توجد سجلات حضور في هذا النطاق الزمني.",
       "productionOrders": "لا توجد أوامر إنتاج في هذا النطاق الزمني.",
+      "landedCostPerUnit": "لا توجد أوامر إنتاج مكتملة في هذا النطاق الزمني.",
+      "rejectionRateTrend": "لم يتم تسجيل أي عدد فحوصات جودة في هذا النطاق الزمني.",
+      "seasonalCreditExposure": "لا توجد فواتير ائتمان مستحقة بتاريخ استحقاق في الوقت الحالي.",
+      "farmerRepayment": "لم يتم تسجيل أي نشاط ائتماني للمزارعين حتى الآن.",
       "serials": "لم يتم العثور على أرقام تسلسلية.",
       "rmaAging": "لا توجد وحدات لدى مورّد حاليًا للإصلاح أو الاستبدال.",
       "vendorRecoveryLedger": "لم يتم تسجيل أي مطالبة ضمان من مورد حتى الآن.",
@@ -2253,6 +2362,14 @@
       "hsnSummary": "لم يتم العثور على فواتير خاضعة للضريبة في هذه الفترة.",
       "documentSummary": "لم يتم إصدار أي مستندات في هذه الفترة.",
       "jewelleryStock": "لا توجد منتجات مجوهرات بوزن معدني مسجل بعد.",
+      "makingChargeMargin": "لا توجد مبيعات مجوهرات في هذه الفترة.",
+      "hallmarkCompliance": "لا توجد قطع مجوهرات نشطة بعد.",
+      "metalRateVsSalesVolume": "لا توجد مبيعات مجوهرات أو سجل أسعار معادن في هذه الفترة.",
+      "purityAdjustedExchange": "لم يتم تسجيل أي استبدال معدن قديم في هذه الفترة.",
+      "serviceResolutionTime": "لم يتم حل أي تذاكر في هذه الفترة.",
+      "repeatBusinessRate": "لا توجد تذاكر عملاء في هذه الفترة.",
+      "consultantUtilization": "لم يتم تسجيل أي عمل قابل للفوترة في هذه الفترة.",
+      "clientProfitability": "لا توجد إيرادات مشاريع عملاء في هذه الفترة.",
       "projects": "لا توجد مشاريع في هذه الفترة.",
       "jobCards": "لا توجد بطاقات عمل في هذه الفترة.",
       "prescriptionDrugSales": "لا توجد مبيعات أدوية بوصفة طبية في هذا النطاق الزمني.",
@@ -2286,6 +2403,29 @@
       "vetCaseTypeVolume": "لا توجد حالات مسجلة في هذا النطاق الزمني."
     },
     "col": {
+      "invoiceNumber": "رقم الفاتورة",
+      "date": "التاريخ",
+      "metalValue": "قيمة المعدن",
+      "makingCharge": "المصنعية",
+      "makingChargePercent": "نسبة المصنعية %",
+      "compliant": "ممتثل",
+      "nonCompliant": "غير ممتثل",
+      "salesWeightGrams": "وزن المبيعات (جم)",
+      "exchangeCount": "عمليات الاستبدال",
+      "rawWeightGrams": "الوزن الإجمالي (جم)",
+      "pureEquivalentGrams": "المعادل النقي (جم)",
+      "avgHours": "متوسط الساعات",
+      "minHours": "الأسرع (ساعة)",
+      "maxHours": "الأبطأ (ساعة)",
+      "newCustomers": "عملاء جدد",
+      "repeatCustomers": "عملاء متكررون",
+      "repeatRatePercent": "معدل التكرار %",
+      "billableHours": "الساعات القابلة للفوترة",
+      "nonBillableHours": "الساعات غير القابلة للفوترة",
+      "staffMember": "عضو الفريق",
+      "utilizationPercent": "الاستغلال",
+      "hoursSpent": "الساعات المستغرقة",
+      "revenuePerHour": "الإيراد/الساعة",
       "invoiceNo": "رقم الفاتورة",
       "invoiceDate": "تاريخ الفاتورة",
       "doctorName": "الطبيب",
@@ -2304,7 +2444,7 @@
       "sku": "رمز المنتج",
       "product": "المنتج",
       "category": "الفئة",
-      "season": "الموسم/المجموعة",
+      "season": "الموسم",
       "type": "النوع",
       "stock": "المخزون",
       "costPrice": "سعر التكلفة",
@@ -2316,7 +2456,7 @@
       "taxName": "اسم الضريبة",
       "ratePercent": "المعدل %",
       "taxableAmount": "المبلغ الخاضع للضريبة",
-      "invoiceCount": "عدد الفواتير",
+      "invoiceCount": "الفواتير",
       "invoicesShort": "الفواتير",
       "name": "الاسم",
       "outstanding": "المستحقات",
@@ -2415,8 +2555,14 @@
       "bloodGroup": "فصيلة الدم",
       "componentType": "المكوّن",
       "expiringSoonQ": "قريب الانتهاء؟",
+      "unitCount": "الوحدات",
+      "avgDays": "متوسط الأيام",
+      "minDays": "الأسرع (أيام)",
+      "maxDays": "الأبطأ (أيام)",
       "month": "الشهر",
       "unitsSold": "الوحدات المباعة",
+      "unitsReturned": "الوحدات المرتجعة",
+      "returnRatePercent": "معدل الإرجاع %",
       "sellThroughRate": "معدل دوران المبيعات",
       "productA": "المنتج أ",
       "productB": "المنتج ب",
@@ -2432,6 +2578,18 @@
       "checkOut": "تسجيل الخروج",
       "plannedQty": "الكمية المخططة",
       "producedQty": "الكمية المنتجة",
+      "materialCostPerUnit": "تكلفة المواد / الوحدة",
+      "laborCostPerUnit": "تكلفة العمالة / الوحدة",
+      "overheadCostPerUnit": "النفقات العامة / الوحدة",
+      "totalCostPerUnit": "التكلفة الإجمالية / الوحدة",
+      "qtyInspected": "الكمية المفحوصة",
+      "qtyRejected": "الكمية المرفوضة",
+      "rejectionRatePercent": "معدل الرفض",
+      "outstandingAmount": "المبلغ المستحق",
+      "totalPurchased": "إجمالي المشتريات",
+      "totalRepaid": "إجمالي المسدد",
+      "outstandingBalance": "الرصيد المستحق",
+      "repaymentRatePercent": "معدل السداد",
       "startDate": "تاريخ البدء",
       "completedDate": "تاريخ الإنجاز",
       "serialNumber": "الرقم التسلسلي",
@@ -2449,6 +2607,10 @@
       "size": "المقاس",
       "color": "اللون",
       "stockQty": "كمية المخزون",
+      "status": "الحالة",
+      "nextStartDate": "تاريخ البدء التالي",
+      "reorderByDate": "أعد الطلب بحلول",
+      "lowStockCount": "المنتجات منخفضة/نافدة المخزون",
       "studentName": "الطالب",
       "batchName": "الدفعة",
       "subject": "المادة",
@@ -2471,6 +2633,8 @@
       "totalCount": "العدد الإجمالي",
       "cancelledCount": "عدد الملغاة",
       "bookingCount": "الحجوزات",
+      "rentedDays": "أيام التأجير",
+      "availableDays": "الأيام المتاحة",
       "netWeightGrams": "الوزن الصافي (جم)",
       "ratePerGram": "السعر/جرام",
       "valuation": "التقييم",
@@ -2531,6 +2695,41 @@
     "legend": {
       "schemeCost": "تكلفة الخطة",
       "coveredVolume": "حجم المنتج المشمول"
+    },
+    "status": {
+      "out": "نفد المخزون",
+      "low": "مخزون منخفض",
+      "in": "متوفر"
+    },
+    "seasonalCalendar": {
+      "nameRequired": "اسم الموسم مطلوب.",
+      "saveFailed": "تعذر حفظ هذا الموسم.",
+      "saved": "تم حفظ الموسم.",
+      "deleteFailed": "تعذر حذف هذا الموسم.",
+      "manageSeasons": "إدارة المواسم",
+      "hideManager": "إخفاء مدير المواسم",
+      "name": "اسم الموسم",
+      "namePlaceholder": "مثال: الرياح الموسمية",
+      "startMonth": "شهر البدء",
+      "startDay": "يوم البدء",
+      "endMonth": "شهر الانتهاء",
+      "endDay": "يوم الانتهاء",
+      "leadTimeDays": "مدة التوريد (أيام)",
+      "update": "تحديث",
+      "add": "إضافة",
+      "editAction": "تعديل",
+      "deleteAction": "حذف",
+      "daysUntilStart": "متبقٍ {{count}} يومًا حتى بداية هذا الموسم",
+      "reorderBy": "أعد الطلب بحلول",
+      "taggedProducts": "المنتجات الموسومة",
+      "lowStock": "منخفض/نافد المخزون",
+      "empty": "لم يتم تحديد أي دورة شراء موسمية بعد.",
+      "emptySubtitle": "أضف واحدة أدناه لبدء تتبع توقيت إعادة الطلب الخاص بها.",
+      "status": {
+        "reorderNow": "أعد الطلب الآن",
+        "inSeason": "في الموسم",
+        "upcoming": "قادم"
+      }
     },
     "schemeCostVsVolume": {
       "disclaimer": "يعرض هذا تكلفة الخطة وحجم مبيعات المنتجات المشمولة جنبًا إلى جنب حتى تتمكن من الحكم على الارتباط بنفسك — إنه لا يحسب (ولا يمكنه حساب) ما كان سيكون عليه الحجم بدون الخطة."
@@ -3602,7 +3801,26 @@
     "receiveBatchTitle": "استلام دفعة مواد خام",
     "batchReceived": "تم استلام الدفعة.",
     "noBatchesYet": "لم يتم استلام أي دفعات لهذه المادة بعد.",
-    "remainingQty": "المتبقي"
+    "remainingQty": "المتبقي",
+    "qc": {
+      "qtyInspected": "الكمية المفحوصة",
+      "qtyRejected": "الكمية المرفوضة",
+      "rejectedExceedsInspected": "لا يمكن أن تتجاوز الكمية المرفوضة الكمية المفحوصة."
+    },
+    "downtime": {
+      "title": "تسجيل وقت التوقف",
+      "log": "تسجيل وقت التوقف",
+      "logShort": "+ وقت التوقف",
+      "reason": "السبب",
+      "reasonPlaceholder": "مثال: عطل الآلة، نقص المواد",
+      "minutes": "الدقائق",
+      "totalMinutes": "تم تسجيل {{minutes}} دقيقة توقف",
+      "reasonRequired": "سبب التوقف مطلوب.",
+      "minutesRequired": "يجب أن تكون دقائق التوقف أكبر من صفر."
+    },
+    "bottleneck": {
+      "message": "\"{{stage}}\" هي أبطأ مرحلة لديك، بمتوسط {{hours}} ساعة ({{percent}}% من إجمالي وقت التوريد)."
+    }
   },
   "service": {
     "projects": "المشاريع",
@@ -3731,6 +3949,42 @@
     "couldNotUpdateStatus": "تعذر تحديث الحالة.",
     "couldNotCancel": "تعذر الإلغاء.",
     "couldNotUpdateTicket": "تعذر تحديث التذكرة.",
+    "slaBreached": "خرق اتفاقية مستوى الخدمة",
+    "slaBreachedCount": "تذكرة (تذاكر) تجاوزت اتفاقية مستوى الخدمة",
+    "slaDueLabel": "موعد استحقاق SLA",
+    "convertedFromQuotation": "تم التحويل من عرض سعر",
+    "convertFromQuotation": "تحويل من عرض سعر",
+    "notFromQuotation": "ليس من عرض سعر",
+    "proposalWinRate": "معدل الفوز بالعروض",
+    "serviceContracts": "عقود الخدمة",
+    "serviceContractsDesc": "ترتيبات متكررة شبيهة بعقد الصيانة السنوي للعملاء المتكررين — قيمة ثابتة، تُفوتر وفق جدول زمني.",
+    "newContract": "عقد جديد",
+    "selectCustomer": "اختر عميلاً.",
+    "validContractValueRequired": "أدخل قيمة عقد صحيحة أكبر من صفر.",
+    "contractScope": "نطاق العمل",
+    "serviceFrequency": "تكرار الخدمة",
+    "frequency": {
+      "MONTHLY": "شهري",
+      "QUARTERLY": "ربع سنوي",
+      "HALF_YEARLY": "نصف سنوي",
+      "YEARLY": "سنوي"
+    },
+    "contractValue": "قيمة العقد",
+    "createContract": "إنشاء عقد",
+    "contractCreated": "تم إنشاء العقد",
+    "contractCreatedDesc": "تم إنشاء {{number}}.",
+    "generateContractInvoiceTitle": "إنشاء فاتورة لـ {{number}}",
+    "generateContractInvoiceHint": "سيتم فوترة {{amount}} للفترة الحالية.",
+    "generateInvoice": "إنشاء فاتورة",
+    "noContracts": "لا توجد عقود خدمة بعد",
+    "contractStatus": {
+      "ACTIVE": "نشط",
+      "EXPIRED": "منتهي",
+      "CANCELLED": "ملغى"
+    },
+    "lastInvoicedFor": "آخر فوترة: {{period}}",
+    "contractInvoiced": "تم إنشاء الفاتورة",
+    "contractInvoicedDesc": "تم إنشاء فاتورة فترة العقد.",
     "selectEntity": "اختر مشروعًا أو تذكرة أو بطاقة عمل.",
     "couldNotDeleteLog": "تعذر حذف السجل.",
     "jobStReceived": "تم الاستلام",
@@ -4471,6 +4725,7 @@
       "CANCELLED": "ملغى",
       "OVERDUE": "متأخر",
       "AVAILABLE": "متاح",
+      "RENTED": "مؤجر",
       "MAINTENANCE": "صيانة",
       "RETIRED": "متقاعد"
     },
@@ -4527,9 +4782,11 @@
     },
     "daysOverdue": "أيام التأخير",
     "utilization": "الاستخدام",
+    "overdueAging": "تقادم التأخير",
     "empty": {
       "status": "لا يوجد شيء مسلَّم حاليًا.",
-      "revenue": "لا توجد إيرادات تأجير في هذه الفترة."
+      "revenue": "لا توجد إيرادات تأجير في هذه الفترة.",
+      "utilization": "لا توجد وحدات إيجار متتبعة بعد."
     },
     "serviceIntervalRentals": "فاصل الخدمة (عدد الإيجارات)",
     "serviceIntervalDays": "فاصل الخدمة (أيام)",
@@ -4623,7 +4880,45 @@
     "exchangeSearchPlaceholder": "البحث برقم عملية الاستبدال...",
     "noUnlinkedExchanges": "لم يتم العثور على عمليات استبدال غير مرتبطة لهذا العميل.",
     "exchangeApplied": "الاستبدال {{number}} — سيتم تطبيق رصيد {{amount}} عند الدفع.",
-    "removeExchange": "إزالة"
+    "removeExchange": "إزالة",
+    "goldSavings": "ادخار الذهب",
+    "goldSavingsDesc": "ودائع شهرية ثابتة لشراء مستقبلي — قابلة للاسترداد كخصم على فاتورة العميل.",
+    "newScheme": "خطة جديدة",
+    "selectCustomer": "اختر عميلاً.",
+    "validAmountRequired": "أدخل مبلغاً صحيحاً أكبر من صفر.",
+    "validTenureRequired": "أدخل مدة صحيحة — عدداً صحيحاً من الأشهر.",
+    "monthlyAmount": "المبلغ الشهري",
+    "tenureMonths": "المدة (بالأشهر)",
+    "startDate": "تاريخ البدء",
+    "createScheme": "إنشاء خطة",
+    "schemeCreated": "تم إنشاء الخطة",
+    "schemeCreatedDesc": "تم إنشاء {{number}}. سجّل الأقساط عند دفع العميل كل شهر.",
+    "recordInstallmentTitle": "تسجيل قسط لـ {{number}}",
+    "installmentAmount": "مبلغ القسط",
+    "record": "تسجيل",
+    "installmentRecorded": "تم تسجيل القسط",
+    "installmentRecordedDesc": "تمت إضافة {{amount}} إلى إجمالي هذه الخطة.",
+    "redeemSchemeTitle": "استرداد {{number}}",
+    "redeemHint": "إجمالي المودع حتى الآن: {{amount}}. طبّق المبلغ المسترد كخصم على فاتورة شراء العميل بنفسك في الفوترة.",
+    "bonusAmount": "مبلغ المكافأة",
+    "redeem": "استرداد",
+    "schemeRedeemed": "تم استرداد الخطة",
+    "schemeRedeemedDesc": "طبّق المبلغ المسترد كخصم على فاتورة شراء العميل.",
+    "noSchemes": "لا توجد خطط ادخار ذهب بعد",
+    "schemeStatus": {
+      "ACTIVE": "نشطة",
+      "REDEEMED": "مستردة",
+      "CLOSED": "مغلقة"
+    },
+    "monthlyOverTenure": "{{amount}}/شهرياً × {{tenure}} أشهر",
+    "deposited": "المودع: {{amount}}",
+    "redeemedFor": "تم الاسترداد مقابل {{amount}}",
+    "addInstallment": "إضافة قسط",
+    "pureEquivalent": "المعادل النقي {{weight}}جم",
+    "makingChargeMargin": "هامش المصنعية مقابل قيمة المعدن",
+    "hallmarkCompliance": "الامتثال لدمغة الجودة / HUID",
+    "metalRateVsSalesVolume": "سعر المعدن مقابل حجم المبيعات",
+    "purityAdjustedExchange": "تحليل الاستبدال المعدّل حسب النقاء"
   },
   "manual": {
     "yourType": "نوعك",

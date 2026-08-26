@@ -43,7 +43,9 @@ Gerar uma nota a partir de uma reserva concluída cria itens de linha para a cob
 
 ## Relatórios
 
-**Relatórios** inclui um relatório de Status de Aluguel (o que está atualmente retirado e o que está atrasado) e um relatório de Receita de Aluguel por produto, incluindo uma porcentagem de utilização para ativos rastreados por UNIT.
+**Relatórios** inclui um relatório Rental Status (o que está atualmente alugado e o que está atrasado, agora com um gráfico de envelhecimento que divide as reservas atrasadas por quanto tempo estão atrasadas — 1-3 dias, 4-7 dias, 8-14 dias, ou 15+ dias) e um relatório Rental Revenue por produto, incluindo uma porcentagem de utilização para ativos rastreados por UNIDADE.
+
+O próprio número de utilização do relatório Rental Revenue é calculado em média entre cada unidade de um produto — ele não pode lhe dizer que um carro específico está parado enquanto seu gêmeo idêntico é alugado constantemente. Para isso, abra em vez disso o relatório **Asset Utilization Rate**: dias alugados versus dias disponíveis para cada unidade rastreada individualmente por nome, classificadas com os ativos de pior desempenho primeiro, para que você possa ver exatamente quais ativos físicos não estão valendo a pena, em vez de uma média combinada que os esconde.
 
 ## Idioma
 

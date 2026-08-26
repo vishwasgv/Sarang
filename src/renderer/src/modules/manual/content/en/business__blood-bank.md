@@ -8,9 +8,13 @@ A Blood Bank tracks donors, donations, screening, stock, and issue — a workflo
 
 Open **Donors** in the sidebar to register a new donor — name, phone, date of birth, **gender**, blood group, and weight. Each donor gets a sequential donor code (e.g. `DNR-202607-0001`). A donor can be marked **deferred** (temporarily or indefinitely ineligible to donate, with a reason), which blocks recording a new donation from them until the deferral period has genuinely passed. You can send a WhatsApp recall reminder to a donor once they become eligible again — Sarang estimates their next-eligible date from the type of their last donation and their gender (90 days for whole blood/RBC for a male donor, 120 for a female donor, 14 for platelets, 28 for plasma) as a conservative default; always follow your own local medical/regulatory guidance for the real eligibility window.
 
+Rather than checking each donor one at a time, tap **Recall Due** at the top of the Donor Registry to filter the list down to only the donors whose cooldown has already ended — turning the registry into a real outreach worklist you can work down, sending a recall reminder to each one directly from there.
+
 ## Donations & camps
 
 Record each donation under **Donations & Screening** — donor, blood group, component type (Whole Blood, Packed RBC, Platelets, Plasma, or Cryoprecipitate), and volume. You can optionally organize donations under a donation camp (name, location, date, organizer) for camps run away from your own premises.
+
+Schedule and track your own drives under **Donation Camps** in the sidebar — name, date, location, and organizer. Every donation recorded against a camp counts toward that camp's own turnout, shown directly on its card, so you can see at a glance which drives are actually bringing in donors and which aren't worth repeating.
 
 ## Screening
 
@@ -20,9 +24,15 @@ Every donation starts **Pending** screening. Only a **Passed** result creates re
 
 Open **Blood Stock** to see every available unit grouped by blood group and component type, with days-to-expiry and an "expiring soon" flag using a per-component alert window (as little as 2 days for platelets, up to 30 for plasma) rather than one generic threshold.
 
+## Donation-to-Issue Cycle Time
+
+Open the **Donation-to-Issue Cycle Time** report to see how fast donated units actually get used, broken down by component type. This is a genuine waste-risk indicator, not just a stock snapshot — the same 10-day average cycle time is unremarkable for plasma (365-day shelf life) but a serious warning sign for platelets (5-day shelf life), so the report ranks components by their own average cycle time rather than blending everything into one number.
+
 ## Issue — compatibility-aware
 
 When issuing units to a recipient, Sarang checks ABO/Rh compatibility between the recipient's blood group and each unit's donor group, using standard rules for whole blood / packed RBC (and the reverse rule for plasma, where AB is the universal donor). **An incompatible unit is blocked from being issued** — the Issue Units button stays disabled until you either pick a compatible unit, or, for a genuine emergency release, check **Override — emergency release** and type a documented reason (both are required together; the reason is saved on the issue record and logged). Platelets and cryoprecipitate have no hard compatibility rule enforced, consistent with common blood-bank practice for those components. This check is never a substitute for your lab's own real crossmatch procedure. Issuing a unit permanently marks it used and reduces the stock ledger; cancelling an un-invoiced issue restores the units.
+
+In an emergency, use **Fast Match** inside the Issue Units form instead of scrolling the full unit list yourself — enter the recipient's blood group, the component type needed, and how many units, then tap **Find & Select** to instantly select every compatible unit in stock, oldest-expiring first, up to the quantity you asked for. If fewer compatible units are available than requested, Sarang tells you exactly how many are short so you know immediately whether you need to look elsewhere.
 
 ## Billing
 

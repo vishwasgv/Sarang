@@ -21,7 +21,19 @@ export const UpdateWorkOrderStatusSchema = z.object({
   // a QC-flagged step DONE.
   qcResult: z.enum(['PASS', 'FAIL']).optional(),
   qcNotes: z.string().optional(),
+  // Phase 67 §9.1 — Manufacturing item 3: optional per-stage rejection counts.
+  qtyInspected: z.number().nonnegative().optional(),
+  qtyRejected: z.number().nonnegative().optional(),
+})
+
+// Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+export const LogDowntimeSchema = z.object({
+  workOrderId: z.string().min(1, 'Work order is required'),
+  reason: z.string().min(1, 'Downtime reason is required').max(200),
+  minutes: z.number().positive('Minutes must be greater than zero'),
+  notes: z.string().max(1000).optional(),
 })
 
 export type UpsertWorkOrdersPayload = z.infer<typeof UpsertWorkOrdersSchema>
 export type UpdateWorkOrderStatusPayload = z.infer<typeof UpdateWorkOrderStatusSchema>
+export type LogDowntimePayload = z.infer<typeof LogDowntimeSchema>

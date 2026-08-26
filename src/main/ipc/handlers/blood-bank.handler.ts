@@ -11,6 +11,7 @@ import {
   UpdateScreeningStatusSchema,
   CreateBloodIssueSchema,
   BloodIssueIdSchema,
+  FastMatchSearchSchema,
 } from '../../validation/blood-bank.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -58,6 +59,12 @@ export function register(handle: HandleFn): void {
     return svc.sendDonorRecall(parsed.data.donorId)
   })
 
+  // Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+  handle('bloodBank:listDonorsDueForRecall', async () => {
+    const deny = await requirePermission('bloodBank.view'); if (deny) return deny
+    return svc.listDonorsDueForRecall()
+  })
+
   handle('bloodBank:createDonationCamp', async (payload) => {
     const deny = await requirePermission('bloodBank.create'); if (deny) return deny
     const parsed = CreateDonationCampSchema.safeParse(payload)
@@ -100,6 +107,14 @@ export function register(handle: HandleFn): void {
   handle('bloodBank:checkCompatibilityBatch', async (payload) => {
     const deny = await requirePermission('bloodBank.view'); if (deny) return deny
     return svc.checkCompatibilityBatch(payload as Parameters<typeof svc.checkCompatibilityBatch>[0])
+  })
+
+  // Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search.
+  handle('bloodBank:fastMatchSearch', async (payload) => {
+    const deny = await requirePermission('bloodBank.view'); if (deny) return deny
+    const parsed = FastMatchSearchSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return svc.fastMatchSearch(parsed.data)
   })
 
   handle('bloodBank:createIssue', async (payload) => {

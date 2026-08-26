@@ -38,6 +38,11 @@ export function DonorsScreen() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder — turns
+  // the donor list into an active outreach tool instead of requiring staff
+  // to open each donor one at a time to check their cooldown status.
+  const [dueForRecallIds, setDueForRecallIds] = useState<Set<string>>(new Set())
+  const [showRecallDueOnly, setShowRecallDueOnly] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ ...BLANK_FORM })
   const [saving, setSaving] = useState(false)
@@ -52,13 +57,19 @@ export function DonorsScreen() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.bloodBank.listDonors({ search: search || undefined, limit: 200 })
+      const [res, recallRes] = await Promise.all([
+        api.bloodBank.listDonors({ search: search || undefined, limit: 200 }),
+        api.bloodBank.listDonorsDueForRecall(),
+      ])
       if (res.success && res.data) {
         const d = res.data as { donors: Donor[]; total: number }
         setDonors(d.donors ?? [])
         setTotal(d.total ?? 0)
       } else {
         toastError('Failed', res.error?.message ?? 'Could not load donors.')
+      }
+      if (recallRes.success && recallRes.data) {
+        setDueForRecallIds(new Set((recallRes.data as Donor[]).map((d) => d.id)))
       }
     } catch {
       toastError('Failed', 'Could not load donors.')
@@ -200,23 +211,33 @@ export function DonorsScreen() {
             )}
           </div>
         </div>
-        <div className="mt-4">
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, code, or phone…"
             className="w-full max-w-md h-11 px-4 rounded-lg border border-border text-sm focus:outline-none focus:border-brand" />
+          {/* Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+              Filters the list down to donors already past their cooldown, so
+              staff can work down a real outreach list instead of checking
+              each donor's eligibility one at a time. */}
+          <button
+            onClick={() => setShowRecallDueOnly((v) => !v)}
+            className={`h-11 px-4 rounded-lg text-sm font-semibold border transition-colors ${showRecallDueOnly ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-900 text-text-secondary border-border hover:border-brand hover:text-brand'}`}
+          >
+            Recall Due ({dueForRecallIds.size})
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" /></div>
-        ) : donors.length === 0 ? (
+        ) : (showRecallDueOnly ? donors.filter((d) => dueForRecallIds.has(d.id)) : donors).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
             <Droplet size={40} className="mb-3 opacity-30" />
-            <p className="text-base font-medium">No donors registered yet</p>
+            <p className="text-base font-medium">{showRecallDueOnly ? 'No donors are currently due for recall' : 'No donors registered yet'}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {donors.map((d) => {
+            {(showRecallDueOnly ? donors.filter((d) => dueForRecallIds.has(d.id)) : donors).map((d) => {
               const eligible = isEligibleNow(d)
               return (
                 <button key={d.id} onClick={() => setDetail(d)}

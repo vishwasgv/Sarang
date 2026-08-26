@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { updateWorkOrderStatus, upsertWorkOrders } from '../work-order.service'
+import { updateWorkOrderStatus, upsertWorkOrders, logDowntime, listDowntimeEntries, getDowntimeSummary, getWorkOrderBottleneckFlag } from '../work-order.service'
 
 function makeMockDb(step: { id: string; isQcStep: boolean; taskName?: string; qcResult?: string | null }) {
   const db: Record<string, any> = {
@@ -76,6 +76,190 @@ describe('work-order.service.updateWorkOrderStatus — Phase 58 §2 QC gate', ()
     const res = await updateWorkOrderStatus({ id: 'missing', status: 'DONE' })
     expect(res.success).toBe(false)
     expect(res.error?.code).toBe('WO-006')
+  })
+
+  // Phase 67 §9.1 — Manufacturing item 3: per-stage rejection quantity.
+  it('persists qtyInspected/qtyRejected alongside qcResult on a QC step', async () => {
+    const db = makeMockDb({ id: 'wo-1', isQcStep: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateWorkOrderStatus({ id: 'wo-1', status: 'DONE', qcResult: 'FAIL', qtyInspected: 50, qtyRejected: 5 })
+    expect(res.success).toBe(true)
+    expect(db.workOrder.update).toHaveBeenCalledWith({
+      where: { id: 'wo-1' },
+      data: expect.objectContaining({ qtyInspected: 50, qtyRejected: 5 })
+    })
+  })
+
+  it('rejects a rejected quantity greater than the inspected quantity', async () => {
+    const db = makeMockDb({ id: 'wo-1', isQcStep: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateWorkOrderStatus({ id: 'wo-1', status: 'DONE', qcResult: 'FAIL', qtyInspected: 5, qtyRejected: 10 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('WO-008')
+    expect(db.workOrder.update).not.toHaveBeenCalled()
+  })
+
+  it('clears qtyInspected/qtyRejected to null when a QC step is completed without them', async () => {
+    const db = makeMockDb({ id: 'wo-1', isQcStep: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateWorkOrderStatus({ id: 'wo-1', status: 'DONE', qcResult: 'PASS' })
+    expect(db.workOrder.update).toHaveBeenCalledWith({
+      where: { id: 'wo-1' },
+      data: expect.objectContaining({ qtyInspected: null, qtyRejected: null })
+    })
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+describe('work-order.service — downtime capture', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeDowntimeMockDb(overrides: Record<string, any> = {}) {
+    const db: Record<string, any> = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue({ id: 'wo-1' }) },
+      workOrderDowntimeEntry: {
+        create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'dt-1', ...data, createdAt: new Date() })),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      ...overrides
+    }
+    return db
+  }
+
+  it('rejects an empty reason', async () => {
+    const db = makeDowntimeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await logDowntime({ workOrderId: 'wo-1', reason: '  ', minutes: 30 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('WO-009')
+  })
+
+  it('rejects zero or negative minutes', async () => {
+    const db = makeDowntimeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await logDowntime({ workOrderId: 'wo-1', reason: 'Machine breakdown', minutes: 0 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('WO-010')
+  })
+
+  it('rejects logging downtime against a non-existent work order step', async () => {
+    const db = makeDowntimeMockDb({ workOrder: { findUnique: vi.fn().mockResolvedValue(null) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await logDowntime({ workOrderId: 'missing', reason: 'Machine breakdown', minutes: 30 })
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('WO-011')
+  })
+
+  it('records a real downtime entry', async () => {
+    const db = makeDowntimeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await logDowntime({ workOrderId: 'wo-1', reason: 'Machine breakdown', minutes: 45, notes: 'Belt snapped' }, 'user-1')
+    expect(res.success).toBe(true)
+    expect(res.data?.reason).toBe('Machine breakdown')
+    expect(res.data?.minutes).toBe(45)
+  })
+
+  it('lists downtime entries for a work order, most recent first', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: 'dt-1', workOrderId: 'wo-1', reason: 'x', minutes: 10, notes: null, createdAt: new Date() }])
+    const db = makeDowntimeMockDb({ workOrderDowntimeEntry: { findMany } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await listDowntimeEntries('wo-1')
+    expect(res.success).toBe(true)
+    expect(res.data).toHaveLength(1)
+    expect(findMany).toHaveBeenCalledWith({ where: { workOrderId: 'wo-1' }, orderBy: { createdAt: 'desc' } })
+  })
+
+  it('summarizes downtime minutes by reason, sorted descending', async () => {
+    const db = {
+      workOrderDowntimeEntry: {
+        findMany: vi.fn().mockResolvedValue([
+          { reason: 'Machine breakdown', minutes: 30 },
+          { reason: 'Material shortage', minutes: 60 },
+          { reason: 'Machine breakdown', minutes: 15 },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await getDowntimeSummary()
+    expect(res.success).toBe(true)
+    expect(res.data?.totalMinutes).toBe(105)
+    expect(res.data?.byReason).toEqual([
+      { reason: 'Material shortage', minutes: 60 },
+      { reason: 'Machine breakdown', minutes: 45 },
+    ])
+  })
+
+  it('returns a zeroed summary when there are no downtime entries', async () => {
+    const db = { workOrderDowntimeEntry: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await getDowntimeSummary()
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({ totalMinutes: 0, byReason: [] })
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck flag.
+describe('work-order.service.getWorkOrderBottleneckFlag', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('flags the stage with the highest average duration across completed orders', async () => {
+    const startDate = new Date('2026-01-01T08:00:00Z')
+    const db = {
+      productionOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            startDate,
+            workOrders: [
+              { taskName: 'Cutting', completedAt: new Date('2026-01-01T09:00:00Z') },   // 1h from start
+              { taskName: 'Assembly', completedAt: new Date('2026-01-01T13:00:00Z') },  // 4h from Cutting
+              { taskName: 'Packing', completedAt: new Date('2026-01-01T14:00:00Z') },   // 1h from Assembly
+            ]
+          }
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getWorkOrderBottleneckFlag()
+    expect(res.success).toBe(true)
+    expect(res.data?.bottleneckStage).toBe('Assembly')
+    expect(res.data?.avgDurationHours).toBe(4)
+  })
+
+  it('computes a stage average across multiple orders, not just one', async () => {
+    const db = {
+      productionOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { startDate: new Date('2026-01-01T00:00:00Z'), workOrders: [{ taskName: 'Cutting', completedAt: new Date('2026-01-01T02:00:00Z') }] },
+          { startDate: new Date('2026-01-02T00:00:00Z'), workOrders: [{ taskName: 'Cutting', completedAt: new Date('2026-01-02T06:00:00Z') }] },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getWorkOrderBottleneckFlag()
+    expect(res.data?.stages[0]).toEqual({ taskName: 'Cutting', avgDurationHours: 4, sampleCount: 2 })
+  })
+
+  it('returns an honest empty result when there are no completed orders with timestamped steps', async () => {
+    const db = { productionOrder: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getWorkOrderBottleneckFlag()
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({ bottleneckStage: null, avgDurationHours: 0, shareOfTotalLeadTimePercent: 0, stages: [] })
+  })
+
+  it('filters to only COMPLETED orders, ignoring in-progress/draft/cancelled ones', async () => {
+    const findMany = vi.fn().mockResolvedValue([])
+    const db = { productionOrder: { findMany } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getWorkOrderBottleneckFlag()
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: 'COMPLETED' }) }))
   })
 })
 

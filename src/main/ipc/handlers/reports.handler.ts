@@ -264,6 +264,14 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap Report.
+  handle('reports:sizeAvailabilityHeatmap', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const p = (payload ?? {}) as { lowStockThreshold?: number }
+    const data = await reportService.generateSizeAvailabilityHeatmapReport(p)
+    return { success: true, data }
+  })
+
   handle('reports:categoryMix', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const p = payload as { dateFrom: string; dateTo: string }
@@ -277,6 +285,14 @@ export function register(handle: HandleFn): void {
     const p = payload as { dateFrom: string; dateTo: string }
     if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
     const data = await reportService.generateVendorMarginReport(p)
+    return { success: true, data }
+  })
+
+  handle('reports:brandMarginReturnRate', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const p = payload as { dateFrom: string; dateTo: string }
+    if (!p?.dateFrom || !p?.dateTo) return { success: false, error: { code: 'VAL-001', message: 'dateFrom and dateTo are required.' } }
+    const data = await reportService.generateBrandMarginReturnRateReport(p)
     return { success: true, data }
   })
 
@@ -388,11 +404,49 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+  handle('reports:donationToIssueCycleTime', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateDonationToIssueCycleTimeReport()
+    return { success: true, data }
+  })
+
   handle('reports:jewellery', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateJewelleryReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Jewellery items 2/3/4/5.
+  handle('reports:makingChargeMargin', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateMakingChargeMarginReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:hallmarkCompliance', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateHallmarkComplianceReport()
+    return { success: true, data }
+  })
+
+  handle('reports:metalRateVsSalesVolume', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateMetalRateVsSalesVolumeReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:purityAdjustedExchange', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePurityAdjustedExchangeReport(parsed.data)
     return { success: true, data }
   })
 
@@ -406,6 +460,41 @@ export function register(handle: HandleFn): void {
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateProjectReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Service items 2/4. Same 'sales.view' gate as
+  // reports:projects above — tickets are gated on that key everywhere else.
+  handle('reports:serviceResolutionTime', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateServiceResolutionTimeReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:repeatBusinessRate', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateRepeatBusinessRateReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Consultant items 2/4.
+  handle('reports:consultantUtilization', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateConsultantUtilizationReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:clientProfitability', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateClientProfitabilityReport(parsed.data)
     return { success: true, data }
   })
 
@@ -682,6 +771,38 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+  handle('reports:landedCostPerUnit', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateLandedCostPerUnitReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+  handle('reports:rejectionRateTrend', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateRejectionRateTrendReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure.
+  handle('reports:seasonalCreditExposure', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateSeasonalCreditExposureReport()
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment History.
+  handle('reports:farmerRepayment', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateFarmerRepaymentReport()
+    return { success: true, data }
+  })
+
   handle('reports:serialWarranty', async () => {
     const deny = await requirePermission('reports.inventory'); if (deny) return deny
     const data = await reportService.generateSerialWarrantyReport()
@@ -744,6 +865,15 @@ export function register(handle: HandleFn): void {
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateRentalRevenueReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+  handle('reports:assetUtilization', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateAssetUtilizationReport(parsed.data)
     return { success: true, data }
   })
 }

@@ -24,6 +24,10 @@ export interface ProjectRecord {
   doneTasks: number
   totalLoggedHours: number
   invoiceId: string | null
+  // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
+  // auto-conversion tracking.
+  quotationId: string | null
+  quotationNumber: string | null
   createdAt: string
   updatedAt: string
 }
@@ -66,6 +70,8 @@ function toRecord(p: any): ProjectRecord {
     doneTasks,
     totalLoggedHours,
     invoiceId: p.invoiceId ?? null,
+    quotationId: p.quotationId ?? null,
+    quotationNumber: p.quotation?.quotationNumber ?? null,
     createdAt: new Date(p.createdAt).toISOString(),
     updatedAt: new Date(p.updatedAt).toISOString()
   }
@@ -74,6 +80,7 @@ function toRecord(p: any): ProjectRecord {
 const include = {
   customer: { select: { customerName: true } },
   assignedTo: { select: { fullName: true } },
+  quotation: { select: { quotationNumber: true } },
   tasks: { select: { status: true } },
   workLogs: { select: { hours: true } }
 }
@@ -125,9 +132,19 @@ export async function createProject(payload: {
   startDate?: string
   dueDate?: string
   notes?: string
+  // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
+  // auto-conversion. Set when this project is created directly from an
+  // ACCEPTED Quotation (this vertical's "engagement letter").
+  quotationId?: string
 }, userId?: string): Promise<{ success: boolean; data?: ProjectRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    if (payload.quotationId) {
+      const quotation = await db.quotation.findUnique({ where: { id: payload.quotationId }, select: { status: true, project: { select: { id: true } } } })
+      if (!quotation) return { success: false, error: { code: 'PRJ-009', message: 'Quotation not found.' } }
+      if (quotation.status !== 'ACCEPTED') return { success: false, error: { code: 'PRJ-010', message: 'Only an accepted quotation can be converted into a project.' } }
+      if (quotation.project) return { success: false, error: { code: 'PRJ-011', message: 'This quotation has already been converted into a project.' } }
+    }
     const row = await db.$transaction(async (tx) => {
       const projectNumber = await generateSequenceNumber(
         tx, 'project_number_sequence', 'PRJ', 5,
@@ -149,7 +166,8 @@ export async function createProject(payload: {
           startDate: payload.startDate ? new Date(payload.startDate) : null,
           dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
           notes: payload.notes ?? null,
-          createdById: userId ?? null
+          createdById: userId ?? null,
+          quotationId: payload.quotationId ?? null
         },
         include
       })
@@ -162,6 +180,58 @@ export async function createProject(payload: {
       return { success: false, error: { code: 'PRJ-002', message: 'The system is busy creating another project right now. Please try again in a moment.' } }
     }
     return { success: false, error: { code: 'PRJ_CREATE_FAIL', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
+// auto-conversion tracking. Same shape as service-ticket.service.ts's own
+// getQuoteToJobConversionStats — how many ACCEPTED quotations actually
+// became real project engagements.
+export async function getEngagementConversionStats() {
+  try {
+    const db = getPrisma()
+    const [acceptedCount, convertedCount] = await Promise.all([
+      db.quotation.count({ where: { status: 'ACCEPTED' } }),
+      db.quotation.count({ where: { status: 'ACCEPTED', project: { isNot: null } } }),
+    ])
+    return {
+      success: true,
+      data: {
+        acceptedQuotations: acceptedCount,
+        convertedToProject: convertedCount,
+        conversionRatePercent: acceptedCount > 0 ? Math.round((convertedCount / acceptedCount) * 1000) / 10 : 0,
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'PRJ-013', message: e instanceof Error ? e.message : 'Could not compute engagement conversion stats.' } }
+  }
+}
+
+// Phase 67 §9.1 — Consultant item 5: proposal win-rate tracking. A
+// "proposal" is a Quotation in this codebase's own vocabulary — kept
+// deliberately lightweight (the audit tags this a Feature, not a Report),
+// same shape as service-ticket.service.ts's own getQuoteToJobConversionStats.
+export async function getProposalWinRateStats(): Promise<{ success: boolean; data?: { totalProposals: number; won: number; lost: number; pending: number; winRatePercent: number }; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const [total, won, lost] = await Promise.all([
+      db.quotation.count(),
+      db.quotation.count({ where: { status: 'ACCEPTED' } }),
+      db.quotation.count({ where: { status: 'EXPIRED' } })
+    ])
+    const decided = won + lost
+    return {
+      success: true,
+      data: {
+        totalProposals: total,
+        won,
+        lost,
+        pending: total - decided,
+        winRatePercent: decided > 0 ? Math.round((won / decided) * 1000) / 10 : 0
+      }
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'PRJ-012', message: e instanceof Error ? e.message : 'Could not compute proposal win-rate stats.' } }
   }
 }
 

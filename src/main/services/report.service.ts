@@ -2225,6 +2225,81 @@ async function generateSizeStyleHeatmapReport(params: { dateFrom: string; dateTo
   }
 }
 
+// Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap. Deliberately a
+// SEPARATE report from generateSizeStyleHeatmapReport above despite the near-
+// identical styles×sizes grid shape — that one answers "what sold," this one
+// answers "what's out right now": a live CURRENT-STATE stock snapshot, not a
+// sales history over a date range (no dateFrom/dateTo params at all, same
+// convention generateDeadStockClearanceReport already established for a
+// current-state report). Reuses MAX_HEATMAP_STYLES/compareSizes as-is.
+export type SizeAvailabilityStatus = 'OUT' | 'LOW' | 'IN'
+export interface SizeAvailabilityHeatmapCell { style: string; size: string; stockQty: number; status: SizeAvailabilityStatus }
+export interface SizeAvailabilityHeatmapReport {
+  lowStockThreshold: number
+  styles: string[]; sizes: string[]
+  cells: SizeAvailabilityHeatmapCell[]
+  summary: { totalStyles: number; outOfStockCells: number; lowStockCells: number; styleWithMostGaps: string | null; styleGapCount: number }
+}
+
+async function generateSizeAvailabilityHeatmapReport(params?: { lowStockThreshold?: number }): Promise<SizeAvailabilityHeatmapReport> {
+  const db = getPrisma()
+  const lowStockThreshold = params?.lowStockThreshold ?? 3
+
+  const variants = await db.productVariant.findMany({
+    where: { isActive: true, size: { not: null }, product: { isActive: true } },
+    select: { size: true, stockQty: true, product: { select: { productName: true } } }
+  })
+  if (variants.length === 0) {
+    return { lowStockThreshold, styles: [], sizes: [], cells: [], summary: { totalStyles: 0, outOfStockCells: 0, lowStockCells: 0, styleWithMostGaps: null, styleGapCount: 0 } }
+  }
+
+  // Stock is summed across colour/width for a given style×size cell — the
+  // question is "is size 9 available in THIS style at all," not broken down
+  // further by colour, matching the audit's own "which sizes are out for a
+  // given style" framing.
+  const byKey = new Map<string, { style: string; size: string; stockQty: number }>()
+  const gapsByStyle = new Map<string, number>()
+  for (const v of variants) {
+    const style = v.product.productName
+    const size = v.size!
+    const key = `${style}|${size}`
+    const existing = byKey.get(key) ?? { style, size, stockQty: 0 }
+    existing.stockQty += v.stockQty
+    byKey.set(key, existing)
+  }
+  for (const cell of byKey.values()) {
+    if (cell.stockQty === 0) gapsByStyle.set(cell.style, (gapsByStyle.get(cell.style) ?? 0) + 1)
+  }
+
+  // Styles with the most stockouts surface first — the most actionable ones,
+  // not the highest-volume ones (there's no "units sold" concept for a live
+  // stock snapshot the way the sales heatmap has).
+  const topStyles = Array.from(new Set(Array.from(byKey.values()).map(c => c.style)))
+    .sort((a, b) => (gapsByStyle.get(b) ?? 0) - (gapsByStyle.get(a) ?? 0))
+    .slice(0, MAX_HEATMAP_STYLES)
+  const topStyleSet = new Set(topStyles)
+
+  const cells: SizeAvailabilityHeatmapCell[] = Array.from(byKey.values())
+    .filter(c => topStyleSet.has(c.style))
+    .map(c => ({
+      ...c,
+      status: c.stockQty === 0 ? 'OUT' : c.stockQty <= lowStockThreshold ? 'LOW' : 'IN'
+    }))
+
+  const sizes = Array.from(new Set(cells.map(c => c.size))).sort(compareSizes)
+  const outOfStockCells = cells.filter(c => c.status === 'OUT').length
+  const lowStockCells = cells.filter(c => c.status === 'LOW').length
+  const topGapEntry = [...gapsByStyle.entries()].sort((a, b) => b[1] - a[1])[0] ?? null
+
+  return {
+    lowStockThreshold, styles: topStyles, sizes, cells,
+    summary: {
+      totalStyles: topStyles.length, outOfStockCells, lowStockCells,
+      styleWithMostGaps: topGapEntry?.[0] ?? null, styleGapCount: topGapEntry?.[1] ?? 0
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Category Mix Report (General template) — Phase 67 §9.1
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2383,6 +2458,101 @@ async function generateVendorMarginReport(params: { dateFrom: string; dateTo: st
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
     summary: { totalRevenue, totalCogs, totalMargin: roundCurrency(totalRevenue - totalCogs), vendorCount: rows.length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand-Wise Margin & Return-Rate Report (Footwear template) — Phase 67 §9.1,
+// item 2. A distinct Footwear-only item from Clothing's own Margin by
+// Brand/Vendor above (item 5) — the audit's own framing is specifically
+// "footwear returns run higher than apparel; track it by brand," a real
+// operational signal a plain margin-only view can't surface: a brand with
+// a healthy margin can still be quietly eating into it through an
+// above-average return rate. Kept as its own function rather than adding a
+// returnRate field onto generateVendorMarginReport() — the two are
+// separate audit items on separate verticals with independently evolving
+// requirements (matches this file's own precedent of Category
+// Sell-Through vs. Season Sell-Through: algorithmically similar, never
+// merged into one shared function).
+export interface BrandMarginReturnRateRow {
+  supplierId: string; supplierName: string
+  revenue: number; cogs: number; margin: number; marginPercent: number
+  unitsSold: number; unitsReturned: number; returnRatePercent: number
+}
+export interface BrandMarginReturnRateReport {
+  dateFrom: string; dateTo: string
+  rows: BrandMarginReturnRateRow[]
+  summary: { totalRevenue: number; totalMargin: number; overallReturnRatePercent: number; vendorCount: number }
+}
+
+async function generateBrandMarginReturnRateReport(params: { dateFrom: string; dateTo: string }): Promise<BrandMarginReturnRateReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const suppliers = await db.supplier.findMany({ select: { id: true, supplierName: true } })
+  if (suppliers.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalRevenue: 0, totalMargin: 0, overallReturnRatePercent: 0, vendorCount: 0 } }
+  const supplierNameById = new Map(suppliers.map(s => [s.id, s.supplierName]))
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      product: { defaultSupplierId: { not: null } }
+    },
+    select: {
+      productId: true, quantity: true, lineTotal: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { defaultSupplierId: true } }
+    }
+  })
+
+  const costs = await getProductCostsBatch(items.map(it => it.productId))
+
+  // Unlike generateVendorMarginReport, units sold and units returned are
+  // tracked SEPARATELY (not netted) — a return rate needs the raw
+  // numerator/denominator, not a net quantity that could mask a high
+  // return volume against an equally high sales volume.
+  const bySupplier = new Map<string, { revenue: number; cogs: number; unitsSold: number; unitsReturned: number }>()
+  for (const item of items) {
+    const supplierId = item.product.defaultSupplierId
+    if (!supplierId) continue
+    const isReturn = item.invoice.invoiceType === 'RETURN'
+    const sign = isReturn ? -1 : 1
+    const existing = bySupplier.get(supplierId) ?? { revenue: 0, cogs: 0, unitsSold: 0, unitsReturned: 0 }
+    existing.revenue += item.lineTotal
+    existing.cogs += sign * item.quantity * (costs.get(item.productId) ?? 0)
+    if (isReturn) existing.unitsReturned += item.quantity
+    else existing.unitsSold += item.quantity
+    bySupplier.set(supplierId, existing)
+  }
+
+  const totalRevenue = sumCurrency(Array.from(bySupplier.values()).map(v => v.revenue))
+  const totalCogs = sumCurrency(Array.from(bySupplier.values()).map(v => v.cogs))
+  const totalUnitsSold = Array.from(bySupplier.values()).reduce((s, v) => s + v.unitsSold, 0)
+  const totalUnitsReturned = Array.from(bySupplier.values()).reduce((s, v) => s + v.unitsReturned, 0)
+
+  const rows: BrandMarginReturnRateRow[] = Array.from(bySupplier.entries())
+    .map(([supplierId, v]) => {
+      const revenue = roundCurrency(v.revenue)
+      const cogs = roundCurrency(v.cogs)
+      const margin = roundCurrency(revenue - cogs)
+      return {
+        supplierId, supplierName: supplierNameById.get(supplierId) ?? '',
+        revenue, cogs, margin,
+        marginPercent: revenue !== 0 ? Math.round((margin / revenue) * 1000) / 10 : 0,
+        unitsSold: v.unitsSold, unitsReturned: v.unitsReturned,
+        returnRatePercent: v.unitsSold > 0 ? Math.round((v.unitsReturned / v.unitsSold) * 1000) / 10 : 0
+      }
+    })
+    .sort((a, b) => b.margin - a.margin)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalRevenue, totalMargin: roundCurrency(totalRevenue - totalCogs),
+      overallReturnRatePercent: totalUnitsSold > 0 ? Math.round((totalUnitsReturned / totalUnitsSold) * 1000) / 10 : 0,
+      vendorCount: rows.length
+    }
   }
 }
 
@@ -3529,6 +3699,52 @@ async function generateBloodStockReport(): Promise<BloodStockReport> {
   }
 }
 
+// Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time. A
+// retrospective waste-risk indicator, distinct from the live current-state
+// Blood Stock report above — how fast an ALREADY-ISSUED unit actually moved
+// from donation to use. Broken down by component type since shelf life
+// varies enormously (Platelets ~5 days vs. Plasma ~365), so the same 10-day
+// average cycle time is unremarkable for Plasma but a serious red flag for
+// Platelets — a single blended average would hide that entirely.
+export interface DonationToIssueCycleTimeByComponent { componentType: string; unitCount: number; avgDays: number; minDays: number; maxDays: number }
+export interface DonationToIssueCycleTimeReport {
+  summary: { totalIssuedUnits: number; overallAvgDays: number }
+  byComponent: DonationToIssueCycleTimeByComponent[]
+}
+
+async function generateDonationToIssueCycleTimeReport(): Promise<DonationToIssueCycleTimeReport> {
+  const db = getPrisma()
+  const items = await db.bloodIssueItem.findMany({
+    where: { bloodIssue: { status: { not: 'CANCELLED' } } },
+    select: { componentType: true, createdAt: true, donationRecord: { select: { collectionDate: true } } },
+  })
+  if (items.length === 0) return { summary: { totalIssuedUnits: 0, overallAvgDays: 0 }, byComponent: [] }
+
+  const byComponent = new Map<string, number[]>()
+  const allDays: number[] = []
+  for (const item of items) {
+    const days = (item.createdAt.getTime() - item.donationRecord.collectionDate.getTime()) / 86400000
+    allDays.push(days)
+    const list = byComponent.get(item.componentType) ?? []
+    list.push(days)
+    byComponent.set(item.componentType, list)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const componentRows: DonationToIssueCycleTimeByComponent[] = Array.from(byComponent.entries())
+    .map(([componentType, days]) => ({
+      componentType, unitCount: days.length,
+      avgDays: round1(days.reduce((s, d) => s + d, 0) / days.length),
+      minDays: round1(Math.min(...days)), maxDays: round1(Math.max(...days)),
+    }))
+    .sort((a, b) => b.avgDays - a.avgDays)
+
+  return {
+    summary: { totalIssuedUnits: items.length, overallAvgDays: round1(allDays.reduce((s, d) => s + d, 0) / allDays.length) },
+    byComponent: componentRows,
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Jewellery Report (fresh-audit fix, 2026-07-12 — Jewellery had zero reports
 // despite Metal Rates/Metal Exchange being real, separate features. Stock
@@ -3600,6 +3816,270 @@ async function generateJewelleryReport(params: { dateFrom: string; dateTo: strin
       totalExchangeValueGiven: exchanges.reduce((s, e) => s + e.valueGiven, 0),
       metalsWithNoRateSet: stockByMetal.filter(g => g.ratePerGram === null).map(g => `${g.metalType} ${g.purity}`),
     }
+  }
+}
+
+// Phase 67 §9.1 — Jewellery item 2: Making-Charge vs. Metal-Value Margin,
+// per SALE (invoice) — the true margin split the audit's own item wording
+// names. Deliberately distinct from generateJewelleryReport's own
+// `totalMakingChargeRevenue`, which is a single blended number across the
+// whole date range; this breaks it out per invoice so an owner can see
+// which specific sales carried a thin making-charge margin versus a fat one.
+export interface MakingChargeMarginRow {
+  invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string
+  metalValue: number; makingCharge: number; totalValue: number; makingChargePercent: number
+}
+export interface MakingChargeMarginReport {
+  dateFrom: string; dateTo: string
+  rows: MakingChargeMarginRow[]
+  summary: { totalMetalValue: number; totalMakingCharge: number; avgMakingChargePercent: number }
+}
+
+async function generateMakingChargeMarginReport(params: { dateFrom: string; dateTo: string }): Promise<MakingChargeMarginReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      jewelleryMetalType: { not: null },
+      invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    },
+    select: {
+      jewelleryNetWeight: true, jewelleryRatePerGram: true, jewelleryMakingCharge: true, quantity: true,
+      invoice: { select: { id: true, invoiceNumber: true, invoiceDate: true, customer: { select: { customerName: true } } } },
+    },
+  })
+
+  const byInvoice = new Map<string, MakingChargeMarginRow>()
+  for (const item of items) {
+    const metalValue = (item.jewelleryNetWeight ?? 0) * (item.jewelleryRatePerGram ?? 0) * item.quantity
+    const makingCharge = (item.jewelleryMakingCharge ?? 0) * item.quantity
+    const existing = byInvoice.get(item.invoice.id) ?? {
+      invoiceId: item.invoice.id, invoiceNumber: item.invoice.invoiceNumber,
+      invoiceDate: item.invoice.invoiceDate.toISOString(), customerName: item.invoice.customer?.customerName ?? '—',
+      metalValue: 0, makingCharge: 0, totalValue: 0, makingChargePercent: 0,
+    }
+    existing.metalValue = roundCurrency(existing.metalValue + metalValue)
+    existing.makingCharge = roundCurrency(existing.makingCharge + makingCharge)
+    byInvoice.set(item.invoice.id, existing)
+  }
+
+  const rows = Array.from(byInvoice.values()).map(r => ({
+    ...r, totalValue: roundCurrency(r.metalValue + r.makingCharge),
+    makingChargePercent: r.metalValue + r.makingCharge > 0 ? Math.round((r.makingCharge / (r.metalValue + r.makingCharge)) * 1000) / 10 : 0,
+  })).sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())
+
+  const totalMetalValue = rows.reduce((s, r) => s + r.metalValue, 0)
+  const totalMakingCharge = rows.reduce((s, r) => s + r.makingCharge, 0)
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalMetalValue, totalMakingCharge,
+      avgMakingChargePercent: totalMetalValue + totalMakingCharge > 0 ? Math.round((totalMakingCharge / (totalMetalValue + totalMakingCharge)) * 1000) / 10 : 0,
+    },
+  }
+}
+
+// Phase 67 §9.1 — Jewellery item 3: Hallmarking/HUID compliance register.
+// A real audit worklist, not a dashboard vanity metric — lists every active
+// metal-tagged product and flags which ones are missing a BIS HUID (or
+// equivalent) hallmark number, so a shop can find and fix a gap before an
+// inspection rather than after one.
+export interface HallmarkComplianceRow {
+  productId: string; productName: string; metalType: string; purity: string
+  hallmarkNumber: string | null; compliant: boolean
+}
+export interface HallmarkComplianceReport {
+  rows: HallmarkComplianceRow[]
+  summary: { totalItems: number; compliantCount: number; nonCompliantCount: number; compliancePercent: number }
+}
+
+async function generateHallmarkComplianceReport(): Promise<HallmarkComplianceReport> {
+  const db = getPrisma()
+  const products = await db.product.findMany({
+    where: { isActive: true, metalType: { not: null } },
+    select: { id: true, productName: true, metalType: true, purity: true, hallmarkNumber: true },
+    orderBy: { productName: 'asc' },
+  })
+
+  const rows: HallmarkComplianceRow[] = products.map(p => ({
+    productId: p.id, productName: p.productName, metalType: p.metalType ?? '', purity: p.purity ?? '',
+    hallmarkNumber: p.hallmarkNumber, compliant: !!p.hallmarkNumber?.trim(),
+    // Non-compliant items sort first — the actionable list, same
+    // worst-first convention this phase's other ranked reports already use.
+  })).sort((a, b) => Number(a.compliant) - Number(b.compliant))
+
+  const compliantCount = rows.filter(r => r.compliant).length
+  return {
+    rows,
+    summary: {
+      totalItems: rows.length, compliantCount, nonCompliantCount: rows.length - compliantCount,
+      compliancePercent: rows.length > 0 ? Math.round((compliantCount / rows.length) * 1000) / 10 : 100,
+    },
+  }
+}
+
+// Phase 67 §9.1 — Jewellery item 4: Metal Rate vs. Sales Volume, dual-axis
+// line chart correlating gold-rate swings with sales, to inform
+// stocking/pricing timing (the audit's own framing). Needs a real rate
+// HISTORY to trend against — see MetalRateHistory's own schema comment for
+// why this only accumulates going forward, never backfilled. Uses the same
+// dual-yAxisId ComposedChart mechanism the Distributor scheme-cost-vs-volume
+// report already established, monthly-bucketed.
+//
+// Deliberately no metalType/purity picker in the caller-facing API — the
+// generic Reports screen has no mechanism for an extra selector beyond a
+// date range, and a single dual-axis chart mixing multiple metals (gold and
+// silver rates differ by 50-100x) would be unreadable anyway. Auto-selects
+// whichever metalType+purity combination sold the most weight in the
+// requested range (the one an owner actually cares about correlating),
+// falling back to whichever has the most rate-history entries if there were
+// no sales at all in range.
+export interface MetalRateVsSalesVolumeRow { month: string; avgRatePerGram: number | null; salesWeightGrams: number }
+export interface MetalRateVsSalesVolumeReport {
+  dateFrom: string; dateTo: string
+  metalType: string; purity: string
+  rows: MetalRateVsSalesVolumeRow[]
+}
+
+function monthKey(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
+
+async function generateMetalRateVsSalesVolumeReport(params: { dateFrom: string; dateTo: string }): Promise<MetalRateVsSalesVolumeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const allItems = await db.invoiceItem.findMany({
+    where: {
+      jewelleryMetalType: { not: null }, jewelleryPurity: { not: null },
+      invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    },
+    select: { jewelleryMetalType: true, jewelleryPurity: true, jewelleryNetWeight: true, quantity: true, invoice: { select: { invoiceDate: true } } },
+  })
+
+  const weightByCombo = new Map<string, number>()
+  for (const item of allItems) {
+    const key = `${item.jewelleryMetalType}|${item.jewelleryPurity}`
+    weightByCombo.set(key, (weightByCombo.get(key) ?? 0) + (item.jewelleryNetWeight ?? 0) * item.quantity)
+  }
+
+  let dominant: string | undefined = Array.from(weightByCombo.entries()).sort((a, b) => b[1] - a[1])[0]?.[0]
+  if (!dominant) {
+    const rateHistoryAny = await db.metalRateHistory.groupBy({
+      by: ['metalType', 'purity'], where: { recordedAt: { gte: from, lte: to } }, _count: { _all: true },
+    })
+    const best = rateHistoryAny.sort((a, b) => b._count._all - a._count._all)[0]
+    dominant = best ? `${best.metalType}|${best.purity}` : undefined
+  }
+  if (!dominant) return { dateFrom: params.dateFrom, dateTo: params.dateTo, metalType: '', purity: '', rows: [] }
+  const [metalType, purity] = dominant.split('|')
+
+  const rateHistory = await db.metalRateHistory.findMany({
+    where: { metalType, purity, recordedAt: { gte: from, lte: to } },
+    orderBy: { recordedAt: 'asc' },
+  })
+  const rateSumByMonth = new Map<string, { sum: number; count: number }>()
+  for (const r of rateHistory) {
+    const key = monthKey(r.recordedAt)
+    const existing = rateSumByMonth.get(key) ?? { sum: 0, count: 0 }
+    existing.sum += r.ratePerGram; existing.count += 1
+    rateSumByMonth.set(key, existing)
+  }
+
+  const weightByMonth = new Map<string, number>()
+  for (const item of allItems) {
+    if (item.jewelleryMetalType !== metalType || item.jewelleryPurity !== purity) continue
+    const key = monthKey(item.invoice.invoiceDate)
+    weightByMonth.set(key, (weightByMonth.get(key) ?? 0) + (item.jewelleryNetWeight ?? 0) * item.quantity)
+  }
+
+  const allMonths = new Set([...rateSumByMonth.keys(), ...weightByMonth.keys()])
+  const rows: MetalRateVsSalesVolumeRow[] = Array.from(allMonths).sort().map(month => {
+    const rate = rateSumByMonth.get(month)
+    return {
+      month,
+      avgRatePerGram: rate ? Math.round((rate.sum / rate.count) * 100) / 100 : null,
+      salesWeightGrams: Math.round((weightByMonth.get(month) ?? 0) * 1000) / 1000,
+    }
+  })
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, metalType, purity, rows }
+}
+
+// Phase 67 §9.1 — Jewellery item 5: Purity-adjusted old-gold exchange
+// analytics, "beyond a basic exchange log" per the audit's own wording —
+// MetalExchangeScreen's own list is a flat feed with no normalization or
+// trend. Purity varies (22K, 18K, 916, 999...) so a raw netWeight sum mixes
+// incomparable metal quantities; this normalizes every exchange to its
+// PURE-metal-equivalent weight (netWeight × fineness fraction) before
+// aggregating, so a shop can compare true metal recovered across purities.
+function purityToFineness(purity: string): number | null {
+  const karat = /^(\d{1,2})\s*K$/i.exec(purity.trim())
+  if (karat) {
+    const k = parseInt(karat[1], 10)
+    return k > 0 && k <= 24 ? k / 24 : null
+  }
+  const perMille = /^(\d{3})$/.exec(purity.trim())
+  if (perMille) {
+    const v = parseInt(perMille[1], 10)
+    return v > 0 && v <= 999 ? v / 1000 : null
+  }
+  return null
+}
+
+export interface PurityAdjustedExchangeRow { metalType: string; purity: string; count: number; rawWeightGrams: number; pureEquivalentGrams: number; totalValueGiven: number }
+export interface PurityAdjustedExchangeReport {
+  dateFrom: string; dateTo: string
+  byMetal: PurityAdjustedExchangeRow[]
+  monthlyTrend: { month: string; pureEquivalentGrams: number }[]
+  summary: { totalExchanges: number; totalPureEquivalentGrams: number; totalValueGiven: number; unparsablePurityCount: number }
+}
+
+async function generatePurityAdjustedExchangeReport(params: { dateFrom: string; dateTo: string }): Promise<PurityAdjustedExchangeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const exchanges = await db.metalExchange.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { metalType: true, purity: true, netWeight: true, valueGiven: true, createdAt: true },
+  })
+
+  const byMetalMap = new Map<string, PurityAdjustedExchangeRow>()
+  const monthlyMap = new Map<string, number>()
+  let unparsablePurityCount = 0
+  for (const e of exchanges) {
+    const fineness = purityToFineness(e.purity)
+    const pureEquivalent = fineness !== null ? e.netWeight * fineness : 0
+    if (fineness === null) unparsablePurityCount++
+
+    const key = `${e.metalType}|${e.purity}`
+    const existing = byMetalMap.get(key) ?? { metalType: e.metalType, purity: e.purity, count: 0, rawWeightGrams: 0, pureEquivalentGrams: 0, totalValueGiven: 0 }
+    existing.count += 1
+    existing.rawWeightGrams += e.netWeight
+    existing.pureEquivalentGrams += pureEquivalent
+    existing.totalValueGiven += e.valueGiven
+    byMetalMap.set(key, existing)
+
+    const mKey = monthKey(e.createdAt)
+    monthlyMap.set(mKey, (monthlyMap.get(mKey) ?? 0) + pureEquivalent)
+  }
+
+  const round3 = (n: number) => Math.round(n * 1000) / 1000
+  const byMetal = Array.from(byMetalMap.values())
+    .map(r => ({ ...r, rawWeightGrams: round3(r.rawWeightGrams), pureEquivalentGrams: round3(r.pureEquivalentGrams), totalValueGiven: roundCurrency(r.totalValueGiven) }))
+    .sort((a, b) => b.pureEquivalentGrams - a.pureEquivalentGrams)
+  const monthlyTrend = Array.from(monthlyMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([month, grams]) => ({ month, pureEquivalentGrams: round3(grams) }))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, byMetal, monthlyTrend,
+    summary: {
+      totalExchanges: exchanges.length,
+      totalPureEquivalentGrams: round3(byMetal.reduce((s, r) => s + r.pureEquivalentGrams, 0)),
+      totalValueGiven: roundCurrency(exchanges.reduce((s, e) => s + e.valueGiven, 0)),
+      unparsablePurityCount,
+    },
   }
 }
 
@@ -3758,6 +4238,257 @@ async function generateProductionReport(params: { dateFrom: string; dateTo: stri
     dateFrom: params.dateFrom, dateTo: params.dateTo,
     summary: { totalOrders: orders.length, completed, inProgress, totalPlannedQty, totalProducedQty, completionRate },
     byStatus, rows,
+  }
+}
+
+// Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+// Deliberately does NOT recompute material cost from CURRENT RawMaterial.
+// unitCost (which completeProductionOrder itself uses at completion time,
+// since raw-material prices drift) — instead backs material cost OUT of the
+// already-persisted, historically-accurate ProductCostHistory.unitCost for
+// that order (totalCost - laborCost - overheadCost), the same real number
+// that actually set the finished good's own inventory.averageCost. laborCost
+// and overheadCost are already real persisted fields (Phase 64), so only
+// material needed deriving.
+export interface LandedCostPerUnitRow {
+  productId: string; productName: string
+  producedQty: number
+  materialCostPerUnit: number; laborCostPerUnit: number; overheadCostPerUnit: number
+  totalCostPerUnit: number
+}
+export interface LandedCostPerUnitReport {
+  dateFrom: string; dateTo: string
+  rows: LandedCostPerUnitRow[]
+  summary: { totalOrders: number; totalProducedQty: number }
+}
+
+async function generateLandedCostPerUnitReport(params: { dateFrom: string; dateTo: string }): Promise<LandedCostPerUnitReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const orders = await db.productionOrder.findMany({
+    where: { status: 'COMPLETED', completedDate: { gte: from, lte: to } },
+    select: { id: true, productId: true, producedQty: true, laborCost: true, overheadCost: true, product: { select: { productName: true } } }
+  })
+  if (orders.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalOrders: 0, totalProducedQty: 0 } }
+
+  const costHistory = await db.productCostHistory.findMany({
+    where: { sourceType: 'PRODUCTION_ORDER', sourceId: { in: orders.map(o => o.id) } },
+    select: { sourceId: true, unitCost: true }
+  })
+  const unitCostBySourceId = new Map(costHistory.map(c => [c.sourceId, c.unitCost]))
+
+  const byProduct = new Map<string, { productName: string; producedQty: number; materialCost: number; laborCost: number; overheadCost: number }>()
+  for (const o of orders) {
+    const unitCost = unitCostBySourceId.get(o.id) ?? 0
+    const totalCost = unitCost * o.producedQty
+    const materialCost = Math.max(0, totalCost - o.laborCost - o.overheadCost)
+
+    const existing = byProduct.get(o.productId) ?? { productName: o.product.productName, producedQty: 0, materialCost: 0, laborCost: 0, overheadCost: 0 }
+    existing.producedQty += o.producedQty
+    existing.materialCost += materialCost
+    existing.laborCost += o.laborCost
+    existing.overheadCost += o.overheadCost
+    byProduct.set(o.productId, existing)
+  }
+
+  const rows: LandedCostPerUnitRow[] = Array.from(byProduct.entries()).map(([productId, v]) => ({
+    productId, productName: v.productName, producedQty: v.producedQty,
+    materialCostPerUnit: v.producedQty > 0 ? roundCurrency(v.materialCost / v.producedQty) : 0,
+    laborCostPerUnit: v.producedQty > 0 ? roundCurrency(v.laborCost / v.producedQty) : 0,
+    overheadCostPerUnit: v.producedQty > 0 ? roundCurrency(v.overheadCost / v.producedQty) : 0,
+    totalCostPerUnit: v.producedQty > 0 ? roundCurrency((v.materialCost + v.laborCost + v.overheadCost) / v.producedQty) : 0,
+  })).sort((a, b) => b.totalCostPerUnit - a.totalCostPerUnit)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalOrders: orders.length, totalProducedQty: orders.reduce((s, o) => s + o.producedQty, 0) }
+  }
+}
+
+// Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend. Trended by
+// month (not day — a shop-floor QC volume is too sparse per-day to chart
+// meaningfully), and by stage (WorkOrder.taskName), reusing the per-stage
+// qtyInspected/qtyRejected item 3 introduced — a QC step with neither set
+// (every pre-item-3 row, and every non-QC step) is correctly excluded, not
+// silently counted as a 0%-rejection stage.
+export interface RejectionRateTrendPoint { month: string; qtyInspected: number; qtyRejected: number; rejectionRatePercent: number }
+export interface RejectionRateByStageRow { taskName: string; qtyInspected: number; qtyRejected: number; rejectionRatePercent: number }
+export interface RejectionRateTrendReport {
+  dateFrom: string; dateTo: string
+  trend: RejectionRateTrendPoint[]
+  byStage: RejectionRateByStageRow[]
+  summary: { totalInspected: number; totalRejected: number; overallRejectionRatePercent: number }
+}
+
+async function generateRejectionRateTrendReport(params: { dateFrom: string; dateTo: string }): Promise<RejectionRateTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const steps = await db.workOrder.findMany({
+    where: {
+      isQcStep: true, qtyInspected: { not: null },
+      completedAt: { gte: from, lte: to }
+    },
+    select: { taskName: true, qtyInspected: true, qtyRejected: true, completedAt: true }
+  })
+  if (steps.length === 0) {
+    return { dateFrom: params.dateFrom, dateTo: params.dateTo, trend: [], byStage: [], summary: { totalInspected: 0, totalRejected: 0, overallRejectionRatePercent: 0 } }
+  }
+
+  const byMonth = new Map<string, { qtyInspected: number; qtyRejected: number }>()
+  const byStage = new Map<string, { qtyInspected: number; qtyRejected: number }>()
+  for (const s of steps) {
+    const inspected = s.qtyInspected ?? 0
+    const rejected = s.qtyRejected ?? 0
+    const month = s.completedAt!.toISOString().slice(0, 7)
+
+    const m = byMonth.get(month) ?? { qtyInspected: 0, qtyRejected: 0 }
+    m.qtyInspected += inspected; m.qtyRejected += rejected
+    byMonth.set(month, m)
+
+    const st = byStage.get(s.taskName) ?? { qtyInspected: 0, qtyRejected: 0 }
+    st.qtyInspected += inspected; st.qtyRejected += rejected
+    byStage.set(s.taskName, st)
+  }
+
+  const trend: RejectionRateTrendPoint[] = Array.from(byMonth.entries())
+    .map(([month, v]) => ({ month, qtyInspected: v.qtyInspected, qtyRejected: v.qtyRejected, rejectionRatePercent: v.qtyInspected > 0 ? Math.round((v.qtyRejected / v.qtyInspected) * 1000) / 10 : 0 }))
+    .sort((a, b) => a.month.localeCompare(b.month))
+
+  const byStageRows: RejectionRateByStageRow[] = Array.from(byStage.entries())
+    .map(([taskName, v]) => ({ taskName, qtyInspected: v.qtyInspected, qtyRejected: v.qtyRejected, rejectionRatePercent: v.qtyInspected > 0 ? Math.round((v.qtyRejected / v.qtyInspected) * 1000) / 10 : 0 }))
+    .sort((a, b) => b.rejectionRatePercent - a.rejectionRatePercent)
+
+  const totalInspected = steps.reduce((s, r) => s + (r.qtyInspected ?? 0), 0)
+  const totalRejected = steps.reduce((s, r) => s + (r.qtyRejected ?? 0), 0)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, trend, byStage: byStageRows,
+    summary: { totalInspected, totalRejected, overallRejectionRatePercent: totalInspected > 0 ? Math.round((totalRejected / totalInspected) * 1000) / 10 : 0 }
+  }
+}
+
+// Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure. A live
+// current-state view (no date range) across the CALENDAR itself — every
+// currently-outstanding CREDIT invoice with a real dueDate, bucketed by
+// which calendar month that due date falls in, so a shop sees WHEN across
+// the year it's most exposed (typically clustering around harvest months),
+// not a sales-history trend. Also broken down by linked CropSeason name,
+// separately from the pure calendar-month view, since a season can span a
+// year boundary and two different seasons can share a due month.
+const CALENDAR_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export interface SeasonalCreditExposureMonthPoint { month: string; outstandingAmount: number; invoiceCount: number }
+export interface SeasonalCreditExposureBySeasonRow { seasonName: string; outstandingAmount: number; invoiceCount: number }
+export interface SeasonalCreditExposureReport {
+  byMonth: SeasonalCreditExposureMonthPoint[]
+  bySeason: SeasonalCreditExposureBySeasonRow[]
+  summary: { totalOutstanding: number; totalInvoices: number; peakMonth: string | null; peakMonthAmount: number }
+}
+
+async function generateSeasonalCreditExposureReport(): Promise<SeasonalCreditExposureReport> {
+  const db = getPrisma()
+
+  const invoices = await db.invoice.findMany({
+    where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, balanceAmount: { gt: 0 }, dueDate: { not: null } },
+    select: { balanceAmount: true, dueDate: true, cropSeason: { select: { name: true } } }
+  })
+
+  const byMonth = new Map<number, { outstandingAmount: number; invoiceCount: number }>()
+  const bySeason = new Map<string, { outstandingAmount: number; invoiceCount: number }>()
+  for (const inv of invoices) {
+    const monthIdx = inv.dueDate!.getMonth()
+    const m = byMonth.get(monthIdx) ?? { outstandingAmount: 0, invoiceCount: 0 }
+    m.outstandingAmount = roundCurrency(m.outstandingAmount + inv.balanceAmount)
+    m.invoiceCount += 1
+    byMonth.set(monthIdx, m)
+
+    if (inv.cropSeason) {
+      const s = bySeason.get(inv.cropSeason.name) ?? { outstandingAmount: 0, invoiceCount: 0 }
+      s.outstandingAmount = roundCurrency(s.outstandingAmount + inv.balanceAmount)
+      s.invoiceCount += 1
+      bySeason.set(inv.cropSeason.name, s)
+    }
+  }
+
+  const monthPoints: SeasonalCreditExposureMonthPoint[] = CALENDAR_MONTH_NAMES.map((month, idx) => {
+    const v = byMonth.get(idx) ?? { outstandingAmount: 0, invoiceCount: 0 }
+    return { month, outstandingAmount: v.outstandingAmount, invoiceCount: v.invoiceCount }
+  })
+  const seasonRows: SeasonalCreditExposureBySeasonRow[] = Array.from(bySeason.entries())
+    .map(([seasonName, v]) => ({ seasonName, outstandingAmount: v.outstandingAmount, invoiceCount: v.invoiceCount }))
+    .sort((a, b) => b.outstandingAmount - a.outstandingAmount)
+
+  const totalOutstanding = roundCurrency(invoices.reduce((s, i) => s + i.balanceAmount, 0))
+  const peak = [...monthPoints].sort((a, b) => b.outstandingAmount - a.outstandingAmount)[0] ?? null
+
+  return {
+    byMonth: monthPoints, bySeason: seasonRows,
+    summary: {
+      totalOutstanding, totalInvoices: invoices.length,
+      peakMonth: peak && peak.outstandingAmount > 0 ? peak.month : null,
+      peakMonthAmount: peak?.outstandingAmount ?? 0
+    }
+  }
+}
+
+// Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment
+// History. Deliberately a CROSS-farmer comparative view, distinct from the
+// pre-existing generateCustomerLedgerReport (a single-customer drill-down) —
+// this ranks EVERY customer with real credit activity by how reliably they
+// actually repay, surfacing the riskiest accounts first, not just showing
+// one farmer's history at a time.
+export interface FarmerRepaymentRow {
+  customerId: string; customerName: string; phone: string | null
+  totalPurchased: number; totalRepaid: number; outstandingBalance: number
+  repaymentRatePercent: number
+}
+export interface FarmerRepaymentReport {
+  rows: FarmerRepaymentRow[]
+  summary: { totalFarmers: number; totalOutstanding: number; overallRepaymentRatePercent: number }
+}
+
+async function generateFarmerRepaymentReport(): Promise<FarmerRepaymentReport> {
+  const db = getPrisma()
+
+  const invoices = await db.invoice.findMany({
+    where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, customerId: { not: null }, paymentStatus: { in: ['UNPAID', 'PARTIAL', 'PAID'] } },
+    select: { customerId: true, totalAmount: true, paidAmount: true, balanceAmount: true, customer: { select: { customerName: true, phone: true } } }
+  })
+  if (invoices.length === 0) return { rows: [], summary: { totalFarmers: 0, totalOutstanding: 0, overallRepaymentRatePercent: 0 } }
+
+  const byCustomer = new Map<string, { customerName: string; phone: string | null; totalPurchased: number; totalRepaid: number; outstandingBalance: number }>()
+  for (const inv of invoices) {
+    const cid = inv.customerId!
+    const existing = byCustomer.get(cid) ?? { customerName: inv.customer!.customerName, phone: inv.customer!.phone, totalPurchased: 0, totalRepaid: 0, outstandingBalance: 0 }
+    existing.totalPurchased = roundCurrency(existing.totalPurchased + inv.totalAmount)
+    existing.totalRepaid = roundCurrency(existing.totalRepaid + inv.paidAmount)
+    existing.outstandingBalance = roundCurrency(existing.outstandingBalance + inv.balanceAmount)
+    byCustomer.set(cid, existing)
+  }
+
+  // Riskiest (lowest repayment rate) first — the actual actionable list, not
+  // an alphabetical or highest-purchase-volume one.
+  const rows: FarmerRepaymentRow[] = Array.from(byCustomer.entries())
+    .map(([customerId, v]) => ({
+      customerId, customerName: v.customerName, phone: v.phone,
+      totalPurchased: v.totalPurchased, totalRepaid: v.totalRepaid, outstandingBalance: v.outstandingBalance,
+      repaymentRatePercent: v.totalPurchased > 0 ? Math.round((v.totalRepaid / v.totalPurchased) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => a.repaymentRatePercent - b.repaymentRatePercent)
+
+  const totalOutstanding = roundCurrency(rows.reduce((s, r) => s + r.outstandingBalance, 0))
+  const totalPurchased = rows.reduce((s, r) => s + r.totalPurchased, 0)
+  const totalRepaid = rows.reduce((s, r) => s + r.totalRepaid, 0)
+
+  return {
+    rows,
+    summary: {
+      totalFarmers: rows.length, totalOutstanding,
+      overallRepaymentRatePercent: totalPurchased > 0 ? Math.round((totalRepaid / totalPurchased) * 1000) / 10 : 0
+    }
   }
 }
 
@@ -4247,6 +4978,215 @@ async function generateProjectReport(params: { dateFrom: string; dateTo: string 
       dueDate: p.dueDate ? toLocalISODate(p.dueDate) : null,
       completedDate: p.completedDate ? toLocalISODate(p.completedDate) : null,
     })),
+  }
+}
+
+// Phase 67 §9.1 — Service item 2: Resolution Time by Category, bar chart —
+// "a real service-quality metric" per the audit's own wording. Only tickets
+// actually resolved in range (resolvedAt set) count — an OPEN ticket has no
+// resolution time yet, not a zero one.
+export interface ServiceResolutionTimeRow { category: string; ticketCount: number; avgHours: number; minHours: number; maxHours: number }
+export interface ServiceResolutionTimeReport {
+  dateFrom: string; dateTo: string
+  rows: ServiceResolutionTimeRow[]
+  summary: { totalResolved: number; overallAvgHours: number }
+}
+
+async function generateServiceResolutionTimeReport(params: { dateFrom: string; dateTo: string }): Promise<ServiceResolutionTimeReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const tickets = await db.serviceTicket.findMany({
+    where: { resolvedAt: { gte: from, lte: to, not: null } },
+    select: { category: true, createdAt: true, resolvedAt: true },
+  })
+
+  const byCategory = new Map<string, number[]>()
+  for (const t of tickets) {
+    if (!t.resolvedAt) continue
+    const hours = (t.resolvedAt.getTime() - t.createdAt.getTime()) / (60 * 60 * 1000)
+    const key = t.category?.trim() || 'Uncategorized'
+    const existing = byCategory.get(key) ?? []
+    existing.push(hours)
+    byCategory.set(key, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ServiceResolutionTimeRow[] = Array.from(byCategory.entries()).map(([category, hoursArr]) => ({
+    category, ticketCount: hoursArr.length,
+    avgHours: round1(hoursArr.reduce((s, h) => s + h, 0) / hoursArr.length),
+    minHours: round1(Math.min(...hoursArr)), maxHours: round1(Math.max(...hoursArr)),
+  })).sort((a, b) => b.avgHours - a.avgHours)
+
+  const allHours = tickets.filter(t => t.resolvedAt).map(t => (t.resolvedAt!.getTime() - t.createdAt.getTime()) / (60 * 60 * 1000))
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalResolved: allHours.length, overallAvgHours: allHours.length > 0 ? round1(allHours.reduce((s, h) => s + h, 0) / allHours.length) : 0 },
+  }
+}
+
+// Phase 67 §9.1 — Service item 4: Repeat-Business Rate, line trend — "the
+// retention indicator this generic scaffold has never had" per the audit.
+// Monthly-bucketed: of every customer who had a ticket created in a given
+// month, what share had ALSO had a ticket at any point strictly before that
+// month (a real returning customer, not just a second ticket the same week).
+export interface RepeatBusinessRateRow { month: string; newCustomers: number; repeatCustomers: number; repeatRatePercent: number }
+export interface RepeatBusinessRateReport {
+  dateFrom: string; dateTo: string
+  rows: RepeatBusinessRateRow[]
+}
+
+async function generateRepeatBusinessRateReport(params: { dateFrom: string; dateTo: string }): Promise<RepeatBusinessRateReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  // Every ticket with a customer, across all time (not just the requested
+  // range) — needed to know each customer's TRUE first-ever ticket date, so
+  // "repeat" is judged against their real history, not just what's visible
+  // inside this report's own window.
+  const allTickets = await db.serviceTicket.findMany({
+    where: { customerId: { not: null } },
+    select: { customerId: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  const firstTicketDateByCustomer = new Map<string, Date>()
+  for (const t of allTickets) {
+    if (!t.customerId) continue
+    if (!firstTicketDateByCustomer.has(t.customerId)) firstTicketDateByCustomer.set(t.customerId, t.createdAt)
+  }
+
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const byMonth = new Map<string, Set<string>>()
+  for (const t of allTickets) {
+    if (!t.customerId || t.createdAt < from || t.createdAt > to) continue
+    const key = monthKey(t.createdAt)
+    const set = byMonth.get(key) ?? new Set<string>()
+    set.add(t.customerId)
+    byMonth.set(key, set)
+  }
+
+  const rows: RepeatBusinessRateRow[] = Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([month, customerIds]) => {
+    const monthStart = new Date(`${month}-01T00:00:00`)
+    let repeatCustomers = 0
+    for (const customerId of customerIds) {
+      const firstDate = firstTicketDateByCustomer.get(customerId)
+      if (firstDate && firstDate < monthStart) repeatCustomers++
+    }
+    const total = customerIds.size
+    return {
+      month, newCustomers: total - repeatCustomers, repeatCustomers,
+      repeatRatePercent: total > 0 ? Math.round((repeatCustomers / total) * 1000) / 10 : 0,
+    }
+  })
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows }
+}
+
+// Phase 67 §9.1 — Consultant item 2: Utilization Rate — "the #1 consulting
+// metric, currently invisible." Per staff member (WorkLog.userId), billable
+// vs. non-billable hours logged against Projects in the requested range,
+// sorted ascending by utilizationPercent so the LEAST-utilized consultant
+// surfaces first (the actionable "who needs more billable work" list),
+// same worst-first convention this phase's other ranked reports use.
+export interface ConsultantUtilizationRow {
+  userName: string; billableHours: number; nonBillableHours: number; totalHours: number; utilizationPercent: number
+}
+export interface ConsultantUtilizationReport {
+  dateFrom: string; dateTo: string; rows: ConsultantUtilizationRow[]
+  summary: { totalBillableHours: number; totalNonBillableHours: number; overallUtilizationPercent: number }
+}
+async function generateConsultantUtilizationReport(params: { dateFrom: string; dateTo: string }): Promise<ConsultantUtilizationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const logs = await db.workLog.findMany({
+    where: { logDate: { gte: from, lte: to }, projectId: { not: null } },
+    select: { hours: true, billable: true, userId: true, user: { select: { fullName: true } } },
+  })
+
+  const byUser = new Map<string, { userName: string; billable: number; nonBillable: number }>()
+  for (const l of logs) {
+    const key = l.userId ?? 'unassigned'
+    const existing = byUser.get(key) ?? { userName: l.user?.fullName ?? 'Unassigned', billable: 0, nonBillable: 0 }
+    if (l.billable) existing.billable += l.hours
+    else existing.nonBillable += l.hours
+    byUser.set(key, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ConsultantUtilizationRow[] = Array.from(byUser.values()).map((u) => {
+    const totalHours = u.billable + u.nonBillable
+    return {
+      userName: u.userName, billableHours: round1(u.billable), nonBillableHours: round1(u.nonBillable),
+      totalHours: round1(totalHours),
+      utilizationPercent: totalHours > 0 ? round1((u.billable / totalHours) * 100) : 0,
+    }
+  }).sort((a, b) => a.utilizationPercent - b.utilizationPercent)
+
+  const totalBillableHours = round1(logs.filter((l) => l.billable).reduce((s, l) => s + l.hours, 0))
+  const totalNonBillableHours = round1(logs.filter((l) => !l.billable).reduce((s, l) => s + l.hours, 0))
+  const grandTotal = totalBillableHours + totalNonBillableHours
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalBillableHours, totalNonBillableHours, overallUtilizationPercent: grandTotal > 0 ? round1((totalBillableHours / grandTotal) * 100) : 0 },
+  }
+}
+
+// Phase 67 §9.1 — Consultant item 4: Client Profitability — "which clients
+// are actually worth keeping." Revenue = invoiced amount from this
+// customer's own Projects (Project.invoiceId -> Invoice.totalAmount);
+// hours = WorkLog hours logged against those same projects. Sorted
+// ascending by revenuePerHour so the least-profitable client surfaces
+// first, same worst-first convention as the utilization report above.
+export interface ClientProfitabilityRow {
+  customerName: string; revenue: number; hoursSpent: number; revenuePerHour: number
+}
+export interface ClientProfitabilityReport {
+  dateFrom: string; dateTo: string; rows: ClientProfitabilityRow[]
+  summary: { totalRevenue: number; totalHours: number }
+}
+async function generateClientProfitabilityReport(params: { dateFrom: string; dateTo: string }): Promise<ClientProfitabilityReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const projects = await db.project.findMany({
+    where: { customerId: { not: null }, createdAt: { gte: from, lte: to } },
+    select: {
+      customerId: true, customer: { select: { customerName: true } }, invoiceId: true,
+      workLogs: { select: { hours: true } },
+    },
+  })
+  const invoiceIds = projects.map((p) => p.invoiceId).filter((id): id is string => !!id)
+  const invoices = invoiceIds.length
+    ? await db.invoice.findMany({ where: { id: { in: invoiceIds } }, select: { id: true, totalAmount: true } })
+    : []
+  const invoiceAmountById = new Map(invoices.map((inv) => [inv.id, inv.totalAmount]))
+
+  const byCustomer = new Map<string, { customerName: string; revenue: number; hours: number }>()
+  for (const p of projects) {
+    if (!p.customerId) continue
+    const existing = byCustomer.get(p.customerId) ?? { customerName: p.customer?.customerName ?? 'Unknown', revenue: 0, hours: 0 }
+    if (p.invoiceId) existing.revenue += invoiceAmountById.get(p.invoiceId) ?? 0
+    existing.hours += p.workLogs.reduce((s, l) => s + l.hours, 0)
+    byCustomer.set(p.customerId, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ClientProfitabilityRow[] = Array.from(byCustomer.values()).map((c) => ({
+    customerName: c.customerName, revenue: round1(c.revenue), hoursSpent: round1(c.hours),
+    revenuePerHour: c.hours > 0 ? round1(c.revenue / c.hours) : 0,
+  })).sort((a, b) => a.revenuePerHour - b.revenuePerHour)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalRevenue: round1(rows.reduce((s, r) => s + r.revenue, 0)),
+      totalHours: round1(rows.reduce((s, r) => s + r.hoursSpent, 0)),
+    },
   }
 }
 
@@ -4929,10 +5869,25 @@ export interface RentalStatusRow {
   startDateTime: string; endDateTime: string; isOverdue: boolean; daysOverdue: number
 }
 
+export interface RentalOverdueAgingBucket { bucket: string; count: number }
 export interface RentalStatusReport {
   rows: RentalStatusRow[]
   summary: { totalCheckedOut: number; overdueCount: number }
+  // Phase 67 §9.1 — Rental item 4: Overdue Returns aging bar. The list
+  // itself (rows above) already existed; this is the missing "by how long"
+  // breakdown the audit's own item wording specifically named — one
+  // overdue BOOKING per bucket (not one row per item), since a booking with
+  // 3 items overdue by the same amount is one real-world follow-up call,
+  // not three.
+  agingBuckets: RentalOverdueAgingBucket[]
 }
+
+const OVERDUE_AGING_BUCKETS = [
+  { label: '1-3 days', min: 1, max: 3 },
+  { label: '4-7 days', min: 4, max: 7 },
+  { label: '8-14 days', min: 8, max: 14 },
+  { label: '15+ days', min: 15, max: Infinity },
+]
 
 async function generateRentalStatusReport(): Promise<RentalStatusReport> {
   const db = getPrisma()
@@ -4944,9 +5899,11 @@ async function generateRentalStatusReport(): Promise<RentalStatusReport> {
 
   const now = new Date()
   const rows: RentalStatusRow[] = []
+  const bookingDaysOverdue: number[] = []
   for (const b of bookings) {
     const isOverdue = b.endDateTime < now
     const daysOverdue = isOverdue ? Math.ceil((now.getTime() - b.endDateTime.getTime()) / 86_400_000) : 0
+    if (isOverdue) bookingDaysOverdue.push(daysOverdue)
     for (const item of b.items) {
       rows.push({
         bookingNumber: b.bookingNumber, customerName: b.customer.customerName,
@@ -4957,9 +5914,14 @@ async function generateRentalStatusReport(): Promise<RentalStatusReport> {
     }
   }
 
+  const agingBuckets: RentalOverdueAgingBucket[] = OVERDUE_AGING_BUCKETS.map(({ label, min, max }) => ({
+    bucket: label, count: bookingDaysOverdue.filter(d => d >= min && d <= max).length,
+  }))
+
   return {
     rows,
-    summary: { totalCheckedOut: bookings.length, overdueCount: bookings.filter(b => b.endDateTime < now).length },
+    summary: { totalCheckedOut: bookings.length, overdueCount: bookingDaysOverdue.length },
+    agingBuckets,
   }
 }
 
@@ -5019,6 +5981,79 @@ async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: s
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
     summary: { totalRevenue: rows.reduce((s, r) => s + r.totalRevenue, 0), totalBookings: items.length },
+  }
+}
+
+// Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per individual
+// physical unit (not per product). generateRentalRevenueReport's own
+// utilizationPercent above already exists but is averaged ACROSS every unit
+// of a product — it can't tell you that one specific unit is idle 90% of
+// the time while a sibling unit of the exact same product is rented
+// constantly, which is the real "which assets actually earn their keep"
+// question the audit's own item names. Deliberately a separate report, not
+// an extension of generateRentalRevenueReport, matching this phase's own
+// precedent of keeping a coarser existing report and a finer new one
+// distinct rather than merging different grains into one.
+export interface AssetUtilizationRow {
+  rentalUnitId: string; unitLabel: string; productName: string; status: string
+  rentedDays: number; availableDays: number; utilizationPercent: number
+}
+export interface AssetUtilizationReport {
+  dateFrom: string; dateTo: string
+  rows: AssetUtilizationRow[]
+  summary: { totalUnits: number; avgUtilizationPercent: number; idleUnitCount: number }
+}
+
+async function generateAssetUtilizationReport(params: { dateFrom: string; dateTo: string }): Promise<AssetUtilizationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+  const rangeDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000))
+
+  const units = await db.rentalUnit.findMany({
+    where: { status: { not: 'RETIRED' } },
+    include: { product: { select: { productName: true } } },
+    orderBy: { unitLabel: 'asc' },
+  })
+  if (units.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalUnits: 0, avgUtilizationPercent: 0, idleUnitCount: 0 } }
+
+  const items = await db.rentalBookingItem.findMany({
+    where: {
+      rentalUnitId: { in: units.map(u => u.id) },
+      booking: { status: { in: ['CHECKED_OUT', 'RETURNED'] }, startDateTime: { lte: to }, endDateTime: { gte: from } },
+    },
+    select: { rentalUnitId: true, booking: { select: { startDateTime: true, endDateTime: true } } },
+  })
+
+  const rentedDaysByUnit = new Map<string, number>()
+  for (const item of items) {
+    if (!item.rentalUnitId) continue
+    // Same overlap-days-within-range calculation generateRentalRevenueReport
+    // already established — a booking spanning the full range counts fully,
+    // one spanning just a slice of it counts only that slice.
+    const overlapStart = item.booking.startDateTime > from ? item.booking.startDateTime : from
+    const overlapEnd = item.booking.endDateTime < to ? item.booking.endDateTime : to
+    const overlapMs = overlapEnd.getTime() - overlapStart.getTime()
+    if (overlapMs > 0) rentedDaysByUnit.set(item.rentalUnitId, (rentedDaysByUnit.get(item.rentalUnitId) ?? 0) + overlapMs / 86_400_000)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: AssetUtilizationRow[] = units.map(u => {
+    const rentedDays = round1(Math.min(rangeDays, rentedDaysByUnit.get(u.id) ?? 0))
+    return {
+      rentalUnitId: u.id, unitLabel: u.unitLabel, productName: u.product.productName, status: u.status,
+      rentedDays, availableDays: rangeDays,
+      utilizationPercent: round1((rentedDays / rangeDays) * 100),
+    }
+  }).sort((a, b) => a.utilizationPercent - b.utilizationPercent) // worst-earning assets first — the actionable list
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalUnits: rows.length,
+      avgUtilizationPercent: round1(rows.reduce((s, r) => s + r.utilizationPercent, 0) / rows.length),
+      idleUnitCount: rows.filter(r => r.utilizationPercent === 0).length,
+    },
   }
 }
 
@@ -5925,8 +6960,10 @@ export const reportService = {
   generateCategorySellThroughReport,
   generateSeasonSellThroughReport,
   generateSizeStyleHeatmapReport,
+  generateSizeAvailabilityHeatmapReport,
   generateCategoryMixReport,
   generateVendorMarginReport,
+  generateBrandMarginReturnRateReport,
   generateBasketCompositionReport,
   generateFastSlowMoverMatrixReport,
   generateGSTR1,
@@ -5935,6 +6972,7 @@ export const reportService = {
   generateGSTR3BPreview,
   generateRentalStatusReport,
   generateRentalRevenueReport,
+  generateAssetUtilizationReport,
   generateAppointmentUtilisationReport,
   generateClientRetentionReport,
   generateCommissionReport,
@@ -5943,10 +6981,19 @@ export const reportService = {
   generateBatchExpiryReport,
   generateLabThroughputReport,
   generateBloodStockReport,
+  generateDonationToIssueCycleTimeReport,
   generateJewelleryReport,
+  generateMakingChargeMarginReport,
+  generateHallmarkComplianceReport,
+  generateMetalRateVsSalesVolumeReport,
+  generatePurityAdjustedExchangeReport,
   generateLogisticsReport,
   generateAttendanceReport,
   generateProductionReport,
+  generateLandedCostPerUnitReport,
+  generateRejectionRateTrendReport,
+  generateSeasonalCreditExposureReport,
+  generateFarmerRepaymentReport,
   generateSerialWarrantyReport,
   generateRmaAgingReport,
   generateVendorRecoveryLedgerReport,
@@ -5955,6 +7002,10 @@ export const reportService = {
   generateTestScoreReport,
   generateComplianceTaskReport,
   generateProjectReport,
+  generateServiceResolutionTimeReport,
+  generateRepeatBusinessRateReport,
+  generateConsultantUtilizationReport,
+  generateClientProfitabilityReport,
   generateServiceProjectReport,
   generateJobCardReport,
   generateCarJobCardReport,

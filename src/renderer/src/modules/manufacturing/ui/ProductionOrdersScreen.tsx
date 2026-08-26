@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Factory, Plus, RefreshCw, X, CheckCircle2, PlayCircle, XCircle, FileText, ListChecks, Search } from 'lucide-react'
+import { Factory, Plus, RefreshCw, X, CheckCircle2, PlayCircle, XCircle, FileText, ListChecks, Search, Timer } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -20,7 +20,20 @@ interface WorkOrderStep {
   isQcStep: boolean
   qcResult: 'PASS' | 'FAIL' | null
   qcNotes: string | null
+  // Phase 67 §9.1 — Manufacturing item 3: per-stage rejection quantity.
+  qtyInspected: number | null
+  qtyRejected: number | null
   notes: string | null
+}
+
+// Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+interface DowntimeEntry {
+  id: string
+  workOrderId: string
+  reason: string
+  minutes: number
+  notes: string | null
+  createdAt: string
 }
 
 interface MaterialUsage {
@@ -156,6 +169,18 @@ export function ProductionOrdersScreen() {
   const [qcTarget, setQcTarget] = useState<WorkOrderStep | null>(null)
   const [qcNotesInput, setQcNotesInput] = useState('')
   const [qcSubmitting, setQcSubmitting] = useState(false)
+  // Phase 67 §9.1 — Manufacturing item 3: per-stage rejection quantity,
+  // captured alongside the existing pass/fail result, not replacing it.
+  const [qcQtyInspected, setQcQtyInspected] = useState('')
+  const [qcQtyRejected, setQcQtyRejected] = useState('')
+
+  // Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+  const [downtimeTarget, setDowntimeTarget] = useState<WorkOrderStep | null>(null)
+  const [downtimeReason, setDowntimeReason] = useState('')
+  const [downtimeMinutes, setDowntimeMinutes] = useState('')
+  const [downtimeNotes, setDowntimeNotes] = useState('')
+  const [downtimeSubmitting, setDowntimeSubmitting] = useState(false)
+  const [downtimeEntries, setDowntimeEntries] = useState<Record<string, DowntimeEntry[]>>({})
 
   // Which work-order step (by id) currently has an in-flight status toggle —
   // guards against a double-click firing api.workOrders.updateStatus twice.
@@ -189,6 +214,17 @@ export function ProductionOrdersScreen() {
   }, [statusFilter, toastError, t])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck
+  // flag — an all-time cross-order insight, independent of the status
+  // filter above, fetched once on mount rather than refetched per filter
+  // change.
+  const [bottleneck, setBottleneck] = useState<{ bottleneckStage: string | null; avgDurationHours: number; shareOfTotalLeadTimePercent: number } | null>(null)
+  useEffect(() => {
+    void api.workOrders.bottleneckFlag({}).then(res => {
+      if (res.success && res.data) setBottleneck(res.data)
+    })
+  }, [])
 
   function openNew() {
     setNewForm({ productId: '', plannedQty: '', notes: '' })
@@ -299,15 +335,49 @@ export function ProductionOrdersScreen() {
       ])
       if (detRes.success && detRes.data) setDetailOrder(detRes.data as ProductionOrder)
       else setDetailOrder(order)
-      if (woRes.success && woRes.data) setWorkOrders((woRes.data as WorkOrderStep[]) ?? [])
-      else setWorkOrders([])
+      const steps = (woRes.success && woRes.data) ? (woRes.data as WorkOrderStep[]) ?? [] : []
+      setWorkOrders(steps)
+
+      // Phase 67 §9.1 — Manufacturing item 1: fetch each step's own downtime
+      // total up front (a production order has only a handful of steps, so
+      // this is a small parallel fan-out, not a real N+1 concern) so the
+      // step list can show a real cumulative-downtime badge immediately.
+      if (steps.length > 0) {
+        const dtResults = await Promise.all(steps.map(s => api.workOrders.listDowntime({ workOrderId: s.id })))
+        const dtMap: Record<string, DowntimeEntry[]> = {}
+        steps.forEach((s, i) => { dtMap[s.id] = (dtResults[i]?.success ? (dtResults[i].data as DowntimeEntry[]) ?? [] : []) })
+        setDowntimeEntries(dtMap)
+      } else {
+        setDowntimeEntries({})
+      }
     } catch {
       // Fall back to the summary already held from the list so the modal
       // still opens with something useful, but flag that the fresh detail
       // fetch failed instead of silently showing stale/partial data.
       setDetailOrder(order)
       setWorkOrders([])
+      setDowntimeEntries({})
       toastError(t('common.error'), t('common.error'))
+    }
+  }
+
+  // Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+  async function handleLogDowntime() {
+    if (!downtimeTarget) return
+    const minutes = parseFloat(downtimeMinutes)
+    if (!downtimeReason.trim()) { toastError(t('common.error'), t('manufacturing.downtime.reasonRequired')); return }
+    if (!minutes || minutes <= 0) { toastError(t('common.error'), t('manufacturing.downtime.minutesRequired')); return }
+    setDowntimeSubmitting(true)
+    try {
+      const res = await api.workOrders.logDowntime({ workOrderId: downtimeTarget.id, reason: downtimeReason.trim(), minutes, notes: downtimeNotes.trim() || undefined })
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      const listRes = await api.workOrders.listDowntime({ workOrderId: downtimeTarget.id })
+      if (listRes.success) setDowntimeEntries(prev => ({ ...prev, [downtimeTarget.id]: (listRes.data as DowntimeEntry[]) ?? [] }))
+      setDowntimeTarget(null); setDowntimeReason(''); setDowntimeMinutes(''); setDowntimeNotes('')
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setDowntimeSubmitting(false)
     }
   }
 
@@ -359,6 +429,8 @@ export function ProductionOrdersScreen() {
       if (wo.isQcStep) {
         setQcTarget(wo)
         setQcNotesInput('')
+        setQcQtyInspected('')
+        setQcQtyRejected('')
         return
       }
       const res = await api.workOrders.updateStatus({ id: wo.id, status: 'DONE' })
@@ -376,11 +448,20 @@ export function ProductionOrdersScreen() {
 
   async function submitQcResult(result: 'PASS' | 'FAIL') {
     if (!qcTarget) return
+    // Phase 67 §9.1 — Manufacturing item 3: both optional, but if either is
+    // typed it must parse as a real non-negative number — an unparsable
+    // value is silently dropped rather than sent as NaN.
+    const qtyInspected = qcQtyInspected.trim() ? parseFloat(qcQtyInspected) : undefined
+    const qtyRejected = qcQtyRejected.trim() ? parseFloat(qcQtyRejected) : undefined
+    if (qtyInspected != null && qtyRejected != null && qtyRejected > qtyInspected) {
+      toastError(t('common.error'), t('manufacturing.qc.rejectedExceedsInspected'))
+      return
+    }
     setQcSubmitting(true)
     try {
-      const res = await api.workOrders.updateStatus({ id: qcTarget.id, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || undefined })
+      const res = await api.workOrders.updateStatus({ id: qcTarget.id, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || undefined, qtyInspected, qtyRejected })
       if (res.success) {
-        setWorkOrders(prev => prev.map(w => w.id === qcTarget.id ? { ...w, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || null } : w))
+        setWorkOrders(prev => prev.map(w => w.id === qcTarget.id ? { ...w, status: 'DONE', qcResult: result, qcNotes: qcNotesInput || null, qtyInspected: qtyInspected ?? null, qtyRejected: qtyRejected ?? null } : w))
         setQcTarget(null)
       } else {
         toastError(res.error?.message ?? t('common.updated'))
@@ -460,6 +541,23 @@ export function ProductionOrdersScreen() {
           active={statusFilter}
           onChange={setStatusFilter}
         />
+
+        {/* Phase 67 §9.1 — Manufacturing item 5: work-order lead-time
+            bottleneck flag — surfaces which stage is actually slowing
+            delivery, computed purely from existing WorkOrder.completedAt
+            timestamps, no new capture needed. */}
+        {bottleneck?.bottleneckStage && (
+          <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center gap-2">
+            <Timer size={14} className="text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800">
+              {t('manufacturing.bottleneck.message', {
+                stage: bottleneck.bottleneckStage,
+                hours: bottleneck.avgDurationHours,
+                percent: bottleneck.shareOfTotalLeadTimePercent
+              })}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Orders list */}
@@ -778,7 +876,29 @@ export function ProductionOrdersScreen() {
                             </p>
                             {wo.notes && <p className="text-xs text-text-secondary mt-0.5">{wo.notes}</p>}
                             {wo.qcNotes && <p className="text-xs text-text-secondary mt-0.5">{t('manufacturing.qcNotesLabel')}: {wo.qcNotes}</p>}
+                            {wo.qtyInspected != null && (
+                              <p className="text-xs text-text-secondary mt-0.5">
+                                {t('manufacturing.qc.qtyInspected')}: {formatNumber(wo.qtyInspected)}
+                                {wo.qtyRejected != null && wo.qtyRejected > 0 && (
+                                  <span className="text-danger"> · {t('manufacturing.qc.qtyRejected')}: {formatNumber(wo.qtyRejected)}</span>
+                                )}
+                              </p>
+                            )}
+                            {(downtimeEntries[wo.id]?.length ?? 0) > 0 && (
+                              <p className="text-xs text-amber-600 mt-0.5">
+                                {t('manufacturing.downtime.totalMinutes', { minutes: downtimeEntries[wo.id].reduce((s, e) => s + e.minutes, 0) })}
+                              </p>
+                            )}
                           </div>
+                          {(detailOrder.status === 'IN_PROGRESS') && (
+                            <button
+                              onClick={() => { setDowntimeTarget(wo); setDowntimeReason(''); setDowntimeMinutes(''); setDowntimeNotes('') }}
+                              className="shrink-0 text-xs text-text-secondary hover:text-brand hover:underline"
+                              title={t('manufacturing.downtime.log')}
+                            >
+                              {t('manufacturing.downtime.logShort')}
+                            </button>
+                          )}
                           {wo.isQcStep && wo.qcResult && (
                             <Badge variant={wo.qcResult === 'PASS' ? 'success' : 'danger'} size="sm" className="shrink-0">
                               {wo.qcResult === 'PASS' ? t('manufacturing.qcPass') : t('manufacturing.qcFail')}
@@ -960,6 +1080,28 @@ export function ProductionOrdersScreen() {
             </div>
             <div className="p-6 space-y-4">
               <p className="text-sm text-text-secondary">{qcTarget.taskName}</p>
+              {/* Phase 67 §9.1 — Manufacturing item 3: per-stage rejection
+                  quantity, independent of the pass/fail buttons below — a
+                  batch can PASS overall with a few units still rejected at
+                  this specific stage. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.qc.qtyInspected')}</label>
+                  <input
+                    type="number" min={0} value={qcQtyInspected}
+                    onChange={e => setQcQtyInspected(e.target.value)}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.qc.qtyRejected')}</label>
+                  <input
+                    type="number" min={0} value={qcQtyRejected}
+                    onChange={e => setQcQtyRejected(e.target.value)}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              </div>
               <input
                 autoFocus
                 value={qcNotesInput}
@@ -975,6 +1117,48 @@ export function ProductionOrdersScreen() {
                   {t('manufacturing.qcPass')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 67 §9.1 — Manufacturing item 1: downtime logging modal. */}
+      {downtimeTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-text-primary">{t('manufacturing.downtime.title')}</h2>
+              <button onClick={() => setDowntimeTarget(null)} className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-text-secondary">{downtimeTarget.taskName}</p>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.downtime.reason')}</label>
+                <input
+                  autoFocus
+                  value={downtimeReason}
+                  onChange={e => setDowntimeReason(e.target.value)}
+                  placeholder={t('manufacturing.downtime.reasonPlaceholder')}
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">{t('manufacturing.downtime.minutes')}</label>
+                <input
+                  type="number" min={1} value={downtimeMinutes}
+                  onChange={e => setDowntimeMinutes(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+              <input
+                value={downtimeNotes}
+                onChange={e => setDowntimeNotes(e.target.value)}
+                placeholder={`${t('common.notes')} (${t('common.optional')})`}
+                className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-base focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+              <button onClick={() => void handleLogDowntime()} disabled={downtimeSubmitting} className="w-full h-12 rounded-xl bg-brand text-white font-semibold disabled:opacity-50 transition-colors">
+                {t('manufacturing.downtime.log')}
+              </button>
             </div>
           </div>
         </div>

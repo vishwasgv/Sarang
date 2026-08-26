@@ -2,11 +2,16 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Plus, Trash2, Save, Grid3x3, Barcode, RefreshCw, TrendingUp } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { useNotificationStore } from '@app/store/notification.store'
+import { useIndustryStore } from '@app/store/industry.store'
 
 interface VariantRow {
   id?: string
   size: string
   color: string
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Only ever
+  // shown/editable when the active business type is FOOTWEAR — a plain
+  // empty string, exactly like size/color, for every other vertical.
+  width: string
   sku: string
   barcode: string
   additionalPrice: string
@@ -23,13 +28,20 @@ interface VariantManagementModalProps {
 const COMMON_SIZES_CLOTHING = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
 const COMMON_SIZES_FOOTWEAR = ['5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '12']
 const COMMON_COLORS = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Grey', 'Brown', 'Pink', 'Purple', 'Orange', 'Navy']
+// Phase 67 §9.1 — Footwear item 1: half-size/width matrix.
+const COMMON_WIDTHS = ['Narrow', 'Regular', 'Wide', 'Extra Wide']
 
 function emptyRow(): VariantRow {
-  return { size: '', color: '', sku: '', barcode: '', additionalPrice: '0', stockQty: '0' }
+  return { size: '', color: '', width: '', sku: '', barcode: '', additionalPrice: '0', stockQty: '0' }
 }
 
 export function VariantManagementModal({ open, productId, productName, onClose }: VariantManagementModalProps) {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Width is
+  // FOOTWEAR's own real differentiator, deliberately not shown for
+  // CLOTHING even though both share the same variant-tracking module.
+  const { businessType } = useIndustryStore()
+  const isFootwear = businessType === 'FOOTWEAR'
   const [rows, setRows] = useState<VariantRow[]>([emptyRow()])
   const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -43,13 +55,14 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   // present) rather than replacing them.
   const [matrixSizes, setMatrixSizes] = useState('')
   const [matrixColors, setMatrixColors] = useState('')
+  const [matrixWidths, setMatrixWidths] = useState('')
   const MAX_MATRIX_COMBOS = 300
   const [generatingBarcodeFor, setGeneratingBarcodeFor] = useState<number | null>(null)
 
   // Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
   const [showReorderSuggestion, setShowReorderSuggestion] = useState(false)
   const [reorderQtyInput, setReorderQtyInput] = useState('')
-  const [reorderSuggestion, setReorderSuggestion] = useState<{ totalReorderQty: number; lookbackDays: number; rows: Array<{ variantId: string; size: string | null; color: string | null; unitsSoldRecently: number; suggestedQuantity: number }> } | null>(null)
+  const [reorderSuggestion, setReorderSuggestion] = useState<{ totalReorderQty: number; lookbackDays: number; rows: Array<{ variantId: string; size: string | null; color: string | null; width: string | null; unitsSoldRecently: number; suggestedQuantity: number }> } | null>(null)
   const [loadingSuggestion, setLoadingSuggestion] = useState(false)
 
   const loadVariants = useCallback(async () => {
@@ -66,6 +79,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
               id: r.id as string | undefined,
               size: (r.size as string | null) ?? '',
               color: (r.color as string | null) ?? '',
+              width: (r.width as string | null) ?? '',
               sku: (r.sku as string | null) ?? '',
               barcode: (r.barcode as string | null) ?? '',
               additionalPrice: String((r.additionalPrice as number | null) ?? 0),
@@ -112,24 +126,32 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   function generateMatrix() {
     const sizes = matrixSizes.split(',').map(s => s.trim()).filter(Boolean)
     const colors = matrixColors.split(',').map(c => c.trim()).filter(Boolean)
-    if (sizes.length === 0 && colors.length === 0) {
-      toastError('Nothing to Generate', 'Enter at least one size or colour, comma-separated.')
+    // Phase 67 §9.1 — Footwear item 1: generalized to a 3rd dimension
+    // (width), always empty and therefore a no-op for non-Footwear
+    // verticals — same "blank dimension collapses to a single ''
+    // placeholder" rule the original size×colour logic already used,
+    // just extended from 2 lists to 3 so it degrades to the exact
+    // original 2D behavior whenever widths is empty.
+    const widths = matrixWidths.split(',').map(w => w.trim()).filter(Boolean)
+    if (sizes.length === 0 && colors.length === 0 && widths.length === 0) {
+      toastError('Nothing to Generate', `Enter at least one size, ${isFootwear ? 'width, ' : ''}or colour, comma-separated.`)
       return
     }
-    const combos: Array<{ size: string; color: string }> =
-      sizes.length && colors.length ? sizes.flatMap(s => colors.map(c => ({ size: s, color: c })))
-      : sizes.length ? sizes.map(s => ({ size: s, color: '' }))
-      : colors.map(c => ({ size: '', color: c }))
+    const sizeList = sizes.length ? sizes : ['']
+    const widthList = widths.length ? widths : ['']
+    const colorList = colors.length ? colors : ['']
+    const combos: Array<{ size: string; width: string; color: string }> =
+      sizeList.flatMap(s => widthList.flatMap(w => colorList.map(c => ({ size: s, width: w, color: c }))))
 
     if (combos.length > MAX_MATRIX_COMBOS) {
       toastError('Too Many Combinations', `That would generate ${combos.length} variants at once — split into smaller batches (max ${MAX_MATRIX_COMBOS}).`)
       return
     }
 
-    const existingKeys = new Set(rows.map(r => `${r.size}|${r.color}`))
+    const existingKeys = new Set(rows.map(r => `${r.size}|${r.width}|${r.color}`))
     const newRows = combos
-      .filter(c => !existingKeys.has(`${c.size}|${c.color}`))
-      .map(c => ({ ...emptyRow(), size: c.size, color: c.color }))
+      .filter(c => !existingKeys.has(`${c.size}|${c.width}|${c.color}`))
+      .map(c => ({ ...emptyRow(), size: c.size, width: c.width, color: c.color }))
     const skipped = combos.length - newRows.length
 
     if (newRows.length === 0) {
@@ -144,7 +166,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       return [...base, ...newRows]
     })
     toastSuccess('Variants Generated', `${newRows.length} variant${newRows.length === 1 ? '' : 's'} added${skipped > 0 ? ` (${skipped} already existed, skipped)` : ''}. Review below, then Save.`)
-    setMatrixSizes(''); setMatrixColors('')
+    setMatrixSizes(''); setMatrixColors(''); setMatrixWidths('')
   }
 
   async function handleSuggestReorder() {
@@ -188,9 +210,9 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   }
 
   async function handleSave() {
-    const valid = rows.filter(r => r.size || r.color)
+    const valid = rows.filter(r => r.size || r.color || r.width)
     if (valid.length === 0) {
-      toastError('No Variants', 'Add at least one variant with a size or colour.')
+      toastError('No Variants', `Add at least one variant with a size, colour${isFootwear ? ',' : ' or'} width.`)
       return
     }
     setSaving(true)
@@ -201,6 +223,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
           id: v.id,
           size: v.size || undefined,
           color: v.color || undefined,
+          width: v.width || undefined,
           sku: v.sku || undefined,
           barcode: v.barcode || undefined,
           additionalPrice: parseFloat(v.additionalPrice) || 0,
@@ -253,13 +276,20 @@ export function VariantManagementModal({ open, productId, productName, onClose }
             {/* Phase 58 §2 — bulk/matrix generation: e.g. Sizes "S, M, L" ×
                 Colours "Black, Red" generates 6 variants in one go. */}
             <div className="mb-4 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
-              <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><Grid3x3 size={15} /> Generate Size × Colour Matrix</p>
+              <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><Grid3x3 size={15} /> Generate Size{isFootwear ? ' × Width' : ''} × Colour Matrix</p>
               <div className="flex gap-2 flex-wrap items-end">
                 <div className="flex-1 min-w-[180px]">
                   <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Sizes (comma-separated)</label>
                   <input value={matrixSizes} onChange={e => setMatrixSizes(e.target.value)} placeholder="S, M, L, XL"
                     className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
+                {isFootwear && (
+                  <div className="flex-1 min-w-[180px]">
+                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Widths (comma-separated)</label>
+                    <input value={matrixWidths} onChange={e => setMatrixWidths(e.target.value)} placeholder="Regular, Wide"
+                      className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-[180px]">
                   <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Colours (comma-separated)</label>
                   <input value={matrixColors} onChange={e => setMatrixColors(e.target.value)} placeholder="Black, Red, Blue"
@@ -267,7 +297,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                 </div>
                 <Button size="sm" variant="secondary" onClick={generateMatrix}>Generate</Button>
               </div>
-              <p className="text-xs text-slate-400">Leave one field blank to generate a single dimension (e.g. sizes only, no colours). Generated rows still need Save below.</p>
+              <p className="text-xs text-slate-400">Leave a field blank to skip that dimension (e.g. sizes only, no colours{isFootwear ? '/widths' : ''}). Generated rows still need Save below.</p>
             </div>
 
             {/* Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
@@ -303,7 +333,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                         <tbody>
                           {reorderSuggestion.rows.map(row => (
                             <tr key={row.variantId} className="border-t border-slate-100 dark:border-slate-800">
-                              <td className="px-3 py-2 text-dark dark:text-slate-100">{[row.size, row.color].filter(Boolean).join(' / ') || '—'}</td>
+                              <td className="px-3 py-2 text-dark dark:text-slate-100">{[row.size, row.width, row.color].filter(Boolean).join(' / ') || '—'}</td>
                               <td className="px-3 py-2 text-end text-slate-500 dark:text-slate-400">{row.unitsSoldRecently}</td>
                               <td className="px-3 py-2 text-end font-semibold text-dark dark:text-slate-100">{row.suggestedQuantity}</td>
                             </tr>
@@ -321,6 +351,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                 <thead>
                   <tr className="text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                     <th className="py-3 pe-3 text-start">Size</th>
+                    {isFootwear && <th className="py-3 pe-3 text-start">Width</th>}
                     <th className="py-3 pe-3 text-start">Colour</th>
                     <th className="py-3 pe-3 text-start">SKU</th>
                     <th className="py-3 pe-3 text-start">Barcode</th>
@@ -344,6 +375,20 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           {[...COMMON_SIZES_CLOTHING, ...COMMON_SIZES_FOOTWEAR].map(s => <option key={s} value={s}/>)}
                         </datalist>
                       </td>
+                      {isFootwear && (
+                        <td className="py-2 pe-3">
+                          <input
+                            list={`widths-${idx}`}
+                            value={row.width}
+                            onChange={e => updateRow(idx, 'width', e.target.value)}
+                            placeholder="Regular, Wide…"
+                            className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
+                          />
+                          <datalist id={`widths-${idx}`}>
+                            {COMMON_WIDTHS.map(w => <option key={w} value={w}/>)}
+                          </datalist>
+                        </td>
+                      )}
                       <td className="py-2 pe-3">
                         <input
                           list={`colors-${idx}`}

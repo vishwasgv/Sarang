@@ -7,6 +7,8 @@ export const CreateTicketSchema = z.object({
   category: z.string().optional(),
   customerId: z.string().optional(),
   assignedToId: z.string().optional(),
+  // Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking.
+  quotationId: z.string().optional(),
 })
 
 export const UpdateTicketSchema = z.object({

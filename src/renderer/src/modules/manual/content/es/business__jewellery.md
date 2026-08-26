@@ -32,13 +32,21 @@ Abra **Cambio de Metal Usado** para registrar a un cliente que entrega oro o pla
 
 Para usarlo, haga clic en **Aplicar Cambio de Metal Usado** mientras factura a ese cliente — Sarang muestra el crédito y lo incorpora directamente al descuento de la factura a medida que se crea la venta, y marca el cambio como usado para que nunca pueda aplicarse accidentalmente por segunda vez a otra factura.
 
+Cada registro de cambio también muestra un **peso equivalente puro** junto a su peso bruto — el peso neto normalizado por pureza (una pieza de 24g en 22K son 22g de oro puro), de modo que un cambio de 22K y uno de 18K sean directamente comparables de un vistazo, no solo en gramos brutos.
+
+## Ahorro en Oro
+
+Abra **Ahorro en Oro** en la barra lateral para gestionar un plan de ahorro tipo "chit" del cliente — depósitos mensuales fijos para una compra futura. Cree un plan con un monto mensual, una duración en meses y una fecha de inicio, luego registre cada **cuota** a medida que el cliente la paga; el total depositado del plan se actualiza automáticamente.
+
+Cuando el cliente esté listo para comprar, **canjee** el plan — añadiendo opcionalmente un monto de bonificación si los propios términos del plan incluyen uno (p. ej. "pague 11 meses, obtenga el 12º gratis") — luego aplique el total canjeado como descuento en la factura de compra del cliente usted mismo en Facturación, de la misma manera que se aplica un crédito de cambio de metal usado.
+
 ## Devoluciones
 
 Joyería tiene el módulo de Devoluciones activado, el mismo flujo de trabajo de procesamiento de devoluciones que usan Minorista, Ropa y Calzado.
 
 ## Informes
 
-**Informes** incluye un informe de stock de joyería que muestra el peso neto, la tarifa actual y la valoración total agrupada por tipo de metal y pureza.
+**Informes** incluye un informe de existencias de joyería que muestra el peso neto, la tasa actual y la valoración total agrupados por tipo de metal y pureza, además de cuatro más: **Margen de Cargo por Elaboración vs. Valor del Metal** desglosa el margen real por venta — cuánto de cada factura es valor del metal frente al cargo por elaboración, en lugar de un número combinado para todo el período. **Registro de Cumplimiento de Sello / HUID** enumera cada artículo de joyería activo y señala a cuáles les falta un número de sello BIS/HUID, para que un vacío pueda encontrarse y corregirse antes de una inspección, no después. **Tasa de Metal vs. Volumen de Ventas** correlaciona las fluctuaciones de la tasa con lo que realmente vendió, eligiendo automáticamente el metal y la pureza que más se movieron en el período. **Análisis de Cambio Ajustado por Pureza** lleva el cambio de metal usado más allá del registro bruto — normalizando cada cambio a su peso equivalente en metal puro, para que los cambios de diferentes purezas puedan compararse y analizarse en tendencia de forma justa.
 
 ## Idioma
 

@@ -216,7 +216,7 @@
     "reviewAuditLog": "Tinjau",
     "reviewRentals": "Tinjau",
     "reviewRepairTickets": "Tinjau",
-"renewLicense": "Perbarui",
+    "renewLicense": "Perbarui",
     "viewUpdate": "Lihat",
     "spotlight": {
       "membershipTitle": "Fokus Keanggotaan",
@@ -1629,6 +1629,14 @@
         "label": "Peta Panas Ukuran × Gaya",
         "description": "Kisi unit terjual berdasarkan gaya dan ukuran — lihat sekilas kombinasi mana yang benar-benar terjual"
       },
+      "sizeAvailabilityHeatmap": {
+        "label": "Peta Panas Ketersediaan Ukuran",
+        "description": "Grid stok langsung berdasarkan gaya dan ukuran — lihat sekilas ukuran mana yang habis atau menipis untuk gaya tertentu"
+      },
+      "seasonalReorderCalendar": {
+        "label": "Kalender Pemesanan Ulang Musiman",
+        "description": "Tentukan siklus pembelian Anda sendiri (musim hujan, musim pernikahan, musim olahraga, atau apa pun yang benar-benar Anda stok) dan lihat mana yang perlu dipesan ulang sekarang, berdasarkan waktu tunggu"
+      },
       "basketComposition": {
         "label": "Komposisi Keranjang",
         "description": "Produk mana yang paling sering dibeli bersamaan dalam penjualan yang sama — kenali kombinasi dan pasangan alami yang layak diletakkan berdampingan atau ditawarkan sebagai paket"
@@ -1640,6 +1648,10 @@
       "vendorMargin": {
         "label": "Margin berdasarkan Merek/Vendor",
         "description": "Pendapatan, biaya, dan margin dipecah berdasarkan pemasok/merek asal setiap produk yang terjual — lihat sekilas vendor mana yang benar-benar menguntungkan dan mana yang merugi"
+      },
+      "brandMarginReturnRate": {
+        "label": "Margin & Tingkat Retur berdasarkan Merek",
+        "description": "Margin dan tingkat retur berdampingan untuk setiap merek/vendor — retur sepatu cenderung lebih tinggi daripada pakaian, jadi merek dengan margin sehat pun masih bisa diam-diam merugi karena tingkat retur di atas rata-rata"
       },
       "fastSlowMoverMatrix": {
         "label": "Matriks Produk Perputaran Cepat vs. Lambat",
@@ -1677,6 +1689,10 @@
         "label": "Laporan Stok Darah",
         "description": "Unit darah yang tersedia per golongan, dengan peringatan akan kedaluwarsa"
       },
+      "donationToIssueCycleTime": {
+        "label": "Waktu Siklus Donasi-ke-Penerbitan",
+        "description": "Seberapa cepat unit yang didonasikan benar-benar digunakan, berdasarkan jenis komponen — indikator risiko pemborosan"
+      },
       "logistics": {
         "label": "Laporan Logistik",
         "description": "Pengiriman, biaya angkut, tingkat pengiriman, dan kurir teratas"
@@ -1688,6 +1704,22 @@
       "production": {
         "label": "Laporan Produksi",
         "description": "Pesanan produksi berdasarkan status, kuantitas rencana vs. produksi"
+      },
+      "landedCostPerUnit": {
+        "label": "Biaya Sebenarnya per Unit Barang Jadi",
+        "description": "Biaya bahan, tenaga kerja, dan overhead per unit yang diproduksi, berdampingan — biaya sebenarnya dari barang jadi, bukan hanya bahannya"
+      },
+      "rejectionRateTrend": {
+        "label": "Tren Tingkat Penolakan",
+        "description": "Tingkat penolakan kualitas dari waktu ke waktu dan berdasarkan tahap produksi — lihat tahap mana yang sebenarnya membuat Anda kehilangan unit yang baik"
+      },
+      "seasonalCreditExposure": {
+        "label": "Eksposur Kredit Musiman",
+        "description": "Faktur kredit tertunggak dikelompokkan berdasarkan bulan jatuh tempo dan musim panen terkait — lihat kapan Anda paling terekspos sepanjang tahun"
+      },
+      "farmerRepayment": {
+        "label": "Riwayat Pembelian & Pembayaran per Petani",
+        "description": "Setiap pelanggan kredit diberi peringkat berdasarkan tingkat pembayaran — akun paling berisiko didahulukan"
       },
       "serialWarranty": {
         "label": "Laporan Serial & Garansi",
@@ -1737,9 +1769,29 @@
         "label": "Pendapatan & Pemanfaatan Sewa",
         "description": "Pendapatan per item sewa, ditambah tingkat pemanfaatan untuk unit yang dilacak secara individual"
       },
+      "assetUtilization": {
+        "label": "Tingkat Pemanfaatan Aset",
+        "description": "Hari disewakan versus hari tersedia untuk setiap unit yang dilacak secara individual — aset mana yang benar-benar sepadan dengan biayanya"
+      },
       "jewellery": {
         "label": "Laporan Perhiasan",
         "description": "Penilaian stok logam berdasarkan kemurnian, pendapatan biaya pembuatan, dan ringkasan tukar tambah logam lama"
+      },
+      "makingChargeMargin": {
+        "label": "Margin Biaya Pembuatan vs. Nilai Logam",
+        "description": "Pembagian margin sebenarnya per penjualan — berapa banyak dari setiap faktur yang merupakan nilai logam versus biaya pembuatan"
+      },
+      "hallmarkCompliance": {
+        "label": "Register Kepatuhan Cap / HUID",
+        "description": "Setiap barang perhiasan aktif, menandai mana yang tidak memiliki nomor cap BIS/HUID"
+      },
+      "metalRateVsSalesVolume": {
+        "label": "Harga Logam vs. Volume Penjualan",
+        "description": "Mengorelasikan fluktuasi harga emas dengan volume penjualan, untuk membantu waktu penyetokan dan penetapan harga"
+      },
+      "purityAdjustedExchange": {
+        "label": "Analisis Tukar Tambah Disesuaikan Kemurnian",
+        "description": "Tukar tambah logam lama dinormalisasi ke berat setara logam murni, melampaui log tukar tambah dasar"
       },
       "profitAndLoss": {
         "label": "Laporan Laba Rugi",
@@ -1748,6 +1800,22 @@
       "projects": {
         "label": "Laporan Proyek",
         "description": "Setiap proyek berdasarkan status dan nilai kontrak — untuk bisnis Jasa/Konsultan/Agensi"
+      },
+      "serviceResolutionTime": {
+        "label": "Waktu Penyelesaian per Kategori",
+        "description": "Metrik kualitas layanan yang sebenarnya — waktu penyelesaian rata-rata, tercepat, dan terlambat per kategori tiket"
+      },
+      "repeatBusinessRate": {
+        "label": "Tingkat Bisnis Berulang",
+        "description": "Indikator retensi yang belum pernah dimiliki vertikal ini — berapa persen pelanggan setiap bulan yang kembali dibandingkan baru"
+      },
+      "consultantUtilization": {
+        "label": "Tingkat Utilisasi",
+        "description": "Metrik konsultasi #1, saat ini tidak terlihat — jam yang dapat ditagih vs. tidak dapat ditagih per anggota staf"
+      },
+      "clientProfitability": {
+        "label": "Profitabilitas Klien",
+        "description": "Klien mana yang sebenarnya layak dipertahankan — pendapatan vs. jam yang dihabiskan, per klien"
       },
       "jobCards": {
         "label": "Laporan Kartu Kerja",
@@ -1904,6 +1972,8 @@
     },
     "summary": {
       "totalRevenue": "Total Pendapatan",
+      "totalUnits": "Total Unit",
+      "idleUnitCount": "Unit Menganggur",
       "totalInvoices": "Total Faktur",
       "totalTaxAmount": "Total Pajak",
       "avgOrderValue": "Rata-rata Nilai Pesanan",
@@ -1972,6 +2042,11 @@
       "topCombination": "Kombinasi Teratas",
       "topCombinationUnits": "Unit Kombinasi Teratas",
       "sizeStyleHeatmap": "Peta Panas Ukuran × Gaya",
+      "sizeAvailabilityHeatmap": "Peta Panas Ketersediaan Ukuran",
+      "totalStyles": "Gaya Ditampilkan",
+      "outOfStockCells": "Ukuran Stok Habis",
+      "lowStockCells": "Ukuran Stok Menipis",
+      "styleWithMostGaps": "Gaya dengan Kekurangan Terbanyak",
       "totalBaskets": "Total Keranjang",
       "avgItemsPerBasket": "Rata-rata Barang per Keranjang",
       "avgBasketValue": "Nilai Rata-rata Keranjang",
@@ -2012,6 +2087,9 @@
       "totalAvailableUnits": "Total Unit Tersedia",
       "expiringSoon": "Akan Kedaluwarsa",
       "groupsOutOfStock": "Golongan Kehabisan Stok",
+      "totalIssuedUnits": "Total Unit Diterbitkan",
+      "overallAvgDays": "Rata-rata Waktu Siklus Keseluruhan",
+      "avgCycleTimeByComponent": "Rata-rata Waktu Siklus per Komponen",
       "totalShipments": "Total Pengiriman",
       "deliveryRate": "Tingkat Pengiriman",
       "totalFreight": "Total Angkutan",
@@ -2022,13 +2100,22 @@
       "overallAttendanceRate": "Tingkat Kehadiran",
       "inProgress": "Sedang Berlangsung",
       "completionRate": "Tingkat Penyelesaian",
+      "totalProducedQty": "Total Jumlah Diproduksi",
+      "landedCostPerUnitByProduct": "Biaya per Unit berdasarkan Produk",
+      "overallRejectionRate": "Tingkat Penolakan Keseluruhan",
+      "rejectionRateTrend": "Tren Tingkat Penolakan",
+      "totalOutstanding": "Total Terutang",
+      "peakMonth": "Bulan Puncak",
+      "seasonalCreditExposureByMonth": "Eksposur Kredit Musiman per Bulan",
+      "totalFarmers": "Total Petani",
+      "overallRepaymentRate": "Tingkat Pembayaran Keseluruhan",
+      "repaymentRateByFarmer": "Tingkat Pembayaran per Petani",
       "totalSerials": "Total Serial",
       "inStock": "Tersedia",
       "warrantyExpiringSoon": "Garansi Akan Berakhir",
       "warrantyExpired": "Garansi Kedaluwarsa",
-      "totalOpen": "Saat Ini di Vendor",
+      "totalOpen": "Tugas Terbuka",
       "daysWithVendorByUnit": "Hari di Vendor, per Unit",
-      "totalOutstanding": "Total Terutang",
       "outstandingByClaim": "Jumlah Terutang, per Klaim",
       "technicianCount": "Teknisi",
       "totalTicketsCompleted": "Tiket Selesai",
@@ -2040,7 +2127,6 @@
       "averagePercentage": "Nilai Rata-rata",
       "belowFiftyCount": "Di Bawah 50%",
       "studentCount": "Siswa",
-      "totalOpen": "Tugas Terbuka",
       "overdueCount": "Terlambat",
       "dueThisWeekCount": "Jatuh Tempo Minggu Ini",
       "clientCount": "Klien",
@@ -2055,10 +2141,23 @@
       "totalExchangeCount": "Tukar Tambah Tercatat",
       "totalExchangeValueGiven": "Nilai Tukar Tambah Diberikan",
       "metalsWithNoRateSet": "Logam Tanpa Tarif Diatur",
+      "totalMetalValue": "Total Nilai Logam",
+      "totalMakingCharge": "Total Biaya Pembuatan",
+      "avgMakingChargePercent": "Rata-rata Biaya Pembuatan %",
+      "totalItems": "Total Barang",
+      "compliantCount": "Patuh",
+      "nonCompliantCount": "Tidak Patuh",
+      "totalPureEquivalentGrams": "Setara Logam Murni",
+      "unparsablePurityCount": "Kemurnian Tidak Dikenali",
+      "totalResolved": "Tiket Terselesaikan",
+      "overallAvgHours": "Waktu Penyelesaian Rata-rata",
+      "repeatRatePercent": "Tingkat Pengulangan",
+      "overallUtilizationPercent": "Utilisasi Keseluruhan",
       "revenue": "Pendapatan",
       "cogs": "Harga Pokok Penjualan",
       "totalMargin": "Total Margin",
       "marginByVendor": "Margin berdasarkan Vendor",
+      "brandMarginReturnRate": "Margin & Tingkat Retur berdasarkan Merek",
       "grossProfit": "Laba Kotor",
       "netProfit": "Laba Bersih",
       "totalProjects": "Total Proyek",
@@ -2161,6 +2260,8 @@
       "attendanceDetails": "Detail Kehadiran",
       "byOrderStatus": "Berdasarkan Status Pesanan",
       "productionOrderDetails": "Detail Pesanan Produksi",
+      "rejectionRateByStage": "Tingkat Penolakan berdasarkan Tahap",
+      "bySeason": "Berdasarkan Musim Panen",
       "byWarrantyStatus": "Berdasarkan Status Garansi",
       "serialDetails": "Detail Serial",
       "salesByHour": "Penjualan berdasarkan Jam",
@@ -2182,6 +2283,7 @@
       "table32": "Tabel 3.2 — Pasokan Antar-Negara Bagian ke Orang Tidak Terdaftar",
       "notCovered": "Tidak Tercakup dalam Laporan Ini",
       "stockByMetal": "Penilaian Stok berdasarkan Logam",
+      "pureEquivalentTrend": "Tren Setara Logam Murni",
       "plSummary": "Pendapatan, Laba Kotor, Beban dan Laba Bersih",
       "projectDetails": "Detail Proyek",
       "jobCardDetails": "Detail Kartu Kerja",
@@ -2228,9 +2330,11 @@
       "categorySellThrough": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
       "seasonSellThrough": "Tidak ada produk yang memiliki musim/koleksi yang diatur, atau tidak ada penjualan yang ditemukan dalam rentang tanggal ini.",
       "sizeStyleHeatmap": "Tidak ada penjualan dengan pelacakan varian yang ditemukan dalam rentang tanggal ini.",
+      "sizeAvailabilityHeatmap": "Tidak ada stok dengan varian terlacak ditemukan.",
       "basketComposition": "Tidak ditemukan keranjang dengan 2 atau lebih produk berbeda dalam rentang tanggal ini.",
       "categoryMix": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
       "vendorMargin": "Tidak ditemukan penjualan untuk produk dengan vendor/merek yang ditetapkan dalam rentang tanggal ini.",
+      "brandMarginReturnRate": "Tidak ditemukan penjualan untuk produk dengan vendor/merek yang ditetapkan dalam rentang tanggal ini.",
       "cashPositionTrend": "Tidak ditemukan pergerakan kas dalam rentang tanggal ini.",
       "fastSlowMoverMatrix": "Tidak ada produk yang terjual dalam rentang tanggal ini.",
       "gstr1": "Tidak ada faktur kena pajak ditemukan untuk periode ini.",
@@ -2241,8 +2345,13 @@
       "batches": "Tidak ada batch aktif dengan sisa stok.",
       "labOrders": "Tidak ada pesanan tes lab dalam rentang tanggal ini.",
       "bloodUnits": "Tidak ada unit darah yang tersedia.",
+      "donationToIssueCycleTime": "Belum ada unit yang diterbitkan.",
       "attendance": "Tidak ada catatan kehadiran dalam rentang tanggal ini.",
       "productionOrders": "Tidak ada pesanan produksi dalam rentang tanggal ini.",
+      "landedCostPerUnit": "Tidak ada pesanan produksi selesai dalam rentang tanggal ini.",
+      "rejectionRateTrend": "Tidak ada jumlah inspeksi QC yang tercatat dalam rentang tanggal ini.",
+      "seasonalCreditExposure": "Tidak ada faktur kredit tertunggak dengan tanggal jatuh tempo saat ini.",
+      "farmerRepayment": "Belum ada aktivitas kredit petani yang tercatat.",
       "serials": "Tidak ada nomor seri ditemukan.",
       "rmaAging": "Tidak ada unit yang saat ini berada di vendor untuk perbaikan atau penggantian.",
       "vendorRecoveryLedger": "Belum ada klaim garansi vendor yang tercatat.",
@@ -2253,6 +2362,14 @@
       "hsnSummary": "Tidak ada faktur kena pajak ditemukan untuk periode ini.",
       "documentSummary": "Tidak ada dokumen diterbitkan pada periode ini.",
       "jewelleryStock": "Belum ada produk perhiasan dengan berat logam tercatat.",
+      "makingChargeMargin": "Tidak ada penjualan perhiasan pada periode ini.",
+      "hallmarkCompliance": "Belum ada barang perhiasan aktif.",
+      "metalRateVsSalesVolume": "Tidak ada penjualan perhiasan atau riwayat harga logam pada periode ini.",
+      "purityAdjustedExchange": "Tidak ada tukar tambah logam lama yang tercatat pada periode ini.",
+      "serviceResolutionTime": "Tidak ada tiket yang diselesaikan pada periode ini.",
+      "repeatBusinessRate": "Tidak ada tiket pelanggan pada periode ini.",
+      "consultantUtilization": "Tidak ada pekerjaan yang dapat ditagih tercatat dalam periode ini.",
+      "clientProfitability": "Tidak ada pendapatan proyek klien dalam periode ini.",
       "projects": "Tidak ada proyek dalam periode ini.",
       "jobCards": "Tidak ada kartu kerja dalam periode ini.",
       "prescriptionDrugSales": "Tidak ada penjualan obat resep dalam rentang tanggal ini.",
@@ -2286,6 +2403,29 @@
       "vetCaseTypeVolume": "Tidak ada kasus tercatat pada rentang tanggal ini."
     },
     "col": {
+      "invoiceNumber": "Nomor Faktur",
+      "date": "Tanggal",
+      "metalValue": "Nilai Logam",
+      "makingCharge": "Biaya Pembuatan",
+      "makingChargePercent": "Biaya Pembuatan %",
+      "compliant": "Patuh",
+      "nonCompliant": "Tidak Patuh",
+      "salesWeightGrams": "Berat Terjual (g)",
+      "exchangeCount": "Tukar Tambah",
+      "rawWeightGrams": "Berat Kotor (g)",
+      "pureEquivalentGrams": "Setara Murni (g)",
+      "avgHours": "Rata-rata Jam",
+      "minHours": "Tercepat (jam)",
+      "maxHours": "Terlambat (jam)",
+      "newCustomers": "Pelanggan Baru",
+      "repeatCustomers": "Pelanggan Berulang",
+      "repeatRatePercent": "Tingkat Pengulangan %",
+      "billableHours": "Jam Dapat Ditagih",
+      "nonBillableHours": "Jam Tidak Dapat Ditagih",
+      "staffMember": "Anggota Staf",
+      "utilizationPercent": "Utilisasi",
+      "hoursSpent": "Jam Dihabiskan",
+      "revenuePerHour": "Pendapatan/Jam",
       "invoiceNo": "No. Faktur",
       "invoiceDate": "Tanggal Faktur",
       "doctorName": "Dokter",
@@ -2304,7 +2444,7 @@
       "sku": "SKU",
       "product": "Produk",
       "category": "Kategori",
-      "season": "Musim/Koleksi",
+      "season": "Musim",
       "type": "Jenis",
       "stock": "Stok",
       "costPrice": "Harga Beli",
@@ -2316,7 +2456,7 @@
       "taxName": "Nama Pajak",
       "ratePercent": "Tarif %",
       "taxableAmount": "Jumlah Kena Pajak",
-      "invoiceCount": "Jumlah Faktur",
+      "invoiceCount": "Faktur",
       "invoicesShort": "Faktur",
       "name": "Nama",
       "outstanding": "Tunggakan",
@@ -2415,8 +2555,14 @@
       "bloodGroup": "Golongan Darah",
       "componentType": "Komponen",
       "expiringSoonQ": "Segera Kedaluwarsa?",
+      "unitCount": "Unit",
+      "avgDays": "Rata-rata Hari",
+      "minDays": "Tercepat (hari)",
+      "maxDays": "Terlambat (hari)",
       "month": "Bulan",
       "unitsSold": "Unit Terjual",
+      "unitsReturned": "Unit Dikembalikan",
+      "returnRatePercent": "Tingkat Retur %",
       "sellThroughRate": "Tingkat Penjualan",
       "productA": "Produk A",
       "productB": "Produk B",
@@ -2432,6 +2578,18 @@
       "checkOut": "Keluar",
       "plannedQty": "Kuantitas Rencana",
       "producedQty": "Kuantitas Diproduksi",
+      "materialCostPerUnit": "Biaya Bahan / Unit",
+      "laborCostPerUnit": "Biaya Tenaga Kerja / Unit",
+      "overheadCostPerUnit": "Biaya Overhead / Unit",
+      "totalCostPerUnit": "Total Biaya / Unit",
+      "qtyInspected": "Jml Diperiksa",
+      "qtyRejected": "Jml Ditolak",
+      "rejectionRatePercent": "Tingkat Penolakan",
+      "outstandingAmount": "Jumlah Tertunggak",
+      "totalPurchased": "Total Dibeli",
+      "totalRepaid": "Total Dibayar",
+      "outstandingBalance": "Saldo Tertunggak",
+      "repaymentRatePercent": "Tingkat Pembayaran",
       "startDate": "Tanggal Mulai",
       "completedDate": "Tanggal Selesai",
       "serialNumber": "Nomor Seri",
@@ -2449,6 +2607,10 @@
       "size": "Ukuran",
       "color": "Warna",
       "stockQty": "Kuantitas Stok",
+      "status": "Status",
+      "nextStartDate": "Tanggal Mulai Berikutnya",
+      "reorderByDate": "Pesan Ulang Sebelum",
+      "lowStockCount": "Produk Stok Rendah/Habis",
       "studentName": "Siswa",
       "batchName": "Batch",
       "subject": "Mata Pelajaran",
@@ -2471,6 +2633,8 @@
       "totalCount": "Jumlah Total",
       "cancelledCount": "Jumlah Dibatalkan",
       "bookingCount": "Pemesanan",
+      "rentedDays": "Hari Disewakan",
+      "availableDays": "Hari Tersedia",
       "netWeightGrams": "Berat Bersih (g)",
       "ratePerGram": "Tarif/Gram",
       "valuation": "Penilaian",
@@ -2531,6 +2695,41 @@
     "legend": {
       "schemeCost": "Biaya Skema",
       "coveredVolume": "Volume Produk yang Dicakup"
+    },
+    "status": {
+      "out": "Stok habis",
+      "low": "Stok menipis",
+      "in": "Tersedia"
+    },
+    "seasonalCalendar": {
+      "nameRequired": "Nama musim wajib diisi.",
+      "saveFailed": "Tidak dapat menyimpan musim ini.",
+      "saved": "Musim disimpan.",
+      "deleteFailed": "Tidak dapat menghapus musim ini.",
+      "manageSeasons": "Kelola Musim",
+      "hideManager": "Sembunyikan Pengelola Musim",
+      "name": "Nama Musim",
+      "namePlaceholder": "mis. Musim Hujan",
+      "startMonth": "Bulan Mulai",
+      "startDay": "Hari Mulai",
+      "endMonth": "Bulan Berakhir",
+      "endDay": "Hari Berakhir",
+      "leadTimeDays": "Waktu Tunggu (hari)",
+      "update": "Perbarui",
+      "add": "Tambah",
+      "editAction": "Ubah",
+      "deleteAction": "Hapus",
+      "daysUntilStart": "{{count}} hari lagi hingga musim ini dimulai",
+      "reorderBy": "Pesan ulang sebelum",
+      "taggedProducts": "Produk yang ditandai",
+      "lowStock": "Stok rendah/habis",
+      "empty": "Belum ada siklus pembelian musiman yang ditentukan.",
+      "emptySubtitle": "Tambahkan satu di bawah untuk mulai melacak waktu pemesanan ulangnya.",
+      "status": {
+        "reorderNow": "Pesan Ulang Sekarang",
+        "inSeason": "Sedang Musim",
+        "upcoming": "Akan Datang"
+      }
     },
     "schemeCostVsVolume": {
       "disclaimer": "Ini menampilkan biaya skema dan volume penjualan produk yang dicakup berdampingan sehingga Anda dapat menilai korelasinya sendiri — ini tidak menghitung (dan tidak bisa menghitung) berapa volume yang akan terjadi tanpa skema tersebut."
@@ -3602,7 +3801,26 @@
     "receiveBatchTitle": "Terima Lot Bahan Baku",
     "batchReceived": "Lot diterima.",
     "noBatchesYet": "Belum ada lot yang diterima untuk bahan ini.",
-    "remainingQty": "Sisa"
+    "remainingQty": "Sisa",
+    "qc": {
+      "qtyInspected": "Jml Diperiksa",
+      "qtyRejected": "Jml Ditolak",
+      "rejectedExceedsInspected": "Jumlah yang ditolak tidak boleh melebihi jumlah yang diperiksa."
+    },
+    "downtime": {
+      "title": "Catat Waktu Henti",
+      "log": "Catat Waktu Henti",
+      "logShort": "+ Waktu Henti",
+      "reason": "Alasan",
+      "reasonPlaceholder": "mis. Mesin rusak, kekurangan bahan",
+      "minutes": "Menit",
+      "totalMinutes": "{{minutes}} menit waktu henti tercatat",
+      "reasonRequired": "Alasan waktu henti wajib diisi.",
+      "minutesRequired": "Menit waktu henti harus lebih besar dari nol."
+    },
+    "bottleneck": {
+      "message": "\"{{stage}}\" adalah tahap Anda yang paling lambat, rata-rata {{hours}} jam ({{percent}}% dari total waktu tunggu)."
+    }
   },
   "service": {
     "projects": "Proyek",
@@ -3731,6 +3949,42 @@
     "couldNotUpdateStatus": "Tidak dapat memperbarui status.",
     "couldNotCancel": "Tidak dapat membatalkan.",
     "couldNotUpdateTicket": "Tidak dapat memperbarui tiket.",
+    "slaBreached": "SLA Dilanggar",
+    "slaBreachedCount": "tiket melewati SLA",
+    "slaDueLabel": "Tenggat SLA",
+    "convertedFromQuotation": "Dikonversi Dari Penawaran",
+    "convertFromQuotation": "Konversi Dari Penawaran",
+    "notFromQuotation": "Bukan dari penawaran",
+    "proposalWinRate": "tingkat kemenangan proposal",
+    "serviceContracts": "Kontrak Layanan",
+    "serviceContractsDesc": "Pengaturan berulang seperti kontrak pemeliharaan untuk pelanggan tetap — nilai tetap, ditagih sesuai jadwal.",
+    "newContract": "Kontrak Baru",
+    "selectCustomer": "Pilih pelanggan.",
+    "validContractValueRequired": "Masukkan nilai kontrak yang valid lebih besar dari nol.",
+    "contractScope": "Lingkup Pekerjaan",
+    "serviceFrequency": "Frekuensi Layanan",
+    "frequency": {
+      "MONTHLY": "Bulanan",
+      "QUARTERLY": "Triwulanan",
+      "HALF_YEARLY": "Semesteran",
+      "YEARLY": "Tahunan"
+    },
+    "contractValue": "Nilai Kontrak",
+    "createContract": "Buat Kontrak",
+    "contractCreated": "Kontrak Dibuat",
+    "contractCreatedDesc": "{{number}} dibuat.",
+    "generateContractInvoiceTitle": "Buat faktur untuk {{number}}",
+    "generateContractInvoiceHint": "Akan menagih {{amount}} untuk periode saat ini.",
+    "generateInvoice": "Buat Faktur",
+    "noContracts": "Belum ada kontrak layanan",
+    "contractStatus": {
+      "ACTIVE": "Aktif",
+      "EXPIRED": "Kedaluwarsa",
+      "CANCELLED": "Dibatalkan"
+    },
+    "lastInvoicedFor": "Terakhir ditagih: {{period}}",
+    "contractInvoiced": "Faktur Dibuat",
+    "contractInvoicedDesc": "Faktur periode kontrak telah dibuat.",
     "selectEntity": "Pilih proyek, tiket, atau kartu kerja.",
     "couldNotDeleteLog": "Tidak dapat menghapus log.",
     "jobStReceived": "Diterima",
@@ -4471,6 +4725,7 @@
       "CANCELLED": "Dibatalkan",
       "OVERDUE": "Terlambat",
       "AVAILABLE": "Tersedia",
+      "RENTED": "Disewakan",
       "MAINTENANCE": "Perawatan",
       "RETIRED": "Dipensiunkan"
     },
@@ -4527,9 +4782,11 @@
     },
     "daysOverdue": "Hari Terlambat",
     "utilization": "Pemanfaatan",
+    "overdueAging": "Usia Keterlambatan",
     "empty": {
       "status": "Tidak ada yang sedang dikeluarkan saat ini.",
-      "revenue": "Tidak ada pendapatan sewa dalam periode ini."
+      "revenue": "Tidak ada pendapatan sewa dalam periode ini.",
+      "utilization": "Belum ada unit sewa yang dilacak."
     },
     "serviceIntervalRentals": "Interval Servis (Penyewaan)",
     "serviceIntervalDays": "Interval Servis (Hari)",
@@ -4623,7 +4880,45 @@
     "exchangeSearchPlaceholder": "Cari berdasarkan nomor penukaran...",
     "noUnlinkedExchanges": "Tidak ditemukan penukaran yang belum tertaut untuk pelanggan ini.",
     "exchangeApplied": "Penukaran {{number}} — kredit {{amount}} akan diterapkan saat checkout.",
-    "removeExchange": "Hapus"
+    "removeExchange": "Hapus",
+    "goldSavings": "Tabungan Emas",
+    "goldSavingsDesc": "Setoran bulanan tetap untuk pembelian di masa depan — dapat ditukarkan sebagai diskon pada faktur pelanggan.",
+    "newScheme": "Skema Baru",
+    "selectCustomer": "Pilih pelanggan.",
+    "validAmountRequired": "Masukkan jumlah yang valid lebih besar dari nol.",
+    "validTenureRequired": "Masukkan jangka waktu yang valid — jumlah bulan bulat.",
+    "monthlyAmount": "Jumlah Bulanan",
+    "tenureMonths": "Jangka Waktu (bulan)",
+    "startDate": "Tanggal Mulai",
+    "createScheme": "Buat Skema",
+    "schemeCreated": "Skema Dibuat",
+    "schemeCreatedDesc": "{{number}} dibuat. Catat cicilan saat pelanggan membayar setiap bulan.",
+    "recordInstallmentTitle": "Catat cicilan untuk {{number}}",
+    "installmentAmount": "Jumlah Cicilan",
+    "record": "Catat",
+    "installmentRecorded": "Cicilan Dicatat",
+    "installmentRecordedDesc": "{{amount}} ditambahkan ke total skema ini.",
+    "redeemSchemeTitle": "Tukarkan {{number}}",
+    "redeemHint": "Total disetor sejauh ini: {{amount}}. Terapkan jumlah yang ditukarkan sebagai diskon pada faktur pembelian pelanggan sendiri di Penagihan.",
+    "bonusAmount": "Jumlah Bonus",
+    "redeem": "Tukarkan",
+    "schemeRedeemed": "Skema Ditukarkan",
+    "schemeRedeemedDesc": "Terapkan jumlah yang ditukarkan sebagai diskon pada faktur pembelian pelanggan.",
+    "noSchemes": "Belum ada skema tabungan emas",
+    "schemeStatus": {
+      "ACTIVE": "Aktif",
+      "REDEEMED": "Ditukarkan",
+      "CLOSED": "Ditutup"
+    },
+    "monthlyOverTenure": "{{amount}}/bulan × {{tenure}} bulan",
+    "deposited": "Disetor: {{amount}}",
+    "redeemedFor": "Ditukarkan seharga {{amount}}",
+    "addInstallment": "Tambah Cicilan",
+    "pureEquivalent": "Setara murni {{weight}}g",
+    "makingChargeMargin": "Margin Biaya Pembuatan vs. Nilai Logam",
+    "hallmarkCompliance": "Kepatuhan Cap / HUID",
+    "metalRateVsSalesVolume": "Harga Logam vs. Volume Penjualan",
+    "purityAdjustedExchange": "Analisis Tukar Tambah Disesuaikan Kemurnian"
   },
   "manual": {
     "yourType": "Milik Anda",

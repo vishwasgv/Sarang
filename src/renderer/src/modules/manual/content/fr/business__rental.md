@@ -43,7 +43,9 @@ Générer une facture à partir d'une réservation terminée crée des lignes po
 
 ## Rapports
 
-**Rapports** inclut un rapport de Statut de location (ce qui est actuellement retiré, et ce qui est en retard) et un rapport de Revenu de location par produit, incluant un pourcentage d'utilisation pour les actifs suivis en UNITÉ.
+**Rapports** inclut un rapport Rental Status (ce qui est actuellement loué, et ce qui est en retard, désormais avec un graphique d'ancienneté qui répartit les réservations en retard selon leur degré de retard — 1-3 jours, 4-7 jours, 8-14 jours, ou 15+ jours) et un rapport Rental Revenue par produit, incluant un pourcentage d'utilisation pour les actifs suivis par UNITÉ.
+
+Le propre chiffre d'utilisation du rapport Rental Revenue est moyenné sur chaque unité d'un produit — il ne peut pas vous dire qu'une voiture spécifique reste inactive pendant que sa jumelle identique est louée constamment. Pour cela, ouvrez plutôt le rapport **Asset Utilization Rate** : jours loués par rapport aux jours disponibles pour chaque unité suivie individuellement par nom, classées avec les actifs les moins rentables en premier, afin que vous puissiez voir exactement quels actifs physiques ne rentabilisent pas leur coût, plutôt qu'une moyenne mélangée qui les dissimule.
 
 ## Langue
 

@@ -85,6 +85,7 @@ import { ProductionAnalyticsScreen } from '@modules/manufacturing/ui/ProductionA
 import { ProjectsScreen } from '@modules/service/ui/ProjectsScreen'
 import { ProjectDetailScreen } from '@modules/service/ui/ProjectDetailScreen'
 import { ServiceTicketsScreen } from '@modules/service/ui/ServiceTicketsScreen'
+import { ServiceContractsScreen } from '@modules/service/ui/ServiceContractsScreen'
 import { JobCardsScreen } from '@modules/service/ui/JobCardsScreen'
 import { WorkTrackingScreen } from '@modules/service/ui/WorkTrackingScreen'
 import { CustomerHistoryScreen } from '@modules/service/ui/CustomerHistoryScreen'
@@ -114,6 +115,7 @@ import { DonorsScreen } from '@modules/blood-bank/ui/DonorsScreen'
 import { DonationsScreen } from '@modules/blood-bank/ui/DonationsScreen'
 import { BloodStockScreen } from '@modules/blood-bank/ui/BloodStockScreen'
 import { BloodIssueScreen } from '@modules/blood-bank/ui/BloodIssueScreen'
+import { CampsScreen } from '@modules/blood-bank/ui/CampsScreen'
 import { RentalBookingsScreen } from '@modules/rental/ui/RentalBookingsScreen'
 import { RentalUnitsScreen } from '@modules/rental/ui/RentalUnitsScreen'
 import { HotelBookingsScreen } from '@modules/hotel/ui/HotelBookingsScreen'
@@ -122,6 +124,7 @@ import { HotelHousekeepingScreen } from '@modules/hotel/ui/HotelHousekeepingScre
 import { AiAssistantScreen } from '@modules/ai/ui/AiAssistantScreen'
 import { MetalRatesScreen } from '@modules/jewellery/ui/MetalRatesScreen'
 import { MetalExchangeScreen } from '@modules/jewellery/ui/MetalExchangeScreen'
+import { GoldSavingsScreen } from '@modules/jewellery/ui/GoldSavingsScreen'
 // Phase 25 — Dental
 import { DentalPatientScreen } from '@modules/service-business/ui/DentalPatientScreen'
 import { RecallListScreen } from '@modules/service-business/ui/RecallListScreen'
@@ -360,6 +363,7 @@ export function AppRouter() {
         <Route path="/service/projects" element={<ProtectedRoute permission="sales.view"><ProjectsScreen /></ProtectedRoute>} />
         <Route path="/service/projects/:id" element={<ProtectedRoute permission="sales.view"><ProjectDetailScreen /></ProtectedRoute>} />
         <Route path="/service/tickets" element={<ProtectedRoute permission="sales.view"><ServiceTicketsScreen /></ProtectedRoute>} />
+        <Route path="/service/contracts" element={<ProtectedRoute permission="sales.view"><ServiceContractsScreen /></ProtectedRoute>} />
         <Route path="/service/job-cards" element={<ProtectedRoute permission="sales.view"><JobCardsScreen /></ProtectedRoute>} />
         <Route path="/service/work-tracking" element={<ProtectedRoute permission="sales.view"><WorkTrackingScreen /></ProtectedRoute>} />
         <Route path="/service/customer-history" element={<ProtectedRoute permission="customers.view"><CustomerHistoryScreen /></ProtectedRoute>} />
@@ -391,6 +395,8 @@ export function AppRouter() {
         <Route path="/blood-bank/donations" element={<ProtectedRoute permission="bloodBank.view"><DonationsScreen /></ProtectedRoute>} />
         <Route path="/blood-bank/stock" element={<ProtectedRoute permission="bloodBank.view"><BloodStockScreen /></ProtectedRoute>} />
         <Route path="/blood-bank/issue" element={<ProtectedRoute permission="bloodBank.view"><BloodIssueScreen /></ProtectedRoute>} />
+        {/* Phase 67 §9.1 — Blood Bank item 3: camp/drive scheduling. */}
+        <Route path="/blood-bank/camps" element={<ProtectedRoute permission="bloodBank.view"><CampsScreen /></ProtectedRoute>} />
         <Route path="/rental/bookings" element={<ProtectedRoute permission="rental.view"><RentalBookingsScreen /></ProtectedRoute>} />
         <Route path="/rental/units" element={<ProtectedRoute permission="rental.view"><RentalUnitsScreen /></ProtectedRoute>} />
         <Route path="/hotel/bookings" element={<ProtectedRoute permission="hotel.view"><HotelBookingsScreen /></ProtectedRoute>} />
@@ -399,6 +405,7 @@ export function AppRouter() {
         <Route path="/ai-assistant" element={<ProtectedRoute permission="ai.query"><AiAssistantScreen /></ProtectedRoute>} />
         <Route path="/jewellery/metal-rates" element={<ProtectedRoute permission="jewellery.view"><MetalRatesScreen /></ProtectedRoute>} />
         <Route path="/jewellery/exchanges" element={<ProtectedRoute permission="jewellery.view"><MetalExchangeScreen /></ProtectedRoute>} />
+        <Route path="/jewellery/gold-savings" element={<ProtectedRoute permission="jewellery.view"><GoldSavingsScreen /></ProtectedRoute>} />
         {/* Phase 25 — Dental */}
         <Route path="/dental/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><DentalPatientScreen /></ProtectedRoute>} />
         <Route path="/dental/recalls" element={<ProtectedRoute permission="billing.view"><RecallListScreen /></ProtectedRoute>} />

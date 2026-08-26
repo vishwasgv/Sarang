@@ -19,6 +19,10 @@ Membuka layar detail sebuah proyek memberi Anda dua hal lagi:
 - **Tugas** — daftar periksa sederhana yang Anda centang; daftar proyek menampilkan progress bar "selesai / total" yang dihitung dari ini.
 - **Work Logs** — jam yang dicatat terhadap proyek, masing-masing ditandai billable atau non-billable, dengan total berjalan yang ditampilkan baik di tampilan daftar maupun detail.
 
+Got an accepted **Quotation** you use as an engagement letter? Pick it from the **Convert From Quotation** dropdown when creating a project, and Sarang links the two — one quotation can only ever convert into one project, so it's a real record of how many of your engagement letters actually became billed work.
+
+**Consultant** also sees a running **proposal win rate** next to the project count in the header — won versus lost versus still-pending Quotations, so you always know at a glance how your pipeline of engagement letters is converting, not just how many projects are currently open.
+
 ## Job Cards (Repair, Service lewat model generik)
 
 Sebuah job card dibuat untuk barang fisik yang dibawa pelanggan: judul, deskripsi barang, prioritas, estimasi biaya, dan tanggal diterima/diharapkan/diserahkan. Ia memiliki siklus hidup tujuh-tahap sendiri — **Received → Diagnosing → In Repair → (opsional Pending Parts) → Ready → Delivered**, atau **Dibatalkan** pada titik mana pun sebelum diserahkan. Tampilan detail menunjukkan ini sebagai pelacak tahap visual dan selalu menampilkan satu tombol tindakan-berikutnya (misalnya "Mark In Repair"), plus tindakan "Waiting for Parts" khusus saat sebuah kartu sedang dalam perbaikan. Menyerahkan sebuah job card adalah tempat Anda memasukkan biaya akhir sebenarnya, terpisah dari estimasi aslinya — **Buat Faktur** mengubah biaya akhir tersebut menjadi faktur sungguhan begitu pekerjaan telah diserahkan.
@@ -28,6 +32,22 @@ Tambahkan **suku cadang terpakai** yang sungguhan ke sebuah job card dari tampil
 ## Service Tickets (Service, Repair)
 
 Sebuah tiket adalah permintaan dukungan yang lebih ringan: judul, deskripsi, prioritas, tag kategori opsional, dan pelanggan/penerima tugas opsional. Ia bergerak melalui **Open → In Progress → Resolved → Closed**, dan menyelesaikan satu memungkinkan Anda melampirkan catatan resolusi. Tiket urgent yang belum terselesaikan ditandai dengan indikator bendera-merah pada daftar sehingga tidak terkubur. Masukkan sebuah jumlah dan **Buat Faktur** untuk menagih sebuah tiket yang telah diselesaikan.
+
+Every ticket also gets an **SLA timer** the moment it's created, sized to its priority (Urgent 4 hours, High 24 hours, Medium 3 days, Low 7 days). A ticket still open past its own SLA is flagged **SLA Breached** right on the list and in the header count — a real deadline alert, not just a priority label.
+
+Got an accepted **Quotation** that turned into real work? Pick it from the **Convert From Quotation** dropdown when creating a ticket, and Sarang links the two — one quotation can only ever convert into one ticket, so it's a real record of how many of your estimates actually became billable jobs.
+
+## Service Contracts (Service)
+
+Open **Service Contracts** in the sidebar to run a recurring, AMC-like arrangement for a repeat customer — a fixed value, billed on a schedule (Monthly/Quarterly/Half-Yearly/Yearly) rather than negotiated fresh every visit. Create a contract with its scope of work, frequency, start date, and value, then click **Generate Invoice** whenever a billing period is due — Sarang tracks which period was last invoiced so the same period can never be billed twice, the same protection an ordinary retainer or AMC contract already has elsewhere in Sarang.
+
+## Retainers (Consultant)
+
+Open **Retainers** in the sidebar to run a recurring monthly arrangement for a repeat client — fixed fee, an hourly bucket, or a deliverable-based scope, billed on a schedule you set. For an hourly-bucket retainer, log time against it from **Time Tracking** and the retainer's own card shows a live **hours used / hours allocated** progress bar, turning red once the month's allowance is exhausted — the retainer burn-down at a glance, no separate report needed.
+
+## Reports
+
+Four reports are specific to this vertical set. **Resolution Time by Category** breaks down how long tickets actually take to close, average/fastest/slowest per category — a real service-quality metric, not just a status count. **Repeat-Business Rate** trends, month by month, what share of your ticket-raising customers are returning versus brand new — the retention signal this generic scaffold never had before. **Utilization Rate** (Consultant) is the #1 consulting metric: billable versus non-billable hours per staff member, sorted to surface whoever needs more billable work first. **Client Profitability** (Consultant) shows revenue against hours spent per client, sorted worst-first, so you can see at a glance which clients are actually worth keeping.
 
 ## Appointments dan penagihan Projects
 

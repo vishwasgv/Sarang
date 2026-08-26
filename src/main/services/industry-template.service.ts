@@ -332,7 +332,15 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // it just additionally turns on the same generic Appointments system every
   // clinic/salon/studio vertical already shares.
   SERVICE:    [...SERVICE_BASE_MODULES, 'projects', 'project_tasks', 'service_tickets', 'work_tracking', 'customer_history'],
-  CONSULTANT: [...SERVICE_BASE_MODULES, 'projects', 'project_tasks', 'work_tracking', 'customer_history'],
+  // Phase 67 §9.1 — Consultant item 3: Retainer burn-down tracker. 'retainers'
+  // + 'time_entries' already exist fully built (RetainersScreen.tsx's own
+  // hours-used/hours-remaining progress bar, retainer.service.ts's
+  // getRetainerHoursUsage) for INDEPENDENT_CONSULTANT/MARKETING_AGENCY/
+  // SOFTWARE_AGENCY — reused verbatim here rather than building a second
+  // retainer concept. TimeEntry.projectId/caseId stay null for this
+  // vertical (it doesn't have ServiceProject/LegalCase); only retainerId is
+  // used, which the model already supports independently of either.
+  CONSULTANT: [...SERVICE_BASE_MODULES, 'projects', 'project_tasks', 'work_tracking', 'customer_history', 'retainers', 'time_entries'],
   REPAIR:     [...SERVICE_BASE_MODULES, 'job_cards', 'service_tickets', 'work_tracking', 'customer_history'],
   // Phase 22 — Clinical; Phase 23 adds vet_patients; Phase 24 adds visit_notes + token_queue
   // 'token_queue' (2026-07-15, final testing pass): extended to ALL 6 clinic-shaped

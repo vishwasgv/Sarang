@@ -32,13 +32,21 @@ Ouvrez **Échange d'ancien métal** pour enregistrer un client échangeant de l'
 
 Pour l'utiliser, cliquez sur **Appliquer un Échange de Métal Usagé** lors de la facturation de ce client — Sarang affiche le crédit et l'intègre directement dans la remise de la facture au moment de la création de la vente, et marque l'échange comme utilisé afin qu'il ne puisse jamais être appliqué accidentellement une seconde fois à une facture différente.
 
+Chaque enregistrement de reprise affiche également un **poids équivalent pur** en plus de son poids brut — le poids net normalisé selon la pureté (une pièce de 24g en 22K représente 22g d'or pur), de sorte qu'une reprise en 22K et une reprise en 18K soient directement comparables d'un coup d'œil, pas seulement en grammes bruts.
+
+## Épargne en Or
+
+Ouvrez **Épargne en Or** dans la barre latérale pour gérer un plan d'épargne client de type tontine — dépôts mensuels fixes pour un futur achat. Créez un plan avec un montant mensuel, une durée en mois et une date de début, puis enregistrez chaque **versement** à mesure que le client le paie ; le total déposé du plan se met à jour automatiquement.
+
+Lorsque le client est prêt à acheter, **rachetez** le plan — en ajoutant éventuellement un montant de bonus si les propres conditions du plan en incluent un (par ex. « payez 11 mois, obtenez le 12e gratuit ») — puis appliquez vous-même le total racheté comme remise sur la facture d'achat du client dans Facturation, de la même manière qu'un crédit d'échange d'ancien métal est appliqué.
+
 ## Retours
 
 Bijouterie a le module Retours activé, le même flux de traitement des retours utilisé par Détail, Vêtements, et Chaussures.
 
 ## Rapports
 
-**Rapports** inclut un rapport de stock de bijouterie montrant le poids net, le cours actuel, et la valorisation totale regroupés par type de métal et pureté.
+**Rapports** inclut un rapport de stock de bijouterie affichant le poids net, le cours actuel et la valorisation totale regroupés par type de métal et pureté, plus quatre autres : **Marge des Frais de Façon vs. Valeur du Métal** détaille la véritable marge par vente — quelle part de chaque facture est la valeur du métal par rapport aux frais de façon, plutôt qu'un chiffre unique combiné sur toute la période. **Registre de Conformité au Poinçon / HUID** répertorie chaque article de bijouterie actif et signale ceux auxquels il manque un numéro de poinçon BIS/HUID, afin qu'un manque puisse être trouvé et corrigé avant une inspection plutôt qu'après. **Cours du Métal vs. Volume des Ventes** corrèle les fluctuations du cours avec ce que vous avez réellement vendu, en choisissant automatiquement le métal et la pureté qui ont le plus bougé sur la période. **Analyse de Reprise Ajustée à la Pureté** va plus loin que le simple journal pour la reprise d'ancien métal — en normalisant chaque reprise à son poids équivalent en métal pur, afin que les reprises de puretés différentes puissent être comparées et suivies équitablement.
 
 ## Langue
 

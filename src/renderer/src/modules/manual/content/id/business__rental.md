@@ -43,7 +43,9 @@ Membuat sebuah faktur dari booking yang selesai membuat baris item untuk biaya s
 
 ## Reports
 
-**Laporan** mencakup laporan Rental Status (apa yang saat ini sedang dikeluarkan, dan apa yang terlambat) dan laporan Rental Revenue per produk, termasuk persentase pemanfaatan untuk aset yang dilacak-UNIT.
+**Reports** mencakup laporan Rental Status (apa yang saat ini disewakan, dan apa yang terlambat, sekarang dengan grafik usia yang memecah pemesanan yang terlambat berdasarkan seberapa terlambatnya — 1-3 hari, 4-7 hari, 8-14 hari, atau 15+ hari) dan laporan Rental Revenue per produk, termasuk persentase pemanfaatan untuk aset yang dilacak per UNIT.
+
+Angka pemanfaatan laporan Rental Revenue sendiri dirata-ratakan di seluruh setiap unit produk — laporan ini tidak dapat memberi tahu Anda bahwa satu mobil tertentu menganggur sementara kembarannya yang identik terus-menerus disewakan. Untuk itu, buka laporan **Asset Utilization Rate** sebagai gantinya: hari disewakan versus hari tersedia untuk setiap unit yang dilacak secara individual berdasarkan nama, diurutkan dengan aset berkinerja terburuk terlebih dahulu, sehingga Anda dapat melihat dengan tepat aset fisik mana yang tidak sepadan dengan biayanya, bukan rata-rata campuran yang menyembunyikannya.
 
 ## Bahasa
 

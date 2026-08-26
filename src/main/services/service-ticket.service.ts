@@ -3,6 +3,25 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber, SequenceContendedError } from './sequence.service'
 import { billingService } from './billing.service'
 
+// Phase 67 §9.1 — Service item 1: Ticket SLA timer. Set once at creation
+// from the ticket's own priority — the SLA clock starts when the ticket is
+// opened, never re-derived on a later priority change. Breach is never
+// persisted, always computed live, same isOverdue() pattern
+// repair-ticket.service.ts's own vendorSlaDueDate already established.
+const SLA_HOURS_BY_PRIORITY: Record<string, number> = { URGENT: 4, HIGH: 24, MEDIUM: 72, LOW: 168 }
+function computeSlaDueAt(priority: string, from: Date): Date {
+  const hours = SLA_HOURS_BY_PRIORITY[priority] ?? SLA_HOURS_BY_PRIORITY.MEDIUM
+  return new Date(from.getTime() + hours * 60 * 60 * 1000)
+}
+// Breached only while genuinely still open — a ticket that resolved late is
+// a fact for the resolution-time report to show, not an ongoing alert, same
+// reasoning repair-ticket.service.ts's own isOverdue() already documents.
+function isSlaBreached(status: string, slaDueAt: Date | null): boolean {
+  if (!slaDueAt) return false
+  if (status === 'RESOLVED' || status === 'CLOSED') return false
+  return new Date() > slaDueAt
+}
+
 export interface ServiceTicketRecord {
   id: string
   ticketNumber: string
@@ -19,6 +38,10 @@ export interface ServiceTicketRecord {
   closedAt: string | null
   resolution: string | null
   invoiceId: string | null
+  slaDueAt: string | null
+  isSlaBreached: boolean
+  quotationId: string | null
+  quotationNumber: string | null
   createdAt: string
   updatedAt: string
 }
@@ -40,6 +63,10 @@ function toRecord(t: any): ServiceTicketRecord {
     closedAt: t.closedAt ? new Date(t.closedAt).toISOString() : null,
     resolution: t.resolution ?? null,
     invoiceId: t.invoiceId ?? null,
+    slaDueAt: t.slaDueAt ? new Date(t.slaDueAt).toISOString() : null,
+    isSlaBreached: isSlaBreached(t.status, t.slaDueAt ? new Date(t.slaDueAt) : null),
+    quotationId: t.quotationId ?? null,
+    quotationNumber: t.quotation?.quotationNumber ?? null,
     createdAt: new Date(t.createdAt).toISOString(),
     updatedAt: new Date(t.updatedAt).toISOString()
   }
@@ -47,7 +74,8 @@ function toRecord(t: any): ServiceTicketRecord {
 
 const include = {
   customer: { select: { customerName: true } },
-  assignedTo: { select: { fullName: true } }
+  assignedTo: { select: { fullName: true } },
+  quotation: { select: { quotationNumber: true } }
 }
 
 export async function listTickets(payload?: {
@@ -90,9 +118,20 @@ export async function createTicket(payload: {
   category?: string
   customerId?: string
   assignedToId?: string
+  // Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking. Set
+  // when this ticket is created directly from an ACCEPTED Quotation.
+  quotationId?: string
 }, userId?: string): Promise<{ success: boolean; data?: ServiceTicketRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    if (payload.quotationId) {
+      const quotation = await db.quotation.findUnique({ where: { id: payload.quotationId }, select: { status: true, serviceTicket: { select: { id: true } } } })
+      if (!quotation) return { success: false, error: { code: 'TKT-009', message: 'Quotation not found.' } }
+      if (quotation.status !== 'ACCEPTED') return { success: false, error: { code: 'TKT-010', message: 'Only an accepted quotation can be converted into a job ticket.' } }
+      if (quotation.serviceTicket) return { success: false, error: { code: 'TKT-011', message: 'This quotation has already been converted into a ticket.' } }
+    }
+    const priority = payload.priority ?? 'MEDIUM'
+    const now = new Date()
     const row = await db.$transaction(async (tx) => {
       const ticketNumber = await generateSequenceNumber(
         tx, 'service_ticket_number_sequence', 'TKT', 5,
@@ -106,11 +145,13 @@ export async function createTicket(payload: {
           ticketNumber,
           title: payload.title,
           description: payload.description ?? null,
-          priority: payload.priority ?? 'MEDIUM',
+          priority,
           category: payload.category ?? null,
           customerId: payload.customerId ?? null,
           assignedToId: payload.assignedToId ?? null,
-          createdById: userId ?? null
+          createdById: userId ?? null,
+          slaDueAt: computeSlaDueAt(priority, now),
+          quotationId: payload.quotationId ?? null,
         },
         include
       })
@@ -123,6 +164,29 @@ export async function createTicket(payload: {
       return { success: false, error: { code: 'TKT-002', message: 'The system is busy creating another ticket right now. Please try again in a moment.' } }
     }
     return { success: false, error: { code: 'TKT_CREATE_FAIL', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking. Every
+// ACCEPTED quotation is a real signal of intent — this answers "how many of
+// those intents actually became billable work" in one query.
+export async function getQuoteToJobConversionStats() {
+  try {
+    const db = getPrisma()
+    const [acceptedCount, convertedCount] = await Promise.all([
+      db.quotation.count({ where: { status: 'ACCEPTED' } }),
+      db.quotation.count({ where: { status: 'ACCEPTED', serviceTicket: { isNot: null } } }),
+    ])
+    return {
+      success: true,
+      data: {
+        acceptedQuotations: acceptedCount,
+        convertedToTicket: convertedCount,
+        conversionRatePercent: acceptedCount > 0 ? Math.round((convertedCount / acceptedCount) * 1000) / 10 : 0,
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'TKT-012', message: e instanceof Error ? e.message : 'Could not compute conversion stats.' } }
   }
 }
 

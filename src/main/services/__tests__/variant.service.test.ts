@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { decrementVariantStockTx, adjustVariantStock, getSizeCurveReorderSuggestion } from '../variant.service'
+import { decrementVariantStockTx, adjustVariantStock, getSizeCurveReorderSuggestion, upsertVariants, getVariantSummary } from '../variant.service'
 
 function makeTx(variant: { id: string; stockQty: number } | null, allowNegative: boolean) {
   const updateCalls: unknown[] = []
@@ -254,5 +254,119 @@ describe('getSizeCurveReorderSuggestion', () => {
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ productId: 'prod-1', variantId: { not: null }, invoice: expect.objectContaining({ status: 'ACTIVE' }) })
     }))
+  })
+
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Two variants
+  // sharing a size and color but differing only by width must be kept
+  // distinct in this row's own identity, not conflated.
+  it('carries width through to each row, distinguishing two same-size-and-color variants that differ only by width', async () => {
+    const db = makeDb({
+      variants: [
+        makeVariant({ id: 'var-narrow', size: '8', color: 'Black', width: 'Narrow' }),
+        makeVariant({ id: 'var-wide', size: '8', color: 'Black', width: 'Wide' }),
+      ],
+      items: [
+        { variantId: 'var-narrow', quantity: 5, invoice: { invoiceType: 'SALE' } },
+      ]
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSizeCurveReorderSuggestion('prod-1', 20)
+
+    const narrow = res.data?.rows.find(r => r.variantId === 'var-narrow')
+    const wide = res.data?.rows.find(r => r.variantId === 'var-wide')
+    expect(narrow?.width).toBe('Narrow')
+    expect(wide?.width).toBe('Wide')
+    expect(narrow?.suggestedQuantity).toBe(20) // only variant with any sales signal
+    expect(wide?.suggestedQuantity).toBe(0)
+  })
+})
+
+// Phase 67 §9.1 — Footwear item 1: half-size/width matrix.
+describe('upsertVariants — width field', () => {
+  function makeTxForUpsert() {
+    const created: unknown[] = []
+    const updated: unknown[] = []
+    return {
+      productVariant: {
+        create: vi.fn().mockImplementation(({ data }) => {
+          created.push(data)
+          return Promise.resolve({ ...data, id: 'new-var-1', product: { productName: 'Trail Runner' }, createdAt: new Date() })
+        }),
+        update: vi.fn().mockImplementation(({ data }) => {
+          updated.push(data)
+          return Promise.resolve({ id: 'var-1', productId: 'prod-1', ...data, product: { productName: 'Trail Runner' }, createdAt: new Date() })
+        }),
+        findMany: vi.fn().mockResolvedValue([{ stockQty: 10 }])
+      },
+      inventory: { upsert: vi.fn().mockResolvedValue({}) },
+      __created: created,
+      __updated: updated
+    }
+  }
+
+  it('persists width on a newly created variant', async () => {
+    const tx = makeTxForUpsert()
+    const db = {
+      product: { findUnique: vi.fn().mockResolvedValue({ productName: 'Trail Runner' }) },
+      $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(tx))
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await upsertVariants({ productId: 'prod-1', variants: [{ size: '9', width: 'Wide', color: 'Black', stockQty: 10 }] })
+
+    expect(res.success).toBe(true)
+    expect(tx.__created[0]).toMatchObject({ width: 'Wide' })
+    expect(res.data?.[0].width).toBe('Wide')
+  })
+
+  it('persists width on an updated existing variant, and clears it to null when omitted', async () => {
+    const tx = makeTxForUpsert()
+    const db = {
+      product: { findUnique: vi.fn().mockResolvedValue({ productName: 'Trail Runner' }) },
+      $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(tx))
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await upsertVariants({ productId: 'prod-1', variants: [{ id: 'var-1', size: '9', width: 'Narrow', color: 'Black', stockQty: 10 }] })
+    expect(tx.__updated[0]).toMatchObject({ width: 'Narrow' })
+
+    await upsertVariants({ productId: 'prod-1', variants: [{ id: 'var-1', size: '9', color: 'Black', stockQty: 10 }] })
+    expect(tx.__updated[1]).toMatchObject({ width: null })
+  })
+})
+
+describe('getVariantSummary — widths', () => {
+  it('returns the distinct set of widths actually used, empty for products with none set', async () => {
+    const db = {
+      productVariant: {
+        findMany: vi.fn().mockResolvedValue([
+          { size: '8', color: 'Black', width: 'Wide', stockQty: 5 },
+          { size: '9', color: 'Black', width: 'Wide', stockQty: 3 },
+          { size: '9', color: 'Red', width: 'Narrow', stockQty: 2 },
+          { size: '10', color: 'Red', width: null, stockQty: 1 },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVariantSummary('prod-1')
+
+    expect(res.data?.widths.sort()).toEqual(['Narrow', 'Wide'])
+  })
+
+  it('is an empty array for a non-Footwear product where no variant ever sets a width', async () => {
+    const db = {
+      productVariant: {
+        findMany: vi.fn().mockResolvedValue([
+          { size: 'M', color: 'Blue', width: null, stockQty: 5 },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVariantSummary('prod-1')
+
+    expect(res.data?.widths).toEqual([])
   })
 })

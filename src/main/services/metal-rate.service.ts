@@ -35,6 +35,13 @@ export async function upsertMetalRate(payload: {
       create: { metalType: payload.metalType, purity: payload.purity, ratePerGram: payload.ratePerGram, updatedById: payload.updatedById ?? null },
       update: { ratePerGram: payload.ratePerGram, updatedById: payload.updatedById ?? null },
     })
+    // Phase 67 §9.1 — Jewellery item 4's own prerequisite: MetalRate itself
+    // only ever holds today's current rate (upsert overwrites in place) —
+    // append every real change to MetalRateHistory too, so a rate-vs-sales
+    // trend has real history to correlate against going forward. Same
+    // "history instead of overwrite" fix ProductCostHistory already
+    // established for Product.costPrice.
+    await db.metalRateHistory.create({ data: { metalType: payload.metalType, purity: payload.purity, ratePerGram: payload.ratePerGram } })
     await logAction({ userId: payload.updatedById, action: 'METAL_RATE_UPDATED', entityType: 'MetalRate', entityId: rate.id, newValue: { metalType: payload.metalType, purity: payload.purity, ratePerGram: payload.ratePerGram } })
     return { success: true, data: rate }
   } catch (err) {

@@ -32,7 +32,11 @@ interface HeldSaleSummary {
   itemCount: number; totalAmount: number; createdAt: string
 }
 interface VariantRecord {
-  id: string; size: string | null; color: string | null; sku: string | null
+  id: string; size: string | null; color: string | null
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Null for
+  // every non-Footwear variant.
+  width: string | null
+  sku: string | null
   additionalPrice: number; stockQty: number
 }
 interface SerialRecord {
@@ -124,7 +128,11 @@ export function BillingScreen() {
   const tableId = searchParams.get('tableId')
   const tableLabel = searchParams.get('tableLabel')
   const { success: toastSuccess, error: toastError } = useNotificationStore()
-  const { isModuleEnabled } = useIndustryStore()
+  const { isModuleEnabled, businessType } = useIndustryStore()
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow gate.
+  const isFootwear = businessType === 'FOOTWEAR'
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms gate.
+  const isAgriInputs = businessType === 'AGRI_INPUTS'
   const areaPricingEnabled = isModuleEnabled('area_pricing')
   // Phase 67 §9.1 — Hardware item 5: live margin preview inside the area
   // calculator, gated the same way every other margin/profit-facing UI in
@@ -184,6 +192,17 @@ export function BillingScreen() {
   const [selectedExchange, setSelectedExchange] = useState<{ id: string; exchangeNumber: string; valueGiven: number } | null>(null)
   // Phase 58 §2 — optional payment due date for CREDIT sales
   const [dueDate, setDueDate] = useState('')
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
+  // When a season is linked, billing.service.ts computes the real dueDate
+  // server-side from that season's own next harvest occurrence, overriding
+  // whatever's typed in the manual dueDate field above.
+  const [cropSeasonId, setCropSeasonId] = useState('')
+  const [cropSeasons, setCropSeasons] = useState<Array<{ id: string; name: string; harvestMonth: number; harvestDay: number }>>([])
+  const [resolvedCropDueDate, setResolvedCropDueDate] = useState('')
+  const [showManageCropSeasons, setShowManageCropSeasons] = useState(false)
+  const [newSeasonName, setNewSeasonName] = useState('')
+  const [newSeasonMonth, setNewSeasonMonth] = useState(1)
+  const [newSeasonDay, setNewSeasonDay] = useState(1)
   const [showExchangePicker, setShowExchangePicker] = useState(false)
   const [exchangeSearch, setExchangeSearch] = useState('')
   const [exchangeResults, setExchangeResults] = useState<Array<{ id: string; exchangeNumber: string; valueGiven: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
@@ -226,6 +245,11 @@ export function BillingScreen() {
   // Variant picker state (clothing/footwear)
   const [variantPickProduct, setVariantPickProduct] = useState<Product | null>(null)
   const [variantPickList, setVariantPickList] = useState<VariantRecord[]>([])
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. Footwear-
+  // only toggle inside the same variant picker modal — off by default so
+  // every other vertical's picker behaves exactly as before.
+  const [trialMode, setTrialMode] = useState(false)
+  const [triedVariantIds, setTriedVariantIds] = useState<string[]>([])
 
   // Serial/IMEI picker state (electronics) — a serial identifies one
   // physical unit, so unlike variants there is nothing to "add more of"
@@ -396,6 +420,30 @@ export function BillingScreen() {
     return browseProducts.filter((p) => (p.category?.name || t('billing.uncategorized')) === browseCategory)
   }, [browseProducts, browseCategory, t])
 
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+  // Distinct from Browse-by-Category above — chips come from
+  // Product.recommendedCrop, not the product's category.
+  const [cropChips, setCropChips] = useState<string[]>([])
+  const [selectedCropChip, setSelectedCropChip] = useState<string | null>(null)
+  const [cropTaggedProducts, setCropTaggedProducts] = useState<Array<{ productId: string; productName: string; sellingPrice: number; stockQty: number }>>([])
+
+  useEffect(() => {
+    if (!isAgriInputs) return
+    window.api.cropAdvisory.listCrops().then(res => { if (res.success) setCropChips(res.data ?? []) })
+  }, [isAgriInputs])
+
+  useEffect(() => {
+    if (!selectedCropChip) { setCropTaggedProducts([]); return }
+    window.api.cropAdvisory.productsForCrop({ cropName: selectedCropChip }).then(res => {
+      if (res.success) setCropTaggedProducts(res.data ?? [])
+    })
+  }, [selectedCropChip])
+
+  async function addCropProductToCart(productId: string) {
+    const res = await window.api.products.get(productId)
+    if (res.success && res.data) addToCart(res.data as Product)
+  }
+
   async function handleHoldSale() {
     if (cart.length === 0) { toastError(t('common.error'), t('billing.emptyCartCannotHold')); return }
     setHolding(true)
@@ -560,6 +608,42 @@ export function BillingScreen() {
     return () => clearTimeout(t)
   }, [customerQuery])
 
+  // Phase 67 §9.1 — Agri Inputs item 1: load defined crop seasons once
+  // CREDIT is selected on an Agri Inputs business, same lazy-load-on-demand
+  // pattern the exchange picker already uses for its own picker data.
+  useEffect(() => {
+    if (!isAgriInputs || paymentMethod !== 'CREDIT') return
+    window.api.cropSeason.list().then(res => { if (res.success) setCropSeasons(res.data ?? []) })
+  }, [isAgriInputs, paymentMethod])
+
+  useEffect(() => {
+    if (!cropSeasonId) { setResolvedCropDueDate(''); return }
+    window.api.cropSeason.resolveDueDate({ cropSeasonId }).then(res => {
+      if (res.success && res.data) setResolvedCropDueDate(res.data.dueDate)
+    })
+  }, [cropSeasonId])
+
+  async function reloadCropSeasons() {
+    const res = await window.api.cropSeason.list()
+    if (res.success) setCropSeasons(res.data ?? [])
+  }
+
+  async function handleCreateCropSeason() {
+    if (!newSeasonName.trim()) { toastError('Name Required', 'Enter a season name.'); return }
+    const res = await window.api.cropSeason.create({ name: newSeasonName.trim(), harvestMonth: newSeasonMonth, harvestDay: newSeasonDay })
+    if (!res.success) { toastError('Could Not Save', res.error?.message ?? 'Could not save the crop season.'); return }
+    setNewSeasonName(''); setNewSeasonMonth(1); setNewSeasonDay(1)
+    await reloadCropSeasons()
+    toastSuccess('Season Saved', `"${newSeasonName.trim()}" saved.`)
+  }
+
+  async function handleDeleteCropSeason(id: string) {
+    const res = await window.api.cropSeason.delete({ id })
+    if (!res.success) { toastError('Could Not Delete', res.error?.message ?? 'Could not delete the crop season.'); return }
+    if (cropSeasonId === id) setCropSeasonId('')
+    await reloadCropSeasons()
+  }
+
   async function addToCart(product: Product) {
     // Phase 58 §2 — a product 86'd for today (unavailableUntil in the
     // future) can't be added to a new sale, same intent as isActive:false,
@@ -649,9 +733,43 @@ export function BillingScreen() {
     }
   }
 
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. Records the
+  // session first (the actual analytics deliverable), then — only if the
+  // customer bought one of the tried pairs — adds it to the cart via the
+  // SAME addToCartDirect() every other picker path uses, so the sale itself
+  // goes through the one real checkout code path rather than a parallel one.
+  async function recordTrialAndMaybeAddToCart(purchasedVariantId: string | null) {
+    if (!variantPickProduct) return
+    if (triedVariantIds.length < 2) {
+      toastError('Select at Least Two', 'Mark at least two pairs as tried on before recording a trial session.')
+      return
+    }
+    const product = variantPickProduct
+    const res = await window.api.trialSession.record({
+      productId: product.id,
+      triedVariantIds,
+      purchasedVariantId,
+      customerId: customer?.id ?? null
+    })
+    if (!res.success) {
+      toastError('Could Not Record Trial', res.error?.message ?? 'Please try again.')
+      return
+    }
+    setTrialMode(false)
+    setTriedVariantIds([])
+    if (purchasedVariantId) {
+      const purchased = variantPickList.find(v => v.id === purchasedVariantId)
+      if (purchased) addToCartDirect(product, purchased)
+    } else {
+      toastSuccess('Trial Recorded', `${triedVariantIds.length} pairs tried, no purchase made.`)
+      setVariantPickProduct(null)
+      setVariantPickList([])
+    }
+  }
+
   function addToCartDirect(product: Product, variant?: VariantRecord, serial?: SerialRecord, rxDetail?: { patientName: string; doctorName: string; date?: string }) {
     const variantId = variant?.id
-    const variantInfo = variant ? [variant.size, variant.color].filter(Boolean).join(' / ') || undefined : undefined
+    const variantInfo = variant ? [variant.size, variant.width, variant.color].filter(Boolean).join(' / ') || undefined : undefined
     const serialId = serial?.id
     const serialInfo = serial ? (serial.imeiNumber ? `${serial.serialNumber} / IMEI ${serial.imeiNumber}` : serial.serialNumber) : undefined
     // A serial is one physical unit — it can never be "quantity + 1"'d onto
@@ -1017,6 +1135,10 @@ export function BillingScreen() {
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
         dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined,
+        // Phase 67 §9.1 — Agri Inputs item 1: when a season is linked,
+        // billing.service.ts recomputes the real dueDate server-side from
+        // it, overriding whatever's in the manual dueDate field above.
+        cropSeasonId: paymentMethod === 'CREDIT' && isAgriInputs && cropSeasonId ? cropSeasonId : undefined,
         tableIds: tableId ? [tableId] : undefined
       })
 
@@ -1070,7 +1192,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -1253,6 +1375,47 @@ export function BillingScreen() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Phase 67 §9.1 — Agri Inputs item 3: crop-linked product
+              advisory. Independent of catalogMode/Browse-by-Category above —
+              chips come from Product.recommendedCrop, so a cashier can
+              answer "which fertiliser/pesticide for this crop?" at the
+              point of sale. */}
+          {isAgriInputs && productResults.length === 0 && cropChips.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Browse by Crop</p>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {cropChips.map((crop) => (
+                  <button
+                    key={crop}
+                    onClick={() => setSelectedCropChip(c => c === crop ? null : crop)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                      selectedCropChip === crop ? 'border-brand bg-brand text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand hover:text-brand'
+                    )}
+                  >
+                    {crop}
+                  </button>
+                ))}
+              </div>
+              {selectedCropChip && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-72 overflow-y-auto pe-1">
+                  {cropTaggedProducts.length === 0 && <p className="text-xs text-slate-400 col-span-full">No products tagged for {selectedCropChip}.</p>}
+                  {cropTaggedProducts.map((p) => (
+                    <button
+                      key={p.productId}
+                      onClick={() => addCropProductToCart(p.productId)}
+                      className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-start"
+                    >
+                      <p className="text-xs font-medium text-dark dark:text-slate-100 truncate">{p.productName}</p>
+                      <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
+                      <p className="text-xs text-slate-400">Stock: {p.stockQty}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1686,9 +1849,92 @@ export function BillingScreen() {
                 <input
                   type="date" value={dueDate}
                   onChange={e => setDueDate(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                  disabled={!!cropSeasonId}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
                 />
+                {cropSeasonId && (
+                  <p className="text-[11px] text-slate-500 mt-1">Overridden by the linked crop season below.</p>
+                )}
               </div>
+
+              {/* Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned
+                  credit terms. Lets a shop link the invoice to a real
+                  harvest occurrence instead of a flat 30/60/90-day count —
+                  billing.service.ts resolves the actual dueDate from this
+                  server-side at invoice creation time. */}
+              {isAgriInputs && (
+                <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase">Link to Crop Season ({t('common.optional')})</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowManageCropSeasons(v => !v)}
+                      className="text-xs font-semibold text-brand hover:underline"
+                    >
+                      {showManageCropSeasons ? 'Close' : 'Manage Seasons'}
+                    </button>
+                  </div>
+                  <select
+                    value={cropSeasonId}
+                    onChange={e => setCropSeasonId(e.target.value)}
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                  >
+                    <option value="">None — use the date above</option>
+                    {cropSeasons.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  {cropSeasonId && resolvedCropDueDate && (
+                    <p className="text-[11px] text-slate-500">Due date will be set to {resolvedCropDueDate} (next harvest occurrence).</p>
+                  )}
+
+                  {showManageCropSeasons && (
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      {cropSeasons.length === 0 && <p className="text-xs text-slate-400">No crop seasons defined yet.</p>}
+                      {cropSeasons.map(s => (
+                        <div key={s.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-2 py-1.5">
+                          <span>{s.name} — harvest {s.harvestMonth}/{s.harvestDay}</span>
+                          <button type="button" onClick={() => handleDeleteCropSeason(s.id)} className="text-error hover:underline">Delete</button>
+                        </div>
+                      ))}
+                      <div className="grid grid-cols-3 gap-2 items-end">
+                        <div className="col-span-3">
+                          <label className="block text-[11px] text-slate-400 mb-1">Season name</label>
+                          <input
+                            type="text" value={newSeasonName} onChange={e => setNewSeasonName(e.target.value)}
+                            placeholder="e.g. Wheat Harvest"
+                            className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Month</label>
+                          <input
+                            type="number" min={1} max={12} value={newSeasonMonth}
+                            onChange={e => setNewSeasonMonth(Number(e.target.value))}
+                            className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Day</label>
+                          <input
+                            type="number" min={1} max={31} value={newSeasonDay}
+                            onChange={e => setNewSeasonDay(Number(e.target.value))}
+                            className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <button
+                            type="button" onClick={handleCreateCropSeason}
+                            className="w-full h-8 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark"
+                          >
+                            Add Season
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1881,7 +2127,7 @@ export function BillingScreen() {
           </Button>
 
           <button
-            onClick={() => { setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setIsInterState(false); setBuyerState('') }}
+            onClick={() => { setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); setIsInterState(false); setBuyerState('') }}
             className="w-full text-xs text-slate-400 hover:text-danger transition-colors py-1"
           >
             {t('billing.clearCart')}
@@ -1895,31 +2141,51 @@ export function BillingScreen() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-bold text-dark">Select Variant</h3>
+                <h3 className="text-lg font-bold text-dark">{trialMode ? 'Record Trial Session' : 'Select Variant'}</h3>
                 <p className="text-sm text-slate-500">{variantPickProduct.productName}</p>
               </div>
-              <button onClick={() => { setVariantPickProduct(null); setVariantPickList([]); productSearchRef.current?.focus() }}
+              <button onClick={() => { setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); productSearchRef.current?.focus() }}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-dark hover:bg-slate-100 transition-colors">
                 <X size={16} />
               </button>
             </div>
+            {isFootwear && variantPickList.length >= 2 && (
+              <button
+                onClick={() => { setTrialMode(m => !m); setTriedVariantIds([]) }}
+                className={cn(
+                  'mb-3 w-full py-2 rounded-lg text-xs font-semibold border transition-colors',
+                  trialMode ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-slate-500 hover:border-brand hover:text-brand'
+                )}
+              >
+                {trialMode ? '✓ Trial Mode — tap pairs the customer tried on' : 'Track Trial (multiple sizes tried on)'}
+              </button>
+            )}
             <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto">
               {variantPickList.map(v => {
-                const info = [v.size, v.color].filter(Boolean).join(' / ')
+                const info = [v.size, v.width, v.color].filter(Boolean).join(' / ')
                 const outOfStock = v.stockQty <= 0
+                const tried = triedVariantIds.includes(v.id)
                 return (
                   <button
                     key={v.id}
-                    disabled={outOfStock}
-                    onClick={() => addToCartDirect(variantPickProduct, v)}
+                    disabled={!trialMode && outOfStock}
+                    onClick={() => {
+                      if (trialMode) {
+                        setTriedVariantIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])
+                        return
+                      }
+                      addToCartDirect(variantPickProduct, v)
+                    }}
                     className={cn(
                       'flex flex-col p-3 rounded-xl border text-start transition-colors',
-                      outOfStock
-                        ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
-                        : 'border-slate-200 hover:border-brand hover:bg-brand/5'
+                      trialMode
+                        ? tried ? 'border-brand bg-brand/10' : 'border-slate-200 hover:border-brand/50'
+                        : outOfStock
+                          ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                          : 'border-slate-200 hover:border-brand hover:bg-brand/5'
                     )}
                   >
-                    <span className="text-sm font-semibold text-dark">{info || 'Default'}</span>
+                    <span className="text-sm font-semibold text-dark">{info || 'Default'}{trialMode && tried ? ' ✓' : ''}</span>
                     {v.sku && <span className="text-xs text-slate-400 mt-0.5">SKU: {v.sku}</span>}
                     <div className="flex items-center justify-between mt-1.5">
                       <span className={cn('text-xs', outOfStock ? 'text-danger' : 'text-slate-500')}>
@@ -1933,12 +2199,41 @@ export function BillingScreen() {
                 )
               })}
             </div>
-            <button
-              onClick={() => addToCartDirect(variantPickProduct)}
-              className="mt-3 w-full py-2 text-xs text-slate-400 hover:text-brand transition-colors border-t border-slate-100 pt-3"
-            >
-              Add without variant selection
-            </button>
+            {trialMode ? (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                <p className="text-xs text-slate-500">{triedVariantIds.length} pair{triedVariantIds.length === 1 ? '' : 's'} marked as tried on.</p>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {triedVariantIds.map(id => {
+                    const v = variantPickList.find(vv => vv.id === id)
+                    if (!v) return null
+                    const info = [v.size, v.width, v.color].filter(Boolean).join(' / ') || 'Default'
+                    return (
+                      <button
+                        key={id}
+                        disabled={v.stockQty <= 0}
+                        onClick={() => recordTrialAndMaybeAddToCart(id)}
+                        className="w-full py-2 rounded-lg bg-brand text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Purchased: {info}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => recordTrialAndMaybeAddToCart(null)}
+                  className="w-full py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:border-brand hover:text-brand transition-colors"
+                >
+                  No purchase — record trial only
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => addToCartDirect(variantPickProduct)}
+                className="mt-3 w-full py-2 text-xs text-slate-400 hover:text-brand transition-colors border-t border-slate-100 pt-3"
+              >
+                Add without variant selection
+              </button>
+            )}
           </div>
         </div>
       )}

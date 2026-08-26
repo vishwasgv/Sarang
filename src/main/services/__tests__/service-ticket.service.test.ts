@@ -6,7 +6,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { generateTicketInvoice } from '../service-ticket.service'
+import { generateTicketInvoice, createTicket, getQuoteToJobConversionStats } from '../service-ticket.service'
 
 // Phase 58 §1 (2026-07-17) — legacy Service/Consultant invoicing bridge.
 // Unlike Project/JobCard, ServiceTicket has no stored monetary field at all
@@ -139,5 +139,134 @@ describe('service-ticket.service.generateTicketInvoice', () => {
 
     expect(res.success).toBe(false)
     expect(db.serviceTicket.update).toHaveBeenCalledWith({ where: { id: 'tkt-1' }, data: { invoiceId: null } })
+  })
+})
+
+// Phase 67 §9.1 — Service items 1 (SLA timer) and 5 (quote-to-job conversion).
+function makeCreateMockDb(quotation: { status: string; serviceTicket: { id: string } | null } | null = null) {
+  let settingRow: { settingKey: string; settingValue: string } | null = null
+  const db: Record<string, any> = {
+    quotation: {
+      findUnique: vi.fn().mockResolvedValue(quotation),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    serviceTicket: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'tkt-new', status: 'OPEN', createdAt: new Date(), updatedAt: new Date(), ...data, customer: null, assignedTo: null, quotation: null })
+      ),
+    },
+    setting: {
+      findUnique: vi.fn(async () => settingRow),
+      updateMany: vi.fn(async ({ where, data }: { where: { settingValue: string }; data: { settingValue: string } }) => {
+        if (!settingRow || settingRow.settingValue !== where.settingValue) return { count: 0 }
+        settingRow = { ...settingRow, settingValue: data.settingValue }
+        return { count: 1 }
+      }),
+      create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => {
+        settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }
+        return settingRow
+      }),
+    },
+  }
+  db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+  return db
+}
+
+describe('service-ticket.service.createTicket', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sets slaDueAt from priority — URGENT gets the shortest window', async () => {
+    const db = makeCreateMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const before = Date.now()
+
+    const res = await createTicket({ title: 'Server down', priority: 'URGENT' })
+
+    expect(res.success).toBe(true)
+    const call = db.serviceTicket.create.mock.calls[0][0] as { data: { slaDueAt: Date } }
+    const hoursUntilDue = (call.data.slaDueAt.getTime() - before) / (60 * 60 * 1000)
+    expect(hoursUntilDue).toBeCloseTo(4, 1)
+  })
+
+  it('gives a LOW priority ticket the longest SLA window', async () => {
+    const db = makeCreateMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const before = Date.now()
+
+    await createTicket({ title: 'Minor cosmetic issue', priority: 'LOW' })
+
+    const call = db.serviceTicket.create.mock.calls[0][0] as { data: { slaDueAt: Date } }
+    const hoursUntilDue = (call.data.slaDueAt.getTime() - before) / (60 * 60 * 1000)
+    expect(hoursUntilDue).toBeCloseTo(168, 1)
+  })
+
+  it('links a ticket to an ACCEPTED, unconverted quotation', async () => {
+    const db = makeCreateMockDb({ status: 'ACCEPTED', serviceTicket: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTicket({ title: 'Install new AC unit', quotationId: 'quo-1' })
+
+    expect(res.success).toBe(true)
+    expect(db.serviceTicket.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ quotationId: 'quo-1' }),
+    }))
+  })
+
+  it('rejects converting a quotation that is not ACCEPTED', async () => {
+    const db = makeCreateMockDb({ status: 'DRAFT', serviceTicket: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTicket({ title: 'Install new AC unit', quotationId: 'quo-1' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('TKT-010')
+  })
+
+  it('rejects converting a quotation that was already converted to another ticket', async () => {
+    const db = makeCreateMockDb({ status: 'ACCEPTED', serviceTicket: { id: 'tkt-existing' } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTicket({ title: 'Install new AC unit', quotationId: 'quo-1' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('TKT-011')
+  })
+
+  it('rejects a quotation that does not exist', async () => {
+    const db = makeCreateMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createTicket({ title: 'Install new AC unit', quotationId: 'ghost' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('TKT-009')
+  })
+})
+
+describe('service-ticket.service.getQuoteToJobConversionStats', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('computes the conversion rate from accepted quotations to linked tickets', async () => {
+    const db = makeCreateMockDb()
+    db.quotation.count = vi.fn()
+      .mockResolvedValueOnce(10) // acceptedCount
+      .mockResolvedValueOnce(4)  // convertedCount
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getQuoteToJobConversionStats()
+
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({ acceptedQuotations: 10, convertedToTicket: 4, conversionRatePercent: 40 })
+  })
+
+  it('reports an honest zero rate when there are no accepted quotations at all', async () => {
+    const db = makeCreateMockDb()
+    db.quotation.count = vi.fn().mockResolvedValue(0)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getQuoteToJobConversionStats()
+
+    expect(res.data?.conversionRatePercent).toBe(0)
   })
 })

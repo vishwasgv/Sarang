@@ -37,6 +37,7 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(makeProduct(productOverrides)),
     },
     customer: { findUnique: vi.fn().mockResolvedValue(null) },
+    cropSeason: { findUnique: vi.fn().mockResolvedValue(null) },
     businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencyCode: 'INR', lockDate: null }) },
     // Phase 62 — GL auto-posting: postInvoiceJournalEntry resolves the
     // system Cash/AR/Sales/Tax accounts and posts a JournalEntry inside the
@@ -817,6 +818,52 @@ describe('billingService.createInvoice — Phase 58 §2 credit-terms due date', 
     expect(res.success).toBe(true)
     const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
     expect(createCall.data.dueDate).toBeNull()
+  })
+})
+
+describe('billingService.createInvoice — Phase 67 §9.1 Agri Inputs crop-season-aligned credit terms', () => {
+  it('overrides a manually-typed dueDate with the linked season\'s next harvest occurrence', async () => {
+    const db = makeMockDb()
+    db.cropSeason.findUnique = vi.fn().mockResolvedValue({ id: 'crop-1', harvestMonth: 4, harvestDay: 15 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1',
+      dueDate: '2026-12-01', cropSeasonId: 'crop-1'
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null; cropSeasonId: string | null } }
+    expect(createCall.data.dueDate).not.toEqual(new Date(2026, 11, 1))
+    expect(createCall.data.dueDate?.getMonth()).toBe(3)
+    expect(createCall.data.dueDate?.getDate()).toBe(15)
+    expect(createCall.data.cropSeasonId).toBe('crop-1')
+  })
+
+  it('falls back to the manually-typed dueDate when the referenced crop season does not exist', async () => {
+    const db = makeMockDb()
+    db.cropSeason.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1',
+      dueDate: '2026-12-01', cropSeasonId: 'missing-crop'
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { dueDate: Date | null } }
+    expect(createCall.data.dueDate).toEqual(new Date(2026, 11, 1))
+  })
+
+  it('stores a null cropSeasonId when no crop season is linked', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1', dueDate: '2026-12-01' })
+
+    expect(res.success).toBe(true)
+    const createCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { cropSeasonId: string | null } }
+    expect(createCall.data.cropSeasonId).toBeNull()
   })
 })
 

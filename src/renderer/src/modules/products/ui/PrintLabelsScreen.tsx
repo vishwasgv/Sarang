@@ -12,7 +12,9 @@ interface Product {
   sellingPrice: number; sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
 }
 // Phase 58 §2 — Clothing/Footwear variant-aware label printing
-interface Variant { id: string; size: string | null; color: string | null; barcode: string | null; additionalPrice: number; isActive?: boolean }
+// Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Null for every
+// non-Footwear variant.
+interface Variant { id: string; size: string | null; color: string | null; width: string | null; barcode: string | null; additionalPrice: number; isActive?: boolean }
 interface LabelLine { product: Product; variant?: Variant; copies: number }
 
 // Phase 38: Print Labels — batch barcode/price label printing (5.3/5.4) and the
@@ -283,7 +285,7 @@ export function PrintLabelsScreen() {
               {variantPicker.variants.map(v => (
                 <button key={v.id} onClick={() => addVariantLine(variantPicker.product, v)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
-                  <span>{[v.size, v.color].filter(Boolean).join(' / ') || '(unnamed variant)'}</span>
+                  <span>{[v.size, v.width, v.color].filter(Boolean).join(' / ') || '(unnamed variant)'}</span>
                   <span className="text-xs text-slate-400">{v.barcode ?? 'No barcode yet'}</span>
                 </button>
               ))}
@@ -297,7 +299,7 @@ export function PrintLabelsScreen() {
               <div key={lineKey(l)} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-dark dark:text-slate-100">
-                    {l.product.productName}{l.variant ? ` — ${[l.variant.size, l.variant.color].filter(Boolean).join(' / ')}` : ''}
+                    {l.product.productName}{l.variant ? ` — ${[l.variant.size, l.variant.width, l.variant.color].filter(Boolean).join(' / ')}` : ''}
                   </p>
                   <p className="text-xs text-slate-400">{(l.variant ? l.variant.barcode : l.product.barcode) ?? 'No barcode — will fail to print'}</p>
                 </div>

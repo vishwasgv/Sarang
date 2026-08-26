@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sprout, Wrench, AlertTriangle, PackageX, ShieldAlert, ArrowRight, Boxes } from 'lucide-react'
+import { Sprout, Wrench, AlertTriangle, PackageX, ShieldAlert, ArrowRight, Boxes, CalendarClock, Send } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -12,6 +12,12 @@ interface BatchAlertRow {
 }
 interface SerialRow {
   id: string; productName: string; serialNumber: string; status: string; warrantyExpiryDate: string | null
+}
+// Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+interface EquipmentDueForServiceRow {
+  serialId: string; productName: string; serialNumber: string
+  nextServiceDueDate: string; lastServicedDate: string | null
+  dueForService: boolean; overdue: boolean
 }
 
 // Phase 58 §2 — Agri Inputs' combined consumables (batch/expiry) + equipment
@@ -28,14 +34,23 @@ export function AgriInputsDashboardScreen() {
   const [expired, setExpired] = useState<BatchAlertRow[]>([])
   const [lowStockCount, setLowStockCount] = useState(0)
   const [serials, setSerials] = useState<SerialRow[]>([])
+  const [serviceDue, setServiceDue] = useState<EquipmentDueForServiceRow[]>([])
+  const [setServiceForId, setSetServiceForId] = useState('')
+  const [setServiceDate, setSetServiceDate] = useState('')
+
+  async function loadServiceDue() {
+    const res = await window.api.serials.dueForService()
+    if (res.success) setServiceDue((res.data as EquipmentDueForServiceRow[]) ?? [])
+  }
 
   useEffect(() => {
     setLoading(true)
     Promise.all([
       window.api.batches.expiryAlerts({ withinDays: 30 }),
       window.api.inventory.list({ lowStockOnly: true, limit: 1 }),
-      window.api.serials.list({ limit: 500 })
-    ]).then(([alertsRes, lowStockRes, serialsRes]) => {
+      window.api.serials.list({ limit: 500 }),
+      window.api.serials.dueForService()
+    ]).then(([alertsRes, lowStockRes, serialsRes, dueRes]) => {
       if (alertsRes.success && alertsRes.data) {
         const d = alertsRes.data as { expiring: BatchAlertRow[]; expired: BatchAlertRow[] }
         setExpiring(d.expiring ?? [])
@@ -53,6 +68,7 @@ export function AgriInputsDashboardScreen() {
       } else if (!serialsRes.success) {
         toastError('Error', serialsRes.error?.message ?? 'Could not load equipment records.')
       }
+      if (dueRes.success) setServiceDue((dueRes.data as EquipmentDueForServiceRow[]) ?? [])
     }).catch(() => {
       // This is an alerting dashboard (expiring stock/warranties) — a thrown
       // IPC/connection error must not silently render as "nothing needs your
@@ -60,6 +76,19 @@ export function AgriInputsDashboardScreen() {
       toastError('Error', 'Could not load the dashboard. Check your connection and try again.')
     }).finally(() => setLoading(false))
   }, [toastError])
+
+  async function handleSetServiceDate() {
+    if (!setServiceForId || !setServiceDate) { toastError('Error', 'Pick equipment and a date.'); return }
+    const res = await window.api.serials.updateServiceInfo({ id: setServiceForId, nextServiceDueDate: setServiceDate })
+    if (!res.success) { toastError('Error', res.error?.message ?? 'Could not save the service date.'); return }
+    setSetServiceForId(''); setSetServiceDate('')
+    await loadServiceDue()
+  }
+
+  async function handleSendReminder(serialId: string) {
+    const res = await window.api.serials.scheduleServiceReminder({ serialId })
+    if (!res.success) { toastError('Error', res.error?.message ?? 'Could not schedule the reminder.'); return }
+  }
 
   const now = Date.now()
   const warrantyExpiringSoon = serials.filter(s => {
@@ -88,6 +117,75 @@ export function AgriInputsDashboardScreen() {
         <KpiCard label="Equipment on File" value={loading ? '—' : serials.length} icon={<Wrench size={18} />} color="brand" />
         <KpiCard label="Warranty Expiring Soon" value={loading ? '—' : warrantyExpiringSoon.length} icon={<ShieldAlert size={18} />} color={warrantyExpiringSoon.length > 0 ? 'warning' : 'neutral'} />
       </div>
+
+      {/* Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <KpiCard
+          label="Overdue for Service"
+          value={loading ? '—' : serviceDue.filter(s => s.overdue).length}
+          icon={<CalendarClock size={18} />}
+          color={serviceDue.some(s => s.overdue) ? 'danger' : 'neutral'}
+        />
+        <KpiCard
+          label="Due for Service Soon"
+          value={loading ? '—' : serviceDue.filter(s => s.dueForService && !s.overdue).length}
+          icon={<CalendarClock size={18} />}
+          color={serviceDue.some(s => s.dueForService && !s.overdue) ? 'warning' : 'neutral'}
+        />
+      </div>
+
+      <Card padding="md" className="space-y-3">
+        <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> Equipment Service Due</h2>
+        {loading && <p className="text-xs text-slate-400">Loading…</p>}
+        {!loading && serviceDue.length === 0 && (
+          <p className="text-xs text-slate-400">No equipment has an upcoming service date set.</p>
+        )}
+        {serviceDue.map(s => (
+          <div key={s.serialId} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
+            <div>
+              <p className="font-medium text-dark dark:text-slate-100">{s.productName}</p>
+              <p className="text-slate-400 font-mono">{s.serialNumber} · next service {formatDate(new Date(s.nextServiceDueDate))}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={s.overdue ? 'danger' : 'warning'} size="sm">{s.overdue ? 'Overdue' : 'Due soon'}</Badge>
+              <button
+                onClick={() => handleSendReminder(s.serialId)}
+                className="text-brand hover:underline flex items-center gap-1"
+                title="Send a WhatsApp reminder to the customer"
+              >
+                <Send size={12} /> Remind
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <p className="text-xs font-semibold text-slate-500 mb-1.5">Set a Service Date</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={setServiceForId}
+              onChange={e => setSetServiceForId(e.target.value)}
+              className="h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand"
+            >
+              <option value="">Select equipment</option>
+              {serials.map(s => (
+                <option key={s.id} value={s.id}>{s.productName} — {s.serialNumber}</option>
+              ))}
+            </select>
+            <input
+              type="date" value={setServiceDate}
+              onChange={e => setSetServiceDate(e.target.value)}
+              className="h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand"
+            />
+            <button
+              onClick={handleSetServiceDate}
+              className="h-8 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Consumables panel */}

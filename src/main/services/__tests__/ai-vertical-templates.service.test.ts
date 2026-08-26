@@ -7,7 +7,12 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn(), generateVendorMarginReport: vi.fn() } }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn(), generateVendorMarginReport: vi.fn(), generateBrandMarginReturnRateReport: vi.fn(), generateSizeAvailabilityHeatmapReport: vi.fn(), generateLandedCostPerUnitReport: vi.fn(), generateRejectionRateTrendReport: vi.fn(), generateSeasonalCreditExposureReport: vi.fn(), generateFarmerRepaymentReport: vi.fn(), generateDonationToIssueCycleTimeReport: vi.fn(), generateAssetUtilizationReport: vi.fn(), generateMakingChargeMarginReport: vi.fn(), generateHallmarkComplianceReport: vi.fn(), generateMetalRateVsSalesVolumeReport: vi.fn(), generatePurityAdjustedExchangeReport: vi.fn(), generateServiceResolutionTimeReport: vi.fn(), generateRepeatBusinessRateReport: vi.fn(), generateConsultantUtilizationReport: vi.fn(), generateClientProfitabilityReport: vi.fn() } }))
+vi.mock('../gold-savings.service', () => ({ listGoldSavingsSchemes: vi.fn() }))
+vi.mock('../service-ticket.service', () => ({ listTickets: vi.fn(), getQuoteToJobConversionStats: vi.fn() }))
+vi.mock('../service-contract.service', () => ({ listServiceContracts: vi.fn() }))
+vi.mock('../project.service', () => ({ getEngagementConversionStats: vi.fn(), getProposalWinRateStats: vi.fn() }))
+vi.mock('../retainer.service', () => ({ listRetainers: vi.fn(), getRetainerHoursUsage: vi.fn() }))
 vi.mock('../template-suggestion.service', () => ({ getTemplateSuggestion: vi.fn() }))
 vi.mock('../custom-document.service', () => ({ customDocumentService: { listTypes: vi.fn(), listEntries: vi.fn() } }))
 vi.mock('../placement.service', () => ({ getPlacementKPIs: vi.fn() }))
@@ -21,6 +26,14 @@ vi.mock('../chronic-condition-record.service', () => ({ listChronicConditions: v
 vi.mock('../car-job-card.service', () => ({ getCarJobCardKPIs: vi.fn() }))
 vi.mock('../repair-ticket.service', () => ({ lookupSerialService: vi.fn() }))
 vi.mock('../variant.service', () => ({ getSizeCurveReorderSuggestion: vi.fn() }))
+vi.mock('../trial-session.service', () => ({ getTrialConversionSummary: vi.fn() }))
+vi.mock('../seasonal-cycle.service', () => ({ getSeasonalReorderCalendar: vi.fn() }))
+vi.mock('../work-order.service', () => ({ getDowntimeSummary: vi.fn(), getWorkOrderBottleneckFlag: vi.fn() }))
+vi.mock('../crop-advisory.service', () => ({ listDistinctCrops: vi.fn(), getProductsForCrop: vi.fn() }))
+vi.mock('../serial.service', () => ({ listEquipmentDueForService: vi.fn() }))
+vi.mock('../blood-bank.service', () => ({ listDonorsDueForRecall: vi.fn(), listDonationCamps: vi.fn() }))
+// generateSizeAvailabilityHeatmapReport is added to the existing
+// '../report.service' mock factory below, alongside the other report fns.
 vi.mock('../coaching-fee.service', () => ({ getFeeKPIs: vi.fn() }))
 vi.mock('../loyalty-program.service', () => ({ loyaltyProgramService: { getSummary: vi.fn() } }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
@@ -30,6 +43,17 @@ import { getExpiringMemberships } from '../membership.service'
 import { reportService } from '../report.service'
 import { lookupSerialService } from '../repair-ticket.service'
 import { getSizeCurveReorderSuggestion } from '../variant.service'
+import { getTrialConversionSummary } from '../trial-session.service'
+import { getSeasonalReorderCalendar } from '../seasonal-cycle.service'
+import { getDowntimeSummary, getWorkOrderBottleneckFlag } from '../work-order.service'
+import { listDistinctCrops, getProductsForCrop } from '../crop-advisory.service'
+import { listEquipmentDueForService } from '../serial.service'
+import { listDonorsDueForRecall, listDonationCamps } from '../blood-bank.service'
+import { listGoldSavingsSchemes } from '../gold-savings.service'
+import { listTickets, getQuoteToJobConversionStats } from '../service-ticket.service'
+import { listServiceContracts } from '../service-contract.service'
+import { getEngagementConversionStats, getProposalWinRateStats } from '../project.service'
+import { listRetainers, getRetainerHoursUsage } from '../retainer.service'
 import { getTemplateSuggestion } from '../template-suggestion.service'
 import { customDocumentService } from '../custom-document.service'
 import { listChronicConditions } from '../chronic-condition-record.service'
@@ -1070,15 +1094,23 @@ describe('ai-vertical-templates.service — clothing.exchangeSummary', () => {
 // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report, its 5th
 // and final signature item.
 describe('ai-vertical-templates.service — clothing.vendorMargin', () => {
-  it('registers clothing.vendorMargin for CLOTHING and FOOTWEAR alongside the other Clothing intents', async () => {
+  it('registers clothing.vendorMargin for CLOTHING alongside the other Clothing intents', async () => {
     vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CLOTHING' } } as never)
     const clothingNames = await getActiveVerticalTemplateNames()
     expect(clothingNames).toContain('clothing.vendorMargin')
     expect(clothingNames).toContain('clothing.exchangeSummary')
+  })
 
+  // Phase 67 §9.1 — Footwear grounding (fetched fresh from the source
+  // audit) confirmed Footwear does NOT share Clothing's item 5 — it has
+  // its own distinct item 2 (footwear.brandMarginReturnRate) instead, even
+  // though it shares Clothing's other 4 variant-tracking intents.
+  it('does NOT register clothing.vendorMargin for FOOTWEAR — Footwear has its own distinct item 2 instead', async () => {
     vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
     const footwearNames = await getActiveVerticalTemplateNames()
-    expect(footwearNames).toContain('clothing.vendorMargin')
+    expect(footwearNames).not.toContain('clothing.vendorMargin')
+    expect(footwearNames).toContain('footwear.brandMarginReturnRate')
+    expect(footwearNames).toContain('clothing.exchangeSummary')
   })
 
   it('reports the leading vendor by margin this month, sorted highest first', async () => {
@@ -1108,6 +1140,185 @@ describe('ai-vertical-templates.service — clothing.vendorMargin', () => {
 
     expect(result.isEmpty).toBe(true)
     expect(result.headline).toBe('No sales this month for products with an assigned vendor/brand')
+  })
+})
+
+// Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate Report.
+describe('ai-vertical-templates.service — footwear.brandMarginReturnRate', () => {
+  it('registers footwear.brandMarginReturnRate for FOOTWEAR only, not clothing.vendorMargin', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('footwear.brandMarginReturnRate')
+    expect(names).not.toContain('clothing.vendorMargin')
+  })
+
+  it('reports the leading brand by margin this month, alongside its return rate', async () => {
+    vi.mocked(reportService.generateBrandMarginReturnRateReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31',
+      rows: [
+        { supplierId: 's1', supplierName: 'Acme Footwear', revenue: 5000, cogs: 3000, margin: 2000, marginPercent: 40, unitsSold: 20, unitsReturned: 5, returnRatePercent: 25 },
+        { supplierId: 's2', supplierName: 'Bright Soles', revenue: 900, cogs: 100, margin: 800, marginPercent: 89, unitsSold: 10, unitsReturned: 1, returnRatePercent: 10 },
+      ],
+      summary: { totalRevenue: 5900, totalMargin: 2800, overallReturnRatePercent: 20, vendorCount: 2 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.brandMarginReturnRate', {}, '₹')
+
+    expect(result.headline).toBe('Acme Footwear leads with ₹2,000.00 margin this month, 25% return rate')
+    expect(result.details).toEqual([
+      'Acme Footwear: ₹2,000.00 margin, 25% returned (5/20 units)',
+      'Bright Soles: ₹800.00 margin, 10% returned (1/10 units)',
+    ])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when no vendor-assigned products sold this month', async () => {
+    vi.mocked(reportService.generateBrandMarginReturnRateReport).mockResolvedValue({
+      dateFrom: '2024-01-01', dateTo: '2024-01-31', rows: [],
+      summary: { totalRevenue: 0, totalMargin: 0, overallReturnRatePercent: 0, vendorCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.brandMarginReturnRate', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No sales this month for products with an assigned vendor/brand')
+  })
+})
+
+// Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow.
+describe('ai-vertical-templates.service — footwear.trialConversionRate', () => {
+  it('registers footwear.trialConversionRate for FOOTWEAR', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('footwear.trialConversionRate')
+  })
+
+  it('reports the conversion rate and averages when sessions exist', async () => {
+    vi.mocked(getTrialConversionSummary).mockResolvedValue({
+      success: true,
+      data: { totalSessions: 10, convertedSessions: 6, conversionRatePercent: 60, avgPairsTriedPerSession: 2.5, avgPairsTriedPerConversion: 2.1 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.trialConversionRate', {}, '₹')
+
+    expect(result.headline).toBe('60% of trial sessions converted to a sale, out of 10 recorded')
+    expect(result.details).toEqual([
+      'Converted: 6 / 10',
+      'Average pairs tried per session: 2.5',
+      'Average pairs tried before a purchase: 2.1'
+    ])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when no trial sessions exist', async () => {
+    vi.mocked(getTrialConversionSummary).mockResolvedValue({
+      success: true,
+      data: { totalSessions: 0, convertedSessions: 0, conversionRatePercent: 0, avgPairsTriedPerSession: 0, avgPairsTriedPerConversion: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.trialConversionRate', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No trial sessions recorded yet')
+  })
+})
+
+// Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap.
+describe('ai-vertical-templates.service — footwear.sizeAvailabilityHeatmap', () => {
+  it('registers footwear.sizeAvailabilityHeatmap for FOOTWEAR', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('footwear.sizeAvailabilityHeatmap')
+  })
+
+  it('leads with the style with the most out-of-stock sizes, listing its own out-of-stock cells', async () => {
+    vi.mocked(reportService.generateSizeAvailabilityHeatmapReport).mockResolvedValue({
+      lowStockThreshold: 3,
+      styles: ['Trail Runner'], sizes: ['8', '9'],
+      cells: [
+        { style: 'Trail Runner', size: '8', stockQty: 0, status: 'OUT' },
+        { style: 'Trail Runner', size: '9', stockQty: 2, status: 'LOW' },
+      ],
+      summary: { totalStyles: 1, outOfStockCells: 1, lowStockCells: 1, styleWithMostGaps: 'Trail Runner', styleGapCount: 1 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.sizeAvailabilityHeatmap', {}, '₹')
+
+    expect(result.headline).toBe('Trail Runner has the most sizes out of stock, 1 sizes')
+    expect(result.details).toEqual(['Trail Runner / 8: out of stock'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true and gives an honest headline when nothing is out or low', async () => {
+    vi.mocked(reportService.generateSizeAvailabilityHeatmapReport).mockResolvedValue({
+      lowStockThreshold: 3,
+      styles: ['Trail Runner'], sizes: ['8'],
+      cells: [{ style: 'Trail Runner', size: '8', stockQty: 50, status: 'IN' }],
+      summary: { totalStyles: 1, outOfStockCells: 0, lowStockCells: 0, styleWithMostGaps: null, styleGapCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.sizeAvailabilityHeatmap', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No sizes are currently out of stock')
+  })
+
+  it('marks isEmpty true with an honest empty headline when there is no variant-tracked stock at all', async () => {
+    vi.mocked(reportService.generateSizeAvailabilityHeatmapReport).mockResolvedValue({
+      lowStockThreshold: 3, styles: [], sizes: [], cells: [],
+      summary: { totalStyles: 0, outOfStockCells: 0, lowStockCells: 0, styleWithMostGaps: null, styleGapCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.sizeAvailabilityHeatmap', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+describe('ai-vertical-templates.service — footwear.seasonalReorderStatus', () => {
+  it('registers footwear.seasonalReorderStatus for FOOTWEAR', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('footwear.seasonalReorderStatus')
+  })
+
+  it('leads with the season(s) needing reorder now when any exist', async () => {
+    vi.mocked(getSeasonalReorderCalendar).mockResolvedValue({
+      success: true,
+      data: [
+        { id: 'c1', name: 'Monsoon', startMonth: 6, startDay: 1, endMonth: 9, endDay: 30, leadTimeDays: 30, status: 'REORDER_NOW', daysUntilStart: 10, reorderByDate: '2026-05-02', nextStartDate: '2026-06-01', products: [{ productId: 'p1', productName: 'Rain Boot', stockQty: 2, lowOrOutOfStock: true }], lowOrOutOfStockCount: 1 },
+        { id: 'c2', name: 'Sports', startMonth: 3, startDay: 1, endMonth: 5, endDay: 31, leadTimeDays: 20, status: 'IN_SEASON', daysUntilStart: 0, reorderByDate: '2026-02-09', nextStartDate: '2026-03-01', products: [], lowOrOutOfStockCount: 0 },
+      ]
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.seasonalReorderStatus', {}, '₹')
+
+    expect(result.headline).toBe('Monsoon — reorder now, 1 products low or out of stock')
+    expect(result.details).toEqual(['Monsoon: starts 2026-06-01, 1/1 tagged products low/out of stock'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('gives an honest headline listing upcoming/in-season cycles when nothing needs reordering yet', async () => {
+    vi.mocked(getSeasonalReorderCalendar).mockResolvedValue({
+      success: true,
+      data: [{ id: 'c1', name: 'Winter', startMonth: 12, startDay: 1, endMonth: 12, endDay: 31, leadTimeDays: 10, status: 'UPCOMING', daysUntilStart: 60, reorderByDate: '2026-11-21', nextStartDate: '2026-12-01', products: [], lowOrOutOfStockCount: 0 }]
+    } as never)
+
+    const result = await executeVerticalTemplate('footwear.seasonalReorderStatus', {}, '₹')
+
+    expect(result.headline).toBe('No seasons need reordering right now')
+    expect(result.details).toEqual(['Winter: starts in 60 days'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true when no seasonal cycles are defined at all', async () => {
+    vi.mocked(getSeasonalReorderCalendar).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('footwear.seasonalReorderStatus', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No seasons need reordering right now')
   })
 })
 
@@ -1624,6 +1835,712 @@ describe('ai-vertical-templates.service — general.customDocumentSummary', () =
     vi.mocked(customDocumentService.listEntries).mockResolvedValue({ success: true, data: [] } as never)
 
     const result = await executeVerticalTemplate('general.customDocumentSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+describe('ai-vertical-templates.service — manufacturing.landedCostPerUnit', () => {
+  it('registers manufacturing.landedCostPerUnit for MANUFACTURING', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('manufacturing.landedCostPerUnit')
+  })
+
+  it('leads with the highest-cost product and its material/labour/overhead breakdown', async () => {
+    vi.mocked(reportService.generateLandedCostPerUnitReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ productId: 'p1', productName: 'Steel Bracket', producedQty: 100, materialCostPerUnit: 50, laborCostPerUnit: 20, overheadCostPerUnit: 5, totalCostPerUnit: 75 }],
+      summary: { totalOrders: 1, totalProducedQty: 100 }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.landedCostPerUnit', {}, '₹')
+
+    expect(result.headline).toBe('Steel Bracket costs ₹75.00/unit this month (material ₹50.00, labour ₹20.00, overhead ₹5.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no orders completed this month', async () => {
+    vi.mocked(reportService.generateLandedCostPerUnitReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [], summary: { totalOrders: 0, totalProducedQty: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.landedCostPerUnit', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No completed production orders this month yet')
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+describe('ai-vertical-templates.service — manufacturing.rejectionRateTrend', () => {
+  it('registers manufacturing.rejectionRateTrend for MANUFACTURING', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('manufacturing.rejectionRateTrend')
+  })
+
+  it('leads with the overall rate and names the worst stage', async () => {
+    vi.mocked(reportService.generateRejectionRateTrendReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      trend: [{ month: '2026-07', qtyInspected: 200, qtyRejected: 20, rejectionRatePercent: 10 }],
+      byStage: [{ taskName: 'Assembly', qtyInspected: 100, qtyRejected: 18, rejectionRatePercent: 18 }],
+      summary: { totalInspected: 200, totalRejected: 20, overallRejectionRatePercent: 10 }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.rejectionRateTrend', {}, '₹')
+
+    expect(result.headline).toBe('10% overall rejection rate this month, worst at "Assembly" (18%)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no inspection counts recorded this month', async () => {
+    vi.mocked(reportService.generateRejectionRateTrendReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', trend: [], byStage: [],
+      summary: { totalInspected: 0, totalRejected: 0, overallRejectionRatePercent: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.rejectionRateTrend', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No QC inspection counts recorded this month yet')
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+describe('ai-vertical-templates.service — manufacturing.downtimeSummary', () => {
+  it('registers manufacturing.downtimeSummary for MANUFACTURING', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('manufacturing.downtimeSummary')
+  })
+
+  it('leads with total downtime and the top reason', async () => {
+    vi.mocked(getDowntimeSummary).mockResolvedValue({
+      success: true,
+      data: { totalMinutes: 105, byReason: [{ reason: 'Machine breakdown', minutes: 75 }, { reason: 'Material shortage', minutes: 30 }] }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.downtimeSummary', {}, '₹')
+
+    expect(result.headline).toBe('105 minutes of downtime logged, most from "Machine breakdown"')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no downtime has been logged', async () => {
+    vi.mocked(getDowntimeSummary).mockResolvedValue({ success: true, data: { totalMinutes: 0, byReason: [] } } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.downtimeSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No downtime logged yet')
+  })
+})
+
+// Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck flag.
+describe('ai-vertical-templates.service — manufacturing.bottleneckFlag', () => {
+  it('registers manufacturing.bottleneckFlag for MANUFACTURING', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('manufacturing.bottleneckFlag')
+  })
+
+  it('names the bottleneck stage with its average duration and share of lead time', async () => {
+    vi.mocked(getWorkOrderBottleneckFlag).mockResolvedValue({
+      success: true,
+      data: { bottleneckStage: 'Assembly', avgDurationHours: 4, shareOfTotalLeadTimePercent: 66.7, stages: [{ taskName: 'Assembly', avgDurationHours: 4, sampleCount: 5 }] }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.bottleneckFlag', {}, '₹')
+
+    expect(result.headline).toBe('"Assembly" is your slowest stage, averaging 4h (66.7% of total lead time)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when there is not enough completed data yet', async () => {
+    vi.mocked(getWorkOrderBottleneckFlag).mockResolvedValue({
+      success: true, data: { bottleneckStage: null, avgDurationHours: 0, shareOfTotalLeadTimePercent: 0, stages: [] }
+    } as never)
+
+    const result = await executeVerticalTemplate('manufacturing.bottleneckFlag', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure.
+describe('ai-vertical-templates.service — agriInputs.seasonalCreditExposure', () => {
+  it('registers agriInputs.seasonalCreditExposure for AGRI_INPUTS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('agriInputs.seasonalCreditExposure')
+  })
+
+  it('leads with total outstanding and the peak due month', async () => {
+    vi.mocked(reportService.generateSeasonalCreditExposureReport).mockResolvedValue({
+      byMonth: [], bySeason: [{ seasonName: 'Wheat Harvest', outstandingAmount: 5000, invoiceCount: 3 }],
+      summary: { totalOutstanding: 8000, totalInvoices: 5, peakMonth: 'Apr', peakMonthAmount: 5000 }
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.seasonalCreditExposure', {}, '₹')
+
+    expect(result.headline).toBe('₹8,000.00 in outstanding credit, heaviest due in Apr (₹5,000.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when there is no outstanding credit', async () => {
+    vi.mocked(reportService.generateSeasonalCreditExposureReport).mockResolvedValue({
+      byMonth: [], bySeason: [], summary: { totalOutstanding: 0, totalInvoices: 0, peakMonth: null, peakMonthAmount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.seasonalCreditExposure', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No outstanding credit invoices with a due date right now')
+  })
+})
+
+// Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment History.
+describe('ai-vertical-templates.service — agriInputs.farmerRepayment', () => {
+  it('registers agriInputs.farmerRepayment for AGRI_INPUTS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('agriInputs.farmerRepayment')
+  })
+
+  it('leads with the riskiest (lowest repayment rate) farmer', async () => {
+    vi.mocked(reportService.generateFarmerRepaymentReport).mockResolvedValue({
+      rows: [{ customerId: 'c1', customerName: 'Risky Farmer', phone: null, totalPurchased: 1000, totalRepaid: 100, outstandingBalance: 900, repaymentRatePercent: 10 }],
+      summary: { totalFarmers: 1, totalOutstanding: 900, overallRepaymentRatePercent: 10 }
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.farmerRepayment', {}, '₹')
+
+    expect(result.headline).toBe('Risky Farmer has the lowest repayment rate (10%), ₹900.00 outstanding')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when there is no farmer credit activity', async () => {
+    vi.mocked(reportService.generateFarmerRepaymentReport).mockResolvedValue({
+      rows: [], summary: { totalFarmers: 0, totalOutstanding: 0, overallRepaymentRatePercent: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.farmerRepayment', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No farmer credit activity recorded yet')
+  })
+})
+
+// Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+describe('ai-vertical-templates.service — agriInputs.cropAdvisory', () => {
+  it('registers agriInputs.cropAdvisory for AGRI_INPUTS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('agriInputs.cropAdvisory')
+  })
+
+  it('summarizes the distinct crop count when no specific crop is named', async () => {
+    vi.mocked(listDistinctCrops).mockResolvedValue({ success: true, data: ['Cotton', 'Wheat'] } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.cropAdvisory', {}, '₹')
+
+    expect(result.headline).toBe('2 crops with tagged product advisories')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no products are crop-tagged', async () => {
+    vi.mocked(listDistinctCrops).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.cropAdvisory', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No crop-tagged products yet')
+  })
+
+  it('drills into a specific crop\'s products when a cropName param is given', async () => {
+    vi.mocked(getProductsForCrop).mockResolvedValue({
+      success: true, data: [{ productId: 'p1', productName: 'Urea 50kg', sellingPrice: 500, stockQty: 10 }]
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.cropAdvisory', { cropName: 'Wheat' }, '₹')
+
+    expect(result.headline).toBe('1 product recommended for Wheat')
+    expect(listDistinctCrops).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+describe('ai-vertical-templates.service — agriInputs.equipmentServiceDue', () => {
+  it('registers agriInputs.equipmentServiceDue for AGRI_INPUTS', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('agriInputs.equipmentServiceDue')
+  })
+
+  it('leads with the overdue count when overdue equipment exists', async () => {
+    vi.mocked(listEquipmentDueForService).mockResolvedValue({
+      success: true,
+      data: [
+        { serialId: 's1', productName: 'Tractor A', serialNumber: 'SN-1', nextServiceDueDate: '2026-08-01', dueForService: true, overdue: true },
+        { serialId: 's2', productName: 'Sprayer B', serialNumber: 'SN-2', nextServiceDueDate: '2026-09-01', dueForService: true, overdue: false },
+      ]
+    } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.equipmentServiceDue', {}, '₹')
+
+    expect(result.headline).toBe('1 unit is overdue for service')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no equipment has service dates set', async () => {
+    vi.mocked(listEquipmentDueForService).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('agriInputs.equipmentServiceDue', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No equipment due for service right now')
+  })
+})
+
+// Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+describe('ai-vertical-templates.service — bloodBank.donorsDueForRecall', () => {
+  it('registers bloodBank.donorsDueForRecall for BLOOD_BANK', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('bloodBank.donorsDueForRecall')
+  })
+
+  it('leads with the count of donors eligible to donate again', async () => {
+    vi.mocked(listDonorsDueForRecall).mockResolvedValue({
+      success: true, data: [{ fullName: 'Ravi Kumar', bloodGroup: 'O+' }, { fullName: 'Priya Singh', bloodGroup: 'A+' }]
+    } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.donorsDueForRecall', {}, '₹')
+
+    expect(result.headline).toBe('2 donors are eligible to donate again')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no donors are due for recall', async () => {
+    vi.mocked(listDonorsDueForRecall).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.donorsDueForRecall', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No donors are currently due for recall')
+  })
+})
+
+// Phase 67 §9.1 — Blood Bank item 3: camp/drive scheduling turnout.
+describe('ai-vertical-templates.service — bloodBank.campTurnout', () => {
+  it('registers bloodBank.campTurnout for BLOOD_BANK', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('bloodBank.campTurnout')
+  })
+
+  it('leads with the highest-turnout camp', async () => {
+    vi.mocked(listDonationCamps).mockResolvedValue({
+      success: true,
+      data: [{ campName: 'Community Hall Drive', _count: { donations: 40 } }, { campName: 'College Drive', _count: { donations: 15 } }]
+    } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.campTurnout', {}, '₹')
+
+    expect(result.headline).toBe('Community Hall Drive had the highest turnout — 40 donation(s)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no camps are scheduled', async () => {
+    vi.mocked(listDonationCamps).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.campTurnout', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No donation camps scheduled yet')
+  })
+})
+
+// Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+describe('ai-vertical-templates.service — bloodBank.donationToIssueCycleTime', () => {
+  it('registers bloodBank.donationToIssueCycleTime for BLOOD_BANK', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('bloodBank.donationToIssueCycleTime')
+  })
+
+  it('leads with the overall average cycle time and names the slowest component', async () => {
+    vi.mocked(reportService.generateDonationToIssueCycleTimeReport).mockResolvedValue({
+      summary: { totalIssuedUnits: 5, overallAvgDays: 6.2 },
+      byComponent: [{ componentType: 'PLASMA', unitCount: 2, avgDays: 15, minDays: 10, maxDays: 20 }]
+    } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.donationToIssueCycleTime', {}, '₹')
+
+    expect(result.headline).toBe('6.2 days average donation-to-issue cycle time, slowest for PLASMA (15d avg)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when no units have been issued', async () => {
+    vi.mocked(reportService.generateDonationToIssueCycleTimeReport).mockResolvedValue({
+      summary: { totalIssuedUnits: 0, overallAvgDays: 0 }, byComponent: []
+    } as never)
+
+    const result = await executeVerticalTemplate('bloodBank.donationToIssueCycleTime', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No issued units yet')
+  })
+})
+
+// Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+describe('ai-vertical-templates.service — rental.assetUtilization', () => {
+  it('registers rental.assetUtilization for RENTAL', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'RENTAL' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toContain('rental.assetUtilization')
+  })
+
+  it('leads with the worst-earning asset and mentions idle units', async () => {
+    vi.mocked(reportService.generateAssetUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ rentalUnitId: 'u1', unitLabel: 'Car B', productName: 'Sedan Car', status: 'AVAILABLE', rentedDays: 0, availableDays: 31, utilizationPercent: 0 }],
+      summary: { totalUnits: 1, avgUtilizationPercent: 0, idleUnitCount: 1 }
+    } as never)
+
+    const result = await executeVerticalTemplate('rental.assetUtilization', {}, '₹')
+
+    expect(result.headline).toBe('Sedan Car (Car B) has the lowest utilization this period at 0%, 1 unit(s) fully idle')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('marks isEmpty true with an honest headline when there are no tracked units', async () => {
+    vi.mocked(reportService.generateAssetUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [], summary: { totalUnits: 0, avgUtilizationPercent: 0, idleUnitCount: 0 }
+    } as never)
+
+    const result = await executeVerticalTemplate('rental.assetUtilization', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+    expect(result.headline).toBe('No tracked rental units yet')
+  })
+})
+
+// Phase 67 §9.1 — Jewellery items 1/2/3/4/5.
+describe('ai-vertical-templates.service — Jewellery', () => {
+  it('registers all 6 jewellery intents for JEWELLERY', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'JEWELLERY' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toEqual(['jewellery.stockAndSales', 'jewellery.goldSavingsSummary', 'jewellery.makingChargeMargin', 'jewellery.hallmarkCompliance', 'jewellery.metalRateVsSalesVolume', 'jewellery.purityAdjustedExchange'])
+  })
+
+  it('goldSavingsSummary counts active schemes and sums their deposits', async () => {
+    vi.mocked(listGoldSavingsSchemes).mockResolvedValue({ success: true, data: [{ totalDeposited: 55000 }] } as never)
+
+    const result = await executeVerticalTemplate('jewellery.goldSavingsSummary', {}, '₹')
+
+    expect(result.headline).toBe('1 active gold savings scheme(s), ₹55,000.00 deposited so far')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('goldSavingsSummary marks isEmpty true when there are no active schemes', async () => {
+    vi.mocked(listGoldSavingsSchemes).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('jewellery.goldSavingsSummary', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('makingChargeMargin reports the blended percentage and both amounts', async () => {
+    vi.mocked(reportService.generateMakingChargeMarginReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [{ invoiceId: 'i1' }],
+      summary: { totalMetalValue: 47500, totalMakingCharge: 2500, avgMakingChargePercent: 5 },
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.makingChargeMargin', {}, '₹')
+
+    expect(result.headline).toBe('Making charge is 5% of total sale value this period (₹2,500.00 of ₹50,000.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('hallmarkCompliance mentions the non-compliant count when items are missing a hallmark', async () => {
+    vi.mocked(reportService.generateHallmarkComplianceReport).mockResolvedValue({
+      rows: [], summary: { totalItems: 10, compliantCount: 8, nonCompliantCount: 2, compliancePercent: 80 },
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.hallmarkCompliance', {}, '₹')
+
+    expect(result.headline).toBe('8 of 10 jewellery items are hallmark-compliant (80%)')
+    expect(result.details).toEqual(['2 item(s) missing a hallmark/HUID number'])
+  })
+
+  it('hallmarkCompliance omits the non-compliant detail line when every item is compliant', async () => {
+    vi.mocked(reportService.generateHallmarkComplianceReport).mockResolvedValue({
+      rows: [], summary: { totalItems: 5, compliantCount: 5, nonCompliantCount: 0, compliancePercent: 100 },
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.hallmarkCompliance', {}, '₹')
+
+    expect(result.details).toEqual([])
+  })
+
+  it('metalRateVsSalesVolume names the auto-selected metal+purity and its latest month', async () => {
+    vi.mocked(reportService.generateMetalRateVsSalesVolumeReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', metalType: 'GOLD', purity: '22K',
+      rows: [{ month: '2026-07', avgRatePerGram: 6200.5, salesWeightGrams: 45.678 }],
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.metalRateVsSalesVolume', {}, '₹')
+
+    expect(result.headline).toBe('GOLD 22K: latest rate ₹6,200.50/g, 45.7g sold last tracked month')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('metalRateVsSalesVolume gives an honest no-correlation headline when there were no jewellery sales at all', async () => {
+    vi.mocked(reportService.generateMetalRateVsSalesVolumeReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', metalType: '', purity: '', rows: [],
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.metalRateVsSalesVolume', {}, '₹')
+
+    expect(result.headline).toBe('No jewellery sales in this period to correlate against metal rates.')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('purityAdjustedExchange reports pure-metal-equivalent weight and value credited', async () => {
+    vi.mocked(reportService.generatePurityAdjustedExchangeReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', byMetal: [], monthlyTrend: [],
+      summary: { totalExchanges: 3, totalPureEquivalentGrams: 12.345, totalValueGiven: 75000, unparsablePurityCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('jewellery.purityAdjustedExchange', {}, '₹')
+
+    expect(result.headline).toBe('3 exchange(s) this period, 12.345g pure-metal-equivalent, ₹75,000.00 credited')
+    expect(result.isEmpty).toBe(false)
+  })
+})
+
+// Phase 67 §9.1 — Service items 1-5.
+describe('ai-vertical-templates.service — Service', () => {
+  it('registers all 5 service intents for SERVICE', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'SERVICE' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toEqual(['service.slaBreaches', 'service.resolutionTime', 'service.contractSummary', 'service.repeatBusinessRate', 'service.quoteToJobConversion'])
+  })
+
+  it('slaBreaches counts only tickets currently past their SLA due date', async () => {
+    vi.mocked(listTickets).mockResolvedValue({
+      success: true, data: { tickets: [{ isSlaBreached: true }, { isSlaBreached: false }, { isSlaBreached: true }], total: 3 },
+    } as never)
+
+    const result = await executeVerticalTemplate('service.slaBreaches', {}, '₹')
+
+    expect(result.headline).toBe('2 ticket(s) currently past their SLA due date')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('slaBreaches marks isEmpty true when nothing is breached', async () => {
+    vi.mocked(listTickets).mockResolvedValue({ success: true, data: { tickets: [{ isSlaBreached: false }], total: 1 } } as never)
+
+    const result = await executeVerticalTemplate('service.slaBreaches', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('resolutionTime leads with the slowest category', async () => {
+    vi.mocked(reportService.generateServiceResolutionTimeReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ category: 'Plumbing', ticketCount: 4, avgHours: 30, minHours: 10, maxHours: 50 }],
+      summary: { totalResolved: 6, overallAvgHours: 20 },
+    } as never)
+
+    const result = await executeVerticalTemplate('service.resolutionTime', {}, '₹')
+
+    expect(result.headline).toBe('Plumbing takes the longest to resolve at 30h average, 6 ticket(s) resolved this period')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('resolutionTime gives an honest headline when nothing was resolved yet', async () => {
+    vi.mocked(reportService.generateServiceResolutionTimeReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [], summary: { totalResolved: 0, overallAvgHours: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('service.resolutionTime', {}, '₹')
+
+    expect(result.headline).toBe('No tickets resolved this period yet.')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('contractSummary sums the combined value of active contracts', async () => {
+    vi.mocked(listServiceContracts).mockResolvedValue({
+      success: true, data: [{ contractValue: 5000 }, { contractValue: 3000 }],
+    } as never)
+
+    const result = await executeVerticalTemplate('service.contractSummary', {}, '₹')
+
+    expect(result.headline).toBe('2 active service contract(s), ₹8,000.00 in combined value')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('repeatBusinessRate reports the latest month\'s figures', async () => {
+    vi.mocked(reportService.generateRepeatBusinessRateReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ month: '2026-07', newCustomers: 3, repeatCustomers: 7, repeatRatePercent: 70 }],
+    } as never)
+
+    const result = await executeVerticalTemplate('service.repeatBusinessRate', {}, '₹')
+
+    expect(result.headline).toBe('70% repeat business this month — 7 returning, 3 new')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('quoteToJobConversion reports the conversion rate', async () => {
+    vi.mocked(getQuoteToJobConversionStats).mockResolvedValue({
+      success: true, data: { acceptedQuotations: 10, convertedToTicket: 3, conversionRatePercent: 30 },
+    } as never)
+
+    const result = await executeVerticalTemplate('service.quoteToJobConversion', {}, '₹')
+
+    expect(result.headline).toBe('30% of accepted quotations became jobs — 3 of 10')
+    expect(result.isEmpty).toBe(false)
+  })
+})
+
+describe('ai-vertical-templates.service — Consultant', () => {
+  it('registers all 5 consultant intents for CONSULTANT', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CONSULTANT' } } as never)
+    const names = await getActiveVerticalTemplateNames()
+    expect(names).toEqual(['consultant.engagementConversion', 'consultant.utilization', 'consultant.retainerBurnDown', 'consultant.clientProfitability', 'consultant.proposalWinRate'])
+  })
+
+  it('engagementConversion reports the conversion rate', async () => {
+    vi.mocked(getEngagementConversionStats).mockResolvedValue({
+      success: true, data: { acceptedQuotations: 8, convertedToProject: 5, conversionRatePercent: 62.5 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.engagementConversion', {}, '₹')
+
+    expect(result.headline).toBe('62.5% of accepted engagement letters became projects — 5 of 8')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('engagementConversion marks isEmpty true when no engagement letters have been accepted', async () => {
+    vi.mocked(getEngagementConversionStats).mockResolvedValue({
+      success: true, data: { acceptedQuotations: 0, convertedToProject: 0, conversionRatePercent: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.engagementConversion', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('utilization leads with the least-utilized consultant', async () => {
+    vi.mocked(reportService.generateConsultantUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ userName: 'Priya', billableHours: 5, nonBillableHours: 35, totalHours: 40, utilizationPercent: 12.5 }],
+      summary: { totalBillableHours: 5, totalNonBillableHours: 35, overallUtilizationPercent: 12.5 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.utilization', {}, '₹')
+
+    expect(result.headline).toBe('Priya has the lowest utilization at 12.5%, overall utilization 12.5% this period')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('utilization gives an honest headline when no billable work was logged yet', async () => {
+    vi.mocked(reportService.generateConsultantUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [], summary: { totalBillableHours: 0, totalNonBillableHours: 0, overallUtilizationPercent: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.utilization', {}, '₹')
+
+    expect(result.headline).toBe('No billable work logged this period yet.')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('retainerBurnDown aggregates hours used vs. allocated across every active HOURLY_BUCKET retainer', async () => {
+    vi.mocked(listRetainers).mockResolvedValue({
+      success: true, data: [
+        { id: 'rt-1', title: 'Acme Retainer', hoursPerMonth: 20 },
+        { id: 'rt-2', title: 'Fixed-Fee Retainer', hoursPerMonth: null }, // excluded — not hour-bucketed
+      ],
+    } as never)
+    vi.mocked(getRetainerHoursUsage).mockResolvedValue({
+      success: true, data: { period: '2026-08', hoursPerMonth: 20, hoursUsed: 18, hoursRemaining: 2 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.retainerBurnDown', {}, '₹')
+
+    expect(getRetainerHoursUsage).toHaveBeenCalledTimes(1)
+    expect(getRetainerHoursUsage).toHaveBeenCalledWith('rt-1')
+    expect(result.headline).toBe('18.0h of 20.0h retainer hours used this month across 1 retainer(s), 0 exhausted')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('retainerBurnDown counts an exhausted (0 hours remaining) retainer correctly', async () => {
+    vi.mocked(listRetainers).mockResolvedValue({ success: true, data: [{ id: 'rt-1', title: 'Acme', hoursPerMonth: 10 }] } as never)
+    vi.mocked(getRetainerHoursUsage).mockResolvedValue({
+      success: true, data: { period: '2026-08', hoursPerMonth: 10, hoursUsed: 10, hoursRemaining: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.retainerBurnDown', {}, '₹')
+
+    expect(result.headline).toContain('1 exhausted')
+  })
+
+  it('retainerBurnDown gives an honest headline when there are no active hourly retainers', async () => {
+    vi.mocked(listRetainers).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('consultant.retainerBurnDown', {}, '₹')
+
+    expect(result.headline).toBe('No active hourly retainers to track.')
+    expect(result.isEmpty).toBe(true)
+    expect(getRetainerHoursUsage).not.toHaveBeenCalled()
+  })
+
+  it('clientProfitability leads with the least-profitable client', async () => {
+    vi.mocked(reportService.generateClientProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ customerName: 'LowMargin Co', revenue: 5000, hoursSpent: 100, revenuePerHour: 50 }],
+      summary: { totalRevenue: 5000, totalHours: 100 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.clientProfitability', {}, '₹')
+
+    expect(result.headline).toBe('LowMargin Co has the lowest revenue per hour at ₹50.00/h, ₹5,000.00 total revenue this period')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('clientProfitability gives an honest headline when there is no client project revenue yet', async () => {
+    vi.mocked(reportService.generateClientProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [], summary: { totalRevenue: 0, totalHours: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.clientProfitability', {}, '₹')
+
+    expect(result.headline).toBe('No client project revenue this period yet.')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('proposalWinRate reports won/lost/pending counts', async () => {
+    vi.mocked(getProposalWinRateStats).mockResolvedValue({
+      success: true, data: { totalProposals: 10, won: 6, lost: 2, pending: 2, winRatePercent: 75 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.proposalWinRate', {}, '₹')
+
+    expect(result.headline).toBe('75% proposal win rate — 6 won, 2 lost, 2 pending')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('proposalWinRate marks isEmpty true when there are no proposals at all', async () => {
+    vi.mocked(getProposalWinRateStats).mockResolvedValue({
+      success: true, data: { totalProposals: 0, won: 0, lost: 0, pending: 0, winRatePercent: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('consultant.proposalWinRate', {}, '₹')
 
     expect(result.isEmpty).toBe(true)
   })

@@ -16,6 +16,10 @@ function makeMockDb() {
       ),
       delete: vi.fn().mockResolvedValue({}),
     },
+    // Phase 67 §9.1 — Jewellery item 4's own prerequisite.
+    metalRateHistory: {
+      create: vi.fn().mockResolvedValue({}),
+    },
   }
   return db
 }
@@ -43,6 +47,19 @@ describe('metal-rate.service', () => {
     expect(db.metalRate.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { metalType_purity: { metalType: 'GOLD', purity: '22K' } },
     }))
+  })
+
+  // Phase 67 §9.1 — Jewellery item 4's own prerequisite: MetalRate itself
+  // only ever holds today's rate (upsert overwrites in place) — every real
+  // change must also append to MetalRateHistory, or the rate-vs-sales trend
+  // report would have nothing to correlate against going forward.
+  it('appends every real rate change to MetalRateHistory', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await upsertMetalRate({ metalType: 'GOLD', purity: '22K', ratePerGram: 6500 })
+
+    expect(db.metalRateHistory.create).toHaveBeenCalledWith({ data: { metalType: 'GOLD', purity: '22K', ratePerGram: 6500 } })
   })
 
   it('rejects a zero or negative rate', async () => {

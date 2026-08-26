@@ -152,6 +152,13 @@ interface SeasonSellThroughRow { month: string; season: string; unitsSold: numbe
 interface SeasonSellThroughReport { dateFrom: string; dateTo: string; rows: SeasonSellThroughRow[] }
 interface SizeStyleHeatmapCell { style: string; size: string; unitsSold: number }
 interface SizeStyleHeatmapReport { dateFrom: string; dateTo: string; styles: string[]; sizes: string[]; cells: SizeStyleHeatmapCell[]; summary: { totalUnitsSold: number; topCellStyle: string | null; topCellSize: string | null; topCellUnitsSold: number } }
+// Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap Report.
+interface SizeAvailabilityHeatmapCell { style: string; size: string; stockQty: number; status: 'OUT' | 'LOW' | 'IN' }
+interface SizeAvailabilityHeatmapReport { lowStockThreshold: number; styles: string[]; sizes: string[]; cells: SizeAvailabilityHeatmapCell[]; summary: { totalStyles: number; outOfStockCells: number; lowStockCells: number; styleWithMostGaps: string | null; styleGapCount: number } }
+// Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+interface SeasonalCycleRecord { id: string; name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays: number; isActive: boolean }
+interface SeasonalCalendarProduct { productId: string; productName: string; stockQty: number; lowOrOutOfStock: boolean }
+interface SeasonalCalendarEntry { id: string; name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays: number; status: 'IN_SEASON' | 'REORDER_NOW' | 'UPCOMING'; daysUntilStart: number; reorderByDate: string; nextStartDate: string; products: SeasonalCalendarProduct[]; lowOrOutOfStockCount: number }
 
 interface BasketPairRow { productAId: string; productAName: string; productBId: string; productBName: string; basketCount: number }
 interface BasketCompositionReport { dateFrom: string; dateTo: string; summary: { totalBaskets: number; avgItemsPerBasket: number; avgBasketValue: number }; rows: BasketPairRow[] }
@@ -162,6 +169,10 @@ interface CategoryMixReport { dateFrom: string; dateTo: string; rows: CategoryMi
 // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report.
 interface VendorMarginRow { supplierId: string; supplierName: string; revenue: number; cogs: number; margin: number; marginPercent: number }
 interface VendorMarginReport { dateFrom: string; dateTo: string; rows: VendorMarginRow[]; summary: { totalRevenue: number; totalCogs: number; totalMargin: number; vendorCount: number } }
+
+// Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate Report.
+interface BrandMarginReturnRateRow { supplierId: string; supplierName: string; revenue: number; cogs: number; margin: number; marginPercent: number; unitsSold: number; unitsReturned: number; returnRatePercent: number }
+interface BrandMarginReturnRateReport { dateFrom: string; dateTo: string; rows: BrandMarginReturnRateRow[]; summary: { totalRevenue: number; totalMargin: number; overallReturnRatePercent: number; vendorCount: number } }
 
 type MoverQuadrant = 'FAST_HIGH_MARGIN' | 'FAST_LOW_MARGIN' | 'SLOW_HIGH_MARGIN' | 'SLOW_LOW_MARGIN'
 interface FastSlowMoverRow { productId: string; productName: string; sku: string | null; quantitySold: number; velocity: number; sellingPrice: number; unitCost: number; marginPercent: number; quadrant: MoverQuadrant }
@@ -178,10 +189,15 @@ interface DocumentSummaryRow { documentType: string; seriesPrefix: string; fromN
 interface DocumentSummaryReport { period: string; rows: DocumentSummaryRow[] }
 
 interface RentalStatusRow { bookingNumber: string; customerName: string; productName: string; unitLabel: string | null; startDateTime: string; endDateTime: string; isOverdue: boolean; daysOverdue: number }
-interface RentalStatusReport { rows: RentalStatusRow[]; summary: { totalCheckedOut: number; overdueCount: number } }
+interface RentalOverdueAgingBucket { bucket: string; count: number }
+interface RentalStatusReport { rows: RentalStatusRow[]; summary: { totalCheckedOut: number; overdueCount: number }; agingBuckets: RentalOverdueAgingBucket[] }
 
 interface RentalRevenueRow { productName: string; bookingCount: number; totalRevenue: number; unitCount: number | null; utilizationPercent: number | null }
 interface RentalRevenueReport { dateFrom: string; dateTo: string; rows: RentalRevenueRow[]; summary: { totalRevenue: number; totalBookings: number } }
+
+// Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+interface AssetUtilizationRow { rentalUnitId: string; unitLabel: string; productName: string; status: string; rentedDays: number; availableDays: number; utilizationPercent: number }
+interface AssetUtilizationReport { dateFrom: string; dateTo: string; rows: AssetUtilizationRow[]; summary: { totalUnits: number; avgUtilizationPercent: number; idleUnitCount: number } }
 
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
@@ -227,9 +243,21 @@ interface LabThroughputReport { dateFrom: string; dateTo: string; summary: { tot
 interface BloodStockByGroup { bloodGroup: string; available: number; expiringSoon: number }
 interface BloodStockReportRow { donationNumber: string; bloodGroup: string; componentType: string; expiryDate: string; daysToExpiry: number; isExpiringSoon: boolean }
 interface BloodStockReport { generatedAt: string; summary: { totalAvailable: number; totalExpiringSoon: number; groupsWithNoStock: string[] }; byGroup: BloodStockByGroup[]; rows: BloodStockReportRow[] }
+// Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+interface DonationToIssueCycleTimeByComponent { componentType: string; unitCount: number; avgDays: number; minDays: number; maxDays: number }
+interface DonationToIssueCycleTimeReport { summary: { totalIssuedUnits: number; overallAvgDays: number }; byComponent: DonationToIssueCycleTimeByComponent[] }
 
 // Fresh-audit fix (2026-07-12) — Jewellery had zero reports
 interface JewelleryStockRow { metalType: string; purity: string; netWeightGrams: number; ratePerGram: number | null; valuationAmount: number }
+// Phase 67 §9.1 — Jewellery items 2/3/4/5.
+interface MakingChargeMarginRow { invoiceId: string; invoiceNumber: string; invoiceDate: string; customerName: string; metalValue: number; makingCharge: number; totalValue: number; makingChargePercent: number }
+interface MakingChargeMarginReport { dateFrom: string; dateTo: string; rows: MakingChargeMarginRow[]; summary: { totalMetalValue: number; totalMakingCharge: number; avgMakingChargePercent: number } }
+interface HallmarkComplianceRow { productId: string; productName: string; metalType: string; purity: string; hallmarkNumber: string | null; compliant: boolean }
+interface HallmarkComplianceReport { rows: HallmarkComplianceRow[]; summary: { totalItems: number; compliantCount: number; nonCompliantCount: number; compliancePercent: number } }
+interface MetalRateVsSalesVolumeRow { month: string; avgRatePerGram: number | null; salesWeightGrams: number }
+interface MetalRateVsSalesVolumeReport { dateFrom: string; dateTo: string; metalType: string; purity: string; rows: MetalRateVsSalesVolumeRow[] }
+interface PurityAdjustedExchangeRow { metalType: string; purity: string; count: number; rawWeightGrams: number; pureEquivalentGrams: number; totalValueGiven: number }
+interface PurityAdjustedExchangeReport { dateFrom: string; dateTo: string; byMetal: PurityAdjustedExchangeRow[]; monthlyTrend: { month: string; pureEquivalentGrams: number }[]; summary: { totalExchanges: number; totalPureEquivalentGrams: number; totalValueGiven: number; unparsablePurityCount: number } }
 // Fresh-audit fix (2026-07-12) — SERVICE/CONSULTANT/REPAIR previously had
 // zero vertical-specific reports at all.
 // Real bug fix 2026-07-16: this report was wired to ServiceProject data
@@ -244,6 +272,16 @@ interface ProjectReport {
   summary: { totalProjects: number; open: number; inProgress: number; completed: number; onHold: number; cancelled: number; totalEstimatedAmount: number }
   byStatus: ProjectReportByStatus[]; rows: ProjectReportRow[]
 }
+// Phase 67 §9.1 — Service items 2/4.
+interface ServiceResolutionTimeRow { category: string; ticketCount: number; avgHours: number; minHours: number; maxHours: number }
+interface ServiceResolutionTimeReport { dateFrom: string; dateTo: string; rows: ServiceResolutionTimeRow[]; summary: { totalResolved: number; overallAvgHours: number } }
+interface RepeatBusinessRateRow { month: string; newCustomers: number; repeatCustomers: number; repeatRatePercent: number }
+interface RepeatBusinessRateReport { dateFrom: string; dateTo: string; rows: RepeatBusinessRateRow[] }
+// Phase 67 §9.1 — Consultant items 2/4.
+interface ConsultantUtilizationRow { userName: string; billableHours: number; nonBillableHours: number; totalHours: number; utilizationPercent: number }
+interface ConsultantUtilizationReport { dateFrom: string; dateTo: string; rows: ConsultantUtilizationRow[]; summary: { totalBillableHours: number; totalNonBillableHours: number; overallUtilizationPercent: number } }
+interface ClientProfitabilityRow { customerName: string; revenue: number; hoursSpent: number; revenuePerHour: number }
+interface ClientProfitabilityReport { dateFrom: string; dateTo: string; rows: ClientProfitabilityRow[]; summary: { totalRevenue: number; totalHours: number } }
 
 interface ServiceProjectReportRow { projectName: string; clientName: string; status: string; projectType: string; totalContractValue: number | null; startDate: string | null; expectedEndDate: string | null; completedDate: string | null }
 interface ServiceProjectReportByStatus { status: string; count: number }
@@ -435,6 +473,25 @@ interface ProductionReport {
   byStatus: ProductionByStatusRow[]; rows: ProductionReportRow[]
 }
 
+// Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+interface LandedCostPerUnitRow { productId: string; productName: string; producedQty: number; materialCostPerUnit: number; laborCostPerUnit: number; overheadCostPerUnit: number; totalCostPerUnit: number }
+interface LandedCostPerUnitReport { dateFrom: string; dateTo: string; rows: LandedCostPerUnitRow[]; summary: { totalOrders: number; totalProducedQty: number } }
+// Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+interface RejectionRateTrendPoint { month: string; qtyInspected: number; qtyRejected: number; rejectionRatePercent: number }
+interface RejectionRateByStageRow { taskName: string; qtyInspected: number; qtyRejected: number; rejectionRatePercent: number }
+interface RejectionRateTrendReport { dateFrom: string; dateTo: string; trend: RejectionRateTrendPoint[]; byStage: RejectionRateByStageRow[]; summary: { totalInspected: number; totalRejected: number; overallRejectionRatePercent: number } }
+
+// Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure.
+interface SeasonalCreditExposureMonthPoint { month: string; outstandingAmount: number; invoiceCount: number }
+interface SeasonalCreditExposureBySeasonRow { seasonName: string; outstandingAmount: number; invoiceCount: number }
+interface SeasonalCreditExposureReport {
+  byMonth: SeasonalCreditExposureMonthPoint[]; bySeason: SeasonalCreditExposureBySeasonRow[]
+  summary: { totalOutstanding: number; totalInvoices: number; peakMonth: string | null; peakMonthAmount: number }
+}
+// Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment History.
+interface FarmerRepaymentRow { customerId: string; customerName: string; phone: string | null; totalPurchased: number; totalRepaid: number; outstandingBalance: number; repaymentRatePercent: number }
+interface FarmerRepaymentReport { rows: FarmerRepaymentRow[]; summary: { totalFarmers: number; totalOutstanding: number; overallRepaymentRatePercent: number } }
+
 type WarrantyBucketId = 'expired' | 'expiringSoon' | 'active' | 'noWarranty'
 interface SerialWarrantyBucket { bucket: WarrantyBucketId; count: number }
 interface SerialWarrantyRow { serialNumber: string; productName: string; status: string; warrantyExpiryDate: string | null; daysToExpiry: number | null }
@@ -491,12 +548,19 @@ type ReportChart =
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
-  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
+  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
-  | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'jewellery'
-  | 'logistics' | 'attendance' | 'production' | 'serialWarranty' | 'rmaAging' | 'vendorRecoveryLedger' | 'repairTurnaroundByTechnician' | 'variantStock'
+  | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
+  // Phase 67 §9.1 — Jewellery items 2/3/4/5.
+  | 'makingChargeMargin' | 'hallmarkCompliance' | 'metalRateVsSalesVolume' | 'purityAdjustedExchange'
+  | 'logistics' | 'attendance' | 'production' | 'landedCostPerUnit' | 'rejectionRateTrend' | 'serialWarranty' | 'rmaAging' | 'vendorRecoveryLedger' | 'repairTurnaroundByTechnician' | 'variantStock'
+  // Phase 67 §9.1 — Agri Inputs items 2 & 4.
+  | 'seasonalCreditExposure' | 'farmerRepayment'
   | 'testScores' | 'complianceTasks'
-  | 'rentalStatus' | 'rentalRevenue' | 'projects' | 'serviceProjects' | 'jobCards'
+  | 'rentalStatus' | 'rentalRevenue' | 'assetUtilization' | 'projects' | 'serviceProjects' | 'jobCards'
+  | 'serviceResolutionTime' | 'repeatBusinessRate'
+  // Phase 67 §9.1 — Consultant items 2 & 4.
+  | 'consultantUtilization' | 'clientProfitability'
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
   | 'schemeCostVsVolume'
@@ -582,10 +646,25 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 67 §9.1 — Clothing: Size × Style Heatmap Report. Same icon
   // convention as the pre-existing Table Turnover heatmap.
   { id: 'sizeStyleHeatmap', icon: <Table size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
+  // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap Report. A
+  // live current-state stock snapshot ("what's out right now"), deliberately
+  // NOT gated to CLOTHING too — the sales-based heatmap above already covers
+  // both verticals equally, but availability is Footwear's own distinct
+  // signature item per the audit.
+  { id: 'sizeAvailabilityHeatmap', icon: <Table size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'FOOTWEAR' },
+  // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar. Also a
+  // live current-state view, not a sales-history one — reuses the same
+  // requiresDateRange:false convention as the availability heatmap above.
+  { id: 'seasonalReorderCalendar', icon: <Boxes size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'FOOTWEAR' },
   // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report — its
   // 5th and final signature item, closing the vertical out. "Vendor/brand"
   // reuses the pre-existing Product.defaultSupplierId (no new field).
   { id: 'vendorMargin', icon: <TrendingUp size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: ['CLOTHING', 'FOOTWEAR'] },
+  // Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate
+  // Report. Footwear-only, distinct from Clothing item 5's own vendor
+  // margin above — the audit's own combo-chart note ("footwear returns
+  // run higher than apparel; track it by brand").
+  { id: 'brandMarginReturnRate', icon: <TrendingUp size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'FOOTWEAR' },
   { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'RETAIL' },
   // Phase 67 §9.1 — General: Category Mix. What share of revenue each
   // user-defined ProductCategory contributes over a date range — distinct
@@ -611,10 +690,30 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'labThroughput', icon: <FlaskConical size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'lab_orders' },
   { id: 'batchExpiry', icon: <PackageSearch size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'batch_tracking' },
   { id: 'bloodStock', icon: <Droplet size={18} />, category: 'bloodBank', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'blood_bank' },
+  // Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+  { id: 'donationToIssueCycleTime', icon: <Droplet size={18} />, category: 'bloodBank', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'blood_bank' },
   { id: 'jewellery', icon: <Gem size={18} />, category: 'jewellery', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'jewellery_pricing' },
+  // Phase 67 §9.1 — Jewellery items 2/3/4/5.
+  { id: 'makingChargeMargin', icon: <PieChart size={18} />, category: 'jewellery', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'jewellery_pricing' },
+  { id: 'hallmarkCompliance', icon: <ShieldCheck size={18} />, category: 'jewellery', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'jewellery_pricing' },
+  { id: 'metalRateVsSalesVolume', icon: <TrendingUp size={18} />, category: 'jewellery', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'jewellery_pricing' },
+  { id: 'purityAdjustedExchange', icon: <Repeat size={18} />, category: 'jewellery', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'jewellery_pricing' },
   { id: 'logistics', icon: <Boxes size={18} />, category: 'logistics', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'logistics_analytics' },
   { id: 'attendance', icon: <CalendarCheck size={18} />, category: 'admin', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'production', icon: <Factory size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'production_orders' },
+  // Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+  { id: 'landedCostPerUnit', icon: <Factory size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'production_orders' },
+  // Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+  { id: 'rejectionRateTrend', icon: <Factory size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'production_orders' },
+  // Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure. Live
+  // current-state (no date range), gated directly on businessType — no
+  // TemplateModule flag exists for this (same reasoning as pharmacy's
+  // Schedule H register above), since it reads Invoice.dueDate/cropSeasonId
+  // directly rather than an opt-in module.
+  { id: 'seasonalCreditExposure', icon: <CalendarCheck size={18} />, category: 'finance', requiresDateRange: false, permission: 'reports.financial', requiredBusinessType: 'AGRI_INPUTS' },
+  // Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment
+  // History. Same live current-state + businessType gate as above.
+  { id: 'farmerRepayment', icon: <Users size={18} />, category: 'customers', requiresDateRange: false, permission: 'reports.financial', requiredBusinessType: 'AGRI_INPUTS' },
   { id: 'serialWarranty', icon: <ScanLine size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'serial_tracking' },
   // Phase 67 §9.1 — Electronics: RMA Aging Report. Every currently-open
   // vendor RMA, ranked by days with vendor — a full breakdown, distinct
@@ -634,9 +733,21 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
   { id: 'rentalStatus', icon: <CalendarClock size={18} />, category: 'rental', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'rentalRevenue', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
+  // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+  { id: 'assetUtilization', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'hotelOccupancy', icon: <BedDouble size={18} />, category: 'hotel', requiresDateRange: false, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'hotelGuestRegister', icon: <Users size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'projects', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
+  // Phase 67 §9.1 — Service items 2/4.
+  { id: 'serviceResolutionTime', icon: <Clock size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_tickets' },
+  { id: 'repeatBusinessRate', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_tickets' },
+  // Phase 67 §9.1 — Consultant items 2 & 4. Gated on 'projects' (same as
+  // the pre-existing 'projects' tile above) rather than a new module — both
+  // reports derive purely from WorkLog+Project, which Service also has, so
+  // this is a genuine improvement for Service too, not an artificial
+  // restriction to Consultant alone.
+  { id: 'consultantUtilization', icon: <Target size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
+  { id: 'clientProfitability', icon: <DollarSign size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
   { id: 'serviceProjects', icon: <FolderOpen size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   { id: 'jobCards', icon: <Wrench size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
   { id: 'carJobCards', icon: <Car size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
@@ -902,6 +1013,12 @@ export function ReportsScreen() {
         case 'sizeStyleHeatmap':
           res = await window.api.reports.sizeStyleHeatmap({ dateFrom, dateTo })
           break
+        case 'sizeAvailabilityHeatmap':
+          res = await window.api.reports.sizeAvailabilityHeatmap({})
+          break
+        case 'seasonalReorderCalendar':
+          res = await window.api.seasonalCycle.calendar({})
+          break
         case 'basketComposition':
           res = await window.api.reports.basketComposition({ dateFrom, dateTo })
           break
@@ -910,6 +1027,9 @@ export function ReportsScreen() {
           break
         case 'vendorMargin':
           res = await window.api.reports.vendorMargin({ dateFrom, dateTo })
+          break
+        case 'brandMarginReturnRate':
+          res = await window.api.reports.brandMarginReturnRate({ dateFrom, dateTo })
           break
         case 'fastSlowMoverMatrix':
           res = await window.api.reports.fastSlowMoverMatrix({ dateFrom, dateTo })
@@ -931,6 +1051,9 @@ export function ReportsScreen() {
           break
         case 'rentalRevenue':
           res = await window.api.reports.rentalRevenue({ dateFrom, dateTo })
+          break
+        case 'assetUtilization':
+          res = await window.api.reports.assetUtilization({ dateFrom, dateTo })
           break
         case 'hotelOccupancy':
           res = await window.api.hotel.occupancyReport()
@@ -999,11 +1122,38 @@ export function ReportsScreen() {
         case 'bloodStock':
           res = await window.api.reports.bloodStock()
           break
+        case 'donationToIssueCycleTime':
+          res = await window.api.reports.donationToIssueCycleTime()
+          break
         case 'jewellery':
           res = await window.api.reports.jewellery({ dateFrom, dateTo })
           break
+        case 'makingChargeMargin':
+          res = await window.api.reports.makingChargeMargin({ dateFrom, dateTo })
+          break
+        case 'hallmarkCompliance':
+          res = await window.api.reports.hallmarkCompliance()
+          break
+        case 'metalRateVsSalesVolume':
+          res = await window.api.reports.metalRateVsSalesVolume({ dateFrom, dateTo })
+          break
+        case 'purityAdjustedExchange':
+          res = await window.api.reports.purityAdjustedExchange({ dateFrom, dateTo })
+          break
         case 'projects':
           res = await window.api.reports.projects({ dateFrom, dateTo })
+          break
+        case 'serviceResolutionTime':
+          res = await window.api.reports.serviceResolutionTime({ dateFrom, dateTo })
+          break
+        case 'repeatBusinessRate':
+          res = await window.api.reports.repeatBusinessRate({ dateFrom, dateTo })
+          break
+        case 'consultantUtilization':
+          res = await window.api.reports.consultantUtilization({ dateFrom, dateTo })
+          break
+        case 'clientProfitability':
+          res = await window.api.reports.clientProfitability({ dateFrom, dateTo })
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1097,6 +1247,18 @@ export function ReportsScreen() {
           break
         case 'production':
           res = await window.api.reports.production({ dateFrom, dateTo })
+          break
+        case 'landedCostPerUnit':
+          res = await window.api.reports.landedCostPerUnit({ dateFrom, dateTo })
+          break
+        case 'rejectionRateTrend':
+          res = await window.api.reports.rejectionRateTrend({ dateFrom, dateTo })
+          break
+        case 'seasonalCreditExposure':
+          res = await window.api.reports.seasonalCreditExposure()
+          break
+        case 'farmerRepayment':
+          res = await window.api.reports.farmerRepayment()
           break
         case 'serialWarranty':
           res = await window.api.reports.serialWarranty()
@@ -1319,6 +1481,20 @@ export function ReportsScreen() {
           rows: d.cells.map(c => [c.style, c.size, c.unitsSold])
         }
       }
+      case 'sizeAvailabilityHeatmap': {
+        const d = reportData as SizeAvailabilityHeatmapReport
+        return {
+          headers: [t('reports.col.style'), t('reports.col.size'), t('reports.col.stock'), t('reports.col.status')],
+          rows: d.cells.map(c => [c.style, c.size, c.stockQty, c.status])
+        }
+      }
+      case 'seasonalReorderCalendar': {
+        const d = reportData as SeasonalCalendarEntry[]
+        return {
+          headers: [t('reports.col.season'), t('reports.col.status'), t('reports.col.nextStartDate'), t('reports.col.reorderByDate'), t('reports.col.lowStockCount')],
+          rows: d.map(e => [e.name, e.status, e.nextStartDate, e.reorderByDate, e.lowOrOutOfStockCount])
+        }
+      }
       case 'basketComposition': {
         const d = reportData as BasketCompositionReport
         return {
@@ -1338,6 +1514,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.supplier'), t('reports.col.revenue'), t('reports.summary.cogs'), t('reports.col.margin'), t('reports.col.marginPercent')],
           rows: d.rows.map(r => [r.supplierName, r.revenue, r.cogs, r.margin, `${r.marginPercent}%`])
+        }
+      }
+      case 'brandMarginReturnRate': {
+        const d = reportData as BrandMarginReturnRateReport
+        return {
+          headers: [t('reports.col.supplier'), t('reports.col.margin'), t('reports.col.marginPercent'), t('reports.col.unitsSold'), t('reports.col.unitsReturned'), t('reports.col.returnRatePercent')],
+          rows: d.rows.map(r => [r.supplierName, r.margin, `${r.marginPercent}%`, r.unitsSold, r.unitsReturned, `${r.returnRatePercent}%`])
         }
       }
       case 'fastSlowMoverMatrix': {
@@ -1401,6 +1584,13 @@ export function ReportsScreen() {
         return {
           headers: [t('rental.col.item'), t('reports.col.bookingCount'), t('reports.col.value'), t('rental.utilization')],
           rows: d.rows.map(r => [r.productName, r.bookingCount, r.totalRevenue, r.utilizationPercent != null ? `${r.utilizationPercent.toFixed(0)}%` : '—'])
+        }
+      }
+      case 'assetUtilization': {
+        const d = reportData as AssetUtilizationReport
+        return {
+          headers: [t('rental.unitLabel'), t('rental.col.item'), t('common.status'), t('reports.col.rentedDays'), t('reports.col.availableDays'), t('rental.utilization')],
+          rows: d.rows.map(r => [r.unitLabel, r.productName, t(`rental.status.${r.status}`), r.rentedDays, r.availableDays, `${r.utilizationPercent.toFixed(0)}%`])
         }
       }
       // Hotel/Lodge is a languageLock: 'en' business type (see
@@ -1551,6 +1741,13 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.donationNumber, r.bloodGroup, r.componentType, r.expiryDate, r.daysToExpiry, yn(r.isExpiringSoon)])
         }
       }
+      case 'donationToIssueCycleTime': {
+        const d = reportData as DonationToIssueCycleTimeReport
+        return {
+          headers: [t('reports.col.componentType'), t('reports.col.unitCount'), t('reports.col.avgDays'), t('reports.col.minDays'), t('reports.col.maxDays')],
+          rows: d.byComponent.map(r => [r.componentType, r.unitCount, r.avgDays, r.minDays, r.maxDays])
+        }
+      }
       case 'jewellery': {
         const d = reportData as JewelleryReport
         return {
@@ -1558,11 +1755,67 @@ export function ReportsScreen() {
           rows: d.stockByMetal.map(r => [r.metalType, r.purity, r.netWeightGrams, r.ratePerGram, r.valuationAmount])
         }
       }
+      case 'makingChargeMargin': {
+        const d = reportData as MakingChargeMarginReport
+        return {
+          headers: [t('reports.col.invoiceNumber'), t('reports.col.date'), t('reports.col.customer'), t('reports.col.metalValue'), t('reports.col.makingCharge'), t('reports.col.makingChargePercent')],
+          rows: d.rows.map(r => [r.invoiceNumber, formatDate(r.invoiceDate), r.customerName, r.metalValue, r.makingCharge, `${r.makingChargePercent}%`])
+        }
+      }
+      case 'hallmarkCompliance': {
+        const d = reportData as HallmarkComplianceReport
+        return {
+          headers: [t('reports.col.item'), t('jewellery.metalType'), t('jewellery.purity'), t('jewellery.hallmarkNumber'), t('common.status')],
+          rows: d.rows.map(r => [r.productName, r.metalType, r.purity, r.hallmarkNumber ?? '—', r.compliant ? t('reports.col.compliant') : t('reports.col.nonCompliant')])
+        }
+      }
+      case 'metalRateVsSalesVolume': {
+        const d = reportData as MetalRateVsSalesVolumeReport
+        return {
+          headers: [t('reports.col.month'), t('jewellery.ratePerGram'), t('reports.col.salesWeightGrams')],
+          rows: d.rows.map(r => [r.month, r.avgRatePerGram ?? '—', r.salesWeightGrams])
+        }
+      }
+      case 'purityAdjustedExchange': {
+        const d = reportData as PurityAdjustedExchangeReport
+        return {
+          headers: [t('jewellery.metalType'), t('jewellery.purity'), t('reports.col.exchangeCount'), t('reports.col.rawWeightGrams'), t('reports.col.pureEquivalentGrams'), t('reports.col.value')],
+          rows: d.byMetal.map(r => [r.metalType, r.purity, r.count, r.rawWeightGrams, r.pureEquivalentGrams, r.totalValueGiven])
+        }
+      }
       case 'projects': {
         const d = reportData as ProjectReport
         return {
           headers: [t('reports.col.projectTitle'), t('reports.col.client'), t('common.status'), t('reports.col.priority'), `${t('service.estimatedAmount')} (${currencySymbol})`, t('reports.col.startDate'), t('reports.col.dueDate')],
           rows: d.rows.map(r => [r.title, r.clientName, r.status, r.priority, r.estimatedAmount, r.startDate, r.dueDate])
+        }
+      }
+      case 'serviceResolutionTime': {
+        const d = reportData as ServiceResolutionTimeReport
+        return {
+          headers: [t('reports.col.category'), t('reports.col.ticketCount'), t('reports.col.avgHours'), t('reports.col.minHours'), t('reports.col.maxHours')],
+          rows: d.rows.map(r => [r.category, r.ticketCount, r.avgHours, r.minHours, r.maxHours])
+        }
+      }
+      case 'repeatBusinessRate': {
+        const d = reportData as RepeatBusinessRateReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.newCustomers'), t('reports.col.repeatCustomers'), t('reports.col.repeatRatePercent')],
+          rows: d.rows.map(r => [r.month, r.newCustomers, r.repeatCustomers, `${r.repeatRatePercent}%`])
+        }
+      }
+      case 'consultantUtilization': {
+        const d = reportData as ConsultantUtilizationReport
+        return {
+          headers: [t('reports.col.staffMember'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('reports.col.utilizationPercent')],
+          rows: d.rows.map(r => [r.userName, r.billableHours, r.nonBillableHours, `${r.utilizationPercent}%`])
+        }
+      }
+      case 'clientProfitability': {
+        const d = reportData as ClientProfitabilityReport
+        return {
+          headers: [t('reports.col.client'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.hoursSpent'), t('reports.col.revenuePerHour')],
+          rows: d.rows.map(r => [r.customerName, r.revenue, r.hoursSpent, r.revenuePerHour])
         }
       }
       case 'serviceProjects': {
@@ -1780,6 +2033,34 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.orderNumber'), t('reports.col.product'), t('reports.col.plannedQty'), t('reports.col.producedQty'), t('common.status'), t('reports.col.startDate'), t('reports.col.completedDate')],
           rows: d.rows.map(r => [r.orderNumber, r.productName, r.plannedQty, r.producedQty, r.status, r.startDate, r.completedDate])
+        }
+      }
+      case 'landedCostPerUnit': {
+        const d = reportData as LandedCostPerUnitReport
+        return {
+          headers: [t('reports.col.product'), t('reports.col.producedQty'), t('reports.col.materialCostPerUnit'), t('reports.col.laborCostPerUnit'), t('reports.col.overheadCostPerUnit'), t('reports.col.totalCostPerUnit')],
+          rows: d.rows.map(r => [r.productName, r.producedQty, fmt(r.materialCostPerUnit), fmt(r.laborCostPerUnit), fmt(r.overheadCostPerUnit), fmt(r.totalCostPerUnit)])
+        }
+      }
+      case 'rejectionRateTrend': {
+        const d = reportData as RejectionRateTrendReport
+        return {
+          headers: [t('reports.col.stage'), t('reports.col.qtyInspected'), t('reports.col.qtyRejected'), t('reports.col.rejectionRatePercent')],
+          rows: d.byStage.map(r => [r.taskName, r.qtyInspected, r.qtyRejected, `${r.rejectionRatePercent}%`])
+        }
+      }
+      case 'seasonalCreditExposure': {
+        const d = reportData as SeasonalCreditExposureReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.outstandingAmount'), t('reports.col.invoiceCount')],
+          rows: d.byMonth.map(r => [r.month, fmt(r.outstandingAmount), r.invoiceCount])
+        }
+      }
+      case 'farmerRepayment': {
+        const d = reportData as FarmerRepaymentReport
+        return {
+          headers: [t('reports.col.customer'), t('reports.col.totalPurchased'), t('reports.col.totalRepaid'), t('reports.col.outstandingBalance'), t('reports.col.repaymentRatePercent')],
+          rows: d.rows.map(r => [r.customerName, fmt(r.totalPurchased), fmt(r.totalRepaid), fmt(r.outstandingBalance), `${r.repaymentRatePercent}%`])
         }
       }
       case 'serialWarranty': {
@@ -2062,6 +2343,14 @@ export function ReportsScreen() {
           { label: t('reports.col.bookingCount'), value: String(d.summary.totalBookings) },
         ]
       }
+      case 'assetUtilization': {
+        const d = reportData as AssetUtilizationReport
+        return [
+          { label: t('reports.summary.totalUnits'), value: String(d.summary.totalUnits) },
+          { label: t('rental.utilization'), value: `${d.summary.avgUtilizationPercent}%` },
+          { label: t('reports.summary.idleUnitCount'), value: String(d.summary.idleUnitCount) },
+        ]
+      }
       case 'hotelOccupancy': {
         const d = reportData as HotelOccupancyReport
         return [
@@ -2225,6 +2514,13 @@ export function ReportsScreen() {
           { label: t('reports.summary.expiringSoon'), value: String(d.summary.totalExpiringSoon) }
         ]
       }
+      case 'donationToIssueCycleTime': {
+        const d = reportData as DonationToIssueCycleTimeReport
+        return [
+          { label: t('reports.summary.totalIssuedUnits'), value: String(d.summary.totalIssuedUnits) },
+          { label: t('reports.summary.overallAvgDays'), value: String(d.summary.overallAvgDays) }
+        ]
+      }
       case 'jewellery': {
         const d = reportData as JewelleryReport
         return [
@@ -2234,6 +2530,37 @@ export function ReportsScreen() {
           { label: t('reports.summary.totalExchangeValueGiven'), value: fmt(d.summary.totalExchangeValueGiven) }
         ]
       }
+      case 'makingChargeMargin': {
+        const d = reportData as MakingChargeMarginReport
+        return [
+          { label: t('reports.summary.totalMetalValue'), value: fmt(d.summary.totalMetalValue) },
+          { label: t('reports.summary.totalMakingCharge'), value: fmt(d.summary.totalMakingCharge) },
+          { label: t('reports.summary.avgMakingChargePercent'), value: `${d.summary.avgMakingChargePercent}%` }
+        ]
+      }
+      case 'hallmarkCompliance': {
+        const d = reportData as HallmarkComplianceReport
+        return [
+          { label: t('reports.summary.totalItems'), value: String(d.summary.totalItems) },
+          { label: t('reports.summary.compliantCount'), value: String(d.summary.compliantCount) },
+          { label: t('reports.summary.nonCompliantCount'), value: String(d.summary.nonCompliantCount) },
+          { label: t('reports.summary.compliancePercent'), value: `${d.summary.compliancePercent}%` }
+        ]
+      }
+      case 'metalRateVsSalesVolume': {
+        const d = reportData as MetalRateVsSalesVolumeReport
+        return [
+          { label: t('jewellery.metalType'), value: d.metalType && d.purity ? `${d.metalType} ${d.purity}` : '—' }
+        ]
+      }
+      case 'purityAdjustedExchange': {
+        const d = reportData as PurityAdjustedExchangeReport
+        return [
+          { label: t('reports.summary.totalExchangeCount'), value: String(d.summary.totalExchanges) },
+          { label: t('reports.summary.totalPureEquivalentGrams'), value: `${d.summary.totalPureEquivalentGrams}g` },
+          { label: t('reports.summary.totalExchangeValueGiven'), value: fmt(d.summary.totalValueGiven) }
+        ]
+      }
       case 'projects': {
         const d = reportData as ProjectReport
         return [
@@ -2241,6 +2568,37 @@ export function ReportsScreen() {
           { label: t('reports.summary.completed'), value: String(d.summary.completed) },
           { label: t('reports.summary.pendingJobs'), value: String(d.summary.open + d.summary.inProgress) },
           { label: t('service.estimatedAmount'), value: fmt(d.summary.totalEstimatedAmount) }
+        ]
+      }
+      case 'serviceResolutionTime': {
+        const d = reportData as ServiceResolutionTimeReport
+        return [
+          { label: t('reports.summary.totalResolved'), value: String(d.summary.totalResolved) },
+          { label: t('reports.summary.overallAvgHours'), value: `${d.summary.overallAvgHours}h` }
+        ]
+      }
+      case 'repeatBusinessRate': {
+        const d = reportData as RepeatBusinessRateReport
+        const latest = d.rows[d.rows.length - 1]
+        return [
+          { label: t('reports.summary.repeatRatePercent'), value: latest ? `${latest.repeatRatePercent}%` : '—' },
+          { label: t('reports.col.newCustomers'), value: String(latest?.newCustomers ?? 0) },
+          { label: t('reports.col.repeatCustomers'), value: String(latest?.repeatCustomers ?? 0) }
+        ]
+      }
+      case 'consultantUtilization': {
+        const d = reportData as ConsultantUtilizationReport
+        return [
+          { label: t('reports.summary.overallUtilizationPercent'), value: `${d.summary.overallUtilizationPercent}%` },
+          { label: t('reports.col.billableHours'), value: `${d.summary.totalBillableHours}h` },
+          { label: t('reports.col.nonBillableHours'), value: `${d.summary.totalNonBillableHours}h` }
+        ]
+      }
+      case 'clientProfitability': {
+        const d = reportData as ClientProfitabilityReport
+        return [
+          { label: t('common.amount'), value: fmt(d.summary.totalRevenue) },
+          { label: t('reports.col.hoursSpent'), value: `${d.summary.totalHours}h` }
         ]
       }
       case 'serviceProjects': {
@@ -2495,6 +2853,37 @@ export function ReportsScreen() {
           { label: t('reports.summary.completionRate'), value: `${d.summary.completionRate}%` }
         ]
       }
+      case 'landedCostPerUnit': {
+        const d = reportData as LandedCostPerUnitReport
+        return [
+          { label: t('reports.summary.totalOrders'), value: String(d.summary.totalOrders) },
+          { label: t('reports.summary.totalProducedQty'), value: String(d.summary.totalProducedQty) },
+        ]
+      }
+      case 'rejectionRateTrend': {
+        const d = reportData as RejectionRateTrendReport
+        return [
+          { label: t('reports.col.qtyInspected'), value: String(d.summary.totalInspected) },
+          { label: t('reports.col.qtyRejected'), value: String(d.summary.totalRejected) },
+          { label: t('reports.summary.overallRejectionRate'), value: `${d.summary.overallRejectionRatePercent}%` },
+        ]
+      }
+      case 'seasonalCreditExposure': {
+        const d = reportData as SeasonalCreditExposureReport
+        return [
+          { label: t('reports.summary.totalOutstanding'), value: fmt(d.summary.totalOutstanding) },
+          { label: t('reports.col.invoiceCount'), value: String(d.summary.totalInvoices) },
+          { label: t('reports.summary.peakMonth'), value: d.summary.peakMonth ?? '—' },
+        ]
+      }
+      case 'farmerRepayment': {
+        const d = reportData as FarmerRepaymentReport
+        return [
+          { label: t('reports.summary.totalFarmers'), value: String(d.summary.totalFarmers) },
+          { label: t('reports.summary.totalOutstanding'), value: fmt(d.summary.totalOutstanding) },
+          { label: t('reports.summary.overallRepaymentRate'), value: `${d.summary.overallRepaymentRatePercent}%` },
+        ]
+      }
       case 'serialWarranty': {
         const d = reportData as SerialWarrantyReport
         return [
@@ -2681,6 +3070,8 @@ export function ReportsScreen() {
       // types (bar/line/pie/scatter) — same as the pre-existing Table
       // Turnover heatmap, the export table already carries every cell.
       case 'sizeStyleHeatmap': return []
+      case 'sizeAvailabilityHeatmap': return []
+      case 'seasonalReorderCalendar': return []
       case 'basketComposition': {
         const d = reportData as BasketCompositionReport
         if (d.rows.length === 0) return []
@@ -2701,6 +3092,13 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'bar', title: t('reports.summary.marginByVendor'), data: d.rows.slice(0, 10).map(r => ({ label: r.supplierName, value: r.margin })), valueIsCurrency: true }]
       }
+      // Deliberately no chart here — the interactive view's own
+      // margin-bar + return-rate-line combo (two different units, one
+      // currency one percent) doesn't fit any single ReportChart variant
+      // (bar/stackedBar/line/pie), same reasoning tableTurnoverByHour and
+      // fastSlowMoverMatrix already use below. The export table already
+      // carries every row's real numbers.
+      case 'brandMarginReturnRate': return []
       // Deliberately no bar/pie/line chart — Table Turnover by Hour IS
       // itself a chart (a day-of-week x hour-of-day heatmap grid), rendered
       // directly in TableTurnoverHeatmapView below rather than through this
@@ -2720,14 +3118,26 @@ export function ReportsScreen() {
       case 'hsnSummary': return []
       case 'documentSummary': return []
       case 'gstr3bPreview': return []
-      // Deliberately no chart — this report's rows are individual active
-      // bookings (a to-do list: who's overdue, what's still out), same
-      // category as the already chart-free Compliance Task Report.
-      case 'rentalStatus': return []
+      // Phase 67 §9.1 — Rental item 4: Overdue Returns aging bar. The rows
+      // themselves are still an individual-bookings to-do list, chart-free
+      // for that same reason the Compliance Task Report is — but the audit's
+      // own item wording specifically named a "list + aging bar", so the
+      // aging-bucket breakdown itself gets a bar chart now.
+      case 'rentalStatus': {
+        const d = reportData as RentalStatusReport
+        if (d.summary.overdueCount === 0) return []
+        return [{ type: 'bar', orientation: 'vertical', title: t('rental.overdueAging'), data: d.agingBuckets.map(b => ({ label: b.bucket, value: b.count, color: STATUS_COLORS.dangerDeep })) }]
+      }
       case 'rentalRevenue': {
         const d = reportData as RentalRevenueReport
         if (d.rows.length === 0) return []
         return [{ type: 'bar', title: t('reports.summary.totalRevenue'), data: d.rows.slice(0, 10).map(r => ({ label: r.productName, value: r.totalRevenue })), valueIsCurrency: true }]
+      }
+      case 'assetUtilization': {
+        const d = reportData as AssetUtilizationReport
+        if (d.rows.length === 0) return []
+        const worst = d.rows.slice(0, 10)
+        return [{ type: 'bar', orientation: 'vertical', title: t('rental.utilization'), data: worst.map(r => ({ label: `${r.productName} (${r.unitLabel})`, value: r.utilizationPercent, color: r.utilizationPercent < 25 ? STATUS_COLORS.dangerDeep : STATUS_COLORS.brand })) }]
       }
       case 'hotelOccupancy': {
         const d = reportData as HotelOccupancyReport
@@ -2845,6 +3255,11 @@ export function ReportsScreen() {
           legend: [{ name: t('reports.summary.totalAvailableUnits'), color: STATUS_COLORS.brand }, { name: t('reports.summary.expiringSoon'), color: STATUS_COLORS.warning }],
         }]
       }
+      case 'donationToIssueCycleTime': {
+        const d = reportData as DonationToIssueCycleTimeReport
+        if (d.byComponent.length === 0) return []
+        return [{ type: 'bar', orientation: 'vertical', title: t('reports.summary.avgCycleTimeByComponent'), data: d.byComponent.map(c => ({ label: c.componentType.replace('_', ' '), value: c.avgDays })) }]
+      }
       case 'jewellery': {
         const d = reportData as JewelleryReport
         if (d.stockByMetal.length === 0) return []
@@ -2854,10 +3269,67 @@ export function ReportsScreen() {
           valueIsCurrency: true,
         }]
       }
+      case 'makingChargeMargin': {
+        const d = reportData as MakingChargeMarginReport
+        if (d.rows.length === 0) return []
+        return [{
+          type: 'stackedBar', title: t('jewellery.makingChargeMargin'),
+          data: d.rows.slice(0, 10).map(r => ({
+            label: r.invoiceNumber,
+            segments: [{ value: r.metalValue, color: STATUS_COLORS.brand, name: t('reports.col.metalValue') }, { value: r.makingCharge, color: STATUS_COLORS.warning, name: t('reports.col.makingCharge') }],
+          })),
+          legend: [{ name: t('reports.col.metalValue'), color: STATUS_COLORS.brand }, { name: t('reports.col.makingCharge'), color: STATUS_COLORS.warning }],
+        }]
+      }
+      case 'hallmarkCompliance': {
+        const d = reportData as HallmarkComplianceReport
+        if (d.summary.totalItems === 0) return []
+        return [{
+          type: 'pie', title: t('jewellery.hallmarkCompliance'),
+          data: [
+            { label: t('reports.col.compliant'), value: d.summary.compliantCount, color: STATUS_COLORS.success },
+            { label: t('reports.col.nonCompliant'), value: d.summary.nonCompliantCount, color: STATUS_COLORS.dangerDeep },
+          ],
+        }]
+      }
+      // Deliberately no PDF chart for metalRateVsSalesVolume — same
+      // reasoning schemeCostVsVolume already established: this PDF chart
+      // shape has no dual-axis line type, and a single rate-only or
+      // volume-only line loses exactly the correlation the report exists to
+      // show. The interactive Reports-screen view (below) uses a real
+      // dual-yAxisId ComposedChart instead.
+      case 'purityAdjustedExchange': {
+        const d = reportData as PurityAdjustedExchangeReport
+        if (d.byMetal.length === 0) return []
+        return [{
+          type: 'bar', title: t('jewellery.purityAdjustedExchange'),
+          data: d.byMetal.map(r => ({ label: `${r.metalType} ${r.purity}`, value: r.pureEquivalentGrams })),
+        }]
+      }
       case 'projects': {
         const d = reportData as ProjectReport
         if (d.byStatus.length === 0) return []
         return [{ type: 'bar', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count })) }]
+      }
+      case 'serviceResolutionTime': {
+        const d = reportData as ServiceResolutionTimeReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.serviceResolutionTime.label'), data: d.rows.map(r => ({ label: r.category, value: r.avgHours })) }]
+      }
+      case 'repeatBusinessRate': {
+        const d = reportData as RepeatBusinessRateReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'line', title: t('reports.defs.repeatBusinessRate.label'), data: d.rows.map(r => ({ label: r.month, value: r.repeatRatePercent })) }]
+      }
+      case 'consultantUtilization': {
+        const d = reportData as ConsultantUtilizationReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.consultantUtilization.label'), data: d.rows.map(r => ({ label: r.userName, value: r.utilizationPercent })) }]
+      }
+      case 'clientProfitability': {
+        const d = reportData as ClientProfitabilityReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.clientProfitability.label'), data: d.rows.map(r => ({ label: r.customerName, value: r.revenue })) }]
       }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
@@ -2914,6 +3386,42 @@ export function ReportsScreen() {
       case 'production': {
         const d = reportData as ProductionReport
         return [{ type: 'bar', orientation: 'vertical', title: t('reports.section.byOrderStatus'), data: d.byStatus.map(s => ({ label: s.status, value: s.count, color: PRODUCTION_STATUS_COLOR[s.status] ?? STATUS_COLORS.brand })) }]
+      }
+      case 'landedCostPerUnit': {
+        const d = reportData as LandedCostPerUnitReport
+        if (d.rows.length === 0) return []
+        return [{
+          type: 'stackedBar', title: t('reports.summary.landedCostPerUnitByProduct'),
+          data: d.rows.map(r => ({
+            label: r.productName,
+            segments: [
+              { value: r.materialCostPerUnit, color: STATUS_COLORS.brand, name: t('reports.col.materialCostPerUnit') },
+              { value: r.laborCostPerUnit, color: STATUS_COLORS.success, name: t('reports.col.laborCostPerUnit') },
+              { value: r.overheadCostPerUnit, color: STATUS_COLORS.warning, name: t('reports.col.overheadCostPerUnit') },
+            ]
+          })),
+          legend: [
+            { name: t('reports.col.materialCostPerUnit'), color: STATUS_COLORS.brand },
+            { name: t('reports.col.laborCostPerUnit'), color: STATUS_COLORS.success },
+            { name: t('reports.col.overheadCostPerUnit'), color: STATUS_COLORS.warning },
+          ]
+        }]
+      }
+      case 'rejectionRateTrend': {
+        const d = reportData as RejectionRateTrendReport
+        if (d.trend.length === 0) return []
+        return [{ type: 'line', title: t('reports.summary.rejectionRateTrend'), data: d.trend.map(p => ({ label: p.month, value: p.rejectionRatePercent })) }]
+      }
+      case 'seasonalCreditExposure': {
+        const d = reportData as SeasonalCreditExposureReport
+        if (d.summary.totalOutstanding === 0) return []
+        return [{ type: 'line', title: t('reports.summary.seasonalCreditExposureByMonth'), data: d.byMonth.map(p => ({ label: p.month, value: p.outstandingAmount })), valueIsCurrency: true }]
+      }
+      case 'farmerRepayment': {
+        const d = reportData as FarmerRepaymentReport
+        if (d.rows.length === 0) return []
+        const riskiest = d.rows.slice(0, 10)
+        return [{ type: 'bar', orientation: 'vertical', title: t('reports.summary.repaymentRateByFarmer'), data: riskiest.map(r => ({ label: r.customerName, value: r.repaymentRatePercent, color: r.repaymentRatePercent < 50 ? STATUS_COLORS.dangerDeep : STATUS_COLORS.brand })) }]
       }
       case 'serialWarranty': {
         const d = reportData as SerialWarrantyReport
@@ -3311,9 +3819,12 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'categorySellThrough': return <CategorySellThroughView data={data as CategorySellThroughReport} />
     case 'seasonSellThrough': return <SeasonSellThroughView data={data as SeasonSellThroughReport} />
     case 'sizeStyleHeatmap': return <SizeStyleHeatmapView data={data as SizeStyleHeatmapReport} />
+    case 'sizeAvailabilityHeatmap': return <SizeAvailabilityHeatmapView data={data as SizeAvailabilityHeatmapReport} />
+    case 'seasonalReorderCalendar': return <SeasonalReorderCalendarView data={data as SeasonalCalendarEntry[]} />
     case 'basketComposition': return <BasketCompositionView data={data as BasketCompositionReport} />
     case 'categoryMix': return <CategoryMixView data={data as CategoryMixReport} />
     case 'vendorMargin': return <VendorMarginView data={data as VendorMarginReport} />
+    case 'brandMarginReturnRate': return <BrandMarginReturnRateView data={data as BrandMarginReturnRateReport} />
     case 'fastSlowMoverMatrix': return <FastSlowMoverMatrixView data={data as FastSlowMoverMatrixReport} />
     case 'gstr1': return <GSTR1ReportView data={data as GSTR1Report} fmt={fmt} />
     case 'hsnSummary': return <HSNSummaryView data={data as HSNSummaryReport} fmt={fmt} />
@@ -3321,6 +3832,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'gstr3bPreview': return <GSTR3BPreviewView data={data as GSTR3BPreview} fmt={fmt} />
     case 'rentalStatus': return <RentalStatusView data={data as RentalStatusReport} />
     case 'rentalRevenue': return <RentalRevenueView data={data as RentalRevenueReport} fmt={fmt} />
+    case 'assetUtilization': return <AssetUtilizationView data={data as AssetUtilizationReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -3341,8 +3853,17 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'batchExpiry': return <BatchExpiryView data={data as BatchExpiryReport} fmt={fmt} />
     case 'labThroughput': return <LabThroughputView data={data as LabThroughputReport} />
     case 'bloodStock': return <BloodStockView data={data as BloodStockReport} />
+    case 'donationToIssueCycleTime': return <DonationToIssueCycleTimeView data={data as DonationToIssueCycleTimeReport} />
     case 'jewellery': return <JewelleryView data={data as JewelleryReport} fmt={fmt} />
+    case 'makingChargeMargin': return <MakingChargeMarginView data={data as MakingChargeMarginReport} fmt={fmt} />
+    case 'hallmarkCompliance': return <HallmarkComplianceView data={data as HallmarkComplianceReport} />
+    case 'metalRateVsSalesVolume': return <MetalRateVsSalesVolumeView data={data as MetalRateVsSalesVolumeReport} />
+    case 'purityAdjustedExchange': return <PurityAdjustedExchangeView data={data as PurityAdjustedExchangeReport} fmt={fmt} />
     case 'projects': return <ProjectReportView data={data as ProjectReport} fmt={fmt} />
+    case 'serviceResolutionTime': return <ServiceResolutionTimeView data={data as ServiceResolutionTimeReport} />
+    case 'repeatBusinessRate': return <RepeatBusinessRateView data={data as RepeatBusinessRateReport} />
+    case 'consultantUtilization': return <ConsultantUtilizationView data={data as ConsultantUtilizationReport} />
+    case 'clientProfitability': return <ClientProfitabilityView data={data as ClientProfitabilityReport} />
     case 'serviceProjects': return <ServiceProjectReportView data={data as ServiceProjectReport} fmt={fmt} />
     case 'jobCards': return <JobCardReportView data={data as JobCardReport} fmt={fmt} />
     case 'carJobCards': return <CarJobCardReportView data={data as CarJobCardReport} fmt={fmt} />
@@ -3374,6 +3895,10 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'logistics': return <LogisticsView data={data as LogisticsReport} fmt={fmt} />
     case 'attendance': return <AttendanceView data={data as AttendanceReport} />
     case 'production': return <ProductionView data={data as ProductionReport} />
+    case 'landedCostPerUnit': return <LandedCostPerUnitView data={data as LandedCostPerUnitReport} fmt={fmt} />
+    case 'rejectionRateTrend': return <RejectionRateTrendView data={data as RejectionRateTrendReport} />
+    case 'seasonalCreditExposure': return <SeasonalCreditExposureView data={data as SeasonalCreditExposureReport} fmt={fmt} />
+    case 'farmerRepayment': return <FarmerRepaymentView data={data as FarmerRepaymentReport} fmt={fmt} />
     case 'serialWarranty': return <SerialWarrantyView data={data as SerialWarrantyReport} />
     case 'rmaAging': return <RmaAgingView data={data as RmaAgingReport} />
     case 'vendorRecoveryLedger': return <VendorRecoveryLedgerView data={data as VendorRecoveryLedgerReport} />
@@ -4165,6 +4690,234 @@ function SizeStyleHeatmapView({ data }: { data: SizeStyleHeatmapReport }) {
   )
 }
 
+// Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap Report. Same
+// styles×sizes CSS-grid layout as SizeStyleHeatmapView above, but a status
+// colour (OUT/LOW/IN) per cell instead of a sales-intensity gradient — this
+// is a live stock snapshot, not a sold-units history, so there's no "more
+// units = darker" scale to show.
+function SizeAvailabilityHeatmapView({ data }: { data: SizeAvailabilityHeatmapReport }) {
+  const { t } = useTranslation()
+  const cellByStyleSize = new Map(data.cells.map(c => [`${c.style}|${c.size}`, c]))
+  const statusStyle: Record<string, string> = {
+    OUT: 'bg-danger/20 text-danger',
+    LOW: 'bg-warning/20 text-warning',
+    IN: 'bg-success/15 text-success',
+  }
+
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalStyles'), value: String(data.summary.totalStyles) },
+        { label: t('reports.summary.outOfStockCells'), value: String(data.summary.outOfStockCells) },
+        { label: t('reports.summary.lowStockCells'), value: String(data.summary.lowStockCells) },
+        { label: t('reports.summary.styleWithMostGaps'), value: data.summary.styleWithMostGaps ?? '—' },
+      ]} />
+      {data.styles.length > 0 && data.sizes.length > 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.sizeAvailabilityHeatmap')}</h3>
+          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `10rem repeat(${data.sizes.length}, 3rem)` }}>
+            <div />
+            {data.sizes.map(size => (
+              <div key={`h-${size}`} className="text-[10px] text-slate-400 text-center">{size}</div>
+            ))}
+            {data.styles.map(style => (
+              <React.Fragment key={`row-${style}`}>
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={style}>{style}</div>
+                {data.sizes.map(size => {
+                  const cell = cellByStyleSize.get(`${style}|${size}`)
+                  return (
+                    <div
+                      key={`c-${style}-${size}`}
+                      title={cell ? `${style} / ${size} — ${cell.stockQty} ${t('reports.col.stock')} (${cell.status})` : `${style} / ${size}`}
+                      className={cn('h-8 rounded-sm flex items-center justify-center text-[10px] font-semibold', cell ? statusStyle[cell.status] : 'bg-slate-50 dark:bg-slate-800')}
+                    >
+                      {cell ? cell.stockQty : ''}
+                    </div>
+                  )
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-4 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-danger/40" /> {t('reports.status.out')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-warning/40" /> {t('reports.status.low')} (≤{data.lowStockThreshold})</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/40" /> {t('reports.status.in')}</span>
+          </div>
+        </div>
+      ) : (
+        <EmptyState title={t('reports.empty.sizeAvailabilityHeatmap')} subtitle="" />
+      )}
+      <DataTable
+        headers={[t('reports.col.style'), t('reports.col.size'), t('reports.col.stock'), t('reports.col.status')]}
+        rows={data.cells.map(c => [c.style, c.size, c.stockQty, c.status])}
+        emptyText={t('reports.empty.sizeAvailabilityHeatmap')}
+      />
+    </div>
+  )
+}
+
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const EMPTY_CYCLE_FORM = { id: '', name: '', startMonth: 1, startDay: 1, endMonth: 1, endDay: 1, leadTimeDays: 30 }
+
+// Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar. Unlike every
+// other report view in this file (purely presentational off the `data`
+// prop), this one owns real mutations — adding/editing/deleting a shop's
+// own seasonal windows — so it seeds local state from `data` and re-fetches
+// its own calendar/cycle list after every change, the same self-contained
+// pattern VariantManagementModal already uses for its own CRUD.
+function SeasonalReorderCalendarView({ data }: { data: SeasonalCalendarEntry[] }) {
+  const { t } = useTranslation()
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const [entries, setEntries] = useState(data)
+  const [cycles, setCycles] = useState<SeasonalCycleRecord[]>([])
+  const [showManager, setShowManager] = useState(false)
+  const [form, setForm] = useState(EMPTY_CYCLE_FORM)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setEntries(data) }, [data])
+  useEffect(() => { void window.api.seasonalCycle.list().then(r => { if (r.success) setCycles(r.data ?? []) }) }, [])
+
+  async function refresh() {
+    const [calRes, listRes] = await Promise.all([window.api.seasonalCycle.calendar({}), window.api.seasonalCycle.list()])
+    if (calRes.success) setEntries((calRes.data ?? []) as SeasonalCalendarEntry[])
+    if (listRes.success) setCycles(listRes.data ?? [])
+  }
+
+  async function handleSave() {
+    if (!form.name.trim()) { toastError(t('reports.seasonalCalendar.nameRequired')); return }
+    setSaving(true)
+    const payload = { name: form.name, startMonth: form.startMonth, startDay: form.startDay, endMonth: form.endMonth, endDay: form.endDay, leadTimeDays: form.leadTimeDays }
+    const res = form.id ? await window.api.seasonalCycle.update({ ...payload, id: form.id }) : await window.api.seasonalCycle.create(payload)
+    setSaving(false)
+    if (!res.success) { toastError(res.error?.message ?? t('reports.seasonalCalendar.saveFailed')); return }
+    toastSuccess(t('reports.seasonalCalendar.saved'))
+    setForm(EMPTY_CYCLE_FORM)
+    await refresh()
+  }
+
+  async function handleDelete(id: string) {
+    const res = await window.api.seasonalCycle.delete({ id })
+    if (!res.success) { toastError(res.error?.message ?? t('reports.seasonalCalendar.deleteFailed')); return }
+    await refresh()
+  }
+
+  function edit(c: SeasonalCycleRecord) {
+    setForm({ id: c.id, name: c.name, startMonth: c.startMonth, startDay: c.startDay, endMonth: c.endMonth, endDay: c.endDay, leadTimeDays: c.leadTimeDays })
+    setShowManager(true)
+  }
+
+  const statusStyle: Record<string, string> = {
+    REORDER_NOW: 'bg-danger/10 border-danger/30 text-danger',
+    IN_SEASON: 'bg-success/10 border-success/30 text-success',
+    UPCOMING: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500',
+  }
+  const statusLabel: Record<string, string> = {
+    REORDER_NOW: t('reports.seasonalCalendar.status.reorderNow'),
+    IN_SEASON: t('reports.seasonalCalendar.status.inSeason'),
+    UPCOMING: t('reports.seasonalCalendar.status.upcoming'),
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          onClick={() => { setForm(EMPTY_CYCLE_FORM); setShowManager(m => !m) }}
+          className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors"
+        >
+          {showManager ? t('reports.seasonalCalendar.hideManager') : t('reports.seasonalCalendar.manageSeasons')}
+        </button>
+      </div>
+
+      {showManager && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.name')}</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('reports.seasonalCalendar.namePlaceholder')}
+                className="h-9 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.startMonth')}</label>
+              <select value={form.startMonth} onChange={e => setForm(f => ({ ...f, startMonth: Number(e.target.value) }))}
+                className="h-9 w-full px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm">
+                {MONTH_SHORT.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.startDay')}</label>
+              <input type="number" min={1} max={31} value={form.startDay} onChange={e => setForm(f => ({ ...f, startDay: Number(e.target.value) }))}
+                className="h-9 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.endMonth')}</label>
+              <select value={form.endMonth} onChange={e => setForm(f => ({ ...f, endMonth: Number(e.target.value) }))}
+                className="h-9 w-full px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm">
+                {MONTH_SHORT.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.endDay')}</label>
+              <input type="number" min={1} max={31} value={form.endDay} onChange={e => setForm(f => ({ ...f, endDay: Number(e.target.value) }))}
+                className="h-9 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.seasonalCalendar.leadTimeDays')}</label>
+              <input type="number" min={0} value={form.leadTimeDays} onChange={e => setForm(f => ({ ...f, leadTimeDays: Number(e.target.value) }))}
+                className="h-9 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm" />
+            </div>
+            <div>
+              <button onClick={() => void handleSave()} disabled={saving}
+                className="h-9 w-full px-4 rounded-xl bg-brand text-white text-xs font-semibold disabled:opacity-50">
+                {form.id ? t('reports.seasonalCalendar.update') : t('reports.seasonalCalendar.add')}
+              </button>
+            </div>
+          </div>
+
+          {cycles.length > 0 && (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {cycles.map(c => (
+                <div key={c.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-dark dark:text-slate-100">
+                    {c.name} — {MONTH_SHORT[c.startMonth - 1]} {c.startDay} → {MONTH_SHORT[c.endMonth - 1]} {c.endDay}
+                    <span className="text-slate-400 ms-2">({t('reports.seasonalCalendar.leadTimeDays')}: {c.leadTimeDays})</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <button onClick={() => edit(c)} className="text-xs text-brand hover:underline">{t('reports.seasonalCalendar.editAction')}</button>
+                    <button onClick={() => void handleDelete(c.id)} className="text-xs text-danger hover:underline">{t('reports.seasonalCalendar.deleteAction')}</button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {entries.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {entries.map(e => (
+            <div key={e.id} className={cn('rounded-xl border p-4', statusStyle[e.status])}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-dark dark:text-slate-100">{e.name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{MONTH_SHORT[e.startMonth - 1]} {e.startDay} → {MONTH_SHORT[e.endMonth - 1]} {e.endDay}</p>
+                </div>
+                <span className={cn('text-[10px] font-bold uppercase px-2 py-1 rounded-full', statusStyle[e.status])}>{statusLabel[e.status]}</span>
+              </div>
+              <div className="mt-3 text-xs text-slate-500 space-y-1">
+                {e.status !== 'IN_SEASON' && <p>{t('reports.seasonalCalendar.daysUntilStart', { count: e.daysUntilStart })}</p>}
+                <p>{t('reports.seasonalCalendar.reorderBy')}: {formatDate(e.reorderByDate)}</p>
+                <p>{t('reports.seasonalCalendar.taggedProducts')}: {e.products.length}, {t('reports.seasonalCalendar.lowStock')}: {e.lowOrOutOfStockCount}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title={t('reports.seasonalCalendar.empty')} subtitle={t('reports.seasonalCalendar.emptySubtitle')} />
+      )}
+    </div>
+  )
+}
+
 function BasketCompositionView({ data }: { data: BasketCompositionReport }) {
   const { t } = useTranslation()
   const chartRows = data.rows.slice(0, 10).map(r => ({ label: `${r.productAName} + ${r.productBName}`, value: r.basketCount }))
@@ -4247,6 +5000,52 @@ function VendorMarginView({ data }: { data: VendorMarginReport }) {
         headers={[t('reports.col.supplier'), t('reports.col.revenue'), t('reports.summary.cogs'), t('reports.col.margin'), t('reports.col.marginPercent')]}
         rows={data.rows.map(r => [r.supplierName, formatCurrency(r.revenue), formatCurrency(r.cogs), formatCurrency(r.margin), `${r.marginPercent}%`])}
         emptyText={t('reports.empty.vendorMargin')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate Report.
+// Combo chart per the audit's own chart-form note — margin (currency) as
+// bars on the left axis, return rate (%) as an overlaid line on the right
+// axis, the same dual-yAxisId ComposedChart mechanism the Distributor
+// scheme-cost-vs-volume chart already established for two differently-
+// scaled series on one chart, generalized here from line+line to bar+line.
+function BrandMarginReturnRateView({ data }: { data: BrandMarginReturnRateReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10).map(r => ({ label: r.supplierName, margin: r.margin, returnRate: r.returnRatePercent, isLoss: r.margin < 0 }))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: formatCurrency(s.totalRevenue) },
+        { label: t('reports.summary.totalMargin'), value: formatCurrency(s.totalMargin) },
+        { label: t('reports.col.returnRatePercent'), value: `${s.overallReturnRatePercent}%` },
+        { label: t('reports.summary.vendorCount'), value: String(s.vendorCount) },
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.brandMarginReturnRate')}</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={chartRows} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="margin" tick={CHART_TICK} tickLine={false} axisLine={false} tickFormatter={(v: number) => formatCurrency(v)} />
+              <YAxis yAxisId="returnRate" orientation="right" tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => name === t('reports.col.margin') ? formatCurrency(v) : `${v}%`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar yAxisId="margin" dataKey="margin" name={t('reports.col.margin')} radius={[4, 4, 0, 0]}>
+                {chartRows.map((r, i) => <Cell key={i} fill={r.isLoss ? STATUS_COLORS.dangerDeep : STATUS_COLORS.success} />)}
+              </Bar>
+              <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" name={t('reports.col.returnRatePercent')} stroke={STATUS_COLORS.warning} strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.supplier'), t('reports.col.margin'), t('reports.col.marginPercent'), t('reports.col.unitsSold'), t('reports.col.unitsReturned'), t('reports.col.returnRatePercent')]}
+        rows={data.rows.map(r => [r.supplierName, formatCurrency(r.margin), `${r.marginPercent}%`, r.unitsSold, r.unitsReturned, `${r.returnRatePercent}%`])}
+        emptyText={t('reports.empty.brandMarginReturnRate')}
       />
     </div>
   )
@@ -4519,6 +5318,23 @@ function RentalStatusView({ data }: { data: RentalStatusReport }) {
         { label: t('rental.summary.totalCheckedOut'), value: String(data.summary.totalCheckedOut) },
         { label: t('rental.status.OVERDUE'), value: String(data.summary.overdueCount) },
       ]} />
+      {/* Phase 67 §9.1 — Rental item 4: the audit's own item names a "list +
+          aging bar" — the list already existed, this bar is the missing
+          half. */}
+      {data.summary.overdueCount > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('rental.overdueAging')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.agingBuckets} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="bucket" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="count" fill={STATUS_COLORS.dangerDeep} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       {data.rows.length > 0 ? (
         <DataTable
           headers={[t('rental.col.booking'), t('rental.col.customer'), t('rental.col.item'), t('rental.unitLabel'), t('rental.startDateTime'), t('rental.endDateTime'), t('common.status'), t('rental.daysOverdue')]}
@@ -4547,6 +5363,46 @@ function RentalRevenueView({ data, fmt }: { data: RentalRevenueReport; fmt: (n: 
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">{t('rental.empty.revenue')}</div>
       )}
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per individual
+// unit — deliberately distinct from RentalRevenueView's own per-PRODUCT
+// utilizationPercent above, which averages across every unit of a product
+// and can't surface one specific idle asset hiding behind a busy sibling.
+function AssetUtilizationView({ data }: { data: AssetUtilizationReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalUnits'), value: String(data.summary.totalUnits) },
+        { label: t('rental.utilization'), value: `${data.summary.avgUtilizationPercent}%` },
+        { label: t('reports.summary.idleUnitCount'), value: String(data.summary.idleUnitCount) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('rental.utilization')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 36)}>
+            <BarChart data={data.rows.slice(0, 10).map(r => ({ ...r, label: `${r.productName} (${r.unitLabel})` }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Bar dataKey="utilizationPercent" radius={[0, 4, 4, 0]}>
+                {data.rows.slice(0, 10).map((r, idx) => (
+                  <Cell key={idx} fill={r.utilizationPercent < 25 ? STATUS_COLORS.dangerDeep : STATUS_COLORS.brand} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('rental.unitLabel'), t('rental.col.item'), t('common.status'), t('reports.col.rentedDays'), t('reports.col.availableDays'), t('rental.utilization')]}
+        rows={data.rows.map(r => [r.unitLabel, r.productName, t(`rental.status.${r.status}`), r.rentedDays, r.availableDays, `${r.utilizationPercent.toFixed(0)}%`])}
+        emptyText={t('rental.empty.utilization')}
+      />
     </div>
   )
 }
@@ -5358,6 +6214,38 @@ function BloodStockView({ data }: { data: BloodStockReport }) {
   )
 }
 
+// Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+function DonationToIssueCycleTimeView({ data }: { data: DonationToIssueCycleTimeReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalIssuedUnits'), value: String(data.summary.totalIssuedUnits) },
+        { label: t('reports.summary.overallAvgDays'), value: String(data.summary.overallAvgDays) },
+      ]} />
+      {data.byComponent.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.avgCycleTimeByComponent')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(180, data.byComponent.length * 40)}>
+            <BarChart data={data.byComponent.map(c => ({ ...c, label: c.componentType.replace('_', ' ') }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}d`} />
+              <Bar dataKey="avgDays" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.componentType'), t('reports.col.unitCount'), t('reports.col.avgDays'), t('reports.col.minDays'), t('reports.col.maxDays')]}
+        rows={data.byComponent.map(r => [r.componentType.replace('_', ' '), r.unitCount, `${r.avgDays}d`, `${r.minDays}d`, `${r.maxDays}d`])}
+        emptyText={t('reports.empty.donationToIssueCycleTime')}
+      />
+    </div>
+  )
+}
+
 // Fresh-audit fix (2026-07-12) — Jewellery had zero reports; stock valuation
 // here is netWeight × today's rate, distinct from (and more meaningful than)
 // the generic Inventory Report's quantity × costPrice for a metal item.
@@ -5401,6 +6289,150 @@ function JewelleryView({ data, fmt }: { data: JewelleryReport; fmt: (n: number) 
   )
 }
 
+// Phase 67 §9.1 — Jewellery item 2: Making-Charge vs. Metal-Value Margin,
+// per sale — deliberately distinct from JewelleryView's own single blended
+// totalMakingChargeRevenue number above.
+function MakingChargeMarginView({ data, fmt }: { data: MakingChargeMarginReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalMetalValue'), value: fmt(data.summary.totalMetalValue) },
+        { label: t('reports.summary.totalMakingCharge'), value: fmt(data.summary.totalMakingCharge) },
+        { label: t('reports.summary.avgMakingChargePercent'), value: `${data.summary.avgMakingChargePercent}%` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('jewellery.makingChargeMargin')}</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data.rows.slice(0, 10).map(r => ({ label: r.invoiceNumber, metalValue: r.metalValue, makingCharge: r.makingCharge }))} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} tickFormatter={fmt} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="metalValue" name={t('reports.col.metalValue')} stackId="margin" fill={STATUS_COLORS.brand} />
+              <Bar dataKey="makingCharge" name={t('reports.col.makingCharge')} stackId="margin" fill={STATUS_COLORS.warning} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.invoiceNumber'), t('reports.col.date'), t('reports.col.customer'), t('reports.col.metalValue'), t('reports.col.makingCharge'), t('reports.col.makingChargePercent')]}
+        rows={data.rows.map(r => [r.invoiceNumber, formatDate(r.invoiceDate), r.customerName, fmt(r.metalValue), fmt(r.makingCharge), `${r.makingChargePercent}%`])}
+        emptyText={t('reports.empty.makingChargeMargin')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Jewellery item 3: Hallmarking/HUID compliance register — a
+// real audit worklist, non-compliant items sorted first by report.service.ts.
+function HallmarkComplianceView({ data }: { data: HallmarkComplianceReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalItems'), value: String(s.totalItems) },
+        { label: t('reports.summary.compliantCount'), value: String(s.compliantCount) },
+        { label: t('reports.summary.nonCompliantCount'), value: String(s.nonCompliantCount) },
+        { label: t('reports.summary.compliancePercent'), value: `${s.compliancePercent}%` },
+      ]} />
+      {s.totalItems > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <ResponsiveContainer width="100%" height={220}>
+            <RCPieChart>
+              <Pie data={[{ name: t('reports.col.compliant'), value: s.compliantCount }, { name: t('reports.col.nonCompliant'), value: s.nonCompliantCount }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(p: { name?: string; value?: number }) => `${p.name} (${p.value})`}>
+                <Cell fill={STATUS_COLORS.success} />
+                <Cell fill={STATUS_COLORS.dangerDeep} />
+              </Pie>
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </RCPieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.item'), t('jewellery.metalType'), t('jewellery.purity'), t('jewellery.hallmarkNumber'), t('common.status')]}
+        rows={data.rows.map(r => [r.productName, r.metalType, r.purity, r.hallmarkNumber ?? '—', r.compliant ? t('reports.col.compliant') : t('reports.col.nonCompliant')])}
+        emptyText={t('reports.empty.hallmarkCompliance')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Jewellery item 4: Metal Rate vs. Sales Volume, dual-axis
+// line chart — auto-selects the dominant metalType+purity combination, see
+// report.service.ts's own comment for why there's no picker here.
+function MetalRateVsSalesVolumeView({ data }: { data: MetalRateVsSalesVolumeReport }) {
+  const { t } = useTranslation()
+  if (!data.metalType || data.rows.length === 0) {
+    return <div className="text-center py-12 text-slate-400 text-sm">{t('reports.empty.metalRateVsSalesVolume')}</div>
+  }
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[{ label: t('jewellery.metalType'), value: `${data.metalType} ${data.purity}` }]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('jewellery.metalRateVsSalesVolume')}</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <RCLineChart data={data.rows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="rate" tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="volume" orientation="right" tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line yAxisId="rate" type="monotone" dataKey="avgRatePerGram" name={t('jewellery.ratePerGram')} stroke={STATUS_COLORS.warning} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line yAxisId="volume" type="monotone" dataKey="salesWeightGrams" name={t('reports.col.salesWeightGrams')} stroke={STATUS_COLORS.brand} strokeWidth={2} dot={{ r: 3 }} />
+          </RCLineChart>
+        </ResponsiveContainer>
+      </div>
+      <DataTable
+        headers={[t('reports.col.month'), t('jewellery.ratePerGram'), t('reports.col.salesWeightGrams')]}
+        rows={data.rows.map(r => [r.month, r.avgRatePerGram != null ? r.avgRatePerGram.toFixed(2) : '—', r.salesWeightGrams.toFixed(3)])}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Jewellery item 5: Purity-adjusted old-gold exchange
+// analytics, "beyond a basic exchange log" — normalizes every exchange to
+// its pure-metal-equivalent weight before aggregating.
+function PurityAdjustedExchangeView({ data, fmt }: { data: PurityAdjustedExchangeReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalExchangeCount'), value: String(s.totalExchanges) },
+        { label: t('reports.summary.totalPureEquivalentGrams'), value: `${s.totalPureEquivalentGrams}g` },
+        { label: t('reports.summary.totalExchangeValueGiven'), value: fmt(s.totalValueGiven) },
+        ...(s.unparsablePurityCount > 0 ? [{ label: t('reports.summary.unparsablePurityCount'), value: String(s.unparsablePurityCount) }] : []),
+      ]} />
+      {data.monthlyTrend.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.pureEquivalentTrend')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <RCLineChart data={data.monthlyTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}g`} />
+              <Line type="monotone" dataKey="pureEquivalentGrams" name={t('reports.col.pureEquivalentGrams')} stroke={STATUS_COLORS.brand} strokeWidth={2} dot={{ r: 3 }} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('jewellery.metalType'), t('jewellery.purity'), t('reports.col.exchangeCount'), t('reports.col.rawWeightGrams'), t('reports.col.pureEquivalentGrams'), t('reports.col.value')]}
+        rows={data.byMetal.map(r => [r.metalType, r.purity, r.count, r.rawWeightGrams.toFixed(3), r.pureEquivalentGrams.toFixed(3), fmt(r.totalValueGiven)])}
+        emptyText={t('reports.empty.purityAdjustedExchange')}
+      />
+    </div>
+  )
+}
+
 // Fresh-audit fix (2026-07-12) — SERVICE/CONSULTANT previously had zero
 // vertical-specific reports at all.
 function ProjectReportView({ data, fmt }: { data: ProjectReport; fmt: (n: number) => string }) {
@@ -5436,6 +6468,151 @@ function ProjectReportView({ data, fmt }: { data: ProjectReport; fmt: (n: number
           emptyText={t('reports.empty.projects')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Service item 2: Resolution Time by Category — "a real
+// service-quality metric" per the audit. Only genuinely resolved tickets
+// count; an open ticket has no resolution time yet, not a zero one.
+function ServiceResolutionTimeView({ data }: { data: ServiceResolutionTimeReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalResolved'), value: String(data.summary.totalResolved) },
+        { label: t('reports.summary.overallAvgHours'), value: `${data.summary.overallAvgHours}h` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.serviceResolutionTime.label')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data.rows} barCategoryGap="25%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="category" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} unit="h" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}h`} />
+              <Bar dataKey="avgHours" fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.category'), t('reports.col.ticketCount'), t('reports.col.avgHours'), t('reports.col.minHours'), t('reports.col.maxHours')]}
+        rows={data.rows.map(r => [r.category, r.ticketCount, `${r.avgHours}h`, `${r.minHours}h`, `${r.maxHours}h`])}
+        emptyText={t('reports.empty.serviceResolutionTime')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Service item 4: Repeat-Business Rate — "the retention
+// indicator this generic scaffold has never had" per the audit.
+function RepeatBusinessRateView({ data }: { data: RepeatBusinessRateReport }) {
+  const { t } = useTranslation()
+  const latest = data.rows[data.rows.length - 1]
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.repeatRatePercent'), value: latest ? `${latest.repeatRatePercent}%` : '—' },
+        { label: t('reports.col.newCustomers'), value: String(latest?.newCustomers ?? 0) },
+        { label: t('reports.col.repeatCustomers'), value: String(latest?.repeatCustomers ?? 0) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.repeatBusinessRate.label')}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <RCLineChart data={data.rows}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Line type="monotone" dataKey="repeatRatePercent" name={t('reports.summary.repeatRatePercent')} stroke={STATUS_COLORS.brand} strokeWidth={2} dot={{ r: 3 }} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.month'), t('reports.col.newCustomers'), t('reports.col.repeatCustomers'), t('reports.col.repeatRatePercent')]}
+        rows={data.rows.map(r => [r.month, r.newCustomers, r.repeatCustomers, `${r.repeatRatePercent}%`])}
+        emptyText={t('reports.empty.repeatBusinessRate')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Consultant item 2: Utilization Rate — "the #1 consulting
+// metric, currently invisible." Grouped (not stacked) bar per staff member
+// so billable and non-billable hours are directly comparable side by side,
+// sorted least-utilized first (the actionable list).
+function ConsultantUtilizationView({ data }: { data: ConsultantUtilizationReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.overallUtilizationPercent'), value: `${data.summary.overallUtilizationPercent}%` },
+        { label: t('reports.col.billableHours'), value: `${data.summary.totalBillableHours}h` },
+        { label: t('reports.col.nonBillableHours'), value: `${data.summary.totalNonBillableHours}h` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.consultantUtilization.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="h" />
+              <YAxis type="category" dataKey="userName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}h`} />
+              <Bar dataKey="billableHours" name={t('reports.col.billableHours')} fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="nonBillableHours" name={t('reports.col.nonBillableHours')} fill={STATUS_COLORS.warning} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.staffMember'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('reports.col.utilizationPercent')]}
+        rows={data.rows.map(r => [r.userName, `${r.billableHours}h`, `${r.nonBillableHours}h`, `${r.utilizationPercent}%`])}
+        emptyText={t('reports.empty.consultantUtilization')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Consultant item 4: Client Profitability — "which clients
+// are actually worth keeping." Dual-axis bar (revenue and hours differ in
+// scale) rather than a single mixed-scale series, sorted least-profitable
+// (lowest revenue-per-hour) first.
+function ClientProfitabilityView({ data }: { data: ClientProfitabilityReport }) {
+  const { t } = useTranslation()
+  const currencySymbol = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
+  const fmt = (n: number) => formatCurrency(n)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('common.amount'), value: fmt(data.summary.totalRevenue) },
+        { label: t('reports.col.hoursSpent'), value: `${data.summary.totalHours}h` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.clientProfitability.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="customerName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="revenue" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="hours" orientation="right" tick={CHART_TICK} tickLine={false} axisLine={false} unit="h" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => (name === t('reports.col.hoursSpent') ? `${v}h` : fmt(v))} />
+              <Bar yAxisId="revenue" dataKey="revenue" name={`${t('common.amount')} (${currencySymbol})`} fill={STATUS_COLORS.brand} radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="hours" dataKey="hoursSpent" name={t('reports.col.hoursSpent')} fill={STATUS_COLORS.warning} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.client'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.hoursSpent'), t('reports.col.revenuePerHour')]}
+        rows={data.rows.map(r => [r.customerName, fmt(r.revenue), `${r.hoursSpent}h`, fmt(r.revenuePerHour)])}
+        emptyText={t('reports.empty.clientProfitability')}
+      />
     </div>
   )
 }
@@ -6628,6 +7805,132 @@ function ProductionView({ data }: { data: ProductionReport }) {
           emptyText={t('reports.empty.productionOrders')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+function LandedCostPerUnitView({ data, fmt }: { data: LandedCostPerUnitReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOrders'), value: String(data.summary.totalOrders) },
+        { label: t('reports.summary.totalProducedQty'), value: String(data.summary.totalProducedQty) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.landedCostPerUnitByProduct')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, data.rows.length * 40)}>
+            <BarChart data={data.rows.map(r => ({ label: r.productName, material: r.materialCostPerUnit, labor: r.laborCostPerUnit, overhead: r.overheadCostPerUnit }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => t(`reports.col.${value}CostPerUnit`)} />
+              <Bar dataKey="material" stackId="landedCost" fill={STATUS_COLORS.brand} />
+              <Bar dataKey="labor" stackId="landedCost" fill={STATUS_COLORS.success} />
+              <Bar dataKey="overhead" stackId="landedCost" fill={STATUS_COLORS.warning} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.product'), t('reports.col.producedQty'), t('reports.col.materialCostPerUnit'), t('reports.col.laborCostPerUnit'), t('reports.col.overheadCostPerUnit'), t('reports.col.totalCostPerUnit')]}
+        rows={data.rows.map(r => [r.productName, r.producedQty, fmt(r.materialCostPerUnit), fmt(r.laborCostPerUnit), fmt(r.overheadCostPerUnit), fmt(r.totalCostPerUnit)])}
+        emptyText={t('reports.empty.landedCostPerUnit')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+function RejectionRateTrendView({ data }: { data: RejectionRateTrendReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.qtyInspected'), value: String(data.summary.totalInspected) },
+        { label: t('reports.col.qtyRejected'), value: String(data.summary.totalRejected) },
+        { label: t('reports.summary.overallRejectionRate'), value: `${data.summary.overallRejectionRatePercent}%` },
+      ]} />
+      {data.trend.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.rejectionRateTrend')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <RCLineChart data={data.trend} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Line type="monotone" dataKey="rejectionRatePercent" name={t('reports.col.rejectionRatePercent')} stroke={STATUS_COLORS.danger} strokeWidth={2} dot={{ r: 3 }} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.rejectionRateByStage')}</h3>
+        <DataTable
+          headers={[t('reports.col.stage'), t('reports.col.qtyInspected'), t('reports.col.qtyRejected'), t('reports.col.rejectionRatePercent')]}
+          rows={data.byStage.map(r => [r.taskName, r.qtyInspected, r.qtyRejected, `${r.rejectionRatePercent}%`])}
+          emptyText={t('reports.empty.rejectionRateTrend')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure.
+function SeasonalCreditExposureView({ data, fmt }: { data: SeasonalCreditExposureReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOutstanding'), value: fmt(data.summary.totalOutstanding) },
+        { label: t('reports.col.invoiceCount'), value: String(data.summary.totalInvoices) },
+        { label: t('reports.summary.peakMonth'), value: data.summary.peakMonth ?? '—' },
+      ]} />
+      {data.summary.totalOutstanding > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.seasonalCreditExposureByMonth')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <RCLineChart data={data.byMonth} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Line type="monotone" dataKey="outstandingAmount" name={t('reports.summary.totalOutstanding')} stroke={STATUS_COLORS.warning} strokeWidth={2} dot={{ r: 3 }} />
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.bySeason')}</h3>
+        <DataTable
+          headers={[t('reports.col.season'), t('reports.col.outstandingAmount'), t('reports.col.invoiceCount')]}
+          rows={data.bySeason.map(r => [r.seasonName, fmt(r.outstandingAmount), r.invoiceCount])}
+          emptyText={t('reports.empty.seasonalCreditExposure')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment History.
+function FarmerRepaymentView({ data, fmt }: { data: FarmerRepaymentReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalFarmers'), value: String(data.summary.totalFarmers) },
+        { label: t('reports.summary.totalOutstanding'), value: fmt(data.summary.totalOutstanding) },
+        { label: t('reports.summary.overallRepaymentRate'), value: `${data.summary.overallRepaymentRatePercent}%` },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.customer'), t('reports.col.totalPurchased'), t('reports.col.totalRepaid'), t('reports.col.outstandingBalance'), t('reports.col.repaymentRatePercent')]}
+        rows={data.rows.map(r => [r.customerName, fmt(r.totalPurchased), fmt(r.totalRepaid), fmt(r.outstandingBalance), `${r.repaymentRatePercent}%`])}
+        emptyText={t('reports.empty.farmerRepayment')}
+      />
     </div>
   )
 }

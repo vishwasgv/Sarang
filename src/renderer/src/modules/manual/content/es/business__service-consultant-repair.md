@@ -19,6 +19,10 @@ Abrir la pantalla de detalle de un proyecto le da dos cosas más:
 - **Tareas** (Tareas) — una lista de verificación simple que va marcando; la lista de proyectos muestra una barra de progreso "hecho / total" calculada a partir de esto.
 - **Work Logs** (Registros de Trabajo) — horas registradas contra el proyecto, cada una marcada como facturable o no facturable, con un total corriente mostrado tanto en la vista de lista como en la de detalle.
 
+¿Tiene una **Cotización** aceptada que utiliza como carta de compromiso? Selecciónela en el menú desplegable **Convertir Desde Cotización** al crear un proyecto, y Sarang enlaza ambos — una cotización solo puede convertirse en un proyecto, por lo que es un registro real de cuántas de sus cartas de compromiso realmente se convirtieron en trabajo facturado.
+
+**Consultor** también ve una **tasa de éxito de propuestas** en curso junto al conteo de proyectos en el encabezado — ganadas vs. perdidas vs. cotizaciones aún pendientes, para que siempre sepa de un vistazo cómo está convirtiendo su cartera de cartas de compromiso, no solo cuántos proyectos están abiertos actualmente.
+
 ## Órdenes de Trabajo (Reparación, Servicio a través del modelo genérico)
 
 Una orden de trabajo está construida para un artículo físico que un cliente entrega: un título, descripción del artículo, prioridad, costo estimado y fechas de recepción/esperada/entrega. Tiene su propio ciclo de vida de siete etapas — **Received (Recibido) → Diagnosing (Diagnosticando) → In Repair (En Reparación) → (opcionalmente Pending Parts, Esperando Repuestos) → Ready (Listo) → Delivered (Entregado)**, o **Cancelado** (Cancelado) en cualquier punto antes de la entrega. La vista de detalle muestra esto como un rastreador visual de etapas y siempre destaca el único botón de siguiente acción (p. ej. "Marcar En Reparación"), además de una acción dedicada de "Esperando Repuestos" mientras una orden está en reparación. Entregar una orden de trabajo es donde ingresa el costo final real, separado de la estimación original — **Generar Factura** convierte ese costo final en una factura real una vez que la orden ha sido entregada.
@@ -28,6 +32,22 @@ Agregue **repuestos usados** reales a una orden de trabajo desde su vista de det
 ## Tickets de Servicio (Servicio, Reparación)
 
 Un ticket es una solicitud de soporte más liviana: título, descripción, prioridad, una etiqueta de categoría opcional, y un cliente/responsable opcionales. Pasa por **Open (Abierto) → In Progress (En Proceso) → Resolved (Resuelto) → Closed (Cerrado)**, y resolver uno le permite adjuntar una nota de resolución. Los tickets urgentes y no resueltos se destacan con un indicador de bandera roja en la lista para que no queden enterrados. Ingrese un monto y use **Generar Factura** para facturar un ticket resuelto.
+
+Cada ticket también recibe un **temporizador SLA** en el momento de su creación, ajustado a su prioridad (Urgente 4 horas, Alta 24 horas, Media 3 días, Baja 7 días). Un ticket que sigue abierto después de su propio SLA se marca directamente como **SLA Incumplido** en la lista y en el contador del encabezado — una alerta real de plazo, no solo una etiqueta de prioridad.
+
+¿Una **Cotización** aceptada se convirtió en trabajo real? Selecciónela en el menú desplegable **Convertir Desde Cotización** al crear un ticket, y Sarang enlaza ambos — una cotización solo puede convertirse en un ticket, por lo que es un registro real de cuántos de sus presupuestos realmente se convirtieron en trabajos facturables.
+
+## Contratos de Servicio (Servicio)
+
+Abra **Contratos de Servicio** en la barra lateral para gestionar un acuerdo recurrente tipo mantenimiento para un cliente habitual — un valor fijo, facturado según un calendario (Mensual/Trimestral/Semestral/Anual) en lugar de negociarse de nuevo cada vez. Cree un contrato con su alcance de trabajo, frecuencia, fecha de inicio y valor, luego haga clic en **Generar Factura** cada vez que venza un período de facturación — Sarang rastrea qué período se facturó por última vez para que el mismo período nunca se facture dos veces, la misma protección que ya tiene en otra parte de Sarang un contrato ordinario o de mantenimiento.
+
+## Retenedores (Consultor)
+
+Abra **Retenedores** en la barra lateral para gestionar un acuerdo mensual recurrente para un cliente habitual — tarifa fija, un bloque de horas, o un alcance basado en entregables, facturado según el calendario que usted establezca. Para un retenedor de bloque de horas, registre el tiempo contra él desde **Seguimiento de Tiempo** y la propia tarjeta del retenedor muestra una barra de progreso en vivo de **horas usadas / horas asignadas**, que se pone roja una vez agotada la asignación del mes — el consumo del retenedor de un vistazo, sin necesidad de un informe separado.
+
+## Informes
+
+Cuatro informes son específicos de este conjunto de rubros. **Tiempo de Resolución por Categoría** desglosa cuánto tiempo tardan realmente los tickets en cerrarse, promedio/más rápido/más lento por categoría — una métrica real de calidad de servicio, no solo un conteo de estados. **Tasa de Negocio Repetido** muestra la tendencia, mes a mes, de qué porcentaje de sus clientes que abren tickets son recurrentes frente a completamente nuevos — la señal de retención que este esquema genérico nunca tuvo antes. **Tasa de Utilización** (Consultor) es la métrica de consultoría #1: horas facturables vs. no facturables por miembro del personal, ordenadas para mostrar primero a quien tiene menor utilización. **Rentabilidad del Cliente** (Consultor) muestra los ingresos frente a las horas dedicadas por cliente, ordenados de peor a mejor, para que pueda ver de un vistazo qué clientes realmente vale la pena mantener.
 
 ## Facturación de Citas y Proyectos
 

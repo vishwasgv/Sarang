@@ -63,6 +63,12 @@ export const CreateInvoiceSchema = z.object({
   // the schema and report.service.ts's aging already reads it — this was
   // the only missing piece (nothing ever wrote it).
   dueDate: z.string().optional(),
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
+  // When set, billing.service.ts computes the REAL dueDate server-side from
+  // this season's own next harvest occurrence, overriding a manually-typed
+  // dueDate above (the two are mutually exclusive in practice — the UI only
+  // ever sends one — but the server is the one place that actually decides).
+  cropSeasonId: z.string().optional(),
   // Phase 58 §2 (2026-07-21) — Restaurant dine-in table binding. The first
   // ID is the primary table (stored on Invoice.tableId); every ID in the
   // array (including the primary) gets its RestaurantTable.currentInvoiceId

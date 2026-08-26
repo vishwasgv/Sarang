@@ -428,10 +428,14 @@ export interface IpcChannels {
     categorySellThrough: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     seasonSellThrough: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     sizeStyleHeatmap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap Report.
+    sizeAvailabilityHeatmap: (payload?: { lowStockThreshold?: number }) => Promise<ApiResponse>
     basketComposition: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     categoryMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 67 §9.1 — Clothing item 5: Margin by Brand/Vendor Report.
     vendorMargin: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate Report.
+    brandMarginReturnRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     fastSlowMoverMatrix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     gstr1: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     hsnSummary: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -445,8 +449,20 @@ export interface IpcChannels {
     batchExpiry: () => Promise<ApiResponse>
     labThroughput: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     bloodStock: () => Promise<ApiResponse>
+    // Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+    donationToIssueCycleTime: () => Promise<ApiResponse>
     jewellery: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Jewellery items 2/3/4/5.
+    makingChargeMargin: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    hallmarkCompliance: () => Promise<ApiResponse>
+    metalRateVsSalesVolume: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    purityAdjustedExchange: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     projects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Service items 2/4.
+    serviceResolutionTime: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    repeatBusinessRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    consultantUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    clientProfitability: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     serviceProjects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     jobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     carJobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -478,6 +494,14 @@ export interface IpcChannels {
     logistics: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     attendance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     production: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished Unit.
+    landedCostPerUnit: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend.
+    rejectionRateTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Agri Inputs item 2: seasonal credit exposure.
+    seasonalCreditExposure: () => Promise<ApiResponse>
+    // Phase 67 §9.1 — Agri Inputs item 4: farmer-wise purchase & repayment history.
+    farmerRepayment: () => Promise<ApiResponse>
     serialWarranty: () => Promise<ApiResponse>
     rmaAging: () => Promise<ApiResponse>
     vendorRecoveryLedger: () => Promise<ApiResponse>
@@ -487,6 +511,8 @@ export interface IpcChannels {
     complianceTasks: () => Promise<ApiResponse>
     rentalStatus: () => Promise<ApiResponse>
     rentalRevenue: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+    assetUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -731,6 +757,32 @@ export interface IpcChannels {
   exchange: {
     create: (payload: { originalInvoiceId: string; oldProductId: string; oldVariantId: string; quantity: number; newVariantId: string; reason: string; paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT' }) => Promise<ApiResponse<{ returnInvoiceId: string; returnInvoiceNumber: string; newInvoiceId: string; newInvoiceNumber: string; netAmountDue: number }>>
   }
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow.
+  trialSession: {
+    record: (payload: { productId: string; triedVariantIds: string[]; purchasedVariantId?: string | null; customerId?: string | null }) => Promise<ApiResponse<{ id: string; productId: string; productName: string; triedVariantIds: string[]; purchasedVariantId: string | null; customerId: string | null; createdAt: string }>>
+    conversionSummary: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse<{ totalSessions: number; convertedSessions: number; conversionRatePercent: number; avgPairsTriedPerSession: number; avgPairsTriedPerConversion: number }>>
+  }
+  // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+  seasonalCycle: {
+    list: () => Promise<ApiResponse<Array<{ id: string; name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays: number; isActive: boolean }>>>
+    create: (payload: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays?: number }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    calendar: (payload?: { lowStockThreshold?: number }) => Promise<ApiResponse<Array<{ id: string; name: string; startMonth: number; startDay: number; endMonth: number; endDay: number; leadTimeDays: number; status: 'IN_SEASON' | 'REORDER_NOW' | 'UPCOMING'; daysUntilStart: number; reorderByDate: string; nextStartDate: string; products: Array<{ productId: string; productName: string; stockQty: number; lowOrOutOfStock: boolean }>; lowOrOutOfStockCount: number }>>>
+  }
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
+  cropSeason: {
+    list: () => Promise<ApiResponse<Array<{ id: string; name: string; harvestMonth: number; harvestDay: number; isActive: boolean }>>>
+    create: (payload: { name: string; harvestMonth: number; harvestDay: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; name: string; harvestMonth: number; harvestDay: number }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    resolveDueDate: (payload: { cropSeasonId: string }) => Promise<ApiResponse<{ dueDate: string }>>
+  }
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+  cropAdvisory: {
+    listCrops: () => Promise<ApiResponse<string[]>>
+    productsForCrop: (payload: { cropName: string }) => Promise<ApiResponse<Array<{ productId: string; productName: string; sellingPrice: number; stockQty: number }>>>
+  }
   // Phase 2 — Industry Expansion
   batches: {
     list: (payload?: { productId?: string; expiringSoonDays?: number; expired?: boolean; page?: number; limit?: number }) => Promise<ApiResponse>
@@ -745,10 +797,14 @@ export interface IpcChannels {
     bulkCreate: (payload: { productId: string; serials: Array<{ serialNumber: string; imeiNumber?: string; imei2Number?: string; warrantyMonths?: number; unitCost?: number }>; purchaseDate?: string }) => Promise<ApiResponse>
     updateStatus: (payload: { id: string; status: string; invoiceId?: string; soldDate?: string }) => Promise<ApiResponse>
     searchByImei: (payload: { imei: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+    updateServiceInfo: (payload: { id: string; nextServiceDueDate?: string | null; lastServicedDate?: string | null }) => Promise<ApiResponse>
+    dueForService: (payload?: { dueSoonDays?: number }) => Promise<ApiResponse<Array<{ serialId: string; serialNumber: string; productName: string; nextServiceDueDate: string; lastServicedDate: string | null; dueForService: boolean; overdue: boolean }>>>
+    scheduleServiceReminder: (payload: { serialId: string; daysBefore?: number }) => Promise<ApiResponse>
   }
   variants: {
     list: (payload: { productId: string }) => Promise<ApiResponse>
-    upsert: (payload: { productId: string; variants: Array<{ id?: string; size?: string; color?: string; sku?: string; barcode?: string; additionalPrice?: number; stockQty?: number }> }) => Promise<ApiResponse>
+    upsert: (payload: { productId: string; variants: Array<{ id?: string; size?: string; color?: string; width?: string; sku?: string; barcode?: string; additionalPrice?: number; stockQty?: number }> }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     adjustStock: (payload: { variantId: string; quantityDelta: number }) => Promise<ApiResponse>
     summary: (payload: { productId: string }) => Promise<ApiResponse>
@@ -797,7 +853,14 @@ export interface IpcChannels {
     list: (payload: { productionOrderId: string }) => Promise<ApiResponse>
     // Phase 58 §2 — isQcStep flags a QC/inspection checkpoint
     upsert: (payload: { productionOrderId: string; steps: Array<{ id?: string; stepNumber: number; taskName: string; notes?: string; isQcStep?: boolean }> }) => Promise<ApiResponse>
-    updateStatus: (payload: { id: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'; qcResult?: 'PASS' | 'FAIL'; qcNotes?: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Manufacturing item 3: optional per-stage rejection counts.
+    updateStatus: (payload: { id: string; status: 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED'; qcResult?: 'PASS' | 'FAIL'; qcNotes?: string; qtyInspected?: number; qtyRejected?: number }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+    logDowntime: (payload: { workOrderId: string; reason: string; minutes: number; notes?: string }) => Promise<ApiResponse<{ id: string; workOrderId: string; reason: string; minutes: number; notes: string | null; createdAt: string }>>
+    listDowntime: (payload: { workOrderId: string }) => Promise<ApiResponse<Array<{ id: string; workOrderId: string; reason: string; minutes: number; notes: string | null; createdAt: string }>>>
+    downtimeSummary: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse<{ totalMinutes: number; byReason: Array<{ reason: string; minutes: number }> }>>
+    // Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck flag.
+    bottleneckFlag: (payload?: { productId?: string; dateFrom?: string; dateTo?: string }) => Promise<ApiResponse<{ bottleneckStage: string | null; avgDurationHours: number; shareOfTotalLeadTimePercent: number; stages: Array<{ taskName: string; avgDurationHours: number; sampleCount: number }> }>>
   }
   dispatch: {
     list: (payload?: { status?: string; productId?: string; limit?: number }) => Promise<ApiResponse>
@@ -808,10 +871,12 @@ export interface IpcChannels {
   projects: {
     list: (payload?: { status?: string; customerId?: string; limit?: number }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
-    create: (payload: { title: string; description?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedHours?: number; estimatedAmount?: number; startDate?: string; dueDate?: string; notes?: string }) => Promise<ApiResponse>
+    create: (payload: { title: string; description?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedHours?: number; estimatedAmount?: number; startDate?: string; dueDate?: string; notes?: string; quotationId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; title?: string; description?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedHours?: number; estimatedAmount?: number; startDate?: string | null; dueDate?: string | null; notes?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Consultant item 5: proposal win-rate tracking.
+    getProposalWinRateStats: () => Promise<ApiResponse>
     tasks: {
       list: (payload: { projectId: string }) => Promise<ApiResponse>
       create: (payload: { projectId: string; title: string; description?: string; priority?: string; estimatedHours?: number; dueDate?: string }) => Promise<ApiResponse>
@@ -821,10 +886,20 @@ export interface IpcChannels {
   }
   tickets: {
     list: (payload?: { status?: string; priority?: string; customerId?: string; limit?: number }) => Promise<ApiResponse>
-    create: (payload: { title: string; description?: string; priority?: string; category?: string; customerId?: string; assignedToId?: string }) => Promise<ApiResponse>
+    create: (payload: { title: string; description?: string; priority?: string; category?: string; customerId?: string; assignedToId?: string; quotationId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; title?: string; description?: string; status?: string; priority?: string; category?: string; customerId?: string | null; assignedToId?: string | null; resolution?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string; amount: number }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking.
+    getConversionStats: () => Promise<ApiResponse>
+  }
+  // Phase 67 §9.1 — Service item 3: recurring service contract ledger.
+  serviceContracts: {
+    list: (payload?: { status?: string; customerId?: string }) => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    create: (payload: { customerId: string; scope?: string; serviceFrequency?: string; startDate: string; endDate?: string; contractValue: number; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; status?: string; endDate?: string | null; contractValue?: number; notes?: string | null }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string; period?: string }) => Promise<ApiResponse>
   }
   jobCards: {
     list: (payload?: { status?: string; customerId?: string; limit?: number }) => Promise<ApiResponse>
@@ -935,6 +1010,14 @@ export interface IpcChannels {
     create: (payload: { customerId?: string; customerName?: string; metalType: string; purity: string; grossWeight: number; deductionWeight?: number; notes?: string }) => Promise<ApiResponse>
     linkToInvoice: (payload: { exchangeId: string; invoiceId: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // Phase 67 §9.1 — Jewellery item 1: gold savings (chit) scheme ledger.
+  goldSavings: {
+    list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId: string; metalType: string; monthlyAmount: number; tenureMonths: number; startDate: string; notes?: string }) => Promise<ApiResponse>
+    recordInstallment: (payload: { schemeId: string; amount: number; paymentMethod?: string; notes?: string }) => Promise<ApiResponse>
+    redeem: (payload: { schemeId: string; bonusAmount?: number }) => Promise<ApiResponse>
+    linkToInvoice: (payload: { schemeId: string; invoiceId: string }) => Promise<ApiResponse>
   }
   drawingRevision: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>
@@ -1117,6 +1200,8 @@ export interface IpcChannels {
     updateDonor: (payload: { id: string; fullName?: string; phone?: string | null; email?: string | null; bloodGroup?: string | null; weightKg?: number | null; address?: string | null; isDeferred?: boolean; deferralReason?: string | null; deferredUntil?: string | null; notes?: string | null }) => Promise<ApiResponse>
     deactivateDonor: (payload: { id: string }) => Promise<ApiResponse>
     sendDonorRecall: (payload: { donorId: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+    listDonorsDueForRecall: () => Promise<ApiResponse>
     createDonationCamp: (payload: { campName: string; location?: string; campDate: string; organizer?: string; notes?: string }) => Promise<ApiResponse>
     listDonationCamps: () => Promise<ApiResponse>
     createDonationRecord: (payload: { donorId: string; campId?: string; bloodGroup: string; componentType?: string; volumeMl?: number; notes?: string }) => Promise<ApiResponse>
@@ -1124,6 +1209,8 @@ export interface IpcChannels {
     updateScreeningStatus: (payload: { id: string; screeningStatus: string; screeningNotes?: string }) => Promise<ApiResponse>
     getBloodStock: () => Promise<ApiResponse>
     checkCompatibilityBatch: (payload: { recipientBloodGroup: string; units: Array<{ donationRecordId: string; bloodGroup: string; componentType: string }> }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search.
+    fastMatchSearch: (payload: { recipientBloodGroup: string; componentType?: string; quantity: number }) => Promise<ApiResponse>
     createIssue: (payload: { customerId?: string; recipientName: string; recipientBloodGroup?: string; purpose?: string; donationRecordIds: string[]; price?: number; overrideIncompatibility?: boolean; overrideReason?: string }) => Promise<ApiResponse>
     listIssues: (payload?: { status?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     getIssue: (payload: { id: string }) => Promise<ApiResponse>

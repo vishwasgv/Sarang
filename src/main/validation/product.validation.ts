@@ -10,6 +10,9 @@ const GENDER = z.enum(['MENS', 'WOMENS', 'UNISEX']).optional().nullable()
 // Phase 67 §9.1 — Clothing: season/collection sell-through report. Free
 // text, same gate as GENDER above.
 const SEASON = z.string().max(100).optional().nullable()
+// Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory. Free
+// text ("Wheat", "Cotton", "Paddy"...), same gate reasoning as SEASON above.
+const RECOMMENDED_CROP = z.string().max(100).optional().nullable()
 
 // Phase 38: a 13-digit barcode is validated as EAN-13 (catches fat-finger typos and
 // bad scans); anything else (UPC-A, Code39, etc.) passes through unchecked since we
@@ -158,6 +161,7 @@ export const CreateProductSchema = z
     openingQuantity: z.number().min(0).default(0),
     gender: GENDER,
     season: SEASON,
+    recommendedCrop: RECOMMENDED_CROP,
     // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag
     isPrescriptionRequired: z.boolean().optional(),
     // Phase 58 §2 — Agri Inputs category-specific expiry alert lead time.
@@ -200,6 +204,7 @@ export const UpdateProductSchema = z
     defaultSupplierId: z.string().optional().nullable(),
     gender: GENDER,
     season: SEASON,
+    recommendedCrop: RECOMMENDED_CROP,
     isPrescriptionRequired: z.boolean().optional(),
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
     customFields: CustomFieldValuesSchema,

@@ -43,7 +43,9 @@ Generar una factura a partir de una reserva completada crea líneas de artículo
 
 ## Informes
 
-**Informes** incluye un informe de Estado de Alquiler (qué está actualmente entregado, y qué está atrasado) y un informe de Ingresos de Alquiler por producto, incluyendo un porcentaje de utilización para los activos rastreados por UNIDAD.
+**Informes** incluye un informe Rental Status (qué está actualmente prestado y qué está vencido, ahora con un gráfico de antigüedad que desglosa las reservas vencidas según cuánto tiempo llevan atrasadas — 1-3 días, 4-7 días, 8-14 días, o 15+ días) y un informe Rental Revenue por producto, incluyendo un porcentaje de utilización para los activos rastreados por UNIDAD.
+
+La propia cifra de utilización del informe Rental Revenue se promedia entre cada unidad de un producto — no puede decirle que un auto específico está inactivo mientras su gemelo idéntico se alquila constantemente. Para eso, abra en su lugar el informe **Asset Utilization Rate**: días alquilados frente a días disponibles para cada unidad rastreada individualmente por nombre, clasificadas con los activos de menor rendimiento primero, para que pueda ver exactamente qué activos físicos no están valiendo la pena, en lugar de un promedio mixto que los oculta.
 
 ## Idioma
 

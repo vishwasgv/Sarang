@@ -4,6 +4,8 @@ const VariantInputSchema = z.object({
   id: z.string().optional(),
   size: z.string().optional(),
   color: z.string().optional(),
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix.
+  width: z.string().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
   additionalPrice: z.number().nonnegative('Additional price cannot be negative').finite().optional(),

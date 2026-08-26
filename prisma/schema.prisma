@@ -207,6 +207,11 @@ model Product {
   // vertical, surfaced only when variant_tracking is enabled (same gate as
   // gender above).
   season                 String?
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory. Free
+  // text ("Wheat", "Cotton", "Paddy" — a shop's own crop naming varies too
+  // much for a fixed list, same reasoning as season above), never an enum.
+  // Nullable/unused by every other vertical.
+  recommendedCrop        String?
   // Phase 58 §2 (2026-07-17) — Restaurant's "86 today" (industry term for a
   // menu item temporarily unavailable, distinct from permanently
   // deactivating it via isActive). Derived/computed at read time against
@@ -356,6 +361,7 @@ model Product {
   locationStock             LocationStock[] // Phase 64
   kitComponents             KitComponent[]            @relation("KitParent") // Phase 64 — this product's own components, when isKit=true
   usedInKits                KitComponent[]            @relation("KitComponentProduct") // Phase 64 — kits that include this product as a component
+  trialSessions             TrialSession[] // Phase 67 §9.1 — Footwear: trial-pair counter workflow
 
   @@index([productName])
   @@index([isActive])
@@ -843,8 +849,10 @@ model Customer {
   payments                  Payment[]
   dispatchRecords           DispatchRecord[]
   metalExchanges            MetalExchange[]
+  goldSavingsSchemes        GoldSavingsScheme[] // Phase 67 §9.1 — Jewellery item 1
   projects                  Project[]
   serviceTickets            ServiceTicket[]
+  serviceContracts          ServiceContract[] // Phase 67 §9.1 — Service item 3
   jobCards                  JobCard[]
   quotations                Quotation[]
   creditNotes               CreditNote[]
@@ -1459,6 +1467,14 @@ model Invoice {
   customerId         String?
   invoiceDate        DateTime  @default(now())
   dueDate            DateTime?
+  // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms. If
+  // set (a CREDIT sale linked to a shop-defined harvest season instead of a
+  // manually-typed date), dueDate above is computed server-side from this
+  // season's own next harvest occurrence — the two are never in conflict,
+  // this is just which ONE way the cashier chose to set it. Nullable/unused
+  // for every non-Agri-Inputs invoice, and for an Agri Inputs credit sale
+  // whose cashier typed a raw date instead.
+  cropSeasonId       String?
   status             String    @default("ACTIVE")
   subtotal           Float     @default(0)
   discountAmount     Float     @default(0)
@@ -1526,6 +1542,7 @@ model Invoice {
 
   costCentre       CostCentre?       @relation(fields: [costCentreId], references: [id])
   customer         Customer?         @relation(fields: [customerId], references: [id])
+  cropSeason       CropSeason?       @relation(fields: [cropSeasonId], references: [id])
   createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   items            InvoiceItem[]
   payments         Payment[]
@@ -1558,6 +1575,32 @@ model Invoice {
   @@index([splitFromInvoiceId])
   @@index([exchangeReturnId])
   @@index([costCentreId])
+  @@index([cropSeasonId])
+}
+
+// Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms. A
+// shop-defined RECURRING harvest date (e.g. "Kharif", "Rabi", "Zaid", or
+// genuinely anything — free text, never a fixed enum, same reasoning
+// Footwear's own SeasonalCycle already established for buying cycles this
+// phase) — a farmer's credit sale can be linked to one instead of the
+// cashier typing a raw date, so the due date lands on a REAL harvest date
+// rather than an arbitrary calendar count. Deliberately a separate model
+// from SeasonalCycle, not a shared one — that one drives inventory
+// reordering with a lead-time; this one drives credit due dates with no
+// lead-time concept at all, different domains that happen to share a
+// "recurring month/day window" shape.
+model CropSeason {
+  id           String   @id @default(cuid())
+  name         String
+  harvestMonth Int // 1-12
+  harvestDay   Int // 1-31
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([isActive])
 }
 
 model InvoiceItem {
@@ -2005,6 +2048,12 @@ model ProductVariant {
   productId       String
   size            String?
   color           String?
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix, its own real
+  // differentiator from Clothing's plain size×colour tracking (e.g. "Wide",
+  // "Narrow", "2E"). Free text, same convention as size/color themselves —
+  // nullable and simply unused (never surfaced in the UI) for every
+  // business type other than FOOTWEAR.
+  width           String?
   sku             String?  @unique
   barcode         String?  @unique
   // Phase 58 §2 — Clothing/Footwear variant-aware barcode generation. Same
@@ -2022,6 +2071,61 @@ model ProductVariant {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
+  @@index([isActive])
+}
+
+// Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. "Multiple
+// sizes tried, one sold, the rest restocked instantly." Deliberately does
+// NOT touch ProductVariant.stockQty at trial time and needs no restock
+// step of its own — under this app's own "decrement stock only at actual
+// sale" inventory model, a pair tried on in-store was never removed from
+// sellable stock in the first place, so there is genuinely nothing to put
+// back. This table exists purely to capture the trial-to-sale conversion
+// signal itself (how many pairs a customer tried before buying one, or
+// leaving without buying any) — a real footwear-specific operational
+// metric apparel doesn't need. customerId/createdById are deliberately
+// plain, unenforced string columns rather than full Prisma relations —
+// this is a lightweight analytics log, not a document with its own
+// referential-integrity requirements, and adding back-relation arrays to
+// three large, already-heavily-related models (Customer/User/Invoice) for
+// a log table isn't worth the churn.
+model TrialSession {
+  id                 String   @id @default(cuid())
+  productId          String
+  triedVariantIds    String // JSON array of ProductVariant ids tried on together
+  purchasedVariantId String? // null if the customer left without buying any of them
+  customerId         String?
+  createdById        String?
+  createdAt          DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar. A shop-
+// defined, RECURRING buying-cycle window (e.g. "Monsoon", "Wedding/Formal",
+// "Sports") — free text like Product.season itself, never a fixed enum,
+// since which seasons matter is genuinely different per shop/region. No FK
+// to Product: association is a case-insensitive match against Product.
+// season's own free-text value, the same loose-matching convention the
+// Season/Collection Sell-Through report already established — a shop
+// tags a product's season once, on the ordinary Product form (already
+// enabled for FOOTWEAR via variant_tracking, no UI change needed there),
+// and it's picked up by both features automatically.
+model SeasonalCycle {
+  id           String   @id @default(cuid())
+  name         String
+  startMonth   Int // 1-12
+  startDay     Int // 1-31
+  endMonth     Int
+  endDay       Int
+  leadTimeDays Int      @default(30)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@index([isActive])
 }
 
@@ -2064,6 +2168,16 @@ model ProductSerial {
   status             String    @default("AVAILABLE")
   invoiceId          String?
   soldDate           DateTime?
+  // Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+  // Deliberately on the equipment unit itself (ProductSerial), not on a
+  // JobCard — the due date is a property of the physical tractor/sprayer,
+  // not of any one repair/service EVENT, mirroring how warrantyExpiryDate
+  // above already lives here rather than on a ticket. Distinct from
+  // warrantyExpiryDate — a unit can be well out of its original warranty
+  // and still be due for routine servicing. Nullable/unused by every
+  // vertical that never sets it.
+  nextServiceDueDate DateTime?
+  lastServicedDate   DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -2399,16 +2513,46 @@ model WorkOrder {
   isQcStep          Boolean   @default(false)
   qcResult          String?
   qcNotes           String?
+  // Phase 67 §9.1 — Manufacturing item 3: quality-rejection tracking at
+  // EACH stage, not just a binary pass/fail at final QC. Both nullable and
+  // only ever set alongside qcResult on an isQcStep row — a plain
+  // (non-QC) step never has these. qtyRejected can be > 0 even on an
+  // overall PASS (a batch that mostly passed with a few units rejected),
+  // which the old binary qcResult alone could never express.
+  qtyInspected      Float?
+  qtyRejected       Float?
   notes             String?
   completedAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  productionOrder ProductionOrder          @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  downtimeEntries WorkOrderDowntimeEntry[]
 
   @@unique([productionOrderId, stepNumber])
   @@index([productionOrderId])
   @@index([status])
+}
+
+// Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture. One
+// row per downtime incident against a specific work-order step — a step can
+// have more than one (e.g. two separate machine stoppages), same "itemized
+// log, not one flat field" reasoning ProductionLaborEntry already
+// established for labor. Free-text reason (not an enum) — a shop's own
+// real downtime causes vary too much to enumerate up front.
+model WorkOrderDowntimeEntry {
+  id          String   @id @default(cuid())
+  workOrderId String
+  reason      String
+  minutes     Float
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@index([createdAt])
 }
 
 model DispatchRecord {
@@ -2459,11 +2603,16 @@ model Project {
   // same invoiceId-on-the-entity convention every other invoiceable model
   // in this schema already uses (CarJobCard, Placement, ShootBooking, etc.).
   invoiceId       String?
+  // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
+  // auto-conversion. @unique so one Quotation can never be double-converted
+  // into two projects, same shape as ServiceTicket.quotationId.
+  quotationId     String?   @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   customer   Customer?     @relation(fields: [customerId], references: [id])
   assignedTo User?         @relation("ProjectAssignedTo", fields: [assignedToId], references: [id])
+  quotation  Quotation?    @relation("QuotationToProject", fields: [quotationId], references: [id], onDelete: SetNull)
   tasks      ProjectTask[]
   workLogs   WorkLog[]
 
@@ -2506,17 +2655,60 @@ model ServiceTicket {
   resolution   String?
   createdById  String?
   invoiceId    String? // Phase 58 §1 — legacy Service/Consultant invoicing bridge
+  // Phase 67 §9.1 — Service item 1: Ticket SLA timer. Set once at creation
+  // from the ticket's own priority (never re-derived on a later priority
+  // change — the SLA clock starts when the ticket is opened, same reasoning
+  // Electronics' own vendorSlaDueDate marks the deadline a transition
+  // committed to, not a live-recomputed target). Breach is never persisted,
+  // always computed live from slaDueAt + status, same isOverdue() pattern
+  // repair-ticket.service.ts already established.
+  slaDueAt     DateTime?
+  // Phase 67 §9.1 — Service item 5: Quote-to-job conversion tracking. Set
+  // when a ticket is created directly from an ACCEPTED Quotation — @unique
+  // so one quotation can never be double-converted into two tickets.
+  quotationId  String?   @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  customer   Customer? @relation(fields: [customerId], references: [id])
-  assignedTo User?     @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  assignedTo User?      @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  quotation  Quotation? @relation("QuotationToServiceTicket", fields: [quotationId], references: [id], onDelete: SetNull)
   workLogs   WorkLog[]
 
   @@index([status])
   @@index([customerId])
   @@index([priority])
   @@index([createdAt])
+}
+
+// Phase 67 §9.1 — Service item 3: Recurring service contract, an AMC-like
+// arrangement for repeat customers. Mirrors PestServiceContract's own exact
+// shape (contractValue + serviceFrequency + lastInvoicedPeriod claim key) —
+// the same real-contract-entity pattern, generalized for the plain Service
+// vertical rather than pest-specific fields like propertyAddress/pestTypes.
+model ServiceContract {
+  id                 String    @id @default(cuid())
+  contractNumber     String    @unique
+  customerId         String
+  scope              String? // free-text description of what's covered
+  serviceFrequency   String    @default("MONTHLY") // MONTHLY | QUARTERLY | HALF_YEARLY | YEARLY
+  startDate          DateTime
+  endDate            DateTime?
+  contractValue      Float
+  status             String    @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
+  notes              String?
+  // "YYYY-MM" (or "YYYY" for YEARLY, "YYYY-Qn" for QUARTERLY/HALF_YEARLY) of
+  // the last period actually invoiced for contractValue — same claim-key
+  // convention PestServiceContract.lastInvoicedPeriod already established.
+  lastInvoicedPeriod String?
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([status])
 }
 
 model JobCard {
@@ -2859,6 +3051,11 @@ model Quotation {
   invoice    Invoice?        @relation("QuotationToInvoice")
   // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
   salesOrder SalesOrder?     @relation("QuotationToSalesOrder")
+  // Phase 67 §9.1 — Service item 5: Quote-to-job conversion tracking.
+  serviceTicket ServiceTicket? @relation("QuotationToServiceTicket")
+  // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
+  // auto-conversion tracking, same pattern as Service's own quote-to-job link.
+  project    Project?        @relation("QuotationToProject")
 
   @@index([customerId])
   @@index([status])
@@ -5845,6 +6042,73 @@ model MetalExchange {
   @@index([customerId])
   @@index([invoiceId])
   @@index([createdAt])
+}
+
+// Phase 67 §9.1 — Jewellery item 1: Gold savings scheme (chit) ledger, "the
+// single most-requested feature in Indian jewellery retail" per the audit.
+// A customer pays a fixed amount monthly for a set tenure; at the end (or on
+// early redemption) the accumulated total is applied toward a purchase.
+// Deliberately mirrors MetalExchange's own standalone-record, NOT-wired-into-
+// billing.service.ts design (see that model's own comment for why): staff
+// apply the redeemed amount as an ordinary invoice-level discount on the
+// purchase invoice through the already-existing, already-tested
+// globalDiscount mechanism, then mark this scheme linked — invoiceId is set
+// afterward purely so the scheme shows which sale it was redeemed against.
+model GoldSavingsScheme {
+  id             String    @id @default(cuid())
+  schemeNumber   String    @unique
+  customerId     String
+  metalType      String // 'GOLD' | 'SILVER' | 'PLATINUM' — matches MetalExchange's own flexibility, even though gold dominates real usage
+  monthlyAmount  Float
+  tenureMonths   Int
+  startDate      DateTime
+  status         String    @default("ACTIVE") // ACTIVE | REDEEMED | CLOSED
+  totalDeposited Float     @default(0) // sum of installments.amount, denormalized for fast list-screen display — always re-derivable from the installments themselves
+  bonusAmount    Float     @default(0) // optional redemption bonus (e.g. a scheme's own "pay 11, get the 12th free" terms) — set at redemption time, 0 by default
+  redeemedAmount Float? // totalDeposited + bonusAmount, snapshotted at redemption
+  redeemedAt     DateTime?
+  invoiceId      String? // set once redeemed against a purchase invoice — same unenforced-FK convention MetalExchange.invoiceId already uses
+  notes          String?
+  createdAt      DateTime  @default(now())
+  createdById    String?
+
+  customer     Customer                 @relation(fields: [customerId], references: [id])
+  installments GoldSavingsInstallment[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model GoldSavingsInstallment {
+  id            String   @id @default(cuid())
+  schemeId      String
+  amount        Float
+  paymentMethod String? // CASH | UPI | CARD | BANK_TRANSFER — free text, matches this schema's existing convention of validating category-style fields via a Zod .enum() at the validation layer rather than a DB-level enum
+  notes         String?
+  paidAt        DateTime @default(now())
+  createdById   String?
+
+  scheme GoldSavingsScheme @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+
+  @@index([schemeId])
+}
+
+// Phase 67 §9.1 — Jewellery item 4: Metal Rate vs. Sales Volume report needs
+// a real rate HISTORY to correlate against — MetalRate itself only ever
+// holds today's current rate (upsert overwrites in place, see its own
+// comment). Same "keep a history instead of overwriting one field" fix
+// ProductCostHistory already established for Product.costPrice. Appended
+// once per real change in upsertMetalRate() — never backfilled, so a
+// meaningful trend only accumulates going forward from whenever this ships,
+// exactly like ProductCostHistory's own launch had no retroactive data.
+model MetalRateHistory {
+  id          String   @id @default(cuid())
+  metalType   String
+  purity      String
+  ratePerGram Float
+  recordedAt  DateTime @default(now())
+
+  @@index([metalType, purity, recordedAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

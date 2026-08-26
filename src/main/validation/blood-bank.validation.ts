@@ -77,9 +77,17 @@ export const BloodIssueIdSchema = z.object({
   id: z.string().min(1, 'Blood issue ID is required'),
 })
 
+// Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search.
+export const FastMatchSearchSchema = z.object({
+  recipientBloodGroup: BloodGroupEnum,
+  componentType: ComponentTypeEnum.optional(),
+  quantity: z.number().int().positive('Quantity must be at least 1'),
+})
+
 export type CreateDonorPayload = z.infer<typeof CreateDonorSchema>
 export type UpdateDonorPayload = z.infer<typeof UpdateDonorSchema>
 export type CreateDonationCampPayload = z.infer<typeof CreateDonationCampSchema>
 export type CreateDonationRecordPayload = z.infer<typeof CreateDonationRecordSchema>
 export type UpdateScreeningStatusPayload = z.infer<typeof UpdateScreeningStatusSchema>
 export type CreateBloodIssuePayload = z.infer<typeof CreateBloodIssueSchema>
+export type FastMatchSearchPayload = z.infer<typeof FastMatchSearchSchema>

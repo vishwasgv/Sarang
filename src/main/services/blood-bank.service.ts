@@ -309,6 +309,32 @@ export async function sendDonorRecall(donorId: string) {
   }
 }
 
+// Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder. Turns the
+// donor list into an active outreach tool (per the audit's own wow-factor
+// framing) — instead of a shop having to open each donor one at a time to
+// check whether their cooldown has ended, this proactively lists every donor
+// who already can donate again, so staff can work down the list with the
+// existing per-donor "Send Recall Reminder" action rather than discover
+// eligibility one profile at a time. Reuses computeNextEligibleDate — the
+// exact same cooldown math listDonors/getDonor already display — no
+// duplicate calculation.
+export async function listDonorsDueForRecall() {
+  const db = getPrisma()
+  try {
+    const donors = await db.donor.findMany({
+      where: { isActive: true, isDeferred: false, lastDonationDate: { not: null } },
+      orderBy: { lastDonationDate: 'asc' },
+    })
+    const now = new Date()
+    const due = donors
+      .map((d) => ({ ...d, nextEligibleDate: computeNextEligibleDate(d.lastDonationDate, d.lastDonationComponentType, d.gender) }))
+      .filter((d) => d.nextEligibleDate && new Date(d.nextEligibleDate) <= now)
+    return { success: true, data: due }
+  } catch (err) {
+    return { success: false, error: { code: 'BB-036', message: err instanceof Error ? err.message : 'Could not list donors due for recall.' } }
+  }
+}
+
 // ─── Donation camps ─────────────────────────────────────────────────────────
 
 export async function createDonationCamp(payload: { campName: string; location?: string; campDate: string; organizer?: string; notes?: string }, userId?: string) {
@@ -558,6 +584,44 @@ export async function getBloodStock() {
     return { success: true, data: { units, summary } }
   } catch (err) {
     return { success: false, error: { code: 'BB-019', message: err instanceof Error ? err.message : 'Could not load blood stock.' } }
+  }
+}
+
+// Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search. In an
+// emergency a front-desk staffer thinks in terms of "I need N units of O+
+// packed RBC" — not "let me scroll a flat list of every unit in stock and
+// mentally cross-check each one's group." This resolves that single query at
+// once: every currently-available unit compatible with the requested
+// recipient group + component type (same checkCompatibility matrix
+// createBloodIssue itself already enforces — never a second, divergent rule),
+// soonest-expiring first (use the oldest-dated compatible stock first, the
+// standard blood-bank FIFO-by-expiry practice), capped at the requested
+// quantity, with an honest shortfall flag if fewer are available than asked.
+export async function fastMatchSearch(payload: { recipientBloodGroup: BloodGroup; componentType?: ComponentType; quantity: number }) {
+  try {
+    const stock = await getBloodStock()
+    if (!stock.success || !stock.data) return stock
+    const { units } = stock.data as { units: Array<{ donationRecordId: string; donationNumber: string; bloodGroup: BloodGroup; componentType: ComponentType; expiryDate: string; daysToExpiry: number; isExpired: boolean }> }
+
+    const candidates = units
+      .filter((u) => !u.isExpired)
+      .filter((u) => !payload.componentType || u.componentType === payload.componentType)
+      .filter((u) => checkCompatibility(payload.recipientBloodGroup, u.bloodGroup, u.componentType).compatible)
+      .sort((a, b) => a.daysToExpiry - b.daysToExpiry)
+
+    const matched = candidates.slice(0, payload.quantity)
+    return {
+      success: true,
+      data: {
+        matched,
+        matchedCount: matched.length,
+        requestedQuantity: payload.quantity,
+        fulfilled: matched.length >= payload.quantity,
+        shortfall: Math.max(0, payload.quantity - matched.length),
+      },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'BB-037', message: err instanceof Error ? err.message : 'Could not run fast-match search.' } }
   }
 }
 

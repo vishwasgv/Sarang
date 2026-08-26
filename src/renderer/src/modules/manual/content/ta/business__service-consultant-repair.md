@@ -19,6 +19,10 @@
 - **பணிகள்** — நீங்கள் தேர்ந்தெடுக்கும் ஒரு எளிய சரிபார்ப்புப் பட்டியல்; திட்டப் பட்டியல் இதிலிருந்து கணக்கிடப்பட்ட "முடிந்தது / மொத்தம்" முன்னேற்ற பட்டியைக் காட்டுகிறது.
 - **Work Logs** — திட்டத்திற்கு எதிராகப் பதிவு செய்யப்பட்ட மணிநேரங்கள், ஒவ்வொன்றும் பில்-செய்யக்கூடியது அல்லது பில்-செய்யக்கூடாதது என குறிக்கப்பட்டுள்ளது, பட்டியல் மற்றும் விவரக் காட்சிகள் இரண்டிலும் ஒரு ஓடும் மொத்தம் காட்டப்படுகிறது.
 
+Got an accepted **Quotation** you use as an engagement letter? Pick it from the **Convert From Quotation** dropdown when creating a project, and Sarang links the two — one quotation can only ever convert into one project, so it's a real record of how many of your engagement letters actually became billed work.
+
+**Consultant** also sees a running **proposal win rate** next to the project count in the header — won versus lost versus still-pending Quotations, so you always know at a glance how your pipeline of engagement letters is converting, not just how many projects are currently open.
+
 ## Job Cards (Repair, Service பொதுவான மாதிரி வழியாக)
 
 ஒரு ஜாப் கார்டு ஒரு வாடிக்கையாளர் விட்டுச்செல்லும் ஒரு உடல் பொருளுக்காக கட்டமைக்கப்பட்டுள்ளது: ஒரு தலைப்பு, பொருள் விளக்கம், முன்னுரிமை, மதிப்பிடப்பட்ட செலவு, மற்றும் பெறப்பட்ட/எதிர்பார்க்கப்படும்/வழங்கப்பட்ட தேதிகள். இதற்கு அதன் சொந்த ஏழு-நிலை வாழ்க்கைச் சுழற்சி உள்ளது — **Received → Diagnosing → In Repair → (விருப்பமாக Pending Parts) → Ready → Delivered**, அல்லது வழங்கப்படுவதற்கு முன் எந்த நேரத்திலும் **ரத்துசெய்யப்பட்டது**. விவரக் காட்சி இதை ஒரு காட்சி நிலை டிராக்கராகக் காட்டி எப்போதும் ஒற்றை அடுத்த செயல் பொத்தானை மேற்பரப்பிக்கிறது (எ.கா. "Mark In Repair"), மேலும் ஒரு கார்டு பழுதுபார்ப்பில் இருக்கும்போது ஒரு அர்ப்பணிக்கப்பட்ட "Waiting for Parts" செயலையும் மேற்பரப்பிக்கிறது. ஒரு ஜாப் கார்டை வழங்குவது நீங்கள் உண்மையான இறுதி செலவை உள்ளிடும் இடம், அசல் மதிப்பீட்டிலிருந்து தனியாக — ஜாப் வழங்கப்பட்டவுடன், அந்த இறுதி செலவை ஒரு உண்மையான விலைப்பட்டியலாக **விலைப்பட்டியல் உருவாக்கு** மாற்றுகிறது.
@@ -28,6 +32,22 @@
 ## Service Tickets (Service, Repair)
 
 ஒரு டிக்கெட் ஒரு இலகுவான ஆதரவு கோரிக்கை: தலைப்பு, விளக்கம், முன்னுரிமை, ஒரு விருப்பமான வகை குறிச்சொல், மற்றும் ஒரு விருப்பமான வாடிக்கையாளர்/ஒதுக்கப்பட்டவர். இது **Open → In Progress → Resolved → Closed** வழியாக நகர்கிறது, மேலும் ஒன்றைத் தீர்ப்பது ஒரு தீர்வுக் குறிப்பை இணைக்க அனுமதிக்கிறது. அவசர, தீர்க்கப்படாத டிக்கெட்டுகள் பட்டியலில் ஒரு சிவப்பு-கொடி குறிகாட்டியுடன் தனிப்படுத்தப்படுகின்றன, அதனால் அவை புதைந்துபோகாது. ஒரு தொகையை உள்ளிட்டு, தீர்க்கப்பட்ட ஒரு டிக்கெட்டை பில் செய்ய **விலைப்பட்டியல் உருவாக்கு**-ஐப் பயன்படுத்தவும்.
+
+Every ticket also gets an **SLA timer** the moment it's created, sized to its priority (Urgent 4 hours, High 24 hours, Medium 3 days, Low 7 days). A ticket still open past its own SLA is flagged **SLA Breached** right on the list and in the header count — a real deadline alert, not just a priority label.
+
+Got an accepted **Quotation** that turned into real work? Pick it from the **Convert From Quotation** dropdown when creating a ticket, and Sarang links the two — one quotation can only ever convert into one ticket, so it's a real record of how many of your estimates actually became billable jobs.
+
+## Service Contracts (Service)
+
+Open **Service Contracts** in the sidebar to run a recurring, AMC-like arrangement for a repeat customer — a fixed value, billed on a schedule (Monthly/Quarterly/Half-Yearly/Yearly) rather than negotiated fresh every visit. Create a contract with its scope of work, frequency, start date, and value, then click **Generate Invoice** whenever a billing period is due — Sarang tracks which period was last invoiced so the same period can never be billed twice, the same protection an ordinary retainer or AMC contract already has elsewhere in Sarang.
+
+## Retainers (Consultant)
+
+Open **Retainers** in the sidebar to run a recurring monthly arrangement for a repeat client — fixed fee, an hourly bucket, or a deliverable-based scope, billed on a schedule you set. For an hourly-bucket retainer, log time against it from **Time Tracking** and the retainer's own card shows a live **hours used / hours allocated** progress bar, turning red once the month's allowance is exhausted — the retainer burn-down at a glance, no separate report needed.
+
+## Reports
+
+Four reports are specific to this vertical set. **Resolution Time by Category** breaks down how long tickets actually take to close, average/fastest/slowest per category — a real service-quality metric, not just a status count. **Repeat-Business Rate** trends, month by month, what share of your ticket-raising customers are returning versus brand new — the retention signal this generic scaffold never had before. **Utilization Rate** (Consultant) is the #1 consulting metric: billable versus non-billable hours per staff member, sorted to surface whoever needs more billable work first. **Client Profitability** (Consultant) shows revenue against hours spent per client, sorted worst-first, so you can see at a glance which clients are actually worth keeping.
 
 ## நேரம் ஒதுக்கீடுகள் மற்றும் திட்டங்கள் பில்லிங்
 

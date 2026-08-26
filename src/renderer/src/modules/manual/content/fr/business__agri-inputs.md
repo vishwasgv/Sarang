@@ -20,6 +20,12 @@ Lorsqu'un client apporte un équipement pour réparation ou entretien planifié,
 
 Un client agriculteur a souvent besoin de payer après la récolte, et non au moment de l'achat. Lors de la facturation d'une vente à Crédit, définissez une vraie **date d'échéance** — Sarang affiche un badge de retard sur la facture une fois cette date dépassée (et non la date de vente), et le rapport d'ancienneté des Analyses des Impayés la classe elle aussi par la date d'échéance réelle, afin qu'un paiement différé jusqu'à la récolte ne soit pas signalé comme en retard simplement parce que du temps s'est écoulé depuis la vente.
 
+Saisir une date fixe n'est qu'une supposition — les véritables conditions de crédit d'un agriculteur suivent le calendrier de récolte, pas un nombre de jours fixe. Lors d'une vente à Crédit, au lieu de (ou en plus de) la date d'échéance manuelle, vous pouvez lier la facture à une **Saison de Récolte (Crop Season)** — un événement de récolte réel que vous définissez une fois (p. ex. "Récolte de Blé" le 15 avril) et réutilisez à chaque vente à crédit de cette culture. Sélectionnez-la dans le menu déroulant qui apparaît sous le champ de date d'échéance, ou ajoutez-en une nouvelle directement via **Manage Seasons**. Sarang calcule la véritable date d'échéance de la facture à partir de la prochaine occurrence de récolte de cette saison — celle de cette année si elle n'est pas encore passée, sinon celle de l'année prochaine — de sorte que la date d'échéance soit toujours liée à un événement agricole réel, pas à un nombre de jours arbitraire.
+
+## Conseils Produits Liés à la Culture
+
+Si vous étiquetez un produit avec la culture à laquelle il est destiné via le champ Recommended Crop de sa fiche produit (p. ex. "Blé", "Coton", "Riz" — n'importe quel nom utilisé dans votre région, pas une liste fixe), ce produit devient consultable par culture au point de vente. Dans Facturation, une rangée de puces **Browse by Crop** apparaît au-dessus de la recherche de produits dès qu'un produit est étiqueté — appuyez sur une culture pour voir chaque engrais, pesticide ou semence recommandé pour elle, avec le stock et le prix en direct, et ajoutez-le directement au panier. Cela transforme "quel engrais convient à cette culture ?" d'une chose que le caissier doit mémoriser en une chose consultable en deux appuis.
+
 ## Alertes de péremption spécifiques par catégorie
 
 Différentes catégories d'intrants agricoles ont besoin d'un préavis différent — les semences et engrais ont souvent besoin d'un délai plus long qu'un article à rotation rapide. Définissez un **délai d'alerte de péremption** (en jours) par produit pour remplacer la fenêtre d'avertissement standard de 30 jours ; les lots de ce produit affichent alors leur badge d'avertissement selon son propre délai configuré.
@@ -27,6 +33,12 @@ Différentes catégories d'intrants agricoles ont besoin d'un préavis différen
 ## Tableau de bord combiné
 
 Ouvrez **Tableau de bord Agri** pour une vue sur un seul écran des deux moitiés de l'entreprise à la fois — consommables en stock faible, lots expirant/expirés, nombre total d'équipements, et équipements dont la garantie expire bientôt — au lieu de vérifier deux écrans séparés.
+
+Le même tableau de bord suit également les **dates d'entretien dues des équipements** — le prochain entretien programmé d'un tracteur ou d'un pulvérisateur, distinct de l'expiration de sa garantie. Définissez une date d'entretien pour tout équipement enregistré directement depuis le panneau Equipment Service Due du tableau de bord, et Sarang le signale dès qu'il approche de l'échéance ou est en retard. Appuyez sur **Remind** sur une unité signalée pour envoyer au client un rappel WhatsApp avec la date d'échéance.
+
+## Rapports d'Exposition au Crédit Saisonnier et de Remboursement des Agriculteurs
+
+Deux rapports de l'écran Rapports sont spécifiques à ce type d'entreprise. **Exposition au Crédit Saisonnier (Seasonal Credit Exposure)** affiche chaque facture de crédit actuellement impayée répartie par mois d'échéance sur toute l'année civile, ainsi qu'une répartition distincte par Saison de Récolte liée — afin que vous puissiez voir d'un coup d'œil quand votre exposition au crédit atteint son pic dans l'année, ce qui pour la plupart des magasins d'intrants agricoles se concentre autour des mois de récolte. **Historique des Achats et Remboursements par Agriculteur (Farmer-Wise Purchase & Repayment History)** classe chaque client à crédit selon la fiabilité réelle de ses remboursements, les comptes les plus à risque en premier — contrairement au Customer Ledger d'un seul client, il s'agit d'une comparaison entre plusieurs agriculteurs qui vous indique à qui accorder un crédit facile la saison prochaine et de qui recouvrer en premier.
 
 ## Logistique & Chaîne d'approvisionnement
 

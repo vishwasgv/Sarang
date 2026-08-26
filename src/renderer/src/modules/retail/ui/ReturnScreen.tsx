@@ -52,12 +52,15 @@ interface VariantOption {
   id: string
   size: string | null
   color: string | null
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Null for
+  // every non-Footwear variant.
+  width: string | null
   stockQty: number
   isActive: boolean
 }
 
-function variantLabel(v: { size: string | null; color: string | null }): string {
-  return [v.size, v.color].filter(Boolean).join(' / ') || '—'
+function variantLabel(v: { size: string | null; color: string | null; width?: string | null }): string {
+  return [v.size, v.width, v.color].filter(Boolean).join(' / ') || '—'
 }
 
 export function ReturnScreen() {

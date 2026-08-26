@@ -11,6 +11,7 @@ export const CreateProjectSchema = z.object({
   startDate: z.string().optional(),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
+  quotationId: z.string().optional(),
 })
 
 export const UpdateProjectSchema = z.object({

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
+import { buildWhatsAppLink } from './notification-queue.service'
 
 export type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
 
@@ -320,5 +321,107 @@ function toRecord(s: { id: string; productId: string; product: { productName: st
     invoiceId: s.invoiceId,
     soldDate: s.soldDate?.toISOString() ?? null,
     createdAt: s.createdAt.toISOString()
+  }
+}
+
+// Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders. Lives
+// on ProductSerial itself (the equipment unit), not a JobCard — the due
+// date is a property of the physical tractor/sprayer, not of any one
+// service EVENT, mirroring how warrantyExpiryDate above already lives here
+// rather than on a ticket. Deliberately mirrors CarJobCard's own already-
+// proven listVehiclesDueForService/scheduleNextServiceReminder pattern —
+// same shape, same WhatsApp-via-notificationQueue mechanism, just keyed to
+// a serial/equipment unit instead of a vehicle.
+export async function updateSerialServiceInfo(
+  payload: { id: string; nextServiceDueDate?: string | null; lastServicedDate?: string | null },
+  userId?: string
+): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const existing = await db.productSerial.findUnique({ where: { id: payload.id } })
+    if (!existing) return { success: false, error: { code: 'SER-010', message: 'Equipment record not found.' } }
+
+    await db.productSerial.update({
+      where: { id: payload.id },
+      data: {
+        ...(payload.nextServiceDueDate !== undefined ? { nextServiceDueDate: payload.nextServiceDueDate ? new Date(payload.nextServiceDueDate) : null } : {}),
+        ...(payload.lastServicedDate !== undefined ? { lastServicedDate: payload.lastServicedDate ? new Date(payload.lastServicedDate) : null } : {})
+      }
+    })
+    await logAction(userId, 'SERIAL_SERVICE_INFO_UPDATED', 'ProductSerial', payload.id, undefined, payload)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'SER-011', message: err instanceof Error ? err.message : 'Failed to update service info.' } }
+  }
+}
+
+export interface EquipmentDueForServiceRow {
+  serialId: string; productName: string; serialNumber: string
+  nextServiceDueDate: string | null; lastServicedDate: string | null
+  dueForService: boolean; overdue: boolean
+}
+
+export async function listEquipmentDueForService(dueSoonDays = 14): Promise<{ success: boolean; data?: EquipmentDueForServiceRow[]; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const serials = await db.productSerial.findMany({
+      where: { nextServiceDueDate: { not: null } },
+      include: { product: { select: { productName: true } } },
+      orderBy: { nextServiceDueDate: 'asc' }
+    })
+
+    const now = new Date()
+    const soonCutoff = new Date(now.getTime() + dueSoonDays * 86400000)
+
+    const data: EquipmentDueForServiceRow[] = serials.map(s => ({
+      serialId: s.id, productName: s.product.productName, serialNumber: s.serialNumber,
+      nextServiceDueDate: s.nextServiceDueDate!.toISOString(), lastServicedDate: s.lastServicedDate?.toISOString() ?? null,
+      dueForService: s.nextServiceDueDate! <= soonCutoff, overdue: s.nextServiceDueDate! <= now
+    }))
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: { code: 'SER-012', message: err instanceof Error ? err.message : 'Could not list equipment due for service.' } }
+  }
+}
+
+export async function scheduleEquipmentServiceReminder(
+  serialId: string,
+  daysBefore = 3
+): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const serial = await db.productSerial.findUnique({ where: { id: serialId }, include: { product: { select: { productName: true } } } })
+    if (!serial) return { success: false, error: { code: 'SER-013', message: 'Equipment record not found.' } }
+    if (!serial.nextServiceDueDate) return { success: false, error: { code: 'SER-014', message: 'No next-service-due date set on this equipment.' } }
+
+    // ProductSerial.invoiceId is a plain string, not a Prisma relation — the
+    // owning customer is resolved via the linked Invoice, same as any other
+    // post-sale lookup this codebase does off a bare invoiceId.
+    const invoice = serial.invoiceId ? await db.invoice.findUnique({ where: { id: serial.invoiceId }, include: { customer: { select: { customerName: true, phone: true } } } }) : null
+    if (!invoice?.customer?.phone) return { success: true, data: null }
+
+    const scheduledFor = new Date(serial.nextServiceDueDate.getTime() - daysBefore * 86400000)
+    if (scheduledFor <= new Date()) return { success: false, error: { code: 'SER-015', message: 'The reminder date has already passed — the due date is too close (or in the past) to schedule ahead.' } }
+
+    const dueDateStr = serial.nextServiceDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const message = `Dear ${invoice.customer.customerName}, your ${serial.product.productName} (${serial.serialNumber}) is due for its next service around ${dueDateStr}. Please book a service visit. Thank you! Powered by Sarang | www.aszurex.com`
+    const link = await buildWhatsAppLink(invoice.customer.phone, message)
+
+    const row = await db.notificationQueue.create({
+      data: {
+        customerId: invoice.customerId,
+        customerName: invoice.customer.customerName,
+        customerPhone: invoice.customer.phone,
+        notificationType: 'EQUIPMENT_SERVICE_DUE_REMINDER',
+        templateBody: message,
+        whatsappLink: link,
+        scheduledFor,
+        status: 'PENDING'
+      }
+    })
+    await logAction(undefined, 'EQUIPMENT_SERVICE_REMINDER_SCHEDULED', 'ProductSerial', serialId, undefined, { scheduledFor })
+    return { success: true, data: row }
+  } catch (err) {
+    return { success: false, error: { code: 'SER-016', message: err instanceof Error ? err.message : 'Failed to schedule the service reminder.' } }
   }
 }

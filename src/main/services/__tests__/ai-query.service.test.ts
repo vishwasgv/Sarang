@@ -46,11 +46,56 @@ vi.mock('../report.service', () => ({
     generateRepairTurnaroundByTechnicianReport: vi.fn(),
     generateSeasonSellThroughReport: vi.fn(),
     generateSizeStyleHeatmapReport: vi.fn(),
-    generateVendorMarginReport: vi.fn()
+    generateVendorMarginReport: vi.fn(),
+    generateBrandMarginReturnRateReport: vi.fn(),
+    generateSizeAvailabilityHeatmapReport: vi.fn(),
+    generateLandedCostPerUnitReport: vi.fn(),
+    generateRejectionRateTrendReport: vi.fn(),
+    generateSeasonalCreditExposureReport: vi.fn(),
+    generateFarmerRepaymentReport: vi.fn(),
+    generateDonationToIssueCycleTimeReport: vi.fn(),
+    generateAssetUtilizationReport: vi.fn(),
+    generateMakingChargeMarginReport: vi.fn(),
+    generateHallmarkComplianceReport: vi.fn(),
+    generateMetalRateVsSalesVolumeReport: vi.fn(),
+    generatePurityAdjustedExchangeReport: vi.fn(),
+    generateServiceResolutionTimeReport: vi.fn(),
+    generateRepeatBusinessRateReport: vi.fn(),
+    generateConsultantUtilizationReport: vi.fn(),
+    generateClientProfitabilityReport: vi.fn()
   }
 }))
+vi.mock('../gold-savings.service', () => ({
+  listGoldSavingsSchemes: vi.fn()
+}))
+vi.mock('../service-ticket.service', () => ({
+  listTickets: vi.fn(),
+  getQuoteToJobConversionStats: vi.fn()
+}))
+vi.mock('../service-contract.service', () => ({
+  listServiceContracts: vi.fn()
+}))
+vi.mock('../project.service', () => ({
+  getEngagementConversionStats: vi.fn(),
+  getProposalWinRateStats: vi.fn()
+}))
+vi.mock('../retainer.service', () => ({
+  listRetainers: vi.fn(),
+  getRetainerHoursUsage: vi.fn()
+}))
+vi.mock('../seasonal-cycle.service', () => ({
+  getSeasonalReorderCalendar: vi.fn()
+}))
+vi.mock('../work-order.service', () => ({
+  getDowntimeSummary: vi.fn(),
+  getWorkOrderBottleneckFlag: vi.fn()
+}))
+vi.mock('../crop-advisory.service', () => ({ listDistinctCrops: vi.fn(), getProductsForCrop: vi.fn() }))
+vi.mock('../serial.service', () => ({ listEquipmentDueForService: vi.fn() }))
+vi.mock('../blood-bank.service', () => ({ listDonorsDueForRecall: vi.fn(), listDonationCamps: vi.fn() }))
 vi.mock('../repair-ticket.service', () => ({ lookupSerialService: vi.fn() }))
 vi.mock('../variant.service', () => ({ getSizeCurveReorderSuggestion: vi.fn() }))
+vi.mock('../trial-session.service', () => ({ getTrialConversionSummary: vi.fn() }))
 vi.mock('../analytics.service', () => ({
   getDashboardKpis: vi.fn(),
   getOutstandingAmount: vi.fn(),
@@ -79,6 +124,15 @@ import { getPrisma } from '../../database/db'
 import { getReadOnlyPrisma } from '../../database/ai-readonly-db'
 import { isModuleEnabled, getActiveTemplate } from '../industry-template.service'
 import { reportService } from '../report.service'
+import { listGoldSavingsSchemes } from '../gold-savings.service'
+import { listTickets } from '../service-ticket.service'
+import { getProposalWinRateStats } from '../project.service'
+import { getTrialConversionSummary } from '../trial-session.service'
+import { getSeasonalReorderCalendar } from '../seasonal-cycle.service'
+import { getDowntimeSummary, getWorkOrderBottleneckFlag } from '../work-order.service'
+import { listDistinctCrops, getProductsForCrop } from '../crop-advisory.service'
+import { listEquipmentDueForService } from '../serial.service'
+import { listDonorsDueForRecall, listDonationCamps } from '../blood-bank.service'
 import { lookupSerialService } from '../repair-ticket.service'
 import { getSizeCurveReorderSuggestion } from '../variant.service'
 import { getDashboardKpis, getOutstandingAmount, getDashboardAlerts } from '../analytics.service'
@@ -538,6 +592,496 @@ describe('askQuestion — pipeline scaffolding (Phase 57.3)', () => {
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('clothing.vendorMargin')
     expect(res.data?.answer).toContain('Acme Apparel')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Footwear item 2. Locks in that the SAME "margin by
+  // vendor" wording routes to footwear's OWN distinct intent for a
+  // FOOTWEAR business, not clothing.vendorMargin — the two templates share
+  // an overlapping regex but tryFastPathClassify only ever considers
+  // templates actually registered for the current business type.
+  it('routes "margin by vendor" to footwear.brandMarginReturnRate (not clothing.vendorMargin) for a FOOTWEAR business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateBrandMarginReturnRateReport).mockResolvedValue({
+      dateFrom: '2026-08-01', dateTo: '2026-08-31',
+      rows: [{ supplierId: 's1', supplierName: 'Acme Footwear', revenue: 500, cogs: 300, margin: 200, marginPercent: 40, unitsSold: 10, unitsReturned: 2, returnRatePercent: 20 }],
+      summary: { totalRevenue: 500, totalMargin: 200, overallReturnRatePercent: 20, vendorCount: 1 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me margin by vendor')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('footwear.brandMarginReturnRate')
+    expect(res.data?.answer).toContain('Acme Footwear')
+    expect(res.data?.answer).toContain('20%')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow.
+  it('routes "trial conversion rate" to footwear.trialConversionRate for a FOOTWEAR business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(getTrialConversionSummary).mockResolvedValue({
+      success: true,
+      data: { totalSessions: 8, convertedSessions: 5, conversionRatePercent: 62.5, avgPairsTriedPerSession: 2.3, avgPairsTriedPerConversion: 2.1 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our trial conversion rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('footwear.trialConversionRate')
+    expect(res.data?.answer).toContain('62.5%')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap. Locks in
+  // that this routes correctly and NOT to the earlier, broader
+  // clothing.sizeStyleHeatmap entry — both are registered for FOOTWEAR, so
+  // this only works because the wording deliberately avoids "heatmap".
+  it('routes "which sizes are out of stock" to footwear.sizeAvailabilityHeatmap for a FOOTWEAR business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateSizeAvailabilityHeatmapReport).mockResolvedValue({
+      lowStockThreshold: 3,
+      styles: ['Trail Runner'], sizes: ['8'],
+      cells: [{ style: 'Trail Runner', size: '8', stockQty: 0, status: 'OUT' }],
+      summary: { totalStyles: 1, outOfStockCells: 1, lowStockCells: 0, styleWithMostGaps: 'Trail Runner', styleGapCount: 1 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Which sizes are out of stock?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('footwear.sizeAvailabilityHeatmap')
+    expect(res.data?.answer).toContain('Trail Runner')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar.
+  it('routes "seasonal reorder calendar" to footwear.seasonalReorderStatus for a FOOTWEAR business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FOOTWEAR' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(getSeasonalReorderCalendar).mockResolvedValue({
+      success: true,
+      data: [{ id: 'c1', name: 'Monsoon', startMonth: 6, startDay: 1, endMonth: 9, endDay: 30, leadTimeDays: 30, status: 'REORDER_NOW', daysUntilStart: 10, reorderByDate: '2026-05-02', nextStartDate: '2026-06-01', products: [], lowOrOutOfStockCount: 0 }]
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me the seasonal reorder calendar')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('footwear.seasonalReorderStatus')
+    expect(res.data?.answer).toContain('Monsoon')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Manufacturing items 1-5.
+  it('routes "what is our landed cost per unit" to manufacturing.landedCostPerUnit for a MANUFACTURING business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateLandedCostPerUnitReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ productId: 'p1', productName: 'Steel Bracket', producedQty: 100, materialCostPerUnit: 50, laborCostPerUnit: 20, overheadCostPerUnit: 5, totalCostPerUnit: 75 }],
+      summary: { totalOrders: 1, totalProducedQty: 100 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our landed cost per unit?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('manufacturing.landedCostPerUnit')
+    expect(res.data?.answer).toContain('Steel Bracket')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "what is our rejection rate" to manufacturing.rejectionRateTrend for a MANUFACTURING business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateRejectionRateTrendReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      trend: [{ month: '2026-07', qtyInspected: 200, qtyRejected: 20, rejectionRatePercent: 10 }],
+      byStage: [{ taskName: 'Assembly', qtyInspected: 100, qtyRejected: 18, rejectionRatePercent: 18 }],
+      summary: { totalInspected: 200, totalRejected: 20, overallRejectionRatePercent: 10 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our rejection rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('manufacturing.rejectionRateTrend')
+    expect(res.data?.answer).toContain('Assembly')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "how much downtime did we have" to manufacturing.downtimeSummary for a MANUFACTURING business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(getDowntimeSummary).mockResolvedValue({
+      success: true, data: { totalMinutes: 105, byReason: [{ reason: 'Machine breakdown', minutes: 105 }] }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('How much downtime did we have?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('manufacturing.downtimeSummary')
+    expect(res.data?.answer).toContain('105')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "what is our bottleneck stage" to manufacturing.bottleneckFlag for a MANUFACTURING business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'MANUFACTURING' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(getWorkOrderBottleneckFlag).mockResolvedValue({
+      success: true,
+      data: { bottleneckStage: 'Assembly', avgDurationHours: 4, shareOfTotalLeadTimePercent: 66.7, stages: [{ taskName: 'Assembly', avgDurationHours: 4, sampleCount: 5 }] }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our bottleneck stage?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('manufacturing.bottleneckFlag')
+    expect(res.data?.answer).toContain('Assembly')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Agri Inputs items 2-5.
+  it('routes "what is our seasonal credit exposure" to agriInputs.seasonalCreditExposure for an AGRI_INPUTS business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateSeasonalCreditExposureReport).mockResolvedValue({
+      byMonth: [], bySeason: [],
+      summary: { totalOutstanding: 8000, totalInvoices: 5, peakMonth: 'Apr', peakMonthAmount: 5000 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our seasonal credit exposure?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('agriInputs.seasonalCreditExposure')
+    expect(res.data?.answer).toContain('Apr')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "which farmers have the worst repayment history" to agriInputs.farmerRepayment for an AGRI_INPUTS business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateFarmerRepaymentReport).mockResolvedValue({
+      rows: [{ customerId: 'c1', customerName: 'Risky Farmer', phone: null, totalPurchased: 1000, totalRepaid: 100, outstandingBalance: 900, repaymentRatePercent: 10 }],
+      summary: { totalFarmers: 1, totalOutstanding: 900, overallRepaymentRatePercent: 10 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me farmer repayment history')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('agriInputs.farmerRepayment')
+    expect(res.data?.answer).toContain('Risky Farmer')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "give me crop advisory recommendations" to agriInputs.cropAdvisory for an AGRI_INPUTS business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(listDistinctCrops).mockResolvedValue({ success: true, data: ['Cotton', 'Wheat'] } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Give me crop advisory recommendations')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('agriInputs.cropAdvisory')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "is any equipment due for service" to agriInputs.equipmentServiceDue for an AGRI_INPUTS business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'AGRI_INPUTS' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(listEquipmentDueForService).mockResolvedValue({
+      success: true,
+      data: [{ serialId: 's1', productName: 'Tractor A', serialNumber: 'SN-1', nextServiceDueDate: '2026-08-01', dueForService: true, overdue: true }]
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Is any equipment due for service?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('agriInputs.equipmentServiceDue')
+    expect(res.data?.answer).toContain('overdue')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Blood Bank items 1, 3, 4.
+  it('routes "which donors are eligible to donate again" to bloodBank.donorsDueForRecall for a BLOOD_BANK business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(listDonorsDueForRecall).mockResolvedValue({ success: true, data: [{ fullName: 'Ravi Kumar', bloodGroup: 'O+' }] } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Which donors are eligible to donate again?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('bloodBank.donorsDueForRecall')
+    expect(res.data?.answer).toContain('Ravi Kumar')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "show me camp turnout" to bloodBank.campTurnout for a BLOOD_BANK business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(listDonationCamps).mockResolvedValue({
+      success: true, data: [{ campName: 'Community Hall Drive', _count: { donations: 40 } }]
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me camp turnout')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('bloodBank.campTurnout')
+    expect(res.data?.answer).toContain('Community Hall Drive')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "what is our donation to issue cycle time" to bloodBank.donationToIssueCycleTime for a BLOOD_BANK business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BLOOD_BANK' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateDonationToIssueCycleTimeReport).mockResolvedValue({
+      summary: { totalIssuedUnits: 5, overallAvgDays: 6.2 }, byComponent: []
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our donation to issue cycle time?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('bloodBank.donationToIssueCycleTime')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+  it('routes "what is our asset utilization rate" to rental.assetUtilization for a RENTAL business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'RENTAL' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateAssetUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ rentalUnitId: 'u1', unitLabel: 'Car B', productName: 'Sedan Car', status: 'AVAILABLE', rentedDays: 0, availableDays: 31, utilizationPercent: 0 }],
+      summary: { totalUnits: 1, avgUtilizationPercent: 0, idleUnitCount: 1 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our asset utilization rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('rental.assetUtilization')
+    expect(res.data?.answer).toContain('Sedan Car')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Jewellery items 1-5. Confirms the more-specific margin
+  // pattern wins over jewellery.stockAndSales's own broad `/making[\s-]
+  // charge/i` pattern when it appears earlier in the fast-path array.
+  it('routes "making charge margin breakdown" to jewellery.makingChargeMargin, not the broader jewellery.stockAndSales', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'JEWELLERY' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateMakingChargeMarginReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [{ invoiceId: 'i1' }],
+      summary: { totalMetalValue: 47500, totalMakingCharge: 2500, avgMakingChargePercent: 5 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me the making charge margin breakdown')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('jewellery.makingChargeMargin')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "hallmark compliance" to jewellery.hallmarkCompliance for a JEWELLERY business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'JEWELLERY' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateHallmarkComplianceReport).mockResolvedValue({
+      rows: [], summary: { totalItems: 5, compliantCount: 5, nonCompliantCount: 0, compliancePercent: 100 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Show me our hallmark compliance register')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('jewellery.hallmarkCompliance')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Service items 1/4.
+  it('routes "sla breaches" to service.slaBreaches for a SERVICE business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'SERVICE' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(listTickets).mockResolvedValue({ success: true, data: { tickets: [{ isSlaBreached: true }], total: 1 } } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('Do we have any SLA breaches right now?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('service.slaBreaches')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "repeat business rate" to service.repeatBusinessRate for a SERVICE business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'SERVICE' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateRepeatBusinessRateReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31', rows: [{ month: '2026-07', newCustomers: 2, repeatCustomers: 8, repeatRatePercent: 80 }]
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our repeat business rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('service.repeatBusinessRate')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  // Phase 67 §9.1 — Consultant items 2/5.
+  it('routes "utilization rate" to consultant.utilization for a CONSULTANT business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CONSULTANT' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(reportService.generateConsultantUtilizationReport).mockResolvedValue({
+      dateFrom: '2026-07-01', dateTo: '2026-07-31',
+      rows: [{ userName: 'Priya', billableHours: 5, nonBillableHours: 35, totalHours: 40, utilizationPercent: 12.5 }],
+      summary: { totalBillableHours: 5, totalNonBillableHours: 35, overallUtilizationPercent: 12.5 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our utilization rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('consultant.utilization')
+    expect(classifySpy).not.toHaveBeenCalled()
+  })
+
+  it('routes "proposal win rate" to consultant.proposalWinRate for a CONSULTANT business', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'CONSULTANT' } as never })
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ currencySymbol: '₹' }) },
+      aiQueryLog: { create: vi.fn().mockResolvedValue({}) }
+    } as never)
+    vi.mocked(getProposalWinRateStats).mockResolvedValue({
+      success: true, data: { totalProposals: 10, won: 6, lost: 2, pending: 2, winRatePercent: 75 }
+    } as never)
+    const fake = new FakeAIProvider()
+    const classifySpy = vi.spyOn(fake, 'classifyIntent')
+    setAIProvider(fake)
+
+    const res = await askQuestion('What is our proposal win rate?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('consultant.proposalWinRate')
     expect(classifySpy).not.toHaveBeenCalled()
   })
 

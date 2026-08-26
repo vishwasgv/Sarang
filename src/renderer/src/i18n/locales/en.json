@@ -1706,6 +1706,14 @@
         "label": "Size × Style Heatmap",
         "description": "A grid of units sold by style and size — see exactly which combinations are actually moving, at a glance"
       },
+      "sizeAvailabilityHeatmap": {
+        "label": "Size Availability Heatmap",
+        "description": "A live stock grid by style and size — see which sizes are out or running low for a given style at a glance"
+      },
+      "seasonalReorderCalendar": {
+        "label": "Seasonal Reorder Calendar",
+        "description": "Define your own buying cycles (monsoon, wedding season, sports season, or whatever you actually stock for) and see which ones need reordering now, based on their lead time"
+      },
       "basketComposition": {
         "label": "Basket Composition",
         "description": "Which products are most often bought together in the same sale — spot natural bundles and pairings worth placing side by side or offering as a combo"
@@ -1717,6 +1725,10 @@
       "vendorMargin": {
         "label": "Margin by Brand/Vendor",
         "description": "Revenue, cost, and margin broken down by which supplier/brand each sold product came from — see at a glance which vendors are actually profitable and which are a loss"
+      },
+      "brandMarginReturnRate": {
+        "label": "Brand-Wise Margin & Return-Rate",
+        "description": "Margin and return rate side by side for each brand/vendor — footwear returns run higher than apparel, so a brand with a healthy margin can still be quietly losing money through an above-average return rate"
       },
       "fastSlowMoverMatrix": {
         "label": "Fast-Mover vs. Slow-Mover Matrix",
@@ -1745,6 +1757,10 @@
       "rentalRevenue": {
         "label": "Rental Revenue & Utilization",
         "description": "Revenue by rental item, plus utilization rate for individually-tracked units"
+      },
+      "assetUtilization": {
+        "label": "Asset Utilization Rate",
+        "description": "Rented-days versus available-days for each individual tracked unit — which assets actually earn their keep"
       },
       "hotelOccupancy": {
         "label": "Room Occupancy",
@@ -1782,13 +1798,49 @@
         "label": "Blood Stock Report",
         "description": "Available blood units by group, with expiring-soon alerts"
       },
+      "donationToIssueCycleTime": {
+        "label": "Donation-to-Issue Cycle Time",
+        "description": "How fast donated units actually get used, by component type — a waste-risk indicator"
+      },
       "jewellery": {
         "label": "Jewellery Report",
         "description": "Metal stock valuation by purity, making-charge revenue, and old-metal exchange summary"
       },
+      "makingChargeMargin": {
+        "label": "Making-Charge vs. Metal-Value Margin",
+        "description": "The true margin split per sale — how much of each invoice is metal value versus making charge"
+      },
+      "hallmarkCompliance": {
+        "label": "Hallmarking / HUID Compliance Register",
+        "description": "Every active jewellery item, flagging which ones are missing a BIS hallmark/HUID number"
+      },
+      "metalRateVsSalesVolume": {
+        "label": "Metal Rate vs. Sales Volume",
+        "description": "Correlates gold-rate swings with sales volume, to inform stocking and pricing timing"
+      },
+      "purityAdjustedExchange": {
+        "label": "Purity-Adjusted Exchange Analytics",
+        "description": "Old-metal exchanges normalized to pure-metal-equivalent weight, beyond the basic exchange log"
+      },
       "projects": {
         "label": "Project Report",
         "description": "Every project by status and estimated amount — for Service Business and Consultant"
+      },
+      "serviceResolutionTime": {
+        "label": "Resolution Time by Category",
+        "description": "A real service-quality metric — average, fastest, and slowest resolution time per ticket category"
+      },
+      "repeatBusinessRate": {
+        "label": "Repeat-Business Rate",
+        "description": "The retention indicator this vertical has never had — what share of customers each month are returning versus new"
+      },
+      "consultantUtilization": {
+        "label": "Utilization Rate",
+        "description": "The #1 consulting metric, currently invisible — billable vs. non-billable hours per staff member"
+      },
+      "clientProfitability": {
+        "label": "Client Profitability",
+        "description": "Which clients are actually worth keeping — revenue vs. hours spent, per client"
       },
       "serviceProjects": {
         "label": "Service Project Report",
@@ -1849,6 +1901,22 @@
       "production": {
         "label": "Production Report",
         "description": "Production orders by status, planned vs. produced quantity"
+      },
+      "landedCostPerUnit": {
+        "label": "True Landed Cost per Finished Unit",
+        "description": "Material, labour and overhead cost per unit produced, side by side — the real cost of a finished good, not just its materials"
+      },
+      "rejectionRateTrend": {
+        "label": "Rejection Rate Trend",
+        "description": "Quality-rejection rate over time and by production stage — spot which stage is actually losing you good units"
+      },
+      "seasonalCreditExposure": {
+        "label": "Seasonal Credit Exposure",
+        "description": "Outstanding credit invoices bucketed by due month and by linked crop season — see when across the year you're most exposed"
+      },
+      "farmerRepayment": {
+        "label": "Farmer-Wise Purchase & Repayment History",
+        "description": "Every credit customer ranked by repayment rate — riskiest accounts first"
       },
       "serialWarranty": {
         "label": "Serial & Warranty Report",
@@ -1951,6 +2019,8 @@
       "discountIncidence": "Lines Discounted",
       "avgDiscountPercent": "Avg. Discount",
       "totalRevenue": "Total Revenue",
+      "totalUnits": "Total Units",
+      "idleUnitCount": "Idle Units",
       "totalInvoices": "Total Invoices",
       "totalTaxAmount": "Total Tax",
       "avgOrderValue": "Avg Order Value",
@@ -1978,6 +2048,7 @@
       "cogs": "Cost of Goods Sold",
       "totalMargin": "Total Margin",
       "marginByVendor": "Margin by Vendor",
+      "brandMarginReturnRate": "Margin & Return Rate by Brand",
       "grossProfit": "Gross Profit",
       "netProfit": "Net Profit",
       "totalProjects": "Total Projects",
@@ -2041,6 +2112,11 @@
       "topCombination": "Top Combination",
       "topCombinationUnits": "Top Combination Units",
       "sizeStyleHeatmap": "Size × Style Heatmap",
+      "sizeAvailabilityHeatmap": "Size Availability Heatmap",
+      "totalStyles": "Styles Shown",
+      "outOfStockCells": "Out-of-Stock Sizes",
+      "lowStockCells": "Low-Stock Sizes",
+      "styleWithMostGaps": "Style With Most Gaps",
       "totalBaskets": "Total Baskets",
       "avgItemsPerBasket": "Avg. Items per Basket",
       "avgBasketValue": "Avg. Basket Value",
@@ -2091,11 +2167,26 @@
       "totalAvailableUnits": "Total Available Units",
       "expiringSoon": "Expiring Soon",
       "groupsOutOfStock": "Groups Out of Stock",
+      "totalIssuedUnits": "Total Issued Units",
+      "overallAvgDays": "Overall Avg. Cycle Time",
+      "avgCycleTimeByComponent": "Avg. Cycle Time by Component",
       "totalStockValuation": "Stock Valuation",
       "totalMakingChargeRevenue": "Making Charge Revenue",
       "totalExchangeCount": "Exchanges Recorded",
       "totalExchangeValueGiven": "Exchange Value Given",
       "metalsWithNoRateSet": "Metals With No Rate Set",
+      "totalMetalValue": "Total Metal Value",
+      "totalMakingCharge": "Total Making Charge",
+      "avgMakingChargePercent": "Avg. Making Charge %",
+      "totalItems": "Total Items",
+      "compliantCount": "Compliant",
+      "nonCompliantCount": "Non-Compliant",
+      "totalPureEquivalentGrams": "Pure-Metal-Equivalent",
+      "unparsablePurityCount": "Unrecognized Purity",
+      "totalResolved": "Tickets Resolved",
+      "overallAvgHours": "Avg. Resolution Time",
+      "repeatRatePercent": "Repeat Rate",
+      "overallUtilizationPercent": "Overall Utilization",
       "totalShipments": "Total Shipments",
       "deliveryRate": "Delivery Rate",
       "totalFreight": "Total Freight",
@@ -2106,6 +2197,16 @@
       "overallAttendanceRate": "Attendance Rate",
       "inProgress": "In Progress",
       "completionRate": "Completion Rate",
+      "totalProducedQty": "Total Produced Qty",
+      "landedCostPerUnitByProduct": "Landed Cost per Unit by Product",
+      "overallRejectionRate": "Overall Rejection Rate",
+      "rejectionRateTrend": "Rejection Rate Trend",
+      "totalOutstanding": "Total Outstanding",
+      "peakMonth": "Peak Month",
+      "seasonalCreditExposureByMonth": "Seasonal Credit Exposure by Month",
+      "totalFarmers": "Total Farmers",
+      "overallRepaymentRate": "Overall Repayment Rate",
+      "repaymentRateByFarmer": "Repayment Rate by Farmer",
       "totalSerials": "Total Serials",
       "inStock": "In Stock",
       "warrantyExpiringSoon": "Warranty Expiring Soon",
@@ -2224,6 +2325,7 @@
       "byBloodGroup": "By Blood Group",
       "unitDetails": "Unit Details",
       "stockByMetal": "Stock Valuation by Metal",
+      "pureEquivalentTrend": "Pure-Metal-Equivalent Trend",
       "byDayChart": "Orders by Day",
       "shipmentTrend": "Shipments Over Time",
       "topCarriers": "Top Carriers",
@@ -2232,6 +2334,8 @@
       "attendanceDetails": "Attendance Details",
       "byOrderStatus": "By Order Status",
       "productionOrderDetails": "Production Order Details",
+      "rejectionRateByStage": "Rejection Rate by Stage",
+      "bySeason": "By Crop Season",
       "byWarrantyStatus": "By Warranty Status",
       "serialDetails": "Serial Details",
       "salesByHour": "Sales by Hour of Day",
@@ -2271,9 +2375,11 @@
       "categorySellThrough": "No categorized product sales found in this date range.",
       "seasonSellThrough": "No products have a season/collection set, or no sales were found in this date range.",
       "sizeStyleHeatmap": "No variant-tracked sales found in this date range.",
+      "sizeAvailabilityHeatmap": "No variant-tracked stock found.",
       "basketComposition": "No baskets with 2 or more different products found in this date range.",
       "categoryMix": "No categorized product sales found in this date range.",
       "vendorMargin": "No sales found for products with an assigned vendor/brand in this date range.",
+      "brandMarginReturnRate": "No sales found for products with an assigned vendor/brand in this date range.",
       "cashPositionTrend": "No cash movement found in this date range.",
       "fastSlowMoverMatrix": "No products sold in this date range.",
       "gstr1": "No taxable invoices found for this period.",
@@ -2286,7 +2392,16 @@
       "batches": "No active batches with remaining stock.",
       "labOrders": "No lab test orders in this date range.",
       "bloodUnits": "No available blood units.",
+      "donationToIssueCycleTime": "No issued units yet.",
       "jewelleryStock": "No jewellery products with metal weight recorded yet.",
+      "makingChargeMargin": "No jewellery sales in this period.",
+      "hallmarkCompliance": "No active jewellery items yet.",
+      "metalRateVsSalesVolume": "No jewellery sales or metal rate history in this period.",
+      "purityAdjustedExchange": "No old-metal exchanges recorded in this period.",
+      "serviceResolutionTime": "No tickets resolved in this period.",
+      "repeatBusinessRate": "No customer tickets in this period.",
+      "consultantUtilization": "No billable work logged in this period.",
+      "clientProfitability": "No client project revenue in this period.",
       "projects": "No projects in this date range.",
       "serviceProjects": "No projects in this date range.",
       "jobCards": "No job cards in this date range.",
@@ -2302,6 +2417,10 @@
       "siteVisitLog": "No site visits in this date range.",
       "attendance": "No attendance records in this date range.",
       "productionOrders": "No production orders in this date range.",
+      "landedCostPerUnit": "No completed production orders in this date range.",
+      "rejectionRateTrend": "No QC inspection counts recorded in this date range.",
+      "seasonalCreditExposure": "No outstanding credit invoices with a due date right now.",
+      "farmerRepayment": "No farmer credit activity recorded yet.",
       "serials": "No serial numbers found.",
       "rmaAging": "No units are currently with a vendor for repair or replacement.",
       "vendorRecoveryLedger": "No vendor warranty claims have been recorded yet.",
@@ -2327,6 +2446,29 @@
       "vetCaseTypeVolume": "No cases recorded in this date range."
     },
     "col": {
+      "invoiceNumber": "Invoice Number",
+      "date": "Date",
+      "metalValue": "Metal Value",
+      "makingCharge": "Making Charge",
+      "makingChargePercent": "Making Charge %",
+      "compliant": "Compliant",
+      "nonCompliant": "Non-Compliant",
+      "salesWeightGrams": "Sales Weight (g)",
+      "exchangeCount": "Exchanges",
+      "rawWeightGrams": "Raw Weight (g)",
+      "pureEquivalentGrams": "Pure-Equivalent (g)",
+      "avgHours": "Avg. Hours",
+      "minHours": "Fastest (h)",
+      "maxHours": "Slowest (h)",
+      "newCustomers": "New Customers",
+      "repeatCustomers": "Repeat Customers",
+      "repeatRatePercent": "Repeat Rate %",
+      "billableHours": "Billable Hours",
+      "nonBillableHours": "Non-Billable Hours",
+      "staffMember": "Staff Member",
+      "utilizationPercent": "Utilization",
+      "hoursSpent": "Hours Spent",
+      "revenuePerHour": "Revenue/Hour",
       "invoiceNo": "Invoice #",
       "invoiceDate": "Invoice Date",
       "doctorName": "Doctor",
@@ -2452,6 +2594,8 @@
       "totalCount": "Total Count",
       "cancelledCount": "Cancelled Count",
       "bookingCount": "Bookings",
+      "rentedDays": "Rented Days",
+      "availableDays": "Available Days",
       "apptNo": "Appt #",
       "time": "Time",
       "provider": "Provider",
@@ -2506,8 +2650,14 @@
       "bloodGroup": "Blood Group",
       "componentType": "Component",
       "expiringSoonQ": "Expiring Soon?",
+      "unitCount": "Units",
+      "avgDays": "Avg. Days",
+      "minDays": "Fastest (days)",
+      "maxDays": "Slowest (days)",
       "month": "Month",
       "unitsSold": "Units Sold",
+      "unitsReturned": "Units Returned",
+      "returnRatePercent": "Return Rate %",
       "sellThroughRate": "Sell-Through Rate",
       "productA": "Product A",
       "productB": "Product B",
@@ -2525,6 +2675,20 @@
       "checkOut": "Check Out",
       "plannedQty": "Planned Qty",
       "producedQty": "Produced Qty",
+      "materialCostPerUnit": "Material Cost / Unit",
+      "laborCostPerUnit": "Labour Cost / Unit",
+      "overheadCostPerUnit": "Overhead Cost / Unit",
+      "totalCostPerUnit": "Total Cost / Unit",
+      "qtyInspected": "Qty Inspected",
+      "qtyRejected": "Qty Rejected",
+      "rejectionRatePercent": "Rejection Rate",
+      "outstandingAmount": "Outstanding Amount",
+      "invoiceCount": "Invoices",
+      "season": "Season",
+      "totalPurchased": "Total Purchased",
+      "totalRepaid": "Total Repaid",
+      "outstandingBalance": "Outstanding Balance",
+      "repaymentRatePercent": "Repayment Rate",
       "startDate": "Start Date",
       "completedDate": "Completed Date",
       "serialNumber": "Serial Number",
@@ -2542,6 +2706,10 @@
       "style": "Style",
       "color": "Color",
       "stockQty": "Stock Qty",
+      "status": "Status",
+      "nextStartDate": "Next Start Date",
+      "reorderByDate": "Reorder By",
+      "lowStockCount": "Low/Out-of-Stock Products",
       "studentName": "Student",
       "batchName": "Batch",
       "subject": "Subject",
@@ -2574,6 +2742,41 @@
     "legend": {
       "schemeCost": "Scheme Cost",
       "coveredVolume": "Covered-Product Volume"
+    },
+    "status": {
+      "out": "Out of stock",
+      "low": "Low stock",
+      "in": "In stock"
+    },
+    "seasonalCalendar": {
+      "nameRequired": "Season name is required.",
+      "saveFailed": "Could not save this season.",
+      "saved": "Season saved.",
+      "deleteFailed": "Could not delete this season.",
+      "manageSeasons": "Manage Seasons",
+      "hideManager": "Hide Season Manager",
+      "name": "Season Name",
+      "namePlaceholder": "e.g. Monsoon",
+      "startMonth": "Start Month",
+      "startDay": "Start Day",
+      "endMonth": "End Month",
+      "endDay": "End Day",
+      "leadTimeDays": "Lead Time (days)",
+      "update": "Update",
+      "add": "Add",
+      "editAction": "Edit",
+      "deleteAction": "Delete",
+      "daysUntilStart": "{{count}} days until this season starts",
+      "reorderBy": "Reorder by",
+      "taggedProducts": "Tagged products",
+      "lowStock": "Low/out of stock",
+      "empty": "No seasonal buying cycles defined yet.",
+      "emptySubtitle": "Add one below to start tracking reorder timing for it.",
+      "status": {
+        "reorderNow": "Reorder Now",
+        "inSeason": "In Season",
+        "upcoming": "Upcoming"
+      }
     },
     "schemeCostVsVolume": {
       "disclaimer": "This shows scheme cost and covered-product sales volume side by side so you can judge the correlation yourself — it doesn't (and can't) calculate what volume would have been without the scheme."
@@ -3820,7 +4023,26 @@
     "receiveBatchTitle": "Receive Raw Material Lot",
     "batchReceived": "Lot received.",
     "noBatchesYet": "No lots received yet for this material.",
-    "remainingQty": "Remaining"
+    "remainingQty": "Remaining",
+    "qc": {
+      "qtyInspected": "Qty Inspected",
+      "qtyRejected": "Qty Rejected",
+      "rejectedExceedsInspected": "Rejected quantity cannot exceed inspected quantity."
+    },
+    "downtime": {
+      "title": "Log Downtime",
+      "log": "Log Downtime",
+      "logShort": "+ Downtime",
+      "reason": "Reason",
+      "reasonPlaceholder": "e.g. Machine breakdown, material shortage",
+      "minutes": "Minutes",
+      "totalMinutes": "{{minutes}} min downtime logged",
+      "reasonRequired": "Downtime reason is required.",
+      "minutesRequired": "Downtime minutes must be greater than zero."
+    },
+    "bottleneck": {
+      "message": "\"{{stage}}\" is your slowest stage, averaging {{hours}}h ({{percent}}% of total lead time)."
+    }
   },
   "service": {
     "projects": "Projects",
@@ -3972,6 +4194,42 @@
     "couldNotUpdateStatus": "Could not update status.",
     "couldNotCancel": "Could not cancel.",
     "couldNotUpdateTicket": "Could not update ticket.",
+    "slaBreached": "SLA Breached",
+    "slaBreachedCount": "ticket(s) past SLA",
+    "slaDueLabel": "SLA Due",
+    "convertedFromQuotation": "Converted From Quotation",
+    "convertFromQuotation": "Convert From Quotation",
+    "notFromQuotation": "Not from a quotation",
+    "proposalWinRate": "proposal win rate",
+    "serviceContracts": "Service Contracts",
+    "serviceContractsDesc": "Recurring AMC-like arrangements for repeat customers — fixed value, billed on a schedule.",
+    "newContract": "New Contract",
+    "selectCustomer": "Select a customer.",
+    "validContractValueRequired": "Enter a valid contract value greater than zero.",
+    "contractScope": "Scope of Work",
+    "serviceFrequency": "Service Frequency",
+    "frequency": {
+      "MONTHLY": "Monthly",
+      "QUARTERLY": "Quarterly",
+      "HALF_YEARLY": "Half-Yearly",
+      "YEARLY": "Yearly"
+    },
+    "contractValue": "Contract Value",
+    "createContract": "Create Contract",
+    "contractCreated": "Contract Created",
+    "contractCreatedDesc": "{{number}} created.",
+    "generateContractInvoiceTitle": "Generate invoice for {{number}}",
+    "generateContractInvoiceHint": "Bills {{amount}} for the current period.",
+    "generateInvoice": "Generate Invoice",
+    "noContracts": "No service contracts yet",
+    "contractStatus": {
+      "ACTIVE": "Active",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled"
+    },
+    "lastInvoicedFor": "Last invoiced: {{period}}",
+    "contractInvoiced": "Invoice Generated",
+    "contractInvoicedDesc": "The contract's period invoice has been created.",
     "selectEntity": "Select a project, ticket, or job card.",
     "couldNotDeleteLog": "Could not delete log.",
     "jobStReceived": "Received",
@@ -4689,6 +4947,7 @@
       "CANCELLED": "Cancelled",
       "OVERDUE": "Overdue",
       "AVAILABLE": "Available",
+      "RENTED": "Rented",
       "MAINTENANCE": "Maintenance",
       "RETIRED": "Retired"
     },
@@ -4745,9 +5004,11 @@
     },
     "daysOverdue": "Days Overdue",
     "utilization": "Utilization",
+    "overdueAging": "Overdue Aging",
     "empty": {
       "status": "Nothing is currently checked out.",
-      "revenue": "No rental revenue in this period."
+      "revenue": "No rental revenue in this period.",
+      "utilization": "No tracked rental units yet."
     },
     "serviceIntervalRentals": "Service Interval (Rentals)",
     "serviceIntervalDays": "Service Interval (Days)",
@@ -4841,7 +5102,45 @@
     "exchangeSearchPlaceholder": "Search by exchange number...",
     "noUnlinkedExchanges": "No unlinked exchanges found for this customer.",
     "exchangeApplied": "Exchange {{number}} — {{amount}} credit will be applied on checkout.",
-    "removeExchange": "Remove"
+    "removeExchange": "Remove",
+    "goldSavings": "Gold Savings",
+    "goldSavingsDesc": "Fixed monthly deposits toward a future purchase — redeemable as a discount on the customer's invoice.",
+    "newScheme": "New Scheme",
+    "selectCustomer": "Select a customer.",
+    "validAmountRequired": "Enter a valid amount greater than zero.",
+    "validTenureRequired": "Enter a valid tenure — a whole number of months.",
+    "monthlyAmount": "Monthly Amount",
+    "tenureMonths": "Tenure (months)",
+    "startDate": "Start Date",
+    "createScheme": "Create Scheme",
+    "schemeCreated": "Scheme Created",
+    "schemeCreatedDesc": "{{number}} created. Record installments as the customer pays each month.",
+    "recordInstallmentTitle": "Record an installment for {{number}}",
+    "installmentAmount": "Installment Amount",
+    "record": "Record",
+    "installmentRecorded": "Installment Recorded",
+    "installmentRecordedDesc": "{{amount}} added to this scheme's total.",
+    "redeemSchemeTitle": "Redeem {{number}}",
+    "redeemHint": "Total deposited so far: {{amount}}. Apply the redeemed amount as a discount on the customer's purchase invoice yourself in Billing.",
+    "bonusAmount": "Bonus Amount",
+    "redeem": "Redeem",
+    "schemeRedeemed": "Scheme Redeemed",
+    "schemeRedeemedDesc": "Apply the redeemed amount as a discount on the customer's purchase invoice.",
+    "noSchemes": "No gold savings schemes yet",
+    "schemeStatus": {
+      "ACTIVE": "Active",
+      "REDEEMED": "Redeemed",
+      "CLOSED": "Closed"
+    },
+    "monthlyOverTenure": "{{amount}}/month × {{tenure}} months",
+    "deposited": "Deposited: {{amount}}",
+    "redeemedFor": "Redeemed for {{amount}}",
+    "addInstallment": "Add Installment",
+    "pureEquivalent": "Pure-equivalent {{weight}}g",
+    "makingChargeMargin": "Making-Charge vs. Metal-Value Margin",
+    "hallmarkCompliance": "Hallmarking / HUID Compliance",
+    "metalRateVsSalesVolume": "Metal Rate vs. Sales Volume",
+    "purityAdjustedExchange": "Purity-Adjusted Exchange Analytics"
   },
   "distributor": {
     "fieldOrders": {

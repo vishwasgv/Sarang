@@ -19,6 +19,10 @@ Ouvrir l'écran de détail d'un projet vous donne deux choses supplémentaires :
 - **Tâches** — une simple liste de contrôle que vous cochez ; la liste de projets affiche une barre de progression « fait / total » calculée à partir de cela.
 - **Journaux de travail** — heures enregistrées contre le projet, chacune marquée facturable ou non facturable, avec un total cumulé affiché à la fois sur les vues liste et détail.
 
+Vous avez un **Devis** accepté que vous utilisez comme lettre de mission ? Sélectionnez-le dans le menu déroulant **Convertir Depuis un Devis** lors de la création d'un projet, et Sarang relie les deux — un devis ne peut se convertir qu'en un seul projet, ce qui constitue donc un enregistrement réel du nombre de vos lettres de mission effectivement transformées en travail facturé.
+
+**Consultant** voit également un **taux de réussite des propositions** en cours à côté du nombre de projets dans l'en-tête — gagnées vs. perdues vs. devis encore en attente, afin que vous sachiez toujours d'un coup d'œil comment votre pipeline de lettres de mission se convertit, pas seulement combien de projets sont actuellement ouverts.
+
 ## Fiches de travail (Réparation, Service via le modèle générique)
 
 Une fiche de travail est construite pour un article physique qu'un client dépose : un titre, une description d'article, une priorité, un coût estimé, et des dates de réception/attendue/livraison. Elle a son propre cycle de vie en sept étapes — **Reçu → Diagnostic → En réparation → (éventuellement En attente de pièces) → Prêt → Livré**, ou **Annulé** à tout moment avant la livraison. La vue de détail affiche cela comme un suivi visuel d'étapes et fait toujours ressortir le bouton d'action suivante unique (par ex. « Marquer en réparation »), plus une action dédiée « En attente de pièces » pendant qu'une fiche est en réparation. Livrer une fiche de travail est le moment où vous saisissez le coût final réel, séparé de l'estimation d'origine — **Générer une Facture** transforme ce coût final en une véritable facture une fois le travail livré.
@@ -28,6 +32,22 @@ Ajoutez de véritables **pièces utilisées** à une fiche de travail depuis sa 
 ## Tickets de service (Service, Réparation)
 
 Un ticket est une demande de support plus légère : titre, description, priorité, une étiquette de catégorie facultative, et un client/assigné facultatifs. Il traverse **Ouvert → En cours → Résolu → Fermé**, et résoudre un ticket permet d'y attacher une note de résolution. Les tickets urgents et non résolus sont signalés par un indicateur de drapeau rouge sur la liste afin qu'ils ne soient pas enterrés. Saisissez un montant et **Générer une Facture** pour facturer un ticket résolu.
+
+Chaque ticket reçoit également une **minuterie SLA** dès sa création, dimensionnée selon sa priorité (Urgent 4 heures, Élevée 24 heures, Moyenne 3 jours, Basse 7 jours). Un ticket encore ouvert au-delà de son propre SLA est directement signalé **SLA Non Respecté** dans la liste et dans le compteur d'en-tête — une véritable alerte d'échéance, pas seulement une étiquette de priorité.
+
+Un **Devis** accepté s'est transformé en travail réel ? Sélectionnez-le dans le menu déroulant **Convertir Depuis un Devis** lors de la création d'un ticket, et Sarang relie les deux — un devis ne peut se convertir qu'en un seul ticket, ce qui constitue donc un enregistrement réel du nombre de vos devis effectivement transformés en travaux facturables.
+
+## Contrats de Service (Service)
+
+Ouvrez **Contrats de Service** dans la barre latérale pour gérer un arrangement récurrent de type contrat de maintenance pour un client fidèle — une valeur fixe, facturée selon un calendrier (Mensuel/Trimestriel/Semestriel/Annuel) plutôt que renégociée à chaque fois. Créez un contrat avec sa portée de travaux, sa fréquence, sa date de début et sa valeur, puis cliquez sur **Générer une Facture** chaque fois qu'une période de facturation arrive à échéance — Sarang suit quelle période a été facturée en dernier afin que la même période ne soit jamais facturée deux fois, la même protection dont bénéficie déjà ailleurs dans Sarang un contrat de type abonnement ou de maintenance ordinaire.
+
+## Contrats de Rétention (Consultant)
+
+Ouvrez **Contrats de Rétention** dans la barre latérale pour gérer un arrangement mensuel récurrent pour un client fidèle — honoraires fixes, forfait d'heures, ou périmètre basé sur des livrables, facturé selon le calendrier que vous définissez. Pour un contrat de rétention en forfait d'heures, enregistrez le temps qui lui est consacré depuis **Suivi du Temps**, et la fiche du contrat elle-même affiche une barre de progression en direct **heures utilisées / heures allouées**, qui devient rouge une fois l'allocation du mois épuisée — la consommation du contrat de rétention en un coup d'œil, sans rapport séparé nécessaire.
+
+## Rapports
+
+Quatre rapports sont spécifiques à cet ensemble de secteurs. **Temps de Résolution par Catégorie** détaille combien de temps les tickets mettent réellement à se fermer, moyenne/le plus rapide/le plus lent par catégorie — une véritable mesure de la qualité de service, pas seulement un décompte de statuts. **Taux de Clientèle Récurrente** montre l'évolution, mois par mois, de la part de vos clients ouvrant des tickets qui sont récurrents par rapport aux tout nouveaux — le signal de fidélisation que cette structure générique n'a jamais eu auparavant. **Taux d'Utilisation** (Consultant) est la métrique de conseil n°1 : heures facturables vs. non facturables par membre du personnel, triées pour faire apparaître en premier le moins utilisé. **Rentabilité Client** (Consultant) montre les revenus par rapport aux heures passées par client, triés du pire au meilleur, afin que vous puissiez voir d'un coup d'œil quels clients valent vraiment la peine d'être conservés.
 
 ## Rendez-vous et facturation des Projets
 

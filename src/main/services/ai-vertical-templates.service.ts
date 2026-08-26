@@ -29,6 +29,17 @@ import { getOccupancyReport } from './hotel.service'
 import { reportService } from './report.service'
 import { lookupSerialService } from './repair-ticket.service'
 import { getSizeCurveReorderSuggestion } from './variant.service'
+import { getTrialConversionSummary } from './trial-session.service'
+import { getSeasonalReorderCalendar } from './seasonal-cycle.service'
+import { getDowntimeSummary, getWorkOrderBottleneckFlag } from './work-order.service'
+import { listDistinctCrops, getProductsForCrop } from './crop-advisory.service'
+import { listEquipmentDueForService } from './serial.service'
+import { listDonorsDueForRecall, listDonationCamps } from './blood-bank.service'
+import { listGoldSavingsSchemes } from './gold-savings.service'
+import { listTickets, getQuoteToJobConversionStats } from './service-ticket.service'
+import { listServiceContracts } from './service-contract.service'
+import { getEngagementConversionStats, getProposalWinRateStats } from './project.service'
+import { listRetainers, getRetainerHoursUsage } from './retainer.service'
 import { loyaltyProgramService } from './loyalty-program.service'
 import { getTemplateSuggestion } from './template-suggestion.service'
 import { customDocumentService } from './custom-document.service'
@@ -105,8 +116,10 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
 
   switch (businessType) {
     case 'HOTEL_LODGE': return ['hotel.occupancy']
-    case 'JEWELLERY': return ['jewellery.stockAndSales']
-    case 'RENTAL': return ['rental.status', 'rental.revenue']
+    // Phase 67 §9.1 — items 1/2/3/4/5.
+    case 'JEWELLERY': return ['jewellery.stockAndSales', 'jewellery.goldSavingsSummary', 'jewellery.makingChargeMargin', 'jewellery.hallmarkCompliance', 'jewellery.metalRateVsSalesVolume', 'jewellery.purityAdjustedExchange']
+    // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
+    case 'RENTAL': return ['rental.status', 'rental.revenue', 'rental.assetUtilization']
     // AI expansion, 2026-07 — lab.reportsPendingFinalization reuses the same
     // generateLabThroughputReport as lab.throughput, just framed around the
     // "reports pending" question specifically rather than the full summary.
@@ -115,7 +128,13 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // with SPECIALIST_CLINIC's own intent below — see report.service.ts's
     // comment on why the two verticals need separate queries).
     case 'DIAGNOSTIC_LAB': return ['lab.throughput', 'lab.reportsPendingFinalization', 'lab.tatCompliance', 'lab.topPanel', 'lab.referralLeaderboard']
-    case 'BLOOD_BANK': return ['bloodBank.stock']
+    // Phase 67 §9.1 — Blood Bank items 1, 3, 4: donor cooldown auto-reminder,
+    // camp turnout, and donation-to-issue cycle time. Item 2 (bloodBank.stock)
+    // already existed; item 5 (fast-match search) needs a quantity parameter
+    // fast-path routing can't reliably extract, so it stays a pure UI tool
+    // with no AI intent, same precedent several other pure-action items this
+    // phase already established.
+    case 'BLOOD_BANK': return ['bloodBank.stock', 'bloodBank.donorsDueForRecall', 'bloodBank.campTurnout', 'bloodBank.donationToIssueCycleTime']
     case 'RESTAURANT': return ['restaurant.foodCost', 'restaurant.orderVolume', 'restaurant.dishContributionMargin', 'restaurant.tableTurnoverByHour', 'restaurant.recipeWasteVariance']
     case 'RETAIL': return ['retail.deadStockClearance', 'retail.categorySellThrough', 'retail.loyaltyProgress', 'retail.basketComposition']
     // Phase 67 §9.1 — Hardware's item 4 (Fast-mover vs. slow-mover matrix)
@@ -130,7 +149,7 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // own matching intent too, same "any new feature gets an AI answer"
     // rule this item's precedents (e.g. Retail's loyaltyProgress) followed.
     case 'GENERAL': return ['general.templateSuggestion', 'general.customDocumentSummary', 'general.categoryMix', 'general.cashPositionTrend', 'general.quotePipelineSummary']
-    case 'MANUFACTURING': return ['manufacturing.production']
+    case 'MANUFACTURING': return ['manufacturing.production', 'manufacturing.landedCostPerUnit', 'manufacturing.rejectionRateTrend', 'manufacturing.downtimeSummary', 'manufacturing.bottleneckFlag']
     case 'ELECTRONICS': return ['electronics.serialWarranty', 'electronics.rmaOverdueSummary', 'electronics.vendorRecovery', 'electronics.repairTurnaround', 'electronics.serialServiceLookup']
     // Phase 67 §9.1 — Clothing item 4 (size/color exchange workflow) gets a
     // matching AI intent per Section 1.2's rule. Distinct from the generic
@@ -140,7 +159,15 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // question of how many were actual size/colour exchanges specifically.
     // Phase 67 §9.1 — Clothing item 5 (Margin by Brand/Vendor Report), its
     // 5th and final signature item, closing the vertical's own list.
-    case 'CLOTHING': case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap', 'clothing.exchangeSummary', 'clothing.vendorMargin']
+    case 'CLOTHING': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap', 'clothing.exchangeSummary', 'clothing.vendorMargin']
+    // Phase 67 §9.1 — split off from the CLOTHING case above once grounding
+    // confirmed (via the source audit artifact) that Footwear does NOT
+    // share Clothing's own signature-item list despite sharing its module
+    // set byte-for-byte — the first 4 intents here ARE genuinely shared
+    // capabilities (their own report tiles are gated ['CLOTHING','FOOTWEAR']
+    // in the UI too), but the 5th intent is Footwear's own distinct item 2,
+    // not Clothing's item 5.
+    case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap', 'clothing.exchangeSummary', 'footwear.brandMarginReturnRate', 'footwear.trialConversionRate', 'footwear.sizeAvailabilityHeatmap', 'footwear.seasonalReorderStatus']
     case 'COACHING_INSTITUTE': return ['coaching.testScores', 'coaching.feeDuesAndAttendance']
     case 'CA_FIRM': case 'COMPANY_SECRETARY': return ['compliance.tasks', 'compliance.upcomingFilings']
     case 'REPAIR': return ['repair.jobCards']
@@ -152,7 +179,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // one array) so PHARMACY can carry its own extra intent; AGRI_INPUTS
     // keeps only batch expiry, unchanged.
     case 'PHARMACY': return ['inventory.batchExpiry', 'pharmacy.prescriptionVolumeByDoctor']
-    case 'AGRI_INPUTS': return ['inventory.batchExpiry']
+    // Phase 67 §9.1 — Agri Inputs items 2-5: seasonal credit exposure,
+    // crop-linked product advisory, farmer repayment ranking, and equipment
+    // AMC/service reminders (item 1 — crop-season due dates — has no AI
+    // intent of its own, it's a billing-time computation, not a query).
+    case 'AGRI_INPUTS': return ['inventory.batchExpiry', 'agriInputs.seasonalCreditExposure', 'agriInputs.farmerRepayment', 'agriInputs.cropAdvisory', 'agriInputs.equipmentServiceDue']
     // Phase 67 §9.1 — DISTRIBUTOR previously had ZERO vertical AI templates
     // (only appeared in LOGISTICS_BASED_TYPES, an unrelated module-defaults
     // set) despite being a Section-1.2-named vertical — closing that gap
@@ -163,6 +194,11 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // and fit the same reuse pattern as every other template here; there
     // was no reason to leave this one out.
     case 'PLACEMENT_AGENCY': return ['placement.summary', 'placement.pipelineByStage']
+    // Phase 67 §9.1 — Service items 1-5: SLA timer, resolution time by
+    // category, recurring service contracts, repeat-business rate, and
+    // quote-to-job conversion tracking.
+    case 'SERVICE': return ['service.slaBreaches', 'service.resolutionTime', 'service.contractSummary', 'service.repeatBusinessRate', 'service.quoteToJobConversion']
+    case 'CONSULTANT': return ['consultant.engagementConversion', 'consultant.utilization', 'consultant.retainerBurnDown', 'consultant.clientProfitability', 'consultant.proposalWinRate']
   }
 
   if (PROJECT_BASED_TYPES.has(businessType)) {
@@ -260,6 +296,186 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         isEmpty: r.summary.totalStockValuationAmount === 0
       }
     }
+    // Phase 67 §9.1 — Jewellery item 1: Gold savings (chit) scheme ledger.
+    case 'jewellery.goldSavingsSummary': {
+      const res = await listGoldSavingsSchemes({ status: 'ACTIVE' })
+      const schemes = res.success ? (res.data ?? []) : []
+      const totalDeposited = schemes.reduce((s, sc) => s + sc.totalDeposited, 0)
+      return {
+        headline: `${schemes.length} active gold savings scheme(s), ${formatAmountForSpeech(totalDeposited, sym)} deposited so far`,
+        details: [],
+        isEmpty: schemes.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Jewellery item 2: Making-Charge vs. Metal-Value Margin, per sale.
+    case 'jewellery.makingChargeMargin': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateMakingChargeMarginReport({ dateFrom, dateTo })
+      return {
+        headline: `Making charge is ${r.summary.avgMakingChargePercent}% of total sale value this period (${formatAmountForSpeech(r.summary.totalMakingCharge, sym)} of ${formatAmountForSpeech(r.summary.totalMetalValue + r.summary.totalMakingCharge, sym)})`,
+        details: [],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Jewellery item 3: Hallmarking/HUID compliance register.
+    case 'jewellery.hallmarkCompliance': {
+      const r = await reportService.generateHallmarkComplianceReport()
+      return {
+        headline: `${r.summary.compliantCount} of ${r.summary.totalItems} jewellery items are hallmark-compliant (${r.summary.compliancePercent}%)`,
+        details: r.summary.nonCompliantCount > 0 ? [`${r.summary.nonCompliantCount} item(s) missing a hallmark/HUID number`] : [],
+        isEmpty: r.summary.totalItems === 0
+      }
+    }
+    // Phase 67 §9.1 — Jewellery item 4: Metal Rate vs. Sales Volume.
+    case 'jewellery.metalRateVsSalesVolume': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateMetalRateVsSalesVolumeReport({ dateFrom, dateTo })
+      const latest = r.rows[r.rows.length - 1]
+      return {
+        headline: r.metalType
+          ? `${r.metalType} ${r.purity}: latest rate ${latest?.avgRatePerGram != null ? formatAmountForSpeech(latest.avgRatePerGram, sym) + '/g' : 'not set'}, ${latest?.salesWeightGrams.toFixed(1) ?? 0}g sold last tracked month`
+          : 'No jewellery sales in this period to correlate against metal rates.',
+        details: [],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Jewellery item 5: Purity-adjusted old-gold exchange analytics.
+    case 'jewellery.purityAdjustedExchange': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generatePurityAdjustedExchangeReport({ dateFrom, dateTo })
+      return {
+        headline: `${r.summary.totalExchanges} exchange(s) this period, ${r.summary.totalPureEquivalentGrams}g pure-metal-equivalent, ${formatAmountForSpeech(r.summary.totalValueGiven, sym)} credited`,
+        details: [],
+        isEmpty: r.summary.totalExchanges === 0
+      }
+    }
+    // Phase 67 §9.1 — Service item 1: Ticket SLA timer breach alert.
+    case 'service.slaBreaches': {
+      const r = await listTickets({})
+      const breached = (r.data?.tickets ?? []).filter((tk) => tk.isSlaBreached)
+      return {
+        headline: `${breached.length} ticket(s) currently past their SLA due date`,
+        details: [],
+        isEmpty: breached.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Service item 2: Resolution Time by Category.
+    case 'service.resolutionTime': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateServiceResolutionTimeReport({ dateFrom, dateTo })
+      const slowest = r.rows[0]
+      return {
+        headline: slowest
+          ? `${slowest.category} takes the longest to resolve at ${slowest.avgHours}h average, ${r.summary.totalResolved} ticket(s) resolved this period`
+          : 'No tickets resolved this period yet.',
+        details: [],
+        isEmpty: r.summary.totalResolved === 0
+      }
+    }
+    // Phase 67 §9.1 — Service item 3: Recurring service contract ledger.
+    case 'service.contractSummary': {
+      const r = await listServiceContracts({ status: 'ACTIVE' })
+      const contracts = r.data ?? []
+      const totalValue = contracts.reduce((s: number, c: { contractValue: number }) => s + c.contractValue, 0)
+      return {
+        headline: `${contracts.length} active service contract(s), ${formatAmountForSpeech(totalValue, sym)} in combined value`,
+        details: [],
+        isEmpty: contracts.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Service item 4: Repeat-Business Rate.
+    case 'service.repeatBusinessRate': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateRepeatBusinessRateReport({ dateFrom, dateTo })
+      const latest = r.rows[r.rows.length - 1]
+      return {
+        headline: latest
+          ? `${latest.repeatRatePercent}% repeat business this month — ${latest.repeatCustomers} returning, ${latest.newCustomers} new`
+          : 'No customer tickets this period to measure repeat business.',
+        details: [],
+        isEmpty: !latest
+      }
+    }
+    // Phase 67 §9.1 — Service item 5: Quote-to-Job Conversion Tracking.
+    case 'service.quoteToJobConversion': {
+      const r = await getQuoteToJobConversionStats()
+      const stats = r.data ?? { acceptedQuotations: 0, convertedToTicket: 0, conversionRatePercent: 0 }
+      return {
+        headline: `${stats.conversionRatePercent}% of accepted quotations became jobs — ${stats.convertedToTicket} of ${stats.acceptedQuotations}`,
+        details: [],
+        isEmpty: stats.acceptedQuotations === 0
+      }
+    }
+    // Phase 67 §9.1 — Consultant item 1: Engagement-Letter -> Project Conversion.
+    case 'consultant.engagementConversion': {
+      const r = await getEngagementConversionStats()
+      const stats = r.data ?? { acceptedQuotations: 0, convertedToProject: 0, conversionRatePercent: 0 }
+      return {
+        headline: `${stats.conversionRatePercent}% of accepted engagement letters became projects — ${stats.convertedToProject} of ${stats.acceptedQuotations}`,
+        details: [],
+        isEmpty: stats.acceptedQuotations === 0
+      }
+    }
+    // Phase 67 §9.1 — Consultant item 2: Utilization Rate.
+    case 'consultant.utilization': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateConsultantUtilizationReport({ dateFrom, dateTo })
+      const lowest = r.rows[0]
+      return {
+        headline: lowest
+          ? `${lowest.userName} has the lowest utilization at ${lowest.utilizationPercent}%, overall utilization ${r.summary.overallUtilizationPercent}% this period`
+          : 'No billable work logged this period yet.',
+        details: [],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Consultant item 3: Retainer Burn-Down Tracker. Reuses
+    // the pre-existing per-retainer getRetainerHoursUsage verbatim, just
+    // aggregated across every ACTIVE HOURLY_BUCKET retainer for one summary
+    // headline — no new retainer-service function needed.
+    case 'consultant.retainerBurnDown': {
+      const listRes = await listRetainers({ status: 'ACTIVE' })
+      const retainers = ((listRes.data ?? []) as Array<{ id: string; title: string; hoursPerMonth: number | null }>).filter((rt) => rt.hoursPerMonth != null)
+      const usages = await Promise.all(retainers.map((rt) => getRetainerHoursUsage(rt.id)))
+      let totalUsed = 0; let totalAllocated = 0; let exhaustedCount = 0
+      usages.forEach((u, i) => {
+        const d = u.data as { hoursUsed: number; hoursPerMonth: number | null; hoursRemaining: number | null } | undefined
+        if (!d) return
+        totalUsed += d.hoursUsed
+        totalAllocated += retainers[i].hoursPerMonth ?? 0
+        if (d.hoursRemaining === 0) exhaustedCount++
+      })
+      return {
+        headline: retainers.length > 0
+          ? `${totalUsed.toFixed(1)}h of ${totalAllocated.toFixed(1)}h retainer hours used this month across ${retainers.length} retainer(s), ${exhaustedCount} exhausted`
+          : 'No active hourly retainers to track.',
+        details: [],
+        isEmpty: retainers.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Consultant item 4: Client Profitability.
+    case 'consultant.clientProfitability': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateClientProfitabilityReport({ dateFrom, dateTo })
+      const worst = r.rows[0]
+      return {
+        headline: worst
+          ? `${worst.customerName} has the lowest revenue per hour at ${formatAmountForSpeech(worst.revenuePerHour, sym)}/h, ${formatAmountForSpeech(r.summary.totalRevenue, sym)} total revenue this period`
+          : 'No client project revenue this period yet.',
+        details: [],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Consultant item 5: Proposal Win-Rate Tracking.
+    case 'consultant.proposalWinRate': {
+      const r = await getProposalWinRateStats()
+      const stats = r.data ?? { totalProposals: 0, won: 0, lost: 0, pending: 0, winRatePercent: 0 }
+      return {
+        headline: `${stats.winRatePercent}% proposal win rate — ${stats.won} won, ${stats.lost} lost, ${stats.pending} pending`,
+        details: [],
+        isEmpty: stats.totalProposals === 0
+      }
+    }
     case 'rental.status': {
       const r = await reportService.generateRentalStatusReport()
       return {
@@ -275,6 +491,21 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `Rental revenue this period: ${formatAmountForSpeech(r.summary.totalRevenue, sym)} across ${r.summary.totalBookings} bookings`,
         details: [],
         isEmpty: r.summary.totalRevenue === 0
+      }
+    }
+    // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit. Leads
+    // with the worst-earning asset — the actionable part of a ranked list,
+    // same framing every other "worst first" report this phase uses.
+    case 'rental.assetUtilization': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateAssetUtilizationReport({ dateFrom, dateTo })
+      const worst = r.rows[0] ?? null
+      return {
+        headline: worst
+          ? `${worst.productName} (${worst.unitLabel}) has the lowest utilization this period at ${worst.utilizationPercent}%${r.summary.idleUnitCount > 0 ? `, ${r.summary.idleUnitCount} unit(s) fully idle` : ''}`
+          : 'No tracked rental units yet',
+        details: r.rows.slice(0, 3).map(row => `${row.productName} (${row.unitLabel}): ${row.utilizationPercent}%`),
+        isEmpty: r.rows.length === 0
       }
     }
     case 'lab.throughput': {
@@ -295,6 +526,40 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${r.summary.totalAvailable} units available, ${r.summary.totalExpiringSoon} expiring soon`,
         details: r.summary.groupsWithNoStock.length > 0 ? [`No stock: ${r.summary.groupsWithNoStock.join(', ')}`] : [],
         isEmpty: r.summary.totalAvailable === 0 && r.summary.totalExpiringSoon === 0
+      }
+    }
+    // Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+    case 'bloodBank.donorsDueForRecall': {
+      const r = await listDonorsDueForRecall()
+      if (!r.success || !r.data) return { headline: 'Could not check donor eligibility', details: [], isEmpty: true }
+      const donors = r.data as Array<{ fullName: string; bloodGroup: string | null }>
+      return {
+        headline: donors.length > 0 ? `${donors.length} donor${donors.length === 1 ? ' is' : 's are'} eligible to donate again` : 'No donors are currently due for recall',
+        details: donors.slice(0, 5).map(d => `${d.fullName}${d.bloodGroup ? ` (${d.bloodGroup})` : ''}`),
+        isEmpty: donors.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Blood Bank item 3: camp/drive scheduling turnout.
+    case 'bloodBank.campTurnout': {
+      const r = await listDonationCamps()
+      if (!r.success || !r.data) return { headline: 'No donation camps scheduled yet', details: [], isEmpty: true }
+      const camps = r.data as Array<{ campName: string; _count: { donations: number } }>
+      const top = [...camps].sort((a, b) => b._count.donations - a._count.donations)[0] ?? null
+      return {
+        headline: top ? `${top.campName} had the highest turnout — ${top._count.donations} donation(s)` : 'No donation camps scheduled yet',
+        details: camps.slice(0, 5).map(c => `${c.campName}: ${c._count.donations} donation(s)`),
+        isEmpty: camps.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Blood Bank item 4: Donation-to-Issue Cycle Time.
+    case 'bloodBank.donationToIssueCycleTime': {
+      const r = await reportService.generateDonationToIssueCycleTimeReport()
+      if (r.summary.totalIssuedUnits === 0) return { headline: 'No issued units yet', details: [], isEmpty: true }
+      const slowest = r.byComponent[0] ?? null
+      return {
+        headline: `${r.summary.overallAvgDays} days average donation-to-issue cycle time${slowest ? `, slowest for ${slowest.componentType.replace('_', ' ')} (${slowest.avgDays}d avg)` : ''}`,
+        details: r.byComponent.slice(0, 3).map(c => `${c.componentType.replace('_', ' ')}: ${c.avgDays}d avg (${c.unitCount} units)`),
+        isEmpty: false
       }
     }
     case 'restaurant.foodCost': {
@@ -391,7 +656,7 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       const top = res.data.rows.filter(row => row.suggestedQuantity > 0).slice(0, 5)
       return {
         headline: `Suggested reorder split for ${product.productName}: ${res.data.totalReorderQty} units across ${res.data.rows.length} variants`,
-        details: top.map(row => `${[row.size, row.color].filter(Boolean).join('/') || 'Variant'}: ${row.suggestedQuantity} units (${row.unitsSoldRecently} sold recently)`),
+        details: top.map(row => `${[row.size, row.width, row.color].filter(Boolean).join('/') || 'Variant'}: ${row.suggestedQuantity} units (${row.unitsSoldRecently} sold recently)`),
         isEmpty: res.data.rows.every(row => row.suggestedQuantity === 0)
       }
     }
@@ -443,6 +708,85 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: top ? `${top.supplierName} leads with ${formatAmountForSpeech(top.margin, sym)} margin this month (${top.marginPercent}%)` : 'No sales this month for products with an assigned vendor/brand',
         details: r.rows.slice(0, 3).map(row => `${row.supplierName}: ${formatAmountForSpeech(row.margin, sym)} margin (${row.marginPercent}%)`),
         isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Footwear item 2: Brand-Wise Margin & Return-Rate
+    // Report. A distinct question from clothing.vendorMargin above (which
+    // this vertical does NOT get) — leads with the highest-margin brand,
+    // but always states its return rate alongside, since the audit's own
+    // framing is specifically about a brand's margin being quietly eaten
+    // by an above-average return rate, not just "who makes the most."
+    case 'footwear.brandMarginReturnRate': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateBrandMarginReturnRateReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top ? `${top.supplierName} leads with ${formatAmountForSpeech(top.margin, sym)} margin this month, ${top.returnRatePercent}% return rate` : 'No sales this month for products with an assigned vendor/brand',
+        details: r.rows.slice(0, 3).map(row => `${row.supplierName}: ${formatAmountForSpeech(row.margin, sym)} margin, ${row.returnRatePercent}% returned (${row.unitsReturned}/${row.unitsSold} units)`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. Reads
+    // ALL-TIME data (not thisMonthRange like its sibling reports) since a
+    // conversion rate needs a meaningful sample size, and trial sessions are
+    // a comparatively low-volume, cashier-opt-in log next to a full month of
+    // ordinary invoices.
+    case 'footwear.trialConversionRate': {
+      const r = await getTrialConversionSummary()
+      if (!r.success || !r.data) {
+        return { headline: 'No trial sessions recorded yet', details: [], isEmpty: true }
+      }
+      const d = r.data
+      return {
+        headline: d.totalSessions > 0
+          ? `${d.conversionRatePercent}% of trial sessions converted to a sale, out of ${d.totalSessions} recorded`
+          : 'No trial sessions recorded yet',
+        details: [
+          `Converted: ${d.convertedSessions} / ${d.totalSessions}`,
+          `Average pairs tried per session: ${d.avgPairsTriedPerSession}`,
+          `Average pairs tried before a purchase: ${d.avgPairsTriedPerConversion}`
+        ],
+        isEmpty: d.totalSessions === 0
+      }
+    }
+    // Phase 67 §9.1 — Footwear item 4: Size Availability Heatmap. A live
+    // current-state question ("what's out right now"), not a sales-history
+    // one — deliberately a distinct intent from the shared
+    // clothing.sizeStyleHeatmap above (which answers "what sold"), even
+    // though both are "heatmap" questions on the surface.
+    case 'footwear.sizeAvailabilityHeatmap': {
+      const r = await reportService.generateSizeAvailabilityHeatmapReport()
+      if (r.cells.length === 0) return { headline: '', details: [], isEmpty: true }
+      const outCells = r.cells.filter(c => c.status === 'OUT').slice(0, 5)
+      return {
+        headline: r.summary.styleWithMostGaps
+          ? `${r.summary.styleWithMostGaps} has the most sizes out of stock, ${r.summary.styleGapCount} sizes`
+          : 'No sizes are currently out of stock',
+        details: outCells.length > 0
+          ? outCells.map(c => `${c.style} / ${c.size}: out of stock`)
+          : [`${r.summary.outOfStockCells} sizes out of stock, ${r.summary.lowStockCells} running low`],
+        isEmpty: r.summary.outOfStockCells === 0 && r.summary.lowStockCells === 0
+      }
+    }
+    // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar. Leads with
+    // whichever shop-defined season needs reordering NOW (there can be
+    // more than one), since that's the actionable case — an in-season or
+    // upcoming one is informational, not urgent.
+    case 'footwear.seasonalReorderStatus': {
+      const r = await getSeasonalReorderCalendar()
+      if (!r.success || !r.data) return { headline: 'No seasonal buying cycles defined yet', details: [], isEmpty: true }
+      const needsReorder = r.data.filter(e => e.status === 'REORDER_NOW')
+      if (needsReorder.length === 0) {
+        return {
+          headline: 'No seasons need reordering right now',
+          details: r.data.slice(0, 3).map(e => `${e.name}: ${e.status === 'IN_SEASON' ? 'in season now' : `starts in ${e.daysUntilStart} days`}`),
+          isEmpty: r.data.length === 0
+        }
+      }
+      return {
+        headline: `${needsReorder.map(e => e.name).join(', ')} — reorder now, ${needsReorder.reduce((s, e) => s + e.lowOrOutOfStockCount, 0)} products low or out of stock`,
+        details: needsReorder.map(e => `${e.name}: starts ${e.nextStartDate}, ${e.lowOrOutOfStockCount}/${e.products.length} tagged products low/out of stock`),
+        isEmpty: false
       }
     }
     case 'retail.loyaltyProgress': {
@@ -575,6 +919,130 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${r.summary.totalOrders} production orders this period, ${(r.summary.completionRate).toFixed(0)}% completion rate`,
         details: [`Completed: ${r.summary.completed}`, `In progress: ${r.summary.inProgress}`, `Planned qty: ${r.summary.totalPlannedQty}, produced: ${r.summary.totalProducedQty}`],
         isEmpty: r.summary.totalOrders === 0
+      }
+    }
+    // Phase 67 §9.1 — Manufacturing item 2: True Landed Cost per Finished
+    // Unit. Leads with the highest-cost product, same "highest first"
+    // framing the report's own sort order already uses.
+    case 'manufacturing.landedCostPerUnit': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateLandedCostPerUnitReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top
+          ? `${top.productName} costs ${formatAmountForSpeech(top.totalCostPerUnit, sym)}/unit this month (material ${formatAmountForSpeech(top.materialCostPerUnit, sym)}, labour ${formatAmountForSpeech(top.laborCostPerUnit, sym)}, overhead ${formatAmountForSpeech(top.overheadCostPerUnit, sym)})`
+          : 'No completed production orders this month yet',
+        details: r.rows.slice(0, 3).map(row => `${row.productName}: ${formatAmountForSpeech(row.totalCostPerUnit, sym)}/unit`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Manufacturing item 4: Rejection Rate Trend. Leads with
+    // the overall rate, then names the worst stage — the actionable part.
+    case 'manufacturing.rejectionRateTrend': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateRejectionRateTrendReport({ dateFrom, dateTo })
+      const worst = r.byStage[0] ?? null
+      return {
+        headline: r.summary.totalInspected > 0
+          ? `${r.summary.overallRejectionRatePercent}% overall rejection rate this month${worst ? `, worst at "${worst.taskName}" (${worst.rejectionRatePercent}%)` : ''}`
+          : 'No QC inspection counts recorded this month yet',
+        details: r.byStage.slice(0, 3).map(s => `${s.taskName}: ${s.rejectionRatePercent}% (${s.qtyRejected}/${s.qtyInspected})`),
+        isEmpty: r.summary.totalInspected === 0
+      }
+    }
+    // Phase 67 §9.1 — Manufacturing item 1: machine/labour downtime capture.
+    // Reads ALL-TIME data, same reasoning footwear.trialConversionRate
+    // already established — a low-volume, cashier/floor-opt-in log next to
+    // a full month of ordinary production activity needs a real sample size.
+    case 'manufacturing.downtimeSummary': {
+      const r = await getDowntimeSummary()
+      if (!r.success || !r.data) return { headline: 'No downtime logged yet', details: [], isEmpty: true }
+      const d = r.data
+      return {
+        headline: d.totalMinutes > 0 ? `${Math.round(d.totalMinutes)} minutes of downtime logged${d.byReason[0] ? `, most from "${d.byReason[0].reason}"` : ''}` : 'No downtime logged yet',
+        details: d.byReason.slice(0, 3).map(r2 => `${r2.reason}: ${Math.round(r2.minutes)} min`),
+        isEmpty: d.totalMinutes === 0
+      }
+    }
+    // Phase 67 §9.1 — Manufacturing item 5: work-order lead-time bottleneck
+    // flag. Same underlying computation the Dashboard-style banner already
+    // shows proactively — this is the same answer, on request.
+    case 'manufacturing.bottleneckFlag': {
+      const r = await getWorkOrderBottleneckFlag()
+      if (!r.success || !r.data || !r.data.bottleneckStage) return { headline: 'Not enough completed production data yet to flag a bottleneck stage', details: [], isEmpty: true }
+      const d = r.data
+      return {
+        headline: `"${d.bottleneckStage}" is your slowest stage, averaging ${d.avgDurationHours}h (${d.shareOfTotalLeadTimePercent}% of total lead time)`,
+        details: d.stages.slice(0, 3).map(s => `${s.taskName}: ${s.avgDurationHours}h avg, ${s.sampleCount} samples`),
+        isEmpty: false
+      }
+    }
+    // Phase 67 §9.1 — Agri Inputs item 2: Seasonal Credit Exposure. Live
+    // current-state (no date range) — leads with the peak due month, the
+    // actionable "when am I most exposed" answer.
+    case 'agriInputs.seasonalCreditExposure': {
+      const r = await reportService.generateSeasonalCreditExposureReport()
+      return {
+        headline: r.summary.peakMonth
+          ? `${formatAmountForSpeech(r.summary.totalOutstanding, sym)} in outstanding credit, heaviest due in ${r.summary.peakMonth} (${formatAmountForSpeech(r.summary.peakMonthAmount, sym)})`
+          : 'No outstanding credit invoices with a due date right now',
+        details: r.bySeason.slice(0, 3).map(s => `${s.seasonName}: ${formatAmountForSpeech(s.outstandingAmount, sym)} across ${s.invoiceCount} invoice${s.invoiceCount === 1 ? '' : 's'}`),
+        isEmpty: r.summary.totalOutstanding === 0
+      }
+    }
+    // Phase 67 §9.1 — Agri Inputs item 4: Farmer-Wise Purchase & Repayment
+    // History. Leads with the riskiest (lowest repayment rate) farmer, the
+    // actionable part of a ranked list.
+    case 'agriInputs.farmerRepayment': {
+      const r = await reportService.generateFarmerRepaymentReport()
+      const riskiest = r.rows[0] ?? null
+      return {
+        headline: riskiest
+          ? `${riskiest.customerName} has the lowest repayment rate (${riskiest.repaymentRatePercent}%), ${formatAmountForSpeech(riskiest.outstandingBalance, sym)} outstanding`
+          : 'No farmer credit activity recorded yet',
+        details: [`${r.summary.totalFarmers} farmers with credit activity`, `Overall repayment rate: ${r.summary.overallRepaymentRatePercent}%`, `Total outstanding: ${formatAmountForSpeech(r.summary.totalOutstanding, sym)}`],
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+    // Summary-level only — "which crops do we carry advisory-tagged
+    // products for" — the per-crop product drill-down lives in the
+    // dedicated Billing "Browse by Crop" UI, not here.
+    case 'agriInputs.cropAdvisory': {
+      const cropParam = typeof params.cropName === 'string' ? params.cropName : null
+      if (cropParam) {
+        const r = await getProductsForCrop(cropParam)
+        if (!r.success || !r.data) return { headline: `No products tagged for "${cropParam}"`, details: [], isEmpty: true }
+        return {
+          headline: r.data.length > 0 ? `${r.data.length} product${r.data.length === 1 ? '' : 's'} recommended for ${cropParam}` : `No products tagged for "${cropParam}"`,
+          details: r.data.slice(0, 5).map(p => `${p.productName}: ${formatAmountForSpeech(p.sellingPrice, sym)}, ${p.stockQty} in stock`),
+          isEmpty: r.data.length === 0
+        }
+      }
+      const r = await listDistinctCrops()
+      if (!r.success || !r.data) return { headline: 'No crop-tagged products yet', details: [], isEmpty: true }
+      return {
+        headline: r.data.length > 0 ? `${r.data.length} crop${r.data.length === 1 ? '' : 's'} with tagged product advisories` : 'No crop-tagged products yet',
+        details: r.data.slice(0, 5),
+        isEmpty: r.data.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
+    // Leads with overdue count first (most urgent), same "overdue-first"
+    // framing electronics.rmaOverdueSummary already established.
+    case 'agriInputs.equipmentServiceDue': {
+      const r = await listEquipmentDueForService()
+      if (!r.success || !r.data) return { headline: 'No equipment service dates set yet', details: [], isEmpty: true }
+      const overdue = r.data.filter(e => e.overdue)
+      const dueSoon = r.data.filter(e => e.dueForService && !e.overdue)
+      return {
+        headline: overdue.length > 0
+          ? `${overdue.length} unit${overdue.length === 1 ? ' is' : 's are'} overdue for service`
+          : dueSoon.length > 0
+            ? `${dueSoon.length} unit${dueSoon.length === 1 ? '' : 's'} due for service soon`
+            : 'No equipment due for service right now',
+        details: [...overdue, ...dueSoon].slice(0, 5).map(e => `${e.productName} (${e.serialNumber}): ${e.overdue ? 'overdue' : 'due soon'}`),
+        isEmpty: r.data.length === 0
       }
     }
     case 'electronics.serialWarranty': {

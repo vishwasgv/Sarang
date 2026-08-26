@@ -1,7 +1,7 @@
 import {
   listProjects, getProject, createProject, updateProject, deleteProject,
   listProjectTasks, createProjectTask, updateProjectTask, deleteProjectTask,
-  generateProjectInvoice
+  generateProjectInvoice, getProposalWinRateStats
 } from '../../services/project.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
@@ -50,6 +50,12 @@ export function register(handle: HandleFn): void {
     const parsed = ProjectIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateProjectInvoice(parsed.data.id, getCurrentSession()?.userId)
+  })
+
+  // Phase 67 §9.1 — Consultant item 5: proposal win-rate tracking.
+  handle('projects:getProposalWinRateStats', async () => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    return getProposalWinRateStats()
   })
 
   // Tasks

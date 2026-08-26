@@ -14,12 +14,16 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface Customer { id: string; customerName: string }
 interface User { id: string; fullName: string }
+interface Quotation { id: string; quotationNumber: string; customerName: string | null }
 interface Project {
   id: string; projectNumber: string; title: string; description: string | null
   status: string; priority: string; customerId: string | null; customerName: string | null
   assignedToId: string | null; assignedToName: string | null
   estimatedHours: number; estimatedAmount: number; dueDate: string | null
-  totalTasks: number; doneTasks: number; totalLoggedHours: number; invoiceId: string | null; createdAt: string
+  totalTasks: number; doneTasks: number; totalLoggedHours: number; invoiceId: string | null
+  // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project conversion.
+  quotationId: string | null; quotationNumber: string | null
+  createdAt: string
 }
 
 const STATUS_TABS = ['ALL', 'OPEN', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED']
@@ -40,7 +44,7 @@ const STATUS_VARIANT: Record<string, 'info' | 'warning' | 'neutral' | 'success' 
 // Verified exhaustive against project.service.ts's ProjectRecord.priority union: 'LOW'|'MEDIUM'|'HIGH'|'URGENT'
 const PRIORITY_VARIANT: Record<string, 'neutral' | 'info' | 'warning' | 'danger'> = { LOW: 'neutral', MEDIUM: 'info', HIGH: 'warning', URGENT: 'danger' }
 
-const BLANK_FORM = { title: '', description: '', priority: 'MEDIUM', customerId: '', assignedToId: '', estimatedHours: '', estimatedAmount: '', dueDate: '', notes: '' }
+const BLANK_FORM = { title: '', description: '', priority: 'MEDIUM', customerId: '', assignedToId: '', estimatedHours: '', estimatedAmount: '', dueDate: '', notes: '', quotationId: '' }
 
 export function ProjectsScreen() {
   const { t } = useTranslation()
@@ -49,6 +53,8 @@ export function ProjectsScreen() {
   const [projects, setProjects] = useState<Project[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [acceptedQuotations, setAcceptedQuotations] = useState<Quotation[]>([])
+  const [winRate, setWinRate] = useState<{ totalProposals: number; winRatePercent: number } | null>(null)
   const [activeTab, setActiveTab] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -65,10 +71,12 @@ export function ProjectsScreen() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [pRes, cRes, uRes] = await Promise.all([
+      const [pRes, cRes, uRes, qRes, wRes] = await Promise.all([
         api.projects.list({}),
         api.customers.list({ limit: 500 }),
-        api.users.list()
+        api.users.list(),
+        api.quotations.list({ status: 'ACCEPTED' }),
+        api.projects.getProposalWinRateStats()
       ])
       if (pRes.success && pRes.data) {
         const d = pRes.data as { projects: Project[] }
@@ -82,6 +90,18 @@ export function ProjectsScreen() {
       }
       if (uRes.success && Array.isArray(uRes.data)) {
         setUsers(uRes.data as User[])
+      }
+      // Phase 67 §9.1 — Consultant item 1: quote-to-project conversion. This
+      // list is just the picker's own candidate set — createProject()'s own
+      // server-side guard is the real defence against double-converting an
+      // already-linked quotation.
+      if (qRes.success && qRes.data) {
+        const d = qRes.data as { quotations: Quotation[] }
+        setAcceptedQuotations(d.quotations ?? [])
+      }
+      // Phase 67 §9.1 — Consultant item 5: proposal win-rate tracking.
+      if (wRes.success && wRes.data) {
+        setWinRate(wRes.data as { totalProposals: number; winRatePercent: number })
       }
     } catch {
       toastError(t('common.error'), t('common.error'))
@@ -108,6 +128,7 @@ export function ProjectsScreen() {
         estimatedAmount: form.estimatedAmount ? Number(form.estimatedAmount) : undefined,
         dueDate: form.dueDate || undefined,
         notes: form.notes || undefined,
+        quotationId: form.quotationId || undefined,
       })
       if (res.success) {
         toastSuccess(t('service.projectCreated'))
@@ -198,6 +219,9 @@ export function ProjectsScreen() {
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
               {projects.filter(p => p.status === 'IN_PROGRESS').length} {t('manufacturing.statusInProgress').toLowerCase()}
+              {winRate && winRate.totalProposals > 0 && (
+                <span className="ms-2 text-text-secondary">· {winRate.winRatePercent}% {t('service.proposalWinRate')}</span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -327,6 +351,14 @@ export function ProjectsScreen() {
                   </Select>
                 </div>
               )}
+              {acceptedQuotations.length > 0 && (
+                <div>
+                  <Select label={t('service.convertFromQuotation')} value={form.quotationId} onChange={e => setForm(f => ({ ...f, quotationId: e.target.value }))}>
+                    <option value="">{t('service.notFromQuotation')}</option>
+                    {acceptedQuotations.map(q => <option key={q.id} value={q.id}>{q.quotationNumber}{q.customerName ? ` — ${q.customerName}` : ''}</option>)}
+                  </Select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.estHours')}</label>
@@ -419,6 +451,9 @@ export function ProjectsScreen() {
                   <span className="text-text-secondary">{t('service.estHours')}</span>
                   <span className="text-text-primary font-medium">{detail.estimatedHours}h</span>
                 </div>
+                {detail.quotationNumber && (
+                  <div className="flex justify-between"><span className="text-text-secondary">{t('service.convertedFromQuotation')}</span><span className="text-text-primary font-medium">{detail.quotationNumber}</span></div>
+                )}
               </div>
 
               <button onClick={() => { setDetail(null); navigate(`/service/projects/${detail.id}`) }}

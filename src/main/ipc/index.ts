@@ -53,6 +53,7 @@ import { register as registerWorkOrders } from './handlers/work-order.handler'
 import { register as registerDispatch } from './handlers/dispatch.handler'
 import { register as registerProjects } from './handlers/project.handler'
 import { register as registerTickets } from './handlers/service-ticket.handler'
+import { register as registerServiceContracts } from './handlers/service-contract.handler'
 import { register as registerJobCards } from './handlers/job-card.handler'
 import { register as registerWorkLogs } from './handlers/work-log.handler'
 import { register as registerDocuments } from './handlers/document.handler'
@@ -62,6 +63,7 @@ import { register as registerRental } from './handlers/rental.handler'
 import { register as registerHotel } from './handlers/hotel.handler'
 import { register as registerMetalRate } from './handlers/metal-rate.handler'
 import { register as registerMetalExchange } from './handlers/metal-exchange.handler'
+import { register as registerGoldSavings } from './handlers/gold-savings.handler'
 import { register as registerAi } from './handlers/ai.handler'
 import { register as registerDrawingRevision } from './handlers/drawing-revision.handler'
 import { register as registerMarketingCampaign } from './handlers/marketing-campaign.handler'
@@ -241,6 +243,7 @@ export function registerAllIpcHandlers(): void {
   registerDispatch(h)
   registerProjects(h)
   registerTickets(h)
+  registerServiceContracts(h)
   registerJobCards(h)
   registerWorkLogs(h)
   registerDocuments(h)
@@ -250,6 +253,7 @@ export function registerAllIpcHandlers(): void {
   registerHotel(h)
   registerMetalRate(h)
   registerMetalExchange(h)
+  registerGoldSavings(h)
   registerDrawingRevision(h)
   registerMarketingCampaign(h)
   registerSiteVisit(h)

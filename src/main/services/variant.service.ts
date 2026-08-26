@@ -9,6 +9,10 @@ export interface VariantRecord {
   productName: string
   size: string | null
   color: string | null
+  // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Free text
+  // (e.g. "Wide", "Narrow", "2E"), same convention as size/color — null and
+  // simply unused for every business type other than FOOTWEAR.
+  width: string | null
   sku: string | null
   barcode: string | null
   additionalPrice: number
@@ -37,6 +41,7 @@ export async function upsertVariants(payload: {
     id?: string
     size?: string
     color?: string
+    width?: string
     sku?: string
     barcode?: string
     additionalPrice?: number
@@ -59,6 +64,7 @@ export async function upsertVariants(payload: {
             data: {
               size: v.size ?? null,
               color: v.color ?? null,
+              width: v.width ?? null,
               sku: v.sku ?? null,
               barcode: v.barcode ?? null,
               additionalPrice: v.additionalPrice ?? 0,
@@ -73,6 +79,7 @@ export async function upsertVariants(payload: {
               productId: payload.productId,
               size: v.size ?? null,
               color: v.color ?? null,
+              width: v.width ?? null,
               sku: v.sku ?? null,
               barcode: v.barcode ?? null,
               additionalPrice: v.additionalPrice ?? 0,
@@ -178,7 +185,7 @@ export async function adjustVariantStock(payload: {
   }
 }
 
-export async function getVariantSummary(productId: string): Promise<{ success: boolean; data?: { totalVariants: number; totalStock: number; sizes: string[]; colors: string[] } }> {
+export async function getVariantSummary(productId: string): Promise<{ success: boolean; data?: { totalVariants: number; totalStock: number; sizes: string[]; colors: string[]; widths: string[] } }> {
   try {
     const db = getPrisma()
     const variants = await db.productVariant.findMany({ where: { productId, isActive: true } })
@@ -188,11 +195,14 @@ export async function getVariantSummary(productId: string): Promise<{ success: b
         totalVariants: variants.length,
         totalStock: variants.reduce((sum, v) => sum + v.stockQty, 0),
         sizes: [...new Set(variants.map(v => v.size).filter(Boolean) as string[])],
-        colors: [...new Set(variants.map(v => v.color).filter(Boolean) as string[])]
+        colors: [...new Set(variants.map(v => v.color).filter(Boolean) as string[])],
+        // Phase 67 §9.1 — Footwear item 1. Empty for every product that
+        // never sets a width — harmless for every non-Footwear vertical.
+        widths: [...new Set(variants.map(v => v.width).filter(Boolean) as string[])]
       }
     }
   } catch {
-    return { success: true, data: { totalVariants: 0, totalStock: 0, sizes: [], colors: [] } }
+    return { success: true, data: { totalVariants: 0, totalStock: 0, sizes: [], colors: [], widths: [] } }
   }
 }
 
@@ -208,7 +218,7 @@ export async function getVariantSummary(productId: string): Promise<{ success: b
 const SIZE_CURVE_LOOKBACK_DAYS = 90 // same recency window Dead Stock Clearance already established
 
 export interface SizeCurveReorderRow {
-  variantId: string; size: string | null; color: string | null
+  variantId: string; size: string | null; color: string | null; width: string | null
   unitsSoldRecently: number; suggestedQuantity: number
 }
 export interface SizeCurveReorderSuggestion {
@@ -219,7 +229,10 @@ export interface SizeCurveReorderSuggestion {
 export async function getSizeCurveReorderSuggestion(productId: string, totalReorderQty?: number): Promise<{ success: boolean; data?: SizeCurveReorderSuggestion; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
-    const variants = await db.productVariant.findMany({ where: { productId, isActive: true }, select: { id: true, size: true, color: true } })
+    // Phase 67 §9.1 — Footwear item 1: width included so two variants that
+    // share a size and color but differ only by width (a real, common
+    // footwear case) are never conflated in this row's own identity.
+    const variants = await db.productVariant.findMany({ where: { productId, isActive: true }, select: { id: true, size: true, color: true, width: true } })
     if (variants.length === 0) return { success: false, error: { code: 'VAR-011', message: 'This product has no active variants to suggest a reorder split for.' } }
 
     let qty = totalReorderQty
@@ -266,7 +279,7 @@ export async function getSizeCurveReorderSuggestion(productId: string, totalReor
       .map(v => {
         const floor = floors.find(f => f.variantId === v.id)!.floor
         return {
-          variantId: v.id, size: v.size, color: v.color,
+          variantId: v.id, size: v.size, color: v.color, width: v.width,
           unitsSoldRecently: soldByVariant.get(v.id) ?? 0,
           suggestedQuantity: floor + (bonus.get(v.id) ?? 0)
         }
@@ -327,13 +340,14 @@ export async function restoreVariantStockTx(
   })
 }
 
-function toRecord(v: { id: string; productId: string; product: { productName: string }; size: string | null; color: string | null; sku: string | null; barcode: string | null; additionalPrice: number; stockQty: number; isActive: boolean; createdAt: Date }): VariantRecord {
+function toRecord(v: { id: string; productId: string; product: { productName: string }; size: string | null; color: string | null; width: string | null; sku: string | null; barcode: string | null; additionalPrice: number; stockQty: number; isActive: boolean; createdAt: Date }): VariantRecord {
   return {
     id: v.id,
     productId: v.productId,
     productName: v.product.productName,
     size: v.size,
     color: v.color,
+    width: v.width,
     sku: v.sku,
     barcode: v.barcode,
     additionalPrice: v.additionalPrice,

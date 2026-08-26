@@ -364,7 +364,7 @@ export function register(handle: HandleFn): void {
       if (variant) {
         const variantPrice = p.sellingPrice + variant.additionalPrice
         const priceText = i.priceTextOverride ?? formatAmount(variantPrice, profile?.currencySymbol)
-        const variantLabel = [variant.size, variant.color].filter(Boolean).join(' / ')
+        const variantLabel = [variant.size, variant.width, variant.color].filter(Boolean).join(' / ')
         return { productName: variantLabel ? `${p.productName} (${variantLabel})` : p.productName, barcode: i.barcodeOverride ?? variant.barcode!, priceText, copies: i.copies }
       }
 

@@ -19,6 +19,10 @@ Opening a project's detail screen gives you two more things:
 - **Tasks** — a simple checklist you tick off; the project list shows a "done / total" progress bar computed from this.
 - **Work Logs** — hours logged against the project, each marked billable or non-billable, with a running total shown both on the list and detail views.
 
+Got an accepted **Quotation** you use as an engagement letter? Pick it from the **Convert From Quotation** dropdown when creating a project, and Sarang links the two — one quotation can only ever convert into one project, so it's a real record of how many of your engagement letters actually became billed work.
+
+**Consultant** also sees a running **proposal win rate** next to the project count in the header — won versus lost versus still-pending Quotations, so you always know at a glance how your pipeline of engagement letters is converting, not just how many projects are currently open.
+
 ## Job Cards (Repair, Service via the generic model)
 
 A job card is built for a physical item a customer drops off: a title, item description, priority, estimated cost, and received/expected/delivered dates. It has its own seven-stage lifecycle — **Received → Diagnosing → In Repair → (optionally Pending Parts) → Ready → Delivered**, or **Cancelled** at any point before delivery. The detail view shows this as a visual stage tracker and always surfaces the single next action button (e.g. "Mark In Repair"), plus a dedicated "Waiting for Parts" action while a card is in repair. Delivering a job card is where you enter the actual final cost, separate from the original estimate — **Generate Invoice** turns that final cost into a real invoice once the job's been delivered.
@@ -28,6 +32,22 @@ Add real **parts used** to a job card from its detail view — search a product,
 ## Service Tickets (Service, Repair)
 
 A ticket is a lighter-weight support request: title, description, priority, an optional category tag, and an optional customer/assignee. It moves through **Open → In Progress → Resolved → Closed**, and resolving one lets you attach a resolution note. Urgent, unresolved tickets are called out with a red-flag indicator on the list so they don't get buried. Enter an amount and **Generate Invoice** to bill a resolved ticket.
+
+Every ticket also gets an **SLA timer** the moment it's created, sized to its priority (Urgent 4 hours, High 24 hours, Medium 3 days, Low 7 days). A ticket still open past its own SLA is flagged **SLA Breached** right on the list and in the header count — a real deadline alert, not just a priority label.
+
+Got an accepted **Quotation** that turned into real work? Pick it from the **Convert From Quotation** dropdown when creating a ticket, and Sarang links the two — one quotation can only ever convert into one ticket, so it's a real record of how many of your estimates actually became billable jobs.
+
+## Service Contracts (Service)
+
+Open **Service Contracts** in the sidebar to run a recurring, AMC-like arrangement for a repeat customer — a fixed value, billed on a schedule (Monthly/Quarterly/Half-Yearly/Yearly) rather than negotiated fresh every visit. Create a contract with its scope of work, frequency, start date, and value, then click **Generate Invoice** whenever a billing period is due — Sarang tracks which period was last invoiced so the same period can never be billed twice, the same protection an ordinary retainer or AMC contract already has elsewhere in Sarang.
+
+## Retainers (Consultant)
+
+Open **Retainers** in the sidebar to run a recurring monthly arrangement for a repeat client — fixed fee, an hourly bucket, or a deliverable-based scope, billed on a schedule you set. For an hourly-bucket retainer, log time against it from **Time Tracking** and the retainer's own card shows a live **hours used / hours allocated** progress bar, turning red once the month's allowance is exhausted — the retainer burn-down at a glance, no separate report needed.
+
+## Reports
+
+Four reports are specific to this vertical set. **Resolution Time by Category** breaks down how long tickets actually take to close, average/fastest/slowest per category — a real service-quality metric, not just a status count. **Repeat-Business Rate** trends, month by month, what share of your ticket-raising customers are returning versus brand new — the retention signal this generic scaffold never had before. **Utilization Rate** (Consultant) is the #1 consulting metric: billable versus non-billable hours per staff member, sorted to surface whoever needs more billable work first. **Client Profitability** (Consultant) shows revenue against hours spent per client, sorted worst-first, so you can see at a glance which clients are actually worth keeping.
 
 ## Appointments and Projects billing
 

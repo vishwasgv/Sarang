@@ -216,7 +216,7 @@
     "reviewAuditLog": "समीक्षा करें",
     "reviewRentals": "समीक्षा करें",
     "reviewRepairTickets": "समीक्षा करें",
-"renewLicense": "नवीनीकृत करें",
+    "renewLicense": "नवीनीकृत करें",
     "viewUpdate": "देखें",
     "spotlight": {
       "membershipTitle": "सदस्यता फोकस",
@@ -1629,6 +1629,14 @@
         "label": "साइज़ × स्टाइल हीटमैप",
         "description": "स्टाइल और साइज़ के अनुसार बिकी हुई यूनिट्स का एक ग्रिड — एक नज़र में देखें कौन-सा संयोजन असल में चल रहा है"
       },
+      "sizeAvailabilityHeatmap": {
+        "label": "साइज़ उपलब्धता हीटमैप",
+        "description": "स्टाइल और साइज़ के अनुसार एक लाइव स्टॉक ग्रिड — देखें कि किसी दिए गए स्टाइल के लिए कौन से साइज़ खत्म हैं या कम हो रहे हैं, एक नज़र में"
+      },
+      "seasonalReorderCalendar": {
+        "label": "मौसमी रीऑर्डर कैलेंडर",
+        "description": "अपने खुद के खरीद चक्र तय करें (मानसून, शादी का सीज़न, स्पोर्ट्स सीज़न, या जो भी आप असल में स्टॉक करते हैं) और देखें कि कौन-सा अभी लीड टाइम के आधार पर रीऑर्डर करने लायक है"
+      },
       "basketComposition": {
         "label": "बास्केट संरचना",
         "description": "एक ही बिक्री में सबसे ज़्यादा किन उत्पादों को साथ खरीदा जाता है — पास-पास रखने या कॉम्बो के रूप में पेश करने लायक स्वाभाविक जोड़ियां और बंडल पहचानें"
@@ -1640,6 +1648,10 @@
       "vendorMargin": {
         "label": "ब्रांड/विक्रेता के अनुसार मार्जिन",
         "description": "प्रत्येक बिके उत्पाद किस सप्लायर/ब्रांड से आया, उसके अनुसार आय, लागत और मार्जिन का विभाजन — एक नज़र में देखें कौन से विक्रेता वास्तव में लाभदायक हैं और कौन से घाटे में हैं"
+      },
+      "brandMarginReturnRate": {
+        "label": "ब्रांड के अनुसार मार्जिन और रिटर्न-रेट",
+        "description": "हर ब्रांड/विक्रेता के लिए मार्जिन और रिटर्न रेट साथ-साथ — जूतों में रिटर्न कपड़ों से ज़्यादा होते हैं, इसलिए स्वस्थ मार्जिन वाला ब्रांड भी ऊँची रिटर्न-रेट के कारण चुपचाप पैसा गंवा सकता है"
       },
       "fastSlowMoverMatrix": {
         "label": "फास्ट-मूवर बनाम स्लो-मूवर मैट्रिक्स",
@@ -1677,6 +1689,10 @@
         "label": "ब्लड स्टॉक रिपोर्ट",
         "description": "समूह अनुसार उपलब्ध ब्लड यूनिट, जल्द समाप्त होने की चेतावनी सहित"
       },
+      "donationToIssueCycleTime": {
+        "label": "दान-से-निर्गम चक्र समय",
+        "description": "दान किए गए यूनिट वास्तव में कितनी तेज़ी से इस्तेमाल होते हैं, घटक प्रकार के अनुसार — एक बर्बादी-जोखिम संकेतक"
+      },
       "logistics": {
         "label": "लॉजिस्टिक्स रिपोर्ट",
         "description": "शिपमेंट, माल भाड़ा लागत, डिलीवरी दर और शीर्ष वाहक"
@@ -1688,6 +1704,22 @@
       "production": {
         "label": "उत्पादन रिपोर्ट",
         "description": "स्थिति अनुसार उत्पादन ऑर्डर, नियोजित बनाम उत्पादित मात्रा"
+      },
+      "landedCostPerUnit": {
+        "label": "तैयार माल की प्रति यूनिट वास्तविक लागत",
+        "description": "प्रति उत्पादित यूनिट सामग्री, श्रम और ओवरहेड लागत एक साथ — तैयार माल की असली लागत, सिर्फ़ उसकी सामग्री नहीं"
+      },
+      "rejectionRateTrend": {
+        "label": "रिजेक्शन रेट ट्रेंड",
+        "description": "समय के साथ और उत्पादन चरण के अनुसार क्वालिटी-रिजेक्शन दर — देखें कौन-सा चरण असल में आपकी अच्छी यूनिट्स बर्बाद कर रहा है"
+      },
+      "seasonalCreditExposure": {
+        "label": "मौसमी क्रेडिट एक्सपोज़र",
+        "description": "बकाया क्रेडिट चालान देय माह और जुड़े फसल सीज़न के अनुसार विभाजित — जानें साल में आप कब सबसे अधिक जोखिम में हैं"
+      },
+      "farmerRepayment": {
+        "label": "किसान-वार खरीद और चुकौती इतिहास",
+        "description": "हर क्रेडिट ग्राहक चुकौती दर के अनुसार क्रमबद्ध — सबसे जोखिम भरे खाते पहले"
       },
       "serialWarranty": {
         "label": "सीरियल और वारंटी रिपोर्ट",
@@ -1737,9 +1769,29 @@
         "label": "किराया राजस्व और उपयोग",
         "description": "किराया आइटम के अनुसार राजस्व, साथ ही व्यक्तिगत रूप से ट्रैक की गई इकाइयों के लिए उपयोग दर"
       },
+      "assetUtilization": {
+        "label": "एसेट उपयोग दर",
+        "description": "हर व्यक्तिगत ट्रैक किए गए यूनिट के लिए किराए पर दिए गए दिन बनाम उपलब्ध दिन — कौन से एसेट वाकई अपनी लागत निकाल रहे हैं"
+      },
       "jewellery": {
         "label": "आभूषण रिपोर्ट",
         "description": "शुद्धता के अनुसार धातु स्टॉक मूल्यांकन, मेकिंग चार्ज राजस्व, और पुराना धातु विनिमय सारांश"
+      },
+      "makingChargeMargin": {
+        "label": "मेकिंग-चार्ज बनाम धातु-मूल्य मार्जिन",
+        "description": "प्रति बिक्री असली मार्जिन विभाजन — प्रत्येक इनवॉइस में धातु मूल्य और मेकिंग चार्ज का कितना हिस्सा है"
+      },
+      "hallmarkCompliance": {
+        "label": "हॉलमार्किंग / HUID अनुपालन रजिस्टर",
+        "description": "हर सक्रिय आभूषण वस्तु, यह दर्शाते हुए कि किनमें BIS हॉलमार्क/HUID नंबर नहीं है"
+      },
+      "metalRateVsSalesVolume": {
+        "label": "धातु दर बनाम बिक्री मात्रा",
+        "description": "सोने की दर में उतार-चढ़ाव को बिक्री मात्रा से जोड़ता है, ताकि स्टॉकिंग और मूल्य-निर्धारण का समय तय किया जा सके"
+      },
+      "purityAdjustedExchange": {
+        "label": "शुद्धता-समायोजित एक्सचेंज विश्लेषण",
+        "description": "पुराने धातु एक्सचेंज को शुद्ध-धातु-समतुल्य वजन में सामान्यीकृत किया गया, बुनियादी एक्सचेंज लॉग से आगे"
       },
       "profitAndLoss": {
         "label": "लाभ और हानि विवरण",
@@ -1748,6 +1800,22 @@
       "projects": {
         "label": "प्रोजेक्ट रिपोर्ट",
         "description": "स्थिति और अनुबंध मूल्य के अनुसार प्रत्येक प्रोजेक्ट — सेवा/परामर्शदाता/एजेंसी व्यवसायों के लिए"
+      },
+      "serviceResolutionTime": {
+        "label": "श्रेणी के अनुसार समाधान समय",
+        "description": "एक असली सेवा-गुणवत्ता मीट्रिक — प्रति टिकट श्रेणी औसत, सबसे तेज़, और सबसे धीमा समाधान समय"
+      },
+      "repeatBusinessRate": {
+        "label": "दोहराव-व्यापार दर",
+        "description": "यह रिटेंशन इंडिकेटर जो इस वर्टिकल में कभी नहीं था — हर महीने कितने ग्राहक लौट रहे हैं बनाम नए हैं"
+      },
+      "consultantUtilization": {
+        "label": "उपयोगिता दर",
+        "description": "सबसे महत्वपूर्ण कंसल्टिंग मीट्रिक, जो अभी तक अदृश्य है — प्रति स्टाफ सदस्य बिल योग्य बनाम गैर-बिल योग्य घंटे"
+      },
+      "clientProfitability": {
+        "label": "क्लाइंट लाभप्रदता",
+        "description": "कौन से क्लाइंट वास्तव में बनाए रखने लायक हैं — प्रति क्लाइंट राजस्व बनाम खर्च किए गए घंटे"
       },
       "jobCards": {
         "label": "जॉब कार्ड रिपोर्ट",
@@ -1904,6 +1972,8 @@
     },
     "summary": {
       "totalRevenue": "कुल आय",
+      "totalUnits": "कुल यूनिट",
+      "idleUnitCount": "निष्क्रिय यूनिट",
       "totalInvoices": "कुल बिल",
       "totalTaxAmount": "कुल कर",
       "avgOrderValue": "औसत ऑर्डर मूल्य",
@@ -1972,6 +2042,11 @@
       "topCombination": "शीर्ष संयोजन",
       "topCombinationUnits": "शीर्ष संयोजन यूनिट्स",
       "sizeStyleHeatmap": "साइज़ × स्टाइल हीटमैप",
+      "sizeAvailabilityHeatmap": "साइज़ उपलब्धता हीटमैप",
+      "totalStyles": "दिखाए गए स्टाइल",
+      "outOfStockCells": "स्टॉक-खत्म साइज़",
+      "lowStockCells": "कम-स्टॉक साइज़",
+      "styleWithMostGaps": "सबसे ज़्यादा कमी वाला स्टाइल",
       "totalBaskets": "कुल बास्केट",
       "avgItemsPerBasket": "औसत आइटम प्रति बास्केट",
       "avgBasketValue": "औसत बास्केट मूल्य",
@@ -2012,6 +2087,9 @@
       "totalAvailableUnits": "कुल उपलब्ध यूनिट",
       "expiringSoon": "जल्द समाप्त",
       "groupsOutOfStock": "स्टॉक रहित समूह",
+      "totalIssuedUnits": "कुल जारी यूनिट",
+      "overallAvgDays": "औसत चक्र समय",
+      "avgCycleTimeByComponent": "घटक के अनुसार औसत चक्र समय",
       "totalShipments": "कुल शिपमेंट",
       "deliveryRate": "डिलीवरी दर",
       "totalFreight": "कुल माल भाड़ा",
@@ -2022,13 +2100,22 @@
       "overallAttendanceRate": "उपस्थिति दर",
       "inProgress": "प्रगति में",
       "completionRate": "पूर्णता दर",
+      "totalProducedQty": "कुल उत्पादित मात्रा",
+      "landedCostPerUnitByProduct": "उत्पाद के अनुसार लैंडेड कॉस्ट प्रति यूनिट",
+      "overallRejectionRate": "कुल रिजेक्शन दर",
+      "rejectionRateTrend": "रिजेक्शन रेट ट्रेंड",
+      "totalOutstanding": "कुल बकाया",
+      "peakMonth": "शिखर माह",
+      "seasonalCreditExposureByMonth": "माह के अनुसार मौसमी क्रेडिट एक्सपोज़र",
+      "totalFarmers": "कुल किसान",
+      "overallRepaymentRate": "कुल चुकौती दर",
+      "repaymentRateByFarmer": "किसान के अनुसार चुकौती दर",
       "totalSerials": "कुल सीरियल",
       "inStock": "स्टॉक में",
       "warrantyExpiringSoon": "वारंटी जल्द समाप्त",
       "warrantyExpired": "वारंटी समाप्त",
-      "totalOpen": "फिलहाल वेंडर के पास",
+      "totalOpen": "खुले कार्य",
       "daysWithVendorByUnit": "वेंडर के पास दिन, यूनिट के अनुसार",
-      "totalOutstanding": "कुल बकाया",
       "outstandingByClaim": "बकाया राशि, दावे के अनुसार",
       "technicianCount": "तकनीशियन",
       "totalTicketsCompleted": "पूर्ण टिकट",
@@ -2040,7 +2127,6 @@
       "averagePercentage": "औसत स्कोर",
       "belowFiftyCount": "50% से कम",
       "studentCount": "छात्र",
-      "totalOpen": "खुले कार्य",
       "overdueCount": "अतिदेय",
       "dueThisWeekCount": "इस सप्ताह देय",
       "clientCount": "क्लाइंट",
@@ -2055,10 +2141,23 @@
       "totalExchangeCount": "दर्ज विनिमय",
       "totalExchangeValueGiven": "विनिमय में दिया गया मूल्य",
       "metalsWithNoRateSet": "जिन धातुओं की दर सेट नहीं है",
+      "totalMetalValue": "कुल धातु मूल्य",
+      "totalMakingCharge": "कुल मेकिंग चार्ज",
+      "avgMakingChargePercent": "औसत मेकिंग चार्ज %",
+      "totalItems": "कुल वस्तुएं",
+      "compliantCount": "अनुपालक",
+      "nonCompliantCount": "गैर-अनुपालक",
+      "totalPureEquivalentGrams": "शुद्ध-धातु-समतुल्य",
+      "unparsablePurityCount": "अपरिचित शुद्धता",
+      "totalResolved": "सुलझाए गए टिकट",
+      "overallAvgHours": "औसत समाधान समय",
+      "repeatRatePercent": "दोहराव दर",
+      "overallUtilizationPercent": "कुल उपयोगिता",
       "revenue": "राजस्व",
       "cogs": "बेची गई वस्तुओं की लागत",
       "totalMargin": "कुल मार्जिन",
       "marginByVendor": "विक्रेता के अनुसार मार्जिन",
+      "brandMarginReturnRate": "ब्रांड के अनुसार मार्जिन और रिटर्न रेट",
       "grossProfit": "सकल लाभ",
       "netProfit": "शुद्ध लाभ",
       "totalProjects": "कुल प्रोजेक्ट",
@@ -2161,6 +2260,8 @@
       "attendanceDetails": "उपस्थिति विवरण",
       "byOrderStatus": "ऑर्डर स्थिति अनुसार",
       "productionOrderDetails": "उत्पादन ऑर्डर विवरण",
+      "rejectionRateByStage": "चरण के अनुसार रिजेक्शन दर",
+      "bySeason": "फसल सीज़न के अनुसार",
       "byWarrantyStatus": "वारंटी स्थिति अनुसार",
       "serialDetails": "सीरियल विवरण",
       "salesByHour": "दिन के समय अनुसार बिक्री",
@@ -2182,6 +2283,7 @@
       "table32": "टेबल 3.2 — अपंजीकृत व्यक्तियों को अंतर-राज्यीय आपूर्ति",
       "notCovered": "इस रिपोर्ट में शामिल नहीं",
       "stockByMetal": "धातु के अनुसार स्टॉक मूल्यांकन",
+      "pureEquivalentTrend": "शुद्ध-धातु-समतुल्य रुझान",
       "plSummary": "राजस्व, सकल लाभ, व्यय और शुद्ध लाभ",
       "projectDetails": "प्रोजेक्ट विवरण",
       "jobCardDetails": "जॉब कार्ड विवरण",
@@ -2228,9 +2330,11 @@
       "categorySellThrough": "इस तिथि सीमा में कोई श्रेणीबद्ध उत्पाद बिक्री नहीं मिली।",
       "seasonSellThrough": "किसी भी उत्पाद में सीज़न/कलेक्शन सेट नहीं है, या इस तारीख सीमा में कोई बिक्री नहीं मिली।",
       "sizeStyleHeatmap": "इस तारीख सीमा में कोई वेरिएंट-ट्रैक की गई बिक्री नहीं मिली।",
+      "sizeAvailabilityHeatmap": "कोई वेरिएंट-ट्रैक्ड स्टॉक नहीं मिला।",
       "basketComposition": "इस तिथि सीमा में 2 या अधिक अलग-अलग उत्पादों वाली कोई बास्केट नहीं मिली।",
       "categoryMix": "इस तिथि सीमा में कोई श्रेणीबद्ध उत्पाद बिक्री नहीं मिली।",
       "vendorMargin": "इस तिथि सीमा में असाइन किए गए विक्रेता/ब्रांड वाले उत्पादों की कोई बिक्री नहीं मिली।",
+      "brandMarginReturnRate": "इस तिथि सीमा में असाइन किए गए विक्रेता/ब्रांड वाले उत्पादों की कोई बिक्री नहीं मिली।",
       "cashPositionTrend": "इस तिथि सीमा में कोई नकद हलचल नहीं मिली।",
       "fastSlowMoverMatrix": "इस तिथि सीमा में कोई उत्पाद नहीं बिका।",
       "gstr1": "इस अवधि के लिए कोई कर योग्य बिल नहीं मिला।",
@@ -2241,8 +2345,13 @@
       "batches": "शेष स्टॉक के साथ कोई सक्रिय बैच नहीं है।",
       "labOrders": "इस तिथि सीमा में कोई लैब टेस्ट ऑर्डर नहीं है।",
       "bloodUnits": "कोई उपलब्ध ब्लड यूनिट नहीं है।",
+      "donationToIssueCycleTime": "अभी तक कोई यूनिट जारी नहीं हुई।",
       "attendance": "इस तिथि सीमा में कोई उपस्थिति रिकॉर्ड नहीं है।",
       "productionOrders": "इस तिथि सीमा में कोई उत्पादन ऑर्डर नहीं है।",
+      "landedCostPerUnit": "इस तारीख़ सीमा में कोई पूर्ण उत्पादन ऑर्डर नहीं।",
+      "rejectionRateTrend": "इस तारीख़ सीमा में कोई QC निरीक्षण गिनती दर्ज नहीं।",
+      "seasonalCreditExposure": "अभी देय तिथि वाला कोई बकाया क्रेडिट चालान नहीं है।",
+      "farmerRepayment": "अभी तक कोई किसान क्रेडिट गतिविधि दर्ज नहीं की गई है।",
       "serials": "कोई सीरियल नंबर नहीं मिला।",
       "rmaAging": "फिलहाल मरम्मत या बदलाव के लिए कोई यूनिट वेंडर के पास नहीं है।",
       "vendorRecoveryLedger": "अभी तक कोई वेंडर वारंटी दावा दर्ज नहीं किया गया है।",
@@ -2253,6 +2362,14 @@
       "hsnSummary": "इस अवधि के लिए कोई कर योग्य इनवॉइस नहीं मिली।",
       "documentSummary": "इस अवधि में कोई दस्तावेज़ जारी नहीं हुआ।",
       "jewelleryStock": "अभी तक धातु वजन के साथ कोई आभूषण उत्पाद दर्ज नहीं है।",
+      "makingChargeMargin": "इस अवधि में कोई आभूषण बिक्री नहीं।",
+      "hallmarkCompliance": "अभी तक कोई सक्रिय आभूषण वस्तु नहीं।",
+      "metalRateVsSalesVolume": "इस अवधि में कोई आभूषण बिक्री या धातु दर इतिहास नहीं।",
+      "purityAdjustedExchange": "इस अवधि में कोई पुराना धातु एक्सचेंज दर्ज नहीं किया गया।",
+      "serviceResolutionTime": "इस अवधि में कोई टिकट नहीं सुलझाया गया।",
+      "repeatBusinessRate": "इस अवधि में कोई ग्राहक टिकट नहीं।",
+      "consultantUtilization": "इस अवधि में कोई बिल योग्य कार्य दर्ज नहीं हुआ।",
+      "clientProfitability": "इस अवधि में कोई क्लाइंट प्रोजेक्ट राजस्व नहीं है।",
       "projects": "इस तिथि सीमा में कोई प्रोजेक्ट नहीं।",
       "jobCards": "इस तिथि सीमा में कोई जॉब कार्ड नहीं।",
       "prescriptionDrugSales": "इस तिथि सीमा में कोई प्रिस्क्रिप्शन दवा बिक्री नहीं है।",
@@ -2286,6 +2403,29 @@
       "vetCaseTypeVolume": "इस तारीख़ सीमा में कोई केस दर्ज नहीं है।"
     },
     "col": {
+      "invoiceNumber": "इनवॉइस नंबर",
+      "date": "तारीख",
+      "metalValue": "धातु मूल्य",
+      "makingCharge": "मेकिंग चार्ज",
+      "makingChargePercent": "मेकिंग चार्ज %",
+      "compliant": "अनुपालक",
+      "nonCompliant": "गैर-अनुपालक",
+      "salesWeightGrams": "बिक्री वजन (ग्राम)",
+      "exchangeCount": "एक्सचेंज",
+      "rawWeightGrams": "सकल वजन (ग्राम)",
+      "pureEquivalentGrams": "शुद्ध-समतुल्य (ग्राम)",
+      "avgHours": "औसत घंटे",
+      "minHours": "सबसे तेज़ (घंटे)",
+      "maxHours": "सबसे धीमा (घंटे)",
+      "newCustomers": "नए ग्राहक",
+      "repeatCustomers": "दोहराने वाले ग्राहक",
+      "repeatRatePercent": "दोहराव दर %",
+      "billableHours": "बिल योग्य घंटे",
+      "nonBillableHours": "गैर-बिल योग्य घंटे",
+      "staffMember": "स्टाफ सदस्य",
+      "utilizationPercent": "उपयोगिता",
+      "hoursSpent": "खर्च किए गए घंटे",
+      "revenuePerHour": "राजस्व/घंटा",
       "invoiceNo": "बिल #",
       "invoiceDate": "इनवॉइस तारीख",
       "doctorName": "डॉक्टर",
@@ -2304,7 +2444,7 @@
       "sku": "SKU",
       "product": "उत्पाद",
       "category": "श्रेणी",
-      "season": "सीज़न/कलेक्शन",
+      "season": "सीज़न",
       "type": "प्रकार",
       "stock": "स्टॉक",
       "costPrice": "लागत मूल्य",
@@ -2316,7 +2456,7 @@
       "taxName": "कर नाम",
       "ratePercent": "दर %",
       "taxableAmount": "कर योग्य राशि",
-      "invoiceCount": "बिल गिनती",
+      "invoiceCount": "चालान",
       "invoicesShort": "बिल",
       "name": "नाम",
       "outstanding": "बकाया",
@@ -2415,8 +2555,14 @@
       "bloodGroup": "ब्लड ग्रुप",
       "componentType": "घटक",
       "expiringSoonQ": "जल्द समाप्त?",
+      "unitCount": "यूनिट",
+      "avgDays": "औसत दिन",
+      "minDays": "सबसे तेज़ (दिन)",
+      "maxDays": "सबसे धीमा (दिन)",
       "month": "महीना",
       "unitsSold": "बिकी इकाइयाँ",
+      "unitsReturned": "यूनिट्स रिटर्न की गईं",
+      "returnRatePercent": "रिटर्न रेट %",
       "sellThroughRate": "बिक्री-दर",
       "productA": "उत्पाद A",
       "productB": "उत्पाद B",
@@ -2432,6 +2578,18 @@
       "checkOut": "चेक आउट",
       "plannedQty": "नियोजित मात्रा",
       "producedQty": "उत्पादित मात्रा",
+      "materialCostPerUnit": "सामग्री लागत / यूनिट",
+      "laborCostPerUnit": "श्रम लागत / यूनिट",
+      "overheadCostPerUnit": "ओवरहेड लागत / यूनिट",
+      "totalCostPerUnit": "कुल लागत / यूनिट",
+      "qtyInspected": "जांची गई मात्रा",
+      "qtyRejected": "अस्वीकृत मात्रा",
+      "rejectionRatePercent": "रिजेक्शन दर",
+      "outstandingAmount": "बकाया राशि",
+      "totalPurchased": "कुल खरीद",
+      "totalRepaid": "कुल चुकाया गया",
+      "outstandingBalance": "बकाया शेष",
+      "repaymentRatePercent": "चुकौती दर",
       "startDate": "शुरुआत तिथि",
       "completedDate": "पूर्ण तिथि",
       "serialNumber": "सीरियल नंबर",
@@ -2449,6 +2607,10 @@
       "size": "साइज़",
       "color": "रंग",
       "stockQty": "स्टॉक मात्रा",
+      "status": "स्थिति",
+      "nextStartDate": "अगली शुरुआत की तारीख़",
+      "reorderByDate": "इस तारीख़ तक रीऑर्डर करें",
+      "lowStockCount": "कम/स्टॉक-खत्म उत्पाद",
       "studentName": "छात्र",
       "batchName": "बैच",
       "subject": "विषय",
@@ -2471,6 +2633,8 @@
       "totalCount": "कुल गिनती",
       "cancelledCount": "रद्द गिनती",
       "bookingCount": "बुकिंग",
+      "rentedDays": "किराए पर दिए गए दिन",
+      "availableDays": "उपलब्ध दिन",
       "netWeightGrams": "शुद्ध वजन (ग्राम)",
       "ratePerGram": "दर/ग्राम",
       "valuation": "मूल्यांकन",
@@ -2531,6 +2695,41 @@
     "legend": {
       "schemeCost": "स्कीम लागत",
       "coveredVolume": "कवर किए गए उत्पाद की मात्रा"
+    },
+    "status": {
+      "out": "स्टॉक खत्म",
+      "low": "कम स्टॉक",
+      "in": "स्टॉक में"
+    },
+    "seasonalCalendar": {
+      "nameRequired": "सीज़न का नाम ज़रूरी है।",
+      "saveFailed": "यह सीज़न सेव नहीं हो सका।",
+      "saved": "सीज़न सेव हो गया।",
+      "deleteFailed": "यह सीज़न डिलीट नहीं हो सका।",
+      "manageSeasons": "सीज़न प्रबंधित करें",
+      "hideManager": "सीज़न मैनेजर छुपाएं",
+      "name": "सीज़न का नाम",
+      "namePlaceholder": "जैसे मानसून",
+      "startMonth": "शुरुआत का महीना",
+      "startDay": "शुरुआत की तारीख़",
+      "endMonth": "समाप्ति का महीना",
+      "endDay": "समाप्ति की तारीख़",
+      "leadTimeDays": "लीड टाइम (दिन)",
+      "update": "अपडेट करें",
+      "add": "जोड़ें",
+      "editAction": "संपादित करें",
+      "deleteAction": "हटाएं",
+      "daysUntilStart": "यह सीज़न शुरू होने में {{count}} दिन बाकी",
+      "reorderBy": "इस तारीख़ तक रीऑर्डर करें",
+      "taggedProducts": "टैग किए गए उत्पाद",
+      "lowStock": "कम/स्टॉक खत्म",
+      "empty": "अभी तक कोई मौसमी खरीद चक्र तय नहीं किया गया।",
+      "emptySubtitle": "इसके लिए रीऑर्डर टाइमिंग ट्रैक करना शुरू करने हेतु नीचे एक जोड़ें।",
+      "status": {
+        "reorderNow": "अभी रीऑर्डर करें",
+        "inSeason": "सीज़न में",
+        "upcoming": "आने वाला"
+      }
     },
     "schemeCostVsVolume": {
       "disclaimer": "यह स्कीम की लागत और कवर किए गए उत्पादों की बिक्री मात्रा को साथ-साथ दिखाता है ताकि आप स्वयं सहसंबंध का आकलन कर सकें — यह यह गणना नहीं करता (और नहीं कर सकता) कि स्कीम के बिना मात्रा क्या होती।"
@@ -3602,7 +3801,26 @@
     "receiveBatchTitle": "कच्चा माल लॉट प्राप्त करें",
     "batchReceived": "लॉट प्राप्त हुआ।",
     "noBatchesYet": "इस सामग्री के लिए अभी तक कोई लॉट प्राप्त नहीं हुआ है।",
-    "remainingQty": "शेष"
+    "remainingQty": "शेष",
+    "qc": {
+      "qtyInspected": "जांची गई मात्रा",
+      "qtyRejected": "अस्वीकृत मात्रा",
+      "rejectedExceedsInspected": "अस्वीकृत मात्रा जांची गई मात्रा से अधिक नहीं हो सकती।"
+    },
+    "downtime": {
+      "title": "डाउनटाइम दर्ज करें",
+      "log": "डाउनटाइम दर्ज करें",
+      "logShort": "+ डाउनटाइम",
+      "reason": "कारण",
+      "reasonPlaceholder": "जैसे मशीन ख़राब होना, सामग्री की कमी",
+      "minutes": "मिनट",
+      "totalMinutes": "{{minutes}} मिनट डाउनटाइम दर्ज किया गया",
+      "reasonRequired": "डाउनटाइम का कारण ज़रूरी है।",
+      "minutesRequired": "डाउनटाइम मिनट शून्य से अधिक होने चाहिए।"
+    },
+    "bottleneck": {
+      "message": "\"{{stage}}\" आपका सबसे धीमा चरण है, औसतन {{hours}} घंटे ({{percent}}% कुल लीड टाइम का)।"
+    }
   },
   "service": {
     "projects": "परियोजनाएँ",
@@ -3731,6 +3949,42 @@
     "couldNotUpdateStatus": "स्थिति अपडेट नहीं हो सकी।",
     "couldNotCancel": "रद्द नहीं किया जा सका।",
     "couldNotUpdateTicket": "टिकट अपडेट नहीं हो सका।",
+    "slaBreached": "SLA उल्लंघन",
+    "slaBreachedCount": "टिकट SLA से आगे",
+    "slaDueLabel": "SLA समय सीमा",
+    "convertedFromQuotation": "कोटेशन से परिवर्तित",
+    "convertFromQuotation": "कोटेशन से परिवर्तित करें",
+    "notFromQuotation": "किसी कोटेशन से नहीं",
+    "proposalWinRate": "प्रस्ताव जीत दर",
+    "serviceContracts": "सेवा अनुबंध",
+    "serviceContractsDesc": "दोहराए जाने वाले ग्राहकों के लिए AMC जैसी व्यवस्था — निश्चित मूल्य, एक निर्धारित समय पर बिल किया जाता है।",
+    "newContract": "नया अनुबंध",
+    "selectCustomer": "एक ग्राहक चुनें।",
+    "validContractValueRequired": "शून्य से अधिक एक वैध अनुबंध मूल्य दर्ज करें।",
+    "contractScope": "कार्य का दायरा",
+    "serviceFrequency": "सेवा आवृत्ति",
+    "frequency": {
+      "MONTHLY": "मासिक",
+      "QUARTERLY": "त्रैमासिक",
+      "HALF_YEARLY": "अर्ध-वार्षिक",
+      "YEARLY": "वार्षिक"
+    },
+    "contractValue": "अनुबंध मूल्य",
+    "createContract": "अनुबंध बनाएं",
+    "contractCreated": "अनुबंध बनाया गया",
+    "contractCreatedDesc": "{{number}} बनाया गया।",
+    "generateContractInvoiceTitle": "{{number}} के लिए इनवॉइस बनाएं",
+    "generateContractInvoiceHint": "चालू अवधि के लिए {{amount}} बिल किया जाएगा।",
+    "generateInvoice": "इनवॉइस बनाएं",
+    "noContracts": "अभी तक कोई सेवा अनुबंध नहीं",
+    "contractStatus": {
+      "ACTIVE": "सक्रिय",
+      "EXPIRED": "समाप्त",
+      "CANCELLED": "रद्द"
+    },
+    "lastInvoicedFor": "अंतिम बार बिल किया गया: {{period}}",
+    "contractInvoiced": "इनवॉइस बनाया गया",
+    "contractInvoicedDesc": "अनुबंध की अवधि का इनवॉइस बनाया गया है।",
     "selectEntity": "एक परियोजना, टिकट, या जॉब कार्ड चुनें।",
     "couldNotDeleteLog": "लॉग हटाया नहीं जा सका।",
     "jobStReceived": "प्राप्त हुआ",
@@ -4471,6 +4725,7 @@
       "CANCELLED": "रद्द",
       "OVERDUE": "देर से",
       "AVAILABLE": "उपलब्ध",
+      "RENTED": "किराए पर",
       "MAINTENANCE": "रखरखाव",
       "RETIRED": "सेवामुक्त"
     },
@@ -4527,9 +4782,11 @@
     },
     "daysOverdue": "विलंब के दिन",
     "utilization": "उपयोग",
+    "overdueAging": "अतिदेय आयु वितरण",
     "empty": {
       "status": "अभी कुछ भी चेक-आउट नहीं है।",
-      "revenue": "इस अवधि में कोई किराया राजस्व नहीं है।"
+      "revenue": "इस अवधि में कोई किराया राजस्व नहीं है।",
+      "utilization": "अभी तक कोई ट्रैक किया गया रेंटल यूनिट नहीं है।"
     },
     "serviceIntervalRentals": "सेवा अंतराल (किराए)",
     "serviceIntervalDays": "सेवा अंतराल (दिन)",
@@ -4623,7 +4880,45 @@
     "exchangeSearchPlaceholder": "विनिमय नंबर से खोजें...",
     "noUnlinkedExchanges": "इस ग्राहक के लिए कोई बिना जुड़ा विनिमय नहीं मिला।",
     "exchangeApplied": "विनिमय {{number}} — चेकआउट पर {{amount}} क्रेडिट लागू किया जाएगा।",
-    "removeExchange": "हटाएं"
+    "removeExchange": "हटाएं",
+    "goldSavings": "गोल्ड सेविंग्स",
+    "goldSavingsDesc": "भविष्य की खरीद के लिए निश्चित मासिक जमा — ग्राहक के इनवॉइस पर छूट के रूप में भुनाने योग्य।",
+    "newScheme": "नई स्कीम",
+    "selectCustomer": "एक ग्राहक चुनें।",
+    "validAmountRequired": "शून्य से अधिक एक वैध राशि दर्ज करें।",
+    "validTenureRequired": "एक वैध अवधि दर्ज करें — महीनों की पूर्ण संख्या।",
+    "monthlyAmount": "मासिक राशि",
+    "tenureMonths": "अवधि (महीने)",
+    "startDate": "प्रारंभ तिथि",
+    "createScheme": "स्कीम बनाएं",
+    "schemeCreated": "स्कीम बनाई गई",
+    "schemeCreatedDesc": "{{number}} बनाई गई। ग्राहक द्वारा हर महीने भुगतान करने पर किश्तें दर्ज करें।",
+    "recordInstallmentTitle": "{{number}} के लिए किश्त दर्ज करें",
+    "installmentAmount": "किश्त राशि",
+    "record": "दर्ज करें",
+    "installmentRecorded": "किश्त दर्ज की गई",
+    "installmentRecordedDesc": "{{amount}} इस स्कीम के कुल में जोड़ा गया।",
+    "redeemSchemeTitle": "{{number}} भुनाएं",
+    "redeemHint": "अब तक जमा कुल: {{amount}}। भुनाई गई राशि को बिलिंग में ग्राहक के खरीद इनवॉइस पर स्वयं छूट के रूप में लागू करें।",
+    "bonusAmount": "बोनस राशि",
+    "redeem": "भुनाएं",
+    "schemeRedeemed": "स्कीम भुनाई गई",
+    "schemeRedeemedDesc": "भुनाई गई राशि को ग्राहक के खरीद इनवॉइस पर छूट के रूप में लागू करें।",
+    "noSchemes": "अभी तक कोई गोल्ड सेविंग्स स्कीम नहीं",
+    "schemeStatus": {
+      "ACTIVE": "सक्रिय",
+      "REDEEMED": "भुनाई गई",
+      "CLOSED": "बंद"
+    },
+    "monthlyOverTenure": "{{amount}}/माह × {{tenure}} महीने",
+    "deposited": "जमा: {{amount}}",
+    "redeemedFor": "{{amount}} के लिए भुनाई गई",
+    "addInstallment": "किश्त जोड़ें",
+    "pureEquivalent": "शुद्ध-समतुल्य {{weight}}ग्राम",
+    "makingChargeMargin": "मेकिंग-चार्ज बनाम धातु-मूल्य मार्जिन",
+    "hallmarkCompliance": "हॉलमार्किंग / HUID अनुपालन",
+    "metalRateVsSalesVolume": "धातु दर बनाम बिक्री मात्रा",
+    "purityAdjustedExchange": "शुद्धता-समायोजित एक्सचेंज विश्लेषण"
   },
   "manual": {
     "yourType": "आपका प्रकार",

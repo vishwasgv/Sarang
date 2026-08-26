@@ -1,4 +1,4 @@
-import { listTickets, createTicket, updateTicket, deleteTicket, generateTicketInvoice } from '../../services/service-ticket.service'
+import { listTickets, createTicket, updateTicket, deleteTicket, generateTicketInvoice, getQuoteToJobConversionStats } from '../../services/service-ticket.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { CreateTicketSchema, UpdateTicketSchema, DeleteTicketSchema, GenerateTicketInvoiceSchema } from '../../validation/service-ticket.validation'
@@ -37,5 +37,11 @@ export function register(handle: HandleFn): void {
     const parsed = GenerateTicketInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateTicketInvoice(parsed.data.id, parsed.data.amount, getCurrentSession()?.userId)
+  })
+
+  // Phase 67 §9.1 — Service item 5: quote-to-job conversion tracking.
+  handle('tickets:getConversionStats', async () => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    return getQuoteToJobConversionStats()
   })
 }

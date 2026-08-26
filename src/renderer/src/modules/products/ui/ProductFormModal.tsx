@@ -58,6 +58,9 @@ const schema = z.object({
   // Phase 67 §9.1 — Clothing: season/collection sell-through report. Free
   // text (a shop's own collection naming), same gate as gender above.
   season: z.string().max(100).optional(),
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory. Free
+  // text ("Wheat", "Cotton", "Paddy"...), surfaced only for AGRI_INPUTS.
+  recommendedCrop: z.string().max(100).optional(),
   // Phase 54G: rental. rentalRates (an array of {basis, amount} pairs) is
   // deliberately NOT part of this schema — it's managed as separate local
   // state (like PayrollScreen's deduction lines) since a variable-length rate
@@ -111,6 +114,7 @@ interface Product {
   isKit?: boolean
   gender?: string | null
   season?: string | null
+  recommendedCrop?: string | null
   isPrescriptionRequired?: boolean; defaultSupplierId?: string | null
   expiryAlertLeadDays?: number | null
   isRentable?: boolean; rentalTrackingType?: 'UNIT' | 'BULK' | null; rentalRates?: { basis: string; amount: number }[]; rentalSecurityDeposit?: number | null
@@ -245,6 +249,8 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   })
   const { businessType } = useIndustryStore()
   const isPharmacy = businessType === 'PHARMACY'
+  // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory.
+  const isAgriInputs = businessType === 'AGRI_INPUTS'
   const [suppliers, setSuppliers] = useState<{ id: string; supplierName: string }[]>([])
   useEffect(() => {
     if (open) {
@@ -380,6 +386,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           standardCost: product.standardCost ?? undefined,
           gender: (product.gender as FormValues['gender']) ?? undefined,
           season: product.season ?? undefined,
+          recommendedCrop: product.recommendedCrop ?? undefined,
           isRentable: product.isRentable ?? false,
           rentalTrackingType: (product.rentalTrackingType as FormValues['rentalTrackingType']) ?? undefined,
           rentalSecurityDeposit: product.rentalSecurityDeposit ?? undefined,
@@ -542,6 +549,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           )}
           {variantTrackingEnabled && (
             <Input label="Season / Collection" placeholder="e.g. Summer 2026" {...register('season')} error={errors.season?.message} />
+          )}
+          {isAgriInputs && (
+            <Input label="Recommended Crop" placeholder="e.g. Wheat" {...register('recommendedCrop')} error={errors.recommendedCrop?.message} />
           )}
         </div>
 

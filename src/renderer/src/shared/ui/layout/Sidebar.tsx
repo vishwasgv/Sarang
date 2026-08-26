@@ -8,14 +8,14 @@ import {
   ChevronLeft, ChevronRight, ClipboardList, Upload,
   UtensilsCrossed, Ticket, BookOpen, RotateCcw, PackagePlus, Activity, Info,
   Pill, Smartphone, FlaskConical, BookMarked, Factory, PackageCheck,
-  BarChart2, Send, Store, Briefcase, Headphones, Wrench, Clock, UserCheck,
+  BarChart2, Send, Store, Briefcase, Headphones, Wrench, Clock, UserCheck, FileSignature,
   Paperclip, UserCog, CalendarCheck, CalendarOff, Banknote, FileText, MinusCircle,
   Calendar, Layers, Bell, CalendarDays, PawPrint, Hash, Stethoscope, Smile,
   Dumbbell, GraduationCap, Car, Scale, FileStack,
   Target, FolderOpen, RefreshCw, AlertCircle,
   Music, Camera, PartyPopper, Home,
   Scissors, Bug, UsersRound,
-  Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat,
+  Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat, Tent,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
   BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank,
   type LucideIcon
@@ -96,6 +96,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Service-only items (Phase 4 legacy)
   { label: 'Projects', path: '/service/projects', icon: Briefcase, permissionKey: 'sales.view', requiredModule: 'projects' },
   { label: 'Service Tickets', path: '/service/tickets', icon: Headphones, permissionKey: 'sales.view', requiredModule: 'service_tickets' },
+  // Phase 67 §9.1 — Service item 3
+  { label: 'Service Contracts', path: '/service/contracts', icon: FileSignature, permissionKey: 'sales.view', requiredModule: 'service_tickets' },
   { label: 'Job Cards', path: '/service/job-cards', icon: Wrench, permissionKey: 'sales.view', requiredModule: 'job_cards' },
   { label: 'Work Tracking', path: '/service/work-tracking', icon: Clock, permissionKey: 'sales.view', requiredModule: 'work_tracking' },
   { label: 'Customer History', path: '/service/customer-history', icon: UserCheck, permissionKey: 'customers.view', requiredModule: 'customer_history' },
@@ -119,6 +121,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Donations & Screening', path: '/blood-bank/donations', icon: Syringe, permissionKey: 'bloodBank.view', requiredModule: 'blood_bank' },
   { label: 'Blood Stock', path: '/blood-bank/stock', icon: Droplets, permissionKey: 'bloodBank.view', requiredModule: 'blood_bank' },
   { label: 'Blood Issue', path: '/blood-bank/issue', icon: Send, permissionKey: 'bloodBank.view', requiredModule: 'blood_bank' },
+  // Phase 67 §9.1 — Blood Bank item 3: camp/drive scheduling.
+  { label: 'Donation Camps', path: '/blood-bank/camps', icon: Tent, permissionKey: 'bloodBank.view', requiredModule: 'blood_bank' },
   { label: 'Rental Bookings', path: '/rental/bookings', icon: CalendarClock, permissionKey: 'rental.view', requiredModule: 'rental_bookings' },
   { label: 'Rental Units', path: '/rental/units', icon: Boxes, permissionKey: 'rental.view', requiredModule: 'rental_bookings' },
   // Hotel/Lodge vertical
@@ -128,6 +132,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Fresh-audit build (2026-07-12) — Jewellery
   { label: 'Metal Rates', path: '/jewellery/metal-rates', icon: Gem, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   { label: 'Old-Metal Exchange', path: '/jewellery/exchanges', icon: Repeat, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
+  // Phase 67 §9.1 — Jewellery item 1
+  { label: 'Gold Savings', path: '/jewellery/gold-savings', icon: PiggyBank, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   // Phase 25 — Dental
   { label: 'Recall Schedule', path: '/dental/recalls', icon: Smile, permissionKey: 'billing.view', requiredModule: 'dental_recall' },
   // Phase 67 — GP Clinic

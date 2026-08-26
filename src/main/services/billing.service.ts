@@ -18,6 +18,7 @@ import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { explodeKitComponentsTx } from './kit.service'
 import { loyaltyProgramService } from './loyalty-program.service'
+import { resolveNextHarvestDate } from './crop-season.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
@@ -272,6 +273,19 @@ export const billingService = {
       const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true } })
       customerTaxExempt = exemptCheck?.taxExempt ?? false
       customerTaxExemptReason = exemptCheck?.taxExemptReason ?? null
+    }
+
+    // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
+    // When a season is linked, it OVERRIDES any manually-typed dueDate — the
+    // whole point is the due date lands on a real harvest occurrence, not
+    // wherever the cashier happened to type. A season that no longer exists
+    // (deleted between the UI loading it and the sale completing) falls
+    // back to whatever raw dueDate was also sent, same as if no season had
+    // ever been selected — never a hard failure over a stale reference.
+    let effectiveDueDate = payload.dueDate ? parseLocalDateStart(payload.dueDate) : null
+    if (payload.cropSeasonId) {
+      const season = await db.cropSeason.findUnique({ where: { id: payload.cropSeasonId } })
+      if (season) effectiveDueDate = resolveNextHarvestDate(season)
     }
 
     // Validate each item and compute line figures
@@ -582,7 +596,8 @@ export const billingService = {
             // day the customer was actually given to pay had even ended.
             // Same fix already applied to compliance-task.service.ts's
             // dueDate for the identical "date picker -> due date" shape.
-            dueDate: payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
+            dueDate: effectiveDueDate,
+            cropSeasonId: payload.cropSeasonId ?? null,
             ewayBillNumber: payload.ewayBillNumber?.trim() || null,
             tableId: payload.tableIds?.[0] ?? null,
             notes: customerTaxExempt

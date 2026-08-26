@@ -43,7 +43,9 @@ Generating an invoice from a completed booking creates line items for each rente
 
 ## Reports
 
-**Reports** includes a Rental Status report (what's currently checked out, and what's overdue) and a Rental Revenue report by product, including a utilization percentage for UNIT-tracked assets.
+**Reports** includes a Rental Status report (what's currently checked out, and what's overdue, now with an aging chart breaking overdue bookings down by how late they are — 1-3 days, 4-7 days, 8-14 days, or 15+ days) and a Rental Revenue report by product, including a utilization percentage for UNIT-tracked assets.
+
+The Rental Revenue report's own utilization figure is averaged across every unit of a product — it can't tell you that one specific car sits idle while its identical sibling is rented constantly. For that, open the **Asset Utilization Rate** report instead: rented-days versus available-days for each individual tracked unit by name, ranked worst-earning first, so you can see exactly which physical assets aren't earning their keep rather than a blended average that hides them.
 
 ## Language
 

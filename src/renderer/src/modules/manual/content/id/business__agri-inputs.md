@@ -20,6 +20,12 @@ Ketika seorang pelanggan membawa sepotong peralatan untuk perbaikan atau servis 
 
 Seorang pelanggan petani sering perlu membayar setelah panen, bukan pada saat pembelian. Saat menagih penjualan Kredit, atur **due date** yang sebenarnya — Sarang menampilkan lencana jatuh tempo pada faktur begitu tanggal tersebut terlewati (bukan tanggal penjualan), dan laporan aging Outstanding Analytics juga mengelompokkannya berdasarkan due date sebenarnya, sehingga pembayaran yang ditunda hingga panen tidak ditandai sebagai jatuh tempo hanya karena waktu telah berlalu sejak penjualan.
 
+Mengetik tanggal tetap hanyalah sebuah tebakan — persyaratan kredit petani yang sebenarnya mengikuti kalender panen, bukan hitungan hari yang tetap. Pada penjualan Kredit, alih-alih (atau selain) tanggal jatuh tempo manual, Anda dapat menautkan faktur ke **Musim Panen (Crop Season)** — peristiwa panen nyata yang Anda tentukan sekali (misalnya "Panen Gandum" pada 15 April) dan gunakan kembali di setiap penjualan kredit untuk tanaman itu. Pilih dari menu drop-down yang muncul di bawah kolom tanggal jatuh tempo, atau tambahkan yang baru di sana melalui **Manage Seasons**. Sarang menghitung tanggal jatuh tempo faktur yang sebenarnya dari kejadian panen berikutnya musim tersebut — tahun ini jika belum lewat, atau tahun depan jika sudah — sehingga tanggal jatuh tempo selalu terkait dengan peristiwa pertanian nyata, bukan hitungan hari yang sewenang-wenang.
+
+## Saran Produk Terkait Tanaman
+
+Jika Anda menandai produk dengan tanaman yang dituju melalui kolom Recommended Crop pada catatan produknya (misalnya "Gandum", "Kapas", "Padi" — nama apa pun yang digunakan di wilayah Anda sendiri, bukan daftar tetap), produk tersebut menjadi dapat dijelajahi berdasarkan tanaman di titik penjualan. Di Billing, deretan chip **Browse by Crop** muncul di atas pencarian produk begitu ada produk yang ditandai — ketuk tanaman untuk melihat setiap pupuk, pestisida, atau benih yang direkomendasikan untuknya, lengkap dengan stok dan harga langsung, dan tambahkan langsung ke keranjang. Ini mengubah "pupuk mana yang cocok untuk tanaman ini?" dari sesuatu yang harus diingat kasir menjadi sesuatu yang bisa dicari dalam dua ketukan.
+
 ## Peringatan kedaluwarsa khusus-kategori
 
 Kategori input-agri yang berbeda membutuhkan peringatan dini yang berbeda pula — benih dan pupuk sering membutuhkan ancang-ancang lebih panjang daripada barang yang cepat laku. Atur **expiry alert lead time** (dalam hari) per produk untuk menggantikan jendela peringatan standar 30 hari; batch dari produk tersebut kemudian menampilkan lencana peringatannya berdasarkan lead time yang dikonfigurasi sendiri.
@@ -27,6 +33,12 @@ Kategori input-agri yang berbeda membutuhkan peringatan dini yang berbeda pula �
 ## Dasbor Gabungan
 
 Buka **Agri Dashboard** untuk tampilan satu layar di kedua separuh bisnis sekaligus — barang habis pakai berstok rendah, batch yang mendekati/sudah kedaluwarsa, jumlah total peralatan, dan peralatan dengan garansi yang segera berakhir — alih-alih memeriksa dua layar terpisah.
+
+Dasbor yang sama juga melacak **tanggal servis peralatan yang jatuh tempo** — servis terjadwal berikutnya untuk traktor atau sprayer, terpisah dari kedaluwarsa garansinya. Atur tanggal servis untuk peralatan mana pun yang tercatat langsung dari panel Equipment Service Due di dasbor, dan Sarang akan menandainya di sana begitu segera jatuh tempo atau terlambat. Ketuk **Remind** pada unit yang ditandai untuk mengirim pengingat WhatsApp ke pelanggan berisi tanggal jatuh tempo.
+
+## Laporan Eksposur Kredit Musiman & Pembayaran Petani
+
+Dua laporan di layar Reports khusus untuk jenis bisnis ini. **Eksposur Kredit Musiman (Seasonal Credit Exposure)** menampilkan setiap faktur kredit yang saat ini tertunggak dikelompokkan berdasarkan bulan jatuh tempo sepanjang tahun kalender, ditambah rincian terpisah berdasarkan Musim Panen yang tertaut — sehingga Anda dapat melihat sekilas kapan eksposur kredit Anda mencapai puncaknya sepanjang tahun, yang bagi sebagian besar toko input pertanian terpusat di sekitar bulan-bulan panen. **Riwayat Pembelian & Pembayaran per Petani (Farmer-Wise Purchase & Repayment History)** memberi peringkat setiap pelanggan kredit berdasarkan seberapa andal mereka benar-benar membayar kembali, akun paling berisiko didahulukan — berbeda dari Customer Ledger pelanggan tunggal, ini adalah perbandingan antar-petani yang memberi tahu Anda kepada siapa memberikan kredit mudah musim depan dan dari siapa menagih terlebih dahulu.
 
 ## Logistics & Supply Chain
 

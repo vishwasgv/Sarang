@@ -62,7 +62,7 @@ export async function createExchange(
     const returnRes = await createReturn(
       payload.originalInvoiceId,
       [{ productId: payload.oldProductId, quantity: payload.quantity, variantId: payload.oldVariantId }],
-      `Exchange (for ${[newVariant.size, newVariant.color].filter(Boolean).join(' / ') || 'a different variant'}): ${payload.reason.trim()}`,
+      `Exchange (for ${[newVariant.size, newVariant.width, newVariant.color].filter(Boolean).join(' / ') || 'a different variant'}): ${payload.reason.trim()}`,
       userId
     )
     if (!returnRes.success || !returnRes.data) {
@@ -76,7 +76,7 @@ export async function createExchange(
     // line — that's a real product-policy call (a manager could reasonably
     // decide either way), left to whatever discount/scheme mechanism the
     // cashier applies to this sale like any other, not silently assumed here.
-    const variantInfo = [newVariant.size, newVariant.color].filter(Boolean).join(' / ') || undefined
+    const variantInfo = [newVariant.size, newVariant.width, newVariant.color].filter(Boolean).join(' / ') || undefined
     const newUnitPrice = roundCurrency(newVariant.product.sellingPrice + newVariant.additionalPrice)
     const saleRes = await billingService.createInvoice({
       customerId: original.customerId ?? undefined,

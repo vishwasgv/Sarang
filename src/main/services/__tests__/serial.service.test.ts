@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
 
 import { getPrisma } from '../../database/db'
-import { updateSerialStatus } from '../serial.service'
+import { updateSerialStatus, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder } from '../serial.service'
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -94,5 +95,158 @@ describe('serial.service.updateSerialStatus', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('SER-006')
+  })
+})
+
+describe('serial.service.updateSerialServiceInfo', () => {
+  it('errors when the equipment record does not exist', async () => {
+    const db: Record<string, any> = { productSerial: { findUnique: vi.fn().mockResolvedValue(null), update: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSerialServiceInfo({ id: 'missing', nextServiceDueDate: '2026-09-01' })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('SER-010')
+  })
+
+  it('updates nextServiceDueDate and lastServicedDate', async () => {
+    const update = vi.fn().mockResolvedValue({})
+    const db: Record<string, any> = { productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1' }), update } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSerialServiceInfo({ id: 'ser-1', nextServiceDueDate: '2026-09-01', lastServicedDate: '2026-03-01' })
+
+    expect(res.success).toBe(true)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'ser-1' },
+      data: { nextServiceDueDate: new Date('2026-09-01'), lastServicedDate: new Date('2026-03-01') }
+    })
+  })
+
+  it('clears a date when explicitly passed null, but leaves it untouched when omitted', async () => {
+    const update = vi.fn().mockResolvedValue({})
+    const db: Record<string, any> = { productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1' }), update } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateSerialServiceInfo({ id: 'ser-1', nextServiceDueDate: null })
+
+    expect(update).toHaveBeenCalledWith({ where: { id: 'ser-1' }, data: { nextServiceDueDate: null } })
+  })
+})
+
+describe('serial.service.listEquipmentDueForService', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns an empty list when no equipment has a next-service date set', async () => {
+    const db: Record<string, any> = { productSerial: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listEquipmentDueForService()
+
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual([])
+  })
+
+  it('flags overdue and due-soon equipment correctly', async () => {
+    const now = new Date()
+    const overdueDate = new Date(now.getTime() - 5 * 86400000)
+    const dueSoonDate = new Date(now.getTime() + 7 * 86400000)
+    const farOutDate = new Date(now.getTime() + 60 * 86400000)
+    const db: Record<string, any> = {
+      productSerial: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 's-overdue', serialNumber: 'SN-1', nextServiceDueDate: overdueDate, lastServicedDate: null, product: { productName: 'Tractor A' } },
+          { id: 's-soon', serialNumber: 'SN-2', nextServiceDueDate: dueSoonDate, lastServicedDate: null, product: { productName: 'Sprayer B' } },
+          { id: 's-later', serialNumber: 'SN-3', nextServiceDueDate: farOutDate, lastServicedDate: null, product: { productName: 'Tractor C' } },
+        ])
+      }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listEquipmentDueForService(14)
+
+    const overdue = res.data!.find(r => r.serialId === 's-overdue')!
+    const soon = res.data!.find(r => r.serialId === 's-soon')!
+    const later = res.data!.find(r => r.serialId === 's-later')!
+    expect(overdue.overdue).toBe(true)
+    expect(overdue.dueForService).toBe(true)
+    expect(soon.overdue).toBe(false)
+    expect(soon.dueForService).toBe(true)
+    expect(later.overdue).toBe(false)
+    expect(later.dueForService).toBe(false)
+  })
+})
+
+describe('serial.service.scheduleEquipmentServiceReminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('errors when the equipment record does not exist', async () => {
+    const db: Record<string, any> = { productSerial: { findUnique: vi.fn().mockResolvedValue(null) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleEquipmentServiceReminder('missing')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('SER-013')
+  })
+
+  it('errors when no next-service-due date is set', async () => {
+    const db: Record<string, any> = {
+      productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1', nextServiceDueDate: null, product: { productName: 'Tractor' } }) }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleEquipmentServiceReminder('ser-1')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('SER-014')
+  })
+
+  it('quietly no-ops (success, no queue row) when the equipment has no linked customer phone', async () => {
+    const futureDue = new Date(Date.now() + 30 * 86400000)
+    const db: Record<string, any> = {
+      productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1', invoiceId: null, nextServiceDueDate: futureDue, serialNumber: 'SN-1', product: { productName: 'Tractor' } }) },
+      notificationQueue: { create: vi.fn() }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleEquipmentServiceReminder('ser-1')
+
+    expect(res.success).toBe(true)
+    expect(res.data).toBeNull()
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
+  })
+
+  it('errors when the computed reminder date has already passed', async () => {
+    const nearDue = new Date(Date.now() + 1 * 86400000) // due tomorrow, daysBefore=3 pushes reminder into the past
+    const db: Record<string, any> = {
+      productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1', invoiceId: 'inv-1', nextServiceDueDate: nearDue, serialNumber: 'SN-1', product: { productName: 'Tractor' } }) },
+      invoice: { findUnique: vi.fn().mockResolvedValue({ customerId: 'cust-1', customer: { customerName: 'Ramesh', phone: '9999999999' } }) },
+      notificationQueue: { create: vi.fn() }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleEquipmentServiceReminder('ser-1', 3)
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('SER-015')
+  })
+
+  it('creates a notification queue row with the correct type when a reminder is schedulable', async () => {
+    const futureDue = new Date(Date.now() + 30 * 86400000)
+    const create = vi.fn().mockResolvedValue({ id: 'nq-1' })
+    const db: Record<string, any> = {
+      productSerial: { findUnique: vi.fn().mockResolvedValue({ id: 'ser-1', invoiceId: 'inv-1', nextServiceDueDate: futureDue, serialNumber: 'SN-1', product: { productName: 'Tractor' } }) },
+      invoice: { findUnique: vi.fn().mockResolvedValue({ customerId: 'cust-1', customer: { customerName: 'Ramesh', phone: '9999999999' } }) },
+      notificationQueue: { create }
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await scheduleEquipmentServiceReminder('ser-1', 3)
+
+    expect(res.success).toBe(true)
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'EQUIPMENT_SERVICE_DUE_REMINDER', customerId: 'cust-1' })
+    }))
   })
 })

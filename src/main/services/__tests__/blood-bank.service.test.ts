@@ -20,6 +20,8 @@ import {
   getDonor,
   updateDonor,
   listDonors,
+  listDonorsDueForRecall,
+  fastMatchSearch,
 } from '../blood-bank.service'
 
 describe('checkCompatibility — pure ABO/Rh matrices', () => {
@@ -769,6 +771,126 @@ describe('blood-bank.service', () => {
       const res = await sendDonorRecall((donorRes.data as any).id)
       expect(res.success).toBe(true)
       expect(generateWhatsAppLink).toHaveBeenCalledWith(expect.objectContaining({ phone: '9876543210' }))
+    })
+  })
+
+  // Phase 67 §9.1 — Blood Bank item 1: donor cooldown auto-reminder.
+  describe('listDonorsDueForRecall', () => {
+    it('queries only active, non-deferred donors with a real last-donation date', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await listDonorsDueForRecall()
+      expect(db.donor.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { isActive: true, isDeferred: false, lastDonationDate: { not: null } }
+      }))
+    })
+
+    it('includes a donor whose cooldown has already ended', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Ravi Kumar' })
+      const donorId = (donorRes.data as any).id
+      // 90-day whole-blood/RBC cooldown — well past it.
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 100 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await listDonorsDueForRecall()
+      expect(res.success).toBe(true)
+      expect((res.data as any[]).some((d) => d.id === donorId)).toBe(true)
+    })
+
+    it('excludes a donor still within their cooldown window', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Priya Singh' })
+      const donorId = (donorRes.data as any).id
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 5 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'WHOLE_BLOOD'
+
+      const res = await listDonorsDueForRecall()
+      expect((res.data as any[]).some((d) => d.id === donorId)).toBe(false)
+    })
+
+    it('respects the shorter platelet cooldown, not a flat 90-day rule', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const donorRes = await createDonor({ fullName: 'Amit Shah' })
+      const donorId = (donorRes.data as any).id
+      // 14-day platelet cooldown — 20 days since last donation is past it,
+      // even though it would still be well within the 90-day whole-blood rule.
+      db.__stores.donors[donorId].lastDonationDate = new Date(Date.now() - 20 * 86400000)
+      db.__stores.donors[donorId].lastDonationComponentType = 'PLATELETS'
+
+      const res = await listDonorsDueForRecall()
+      expect((res.data as any[]).some((d) => d.id === donorId)).toBe(true)
+    })
+  })
+
+  // Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search.
+  describe('fastMatchSearch', () => {
+    async function setupPassedUnit(db: ReturnType<typeof makeMockDb>, bloodGroup: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-', componentType = 'PACKED_RBC') {
+      const donorRes = await createDonor({ fullName: `Donor ${Math.random()}` })
+      const donationRes = await createDonationRecord({ donorId: (donorRes.data as any).id, bloodGroup, componentType: componentType as any })
+      await updateScreeningStatus({ id: (donationRes.data as any).id, screeningStatus: 'PASSED' })
+      return (donationRes.data as any).id
+    }
+
+    it('returns only compatible units for the requested recipient group', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await setupPassedUnit(db, 'O-') // universal donor — compatible with everyone
+      await setupPassedUnit(db, 'B+') // incompatible with an A+ recipient
+
+      const res = await fastMatchSearch({ recipientBloodGroup: 'A+', quantity: 5 })
+      expect(res.success).toBe(true)
+      const data = res.data as any
+      expect(data.matched.every((u: any) => ['O-', 'A+', 'A-', 'O+'].includes(u.bloodGroup))).toBe(true)
+      expect(data.matched.some((u: any) => u.bloodGroup === 'B+')).toBe(false)
+    })
+
+    it('filters by component type when one is specified', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await setupPassedUnit(db, 'O-', 'PACKED_RBC')
+      await setupPassedUnit(db, 'O-', 'PLASMA')
+
+      const res = await fastMatchSearch({ recipientBloodGroup: 'O-', componentType: 'PLASMA', quantity: 5 })
+      const data = res.data as any
+      expect(data.matched.every((u: any) => u.componentType === 'PLASMA')).toBe(true)
+    })
+
+    it('caps matched units at the requested quantity and flags a shortfall honestly', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await setupPassedUnit(db, 'O-')
+      await setupPassedUnit(db, 'O-')
+
+      const res = await fastMatchSearch({ recipientBloodGroup: 'O-', quantity: 5 })
+      const data = res.data as any
+      expect(data.matchedCount).toBe(2)
+      expect(data.fulfilled).toBe(false)
+      expect(data.shortfall).toBe(3)
+    })
+
+    it('reports fulfilled:true when enough compatible units are available', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await setupPassedUnit(db, 'O-')
+      await setupPassedUnit(db, 'O-')
+
+      const res = await fastMatchSearch({ recipientBloodGroup: 'O-', quantity: 2 })
+      const data = res.data as any
+      expect(data.fulfilled).toBe(true)
+      expect(data.shortfall).toBe(0)
+    })
+
+    it('returns an honest empty match when no compatible stock exists', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      const res = await fastMatchSearch({ recipientBloodGroup: 'AB+', quantity: 1 })
+      expect(res.success).toBe(true)
+      expect((res.data as any).matchedCount).toBe(0)
+      expect((res.data as any).fulfilled).toBe(false)
     })
   })
 })
