@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { enrollMember, unenrollMember, createBatchClass, updateBatchClass } from '../batch-class.service'
+import { enrollMember, unenrollMember, createBatchClass, updateBatchClass, markBatchClassAttendance, getBatchClassAttendance, getClassOccupancySummary } from '../batch-class.service'
 
 // Regression coverage for the Phase 27 re-audit finding: enrollMember's
 // existing-enrollment/capacity check ran as a separate statement from the
@@ -69,6 +69,31 @@ describe('batch-class.service — local-date construction', () => {
     const updateCall = db.batchClass.update.mock.calls[0][0] as { data: { startDate: Date } }
     expect(updateCall.data.startDate).toEqual(new Date(2026, 8, 1))
   })
+
+  it('markBatchClassAttendance stores sessionDate at local midnight, not UTC midnight (same bug class, found on this second pass)', async () => {
+    const db: Record<string, any> = {
+      batchClassAttendance: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), upsert: vi.fn().mockResolvedValue({}) },
+    }
+    db.$transaction = vi.fn((ops: unknown[]) => Promise.all(ops as Promise<unknown>[]))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await markBatchClassAttendance('class-1', ['member-1'], '2026-08-26')
+
+    const deleteCall = db.batchClassAttendance.deleteMany.mock.calls[0][0] as { where: { sessionDate: Date } }
+    expect(deleteCall.where.sessionDate).toEqual(new Date(2026, 7, 26))
+    const upsertCall = db.batchClassAttendance.upsert.mock.calls[0][0] as { where: { classId_memberId_sessionDate: { sessionDate: Date } } }
+    expect(upsertCall.where.classId_memberId_sessionDate.sessionDate).toEqual(new Date(2026, 7, 26))
+  })
+
+  it('getBatchClassAttendance filters by sessionDate at local midnight, not UTC midnight', async () => {
+    const db: Record<string, any> = { batchClassAttendance: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getBatchClassAttendance('class-1', '2026-08-26')
+
+    const call = db.batchClassAttendance.findMany.mock.calls[0][0] as { where: { sessionDate: Date } }
+    expect(call.where.sessionDate).toEqual(new Date(2026, 7, 26))
+  })
 })
 
 describe('batch-class.service — enrollment atomicity', () => {
@@ -126,5 +151,57 @@ describe('batch-class.service — enrollment atomicity', () => {
       expect.objectContaining({ data: { enrolledMemberIds: JSON.stringify(['member-2']) } })
     )
     expect(db.$transaction).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling.
+describe('batch-class.service — getClassOccupancySummary', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sorts worst-first (highest occupancy) and computes occupancyPercent from enrolled/maxCapacity', async () => {
+    const db = {
+      batchClass: {
+        findMany: vi.fn().mockResolvedValue([
+          makeClass({ id: 'c1', className: 'Yoga', maxCapacity: 10, enrolledMemberIds: JSON.stringify(['a', 'b']), instructor: { fullName: 'Priya' } }),
+          makeClass({ id: 'c2', className: 'Zumba', maxCapacity: 10, enrolledMemberIds: JSON.stringify(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']), instructor: null }),
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getClassOccupancySummary()
+
+    expect(res.success).toBe(true)
+    const rows = (res as any).data.rows
+    expect(rows.map((r: any) => r.className)).toEqual(['Zumba', 'Yoga'])
+    expect(rows[0].occupancyPercent).toBe(80)
+    expect(rows[1].occupancyPercent).toBe(20)
+  })
+
+  it('flags at-capacity and near-capacity counts correctly in the summary', async () => {
+    const db = {
+      batchClass: {
+        findMany: vi.fn().mockResolvedValue([
+          makeClass({ id: 'c1', maxCapacity: 5, enrolledMemberIds: JSON.stringify(['a', 'b', 'c', 'd', 'e']) }), // 100%
+          makeClass({ id: 'c2', maxCapacity: 5, enrolledMemberIds: JSON.stringify(['a', 'b', 'c', 'd']) }), // 80%
+          makeClass({ id: 'c3', maxCapacity: 10, enrolledMemberIds: JSON.stringify(['a']) }), // 10%
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getClassOccupancySummary()
+
+    expect((res as any).data.summary).toEqual({ totalClasses: 3, atCapacityCount: 1, nearCapacityCount: 1, underbookedCount: 1 })
+  })
+
+  it('tolerates a malformed enrolledMemberIds JSON string rather than throwing', async () => {
+    const db = { batchClass: { findMany: vi.fn().mockResolvedValue([makeClass({ enrolledMemberIds: 'not-json' })]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getClassOccupancySummary()
+
+    expect(res.success).toBe(true)
+    expect((res as any).data.rows[0].enrolled).toBe(0)
   })
 })

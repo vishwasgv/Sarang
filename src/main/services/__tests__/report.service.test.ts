@@ -7636,3 +7636,89 @@ describe('reportService.generateRetailAttachRateReport', () => {
     expect(result.summary).toEqual({ totalAppointmentInvoices: 0, withRetailAttach: 0, attachRatePercent: 0 })
   })
 })
+
+// Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap.
+describe('reportService.generateClassAttendanceHeatmapReport', () => {
+  it('buckets check-ins by className × day-of-week', async () => {
+    const db = {
+      batchClassAttendance: {
+        findMany: vi.fn().mockResolvedValue([
+          { sessionDate: new Date(2026, 7, 3), class: { className: 'Yoga' } }, // Mon Aug 3 2026
+          { sessionDate: new Date(2026, 7, 3), class: { className: 'Yoga' } },
+          { sessionDate: new Date(2026, 7, 4), class: { className: 'Zumba' } }, // Tue Aug 4 2026
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateClassAttendanceHeatmapReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.summary.totalCheckIns).toBe(3)
+    expect(result.summary.busiestClassName).toBe('Yoga')
+    const yogaMonCell = result.cells.find((c) => c.className === 'Yoga' && c.dayOfWeek === 'Mon')
+    expect(yogaMonCell?.checkInCount).toBe(2)
+  })
+
+  it('returns an honest empty result when nothing matches the range', async () => {
+    const db = { batchClassAttendance: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateClassAttendanceHeatmapReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.cells).toEqual([])
+    expect(result.summary).toEqual({ totalCheckIns: 0, busiestClassName: null, busiestDay: null })
+  })
+})
+
+// Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
+describe('reportService.generateMembershipRenewalFunnelReport', () => {
+  it('counts a membership as renewed only when the SAME client has another membership starting within the grace window', async () => {
+    const db = {
+      membership: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([
+            { id: 'mem-1', clientId: 'cust-1', endDate: new Date(2026, 7, 15), plan: { planName: 'Monthly' } },
+            { id: 'mem-2', clientId: 'cust-2', endDate: new Date(2026, 7, 15), plan: { planName: 'Monthly' } },
+          ])
+          .mockResolvedValueOnce([
+            { id: 'mem-1', clientId: 'cust-1', startDate: new Date(2026, 6, 1) },
+            { id: 'mem-3', clientId: 'cust-1', startDate: new Date(2026, 7, 20) }, // renewed within grace
+            { id: 'mem-2', clientId: 'cust-2', startDate: new Date(2026, 6, 1) }, // no renewal
+          ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMembershipRenewalFunnelReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.summary).toEqual({ totalExpired: 2, totalRenewed: 1, overallRenewalRatePercent: 50 })
+  })
+
+  it('a renewal starting AFTER the grace window is NOT counted as renewed', async () => {
+    const db = {
+      membership: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([{ id: 'mem-1', clientId: 'cust-1', endDate: new Date(2026, 7, 1), plan: { planName: 'Monthly' } }])
+          .mockResolvedValueOnce([
+            { id: 'mem-1', clientId: 'cust-1', startDate: new Date(2026, 6, 1) },
+            { id: 'mem-4', clientId: 'cust-1', startDate: new Date(2026, 8, 1) }, // 31 days later, outside 14-day grace
+          ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMembershipRenewalFunnelReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.summary.totalRenewed).toBe(0)
+  })
+
+  it('returns an honest empty result when nothing expired in the range', async () => {
+    const db = { membership: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMembershipRenewalFunnelReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalExpired: 0, totalRenewed: 0, overallRenewalRatePercent: 0 })
+  })
+})

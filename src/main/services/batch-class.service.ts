@@ -175,7 +175,7 @@ export async function unenrollMember(batchClassId: string, memberId: string) {
 export async function markBatchClassAttendance(classId: string, memberIds: string[], sessionDate: string) {
   try {
     const db = getPrisma()
-    const date = new Date(sessionDate)
+    const date = parseLocalDateStart(sessionDate)
 
     await db.$transaction([
       // Remove attendance for members now marked absent (not in present list)
@@ -206,7 +206,7 @@ export async function getBatchClassAttendance(classId: string, sessionDate?: str
   try {
     const db = getPrisma()
     const where: Record<string, unknown> = { classId }
-    if (sessionDate) where.sessionDate = new Date(sessionDate)
+    if (sessionDate) where.sessionDate = parseLocalDateStart(sessionDate)
 
     const records = await db.batchClassAttendance.findMany({
       where,
@@ -216,5 +216,58 @@ export async function getBatchClassAttendance(classId: string, sessionDate?: str
     return { success: true, data: records }
   } catch (err) {
     return { success: false, error: { code: 'BC27-008', message: err instanceof Error ? err.message : 'Could not get attendance.' } }
+  }
+}
+
+// Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling. Not
+// a conflict-blocker (scheduleTime has no duration field to compute a real
+// overlap window from, so a hard block would be a guess) — an informational
+// worklist an owner uses when DECIDING where to add a new class slot: every
+// active class's own occupancy, worst-first (fullest first), so the
+// actionable "this slot needs a second session" signal surfaces immediately.
+export interface ClassOccupancyRow {
+  id: string; className: string; instructorName: string | null
+  scheduleDays: string[]; scheduleTime: string; roomOrLocation: string | null
+  enrolled: number; maxCapacity: number; occupancyPercent: number
+}
+
+export async function getClassOccupancySummary() {
+  try {
+    const db = getPrisma()
+    const classes = await db.batchClass.findMany({
+      where: { status: 'ACTIVE' },
+      include: { instructor: { select: { fullName: true } } },
+      orderBy: { scheduleTime: 'asc' },
+    })
+
+    const round1 = (n: number) => Math.round(n * 10) / 10
+    const rows: ClassOccupancyRow[] = classes.map((c) => {
+      let days: string[] = []
+      try { const parsed = JSON.parse(c.scheduleDays); if (Array.isArray(parsed)) days = parsed } catch { /* leave empty */ }
+      const enrolled = (() => {
+        try { const parsed = JSON.parse(c.enrolledMemberIds); return Array.isArray(parsed) ? parsed.length : 0 } catch { return 0 }
+      })()
+      return {
+        id: c.id, className: c.className, instructorName: c.instructor?.fullName ?? null,
+        scheduleDays: days, scheduleTime: c.scheduleTime, roomOrLocation: c.roomOrLocation,
+        enrolled, maxCapacity: c.maxCapacity,
+        occupancyPercent: c.maxCapacity > 0 ? round1((enrolled / c.maxCapacity) * 100) : 0,
+      }
+    }).sort((a, b) => b.occupancyPercent - a.occupancyPercent)
+
+    return {
+      success: true,
+      data: {
+        rows,
+        summary: {
+          totalClasses: rows.length,
+          atCapacityCount: rows.filter((r) => r.occupancyPercent >= 100).length,
+          nearCapacityCount: rows.filter((r) => r.occupancyPercent >= 80 && r.occupancyPercent < 100).length,
+          underbookedCount: rows.filter((r) => r.occupancyPercent < 30).length,
+        },
+      },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'BC27-009', message: err instanceof Error ? err.message : 'Could not compute class occupancy.' } }
   }
 }

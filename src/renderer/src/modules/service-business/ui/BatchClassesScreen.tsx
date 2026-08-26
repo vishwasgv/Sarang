@@ -89,6 +89,17 @@ export function BatchClassesScreen() {
 
   useEffect(() => { loadClasses() }, [loadClasses])
 
+  // Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling. Every
+  // class card already shows its own live occupancy bar; this adds the
+  // cross-class AGGREGATE view that per-card bars can't — "where across the
+  // whole schedule do I actually need to add a slot."
+  const [occupancySummary, setOccupancySummary] = useState<{ totalClasses: number; atCapacityCount: number; nearCapacityCount: number; underbookedCount: number } | null>(null)
+  useEffect(() => {
+    api.batchClass.occupancySummary().then((res) => {
+      if (res.success && res.data) setOccupancySummary((res.data as { summary: typeof occupancySummary }).summary)
+    })
+  }, [classes])
+
   async function loadEmployees() {
     try {
       const res = await api.hr.listEmployees({ isActive: true })
@@ -273,6 +284,21 @@ export function BatchClassesScreen() {
       </div>
 
       {error && <div className="text-sm text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{error}</div>}
+
+      {/* Occupancy overview — informs where to add a new class slot */}
+      {occupancySummary && occupancySummary.totalClasses > 0 && (occupancySummary.atCapacityCount > 0 || occupancySummary.nearCapacityCount > 0 || occupancySummary.underbookedCount > 0) && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {occupancySummary.atCapacityCount > 0 && (
+            <span className="px-3 py-1.5 rounded-full bg-danger/10 text-danger font-medium">{occupancySummary.atCapacityCount} class{occupancySummary.atCapacityCount === 1 ? '' : 'es'} at full capacity — consider adding a slot</span>
+          )}
+          {occupancySummary.nearCapacityCount > 0 && (
+            <span className="px-3 py-1.5 rounded-full bg-warning/10 text-warning font-medium">{occupancySummary.nearCapacityCount} class{occupancySummary.nearCapacityCount === 1 ? '' : 'es'} near capacity</span>
+          )}
+          {occupancySummary.underbookedCount > 0 && (
+            <span className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">{occupancySummary.underbookedCount} class{occupancySummary.underbookedCount === 1 ? '' : 'es'} under 30% booked</span>
+          )}
+        </div>
+      )}
 
       {/* Classes Grid */}
       {loading ? (

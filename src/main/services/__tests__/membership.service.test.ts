@@ -6,7 +6,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice, freezeMembership, resumeMembership, checkInMember } from '../membership.service'
+import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, listMemberships, getMembershipsByClient, createMembership, generateMembershipInvoice, freezeMembership, resumeMembership, checkInMember, getChurnRiskMembers } from '../membership.service'
 
 // Regression coverage for the Phase 27 re-audit finding: MembershipPlan.price
 // is a Prisma Decimal — Electron's IPC can't serialize a Decimal instance and
@@ -462,6 +462,83 @@ describe('membership.service — checkInMember atomicity', () => {
     await checkInMember('cust-1', 'mem-1')
 
     expect(db.$transaction).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag. A plain,
+// explainable days-since-last-check-in signal, no fabricated composite score.
+describe('membership.service — getChurnRiskMembers', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeMembershipWithAttendance(daysAgo: number | null, overrides: Record<string, unknown> = {}) {
+    const startDate = new Date(Date.now() - 90 * 86400000)
+    return {
+      id: 'mem-1', clientId: 'cust-1', startDate,
+      client: { id: 'cust-1', customerName: 'Riya', phone: '9999999999' },
+      plan: { planName: 'Monthly' },
+      attendances: daysAgo === null ? [] : [{ checkInTime: new Date(Date.now() - daysAgo * 86400000) }],
+      ...overrides,
+    }
+  }
+
+  it('flags HIGH risk when the last check-in was 21+ days ago', async () => {
+    const db = { membership: { findMany: vi.fn().mockResolvedValue([makeMembershipWithAttendance(25)]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getChurnRiskMembers()
+
+    expect(res.success).toBe(true)
+    expect((res as any).data.rows[0].riskLevel).toBe('HIGH')
+  })
+
+  it('flags MEDIUM risk when the last check-in was 10-20 days ago', async () => {
+    const db = { membership: { findMany: vi.fn().mockResolvedValue([makeMembershipWithAttendance(15)]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getChurnRiskMembers()
+
+    expect((res as any).data.rows[0].riskLevel).toBe('MEDIUM')
+  })
+
+  it('does not flag a member who checked in within the last 10 days', async () => {
+    const db = { membership: { findMany: vi.fn().mockResolvedValue([makeMembershipWithAttendance(3)]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getChurnRiskMembers()
+
+    expect((res as any).data.rows).toEqual([])
+  })
+
+  it('never checked in falls back to days-since-membership-start, not an infinite/undefined risk', async () => {
+    const db = {
+      membership: {
+        findMany: vi.fn().mockResolvedValue([
+          makeMembershipWithAttendance(null, { startDate: new Date(Date.now() - 30 * 86400000) }),
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getChurnRiskMembers()
+
+    expect((res as any).data.rows[0].riskLevel).toBe('HIGH')
+    expect((res as any).data.rows[0].lastCheckInAt).toBeNull()
+  })
+
+  it('sorts worst-first (longest days-since-last-check-in)', async () => {
+    const db = {
+      membership: {
+        findMany: vi.fn().mockResolvedValue([
+          { ...makeMembershipWithAttendance(12), id: 'mem-a' },
+          { ...makeMembershipWithAttendance(30), id: 'mem-b' },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getChurnRiskMembers()
+
+    expect((res as any).data.rows.map((r: any) => r.membershipId)).toEqual(['mem-b', 'mem-a'])
   })
 })
 

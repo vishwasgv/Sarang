@@ -929,4 +929,22 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateRetailAttachRateReport(parsed.data)
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap.
+  handle('reports:classAttendanceHeatmap', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateClassAttendanceHeatmapReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
+  handle('reports:membershipRenewalFunnel', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateMembershipRenewalFunnelReport(parsed.data)
+    return { success: true, data }
+  })
 }

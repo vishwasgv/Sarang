@@ -521,6 +521,10 @@ export interface IpcChannels {
     stylistRepeatClient: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
     retailAttachRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap.
+    classAttendanceHeatmap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
+    membershipRenewalFunnel: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1348,6 +1352,8 @@ export interface IpcChannels {
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
     freeze: (payload: { id: string; reason?: string }) => Promise<ApiResponse>
     resume: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag.
+    churnRisk: () => Promise<ApiResponse>
   }
   batchClass: {
     list: (payload?: { status?: string; instructorId?: string }) => Promise<ApiResponse>
@@ -1358,6 +1364,8 @@ export interface IpcChannels {
     unenroll: (payload: { batchClassId: string; memberId: string }) => Promise<ApiResponse>
     markAttendance: (payload: { classId: string; memberIds: string[]; sessionDate: string }) => Promise<ApiResponse>
     getAttendance: (payload: { classId: string; sessionDate?: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling.
+    occupancySummary: () => Promise<ApiResponse>
   }
   learnerProfile: {
     get: (payload: { customerId: string }) => Promise<ApiResponse>

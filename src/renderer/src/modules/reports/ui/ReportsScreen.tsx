@@ -207,6 +207,14 @@ interface StylistRepeatClientReport { dateFrom: string; dateTo: string; rows: St
 interface RetailAttachRateByProviderRow { providerName: string; totalInvoices: number; withAttach: number; attachRatePercent: number }
 interface RetailAttachRateReport { dateFrom: string; dateTo: string; byProvider: RetailAttachRateByProviderRow[]; summary: { totalAppointmentInvoices: number; withRetailAttach: number; attachRatePercent: number } }
 
+// Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
+interface MembershipRenewalFunnelRow { planName: string; expiredCount: number; renewedCount: number; renewalRatePercent: number }
+interface MembershipRenewalFunnelReport { dateFrom: string; dateTo: string; rows: MembershipRenewalFunnelRow[]; summary: { totalExpired: number; totalRenewed: number; overallRenewalRatePercent: number } }
+
+// Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap.
+interface ClassAttendanceHeatmapCell { className: string; dayOfWeek: string; checkInCount: number }
+interface ClassAttendanceHeatmapReport { dateFrom: string; dateTo: string; classNames: string[]; daysOfWeek: string[]; cells: ClassAttendanceHeatmapCell[]; summary: { totalCheckIns: number; busiestClassName: string | null; busiestDay: string | null } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -605,6 +613,8 @@ type ReportType =
   | 'costCentreTreemap' | 'budgetVsActual' | 'statutoryComplianceSummary' | 'cashFlowProjection' | 'cashPositionTrend' | 'paymentPerformance'
   // Phase 68 §9.1 — Beauty Salon items 1/2 & 3/4
   | 'stylistRepeatClient' | 'retailAttachRate'
+  // Phase 68 §9.1 — Gym/Studio items 1/2 & 4
+  | 'membershipRenewalFunnel' | 'classAttendanceHeatmap'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -803,6 +813,9 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Beauty Salon items 1/2 & 3/4.
   { id: 'stylistRepeatClient', icon: <Award size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'multi_service_booking' },
   { id: 'retailAttachRate', icon: <Package size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'multi_service_booking' },
+  // Phase 68 §9.1 — Gym/Studio items 1/2 & 4.
+  { id: 'membershipRenewalFunnel', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'memberships' },
+  { id: 'classAttendanceHeatmap', icon: <Table size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'batch_classes' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1209,6 +1222,12 @@ export function ReportsScreen() {
           break
         case 'retailAttachRate':
           res = await window.api.reports.retailAttachRate({ dateFrom, dateTo })
+          break
+        case 'membershipRenewalFunnel':
+          res = await window.api.reports.membershipRenewalFunnel({ dateFrom, dateTo })
+          break
+        case 'classAttendanceHeatmap':
+          res = await window.api.reports.classAttendanceHeatmap({ dateFrom, dateTo })
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1909,6 +1928,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.stylist'), t('reports.col.totalInvoices'), t('reports.col.withAttach'), t('reports.col.attachRatePercent')],
           rows: d.byProvider.map(r => [r.providerName, r.totalInvoices, r.withAttach, `${r.attachRatePercent}%`])
+        }
+      }
+      case 'membershipRenewalFunnel': {
+        const d = reportData as MembershipRenewalFunnelReport
+        return {
+          headers: [t('reports.col.planName'), t('reports.col.expiredCount'), t('reports.col.renewedCount'), t('reports.col.renewalRatePercent')],
+          rows: d.rows.map(r => [r.planName, r.expiredCount, r.renewedCount, `${r.renewalRatePercent}%`])
+        }
+      }
+      case 'classAttendanceHeatmap': {
+        const d = reportData as ClassAttendanceHeatmapReport
+        return {
+          headers: [t('reports.col.className'), t('reports.col.dayOfWeek'), t('reports.col.checkInCount')],
+          rows: d.cells.map(c => [c.className, c.dayOfWeek, c.checkInCount])
         }
       }
       case 'serviceProjects': {
@@ -2736,6 +2769,13 @@ export function ReportsScreen() {
           { label: t('reports.col.attachRatePercent'), value: `${d.summary.attachRatePercent}%` }
         ]
       }
+      case 'membershipRenewalFunnel': {
+        const d = reportData as MembershipRenewalFunnelReport
+        return [
+          { label: t('reports.col.expiredCount'), value: String(d.summary.totalExpired) },
+          { label: t('reports.col.renewalRatePercent'), value: `${d.summary.overallRenewalRatePercent}%` }
+        ]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         return [
@@ -3501,6 +3541,12 @@ export function ReportsScreen() {
         if (d.byProvider.length === 0) return []
         return [{ type: 'bar', title: t('reports.defs.retailAttachRate.label'), data: d.byProvider.slice(0, 10).map(r => ({ label: r.providerName, value: r.attachRatePercent })) }]
       }
+      case 'membershipRenewalFunnel': {
+        const d = reportData as MembershipRenewalFunnelReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.membershipRenewalFunnel.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.planName, value: r.renewalRatePercent })) }]
+      }
+      case 'classAttendanceHeatmap': return []
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         if (d.byStatus.length === 0) return []
@@ -4005,6 +4051,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'assetUtilization': return <AssetUtilizationView data={data as AssetUtilizationReport} />
     case 'stylistRepeatClient': return <StylistRepeatClientView data={data as StylistRepeatClientReport} />
     case 'retailAttachRate': return <RetailAttachRateView data={data as RetailAttachRateReport} />
+    case 'membershipRenewalFunnel': return <MembershipRenewalFunnelView data={data as MembershipRenewalFunnelReport} />
+    case 'classAttendanceHeatmap': return <ClassAttendanceHeatmapView data={data as ClassAttendanceHeatmapReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5646,6 +5694,88 @@ function RetailAttachRateView({ data }: { data: RetailAttachRateReport }) {
         rows={data.byProvider.map(r => [r.providerName, r.totalInvoices, r.withAttach, `${r.attachRatePercent}%`])}
         emptyText={t('reports.empty.retailAttachRate')}
       />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Gym/Studio items 1/2: membership renewal funnel.
+function MembershipRenewalFunnelView({ data }: { data: MembershipRenewalFunnelReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.expiredCount'), value: String(data.summary.totalExpired) },
+        { label: t('reports.col.renewalRatePercent'), value: `${data.summary.overallRenewalRatePercent}%` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.membershipRenewalFunnel.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <YAxis type="category" dataKey="planName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Bar dataKey="renewalRatePercent" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.planName'), t('reports.col.expiredCount'), t('reports.col.renewedCount'), t('reports.col.renewalRatePercent')]}
+        rows={data.rows.map(r => [r.planName, r.expiredCount, r.renewedCount, `${r.renewalRatePercent}%`])}
+        emptyText={t('reports.empty.membershipRenewalFunnel')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap. className ×
+// day-of-week grid, same cell-intensity pattern SizeStyleHeatmapView above
+// already established.
+function ClassAttendanceHeatmapView({ data }: { data: ClassAttendanceHeatmapReport }) {
+  const { t } = useTranslation()
+  const maxCount = Math.max(1, ...data.cells.map(c => c.checkInCount))
+  const cellByKey = new Map(data.cells.map(c => [`${c.className}|${c.dayOfWeek}`, c.checkInCount]))
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.checkInCount'), value: String(data.summary.totalCheckIns) },
+        { label: t('reports.col.className'), value: data.summary.busiestClassName ?? '—' },
+        { label: t('reports.col.dayOfWeek'), value: data.summary.busiestDay ?? '—' },
+      ]} />
+      {data.classNames.length > 0 && data.daysOfWeek.length > 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.classAttendanceHeatmap.label')}</h3>
+          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `10rem repeat(${data.daysOfWeek.length}, 3rem)` }}>
+            <div />
+            {data.daysOfWeek.map(day => (
+              <div key={`h-${day}`} className="text-[10px] text-slate-400 text-center">{day}</div>
+            ))}
+            {data.classNames.map(className => (
+              <React.Fragment key={`row-${className}`}>
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={className}>{className}</div>
+                {data.daysOfWeek.map(day => {
+                  const count = cellByKey.get(`${className}|${day}`) ?? 0
+                  const intensity = count / maxCount
+                  return (
+                    <div
+                      key={`c-${className}-${day}`}
+                      title={`${className} / ${day} — ${count} ${t('reports.col.checkInCount')}`}
+                      className="h-8 rounded-sm flex items-center justify-center text-[10px]"
+                      style={{ backgroundColor: count === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})`, color: intensity > 0.5 ? '#fff' : undefined }}
+                    >
+                      {count > 0 ? count : ''}
+                    </div>
+                  )
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <EmptyState title={t('reports.empty.classAttendanceHeatmap')} subtitle="" />
+      )}
     </div>
   )
 }

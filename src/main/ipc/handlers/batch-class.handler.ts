@@ -8,6 +8,7 @@ import {
   unenrollMember,
   markBatchClassAttendance,
   getBatchClassAttendance,
+  getClassOccupancySummary,
 } from '../../services/batch-class.service'
 import {
   CreateBatchClassSchema,
@@ -71,5 +72,11 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     const payload = raw as { classId: string; sessionDate?: string }
     return getBatchClassAttendance(payload.classId, payload.sessionDate)
+  })
+
+  // Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling.
+  handle('batchClass:occupancySummary', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getClassOccupancySummary()
   })
 }

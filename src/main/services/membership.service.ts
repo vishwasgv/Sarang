@@ -452,6 +452,60 @@ export async function getMembershipAttendance(membershipId: string, dateFrom?: s
   }
 }
 
+// Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag. Deliberately a
+// plain, explainable days-since-last-check-in signal — no fabricated
+// composite "churn score," matching this codebase's own established
+// anti-fragility stance (see payroll.service.ts's suggest-and-review
+// statutory engine: an honest, simple signal beats a confidently-wrong one).
+// A membership younger than the HIGH threshold is never flagged at all —
+// a brand-new member hasn't had time to develop a check-in habit yet, so
+// "never checked in" for week one is normal, not a risk signal.
+const CHURN_RISK_HIGH_DAYS = 21
+const CHURN_RISK_MEDIUM_DAYS = 10
+
+export type ChurnRiskLevel = 'HIGH' | 'MEDIUM'
+export interface ChurnRiskMember {
+  membershipId: string; clientId: string; clientName: string; phone: string | null
+  planName: string; daysSinceLastCheckIn: number; lastCheckInAt: string | null; riskLevel: ChurnRiskLevel
+}
+
+export async function getChurnRiskMembers() {
+  try {
+    const db = getPrisma()
+    const now = new Date()
+    const memberships = await db.membership.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        plan: { select: { planName: true } },
+        attendances: { select: { checkInTime: true }, orderBy: { checkInTime: 'desc' }, take: 1 },
+      },
+    })
+
+    const rows: ChurnRiskMember[] = []
+    for (const m of memberships) {
+      const lastCheckIn = m.attendances[0]?.checkInTime ?? null
+      const sinceDate = lastCheckIn ?? m.startDate
+      const daysSince = Math.floor((now.getTime() - sinceDate.getTime()) / 86400000)
+      if (daysSince < CHURN_RISK_MEDIUM_DAYS) continue
+      const riskLevel: ChurnRiskLevel = daysSince >= CHURN_RISK_HIGH_DAYS ? 'HIGH' : 'MEDIUM'
+      rows.push({
+        membershipId: m.id, clientId: m.clientId, clientName: m.client.customerName, phone: m.client.phone,
+        planName: m.plan.planName, daysSinceLastCheckIn: daysSince,
+        lastCheckInAt: lastCheckIn ? lastCheckIn.toISOString() : null, riskLevel,
+      })
+    }
+    rows.sort((a, b) => b.daysSinceLastCheckIn - a.daysSinceLastCheckIn)
+
+    return {
+      success: true,
+      data: { rows, summary: { totalAtRisk: rows.length, highRiskCount: rows.filter((r) => r.riskLevel === 'HIGH').length } },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'M27-017', message: err instanceof Error ? err.message : 'Could not compute churn-risk members.' } }
+  }
+}
+
 export async function getExpiringMemberships(daysAhead = 30) {
   try {
     const db = getPrisma()

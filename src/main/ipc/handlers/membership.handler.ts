@@ -14,6 +14,7 @@ import {
   generateMembershipInvoice,
   freezeMembership,
   resumeMembership,
+  getChurnRiskMembers,
 } from '../../services/membership.service'
 import {
   CreateMembershipPlanSchema,
@@ -109,6 +110,12 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     const payload = (raw ?? {}) as { daysAhead?: number }
     return getExpiringMemberships(payload.daysAhead)
+  })
+
+  // Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag.
+  handle('membership:churnRisk', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getChurnRiskMembers()
   })
 
   handle('membership:generateInvoice', async (raw) => {

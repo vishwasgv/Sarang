@@ -49,6 +49,12 @@ interface ExpiringMembership {
   plan: { id: string; planName: string }
 }
 
+// Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag.
+interface ChurnRiskMember {
+  membershipId: string; clientId: string; clientName: string; phone: string | null
+  planName: string; daysSinceLastCheckIn: number; lastCheckInAt: string | null; riskLevel: 'HIGH' | 'MEDIUM'
+}
+
 interface AttendanceRecord {
   id: string
   checkInTime: string
@@ -80,7 +86,7 @@ function daysLeft(endDate: string) {
 
 export function MembershipsScreen() {
   const { error: toastError } = useNotificationStore()
-  const [tab, setTab] = useState<'memberships' | 'plans' | 'checkin' | 'expiring'>('memberships')
+  const [tab, setTab] = useState<'memberships' | 'plans' | 'checkin' | 'expiring' | 'churnRisk'>('memberships')
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [plans, setPlans] = useState<MembershipPlan[]>([])
   const [statusFilter, setStatusFilter] = useState('ACTIVE')
@@ -119,6 +125,10 @@ export function MembershipsScreen() {
   const [expiring, setExpiring] = useState<ExpiringMembership[]>([])
   const [loadingExpiring, setLoadingExpiring] = useState(false)
   const [expiringDays, setExpiringDays] = useState(30)
+
+  // Phase 68 §9.1 — Gym/Studio item 5: member churn-risk flag.
+  const [churnRisk, setChurnRisk] = useState<ChurnRiskMember[]>([])
+  const [loadingChurnRisk, setLoadingChurnRisk] = useState(false)
 
   // Per-member attendance history (Phase 58 §1 — was a dead backend function with no UI)
   const [attendanceMembership, setAttendanceMembership] = useState<Membership | null>(null)
@@ -194,6 +204,23 @@ export function MembershipsScreen() {
   useEffect(() => {
     if (tab === 'expiring') loadExpiring()
   }, [tab, loadExpiring])
+
+  const loadChurnRisk = useCallback(async () => {
+    setLoadingChurnRisk(true)
+    try {
+      const res = await api.membership.churnRisk()
+      if (res.success) setChurnRisk((res.data as { rows: ChurnRiskMember[] }).rows)
+      else toastError('Error', res.error?.message ?? 'Could not load churn-risk members.')
+    } catch {
+      toastError('Error', 'Could not load churn-risk members.')
+    } finally {
+      setLoadingChurnRisk(false)
+    }
+  }, [toastError])
+
+  useEffect(() => {
+    if (tab === 'churnRisk') loadChurnRisk()
+  }, [tab, loadChurnRisk])
 
   async function openAttendance(membership: Membership) {
     setAttendanceMembership(membership)
@@ -432,6 +459,7 @@ export function MembershipsScreen() {
           { id: 'plans', label: 'Plans' },
           { id: 'checkin', label: 'Quick Check-In' },
           { id: 'expiring', label: 'Expiring Soon' },
+          { id: 'churnRisk', label: 'Churn Risk' },
         ]}
         active={tab}
         onChange={setTab}
@@ -679,6 +707,49 @@ export function MembershipsScreen() {
                       </tr>
                     )
                   })}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Churn Risk Tab — Phase 68 §9.1 Gym/Studio item 5 */}
+      {tab === 'churnRisk' && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Active members who haven't checked in for 10+ days — a real, explainable risk signal, not a fabricated score.</p>
+          <Card padding="none" className="overflow-hidden">
+            {loadingChurnRisk ? (
+              <div className="p-12 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : churnRisk.length === 0 ? (
+              <div className="p-12 text-center">
+                <AlertTriangle size={32} className="mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground">No active members are currently at risk of churning.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/20">
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Member</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Plan</th>
+                    <th className="text-start px-4 py-3 font-medium text-muted-foreground">Last Check-In</th>
+                    <th className="text-center px-4 py-3 font-medium text-muted-foreground">Risk</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {churnRisk.map((m) => (
+                    <tr key={m.membershipId} className="border-b border-border/50 hover:bg-muted/20">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{m.clientName}</p>
+                        {m.phone && <p className="text-xs text-muted-foreground">{m.phone}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-foreground">{m.planName}</td>
+                      <td className="px-4 py-3 text-foreground">{m.lastCheckInAt ? `${formatDate(m.lastCheckInAt)} (${m.daysSinceLastCheckIn}d ago)` : `Never (${m.daysSinceLastCheckIn}d since joining)`}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={m.riskLevel === 'HIGH' ? 'danger' : 'warning'} size="sm">{m.riskLevel}</Badge>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}

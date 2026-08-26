@@ -1804,6 +1804,14 @@
         "label": "Retail Attach Rate",
         "description": "How often a booked service invoice also included a retail product upsell, per stylist"
       },
+      "membershipRenewalFunnel": {
+        "label": "Membership Renewal Funnel",
+        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+      },
+      "classAttendanceHeatmap": {
+        "label": "Class Attendance Heatmap",
+        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2512,7 +2520,9 @@
       "vaccinationCompliance": "No follow-up doses with a prior due date in this date range.",
       "vetCaseTypeVolume": "No cases recorded in this date range.",
       "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range."
+      "retailAttachRate": "No invoiced appointments in this date range.",
+      "membershipRenewalFunnel": "No memberships expired in this date range.",
+      "classAttendanceHeatmap": "No class check-ins recorded in this date range."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2548,6 +2558,12 @@
       "totalInvoices": "Total Invoices",
       "withAttach": "With Retail Attach",
       "attachRatePercent": "Attach Rate %",
+      "planName": "Plan",
+      "expiredCount": "Expired",
+      "renewedCount": "Renewed",
+      "renewalRatePercent": "Renewal Rate %",
+      "className": "Class",
+      "checkInCount": "Check-Ins",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",

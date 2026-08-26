@@ -2300,6 +2300,119 @@ async function generateSizeAvailabilityHeatmapReport(params?: { lowStockThreshol
   }
 }
 
+// Phase 68 §9.1 — Gym/Studio item 4: Class Attendance Heatmap. className ×
+// day-of-week grid of real check-in counts (BatchClassAttendance), not
+// enrollment counts — a class can be fully enrolled and still poorly
+// attended, which is the actual signal a heatmap should surface.
+const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export interface ClassAttendanceHeatmapCell { className: string; dayOfWeek: string; checkInCount: number }
+export interface ClassAttendanceHeatmapReport {
+  dateFrom: string; dateTo: string
+  classNames: string[]; daysOfWeek: string[]
+  cells: ClassAttendanceHeatmapCell[]
+  summary: { totalCheckIns: number; busiestClassName: string | null; busiestDay: string | null }
+}
+
+async function generateClassAttendanceHeatmapReport(params: { dateFrom: string; dateTo: string }): Promise<ClassAttendanceHeatmapReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const records = await db.batchClassAttendance.findMany({
+    where: { sessionDate: { gte: from, lte: to } },
+    select: { sessionDate: true, class: { select: { className: true } } },
+  })
+  if (records.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, classNames: [], daysOfWeek: [], cells: [], summary: { totalCheckIns: 0, busiestClassName: null, busiestDay: null } }
+
+  const byKey = new Map<string, ClassAttendanceHeatmapCell>()
+  const byClassName = new Map<string, number>()
+  const byDay = new Map<string, number>()
+  for (const r of records) {
+    const className = r.class.className
+    const dayOfWeek = DAY_OF_WEEK_LABELS[r.sessionDate.getDay()]
+    const key = `${className}|${dayOfWeek}`
+    const existing = byKey.get(key) ?? { className, dayOfWeek, checkInCount: 0 }
+    existing.checkInCount += 1
+    byKey.set(key, existing)
+    byClassName.set(className, (byClassName.get(className) ?? 0) + 1)
+    byDay.set(dayOfWeek, (byDay.get(dayOfWeek) ?? 0) + 1)
+  }
+
+  const classNames = Array.from(byClassName.entries()).sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  const daysOfWeek = DAY_OF_WEEK_LABELS.filter((d) => byDay.has(d))
+  const cells = Array.from(byKey.values())
+  const busiestClassName = classNames[0] ?? null
+  const busiestDay = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, classNames, daysOfWeek, cells,
+    summary: { totalCheckIns: records.length, busiestClassName, busiestDay },
+  }
+}
+
+// Phase 68 §9.1 — Gym/Studio items 1/2: membership-expiring-this-week list
+// is already the real feature getExpiringMemberships (daysAhead=7) covers,
+// live in MembershipsScreen.tsx's own "Next 7 days" tab — this closes the
+// missing REPORT half. A membership "renewed" when the SAME client has
+// another (different) membership whose startDate falls within 14 days of
+// this one's own endDate — a real grace window, not same-day-only, since a
+// member renewing a few days late is still a genuine renewal, not a churn.
+const RENEWAL_GRACE_DAYS = 14
+export interface MembershipRenewalFunnelRow { planName: string; expiredCount: number; renewedCount: number; renewalRatePercent: number }
+export interface MembershipRenewalFunnelReport {
+  dateFrom: string; dateTo: string
+  rows: MembershipRenewalFunnelRow[]
+  summary: { totalExpired: number; totalRenewed: number; overallRenewalRatePercent: number }
+}
+
+async function generateMembershipRenewalFunnelReport(params: { dateFrom: string; dateTo: string }): Promise<MembershipRenewalFunnelReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const expired = await db.membership.findMany({
+    where: { endDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    select: { id: true, clientId: true, endDate: true, plan: { select: { planName: true } } },
+  })
+  if (expired.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalExpired: 0, totalRenewed: 0, overallRenewalRatePercent: 0 } }
+
+  const clientIds = [...new Set(expired.map((m) => m.clientId))]
+  const allClientMemberships = await db.membership.findMany({
+    where: { clientId: { in: clientIds } },
+    select: { id: true, clientId: true, startDate: true },
+  })
+  const byClient = new Map<string, Array<{ id: string; startDate: Date }>>()
+  for (const m of allClientMemberships) {
+    const list = byClient.get(m.clientId) ?? []
+    list.push({ id: m.id, startDate: m.startDate })
+    byClient.set(m.clientId, list)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byPlan = new Map<string, { expiredCount: number; renewedCount: number }>()
+  let totalRenewed = 0
+  for (const m of expired) {
+    const graceEnd = new Date(m.endDate.getTime() + RENEWAL_GRACE_DAYS * 86400000)
+    const others = byClient.get(m.clientId) ?? []
+    const renewed = others.some((o) => o.id !== m.id && o.startDate >= m.endDate && o.startDate <= graceEnd)
+    if (renewed) totalRenewed++
+    const planName = m.plan.planName
+    const entry = byPlan.get(planName) ?? { expiredCount: 0, renewedCount: 0 }
+    entry.expiredCount += 1
+    if (renewed) entry.renewedCount += 1
+    byPlan.set(planName, entry)
+  }
+
+  const rows: MembershipRenewalFunnelRow[] = Array.from(byPlan.entries())
+    .map(([planName, v]) => ({ planName, expiredCount: v.expiredCount, renewedCount: v.renewedCount, renewalRatePercent: v.expiredCount > 0 ? round1((v.renewedCount / v.expiredCount) * 100) : 0 }))
+    .sort((a, b) => a.renewalRatePercent - b.renewalRatePercent)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalExpired: expired.length, totalRenewed, overallRenewalRatePercent: expired.length > 0 ? round1((totalRenewed / expired.length) * 100) : 0 },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Category Mix Report (General template) — Phase 67 §9.1
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7394,4 +7507,6 @@ export const reportService = {
   generateVetCaseTypeVolumeReport,
   generateStylistRepeatClientReport,
   generateRetailAttachRateReport,
+  generateClassAttendanceHeatmapReport,
+  generateMembershipRenewalFunnelReport,
 }

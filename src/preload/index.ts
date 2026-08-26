@@ -431,6 +431,8 @@ const api: IpcChannels = {
     assetUtilization: (p) => invoke('reports:assetUtilization', p),
     stylistRepeatClient: (p) => invoke('reports:stylistRepeatClient', p),
     retailAttachRate: (p) => invoke('reports:retailAttachRate', p),
+    classAttendanceHeatmap: (p) => invoke('reports:classAttendanceHeatmap', p),
+    membershipRenewalFunnel: (p) => invoke('reports:membershipRenewalFunnel', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1138,6 +1140,7 @@ const api: IpcChannels = {
     checkIn: (p: unknown) => invoke('membership:checkIn', p),
     attendance: (p: unknown) => invoke('membership:attendance', p),
     expiring: (p?: unknown) => invoke('membership:expiring', p),
+    churnRisk: () => invoke('membership:churnRisk'),
     generateInvoice: (p: unknown) => invoke('membership:generateInvoice', p),
     freeze: (p: unknown) => invoke('membership:freeze', p),
     resume: (p: unknown) => invoke('membership:resume', p),
@@ -1151,6 +1154,7 @@ const api: IpcChannels = {
     unenroll: (p: unknown) => invoke('batchClass:unenroll', p),
     markAttendance: (p: unknown) => invoke('batchClass:markAttendance', p),
     getAttendance: (p: unknown) => invoke('batchClass:getAttendance', p),
+    occupancySummary: () => invoke('batchClass:occupancySummary'),
   },
   learnerProfile: {
     get: (p: unknown) => invoke('learnerProfile:get', p),
