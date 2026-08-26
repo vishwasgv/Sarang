@@ -29,12 +29,34 @@ export interface JobCardRecord {
   isUnderWarranty: boolean | null
   warrantyClaimAgainstId: string | null
   warrantyClaimAgainstJobNumber: string | null
+  // Phase 67 §9.1 — Repair item 1: structured intake checklist.
+  conditionOnArrival: string | null
+  accessoriesReceived: string | null
+  // Phase 67 §9.1 — Repair item 4: category taxonomy for the volume-trend report.
+  category: string | null
+  // Phase 67 §9.1 — Repair item 5: parts-used-vs-quoted variance. null until
+  // both a quote and at least one real part exist — a job with no parts
+  // used yet has nothing to compare against.
+  quotedPartsTotal: number | null
+  actualPartsTotal: number
+  partsVariance: number | null
+  // Phase 67 §9.1 — Repair item 3: repeat-fault flag. Live-computed, never
+  // persisted — same convention as ServiceTicket.isSlaBreached/
+  // RepairTicket's own isOverdue(). True only when the SAME customer had a
+  // PRIOR job card for the same item (case-insensitive itemDescription
+  // match) delivered within the last 30 days before this one was received.
+  isRepeatFault: boolean
+  repeatFaultOriginalJobNumber: string | null
   createdAt: string
   updatedAt: string
 }
 
-function toRecord(j: any): JobCardRecord {
+const REPEAT_FAULT_WINDOW_DAYS = 30
+
+function toRecord(j: any, repeatFaultOriginalJobNumber: string | null = null): JobCardRecord {
   const warrantyExpiryDate = j.warrantyExpiryDate ? new Date(j.warrantyExpiryDate) : null
+  const actualPartsTotal = (j.parts ?? []).reduce((s: number, p: any) => s + p.quantity * p.unitPrice, 0)
+  const quotedPartsTotal = j.quotedPartsTotal ?? null
   return {
     id: j.id,
     jobNumber: j.jobNumber,
@@ -59,6 +81,14 @@ function toRecord(j: any): JobCardRecord {
     isUnderWarranty: warrantyExpiryDate ? warrantyExpiryDate.getTime() > Date.now() : null,
     warrantyClaimAgainstId: j.warrantyClaimAgainstId ?? null,
     warrantyClaimAgainstJobNumber: j.warrantyClaimAgainst?.jobNumber ?? null,
+    conditionOnArrival: j.conditionOnArrival ?? null,
+    accessoriesReceived: j.accessoriesReceived ?? null,
+    category: j.category ?? null,
+    quotedPartsTotal,
+    actualPartsTotal,
+    partsVariance: quotedPartsTotal != null && actualPartsTotal > 0 ? actualPartsTotal - quotedPartsTotal : null,
+    isRepeatFault: !!repeatFaultOriginalJobNumber,
+    repeatFaultOriginalJobNumber,
     createdAt: new Date(j.createdAt).toISOString(),
     updatedAt: new Date(j.updatedAt).toISOString()
   }
@@ -67,7 +97,40 @@ function toRecord(j: any): JobCardRecord {
 const include = {
   customer: { select: { customerName: true } },
   assignedTo: { select: { fullName: true } },
-  warrantyClaimAgainst: { select: { jobNumber: true } }
+  warrantyClaimAgainst: { select: { jobNumber: true } },
+  parts: { select: { quantity: true, unitPrice: true } }
+}
+
+// Phase 67 §9.1 — Repair item 3: repeat-fault flag. Batched (not N+1): one
+// extra query fetches every OTHER delivered job for the SAME set of
+// customers, then matches in memory — same "flag never persisted, computed
+// live" convention as ServiceTicket.isSlaBreached, but batched at the list
+// level since job cards (unlike tickets) have no small per-row lookup the
+// UI already does individually.
+async function computeRepeatFaultMap(
+  db: ReturnType<typeof getPrisma>,
+  rows: Array<{ id: string; customerId: string | null; itemDescription: string | null; receivedDate: Date }>
+): Promise<Map<string, string>> {
+  const candidates = rows.filter((r) => r.customerId && r.itemDescription?.trim())
+  if (candidates.length === 0) return new Map()
+  const customerIds = [...new Set(candidates.map((r) => r.customerId as string))]
+  const priorDeliveries = await db.jobCard.findMany({
+    where: { customerId: { in: customerIds }, deliveredDate: { not: null } },
+    select: { id: true, customerId: true, itemDescription: true, jobNumber: true, deliveredDate: true }
+  })
+  const map = new Map<string, string>()
+  for (const r of candidates) {
+    const windowStart = r.receivedDate.getTime() - REPEAT_FAULT_WINDOW_DAYS * 86400000
+    const match = priorDeliveries.find((p) =>
+      p.id !== r.id &&
+      p.customerId === r.customerId &&
+      p.itemDescription?.trim().toLowerCase() === r.itemDescription?.trim().toLowerCase() &&
+      p.deliveredDate && p.deliveredDate.getTime() <= r.receivedDate.getTime() &&
+      p.deliveredDate.getTime() >= windowStart
+    )
+    if (match) map.set(r.id, match.jobNumber)
+  }
+  return map
 }
 
 export async function listJobCards(payload?: {
@@ -87,7 +150,8 @@ export async function listJobCards(payload?: {
       orderBy: { createdAt: 'desc' },
       take: payload?.limit ?? 200
     })
-    return { success: true, data: { jobCards: rows.map(toRecord), total: rows.length } }
+    const repeatFaultMap = await computeRepeatFaultMap(db, rows)
+    return { success: true, data: { jobCards: rows.map((r) => toRecord(r, repeatFaultMap.get(r.id) ?? null)), total: rows.length } }
   } catch (e: any) {
     console.error('[JC_LIST_FAIL]', e)
     return { success: false, error: { code: 'JC_LIST_FAIL', message: 'Something went wrong. Please try again.' } }
@@ -105,9 +169,14 @@ export async function createJobCard(payload: {
   notes?: string
   internalNotes?: string
   warrantyClaimAgainstId?: string
+  conditionOnArrival?: string
+  accessoriesReceived?: string
+  category?: string
+  quotedPartsTotal?: number
 }, userId?: string): Promise<{ success: boolean; data?: JobCardRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
+    const now = new Date()
     const row = await db.$transaction(async (tx) => {
       const jobNumber = await generateSequenceNumber(
         tx, 'job_card_number_sequence', 'JOB', 5,
@@ -134,14 +203,21 @@ export async function createJobCard(payload: {
           // may still choose to accept an out-of-warranty comeback as a
           // fresh paid job — toRecord() surfaces isUnderWarranty for the
           // ORIGINAL job so staff can see the real fact and decide.
-          warrantyClaimAgainstId: payload.warrantyClaimAgainstId ?? null
+          warrantyClaimAgainstId: payload.warrantyClaimAgainstId ?? null,
+          conditionOnArrival: payload.conditionOnArrival ?? null,
+          accessoriesReceived: payload.accessoriesReceived ?? null,
+          category: payload.category ?? null,
+          quotedPartsTotal: payload.quotedPartsTotal ?? null
         },
         include
       })
     })
 
     if (userId) await logAction(userId, 'CREATE', 'JOB_CARD', row.id, null, { jobNumber: row.jobNumber, title: payload.title })
-    return { success: true, data: toRecord(row) }
+    // Phase 67 §9.1 — Repair item 3: repeat-fault flag, computed right at
+    // intake — the moment the audit's own wording calls "worth surfacing."
+    const repeatFaultMap = await computeRepeatFaultMap(db, [{ id: row.id, customerId: row.customerId, itemDescription: row.itemDescription, receivedDate: now }])
+    return { success: true, data: toRecord(row, repeatFaultMap.get(row.id) ?? null) }
   } catch (e: unknown) {
     // Was `message: e.message` — leaked the raw Prisma unique-constraint
     // text (or now SequenceContendedError's message) straight to the user
@@ -169,6 +245,10 @@ export async function updateJobCard(payload: {
   notes?: string
   internalNotes?: string
   warrantyDays?: number | null
+  conditionOnArrival?: string | null
+  accessoriesReceived?: string | null
+  category?: string | null
+  quotedPartsTotal?: number | null
 }, userId?: string): Promise<{ success: boolean; data?: JobCardRecord; error?: { code: string; message: string } }> {
   try {
     const db = getPrisma()
@@ -195,6 +275,10 @@ export async function updateJobCard(payload: {
     if ('deliveredDate' in payload) data.deliveredDate = payload.deliveredDate ? new Date(payload.deliveredDate) : null
     if (payload.notes !== undefined) data.notes = payload.notes
     if (payload.internalNotes !== undefined) data.internalNotes = payload.internalNotes
+    if ('conditionOnArrival' in payload) data.conditionOnArrival = payload.conditionOnArrival ?? null
+    if ('accessoriesReceived' in payload) data.accessoriesReceived = payload.accessoriesReceived ?? null
+    if ('category' in payload) data.category = payload.category ?? null
+    if ('quotedPartsTotal' in payload) data.quotedPartsTotal = payload.quotedPartsTotal ?? null
 
     // Phase 58 §2 — warranty-on-repair: warrantyDays can be set any time
     // (e.g. quoted up front), but warrantyExpiryDate only ever gets a real
@@ -214,7 +298,8 @@ export async function updateJobCard(payload: {
 
     const row = await db.jobCard.update({ where: { id: payload.id }, data, include })
     if (userId) await logAction(userId, 'UPDATE', 'JOB_CARD', payload.id, old, data)
-    return { success: true, data: toRecord(row) }
+    const repeatFaultMap = await computeRepeatFaultMap(db, [{ id: row.id, customerId: row.customerId, itemDescription: row.itemDescription, receivedDate: row.receivedDate }])
+    return { success: true, data: toRecord(row, repeatFaultMap.get(row.id) ?? null) }
   } catch (e: any) {
     console.error('[JC_UPDATE_FAIL]', e)
     return { success: false, error: { code: 'JC_UPDATE_FAIL', message: 'Something went wrong. Please try again.' } }
@@ -433,5 +518,66 @@ export async function generateJobCardInvoice(id: string, userId?: string) {
     await db.jobCard.update({ where: { id }, data: { invoiceId: null } }).catch(() => {})
     console.error('[JC_INVOICE_FAIL]', e)
     return { success: false, error: { code: 'JC_INVOICE_FAIL', message: 'Something went wrong. Please try again.' } }
+  }
+}
+
+// Phase 67 §9.1 — Repair item 3: repeat-fault flag, aggregated. Reuses
+// computeRepeatFaultMap over every job card received in the last 30 days
+// (the same window the per-job flag itself uses) — a real accountability
+// signal for the AI assistant to surface, not a persisted count.
+export async function getRepeatFaultSummary() {
+  try {
+    const db = getPrisma()
+    const windowStart = new Date(Date.now() - REPEAT_FAULT_WINDOW_DAYS * 86400000)
+    const recent = await db.jobCard.findMany({
+      where: { receivedDate: { gte: windowStart } },
+      select: { id: true, jobNumber: true, customerId: true, itemDescription: true, receivedDate: true },
+    })
+    const repeatFaultMap = await computeRepeatFaultMap(db, recent)
+    return {
+      success: true,
+      data: {
+        totalRecentJobs: recent.length,
+        repeatFaultCount: repeatFaultMap.size,
+        repeatFaultJobNumbers: recent.filter((r) => repeatFaultMap.has(r.id)).map((r) => r.jobNumber),
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'JC-007', message: e instanceof Error ? e.message : 'Could not compute repeat-fault summary.' } }
+  }
+}
+
+// Phase 67 §9.1 — Repair item 5: parts-used-vs-quoted variance, aggregated
+// across every job card that has BOTH a quote and at least one real part
+// recorded — a job with neither yet has nothing meaningful to compare.
+export async function getPartsVarianceSummary() {
+  try {
+    const db = getPrisma()
+    const cards = await db.jobCard.findMany({
+      where: { quotedPartsTotal: { not: null } },
+      select: { quotedPartsTotal: true, parts: { select: { quantity: true, unitPrice: true } } },
+    })
+    let comparedCount = 0; let totalQuoted = 0; let totalActual = 0; let overQuoteCount = 0
+    for (const c of cards) {
+      const actual = c.parts.reduce((s, p) => s + p.quantity * p.unitPrice, 0)
+      if (actual <= 0 || c.quotedPartsTotal == null) continue
+      comparedCount++
+      totalQuoted += c.quotedPartsTotal
+      totalActual += actual
+      if (actual > c.quotedPartsTotal) overQuoteCount++
+    }
+    const round1 = (n: number) => Math.round(n * 10) / 10
+    return {
+      success: true,
+      data: {
+        comparedCount,
+        totalQuoted: round1(totalQuoted),
+        totalActual: round1(totalActual),
+        totalVariance: round1(totalActual - totalQuoted),
+        overQuoteCount,
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'JC-008', message: e instanceof Error ? e.message : 'Could not compute parts-variance summary.' } }
   }
 }

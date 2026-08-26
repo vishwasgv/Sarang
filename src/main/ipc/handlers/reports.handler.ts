@@ -498,6 +498,23 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Repair items 2/4.
+  handle('reports:jobCardTurnaroundByTechnician', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateJobCardTurnaroundByTechnicianReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:repairCategoryVolumeTrend', async (payload) => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateRepairCategoryVolumeTrendReport(parsed.data)
+    return { success: true, data }
+  })
+
   handle('reports:serviceProjects', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
@@ -604,12 +621,30 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register.
+  handle('reports:scheduleH1XRegister', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateScheduleH1XRegisterReport(parsed.data)
+    return { success: true, data }
+  })
+
   // Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report.
   handle('reports:schemeCostVsVolume', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateSchemeCostVsVolumeReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 67 §9.1 — Distributor item 2/3: field-rep leaderboard.
+  handle('reports:fieldRepLeaderboard', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateFieldRepLeaderboardReport(parsed.data)
     return { success: true, data }
   })
 

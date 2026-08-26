@@ -466,7 +466,7 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
     }
   }
 
-  function makeReorderDb(inventoryRows: Array<Record<string, any>>, openItems: Array<{ productId: string }> = []) {
+  function makeReorderDb(inventoryRows: Array<Record<string, any>>, openItems: Array<{ productId: string }> = [], batches: Array<Record<string, any>> = [], soldItems: Array<Record<string, any>> = []) {
     const suppliers: Record<string, any> = {
       'sup-1': { id: 'sup-1', supplierName: 'Supplier One', isActive: true },
       'sup-2': { id: 'sup-2', supplierName: 'Supplier Two', isActive: true }
@@ -483,6 +483,9 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
       businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
       inventory: { findMany: vi.fn().mockResolvedValue(inventoryRows) },
       purchaseOrderItem: { findMany: vi.fn().mockResolvedValue(openItems) },
+      // Phase 67 §9.1 — Pharmacy item 5: Expiry-Aware Reorder Suppression.
+      productBatch: { findMany: vi.fn().mockResolvedValue(batches) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue(soldItems) },
       supplier: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => suppliers[where.id] ?? null) },
       // Phase 64 — getProductCostsBatch() (valuation.service) reads
       // product.findMany + inventory.findMany to resolve each product's
@@ -657,5 +660,88 @@ describe('purchaseOrderService.generateReorderDraftPOs', () => {
 
     const createCall = db.purchaseOrder.create.mock.calls[0][0]
     expect(createCall.data.items.create[0].quantity).toBe(48)
+  })
+
+  // Phase 67 §9.1 — Pharmacy item 5: Expiry-Aware Reorder Suppression.
+  // "Don't reorder a near-expiry line unless velocity justifies it."
+  describe('expiry-aware reorder suppression', () => {
+    it('suppresses a due product with near-expiry batch stock that has zero recent sales velocity', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 10 * 86400000) }],
+        [] // no sales at all in the lookback window
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.success).toBe(true)
+      expect(result.data?.created).toHaveLength(0)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(1)
+      expect(result.data?.suppressedExpiringStock[0]).toMatchObject({ productId: 'prod-a', expiringSoonQty: 40, recentDailyVelocity: 0 })
+    })
+
+    it('suppresses when velocity is too slow to clear the near-expiry stock before it expires', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        // 40 units expiring in 10 days
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 10 * 86400000) }],
+        // Only 3 units sold in the last 30 days -> 0.1/day -> would take 400 days to clear 40 units, far more than the 10 days available
+        [{ productId: 'prod-a', quantity: 3, invoice: { invoiceType: 'RETAIL' } }]
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.created).toHaveLength(0)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(1)
+    })
+
+    it('does NOT suppress when velocity is fast enough to clear the near-expiry stock before it expires', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        // 40 units expiring in 30 days
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 30 * 86400000) }],
+        // 60 units sold in the last 30 days -> 2/day -> clears 40 units in 20 days, well within the 30-day window
+        [{ productId: 'prod-a', quantity: 60, invoice: { invoiceType: 'RETAIL' } }]
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.created).toHaveLength(1)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(0)
+    })
+
+    it('does not suppress a due product with no near-expiry batch stock at all', async () => {
+      const db = makeReorderDb([makeReorderInventoryRow()], [], [], [])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.created).toHaveLength(1)
+      expect(result.data?.suppressedExpiringStock).toHaveLength(0)
+    })
+
+    it('a RETURN invoice line reduces recorded velocity, same sign-correction convention as every other velocity aggregation in this codebase', async () => {
+      const db = makeReorderDb(
+        [makeReorderInventoryRow()],
+        [],
+        [{ productId: 'prod-a', quantityRemaining: 40, expiryDate: new Date(Date.now() + 10 * 86400000) }],
+        [
+          { productId: 'prod-a', quantity: 60, invoice: { invoiceType: 'RETAIL' } },
+          { productId: 'prod-a', quantity: 60, invoice: { invoiceType: 'RETURN' } } // fully returned -> net velocity 0
+        ]
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const result = await purchaseOrderService.generateReorderDraftPOs()
+
+      expect(result.data?.suppressedExpiringStock).toHaveLength(1)
+      expect(result.data?.suppressedExpiringStock[0].recentDailyVelocity).toBe(0)
+    })
   })
 })

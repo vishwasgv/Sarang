@@ -174,7 +174,7 @@ export const purchaseOrderService = {
   // how much to order. Groups all due products by supplier into one PO per
   // supplier, and skips a product that already has an open (DRAFT/APPROVED)
   // PO in flight so re-running this doesn't pile up duplicate orders.
-  async generateReorderDraftPOs(userId?: string): Promise<{ success: boolean; error?: { code: string; message: string }; data?: { created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number } }> {
+  async generateReorderDraftPOs(userId?: string): Promise<{ success: boolean; error?: { code: string; message: string }; data?: { created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number; suppressedExpiringStock: Array<{ productId: string; productName: string; expiringSoonQty: number; daysUntilEarliestExpiry: number; recentDailyVelocity: number }> } }> {
     const db = getPrisma()
 
     const lowStock = await db.inventory.findMany({
@@ -199,8 +199,71 @@ export const purchaseOrderService = {
         })
       : []
     const alreadyOpen = new Set(openItems.map(i => i.productId))
-    const toOrder = withSupplier.filter(inv => !alreadyOpen.has(inv.product.id))
+    let toOrder = withSupplier.filter(inv => !alreadyOpen.has(inv.product.id))
     const skippedAlreadyOnOpenPO = withSupplier.length - toOrder.length
+
+    // Phase 67 §9.1 — Pharmacy item 5: Expiry-Aware Reorder Suppression.
+    // "Don't reorder a near-expiry line unless velocity justifies it" — a
+    // product can be genuinely below its reorder level while ALSO sitting
+    // on a pile of soon-to-expire batch stock that isn't selling fast
+    // enough to clear before it expires; reordering more in that situation
+    // just buys a second batch of stock that will also go to waste. Applies
+    // to any batch-tracked product in any vertical (Pharmacy, Agri Inputs),
+    // not a Pharmacy-only special case, matching this function's own
+    // already-generic design.
+    const EXPIRY_WINDOW_DAYS = 30
+    const VELOCITY_LOOKBACK_DAYS = 30
+    const now = Date.now()
+    const expiryHorizon = new Date(now + EXPIRY_WINDOW_DAYS * 86400000)
+    const candidateIds = toOrder.map(inv => inv.product.id)
+    const expiringBatches = candidateIds.length
+      ? await db.productBatch.findMany({
+          where: { productId: { in: candidateIds }, isActive: true, quantityRemaining: { gt: 0 }, expiryDate: { lte: expiryHorizon } },
+          select: { productId: true, quantityRemaining: true, expiryDate: true }
+        })
+      : []
+    const expiringByProduct = new Map<string, { qty: number; earliestExpiry: Date }>()
+    for (const b of expiringBatches) {
+      const existing = expiringByProduct.get(b.productId)
+      if (!existing) expiringByProduct.set(b.productId, { qty: b.quantityRemaining, earliestExpiry: b.expiryDate })
+      else {
+        existing.qty += b.quantityRemaining
+        if (b.expiryDate < existing.earliestExpiry) existing.earliestExpiry = b.expiryDate
+      }
+    }
+
+    const suppressedExpiringStock: Array<{ productId: string; productName: string; expiringSoonQty: number; daysUntilEarliestExpiry: number; recentDailyVelocity: number }> = []
+    if (expiringByProduct.size > 0) {
+      const velocitySince = new Date(now - VELOCITY_LOOKBACK_DAYS * 86400000)
+      const soldItems = await db.invoiceItem.findMany({
+        where: { productId: { in: [...expiringByProduct.keys()] }, invoice: { status: 'ACTIVE', invoiceDate: { gte: velocitySince } } },
+        select: { productId: true, quantity: true, invoice: { select: { invoiceType: true } } }
+      })
+      const soldByProduct = new Map<string, number>()
+      for (const it of soldItems) {
+        // Same RETURN sign correction every other velocity-style aggregation
+        // in this codebase already uses — a returned unit is real negative
+        // signal, clamped at 0 per product so it can never flip velocity negative.
+        const sign = it.invoice.invoiceType === 'RETURN' ? -1 : 1
+        soldByProduct.set(it.productId, Math.max(0, (soldByProduct.get(it.productId) ?? 0) + sign * it.quantity))
+      }
+
+      const suppressedIds = new Set<string>()
+      for (const [productId, { qty, earliestExpiry }] of expiringByProduct) {
+        const recentDailyVelocity = (soldByProduct.get(productId) ?? 0) / VELOCITY_LOOKBACK_DAYS
+        const daysUntilEarliestExpiry = Math.max(0, Math.round((earliestExpiry.getTime() - now) / 86400000))
+        const daysToSellExpiringStock = recentDailyVelocity > 0 ? qty / recentDailyVelocity : Infinity
+        if (daysToSellExpiringStock > daysUntilEarliestExpiry) {
+          suppressedIds.add(productId)
+          const product = toOrder.find(inv => inv.product.id === productId)?.product
+          suppressedExpiringStock.push({
+            productId, productName: product?.productName ?? '', expiringSoonQty: qty,
+            daysUntilEarliestExpiry, recentDailyVelocity: Math.round(recentDailyVelocity * 10) / 10
+          })
+        }
+      }
+      if (suppressedIds.size > 0) toOrder = toOrder.filter(inv => !suppressedIds.has(inv.product.id))
+    }
 
     // Phase 64 — was inv.product.costPrice (the static, hand-edited field);
     // a draft PO's suggested unitCost is still just a starting point the
@@ -233,7 +296,7 @@ export const purchaseOrderService = {
       }
     }
 
-    return { success: true, data: { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO } }
+    return { success: true, data: { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO, suppressedExpiringStock } }
   },
 
   async getPO(id: string) {

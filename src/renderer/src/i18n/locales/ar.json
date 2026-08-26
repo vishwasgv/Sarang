@@ -520,6 +520,15 @@
     "customerName": "اسم العميل",
     "customerCode": "رمز العميل",
     "creditLimit": "حد الائتمان",
+    "creditRisk": {
+      "effectiveLimit": "الحد المعدَّل حسب المخاطر",
+      "tier": {
+        "LOW": "مخاطرة منخفضة",
+        "MEDIUM": "مخاطرة متوسطة",
+        "HIGH": "مخاطرة عالية",
+        "UNRATED": "غير مصنَّف"
+      }
+    },
     "totalDue": "إجمالي المستحق",
     "noCustomers": "لا يوجد عملاء",
     "searchCustomers": "ابحث عن عملاء…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "لا توجد منتجات منخفضة المخزون تحتاج إلى إعادة طلب الآن.",
       "created": "تم إنشاء أوامر شراء مسودة: {{count}}",
       "skippedNoSupplier": "تم التخطي (لا يوجد مورد افتراضي): {{count}}",
-      "skippedOpenPO": "تم التخطي (موجود بالفعل في طلب مفتوح): {{count}}"
+      "skippedOpenPO": "تم التخطي (موجود بالفعل في طلب مفتوح): {{count}}",
+      "suppressedExpiring": "تم الإيقاف (من غير المرجح بيع المخزون القريب من انتهاء الصلاحية): {{count}}"
     },
     "repairTicket": "إصلاح"
   },
@@ -1817,6 +1827,18 @@
         "label": "ربحية العميل",
         "description": "أي العملاء يستحقون الاحتفاظ بهم فعليًا — الإيرادات مقابل الساعات المستغرقة لكل عميل"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "مدة الإنجاز حسب الفني",
+        "description": "المدة الفعلية لتسليم بطاقة العمل، متوسط/أسرع/أبطأ لكل فني"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "اتجاه حجم فئات الإصلاح",
+        "description": "حجم الإصلاح الشهري حسب الفئة — يفيد في تخزين القطع"
+      },
+      "fieldRepLeaderboard": {
+        "label": "لوحة صدارة المندوبين الميدانيين",
+        "description": "الطلبات المحجوزة والقيمة ومعدل الإنجاز مقابل الخطة — لكل مندوب ميداني، الأفضل أولاً."
+      },
       "jobCards": {
         "label": "تقرير بطاقات العمل",
         "description": "كل عملية إصلاح/خدمة حسب الحالة، التكلفة التقديرية مقابل الفعلية — لمحلات الإصلاح"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "مبيعات الأدوية بوصفة طبية",
         "description": "سجل مبيعات الأدوية التي تُصرف بوصفة طبية فقط (الجدول H/H1)، مع أسماء المريض والطبيب."
+      },
+      "scheduleH1XRegister": {
+        "label": "سجل الجدول H1/X",
+        "description": "سجل مبيعات الأدوية المخدرة/ذات التأثير النفسي — الفئة الفرعية الأكثر صرامة من مبيعات الوصفات الطبية، جاهز للتفتيش."
       },
       "schemeCostVsVolume": {
         "label": "تكلفة الخطة مقابل الحجم",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "{{value}} في خطر ضمن المخزون منتهي الصلاحية",
       "atRiskValue": "القيمة المعرضة للخطر (≤ 30 يومًا)",
       "totalSales": "إجمالي المبيعات",
+      "totalQuantity": "إجمالي الكمية",
       "missingDetails": "تفاصيل مفقودة",
       "totalSchemeCost": "إجمالي تكلفة الخطة",
       "focUnitsGiven": "الوحدات المجانية (FOC) الممنوحة",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "متوسط وقت الحل",
       "repeatRatePercent": "معدل التكرار",
       "overallUtilizationPercent": "الاستغلال الإجمالي",
+      "totalDelivered": "إجمالي المُسلَّم",
+      "overallAvgTurnaroundHours": "متوسط مدة الإنجاز",
+      "totalOrdersBooked": "إجمالي الطلبات المحجوزة",
       "revenue": "الإيرادات",
       "cogs": "تكلفة البضاعة المباعة",
       "totalMargin": "إجمالي الهامش",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "القيمة المعرضة للخطر حسب فئة الانتهاء",
       "byDoctor": "حسب الطبيب الواصف",
       "prescriptionRegister": "سجل مبيعات الأدوية الموصوفة",
+      "scheduleH1XRegister": "سجل المخدرات حسب الجدول H1/X",
       "schemeCostVsVolumeChart": "تكلفة الخطة مقابل حجم المنتج المشمول",
       "schemesInPeriod": "الخطط في هذه الفترة",
       "batchDetails": "تفاصيل الدفعة",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "لا توجد تذاكر عملاء في هذه الفترة.",
       "consultantUtilization": "لم يتم تسجيل أي عمل قابل للفوترة في هذه الفترة.",
       "clientProfitability": "لا توجد إيرادات مشاريع عملاء في هذه الفترة.",
+      "jobCardTurnaroundByTechnician": "لم يتم تسليم أي بطاقة عمل في هذه الفترة.",
+      "repairCategoryVolumeTrend": "لم يتم استلام أي بطاقة عمل في هذه الفترة.",
+      "fieldRepLeaderboard": "لم يتم حجز أي طلبات ميدانية خلال هذه الفترة.",
       "projects": "لا توجد مشاريع في هذه الفترة.",
       "jobCards": "لا توجد بطاقات عمل في هذه الفترة.",
       "prescriptionDrugSales": "لا توجد مبيعات أدوية بوصفة طبية في هذا النطاق الزمني.",
+      "scheduleH1XRegister": "لا توجد مبيعات ضمن الجدول H1/X في هذا النطاق الزمني.",
       "schemeCostVsVolume": "لم تعمل أي خطة تسعير في هذا النطاق الزمني.",
       "discounts": "لا توجد خصومات أو أسعار متفاوض عليها في هذا النطاق الزمني.",
       "serviceProjects": "لا توجد مشاريع في هذا النطاق الزمني.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "الاستغلال",
       "hoursSpent": "الساعات المستغرقة",
       "revenuePerHour": "الإيراد/الساعة",
+      "jobCount": "عدد المهام",
+      "repName": "اسم المندوب",
+      "ordersBooked": "الطلبات المحجوزة",
+      "customersVisited": "العملاء الذين تمت زيارتهم",
+      "plannedStops": "التوقفات المخطط لها",
+      "hitRatePercent": "معدل الإنجاز مقابل الخطة",
       "invoiceNo": "رقم الفاتورة",
       "invoiceDate": "تاريخ الفاتورة",
       "doctorName": "الطبيب",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "مطالبة ضمان مقابل",
     "notAWarrantyClaim": "ليست مطالبة ضمان",
     "originalUnderWarranty": "العمل الأصلي لا يزال تحت الضمان",
-    "originalWarrantyExpired": "انتهت مدة ضمان العمل الأصلي"
+    "originalWarrantyExpired": "انتهت مدة ضمان العمل الأصلي",
+    "conditionOnArrival": "الحالة عند الوصول",
+    "accessoriesReceived": "الملحقات المستلمة",
+    "jobCategory": "الفئة",
+    "quotedPartsTotal": "إجمالي القطع المُقدَّرة",
+    "partsVariance": "فرق القطع",
+    "repeatFault": "عطل متكرر",
+    "repeatFaultWarning": "عطل متكرر محتمل — تم تسليم نفس العنصر في {{jobNumber}} خلال الـ 30 يومًا الماضية.",
+    "repeatFaultDetail": "يبدو هذا عطلاً متكررًا — تم تسليم نفس العنصر في {{jobNumber}} خلال الـ 30 يومًا الماضية."
   },
   "setup": {
     "welcome": "مرحباً بك في Sarang",
@@ -4995,6 +5044,43 @@
       "removed": "تمت الإزالة",
       "removedMessage": "تمت إزالة السعر.",
       "couldNotRemove": "تعذر إزالة السعر."
+    },
+    "beats": {
+      "title": "خطط المسارات",
+      "subtitle": "حدد مسار كل مندوب ميداني — الترتيب الذي يزور به العملاء كل يوم.",
+      "newBeat": "مسار جديد",
+      "loading": "جارٍ التحميل…",
+      "empty": "لم يتم إعداد أي مسار بعد.",
+      "beatName": "اسم المسار",
+      "repName": "اسم المندوب",
+      "dayOfWeek": "يوم الأسبوع",
+      "anyDay": "أي يوم",
+      "day": {
+        "sun": "الأحد",
+        "mon": "الاثنين",
+        "tue": "الثلاثاء",
+        "wed": "الأربعاء",
+        "thu": "الخميس",
+        "fri": "الجمعة",
+        "sat": "السبت"
+      },
+      "stopCount_other": "{{count}} توقف",
+      "inactive": "غير نشط",
+      "noStops": "لا يوجد عملاء في هذا المسار بعد.",
+      "selectCustomer": "اختر عميلاً للإضافة…",
+      "addStop": "إضافة",
+      "creating": "جارٍ الإنشاء…",
+      "created": "تم إنشاء المسار.",
+      "couldNotCreate": "تعذر إنشاء المسار.",
+      "deleted": "تم حذف المسار.",
+      "couldNotDelete": "تعذر حذف المسار.",
+      "couldNotAddStop": "تعذرت إضافة العميل إلى المسار.",
+      "couldNotRemoveStop": "تعذرت إزالة التوقف.",
+      "couldNotMoveStop": "تعذر إعادة ترتيب التوقف.",
+      "deleteTitle": "حذف المسار",
+      "deleteConfirm": "هل تريد حذف المسار \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+      "error": "خطأ",
+      "couldNotLoad": "تعذر تحميل المسارات."
     }
   },
   "import": {

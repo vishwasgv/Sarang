@@ -40,6 +40,8 @@ import { listTickets, getQuoteToJobConversionStats } from './service-ticket.serv
 import { listServiceContracts } from './service-contract.service'
 import { getEngagementConversionStats, getProposalWinRateStats } from './project.service'
 import { listRetainers, getRetainerHoursUsage } from './retainer.service'
+import { getRepeatFaultSummary, getPartsVarianceSummary } from './job-card.service'
+import { getCreditRiskOverview } from './distributor-credit-risk.service'
 import { loyaltyProgramService } from './loyalty-program.service'
 import { getTemplateSuggestion } from './template-suggestion.service'
 import { customDocumentService } from './custom-document.service'
@@ -170,7 +172,7 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     case 'FOOTWEAR': return ['retail.variantStock', 'clothing.seasonSellThrough', 'clothing.sizeCurveReorderSuggestion', 'clothing.sizeStyleHeatmap', 'clothing.exchangeSummary', 'footwear.brandMarginReturnRate', 'footwear.trialConversionRate', 'footwear.sizeAvailabilityHeatmap', 'footwear.seasonalReorderStatus']
     case 'COACHING_INSTITUTE': return ['coaching.testScores', 'coaching.feeDuesAndAttendance']
     case 'CA_FIRM': case 'COMPANY_SECRETARY': return ['compliance.tasks', 'compliance.upcomingFilings']
-    case 'REPAIR': return ['repair.jobCards']
+    case 'REPAIR': return ['repair.jobCards', 'repair.turnaroundByTechnician', 'repair.repeatFault', 'repair.categoryVolumeTrend', 'repair.partsVariance']
     // CAR_SERVICE_CENTER split out from REPAIR (2026-07 AI expansion) — it
     // has its own dedicated car-job-card.service.ts KPI function beyond the
     // generic repair job-card report REPAIR shares.
@@ -178,7 +180,14 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // Phase 67 §9.1 — split PHARMACY off from AGRI_INPUTS (previously shared
     // one array) so PHARMACY can carry its own extra intent; AGRI_INPUTS
     // keeps only batch expiry, unchanged.
-    case 'PHARMACY': return ['inventory.batchExpiry', 'pharmacy.prescriptionVolumeByDoctor']
+    // Phase 67 §9.1 — item 1 (Schedule H1/X narcotic register) added. Item 5
+    // (expiry-aware reorder suppression) deliberately has no AI intent of
+    // its own — the only existing function that computes it,
+    // generateReorderDraftPOs(), also CREATES real draft purchase orders as
+    // a side effect, so it's unsafe to wire behind a read-only AI question
+    // without first splitting it into a genuine query+mutate pair, which is
+    // out of this item's own scope.
+    case 'PHARMACY': return ['inventory.batchExpiry', 'pharmacy.prescriptionVolumeByDoctor', 'pharmacy.scheduleH1XRegister']
     // Phase 67 §9.1 — Agri Inputs items 2-5: seasonal credit exposure,
     // crop-linked product advisory, farmer repayment ranking, and equipment
     // AMC/service reminders (item 1 — crop-season due dates — has no AI
@@ -188,7 +197,10 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // (only appeared in LOGISTICS_BASED_TYPES, an unrelated module-defaults
     // set) despite being a Section-1.2-named vertical — closing that gap
     // alongside the new scheme-cost report itself, not deferring it.
-    case 'DISTRIBUTOR': return ['distributor.schemeCostVsVolume']
+    // Items 2 (beat-plan) and 5 (credit risk) added: fieldRepLeaderboard
+    // doubles as the beat-coverage query ("hit-rate vs. plan" is right there
+    // in its own rows), creditRiskOverview surfaces the new risk-tier scoring.
+    case 'DISTRIBUTOR': return ['distributor.schemeCostVsVolume', 'distributor.fieldRepLeaderboard', 'distributor.creditRiskOverview']
     // Added 2026-07-13 alongside the RETAIL/GENERAL/PLACEMENT_AGENCY gap
     // review — getPlacementKPIs() (placement.service.ts) already existed
     // and fit the same reuse pattern as every other template here; there
@@ -474,6 +486,56 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${stats.winRatePercent}% proposal win rate — ${stats.won} won, ${stats.lost} lost, ${stats.pending} pending`,
         details: [],
         isEmpty: stats.totalProposals === 0
+      }
+    }
+    // Phase 67 §9.1 — Repair item 2: Turnaround by Technician (generic JobCard).
+    case 'repair.turnaroundByTechnician': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateJobCardTurnaroundByTechnicianReport({ dateFrom, dateTo })
+      const slowest = r.rows[0]
+      return {
+        headline: slowest
+          ? `${slowest.technicianName} has the slowest turnaround at ${slowest.avgTurnaroundHours}h average, ${r.summary.totalDelivered} job(s) delivered this period`
+          : 'No job cards delivered this period yet.',
+        details: [],
+        isEmpty: r.summary.totalDelivered === 0
+      }
+    }
+    // Phase 67 §9.1 — Repair item 3: Repeat-Fault Flag.
+    case 'repair.repeatFault': {
+      const r = await getRepeatFaultSummary()
+      const stats = r.data ?? { totalRecentJobs: 0, repeatFaultCount: 0, repeatFaultJobNumbers: [] }
+      return {
+        headline: `${stats.repeatFaultCount} repeat-fault job(s) in the last 30 days, out of ${stats.totalRecentJobs} received`,
+        details: stats.repeatFaultJobNumbers.slice(0, 5),
+        isEmpty: stats.repeatFaultCount === 0
+      }
+    }
+    // Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend.
+    case 'repair.categoryVolumeTrend': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateRepairCategoryVolumeTrendReport({ dateFrom, dateTo })
+      const byCategory = new Map<string, number>()
+      for (const row of r.rows) byCategory.set(row.category, (byCategory.get(row.category) ?? 0) + row.count)
+      const top = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])[0]
+      return {
+        headline: top
+          ? `${top[0]} is the most common repair category this period at ${top[1]} job(s), ${r.summary.totalJobs} total`
+          : 'No job cards received this period yet.',
+        details: [],
+        isEmpty: r.summary.totalJobs === 0
+      }
+    }
+    // Phase 67 §9.1 — Repair item 5: Parts-Used-vs-Quoted Variance.
+    case 'repair.partsVariance': {
+      const r = await getPartsVarianceSummary()
+      const stats = r.data ?? { comparedCount: 0, totalQuoted: 0, totalActual: 0, totalVariance: 0, overQuoteCount: 0 }
+      return {
+        headline: stats.comparedCount > 0
+          ? `${formatAmountForSpeech(stats.totalVariance, sym)} total parts variance across ${stats.comparedCount} quoted job(s), ${stats.overQuoteCount} over quote`
+          : 'No quoted-and-used job cards to compare yet.',
+        details: [],
+        isEmpty: stats.comparedCount === 0
       }
     }
     case 'rental.status': {
@@ -1191,6 +1253,20 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         isEmpty: r.byDoctor.length === 0
       }
     }
+    // Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register.
+    case 'pharmacy.scheduleH1XRegister': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateScheduleH1XRegisterReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.totalSales > 0
+          ? `${r.summary.totalSales} Schedule H1/X sale(s) recorded this period, ${r.summary.totalQuantity} unit(s) total`
+          : 'No Schedule H1/X sales recorded this period',
+        details: r.summary.missingPrescriptionDetails > 0
+          ? [`${r.summary.missingPrescriptionDetails} sale(s) are missing patient or doctor details`]
+          : [],
+        isEmpty: r.summary.totalSales === 0
+      }
+    }
     // Phase 67 §9.1 — Distributor's "Scheme cost vs. incremental volume"
     // signature win. Reuses the SAME generateSchemeCostVsVolumeReport() the
     // Reports screen's own report calls. Deliberately correlational phrasing
@@ -1208,6 +1284,34 @@ export async function executeVerticalTemplate(template: string, params: Record<s
           `Top scheme by cost: ${r.rows[0] ? `${r.rows[0].schemeName} (${formatAmountForSpeech(r.rows[0].totalCost, sym)})` : 'none'}`
         ],
         isEmpty: r.summary.activeSchemeCount === 0
+      }
+    }
+    // Phase 67 §9.1 — Distributor item 2/3: field-rep beat-plan hit-rate and
+    // value leaderboard, best-first (see report.service.ts's own comment on
+    // why this one report intentionally breaks the phase's worst-first
+    // convention).
+    case 'distributor.fieldRepLeaderboard': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateFieldRepLeaderboardReport({ dateFrom, dateTo })
+      const top = r.rows[0]
+      return {
+        headline: top
+          ? `${top.repName} leads this period: ${top.ordersBooked} order(s) worth ${formatAmountForSpeech(top.totalValue, sym)}${top.hitRatePercent !== null ? `, ${top.hitRatePercent}% beat-plan hit-rate` : ''}`
+          : 'No field-rep orders booked this period.',
+        details: r.rows.slice(1, 4).map((row) => `${row.repName}: ${row.ordersBooked} order(s), ${formatAmountForSpeech(row.totalValue, sym)}`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // Phase 67 §9.1 — Distributor item 5: risk-scored retailer credit.
+    case 'distributor.creditRiskOverview': {
+      const r = await getCreditRiskOverview()
+      const stats = r.data ?? { ratedCount: 0, tierCounts: { LOW: 0, MEDIUM: 0, HIGH: 0, UNRATED: 0 }, highRiskCustomers: [] }
+      return {
+        headline: stats.tierCounts.HIGH > 0
+          ? `${stats.tierCounts.HIGH} of ${stats.ratedCount} credit customer(s) are HIGH risk`
+          : `No HIGH-risk credit customers out of ${stats.ratedCount} rated`,
+        details: stats.highRiskCustomers.slice(0, 5).map((c) => `${c.customerName}: avg ${c.avgDaysLate} day(s) late, ${c.currentOverdueCount} overdue invoice(s)`),
+        isEmpty: stats.ratedCount === 0
       }
     }
     case 'service.projects': {

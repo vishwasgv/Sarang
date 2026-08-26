@@ -68,6 +68,7 @@ import { BulkOrderScreen } from '@modules/distributor/ui/BulkOrderScreen'
 import { OutstandingAnalyticsScreen } from '@modules/distributor/ui/OutstandingAnalyticsScreen'
 import { FieldOrdersScreen } from '@modules/distributor/ui/FieldOrdersScreen'
 import { CustomerPricingScreen } from '@modules/distributor/ui/CustomerPricingScreen'
+import { BeatPlansScreen } from '@modules/distributor/ui/BeatPlansScreen'
 import { AuditLogsScreen } from '@modules/audit/ui/AuditLogsScreen'
 import { ExpensesScreen } from '@modules/expenses/ui/ExpensesScreen'
 import { CashCloseScreen } from '@modules/cashclose/ui/CashCloseScreen'
@@ -344,6 +345,7 @@ export function AppRouter() {
         {/* Phase 58 §2 — Distributor field-rep order capture + customer-class pricing */}
         <Route path="/distributor/field-orders" element={<ProtectedRoute permission="distributor.manageFieldOrders"><FieldOrdersScreen /></ProtectedRoute>} />
         <Route path="/distributor/pricing" element={<ProtectedRoute permission="products.modifyPricing"><CustomerPricingScreen /></ProtectedRoute>} />
+        <Route path="/distributor/beats" element={<ProtectedRoute permission="distributor.manageFieldOrders"><BeatPlansScreen /></ProtectedRoute>} />
         {/* Phase 2 — Industry Expansion */}
         <Route path="/pharmacy/batches" element={<ProtectedRoute permission="inventory.view"><BatchManagementScreen /></ProtectedRoute>} />
         <Route path="/electronics/serials" element={<ProtectedRoute permission="inventory.view"><SerialTrackingScreen /></ProtectedRoute>} />

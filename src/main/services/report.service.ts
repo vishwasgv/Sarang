@@ -5190,6 +5190,168 @@ async function generateClientProfitabilityReport(params: { dateFrom: string; dat
   }
 }
 
+// Phase 67 §9.1 — Repair item 2: Turnaround by Technician, for the generic
+// JobCard model (distinct from Electronics' own RepairTicket-based
+// generateRepairTurnaroundByTechnicianReport() above, hence the
+// JobCard-qualified name below to avoid colliding with it). Delivered
+// JobCards only (an in-progress job has no real turnaround yet), grouped
+// by assignedTo, sorted worst (slowest average) first — same worst-first
+// convention every other ranked report in this phase already uses.
+export interface JobCardTurnaroundByTechnicianRow {
+  technicianName: string; jobCount: number; avgTurnaroundHours: number; fastestHours: number; slowestHours: number
+}
+export interface JobCardTurnaroundByTechnicianReport {
+  dateFrom: string; dateTo: string; rows: JobCardTurnaroundByTechnicianRow[]
+  summary: { totalDelivered: number; overallAvgTurnaroundHours: number }
+}
+async function generateJobCardTurnaroundByTechnicianReport(params: { dateFrom: string; dateTo: string }): Promise<JobCardTurnaroundByTechnicianReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const cards = await db.jobCard.findMany({
+    where: { deliveredDate: { gte: from, lte: to, not: null } },
+    select: { assignedTo: { select: { fullName: true } }, receivedDate: true, deliveredDate: true },
+  })
+
+  const byTech = new Map<string, number[]>()
+  for (const c of cards) {
+    if (!c.deliveredDate) continue
+    const hours = (c.deliveredDate.getTime() - c.receivedDate.getTime()) / (60 * 60 * 1000)
+    const key = c.assignedTo?.fullName?.trim() || 'Unassigned'
+    const existing = byTech.get(key) ?? []
+    existing.push(hours)
+    byTech.set(key, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: JobCardTurnaroundByTechnicianRow[] = Array.from(byTech.entries()).map(([technicianName, hoursArr]) => ({
+    technicianName, jobCount: hoursArr.length,
+    avgTurnaroundHours: round1(hoursArr.reduce((s, h) => s + h, 0) / hoursArr.length),
+    fastestHours: round1(Math.min(...hoursArr)), slowestHours: round1(Math.max(...hoursArr)),
+  })).sort((a, b) => b.avgTurnaroundHours - a.avgTurnaroundHours)
+
+  const allHours = cards.filter((c) => c.deliveredDate).map((c) => (c.deliveredDate!.getTime() - c.receivedDate.getTime()) / (60 * 60 * 1000))
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalDelivered: allHours.length, overallAvgTurnaroundHours: allHours.length > 0 ? round1(allHours.reduce((s, h) => s + h, 0) / allHours.length) : 0 },
+  }
+}
+
+// Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend — "informs
+// parts stocking" per the audit's own item wording. Monthly-bucketed by
+// JobCard.createdAt (when the job actually came in, not when it finished),
+// falling back to "Uncategorized" the same way Service's own resolution-
+// time report handles a missing category.
+export interface RepairCategoryVolumeTrendRow { month: string; category: string; count: number }
+export interface RepairCategoryVolumeTrendReport {
+  dateFrom: string; dateTo: string; rows: RepairCategoryVolumeTrendRow[]
+  categories: string[]
+  summary: { totalJobs: number }
+}
+async function generateRepairCategoryVolumeTrendReport(params: { dateFrom: string; dateTo: string }): Promise<RepairCategoryVolumeTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const cards = await db.jobCard.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { category: true, createdAt: true },
+  })
+
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const byMonthCategory = new Map<string, number>()
+  const categorySet = new Set<string>()
+  for (const c of cards) {
+    const category = c.category?.trim() || 'Uncategorized'
+    categorySet.add(category)
+    const key = `${monthKey(c.createdAt)}|${category}`
+    byMonthCategory.set(key, (byMonthCategory.get(key) ?? 0) + 1)
+  }
+
+  const rows: RepairCategoryVolumeTrendRow[] = Array.from(byMonthCategory.entries())
+    .map(([key, count]) => { const [month, category] = key.split('|'); return { month, category, count } })
+    .sort((a, b) => a.month.localeCompare(b.month))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    categories: Array.from(categorySet).sort(),
+    summary: { totalJobs: cards.length },
+  }
+}
+
+// Phase 67 §9.1 — Distributor item 3: Field-Rep Performance Leaderboard —
+// "orders booked, value, hit-rate vs. plan, per rep per beat." A leaderboard
+// celebrates top performers, so sorted DESCENDING by value (best-first),
+// deliberately the opposite of this phase's usual worst-first convention
+// for problem-surfacing reports. hitRatePercent is null (not 0) for a rep
+// with no active beat at all — an honest "not applicable," not a
+// zero-performance score.
+export interface FieldRepLeaderboardRow {
+  repName: string; ordersBooked: number; totalValue: number
+  plannedStops: number | null; distinctCustomersVisited: number; hitRatePercent: number | null
+}
+export interface FieldRepLeaderboardReport {
+  dateFrom: string; dateTo: string; rows: FieldRepLeaderboardRow[]
+  summary: { totalOrdersBooked: number; totalValue: number }
+}
+async function generateFieldRepLeaderboardReport(params: { dateFrom: string; dateTo: string }): Promise<FieldRepLeaderboardReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const requests = await db.fieldOrderRequest.findMany({
+    where: { status: 'ACCEPTED', createdAt: { gte: from, lte: to } },
+    select: { repName: true, customerId: true, invoiceId: true },
+  })
+  const invoiceIds = requests.map((r) => r.invoiceId).filter((id): id is string => !!id)
+  const invoices = invoiceIds.length
+    ? await db.invoice.findMany({ where: { id: { in: invoiceIds } }, select: { id: true, totalAmount: true } })
+    : []
+  const invoiceAmountById = new Map(invoices.map((inv) => [inv.id, inv.totalAmount]))
+
+  const byRep = new Map<string, { ordersBooked: number; totalValue: number; customerIds: Set<string> }>()
+  for (const r of requests) {
+    const existing = byRep.get(r.repName) ?? { ordersBooked: 0, totalValue: 0, customerIds: new Set<string>() }
+    existing.ordersBooked++
+    if (r.invoiceId) existing.totalValue += invoiceAmountById.get(r.invoiceId) ?? 0
+    if (r.customerId) existing.customerIds.add(r.customerId)
+    byRep.set(r.repName, existing)
+  }
+
+  // Active beats per rep, to compute hit-rate vs. plan.
+  const activeBeats = await db.distributorBeat.findMany({
+    where: { isActive: true, repName: { in: Array.from(byRep.keys()) } },
+    select: { repName: true, stops: { select: { customerId: true } } },
+  })
+  const plannedStopsByRep = new Map<string, Set<string>>()
+  for (const b of activeBeats) {
+    const set = plannedStopsByRep.get(b.repName) ?? new Set<string>()
+    for (const s of b.stops) set.add(s.customerId)
+    plannedStopsByRep.set(b.repName, set)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: FieldRepLeaderboardRow[] = Array.from(byRep.entries()).map(([repName, stats]) => {
+    const planned = plannedStopsByRep.get(repName)
+    const plannedStops = planned ? planned.size : null
+    const visited = planned ? [...stats.customerIds].filter((cid) => planned.has(cid)).length : stats.customerIds.size
+    return {
+      repName, ordersBooked: stats.ordersBooked, totalValue: round1(stats.totalValue),
+      plannedStops, distinctCustomersVisited: visited,
+      hitRatePercent: plannedStops && plannedStops > 0 ? round1((visited / plannedStops) * 100) : null,
+    }
+  }).sort((a, b) => b.totalValue - a.totalValue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalOrdersBooked: rows.reduce((s, r) => s + r.ordersBooked, 0),
+      totalValue: round1(rows.reduce((s, r) => s + r.totalValue, 0)),
+    },
+  }
+}
+
 export interface ServiceProjectReportRow {
   projectName: string; clientName: string; status: string; projectType: string
   totalContractValue: number | null
@@ -5855,6 +6017,65 @@ async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; d
       patientName: i.prescriptionPatientName, doctorName: i.prescriptionDoctorName,
       prescriptionDate: i.prescriptionDate ? toLocalISODate(i.prescriptionDate) : null,
       customerName: i.invoice.customer?.customerName ?? null, lineTotal: i.lineTotal,
+    })),
+  }
+}
+
+// Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register.
+// "The feature that makes an inspector trust the software, not a
+// nice-to-have." Schedule H1/X (narcotic/psychotropic) drugs are a
+// STRICTER subcategory of the broader Schedule H/H1 prescription-required
+// flag the platform already had (see generatePrescriptionDrugSalesReport
+// just above) — every Schedule H1/X sale is also prescription-required,
+// but not every prescription-required sale is Schedule H1/X, so this is a
+// deliberately NARROWER register, not a duplicate of the existing one.
+// Sourced the same way — InvoiceItem's own prescription snapshot fields,
+// filtered to Product.isScheduleH1X — never a separate capture mechanism.
+// Deliberately does NOT claim full statutory register-field completeness
+// (e.g. no doctor registration number or patient address are captured
+// anywhere in this platform) — it surfaces exactly what Sarang actually
+// records, honestly, not a compliance guarantee.
+export interface ScheduleH1XRegisterRow {
+  invoiceNumber: string; invoiceDate: string; productName: string; quantity: number
+  patientName: string | null; doctorName: string | null; prescriptionDate: string | null
+  customerName: string | null
+}
+export interface ScheduleH1XRegisterReport {
+  dateFrom: string; dateTo: string
+  summary: { totalSales: number; totalQuantity: number; missingPrescriptionDetails: number }
+  rows: ScheduleH1XRegisterRow[]
+}
+
+async function generateScheduleH1XRegisterReport(params: { dateFrom: string; dateTo: string }): Promise<ScheduleH1XRegisterReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      createdAt: { gte: from, lte: to },
+      product: { isScheduleH1X: true },
+      invoice: { status: { not: 'CANCELLED' } },
+    },
+    include: {
+      invoice: { select: { invoiceNumber: true, createdAt: true, customer: { select: { customerName: true } } } },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      totalSales: items.length,
+      totalQuantity: items.reduce((s, i) => s + i.quantity, 0),
+      missingPrescriptionDetails: items.filter(i => !i.prescriptionPatientName || !i.prescriptionDoctorName).length,
+    },
+    rows: items.map(i => ({
+      invoiceNumber: i.invoice.invoiceNumber, invoiceDate: toLocalISODate(i.invoice.createdAt),
+      productName: i.productName, quantity: i.quantity,
+      patientName: i.prescriptionPatientName, doctorName: i.prescriptionDoctorName,
+      prescriptionDate: i.prescriptionDate ? toLocalISODate(i.prescriptionDate) : null,
+      customerName: i.invoice.customer?.customerName ?? null,
     })),
   }
 }
@@ -7006,6 +7227,9 @@ export const reportService = {
   generateRepeatBusinessRateReport,
   generateConsultantUtilizationReport,
   generateClientProfitabilityReport,
+  generateJobCardTurnaroundByTechnicianReport,
+  generateRepairCategoryVolumeTrendReport,
+  generateFieldRepLeaderboardReport,
   generateServiceProjectReport,
   generateJobCardReport,
   generateCarJobCardReport,
@@ -7019,6 +7243,7 @@ export const reportService = {
   generateDrawingRegisterReport,
   generateSiteVisitLogReport,
   generatePrescriptionDrugSalesReport,
+  generateScheduleH1XRegisterReport,
   generateSchemeCostVsVolumeReport,
   generateChronicRecallComplianceReport,
   generateWalkInVsAppointmentRatioReport,

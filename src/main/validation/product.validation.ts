@@ -164,6 +164,7 @@ export const CreateProductSchema = z
     recommendedCrop: RECOMMENDED_CROP,
     // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag
     isPrescriptionRequired: z.boolean().optional(),
+    isScheduleH1X: z.boolean().optional(),
     // Phase 58 §2 — Agri Inputs category-specific expiry alert lead time.
     // Null means "use the generic default (30 days)" — a seed/fertilizer
     // shop needs a much longer heads-up window than a pharmacy's 30-day
@@ -206,6 +207,7 @@ export const UpdateProductSchema = z
     season: SEASON,
     recommendedCrop: RECOMMENDED_CROP,
     isPrescriptionRequired: z.boolean().optional(),
+    isScheduleH1X: z.boolean().optional(),
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
     customFields: CustomFieldValuesSchema,
     ...rentalFields,

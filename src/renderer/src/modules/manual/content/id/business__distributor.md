@@ -16,13 +16,17 @@ Tingkatan tertinggi yang memenuhi syarat baris tersebut yang berlaku; kuantitas 
 
 Kelompokkan pelanggan ke dalam sebuah **kelas pelanggan** (dari catatan mereka di Pelanggan — mis. "Grosir", "Pengecer") dan atur harga khusus-kelas per produk dari layar **Harga per Pelanggan** yang baru. Setelah diatur, Bulk Order Entry (dan pesanan sales lapangan di bawah) otomatis memberi harga keranjang pelanggan tersebut pada tarif negosiasi mereka alih-alih harga jual biasa — pelanggan tanpa harga kelas yang tercatat cukup ditagih pada harga daftar seperti biasa.
 
-## Perencanaan rute / beat
+## Pengiriman multi-pemberhentian
 
 Sebuah pengiriman (shipment) dapat membawa beberapa **pemberhentian (stops)** alih-alih hanya satu alamat tujuan — buka detail sebuah pengiriman dan tambahkan setiap pemberhentian di sepanjang rute dengan alamat dan status pengirimannya sendiri, sehingga satu perjalanan multi-drop dilacak sebagai rute sesungguhnya, bukan satu tujuan dengan segala sesuatunya dianggap terkirim sekaligus.
 
 ## Penangkapan pesanan sales lapangan
 
 Aktifkan **Field Order Capture** untuk membiarkan sales lapangan Anda mengirim pesanan dari ponsel mereka sendiri saat mengunjungi pelanggan, lewat WiFi toko Anda — tanpa perlu instal aplikasi. Buka **Pesanan Lapangan** untuk melihat tautan LAN/kode QR yang dibagikan ke sales, serta untuk **Terima** atau **Tolak** permintaan yang masuk. Seorang sales hanya memilih produk dan kuantitas — Sarang selalu memeriksa ulang harga negosiasi pelanggan yang sebenarnya (dan batas kredit Anda) pada saat Anda menerima (accept), bukan apa pun yang diperkirakan ponsel sales tersebut, sehingga faktur yang benar-benar dibuat selalu diberi harga dengan benar.
+
+## Rencana Rute (Beat Plans)
+
+Buka **Beat Plans** untuk mengatur rute kunjungan masing-masing perwakilan lapangan — sebuah rute bernama (mis. "Rute Utara, Selasa") yang terdiri dari seorang perwakilan, opsional hari dalam seminggu, dan daftar pemberhentian pelanggan yang berurutan. Tambahkan pelanggan ke rute dan urutkan ulang dengan panah atas/bawah agar sesuai dengan urutan sebenarnya saat perwakilan menyusuri rute; sebuah rute dapat ditandai tidak aktif tanpa dihapus jika sedang dijeda. Ini berbeda dari pemberhentian pengiriman di atas — rute adalah urutan kunjungan pelanggan yang direncanakan oleh perwakilan penjualan, bukan rute kargo kendaraan.
 
 ## Outstanding Analytics
 
@@ -32,9 +36,15 @@ Buka **Analisis Piutang** untuk melihat total eksposur kredit Anda di seluruh pe
 
 Berikan seorang pelanggan **batas kredit** dari catatannya di **Pelanggan**, dan Sarang memblokir penjualan *kredit* baru mana pun (dari Billing atau Bulk Order Entry) yang akan mendorong saldo tertunggak mereka melebihi batas itu — ditolak langsung saat disimpan dengan pesan yang menunjukkan saldo tertunggak mereka, jumlah faktur baru, dan batas mereka. Ini hanya berlaku untuk penjualan metode Kredit; penjualan Tunai, UPI, Kartu, dan Split-payment tidak terpengaruh. Batas kredit 0 berarti tidak ada batas yang diterapkan.
 
+Batas yang benar-benar diterapkan **disesuaikan dengan risiko**, tidak selalu angka mentah yang tercatat pada data pelanggan: Sarang menilai riwayat pembayaran setiap pelanggan kredit (faktur yang saat ini jatuh tempo dan seberapa terlambat faktur sebelumnya dibayar) ke dalam tingkat risiko — Rendah, Sedang, Tinggi, atau Belum Dinilai untuk pelanggan yang belum memiliki riwayat pembayaran — dan menyesuaikan batas kredit sesuai (risiko Rendah mendapat 1,25× dari batas yang tercatat, Sedang dan Belum Dinilai menggunakannya apa adanya, risiko Tinggi dibatasi pada 0,5×). Buka data pelanggan itu sendiri untuk melihat tingkat risiko saat ini dan batas yang disesuaikan dengan risiko di samping batas kreditnya.
+
 ## Laporan Biaya Skema vs. Volume
 
 Jika Anda menjalankan skema harga (Beli-X-Dapat-Y-Gratis atau diskon bertingkat — atur di Settings → Pricing Schemes), buka **Scheme Cost vs. Volume** di Reports untuk melihat apakah skema tersebut benar-benar berhasil: sebuah grafik menampilkan berapa biaya skema tersebut (nilai unit gratis yang diberikan, atau jumlah diskon untuk skema bertingkat) berdampingan dengan berapa banyak unit produk yang dicakup benar-benar terjual, minggu demi minggu, ditambah rincian biaya per skema di bawahnya. Ini adalah perbandingan berdampingan, bukan klaim bahwa skema *menyebabkan* volume tersebut — Sarang tidak memiliki cara untuk mengetahui berapa yang akan Anda jual tanpa skema tersebut, jadi baca grafik ini sebagai bukti untuk Anda nilai sendiri, bukan sebagai vonis.
+
+## Laporan Papan Peringkat Perwakilan Lapangan
+
+Buka **Field-Rep Leaderboard** dari Laporan untuk melihat performa setiap perwakilan lapangan: pesanan yang dipesan, nilai total, pelanggan berbeda yang dikunjungi, dan — untuk perwakilan dengan rute aktif — tingkat pencapaian yang menunjukkan berapa persen dari pemberhentian yang direncanakan benar-benar dikunjungi. Perwakilan diperingkat berdasarkan nilai dari yang terbaik lebih dulu, sehingga ini terbaca sebagai papan peringkat, bukan daftar masalah. Perwakilan tanpa rute aktif hanya tidak menampilkan angka tingkat pencapaian, bukan 0% yang menyesatkan.
 
 ## Logistics & Supply Chain
 

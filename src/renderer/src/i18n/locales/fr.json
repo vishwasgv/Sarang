@@ -520,6 +520,15 @@
     "customerName": "Nom du client",
     "customerCode": "Code client",
     "creditLimit": "Limite de crédit",
+    "creditRisk": {
+      "effectiveLimit": "Limite Ajustée au Risque",
+      "tier": {
+        "LOW": "Risque Faible",
+        "MEDIUM": "Risque Moyen",
+        "HIGH": "Risque Élevé",
+        "UNRATED": "Non Évalué"
+      }
+    },
     "totalDue": "Total dû",
     "noCustomers": "Aucun client",
     "searchCustomers": "Rechercher des clients…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "Aucun produit à faible stock ne nécessite de réapprovisionnement pour le moment.",
       "created": "Bons de commande brouillon créés : {{count}}",
       "skippedNoSupplier": "Ignorés (aucun fournisseur par défaut) : {{count}}",
-      "skippedOpenPO": "Ignorés (déjà sur une commande ouverte) : {{count}}"
+      "skippedOpenPO": "Ignorés (déjà sur une commande ouverte) : {{count}}",
+      "suppressedExpiring": "Supprimés (stock proche de la péremption peu susceptible de se vendre) : {{count}}"
     },
     "repairTicket": "Réparation"
   },
@@ -1817,6 +1827,18 @@
         "label": "Rentabilité Client",
         "description": "Quels clients valent vraiment la peine d'être conservés — revenus vs. heures passées, par client"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "Délai de Livraison par Technicien",
+        "description": "Le temps réel que prennent les fiches de travail pour être livrées, moyenne/le plus rapide/le plus lent par technicien"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "Tendance du Volume par Catégorie de Réparation",
+        "description": "Volume mensuel de réparations par catégorie — informe le réapprovisionnement des pièces"
+      },
+      "fieldRepLeaderboard": {
+        "label": "Classement des Représentants Terrain",
+        "description": "Commandes réservées, valeur, et taux de réussite par rapport au plan — par représentant terrain, les meilleurs en premier."
+      },
       "jobCards": {
         "label": "Rapport des Fiches de Travail",
         "description": "Chaque travail de réparation/service par statut, coût estimé vs réel — pour les ateliers de réparation"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "Ventes de Médicaments sur Ordonnance",
         "description": "Registre des ventes de médicaments sur ordonnance uniquement (Liste H/H1), avec noms du patient et du médecin."
+      },
+      "scheduleH1XRegister": {
+        "label": "Registre Liste H1/X",
+        "description": "Registre des ventes de médicaments narcotiques/psychotropes — le sous-ensemble le plus strict des ventes sur ordonnance, prêt pour l'inspection."
       },
       "schemeCostVsVolume": {
         "label": "Coût du Programme vs. Volume",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "{{value}} à risque dans le stock expiré",
       "atRiskValue": "Valeur à Risque (≤ 30 Jours)",
       "totalSales": "Ventes Totales",
+      "totalQuantity": "Quantité Totale",
       "missingDetails": "Détails Manquants",
       "totalSchemeCost": "Coût Total du Programme",
       "focUnitsGiven": "Unités Gratuites (FOC) Données",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "Temps de Résolution Moy.",
       "repeatRatePercent": "Taux de Récurrence",
       "overallUtilizationPercent": "Utilisation Globale",
+      "totalDelivered": "Total Livré",
+      "overallAvgTurnaroundHours": "Délai Moyen de Livraison",
+      "totalOrdersBooked": "Total des Commandes Réservées",
       "revenue": "Revenus",
       "cogs": "Coût des Marchandises Vendues",
       "totalMargin": "Marge Totale",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "Valeur à Risque par Catégorie de Péremption",
       "byDoctor": "Par Médecin Prescripteur",
       "prescriptionRegister": "Registre des Ventes de Médicaments sur Ordonnance",
+      "scheduleH1XRegister": "Registre des Narcotiques Liste H1/X",
       "schemeCostVsVolumeChart": "Coût du Programme vs. Volume des Produits Couverts",
       "schemesInPeriod": "Programmes de Cette Période",
       "batchDetails": "Détails du Lot",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "Aucun ticket client au cours de cette période.",
       "consultantUtilization": "Aucun travail facturable enregistré au cours de cette période.",
       "clientProfitability": "Aucun revenu de projet client au cours de cette période.",
+      "jobCardTurnaroundByTechnician": "Aucune fiche de travail livrée au cours de cette période.",
+      "repairCategoryVolumeTrend": "Aucune fiche de travail reçue au cours de cette période.",
+      "fieldRepLeaderboard": "Aucune commande de représentant terrain réservée durant cette période.",
       "projects": "Aucun projet dans cette période.",
       "jobCards": "Aucune fiche de travail dans cette période.",
       "prescriptionDrugSales": "Aucune vente de médicament sur ordonnance dans cette période.",
+      "scheduleH1XRegister": "Aucune vente de la Liste H1/X dans cette période.",
       "schemeCostVsVolume": "Aucun programme de prix n'a été actif dans cette plage de dates.",
       "discounts": "Aucune remise ni prix négocié dans cette période.",
       "serviceProjects": "Aucun projet dans cette période.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "Utilisation",
       "hoursSpent": "Heures Passées",
       "revenuePerHour": "Revenu/Heure",
+      "jobCount": "Nombre de Travaux",
+      "repName": "Nom du Représentant",
+      "ordersBooked": "Commandes Réservées",
+      "customersVisited": "Clients Visités",
+      "plannedStops": "Arrêts Planifiés",
+      "hitRatePercent": "Taux de Réussite vs. Plan",
       "invoiceNo": "N° Facture",
       "invoiceDate": "Date de Facture",
       "doctorName": "Médecin",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "Réclamation de Garantie Contre",
     "notAWarrantyClaim": "Ce n'est pas une réclamation de garantie",
     "originalUnderWarranty": "Le travail d'origine est encore sous garantie",
-    "originalWarrantyExpired": "La garantie du travail d'origine a expiré"
+    "originalWarrantyExpired": "La garantie du travail d'origine a expiré",
+    "conditionOnArrival": "État à l'Arrivée",
+    "accessoriesReceived": "Accessoires Reçus",
+    "jobCategory": "Catégorie",
+    "quotedPartsTotal": "Total des Pièces Devisées",
+    "partsVariance": "Écart de Pièces",
+    "repeatFault": "Panne Récurrente",
+    "repeatFaultWarning": "Panne récurrente possible — le même article a été livré sous {{jobNumber}} au cours des 30 derniers jours.",
+    "repeatFaultDetail": "Cela ressemble à une panne récurrente — le même article a été livré sous {{jobNumber}} au cours des 30 derniers jours."
   },
   "setup": {
     "welcome": "Bienvenue sur Sarang",
@@ -4995,6 +5044,43 @@
       "removed": "Supprimé",
       "removedMessage": "Prix supprimé.",
       "couldNotRemove": "Impossible de supprimer le prix."
+    },
+    "beats": {
+      "title": "Plans de Tournée",
+      "subtitle": "Définissez l'itinéraire de chaque représentant terrain — l'ordre dans lequel il visite les clients, chaque jour.",
+      "newBeat": "Nouvelle Tournée",
+      "loading": "Chargement…",
+      "empty": "Aucune tournée configurée pour le moment.",
+      "beatName": "Nom de la Tournée",
+      "repName": "Nom du Représentant",
+      "dayOfWeek": "Jour de la Semaine",
+      "anyDay": "N'importe quel jour",
+      "day": {
+        "sun": "Dimanche",
+        "mon": "Lundi",
+        "tue": "Mardi",
+        "wed": "Mercredi",
+        "thu": "Jeudi",
+        "fri": "Vendredi",
+        "sat": "Samedi"
+      },
+      "stopCount_other": "{{count}} arrêts",
+      "inactive": "Inactive",
+      "noStops": "Aucun client sur cette tournée pour le moment.",
+      "selectCustomer": "Sélectionner un client à ajouter…",
+      "addStop": "Ajouter",
+      "creating": "Création…",
+      "created": "Tournée créée.",
+      "couldNotCreate": "Impossible de créer la tournée.",
+      "deleted": "Tournée supprimée.",
+      "couldNotDelete": "Impossible de supprimer la tournée.",
+      "couldNotAddStop": "Impossible d'ajouter le client à la tournée.",
+      "couldNotRemoveStop": "Impossible de supprimer l'arrêt.",
+      "couldNotMoveStop": "Impossible de réorganiser l'arrêt.",
+      "deleteTitle": "Supprimer la Tournée",
+      "deleteConfirm": "Supprimer la tournée « {{name}} » ? Cette action est irréversible.",
+      "error": "Erreur",
+      "couldNotLoad": "Impossible de charger les tournées."
     }
   },
   "import": {

@@ -63,6 +63,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 58 §2 — Distributor field-rep order capture + customer-class pricing
   { label: 'Field Orders', path: '/distributor/field-orders', icon: Send, permissionKey: 'distributor.manageFieldOrders', requiredModule: 'field_order_capture' },
   { label: 'Customer Pricing', path: '/distributor/pricing', icon: Tag, permissionKey: 'products.modifyPricing', requiredModule: 'field_order_capture' },
+  // Phase 67 §9.1 — Distributor item 2: beat-plan route sequencing
+  { label: 'Beat Plans', path: '/distributor/beats', icon: MapPin, permissionKey: 'distributor.manageFieldOrders', requiredModule: 'field_order_capture' },
   // Phase 58 §2 — Agri Inputs combined consumables+equipment dashboard
   { label: 'Agri Dashboard', path: '/agri/dashboard', icon: Sprout, permissionKey: 'inventory.view', requiredModule: 'agri_dashboard' },
   // Batch/expiry tracking — shared by any business type with the module on (Pharmacy, Phase 49 Agri Inputs, etc.)

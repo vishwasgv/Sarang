@@ -34,10 +34,26 @@ const schema = z.object({
   imagePath: z.string().optional(),
   // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag.
   isPrescriptionRequired: z.boolean().default(false),
+  // Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X narcotic register, a
+  // stricter subcategory of isPrescriptionRequired above.
+  isScheduleH1X: z.boolean().default(false),
   // Phase 58 §2 — category-specific expiry alert lead time (e.g. Agri Inputs
   // seed/fertilizer needing a much longer heads-up than a pharmacy's 30-day
-  // medicine cutoff). Empty means "use the generic 30-day default."
-  expiryAlertLeadDays: z.coerce.number().int().min(1).max(1000).optional(),
+  // medicine cutoff). Empty means "use the generic 30-day default." Real bug
+  // found live (Phase 67 §9.1, editing any product with this field blank):
+  // plain z.coerce.number() coerces an empty string to 0 BEFORE .optional()
+  // can treat it as absent, and 0 fails .min(1) — silently blocking every
+  // edit of a product that had genuinely left this field blank, with no
+  // crash, just a swallowed inline validation error. Every OTHER optional
+  // coerced numeric field in this schema has .min(0), where the same
+  // blank-to-0 coercion happens to accidentally pass — this is the only
+  // field (besides unitsPerPack below) whose minimum excludes 0, which is
+  // what made the bug visible here. Preprocessing blank/null to undefined
+  // first restores the field's own documented "empty means default" intent.
+  expiryAlertLeadDays: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : val),
+    z.coerce.number().int().min(1).max(1000).optional()
+  ),
   // Phase 38: loose/weight-based billing — a product is sold loose OR in fixed
   // packs, never both, in this version (see PHASE_38_TECHNICAL_SPEC.md §1.1).
   sellByWeight: z.boolean().default(false),
@@ -46,7 +62,12 @@ const schema = z.object({
   // Phase 58 §2 — carton/box-to-loose-piece unit conversion.
   sellByPack: z.boolean().default(false),
   packUnit: z.string().max(20).optional(),
-  unitsPerPack: z.coerce.number().positive().optional(),
+  // Same blank-to-0-coercion bug as expiryAlertLeadDays above — .positive()
+  // excludes 0 too, so a blank field here would identically block a save.
+  unitsPerPack: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : val),
+    z.coerce.number().positive().optional()
+  ),
   // Phase 64 — floating/variable UoM conversion, meaningful only alongside
   // sellByPack. Distinct from unitsPerPack's own fixed ratio.
   floatingUnitConversion: z.boolean().default(false),
@@ -115,7 +136,7 @@ interface Product {
   gender?: string | null
   season?: string | null
   recommendedCrop?: string | null
-  isPrescriptionRequired?: boolean; defaultSupplierId?: string | null
+  isPrescriptionRequired?: boolean; isScheduleH1X?: boolean; defaultSupplierId?: string | null
   expiryAlertLeadDays?: number | null
   isRentable?: boolean; rentalTrackingType?: 'UNIT' | 'BULK' | null; rentalRates?: { basis: string; amount: number }[]; rentalSecurityDeposit?: number | null
   metalType?: string | null; purity?: string | null; hallmarkNumber?: string | null
@@ -245,7 +266,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
+    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
   })
   const { businessType } = useIndustryStore()
   const isPharmacy = businessType === 'PHARMACY'
@@ -322,6 +343,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   }
 
   const productType = watch('productType')
+  const isPrescriptionRequiredWatch = watch('isPrescriptionRequired')
   const imagePath = watch('imagePath')
   const sellByWeight = watch('sellByWeight')
   const sellByPack = watch('sellByPack')
@@ -374,6 +396,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           reorderQuantity: product.inventory?.reorderQuantity ?? 10,
           defaultSupplierId: product.defaultSupplierId ?? undefined,
           isPrescriptionRequired: product.isPrescriptionRequired ?? false,
+          isScheduleH1X: product.isScheduleH1X ?? false,
           expiryAlertLeadDays: product.expiryAlertLeadDays ?? undefined,
           sellByWeight: product.sellByWeight ?? false,
           weightUnit: (product.weightUnit as FormValues['weightUnit']) ?? undefined,
@@ -401,7 +424,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         setRateLines(product.rentalRates ?? [])
         setCustomFieldValues(parseCustomFields(product.customFields))
       } else {
-        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
+        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
         setRateLines([])
         setCustomFieldValues({})
       }
@@ -825,10 +848,22 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             isDistributor elsewhere, since this is a regulatory classification
             specific to one vertical, not a cross-cutting feature toggle. */}
         {isPharmacy && productType === 'STANDARD' && (
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-            <input type="checkbox" {...register('isPrescriptionRequired')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
-            Prescription Required (Schedule H / H1)
-          </label>
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+              <input type="checkbox" {...register('isPrescriptionRequired')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+              Prescription Required (Schedule H / H1)
+            </label>
+            {/* Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X narcotic register.
+                A stricter subcategory — only shown once the broader
+                prescription-required flag above is checked, since every
+                Schedule H1/X drug is also prescription-required. */}
+            {isPrescriptionRequiredWatch && (
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 pl-6">
+                <input type="checkbox" {...register('isScheduleH1X')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                Schedule H1/X (narcotic/psychotropic — requires a dedicated register)
+              </label>
+            )}
+          </div>
         )}
 
         {/* Opening stock — first-time-only; later changes go through Adjust Stock */}

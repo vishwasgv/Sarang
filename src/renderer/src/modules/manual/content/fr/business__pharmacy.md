@@ -16,6 +16,8 @@ Vous ne choisissez pas un lot manuellement au moment de la vente — Facturation
 
 Marquez un produit **Ordonnance Requise** dans sa fiche Produit, et Facturation exigera le nom du patient et le nom du médecin prescripteur avant de vous laisser l'ajouter à un panier — la vente ne peut tout simplement pas être finalisée sans les deux, ce qui vous garde conforme aux exigences de tenue de registre de la Liste H/H1. Un rapport dédié **Ventes de Médicaments sur Ordonnance** (Pharmacie uniquement) liste chaque vente de ce type avec les détails patient/médecin capturés, et s'ouvre désormais avec un graphique **Par Médecin Prescripteur** au-dessus du registre — quels médecins vous envoient le plus d'affaires sur ordonnance cette période, d'un coup d'œil plutôt qu'en faisant défiler tout le registre.
 
+Pour les médicaments narcotiques ou psychotropes (Liste H1/X — une catégorie plus stricte que le simple besoin d'ordonnance), cochez également **Schedule H1/X** dans le formulaire produit (affiché uniquement une fois Prescription Required déjà coché). Chaque vente d'un produit de la Liste H1/X est enregistrée avec les mêmes détails patient/médecin/date que ci-dessus, et un rapport **Registre Liste H1/X** distinct et plus restreint (Rapports → Registre Liste H1/X) répertorie uniquement ces ventes — exactement le sous-ensemble qu'un inspecteur voudrait voir, sans avoir à le filtrer vous-même à partir du registre complet des ordonnances. Cela montre exactement ce que Sarang enregistre (date, produit, quantité, patient, médecin, facture) — ce n'est pas une prétention à un format de registre légal complet.
+
 ## Numéro de licence de pharmacie
 
 Saisissez le **Numéro de Licence de Pharmacie** de votre officine sous Paramètres → Profil de l'entreprise — il est spécifique à ce type d'entreprise et ne s'affiche que lorsque Pharmacie est votre type d'entreprise actif.
@@ -23,6 +25,8 @@ Saisissez le **Numéro de Licence de Pharmacie** de votre officine sous Paramèt
 ## Réapprovisionnement automatique depuis le stock faible
 
 Définissez un **Fournisseur par Défaut** sur un produit (à côté de son Seuil/Quantité de Réapprovisionnement dans la fiche Produit), et lorsque ce produit vient à manquer, utilisez **Générer des Commandes de Réapprovisionnement** sur la barre d'alerte de stock faible dans Stock. Sarang rédige un bon de commande par fournisseur, regroupant chaque produit dû ayant un fournisseur par défaut configuré, et ignore tout ce qui est déjà sur un bon de commande ouvert afin qu'exécuter l'opération à nouveau ne crée jamais de doublons — les produits sans fournisseur par défaut défini sont également ignorés, avec un compte affiché afin que vous sachiez ce qui nécessite encore une attention manuelle.
+
+Un produit dont le stock est faible est également vérifié par rapport à son propre **stock de lots proches de la péremption** avant d'être réapprovisionné : si une quantité importante est sur le point d'expirer et que la vitesse de vente récente n'est pas assez rapide pour l'écouler avant cela, le réapprovisionnement est supprimé plutôt que rédigé — commander davantage d'un produit qui ne se vend pas revient simplement à acheter un second lot qui sera lui aussi gaspillé. Les produits supprimés sont comptabilisés dans le même message récapitulatif déjà affiché par l'écran, afin que rien ne soit ignoré silencieusement à votre insu.
 
 ## Logistique & Chaîne d'approvisionnement
 

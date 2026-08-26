@@ -29,6 +29,10 @@ A job card is built for a physical item a customer drops off: a title, item desc
 
 Add real **parts used** to a job card from its detail view — search a product, set the quantity, and Sarang deducts it from your actual inventory (not a free-text note); removing a part restores the stock. Set a **warranty period** in days on delivery, and a real Under Warranty / Expired badge shows automatically from that point on. If the same item comes back for a warranty issue, start a new job card and link it as a **warranty claim** against the original — the original's live warranty status shows right there in the new job card's form.
 
+At intake, record the item's **condition on arrival** and **accessories received** — real dispute protection, so "the customer said the charger was included" is answerable by pointing at what was actually written down when the item came in, not relying on memory. Give the job a free-text **category** (e.g. "Screen Repair," "Battery Replacement") so repair volume can be tracked by type. If you know the cost of the parts up front, enter a **quoted parts total** at intake — once real parts are added later, the job card's own detail view shows the live **parts variance** between what was quoted and what was actually used, in red if it ran over.
+
+Sarang also flags a **repeat fault** automatically: if the same customer brings back the same item within 30 days of a prior delivery, the new job card is flagged right at creation — a real quality signal, not something you have to notice yourself.
+
 ## Service Tickets (Service, Repair)
 
 A ticket is a lighter-weight support request: title, description, priority, an optional category tag, and an optional customer/assignee. It moves through **Open → In Progress → Resolved → Closed**, and resolving one lets you attach a resolution note. Urgent, unresolved tickets are called out with a red-flag indicator on the list so they don't get buried. Enter an amount and **Generate Invoice** to bill a resolved ticket.
@@ -47,7 +51,7 @@ Open **Retainers** in the sidebar to run a recurring monthly arrangement for a r
 
 ## Reports
 
-Four reports are specific to this vertical set. **Resolution Time by Category** breaks down how long tickets actually take to close, average/fastest/slowest per category — a real service-quality metric, not just a status count. **Repeat-Business Rate** trends, month by month, what share of your ticket-raising customers are returning versus brand new — the retention signal this generic scaffold never had before. **Utilization Rate** (Consultant) is the #1 consulting metric: billable versus non-billable hours per staff member, sorted to surface whoever needs more billable work first. **Client Profitability** (Consultant) shows revenue against hours spent per client, sorted worst-first, so you can see at a glance which clients are actually worth keeping.
+Six reports are specific to this vertical set. **Resolution Time by Category** breaks down how long tickets actually take to close, average/fastest/slowest per category — a real service-quality metric, not just a status count. **Repeat-Business Rate** trends, month by month, what share of your ticket-raising customers are returning versus brand new — the retention signal this generic scaffold never had before. **Utilization Rate** (Consultant) is the #1 consulting metric: billable versus non-billable hours per staff member, sorted to surface whoever needs more billable work first. **Client Profitability** (Consultant) shows revenue against hours spent per client, sorted worst-first, so you can see at a glance which clients are actually worth keeping. **Turnaround by Technician** (Repair) shows how long job cards actually take to deliver, average/fastest/slowest per technician, sorted slowest-first. **Repair Category Volume Trend** (Repair) trends monthly repair volume by category — informs what parts you should be keeping in stock.
 
 ## Appointments and Projects billing
 

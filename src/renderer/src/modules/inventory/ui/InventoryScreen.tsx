@@ -100,13 +100,15 @@ export function InventoryScreen() {
     try {
       const res = await window.api.purchaseOrders.generateReorderDraftPOs()
       if (res.success && res.data) {
-        const { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO } = res.data
-        if (created.length === 0 && skippedNoDefaultSupplier === 0 && skippedAlreadyOnOpenPO === 0) {
+        const { created, skippedNoDefaultSupplier, skippedAlreadyOnOpenPO, suppressedExpiringStock } = res.data
+        if (created.length === 0 && skippedNoDefaultSupplier === 0 && skippedAlreadyOnOpenPO === 0 && suppressedExpiringStock.length === 0) {
           toastSuccess(t('inventory.reorder.title'), t('inventory.reorder.nothingToOrder'))
         } else {
           const parts = [t('inventory.reorder.created', { count: created.length })]
           if (skippedNoDefaultSupplier > 0) parts.push(t('inventory.reorder.skippedNoSupplier', { count: skippedNoDefaultSupplier }))
           if (skippedAlreadyOnOpenPO > 0) parts.push(t('inventory.reorder.skippedOpenPO', { count: skippedAlreadyOnOpenPO }))
+          // Phase 67 §9.1 — Pharmacy item 5: Expiry-Aware Reorder Suppression.
+          if (suppressedExpiringStock.length > 0) parts.push(t('inventory.reorder.suppressedExpiring', { count: suppressedExpiringStock.length }))
           toastSuccess(t('inventory.reorder.title'), parts.join(' · '))
         }
         navigate('/purchase-orders')

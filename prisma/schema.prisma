@@ -225,6 +225,16 @@ model Product {
   // when true, billing.service.ts requires a prescription snapshot
   // (patient/doctor/date) on the InvoiceItem before the sale is allowed.
   isPrescriptionRequired Boolean   @default(false)
+  // Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register. A
+  // STRICTER subcategory of isPrescriptionRequired above (every Schedule
+  // H1/X drug is also prescription-required, but not every
+  // prescription-required drug is Schedule H1/X) — kept as its own
+  // separate flag rather than a new value on isPrescriptionRequired so the
+  // existing broader Prescription Drug Sales register keeps working
+  // unchanged for every Schedule H product, while this narrower register
+  // (report.service.ts's generateScheduleH1XRegisterReport) surfaces only
+  // the subset regulators actually require a dedicated register for.
+  isScheduleH1X          Boolean   @default(false)
   // Phase 58 §2 — generic reorder-automation field (not Pharmacy-specific,
   // though Pharmacy is the vertical that motivated it): which supplier to
   // draft a Purchase Order against when this product's stock is low. Null
@@ -904,6 +914,7 @@ model Customer {
   repairTickets             RepairTicket[] // Phase 58 §2 — Electronics repair/RMA
   convertedFromLeads        Lead[]                        @relation("LeadConvertedClient") // Fresh-audit fix (2026-07-23) — was an unconstrained bare String, see Lead.convertedClientId
   loyaltyCard               LoyaltyCard? // Phase 67 §9.1 — Retail: simple visit-based punch-card
+  distributorBeatStops      DistributorBeatStop[] // Phase 67 §9.1 — Distributor: beat-plan route sequencing
 
   @@index([customerName])
   @@index([phone])
@@ -2742,6 +2753,21 @@ model JobCard {
   // creating a new job card, since a shop may still choose to accept an
   // out-of-warranty comeback as a fresh paid job).
   warrantyClaimAgainstId String?
+  // Phase 67 §9.1 — Repair item 1: structured intake checklist. Free-text,
+  // captured once at intake — real dispute protection ("the customer said
+  // the case was included" is answerable by pointing at what was actually
+  // recorded when the item came in, not relying on memory).
+  conditionOnArrival   String?
+  accessoriesReceived  String?
+  // Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend. Free-text
+  // (e.g. "Screen Repair", "Battery Replacement") — no fixed enum, matching
+  // Product.season's own free-text precedent for a shop-defined taxonomy.
+  category             String?
+  // Phase 67 §9.1 — Repair item 5: Parts-Used-vs-Quoted Variance. The
+  // parts-only portion of the quote given at intake, captured once and
+  // never auto-recomputed — compared against the real, itemized
+  // JobCardPart total once repair work actually happens.
+  quotedPartsTotal     Float?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -6690,4 +6716,46 @@ model CustomFieldDefinition {
 
   @@index([entityType])
   @@index([entityType, isActive])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 67 §9.1 — DISTRIBUTOR: BEAT-PLAN ROUTE SEQUENCING
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A field rep's set visiting order per day/route — deliberately a NEW model,
+// not a repurposing of the existing Shipment/ShipmentStop pair (also
+// sequence-numbered "route" stops, see Customer.shipmentStops' own comment)
+// despite the naming overlap: Shipment/ShipmentStop is a delivery-vehicle
+// freight route (carrier, vehicle, freight amount, e-way bill — goods going
+// OUT), semantically unrelated to a sales rep visiting customers to BOOK
+// orders. repName is free text, matching FieldOrderRequest.repName's own
+// existing convention for this vertical (field reps aren't modeled as a
+// structured Employee/User account anywhere in this codebase yet).
+model DistributorBeat {
+  id        String   @id @default(cuid())
+  name      String
+  repName   String
+  dayOfWeek Int? // 0=Sunday..6=Saturday; null = not tied to a specific day
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stops DistributorBeatStop[]
+
+  @@index([repName])
+  @@index([isActive])
+}
+
+model DistributorBeatStop {
+  id            String @id @default(cuid())
+  beatId        String
+  customerId    String
+  sequenceOrder Int
+
+  beat     DistributorBeat @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([beatId, customerId])
+  @@index([beatId])
+  @@index([customerId])
 }

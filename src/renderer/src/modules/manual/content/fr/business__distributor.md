@@ -16,13 +16,17 @@ Le palier le plus élevé auquel la ligne est éligible s'applique ; les petites
 
 Regroupez vos clients en une **classe de client** (depuis leur fiche dans Clients — par ex. « Grossiste », « Détaillant ») et définissez des prix spécifiques par classe et par produit depuis le nouvel écran **Tarification par Classe de Client**. Une fois définis, la Saisie de commande en gros (et la commande d'un représentant terrain ci-dessous) tarife automatiquement le panier de ce client à son tarif négocié plutôt qu'au prix de vente normal — un client sans prix de classe enregistré est simplement facturé au prix catalogue comme auparavant.
 
-## Planification des tournées / itinéraires
+## Livraisons à arrêts multiples
 
 Une expédition peut comporter plusieurs **arrêts** au lieu d'une seule adresse de destination — ouvrez le détail d'une expédition et ajoutez chaque arrêt le long de l'itinéraire avec sa propre adresse et son propre statut de livraison, afin qu'une tournée à plusieurs dépôts soit suivie comme le véritable itinéraire qu'elle est, et non comme une seule destination avec tout le reste supposé livré en même temps.
 
 ## Saisie de commande par représentant terrain
 
 Activez **Saisie de Commande Terrain** pour permettre à vos représentants commerciaux de soumettre des commandes depuis leur propre téléphone pendant leurs visites clients, sur le WiFi de votre magasin — aucune application à installer. Ouvrez **Commandes Terrain** pour voir le lien LAN/code QR à partager avec les représentants, et pour **Accepter** ou **Refuser** les demandes entrantes. Un représentant ne fait que choisir des produits et des quantités — Sarang revérifie toujours le véritable prix négocié du client (et votre limite de crédit) au moment où vous acceptez, et non ce que le téléphone du représentant avait estimé, de sorte que la facture réellement créée est toujours tarifée correctement.
+
+## Plans de Tournée
+
+Ouvrez **Plans de Tournée** pour définir l'itinéraire de visite propre à chaque représentant terrain — une tournée nommée (par ex. « Tournée Nord, mardi ») comprenant un représentant, éventuellement un jour de la semaine, et une liste ordonnée d'arrêts clients. Ajoutez des clients à une tournée et réorganisez-les avec les flèches haut/bas pour correspondre à l'ordre réel dans lequel le représentant parcourt la tournée ; une tournée peut être marquée inactive sans être supprimée si un itinéraire est mis en pause. Ceci est distinct des arrêts d'une expédition de livraison ci-dessus — une tournée est la séquence planifiée de visites clients d'un représentant commercial, pas l'itinéraire de fret d'un véhicule.
 
 ## Analyses des créances en cours
 
@@ -32,9 +36,15 @@ Ouvrez **Analyses des créances en cours** pour voir votre exposition totale au 
 
 Attribuez une **limite de crédit** à un client depuis sa fiche dans **Clients**, et Sarang bloque toute nouvelle vente à *crédit* (depuis Facturation ou Saisie de commande en gros) qui pousserait son solde en cours au-delà de cette limite — rejetée d'emblée à l'enregistrement avec un message montrant son solde en cours, le montant de la nouvelle facture, et sa limite. Cela ne s'applique qu'aux ventes de mode Crédit ; les ventes en Espèces, UPI, Carte, et Paiement fractionné ne sont pas affectées. Une limite de crédit de 0 signifie qu'aucune limite n'est appliquée.
 
+La limite réellement appliquée est **ajustée au risque**, et non toujours le chiffre brut enregistré sur la fiche du client : Sarang évalue l'historique de paiement de chaque client à crédit (factures actuellement en retard et le retard des paiements passés) en un niveau de risque — Faible, Moyen, Élevé, ou Non Évalué pour un client sans historique de paiement pour l'instant — et ajuste la limite de crédit en conséquence (le risque Faible obtient 1,25× la limite indiquée, le Moyen et le Non Évalué l'utilisent telle quelle, le risque Élevé est plafonné à 0,5×). Ouvrez la fiche propre d'un client pour voir son niveau de risque actuel et sa limite ajustée au risque à côté de sa limite de crédit.
+
 ## Rapport Coût du Programme vs. Volume
 
 Si vous exécutez des programmes de prix (Achetez-X-Obtenez-Y-Gratuit ou remises par palier — configurez-les sous Paramètres → Programmes de Prix), ouvrez **Coût du Programme vs. Volume** dans Rapports pour voir s'ils fonctionnent vraiment : un graphique montre ce que le programme vous a coûté (la valeur des unités gratuites offertes, ou le montant de la remise pour un programme par palier) à côté du nombre d'unités du produit couvert réellement vendues, semaine par semaine, plus une ventilation du coût par programme en dessous. Il s'agit d'une comparaison côte à côte, pas d'une affirmation que le programme a *causé* le volume — Sarang n'a aucun moyen de savoir combien vous auriez vendu sans le programme, alors lisez le graphique comme une preuve à juger vous-même, pas comme un verdict.
+
+## Rapport de Classement des Représentants Terrain
+
+Ouvrez **Field-Rep Leaderboard** depuis les Rapports pour voir la performance de chaque représentant terrain : commandes réservées, valeur totale, clients distincts visités, et — pour un représentant ayant une tournée active — un taux de réussite montrant quelle part de ses arrêts planifiés il a réellement visités. Les représentants sont classés par valeur, du meilleur au moins bon, ce qui donne un classement plutôt qu'une liste de problèmes. Un représentant sans tournée active n'affiche simplement aucun taux de réussite, plutôt qu'un 0 % trompeur.
 
 ## Logistique & Chaîne d'approvisionnement
 

@@ -16,6 +16,8 @@ Usted no elige un lote manualmente al momento de la venta — Facturación extra
 
 Marque un producto como **Prescription Required (Schedule H / H1)** en su formulario de Producto, y Facturación exigirá el nombre del paciente y el nombre del médico prescriptor antes de permitirle agregarlo a un carrito — la venta simplemente no puede completarse sin ambos, manteniéndolo en cumplimiento con los requisitos de registro de la Lista H/H1. Un informe dedicado de **Registro de Ventas de Medicamentos Recetados** (solo Farmacia) lista cada venta de este tipo con los detalles capturados de paciente/médico, y ahora se abre con un gráfico **Por Médico Prescriptor** encima del registro — qué médicos le están enviando más negocio de recetas este período, de un vistazo en lugar de desplazarse por todo el registro.
 
+Para medicamentos narcóticos o psicotrópicos (Lista H1/X — una categoría más estricta que simplemente requerir receta), marque también **Schedule H1/X** en el formulario del producto (solo se muestra una vez que Prescription Required ya está marcado). Cada venta de un producto de la Lista H1/X se registra con los mismos detalles de paciente/médico/fecha que arriba, y un informe **Registro de Lista H1/X** separado y más específico (Informes → Registro de Lista H1/X) lista solo esas ventas — exactamente el subconjunto que un inspector querría ver, sin tener que filtrarlo usted mismo del registro completo de recetas. Esto muestra exactamente lo que Sarang registra (fecha, producto, cantidad, paciente, médico, factura) — no es una afirmación de formato de registro estatutario completo.
+
 ## Número de licencia de farmacia
 
 Ingrese el **Drug License Number** de su farmacia en Configuración → Perfil del Negocio — es específico de este tipo de negocio y se muestra solo cuando Farmacia es su tipo de negocio activo.
@@ -23,6 +25,8 @@ Ingrese el **Drug License Number** de su farmacia en Configuración → Perfil d
 ## Reabastecimiento automático desde stock bajo
 
 Establezca un **Default Supplier** en un producto (junto a su Nivel/Cantidad de Reabastecimiento en el formulario de Producto), y cuando ese producto se agote, use **Generar Órdenes de Reabastecimiento** en la barra de alerta de stock bajo en Inventario. Sarang redacta una orden de compra por proveedor, agrupando cada producto vencido que tenga un proveedor predeterminado configurado, y omite cualquier cosa que ya esté en una orden de compra abierta para que ejecutarlo de nuevo nunca cree duplicados — los productos sin proveedor predeterminado también se omiten, con un conteo que se muestra para que sepa qué todavía necesita atención manual.
+
+Un producto con stock bajo también se verifica contra su propio **stock de lotes próximos a vencer** antes de ser reordenado: si una cantidad significativa está a punto de vencer y la velocidad de ventas reciente no es lo suficientemente rápida como para venderlo antes de que eso ocurra, el reabastecimiento se suprime en lugar de redactarse — pedir más de algo que no se mueve solo compra un segundo lote que también se desperdiciará. Los productos suprimidos se cuentan en el mismo mensaje resumen que la pantalla ya muestra, así que nada se omite silenciosamente sin que usted lo sepa.
 
 ## Logística y Cadena de Suministro
 

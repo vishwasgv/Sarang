@@ -1,4 +1,4 @@
-import { listJobCards, createJobCard, updateJobCard, deleteJobCard, generateJobCardInvoice, listJobCardParts, addJobCardPart, removeJobCardPart } from '../../services/job-card.service'
+import { listJobCards, createJobCard, updateJobCard, deleteJobCard, generateJobCardInvoice, listJobCardParts, addJobCardPart, removeJobCardPart, getRepeatFaultSummary, getPartsVarianceSummary } from '../../services/job-card.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { CreateJobCardSchema, UpdateJobCardSchema, DeleteJobCardSchema, AddJobCardPartSchema, JobCardPartIdSchema, ListJobCardPartsSchema } from '../../validation/job-card.validation'
@@ -58,5 +58,16 @@ export function register(handle: HandleFn): void {
     const parsed = JobCardPartIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return removeJobCardPart(parsed.data.id, getCurrentSession()?.userId)
+  })
+
+  // Phase 67 §9.1 — Repair items 3/5.
+  handle('jobCards:getRepeatFaultSummary', async () => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    return getRepeatFaultSummary()
+  })
+
+  handle('jobCards:getPartsVarianceSummary', async () => {
+    const deny = await requirePermission('sales.view'); if (deny) return deny
+    return getPartsVarianceSummary()
   })
 }

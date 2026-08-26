@@ -520,6 +520,15 @@
     "customerName": "Nombre del Cliente",
     "customerCode": "Código de Cliente",
     "creditLimit": "Límite de Crédito",
+    "creditRisk": {
+      "effectiveLimit": "Límite Ajustado por Riesgo",
+      "tier": {
+        "LOW": "Riesgo Bajo",
+        "MEDIUM": "Riesgo Medio",
+        "HIGH": "Riesgo Alto",
+        "UNRATED": "Sin Calificar"
+      }
+    },
     "totalDue": "Total Pendiente",
     "noCustomers": "Sin clientes",
     "searchCustomers": "Buscar clientes…",
@@ -703,7 +712,8 @@
       "nothingToOrder": "Ningún producto con poco stock necesita reabastecimiento ahora mismo.",
       "created": "Órdenes de compra borrador creadas: {{count}}",
       "skippedNoSupplier": "Omitidos (sin proveedor predeterminado): {{count}}",
-      "skippedOpenPO": "Omitidos (ya en una orden abierta): {{count}}"
+      "skippedOpenPO": "Omitidos (ya en una orden abierta): {{count}}",
+      "suppressedExpiring": "Suprimidos (stock próximo a vencer con poca probabilidad de venderse): {{count}}"
     }
   },
   "purchaseOrders": {
@@ -1777,6 +1787,18 @@
         "label": "Rentabilidad del Cliente",
         "description": "Qué clientes realmente vale la pena mantener — ingresos vs. horas dedicadas, por cliente"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "Tiempo de Entrega por Técnico",
+        "description": "Cuánto tiempo tardan realmente las órdenes de trabajo en entregarse, promedio/más rápido/más lento por técnico"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "Tendencia de Volumen por Categoría de Reparación",
+        "description": "Volumen mensual de reparaciones por categoría — informa el inventario de piezas"
+      },
+      "fieldRepLeaderboard": {
+        "label": "Tabla de Clasificación de Representantes",
+        "description": "Pedidos reservados, valor, y tasa de cumplimiento frente al plan — por representante de campo, mejores primero."
+      },
       "serviceProjects": {
         "label": "Informe de Proyectos de Servicio",
         "description": "Cada proyecto por estado y valor de contrato — para Consultor Independiente, Arquitecto, Ingeniero Civil, Agencia de Marketing, Agencia de Software y Agente Inmobiliario"
@@ -1884,6 +1906,10 @@
       "prescriptionDrugSales": {
         "label": "Ventas de Medicamentos Recetados",
         "description": "Registro de ventas de medicamentos de venta exclusiva con receta (Lista H/H1), con nombres de paciente y médico."
+      },
+      "scheduleH1XRegister": {
+        "label": "Registro de Lista H1/X",
+        "description": "Registro de ventas de medicamentos narcóticos/psicotrópicos — el subconjunto más estricto de las ventas con receta, listo para inspección."
       },
       "schemeCostVsVolume": {
         "label": "Costo de Esquema vs. Volumen",
@@ -2101,6 +2127,7 @@
       "expiredValueSub": "{{value}} en riesgo en stock vencido",
       "atRiskValue": "Valor en Riesgo (≤ 30 Días)",
       "totalSales": "Ventas Totales",
+      "totalQuantity": "Cantidad Total",
       "missingDetails": "Detalles Faltantes",
       "totalSchemeCost": "Costo Total del Esquema",
       "focUnitsGiven": "Unidades Gratuitas (FOC) Entregadas",
@@ -2132,6 +2159,9 @@
       "overallAvgHours": "Tiempo Prom. de Resolución",
       "repeatRatePercent": "Tasa de Repetición",
       "overallUtilizationPercent": "Utilización General",
+      "totalDelivered": "Total Entregado",
+      "overallAvgTurnaroundHours": "Tiempo Promedio de Entrega",
+      "totalOrdersBooked": "Total de Pedidos Reservados",
       "totalShipments": "Total de Envíos",
       "deliveryRate": "Tasa de Entrega",
       "totalFreight": "Flete Total",
@@ -2268,6 +2298,7 @@
       "byBucketValue": "Valor en Riesgo por Categoría de Caducidad",
       "byDoctor": "Por Médico Prescriptor",
       "prescriptionRegister": "Registro de Ventas de Medicamentos con Receta",
+      "scheduleH1XRegister": "Registro de Narcóticos de Lista H1/X",
       "schemeCostVsVolumeChart": "Costo de Esquema vs. Volumen de Productos Cubiertos",
       "schemesInPeriod": "Esquemas en Este Período",
       "batchDetails": "Detalles del Lote",
@@ -2358,6 +2389,9 @@
       "repeatBusinessRate": "No hay tickets de clientes en este período.",
       "consultantUtilization": "No se registró trabajo facturable en este período.",
       "clientProfitability": "No hay ingresos de proyectos de clientes en este período.",
+      "jobCardTurnaroundByTechnician": "No se entregó ninguna orden de trabajo en este período.",
+      "repairCategoryVolumeTrend": "No se recibió ninguna orden de trabajo en este período.",
+      "fieldRepLeaderboard": "No se reservaron pedidos de representantes de campo en este período.",
       "projects": "No hay proyectos en este período.",
       "serviceProjects": "No hay proyectos en este rango de fechas.",
       "jobCards": "No hay órdenes de trabajo en este período.",
@@ -2385,6 +2419,7 @@
       "testScores": "Aún no se han registrado calificaciones de pruebas.",
       "complianceTasks": "No hay tareas de cumplimiento pendientes o vencidas.",
       "prescriptionDrugSales": "No hay ventas de medicamentos recetados en este rango de fechas.",
+      "scheduleH1XRegister": "No hay ventas de la Lista H1/X en este rango de fechas.",
       "schemeCostVsVolume": "Ningún esquema de precios estuvo activo en este rango de fechas.",
       "noData": "No se encontraron registros para este período.",
       "chronicRecallCompliance": "No se cerró ningún período de recordatorio en este rango de fechas.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "Utilización",
       "hoursSpent": "Horas Dedicadas",
       "revenuePerHour": "Ingresos/Hora",
+      "jobCount": "Cantidad de Trabajos",
+      "repName": "Nombre del Representante",
+      "ordersBooked": "Pedidos Reservados",
+      "customersVisited": "Clientes Visitados",
+      "plannedStops": "Paradas Planificadas",
+      "hitRatePercent": "Tasa de Cumplimiento vs. Plan",
       "invoiceNo": "N.º Factura",
       "invoiceDate": "Fecha de Factura",
       "doctorName": "Médico",
@@ -4094,6 +4135,14 @@
     "notAWarrantyClaim": "No es un reclamo de garantía",
     "originalUnderWarranty": "El trabajo original aún está en garantía",
     "originalWarrantyExpired": "La garantía del trabajo original ha expirado",
+    "conditionOnArrival": "Condición al Llegar",
+    "accessoriesReceived": "Accesorios Recibidos",
+    "jobCategory": "Categoría",
+    "quotedPartsTotal": "Total de Piezas Cotizadas",
+    "partsVariance": "Variación de Piezas",
+    "repeatFault": "Falla Repetida",
+    "repeatFaultWarning": "Posible falla repetida — el mismo artículo se entregó en {{jobNumber}} en los últimos 30 días.",
+    "repeatFaultDetail": "Esto parece una falla repetida — el mismo artículo se entregó en {{jobNumber}} en los últimos 30 días.",
     "cancelJob": "Cancelar Trabajo",
     "newProjectModal": "Nuevo Proyecto",
     "projectTitleLabel": "Título del Proyecto *",
@@ -5161,6 +5210,43 @@
       "removed": "Eliminado",
       "removedMessage": "Precio eliminado.",
       "couldNotRemove": "No se pudo eliminar el precio."
+    },
+    "beats": {
+      "title": "Planes de Ruta",
+      "subtitle": "Define la ruta de cada representante de campo — el orden en que visita a los clientes, cada día.",
+      "newBeat": "Nueva Ruta",
+      "loading": "Cargando…",
+      "empty": "Aún no se ha configurado ninguna ruta.",
+      "beatName": "Nombre de la Ruta",
+      "repName": "Nombre del Representante",
+      "dayOfWeek": "Día de la Semana",
+      "anyDay": "Cualquier día",
+      "day": {
+        "sun": "Domingo",
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miércoles",
+        "thu": "Jueves",
+        "fri": "Viernes",
+        "sat": "Sábado"
+      },
+      "stopCount_other": "{{count}} paradas",
+      "inactive": "Inactiva",
+      "noStops": "Aún no hay clientes en esta ruta.",
+      "selectCustomer": "Seleccionar un cliente para añadir…",
+      "addStop": "Añadir",
+      "creating": "Creando…",
+      "created": "Ruta creada.",
+      "couldNotCreate": "No se pudo crear la ruta.",
+      "deleted": "Ruta eliminada.",
+      "couldNotDelete": "No se pudo eliminar la ruta.",
+      "couldNotAddStop": "No se pudo añadir el cliente a la ruta.",
+      "couldNotRemoveStop": "No se pudo eliminar la parada.",
+      "couldNotMoveStop": "No se pudo reordenar la parada.",
+      "deleteTitle": "Eliminar Ruta",
+      "deleteConfirm": "¿Eliminar la ruta \"{{name}}\"? Esta acción no se puede deshacer.",
+      "error": "Error",
+      "couldNotLoad": "No se pudieron cargar las rutas."
     }
   },
   "costCentres": {

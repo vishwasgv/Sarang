@@ -282,6 +282,16 @@ interface ConsultantUtilizationRow { userName: string; billableHours: number; no
 interface ConsultantUtilizationReport { dateFrom: string; dateTo: string; rows: ConsultantUtilizationRow[]; summary: { totalBillableHours: number; totalNonBillableHours: number; overallUtilizationPercent: number } }
 interface ClientProfitabilityRow { customerName: string; revenue: number; hoursSpent: number; revenuePerHour: number }
 interface ClientProfitabilityReport { dateFrom: string; dateTo: string; rows: ClientProfitabilityRow[]; summary: { totalRevenue: number; totalHours: number } }
+// Phase 67 §9.1 — Repair items 2/4.
+interface JobCardTurnaroundByTechnicianRow { technicianName: string; jobCount: number; avgTurnaroundHours: number; fastestHours: number; slowestHours: number }
+interface JobCardTurnaroundByTechnicianReport { dateFrom: string; dateTo: string; rows: JobCardTurnaroundByTechnicianRow[]; summary: { totalDelivered: number; overallAvgTurnaroundHours: number } }
+interface RepairCategoryVolumeTrendRow { month: string; category: string; count: number }
+interface RepairCategoryVolumeTrendReport { dateFrom: string; dateTo: string; rows: RepairCategoryVolumeTrendRow[]; categories: string[]; summary: { totalJobs: number } }
+// Phase 67 §9.1 — Distributor item 3. Sorted DESCENDING by value (best-first)
+// — a leaderboard celebrates top performers, the deliberate exception to
+// this phase's own worst-first convention (see report.service.ts's comment).
+interface FieldRepLeaderboardRow { repName: string; ordersBooked: number; totalValue: number; plannedStops: number | null; distinctCustomersVisited: number; hitRatePercent: number | null }
+interface FieldRepLeaderboardReport { dateFrom: string; dateTo: string; rows: FieldRepLeaderboardRow[]; summary: { totalOrdersBooked: number; totalValue: number } }
 
 interface ServiceProjectReportRow { projectName: string; clientName: string; status: string; projectType: string; totalContractValue: number | null; startDate: string | null; expectedEndDate: string | null; completedDate: string | null }
 interface ServiceProjectReportByStatus { status: string; count: number }
@@ -335,6 +345,12 @@ interface PrescriptionDrugSalesRow { invoiceNumber: string; invoiceDate: string;
 // Phase 67 §9.1 — `byDoctor` added (Pharmacy's "Doctor-wise prescription volume" signature win).
 interface PrescriptionDrugSalesByDoctor { doctorName: string; salesCount: number; totalAmount: number }
 interface PrescriptionDrugSalesReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalAmount: number; missingPrescriptionDetails: number }; byDoctor: PrescriptionDrugSalesByDoctor[]; rows: PrescriptionDrugSalesRow[] }
+
+// Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register — a
+// STRICTER subcategory of the prescription-drug register just above
+// (Product.isScheduleH1X, not every isPrescriptionRequired product).
+interface ScheduleH1XRegisterRow { invoiceNumber: string; invoiceDate: string; productName: string; quantity: number; patientName: string | null; doctorName: string | null; prescriptionDate: string | null; customerName: string | null }
+interface ScheduleH1XRegisterReport { dateFrom: string; dateTo: string; summary: { totalSales: number; totalQuantity: number; missingPrescriptionDetails: number }; rows: ScheduleH1XRegisterRow[] }
 
 // Phase 67 §9.1 — Distributor: Scheme Cost vs. Incremental Volume Report
 // (a correlation view, not a causal claim — see report.service.ts's own
@@ -561,8 +577,12 @@ type ReportType =
   | 'serviceResolutionTime' | 'repeatBusinessRate'
   // Phase 67 §9.1 — Consultant items 2 & 4.
   | 'consultantUtilization' | 'clientProfitability'
+  // Phase 67 §9.1 — Repair items 2 & 4.
+  | 'jobCardTurnaroundByTechnician' | 'repairCategoryVolumeTrend'
+  | 'fieldRepLeaderboard'
   | 'carJobCards' | 'tailoringOrders' | 'pestContracts' | 'realEstatePipeline' | 'retainers'
   | 'shootBookings' | 'eventBookings' | 'placements' | 'drawingRegister' | 'siteVisitLog' | 'prescriptionDrugSales'
+  | 'scheduleH1XRegister'
   | 'schemeCostVsVolume'
   | 'chronicRecallCompliance'
   | 'walkInVsAppointmentRatio'
@@ -748,6 +768,9 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // restriction to Consultant alone.
   { id: 'consultantUtilization', icon: <Target size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
   { id: 'clientProfitability', icon: <DollarSign size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
+  // Phase 67 §9.1 — Repair items 2 & 4.
+  { id: 'jobCardTurnaroundByTechnician', icon: <BarChart3 size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
+  { id: 'repairCategoryVolumeTrend', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
   { id: 'serviceProjects', icon: <FolderOpen size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   { id: 'jobCards', icon: <Wrench size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
   { id: 'carJobCards', icon: <Car size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
@@ -761,10 +784,14 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
   { id: 'siteVisitLog', icon: <HardHat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'site_visit_log' },
   { id: 'prescriptionDrugSales', icon: <Pill size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PHARMACY' },
+  // Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X narcotic register.
+  { id: 'scheduleH1XRegister', icon: <Pill size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PHARMACY' },
   // Phase 67 §9.1 — Distributor: correlates scheme cost against covered-
   // product volume, not a causal incrementality claim (see the report
   // function's own comment in report.service.ts for why).
   { id: 'schemeCostVsVolume', icon: <TrendingUp size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
+  // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
+  { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
   // followed up on time, over the picked date range (matches the recall
   // PERIOD's scheduled date, not when the recall was tagged).
@@ -1155,6 +1182,15 @@ export function ReportsScreen() {
         case 'clientProfitability':
           res = await window.api.reports.clientProfitability({ dateFrom, dateTo })
           break
+        case 'jobCardTurnaroundByTechnician':
+          res = await window.api.reports.jobCardTurnaroundByTechnician({ dateFrom, dateTo })
+          break
+        case 'repairCategoryVolumeTrend':
+          res = await window.api.reports.repairCategoryVolumeTrend({ dateFrom, dateTo })
+          break
+        case 'fieldRepLeaderboard':
+          res = await window.api.reports.fieldRepLeaderboard({ dateFrom, dateTo })
+          break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
           break
@@ -1193,6 +1229,9 @@ export function ReportsScreen() {
           break
         case 'prescriptionDrugSales':
           res = await window.api.reports.prescriptionDrugSales({ dateFrom, dateTo })
+          break
+        case 'scheduleH1XRegister':
+          res = await window.api.reports.scheduleH1XRegister({ dateFrom, dateTo })
           break
         case 'schemeCostVsVolume':
           res = await window.api.reports.schemeCostVsVolume({ dateFrom, dateTo })
@@ -1818,6 +1857,27 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.customerName, r.revenue, r.hoursSpent, r.revenuePerHour])
         }
       }
+      case 'jobCardTurnaroundByTechnician': {
+        const d = reportData as JobCardTurnaroundByTechnicianReport
+        return {
+          headers: [t('reports.col.technician'), t('reports.col.jobCount'), t('reports.col.avgHours'), t('reports.col.minHours'), t('reports.col.maxHours')],
+          rows: d.rows.map(r => [r.technicianName, r.jobCount, r.avgTurnaroundHours, r.fastestHours, r.slowestHours])
+        }
+      }
+      case 'repairCategoryVolumeTrend': {
+        const d = reportData as RepairCategoryVolumeTrendReport
+        return {
+          headers: [t('reports.col.month'), t('reports.col.category'), t('reports.col.jobCount')],
+          rows: d.rows.map(r => [r.month, r.category, r.count])
+        }
+      }
+      case 'fieldRepLeaderboard': {
+        const d = reportData as FieldRepLeaderboardReport
+        return {
+          headers: [t('reports.col.repName'), t('reports.col.ordersBooked'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.customersVisited'), t('reports.col.plannedStops'), t('reports.col.hitRatePercent')],
+          rows: d.rows.map(r => [r.repName, r.ordersBooked, r.totalValue.toFixed(2), r.distinctCustomersVisited, r.plannedStops ?? '—', r.hitRatePercent !== null ? `${r.hitRatePercent}%` : '—'])
+        }
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         return {
@@ -1900,6 +1960,13 @@ export function ReportsScreen() {
         return {
           headers: ['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Prescription Date', t('reports.col.customer'), t('common.amount')],
           rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName, r.doctorName, r.prescriptionDate, r.customerName, r.lineTotal])
+        }
+      }
+      case 'scheduleH1XRegister': {
+        const d = reportData as ScheduleH1XRegisterReport
+        return {
+          headers: ['Invoice #', 'Invoice Date', 'Product', 'Qty', 'Patient', 'Doctor', 'Prescription Date', t('reports.col.customer')],
+          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName, r.doctorName, r.prescriptionDate, r.customerName])
         }
       }
       case 'schemeCostVsVolume': {
@@ -2601,6 +2668,27 @@ export function ReportsScreen() {
           { label: t('reports.col.hoursSpent'), value: `${d.summary.totalHours}h` }
         ]
       }
+      case 'jobCardTurnaroundByTechnician': {
+        const d = reportData as JobCardTurnaroundByTechnicianReport
+        return [
+          { label: t('reports.summary.totalDelivered'), value: String(d.summary.totalDelivered) },
+          { label: t('reports.summary.overallAvgTurnaroundHours'), value: `${d.summary.overallAvgTurnaroundHours}h` }
+        ]
+      }
+      case 'repairCategoryVolumeTrend': {
+        const d = reportData as RepairCategoryVolumeTrendReport
+        return [
+          { label: t('reports.summary.totalJobs'), value: String(d.summary.totalJobs) },
+          { label: t('reports.col.category'), value: String(d.categories.length) }
+        ]
+      }
+      case 'fieldRepLeaderboard': {
+        const d = reportData as FieldRepLeaderboardReport
+        return [
+          { label: t('reports.summary.totalOrdersBooked'), value: String(d.summary.totalOrdersBooked) },
+          { label: `${t('common.amount')} (${currencySymbol})`, value: d.summary.totalValue.toFixed(2) }
+        ]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         return [
@@ -2705,6 +2793,14 @@ export function ReportsScreen() {
         return [
           { label: 'Total Sales', value: String(d.summary.totalSales) },
           { label: t('common.amount'), value: fmt(d.summary.totalAmount) },
+          { label: 'Missing Details', value: String(d.summary.missingPrescriptionDetails) }
+        ]
+      }
+      case 'scheduleH1XRegister': {
+        const d = reportData as ScheduleH1XRegisterReport
+        return [
+          { label: 'Total Sales', value: String(d.summary.totalSales) },
+          { label: 'Total Quantity', value: String(d.summary.totalQuantity) },
           { label: 'Missing Details', value: String(d.summary.missingPrescriptionDetails) }
         ]
       }
@@ -3331,6 +3427,23 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'bar', title: t('reports.defs.clientProfitability.label'), data: d.rows.map(r => ({ label: r.customerName, value: r.revenue })) }]
       }
+      case 'jobCardTurnaroundByTechnician': {
+        const d = reportData as JobCardTurnaroundByTechnicianReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.jobCardTurnaroundByTechnician.label'), data: d.rows.map(r => ({ label: r.technicianName, value: r.avgTurnaroundHours })) }]
+      }
+      case 'repairCategoryVolumeTrend': {
+        const d = reportData as RepairCategoryVolumeTrendReport
+        if (d.rows.length === 0) return []
+        const byMonth = new Map<string, number>()
+        for (const r of d.rows) byMonth.set(r.month, (byMonth.get(r.month) ?? 0) + r.count)
+        return [{ type: 'line', title: t('reports.defs.repairCategoryVolumeTrend.label'), data: Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([label, value]) => ({ label, value })) }]
+      }
+      case 'fieldRepLeaderboard': {
+        const d = reportData as FieldRepLeaderboardReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.fieldRepLeaderboard.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.repName, value: r.totalValue })) }]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         if (d.byStatus.length === 0) return []
@@ -3864,6 +3977,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'repeatBusinessRate': return <RepeatBusinessRateView data={data as RepeatBusinessRateReport} />
     case 'consultantUtilization': return <ConsultantUtilizationView data={data as ConsultantUtilizationReport} />
     case 'clientProfitability': return <ClientProfitabilityView data={data as ClientProfitabilityReport} />
+    case 'jobCardTurnaroundByTechnician': return <JobCardTurnaroundByTechnicianView data={data as JobCardTurnaroundByTechnicianReport} />
+    case 'repairCategoryVolumeTrend': return <RepairCategoryVolumeTrendView data={data as RepairCategoryVolumeTrendReport} />
+    case 'fieldRepLeaderboard': return <FieldRepLeaderboardView data={data as FieldRepLeaderboardReport} fmt={fmt} />
     case 'serviceProjects': return <ServiceProjectReportView data={data as ServiceProjectReport} fmt={fmt} />
     case 'jobCards': return <JobCardReportView data={data as JobCardReport} fmt={fmt} />
     case 'carJobCards': return <CarJobCardReportView data={data as CarJobCardReport} fmt={fmt} />
@@ -3877,6 +3993,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'drawingRegister': return <DrawingRegisterReportView data={data as DrawingRegisterReport} fmt={fmt} />
     case 'siteVisitLog': return <SiteVisitLogReportView data={data as SiteVisitLogReport} fmt={fmt} />
     case 'prescriptionDrugSales': return <PrescriptionDrugSalesReportView data={data as PrescriptionDrugSalesReport} fmt={fmt} />
+    case 'scheduleH1XRegister': return <ScheduleH1XRegisterView data={data as ScheduleH1XRegisterReport} />
     case 'schemeCostVsVolume': return <SchemeCostVsVolumeView data={data as SchemeCostVsVolumeReport} fmt={fmt} />
     case 'chronicRecallCompliance': return <ChronicRecallComplianceView data={data as ChronicRecallComplianceReport} />
     case 'walkInVsAppointmentRatio': return <WalkInVsAppointmentRatioView data={data as WalkInVsAppointmentRatioReport} />
@@ -6617,6 +6734,131 @@ function ClientProfitabilityView({ data }: { data: ClientProfitabilityReport }) 
   )
 }
 
+// Phase 67 §9.1 — Repair item 2: Turnaround by Technician, for the generic
+// JobCard model. Sorted worst (slowest) first, matching the audit's own
+// "(bar chart)" note.
+function JobCardTurnaroundByTechnicianView({ data }: { data: JobCardTurnaroundByTechnicianReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalDelivered'), value: String(data.summary.totalDelivered) },
+        { label: t('reports.summary.overallAvgTurnaroundHours'), value: `${data.summary.overallAvgTurnaroundHours}h` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.jobCardTurnaroundByTechnician.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="h" />
+              <YAxis type="category" dataKey="technicianName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}h`} />
+              <Bar dataKey="avgTurnaroundHours" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.technician'), t('reports.col.jobCount'), t('reports.col.avgHours'), t('reports.col.minHours'), t('reports.col.maxHours')]}
+        rows={data.rows.map(r => [r.technicianName, r.jobCount, `${r.avgTurnaroundHours}h`, `${r.fastestHours}h`, `${r.slowestHours}h`])}
+        emptyText={t('reports.empty.jobCardTurnaroundByTechnician')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend — "informs
+// parts stocking" per the audit's own item wording. Multi-line, one line
+// per category (capped at the top 5 by total volume so the chart stays
+// readable), matching the "(line chart)" note.
+function RepairCategoryVolumeTrendView({ data }: { data: RepairCategoryVolumeTrendReport }) {
+  const { t } = useTranslation()
+  const totalsByCategory = new Map<string, number>()
+  for (const r of data.rows) totalsByCategory.set(r.category, (totalsByCategory.get(r.category) ?? 0) + r.count)
+  const topCategories = Array.from(totalsByCategory.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c]) => c)
+  const palette = [STATUS_COLORS.brand, STATUS_COLORS.warning, STATUS_COLORS.success, STATUS_COLORS.danger, STATUS_COLORS.dangerDeep]
+
+  const months = Array.from(new Set(data.rows.map(r => r.month))).sort()
+  const chartData = months.map(month => {
+    const point: Record<string, string | number> = { month }
+    for (const cat of topCategories) {
+      const row = data.rows.find(r => r.month === month && r.category === cat)
+      point[cat] = row?.count ?? 0
+    }
+    return point
+  })
+
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalJobs'), value: String(data.summary.totalJobs) },
+        { label: t('reports.col.category'), value: String(data.categories.length) },
+      ]} />
+      {chartData.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.repairCategoryVolumeTrend.label')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <RCLineChart data={chartData} margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Legend />
+              {topCategories.map((cat, idx) => (
+                <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={palette[idx % palette.length]} strokeWidth={2} dot={{ r: 3 }} />
+              ))}
+            </RCLineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.month'), t('reports.col.category'), t('reports.col.jobCount')]}
+        rows={data.rows.map(r => [r.month, r.category, r.count])}
+        emptyText={t('reports.empty.repairCategoryVolumeTrend')}
+      />
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Distributor item 3: Field-Rep Performance Leaderboard —
+// "orders booked, value, hit-rate vs. plan" per the audit's own item
+// wording. Sorted DESCENDING by value (best-first) already at the service
+// layer — a leaderboard celebrates top performers, the deliberate exception
+// to this phase's usual worst-first convention for problem-surfacing
+// reports (see report.service.ts's own comment on why). hitRatePercent is
+// "—" (not 0%) for a rep with no active beat — an honest "not applicable."
+function FieldRepLeaderboardView({ data, fmt }: { data: FieldRepLeaderboardReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOrdersBooked'), value: String(data.summary.totalOrdersBooked) },
+        { label: t('common.amount'), value: fmt(data.summary.totalValue) },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.fieldRepLeaderboard.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="repName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="totalValue" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.repName'), t('reports.col.ordersBooked'), t('common.amount'), t('reports.col.customersVisited'), t('reports.col.plannedStops'), t('reports.col.hitRatePercent')]}
+        rows={data.rows.map(r => [r.repName, r.ordersBooked, fmt(r.totalValue), r.distinctCustomersVisited, r.plannedStops ?? '—', r.hitRatePercent !== null ? `${r.hitRatePercent}%` : '—'])}
+        emptyText={t('reports.empty.fieldRepLeaderboard')}
+      />
+    </div>
+  )
+}
+
 // Real bug fix 2026-07-16 — was previously the only "projects" report, wired
 // to ServiceProject data but gated (in the tile list) behind the unrelated
 // legacy `projects` module. Now correctly scoped to the six ServiceProject-
@@ -7073,6 +7315,34 @@ function PrescriptionDrugSalesReportView({ data, fmt }: { data: PrescriptionDrug
           headers={[t('reports.col.invoiceNo'), t('reports.col.invoiceDate'), t('reports.col.product'), t('reports.col.qty'), t('reports.col.patientName'), t('reports.col.doctorName'), t('reports.col.rxDate'), t('reports.col.customer'), t('common.amount')]}
           rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName ?? '—', r.doctorName ?? '—', r.prescriptionDate ?? '—', r.customerName ?? '—', fmt(r.lineTotal)])}
           emptyText={t('reports.empty.prescriptionDrugSales')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register — a
+// STRICTER subcategory of the Prescription Drug Sales register above
+// (Product.isScheduleH1X, not every isPrescriptionRequired product).
+// Deliberately does not claim full statutory register-field completeness
+// (no doctor registration number or patient address anywhere in this
+// platform) — surfaces exactly what Sarang actually records, honestly.
+function ScheduleH1XRegisterView({ data }: { data: ScheduleH1XRegisterReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalSales'), value: String(s.totalSales) },
+        { label: t('reports.summary.totalQuantity'), value: String(s.totalQuantity) },
+        { label: t('reports.summary.missingDetails'), value: String(s.missingPrescriptionDetails) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.scheduleH1XRegister')}</h3>
+        <DataTable
+          headers={[t('reports.col.invoiceNo'), t('reports.col.invoiceDate'), t('reports.col.product'), t('reports.col.qty'), t('reports.col.patientName'), t('reports.col.doctorName'), t('reports.col.rxDate'), t('reports.col.customer')]}
+          rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.quantity, r.patientName ?? '—', r.doctorName ?? '—', r.prescriptionDate ?? '—', r.customerName ?? '—'])}
+          emptyText={t('reports.empty.scheduleH1XRegister')}
         />
       </div>
     </div>

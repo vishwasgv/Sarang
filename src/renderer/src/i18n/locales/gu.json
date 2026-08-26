@@ -520,6 +520,15 @@
     "customerName": "ગ્ર.નામ",
     "customerCode": "ગ્ર.કૉ.",
     "creditLimit": "ઉધાર મર્યાદા",
+    "creditRisk": {
+      "effectiveLimit": "જોખમ-સમાયોજિત મર્યાદા",
+      "tier": {
+        "LOW": "ઓછું જોખમ",
+        "MEDIUM": "મધ્યમ જોખમ",
+        "HIGH": "વધુ જોખમ",
+        "UNRATED": "અમૂલ્યાંકિત"
+      }
+    },
     "totalDue": "કુલ બાકી",
     "noCustomers": "ગ્ર.નહિ",
     "searchCustomers": "ગ્ર.શ.…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "હાલમાં કોઈ ઓછા-સ્ટોક ઉત્પાદનને ફરીથી ઓર્ડર કરવાની જરૂર નથી.",
       "created": "ડ્રાફ્ટ PO બનાવ્યા: {{count}}",
       "skippedNoSupplier": "છોડ્યા (કોઈ ડિફોલ્ટ સપ્લાયર નથી): {{count}}",
-      "skippedOpenPO": "છોડ્યા (પહેલેથી ખુલ્લા PO પર): {{count}}"
+      "skippedOpenPO": "છોડ્યા (પહેલેથી ખુલ્લા PO પર): {{count}}",
+      "suppressedExpiring": "દબાવ્યું (જલ્દી સમાપ્ત થતો સ્ટોક વેચાવાની શક્યતા ઓછી): {{count}}"
     },
     "repairTicket": "રિપેર"
   },
@@ -1817,6 +1827,18 @@
         "label": "ક્લાયન્ટ નફાકારકતા",
         "description": "કયા ક્લાયન્ટ ખરેખર જાળવવા યોગ્ય છે — ક્લાયન્ટ દીઠ આવક વિ. ખર્ચેલા કલાકો"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "ટેકનિશિયન પ્રમાણે ટર્નઅરાઉન્ડ",
+        "description": "જોબ કાર્ડ ડિલિવર કરવામાં ખરેખર કેટલો સમય લાગે છે, પ્રતિ ટેકનિશિયન સરેરાશ/સૌથી ઝડપી/સૌથી ધીમું"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "રિપેર કેટેગરી વોલ્યુમ ટ્રેન્ડ",
+        "description": "કેટેગરી પ્રમાણે માસિક રિપેર વોલ્યુમ — પાર્ટ્સ સ્ટોકિંગ માટે માહિતી આપે છે"
+      },
+      "fieldRepLeaderboard": {
+        "label": "ફિલ્ડ-પ્રતિનિધિ લીડરબોર્ડ",
+        "description": "પ્રતિ ફિલ્ડ પ્રતિનિધિ બુક કરેલા ઓર્ડર, મૂલ્ય, અને યોજના સામે હિટ-રેટ — શ્રેષ્ઠ પ્રથમ."
+      },
       "jobCards": {
         "label": "જોબ કાર્ડ અહેવાલ",
         "description": "સ્થિતિ, અંદાજિત વિરુદ્ધ વાસ્તવિક ખર્ચ મુજબ દરેક રિપેર/સેવા કાર્ય — રિપેર શોપ્સ માટે"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "પ્રિસ્ક્રિપ્શન દવા વેચાણ",
         "description": "ફક્ત પ્રિસ્ક્રિપ્શન પર મળતી દવાઓ (શેડ્યુલ H/H1)ના વેચાણનું રજિસ્ટર, દર્દી અને ડૉક્ટરના નામ સાથે."
+      },
+      "scheduleH1XRegister": {
+        "label": "શેડ્યુલ H1/X રજિસ્ટર",
+        "description": "માદક/મનોવિકૃતિ દવાઓના વેચાણનું રજિસ્ટર — પ્રિસ્ક્રિપ્શન વેચાણનો કડક ઉપસમૂહ, નિરીક્ષક-તૈયાર."
       },
       "schemeCostVsVolume": {
         "label": "સ્કીમ ખર્ચ વિ. વોલ્યુમ",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "સમાપ્ત સ્ટોકમાં {{value}} જોખમમાં",
       "atRiskValue": "જોખમમાં મૂલ્ય (≤ 30 દિવસ)",
       "totalSales": "કુલ વેચાણ",
+      "totalQuantity": "કુલ જથ્થો",
       "missingDetails": "ગુમ વિગતો",
       "totalSchemeCost": "કુલ સ્કીમ ખર્ચ",
       "focUnitsGiven": "મફત (FOC) યુનિટ્સ આપ્યા",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "સરેરાશ નિરાકરણ સમય",
       "repeatRatePercent": "પુનરાવર્તન દર",
       "overallUtilizationPercent": "એકંદર ઉપયોગ",
+      "totalDelivered": "કુલ ડિલિવર",
+      "overallAvgTurnaroundHours": "સરેરાશ ટર્નઅરાઉન્ડ",
+      "totalOrdersBooked": "કુલ બુક કરેલા ઓર્ડર",
       "revenue": "આવક",
       "cogs": "વેચાયેલા માલની કિંમત",
       "totalMargin": "કુલ માર્જિન",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "એક્સપાયરી બકેટ પ્રમાણે જોખમી મૂલ્ય",
       "byDoctor": "ડોક્ટર પ્રમાણે",
       "prescriptionRegister": "પ્રિસ્ક્રિપ્શન દવા વેચાણ રજિસ્ટર",
+      "scheduleH1XRegister": "શેડ્યુલ H1/X માદક રજિસ્ટર",
       "schemeCostVsVolumeChart": "સ્કીમ ખર્ચ વિ. આવરી લેવાયેલ ઉત્પાદન વોલ્યુમ",
       "schemesInPeriod": "આ સમયગાળાની સ્કીમો",
       "batchDetails": "બેચ વિગતો",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "આ સમયગાળામાં કોઈ ગ્રાહક ટિકિટ નથી.",
       "consultantUtilization": "આ સમયગાળામાં કોઈ બિલપાત્ર કાર્ય નોંધાયું નથી.",
       "clientProfitability": "આ સમયગાળામાં કોઈ ક્લાયન્ટ પ્રોજેક્ટ આવક નથી.",
+      "jobCardTurnaroundByTechnician": "આ સમયગાળામાં કોઈ જોબ કાર્ડ ડિલિવર થયું નથી.",
+      "repairCategoryVolumeTrend": "આ સમયગાળામાં કોઈ જોબ કાર્ડ મળ્યું નથી.",
+      "fieldRepLeaderboard": "આ સમયગાળામાં કોઈ ફિલ્ડ-પ્રતિનિધિ ઓર્ડર બુક થયો નથી.",
       "projects": "આ સમયગાળામાં કોઈ પ્રોજેક્ટ નથી.",
       "jobCards": "આ સમયગાળામાં કોઈ જોબ કાર્ડ નથી.",
       "prescriptionDrugSales": "આ તારીખ શ્રેણીમાં કોઈ પ્રિસ્ક્રિપ્શન દવા વેચાણ નથી.",
+      "scheduleH1XRegister": "આ તારીખ શ્રેણીમાં કોઈ શેડ્યુલ H1/X વેચાણ નથી.",
       "schemeCostVsVolume": "આ તારીખ શ્રેણીમાં કોઈ પ્રાઇસિંગ સ્કીમ ચાલી નથી.",
       "discounts": "આ તારીખ શ્રેણીમાં કોઈ ડિસ્કાઉન્ટ કે સોદાબાજી કરેલ ભાવ આપવામાં આવ્યા નથી.",
       "serviceProjects": "આ તારીખ શ્રેણીમાં કોઈ પ્રોજેક્ટ નથી.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "ઉપયોગ",
       "hoursSpent": "ખર્ચેલા કલાકો",
       "revenuePerHour": "આવક/કલાક",
+      "jobCount": "જોબ ગણતરી",
+      "repName": "પ્રતિનિધિનું નામ",
+      "ordersBooked": "બુક કરેલા ઓર્ડર",
+      "customersVisited": "મુલાકાત લીધેલા ગ્રાહકો",
+      "plannedStops": "આયોજિત સ્ટોપ",
+      "hitRatePercent": "યોજના સામે હિટ-રેટ",
       "invoiceNo": "બિલ #",
       "invoiceDate": "ઇનવોઇસ તારીખ",
       "doctorName": "ડોક્ટર",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "વોરંટી ક્લેમ સામે",
     "notAWarrantyClaim": "વોરંટી ક્લેમ નથી",
     "originalUnderWarranty": "મૂળ કામ હજુ વોરંટી હેઠળ છે",
-    "originalWarrantyExpired": "મૂળ કામની વોરંટી સમાપ્ત થઈ ગઈ છે"
+    "originalWarrantyExpired": "મૂળ કામની વોરંટી સમાપ્ત થઈ ગઈ છે",
+    "conditionOnArrival": "આગમન સમયે સ્થિતિ",
+    "accessoriesReceived": "મળેલ એસેસરીઝ",
+    "jobCategory": "શ્રેણી",
+    "quotedPartsTotal": "ક્વોટેડ પાર્ટ્સ કુલ",
+    "partsVariance": "પાર્ટ્સ તફાવત",
+    "repeatFault": "પુનરાવર્તિત ખામી",
+    "repeatFaultWarning": "સંભવિત પુનરાવર્તિત ખામી — આ જ વસ્તુ {{jobNumber}} પર છેલ્લા 30 દિવસમાં ડિલિવર થઈ હતી.",
+    "repeatFaultDetail": "આ પુનરાવર્તિત ખામી લાગે છે — આ જ વસ્તુ {{jobNumber}} પર છેલ્લા 30 દિવસમાં ડિલિવર થઈ હતી."
   },
   "setup": {
     "welcome": "સારંગ માં સ્વાગત",
@@ -4995,6 +5044,43 @@
       "removed": "દૂર કરાયું",
       "removedMessage": "ભાવ દૂર કરાયો.",
       "couldNotRemove": "ભાવ દૂર કરી શકાયો નહીં."
+    },
+    "beats": {
+      "title": "બીટ પ્લાન",
+      "subtitle": "દરેક ફિલ્ડ પ્રતિનિધિનો રૂટ સેટ કરો — તેઓ કયા ક્રમમાં ગ્રાહકોને મળે છે, દરરોજ.",
+      "newBeat": "નવો બીટ",
+      "loading": "લોડ થઈ રહ્યું છે…",
+      "empty": "હજુ સુધી કોઈ બીટ સેટ કરેલ નથી.",
+      "beatName": "બીટનું નામ",
+      "repName": "પ્રતિનિધિનું નામ",
+      "dayOfWeek": "અઠવાડિયાનો દિવસ",
+      "anyDay": "કોઈપણ દિવસ",
+      "day": {
+        "sun": "રવિવાર",
+        "mon": "સોમવાર",
+        "tue": "મંગળવાર",
+        "wed": "બુધવાર",
+        "thu": "ગુરુવાર",
+        "fri": "શુક્રવાર",
+        "sat": "શનિવાર"
+      },
+      "stopCount_other": "{{count}} સ્ટોપ",
+      "inactive": "નિષ્ક્રિય",
+      "noStops": "આ બીટ પર હજુ સુધી કોઈ ગ્રાહક નથી.",
+      "selectCustomer": "ઉમેરવા માટે ગ્રાહક પસંદ કરો…",
+      "addStop": "ઉમેરો",
+      "creating": "બનાવી રહ્યું છે…",
+      "created": "બીટ બનાવવામાં આવ્યો.",
+      "couldNotCreate": "બીટ બનાવી શકાયો નહીં.",
+      "deleted": "બીટ કાઢી નાખવામાં આવ્યો.",
+      "couldNotDelete": "બીટ કાઢી શકાયો નહીં.",
+      "couldNotAddStop": "ગ્રાહકને બીટમાં ઉમેરી શકાયો નહીં.",
+      "couldNotRemoveStop": "સ્ટોપ કાઢી શકાયો નહીં.",
+      "couldNotMoveStop": "સ્ટોપનો ક્રમ બદલી શકાયો નહીં.",
+      "deleteTitle": "બીટ કાઢી નાખો",
+      "deleteConfirm": "\"{{name}}\" બીટ કાઢી નાખવો છે? આ પૂર્વવત્ કરી શકાશે નહીં.",
+      "error": "ભૂલ",
+      "couldNotLoad": "બીટ લોડ કરી શકાયા નહીં."
     }
   },
   "import": {

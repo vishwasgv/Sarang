@@ -520,6 +520,15 @@
     "customerName": "ग्राहकाचे नाव",
     "customerCode": "ग्राहक कोड",
     "creditLimit": "क्रेडिट मर्यादा",
+    "creditRisk": {
+      "effectiveLimit": "जोखीम-समायोजित मर्यादा",
+      "tier": {
+        "LOW": "कमी जोखीम",
+        "MEDIUM": "मध्यम जोखीम",
+        "HIGH": "जास्त जोखीम",
+        "UNRATED": "अमूल्यांकित"
+      }
+    },
     "totalDue": "एकूण थकबाकी",
     "noCustomers": "ग्राहक आढळले नाहीत",
     "searchCustomers": "ग्राहक शोधा…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "सध्या कोणत्याही कमी-स्टॉक उत्पादनाला पुन्हा ऑर्डर करण्याची गरज नाही.",
       "created": "ड्राफ्ट PO तयार केले: {{count}}",
       "skippedNoSupplier": "वगळले (डीफॉल्ट पुरवठादार नाही): {{count}}",
-      "skippedOpenPO": "वगळले (आधीच खुल्या PO वर): {{count}}"
+      "skippedOpenPO": "वगळले (आधीच खुल्या PO वर): {{count}}",
+      "suppressedExpiring": "दाबले (लवकर संपणारा साठा विकला जाण्याची शक्यता कमी): {{count}}"
     },
     "repairTicket": "दुरुस्ती"
   },
@@ -1817,6 +1827,18 @@
         "label": "क्लायंट नफाक्षमता",
         "description": "कोणते क्लायंट खरोखर ठेवण्यायोग्य आहेत — प्रति क्लायंट महसूल वि. घालवलेले तास"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "तंत्रज्ञानुसार टर्नअराउंड",
+        "description": "जॉब कार्ड डिलिव्हर करण्यास खरोखर किती वेळ लागतो, प्रति तंत्रज्ञ सरासरी/सर्वात वेगवान/सर्वात धीमे"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "दुरुस्ती श्रेणी वॉल्यूम ट्रेंड",
+        "description": "श्रेणीनुसार मासिक दुरुस्ती वॉल्यूम — पार्ट्स स्टॉकिंगसाठी माहिती देते"
+      },
+      "fieldRepLeaderboard": {
+        "label": "फील्ड-प्रतिनिधी लीडरबोर्ड",
+        "description": "प्रति फील्ड प्रतिनिधी बुक केलेल्या ऑर्डर, मूल्य, आणि योजनेच्या तुलनेत हिट-रेट — सर्वोत्तम आधी."
+      },
       "jobCards": {
         "label": "जॉब कार्ड अहवाल",
         "description": "स्थिती, अंदाजित विरुद्ध प्रत्यक्ष खर्चानुसार प्रत्येक दुरुस्ती/सेवा कार्य — दुरुस्ती दुकानांसाठी"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "प्रिस्क्रिप्शन औषध विक्री",
         "description": "केवळ प्रिस्क्रिप्शनवर मिळणाऱ्या औषधांच्या (शेड्यूल H/H1) विक्रीचे रजिस्टर, रुग्ण आणि डॉक्टरांच्या नावांसह."
+      },
+      "scheduleH1XRegister": {
+        "label": "शेड्यूल H1/X नोंदणी",
+        "description": "अंमली/मनोविकार-नाशक औषधांच्या विक्रीची नोंदणी — प्रिस्क्रिप्शन विक्रीचा कठोर उपसंच, निरीक्षकांसाठी तयार."
       },
       "schemeCostVsVolume": {
         "label": "स्कीम खर्च वि. व्हॉल्यूम",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "कालबाह्य साठ्यात {{value}} धोक्यात",
       "atRiskValue": "धोक्यातील मूल्य (≤ 30 दिवस)",
       "totalSales": "एकूण विक्री",
+      "totalQuantity": "एकूण प्रमाण",
       "missingDetails": "गहाळ तपशील",
       "totalSchemeCost": "एकूण स्कीम खर्च",
       "focUnitsGiven": "मोफत (FOC) युनिट्स दिली",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "सरासरी निराकरण वेळ",
       "repeatRatePercent": "पुनरावृत्ती दर",
       "overallUtilizationPercent": "एकूण वापर",
+      "totalDelivered": "एकूण डिलिव्हर",
+      "overallAvgTurnaroundHours": "सरासरी टर्नअराउंड",
+      "totalOrdersBooked": "एकूण बुक केलेल्या ऑर्डर",
       "revenue": "महसूल",
       "cogs": "विकल्या गेलेल्या मालाची किंमत",
       "totalMargin": "एकूण मार्जिन",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "एक्सपायरी बकेटनुसार धोक्यातील मूल्य",
       "byDoctor": "डॉक्टरनुसार",
       "prescriptionRegister": "प्रिस्क्रिप्शन औषध विक्री नोंदणी",
+      "scheduleH1XRegister": "शेड्यूल H1/X अंमली पदार्थ नोंदणी",
       "schemeCostVsVolumeChart": "स्कीम खर्च वि. समाविष्ट उत्पादन व्हॉल्यूम",
       "schemesInPeriod": "या कालावधीतील स्कीम्स",
       "batchDetails": "बॅच तपशील",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "या कालावधीत कोणतेही ग्राहक तिकीट नाही.",
       "consultantUtilization": "या कालावधीत कोणतेही बिल करण्यायोग्य काम नोंदवले गेले नाही.",
       "clientProfitability": "या कालावधीत कोणताही क्लायंट प्रोजेक्ट महसूल नाही.",
+      "jobCardTurnaroundByTechnician": "या कालावधीत कोणतेही जॉब कार्ड डिलिव्हर झाले नाही.",
+      "repairCategoryVolumeTrend": "या कालावधीत कोणतेही जॉब कार्ड प्राप्त झाले नाही.",
+      "fieldRepLeaderboard": "या कालावधीत कोणतीही फील्ड-प्रतिनिधी ऑर्डर बुक झाली नाही.",
       "projects": "या कालावधीत कोणतेही प्रकल्प नाहीत.",
       "jobCards": "या कालावधीत कोणतेही जॉब कार्ड नाहीत.",
       "prescriptionDrugSales": "या तारीख श्रेणीत कोणतीही प्रिस्क्रिप्शन औषध विक्री नाही.",
+      "scheduleH1XRegister": "या तारीख श्रेणीत कोणतीही शेड्यूल H1/X विक्री नाही.",
       "schemeCostVsVolume": "या तारीख श्रेणीत कोणतीही किंमत स्कीम चालली नाही.",
       "discounts": "या तारीख श्रेणीत कोणतीही सवलत किंवा घासाघीस केलेली किंमत दिलेली नाही.",
       "serviceProjects": "या तारीख श्रेणीत कोणतेही प्रकल्प नाहीत.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "वापर",
       "hoursSpent": "घालवलेले तास",
       "revenuePerHour": "महसूल/तास",
+      "jobCount": "जॉब संख्या",
+      "repName": "प्रतिनिधीचे नाव",
+      "ordersBooked": "बुक केलेल्या ऑर्डर",
+      "customersVisited": "भेट दिलेले ग्राहक",
+      "plannedStops": "नियोजित थांबे",
+      "hitRatePercent": "योजनेच्या तुलनेत हिट-रेट",
       "invoiceNo": "बिल #",
       "invoiceDate": "इनव्हॉइस तारीख",
       "doctorName": "डॉक्टर",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "वॉरंटी दावा कोणाविरुद्ध",
     "notAWarrantyClaim": "वॉरंटी दावा नाही",
     "originalUnderWarranty": "मूळ काम अजूनही वॉरंटी अंतर्गत आहे",
-    "originalWarrantyExpired": "मूळ कामाची वॉरंटी संपली आहे"
+    "originalWarrantyExpired": "मूळ कामाची वॉरंटी संपली आहे",
+    "conditionOnArrival": "येताना स्थिती",
+    "accessoriesReceived": "मिळालेले अॅक्सेसरीज",
+    "jobCategory": "श्रेणी",
+    "quotedPartsTotal": "कोट केलेले पार्ट्स एकूण",
+    "partsVariance": "पार्ट्स फरक",
+    "repeatFault": "पुनरावृत्ती दोष",
+    "repeatFaultWarning": "शक्य पुनरावृत्ती दोष — हीच वस्तू {{jobNumber}} वर मागील 30 दिवसांत डिलिव्हर झाली होती.",
+    "repeatFaultDetail": "हा पुनरावृत्ती दोष वाटतो — हीच वस्तू {{jobNumber}} वर मागील 30 दिवसांत डिलिव्हर झाली होती."
   },
   "setup": {
     "welcome": "सारंगमध्ये आपले स्वागत आहे",
@@ -4995,6 +5044,43 @@
       "removed": "काढले",
       "removedMessage": "किंमत काढली.",
       "couldNotRemove": "किंमत काढता आली नाही."
+    },
+    "beats": {
+      "title": "बीट प्लॅन",
+      "subtitle": "प्रत्येक फील्ड प्रतिनिधीचा मार्ग ठरवा — ते ग्राहकांना कोणत्या क्रमाने भेटतात, दररोज.",
+      "newBeat": "नवीन बीट",
+      "loading": "लोड होत आहे…",
+      "empty": "अद्याप कोणतेही बीट सेट केलेले नाही.",
+      "beatName": "बीटचे नाव",
+      "repName": "प्रतिनिधीचे नाव",
+      "dayOfWeek": "आठवड्याचा दिवस",
+      "anyDay": "कोणताही दिवस",
+      "day": {
+        "sun": "रविवार",
+        "mon": "सोमवार",
+        "tue": "मंगळवार",
+        "wed": "बुधवार",
+        "thu": "गुरुवार",
+        "fri": "शुक्रवार",
+        "sat": "शनिवार"
+      },
+      "stopCount_other": "{{count}} थांबे",
+      "inactive": "निष्क्रिय",
+      "noStops": "या बीटवर अद्याप कोणताही ग्राहक नाही.",
+      "selectCustomer": "जोडण्यासाठी ग्राहक निवडा…",
+      "addStop": "जोडा",
+      "creating": "तयार करत आहे…",
+      "created": "बीट तयार केले.",
+      "couldNotCreate": "बीट तयार करता आले नाही.",
+      "deleted": "बीट हटवले.",
+      "couldNotDelete": "बीट हटवता आले नाही.",
+      "couldNotAddStop": "ग्राहकाला बीटमध्ये जोडता आले नाही.",
+      "couldNotRemoveStop": "थांबा हटवता आला नाही.",
+      "couldNotMoveStop": "थांब्याचा क्रम बदलता आला नाही.",
+      "deleteTitle": "बीट हटवा",
+      "deleteConfirm": "\"{{name}}\" हे बीट हटवायचे? हे पूर्ववत करता येणार नाही.",
+      "error": "त्रुटी",
+      "couldNotLoad": "बीट लोड करता आले नाहीत."
     }
   },
   "import": {

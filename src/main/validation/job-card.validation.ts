@@ -11,6 +11,10 @@ export const CreateJobCardSchema = z.object({
   notes: z.string().max(2000).optional(),
   internalNotes: z.string().max(2000).optional(),
   warrantyClaimAgainstId: z.string().optional(),
+  conditionOnArrival: z.string().max(1000).optional(),
+  accessoriesReceived: z.string().max(1000).optional(),
+  category: z.string().max(100).optional(),
+  quotedPartsTotal: z.number().finite().nonnegative('Quoted parts total cannot be negative').optional(),
 })
 
 export const UpdateJobCardSchema = z.object({
@@ -28,6 +32,10 @@ export const UpdateJobCardSchema = z.object({
   notes: z.string().max(2000).optional(),
   internalNotes: z.string().max(2000).optional(),
   warrantyDays: z.number().int().nonnegative('Warranty days cannot be negative').nullable().optional(),
+  conditionOnArrival: z.string().max(1000).nullable().optional(),
+  accessoriesReceived: z.string().max(1000).nullable().optional(),
+  category: z.string().max(100).nullable().optional(),
+  quotedPartsTotal: z.number().finite().nonnegative('Quoted parts total cannot be negative').nullable().optional(),
 })
 
 export const DeleteJobCardSchema = z.object({

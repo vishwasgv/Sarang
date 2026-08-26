@@ -5860,6 +5860,211 @@ describe('reportService.generateClientProfitabilityReport', () => {
   })
 })
 
+// Phase 67 §9.1 — Repair item 2: Turnaround by Technician (generic JobCard).
+describe('reportService.generateJobCardTurnaroundByTechnicianReport', () => {
+  it('groups delivered job cards by technician with avg/fastest/slowest turnaround', async () => {
+    const db = {
+      jobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { assignedTo: { fullName: 'Ravi' }, receivedDate: new Date('2026-08-01T00:00:00'), deliveredDate: new Date('2026-08-01T10:00:00') }, // 10h
+          { assignedTo: { fullName: 'Ravi' }, receivedDate: new Date('2026-08-02T00:00:00'), deliveredDate: new Date('2026-08-02T20:00:00') }, // 20h
+          { assignedTo: { fullName: 'Asha' }, receivedDate: new Date('2026-08-03T00:00:00'), deliveredDate: new Date('2026-08-03T05:00:00') }, // 5h
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobCardTurnaroundByTechnicianReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const ravi = result.rows.find(r => r.technicianName === 'Ravi')
+    expect(ravi).toEqual({ technicianName: 'Ravi', jobCount: 2, avgTurnaroundHours: 15, fastestHours: 10, slowestHours: 20 })
+    expect(result.summary.totalDelivered).toBe(3)
+  })
+
+  it('groups an unassigned job card under "Unassigned" rather than dropping it', async () => {
+    const db = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([
+        { assignedTo: null, receivedDate: new Date('2026-08-01T00:00:00'), deliveredDate: new Date('2026-08-01T02:00:00') },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobCardTurnaroundByTechnicianReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows[0].technicianName).toBe('Unassigned')
+  })
+
+  it('sorts technicians by average turnaround descending — the slowest first', async () => {
+    const db = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([
+        { assignedTo: { fullName: 'Fast' }, receivedDate: new Date('2026-08-01T00:00:00'), deliveredDate: new Date('2026-08-01T01:00:00') },
+        { assignedTo: { fullName: 'Slow' }, receivedDate: new Date('2026-08-01T00:00:00'), deliveredDate: new Date('2026-08-03T02:00:00') }, // 50h later
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobCardTurnaroundByTechnicianReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows[0].technicianName).toBe('Slow')
+  })
+
+  it('returns an honest empty result when nothing was delivered in range', async () => {
+    const db = { jobCard: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJobCardTurnaroundByTechnicianReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toHaveLength(0)
+    expect(result.summary.overallAvgTurnaroundHours).toBe(0)
+  })
+})
+
+// Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend.
+describe('reportService.generateRepairCategoryVolumeTrendReport', () => {
+  it('buckets job cards by month and category', async () => {
+    const db = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([
+        { category: 'Screen Repair', createdAt: new Date('2026-08-05') },
+        { category: 'Screen Repair', createdAt: new Date('2026-08-10') },
+        { category: 'Battery Replacement', createdAt: new Date('2026-08-15') },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRepairCategoryVolumeTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toEqual(expect.arrayContaining([
+      { month: '2026-08', category: 'Screen Repair', count: 2 },
+      { month: '2026-08', category: 'Battery Replacement', count: 1 },
+    ]))
+    expect(result.categories).toEqual(['Battery Replacement', 'Screen Repair'])
+    expect(result.summary.totalJobs).toBe(3)
+  })
+
+  it('groups a job card with no category under "Uncategorized" rather than dropping it', async () => {
+    const db = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([{ category: null, createdAt: new Date('2026-08-05') }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRepairCategoryVolumeTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows[0].category).toBe('Uncategorized')
+  })
+
+  it('buckets each month separately across a multi-month range', async () => {
+    const db = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([
+        { category: 'Screen Repair', createdAt: new Date('2026-07-05') },
+        { category: 'Screen Repair', createdAt: new Date('2026-08-05') },
+      ]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRepairCategoryVolumeTrendReport({ dateFrom: '2026-07-01', dateTo: '2026-08-31' })
+
+    expect(result.rows.map(r => r.month)).toEqual(['2026-07', '2026-08'])
+  })
+
+  it('returns an honest empty result when nothing was received in range', async () => {
+    const db = { jobCard: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRepairCategoryVolumeTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toHaveLength(0)
+    expect(result.categories).toHaveLength(0)
+    expect(result.summary.totalJobs).toBe(0)
+  })
+})
+
+// Phase 67 §9.1 — Distributor item 3: Field-Rep Performance Leaderboard.
+// Sorted DESCENDING by value (best-first), deliberately the opposite of
+// this phase's usual worst-first convention — a leaderboard celebrates top
+// performers. hitRatePercent is null (not 0) for a rep with no active beat.
+describe('reportService.generateFieldRepLeaderboardReport', () => {
+  it('groups accepted field orders by rep, summing value via the linked invoice', async () => {
+    const db = {
+      fieldOrderRequest: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'Ravi', customerId: 'c1', invoiceId: 'inv-1' },
+          { repName: 'Ravi', customerId: 'c2', invoiceId: 'inv-2' },
+          { repName: 'Asha', customerId: 'c3', invoiceId: 'inv-3' },
+        ]),
+      },
+      invoice: { findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', totalAmount: 5000 }, { id: 'inv-2', totalAmount: 3000 }, { id: 'inv-3', totalAmount: 20000 }]) },
+      distributorBeat: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFieldRepLeaderboardReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const ravi = result.rows.find(r => r.repName === 'Ravi')
+    expect(ravi).toMatchObject({ ordersBooked: 2, totalValue: 8000, distinctCustomersVisited: 2 })
+    expect(result.summary.totalOrdersBooked).toBe(3)
+    expect(result.summary.totalValue).toBe(28000)
+  })
+
+  it('sorts reps by total value descending — best-first, the deliberate exception to this phase\'s worst-first convention', async () => {
+    const db = {
+      fieldOrderRequest: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'LowValue', customerId: 'c1', invoiceId: 'inv-1' },
+          { repName: 'HighValue', customerId: 'c2', invoiceId: 'inv-2' },
+        ]),
+      },
+      invoice: { findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', totalAmount: 1000 }, { id: 'inv-2', totalAmount: 50000 }]) },
+      distributorBeat: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFieldRepLeaderboardReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows[0].repName).toBe('HighValue')
+  })
+
+  it('computes hit-rate against the rep\'s own active beat stops, null (not 0) when the rep has no active beat', async () => {
+    const db = {
+      fieldOrderRequest: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'Ravi', customerId: 'c1', invoiceId: null },
+          { repName: 'NoBeat', customerId: 'c9', invoiceId: null },
+        ]),
+      },
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      distributorBeat: {
+        findMany: vi.fn().mockResolvedValue([
+          { repName: 'Ravi', stops: [{ customerId: 'c1' }, { customerId: 'c2' }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFieldRepLeaderboardReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const ravi = result.rows.find(r => r.repName === 'Ravi')
+    expect(ravi?.plannedStops).toBe(2)
+    expect(ravi?.hitRatePercent).toBe(50)
+    const noBeat = result.rows.find(r => r.repName === 'NoBeat')
+    expect(noBeat?.plannedStops).toBeNull()
+    expect(noBeat?.hitRatePercent).toBeNull()
+  })
+
+  it('returns an honest empty result when no field orders were accepted in range', async () => {
+    const db = {
+      fieldOrderRequest: { findMany: vi.fn().mockResolvedValue([]) },
+      invoice: { findMany: vi.fn() },
+      distributorBeat: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFieldRepLeaderboardReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toHaveLength(0)
+    expect(db.invoice.findMany).not.toHaveBeenCalled()
+  })
+})
+
 // ─── Job Card Report (fresh-audit fix, 2026-07-12) — closes the zero-report ─
 // gap for the REPAIR business type ──────────────────────────────────────────
 
@@ -6283,6 +6488,68 @@ describe('reportService.generatePrescriptionDrugSalesReport', () => {
     const result = await reportService.generatePrescriptionDrugSalesReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
 
     expect(result.summary).toEqual({ totalSales: 0, totalAmount: 0, missingPrescriptionDetails: 0 })
+    expect(result.rows).toEqual([])
+  })
+})
+
+// Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X Narcotic Register — a
+// STRICTER subcategory of the Prescription Drug Sales register above
+// (filtered on Product.isScheduleH1X, not isPrescriptionRequired).
+describe('reportService.generateScheduleH1XRegisterReport', () => {
+  it('filters to isScheduleH1X products (not the broader isPrescriptionRequired flag) and excludes cancelled invoices', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: { customerName: 'Ravi Kumar' } },
+            productName: 'Alprazolam 0.5mg', quantity: 10,
+            prescriptionPatientName: 'Ravi Kumar', prescriptionDoctorName: 'Dr. Mehta',
+            prescriptionDate: new Date('2026-01-09'), lineTotal: 250,
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateScheduleH1XRegisterReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+    const call = (db.invoiceItem.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
+
+    expect(call.where.product).toEqual({ isScheduleH1X: true })
+    expect(call.where.invoice).toEqual({ status: { not: 'CANCELLED' } })
+    expect(result.summary.totalSales).toBe(1)
+    expect(result.summary.totalQuantity).toBe(10)
+    expect(result.rows[0]).toMatchObject({
+      invoiceNumber: 'INV-001', productName: 'Alprazolam 0.5mg', quantity: 10,
+      patientName: 'Ravi Kumar', doctorName: 'Dr. Mehta', customerName: 'Ravi Kumar',
+    })
+  })
+
+  it('flags rows missing patient/doctor details in the summary without excluding them from the register', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoice: { invoiceNumber: 'INV-001', createdAt: new Date('2026-01-10'), customer: null }, productName: 'Drug A', quantity: 1, prescriptionPatientName: 'Patient A', prescriptionDoctorName: 'Doc A', prescriptionDate: null, lineTotal: 100 },
+          { invoice: { invoiceNumber: 'INV-002', createdAt: new Date('2026-01-11'), customer: null }, productName: 'Drug B', quantity: 2, prescriptionPatientName: null, prescriptionDoctorName: null, prescriptionDate: null, lineTotal: 50 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateScheduleH1XRegisterReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalSales).toBe(2)
+    expect(result.summary.totalQuantity).toBe(3)
+    expect(result.summary.missingPrescriptionDetails).toBe(1)
+    expect(result.rows[1].patientName).toBeNull()
+  })
+
+  it('returns a zero-value summary and empty rows when there are no Schedule H1/X sales in range', async () => {
+    const db = { invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateScheduleH1XRegisterReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary).toEqual({ totalSales: 0, totalQuantity: 0, missingPrescriptionDetails: 0 })
     expect(result.rows).toEqual([])
   })
 })

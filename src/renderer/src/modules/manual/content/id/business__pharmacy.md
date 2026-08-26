@@ -16,6 +16,8 @@ Anda tidak memilih batch secara manual saat penjualan — Billing menarik dari s
 
 Tandai sebuah produk **Prescription Required** pada formulir Produk-nya, dan Billing akan mewajibkan nama pasien dan nama dokter yang meresepkan sebelum mengizinkan Anda menambahkannya ke keranjang — penjualan tersebut tidak bisa diselesaikan tanpa keduanya, menjaga Anda tetap patuh terhadap persyaratan pencatatan Schedule H/H1. Sebuah laporan khusus **Prescription Drug Sales Register** (khusus Pharmacy) mendaftar setiap penjualan semacam itu beserta detail pasien/dokter yang tercatat, dan sekarang dibuka dengan grafik **Berdasarkan Dokter Peresep** di atas register — dokter mana yang mengirimkan bisnis resep terbanyak kepada Anda periode ini, sekilas tanpa perlu menggulir seluruh register.
 
+Untuk obat narkotika atau psikotropika (Jadwal H1/X — kategori yang lebih ketat daripada sekadar memerlukan resep), centang juga **Schedule H1/X** pada formulir Produk (hanya muncul setelah Prescription Required sudah dicentang). Setiap penjualan produk Jadwal H1/X dicatat dengan detail pasien/dokter/tanggal yang sama seperti di atas, dan laporan **Register Jadwal H1/X** yang terpisah dan lebih sempit (Laporan → Register Jadwal H1/X) hanya mencantumkan penjualan tersebut — subset persis yang ingin dilihat oleh inspektur, tanpa Anda harus menyaringnya sendiri dari register resep lengkap. Ini menampilkan persis apa yang dicatat Sarang (tanggal, produk, jumlah, pasien, dokter, faktur) — ini bukan klaim format register statuter yang lengkap.
+
 ## Nomor lisensi obat
 
 Masukkan **Drug License Number** apotek Anda di bawah Settings → Business Profile — kolom ini khusus untuk jenis bisnis ini dan hanya muncul saat Pharmacy adalah jenis bisnis aktif Anda.
@@ -23,6 +25,8 @@ Masukkan **Drug License Number** apotek Anda di bawah Settings → Business Prof
 ## Pemesanan ulang otomatis dari stok rendah
 
 Atur **Default Supplier** pada sebuah produk (di samping Reorder Level/Quantity-nya pada formulir Produk), dan ketika produk itu menipis, gunakan **Buat PO Pemesanan Ulang** pada bilah peringatan stok-rendah di Inventory. Sarang menyusun draf satu pesanan pembelian per pemasok, mengelompokkan setiap produk yang jatuh tempo dan memiliki pemasok default terkonfigurasi, dan melewati apa pun yang sudah ada di sebuah PO terbuka sehingga menjalankannya lagi tidak pernah membuat duplikat — produk tanpa pemasok default yang diatur juga dilewati, dengan sebuah hitungan ditampilkan sehingga Anda tahu apa yang masih perlu perhatian manual.
+
+Produk dengan stok rendah juga diperiksa terhadap **stok batch yang hampir kedaluwarsa** miliknya sendiri sebelum dipesan ulang: jika jumlah yang signifikan akan segera kedaluwarsa dan kecepatan penjualan terkini tidak cukup cepat untuk menjualnya sebelum itu terjadi, pemesanan ulang ditekan alih-alih dibuat — memesan lebih banyak dari sesuatu yang tidak laku hanya berarti membeli batch kedua yang juga akan terbuang sia-sia. Produk yang ditekan dihitung dalam pesan ringkasan yang sama yang sudah ditampilkan layar, sehingga tidak ada yang dilewati secara diam-diam tanpa sepengetahuan Anda.
 
 ## Logistics & Supply Chain
 

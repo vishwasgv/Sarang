@@ -16,6 +16,8 @@ You don't pick a batch manually at sale time — Billing draws from your batch s
 
 Mark a product **Prescription Required** in its Product form, and Billing will require the patient's name and the prescribing doctor's name before it lets you add it to a cart — the sale simply cannot be completed without both, keeping you compliant with Schedule H/H1 record-keeping requirements. A dedicated **Prescription Drug Sales Register** report (Pharmacy only) lists every such sale with the captured patient/doctor details, and now opens with a **By Prescribing Doctor** chart above the register — which doctors are sending you the most prescription business this period, at a glance instead of scrolling the full register.
 
+For narcotic or psychotropic medicines (Schedule H1/X — a stricter category than plain prescription-required), also check **Schedule H1/X** in the Product form (only shown once Prescription Required is already checked). Every sale of a Schedule H1/X product is captured with the same patient/doctor/date details as above, and a separate, narrower **Schedule H1/X Register** report (Reports → Schedule H1/X Register) lists only those sales — the exact subset an inspector would ask to see, without having to filter it out of the full prescription register yourself. This surfaces exactly what Sarang records (date, product, quantity, patient, doctor, invoice) — it isn't a claim of complete statutory register formatting.
+
 ## Drug license number
 
 Enter your pharmacy's **Drug License Number** under Settings → Business Profile — it's specific to this business type and shows only when Pharmacy is your active business type.
@@ -23,6 +25,8 @@ Enter your pharmacy's **Drug License Number** under Settings → Business Profil
 ## Auto-reorder from low stock
 
 Set a **Default Supplier** on a product (next to its Reorder Level/Quantity in the Product form), and when that product runs low, use **Generate Reorder POs** on the low-stock alert bar in Inventory. Sarang drafts one purchase order per supplier, grouping every due product that has a default supplier configured, and skips anything already on an open PO so running it again never creates duplicates — products with no default supplier set are skipped too, with a count shown so you know what still needs manual attention.
+
+A product that's low on stock is also checked against its own **near-expiry batch stock** before being reordered: if a meaningful quantity is due to expire soon and recent sales velocity isn't fast enough to sell it through before that happens, the reorder is suppressed rather than drafted — reordering more of something that isn't moving just buys a second batch that will also go to waste. Suppressed products are counted in the same summary message the screen already shows, so nothing is silently skipped without you knowing about it.
 
 ## Logistics & Supply Chain
 

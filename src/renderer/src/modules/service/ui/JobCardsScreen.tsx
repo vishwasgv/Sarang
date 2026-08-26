@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Wrench, Plus, RefreshCw, Receipt, X, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { Wrench, Plus, RefreshCw, Receipt, X, ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -22,6 +22,11 @@ interface JobCard {
   notes: string | null; internalNotes: string | null; invoiceId: string | null
   warrantyDays: number | null; warrantyExpiryDate: string | null; isUnderWarranty: boolean | null
   warrantyClaimAgainstId: string | null; warrantyClaimAgainstJobNumber: string | null
+  // Phase 67 §9.1 — Repair items 1/3/4/5.
+  conditionOnArrival: string | null; accessoriesReceived: string | null
+  category: string | null
+  quotedPartsTotal: number | null; actualPartsTotal: number; partsVariance: number | null
+  isRepeatFault: boolean; repeatFaultOriginalJobNumber: string | null
 }
 interface JobCardPart {
   id: string; jobCardId: string; productId: string; productName: string
@@ -56,7 +61,7 @@ const NEXT_STATUS: Record<string, string> = {
   PENDING_PARTS: 'IN_REPAIR', READY: 'DELIVERED'
 }
 
-const BLANK_FORM = { title: '', itemDescription: '', priority: 'MEDIUM', customerId: '', assignedToId: '', estimatedCost: '', expectedDate: '', notes: '', warrantyClaimAgainstId: '' }
+const BLANK_FORM = { title: '', itemDescription: '', priority: 'MEDIUM', customerId: '', assignedToId: '', estimatedCost: '', expectedDate: '', notes: '', warrantyClaimAgainstId: '', conditionOnArrival: '', accessoriesReceived: '', category: '', quotedPartsTotal: '' }
 
 export function JobCardsScreen() {
   const { t } = useTranslation()
@@ -224,10 +229,21 @@ export function JobCardsScreen() {
         estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : undefined,
         expectedDate: form.expectedDate || undefined,
         notes: form.notes || undefined,
-        warrantyClaimAgainstId: form.warrantyClaimAgainstId || undefined
+        warrantyClaimAgainstId: form.warrantyClaimAgainstId || undefined,
+        conditionOnArrival: form.conditionOnArrival || undefined,
+        accessoriesReceived: form.accessoriesReceived || undefined,
+        category: form.category || undefined,
+        quotedPartsTotal: form.quotedPartsTotal ? Number(form.quotedPartsTotal) : undefined
       })
       if (res.success) {
         toastSuccess(t('service.jobCreated'))
+        // Phase 67 §9.1 — Repair item 3: repeat-fault flag, surfaced right
+        // at the moment of intake — "a quality signal worth surfacing" per
+        // the audit's own wording, not buried until someone opens a report.
+        const created = res.data as JobCard
+        if (created?.isRepeatFault) {
+          toastError(t('service.repeatFaultWarning', { jobNumber: created.repeatFaultOriginalJobNumber }))
+        }
         setShowCreate(false)
         setForm({ ...BLANK_FORM })
         load()
@@ -419,6 +435,7 @@ export function JobCardsScreen() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs text-text-secondary">{c.jobNumber}</span>
                         <Badge variant={STATUS_VARIANT[c.status] ?? 'neutral'} size="sm">{t(STATUS_LABEL_KEY[c.status] ?? c.status)}</Badge>
+                        {c.isRepeatFault && <Badge variant="danger" size="sm">{t('service.repeatFault')}</Badge>}
                       </div>
                       <p className="mt-1 font-semibold text-text-primary">{c.title}</p>
                       {c.itemDescription && <p className="text-sm text-text-secondary truncate">{c.itemDescription}</p>}
@@ -473,6 +490,31 @@ export function JobCardsScreen() {
                 <div>
                   <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.estCost')}</label>
                   <input type="number" value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))}
+                    placeholder="0" min="0" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                </div>
+              </div>
+              {/* Phase 67 §9.1 — Repair item 1: structured intake checklist. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.conditionOnArrival')}</label>
+                  <input value={form.conditionOnArrival} onChange={e => setForm(f => ({ ...f, conditionOnArrival: e.target.value }))}
+                    placeholder="" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.accessoriesReceived')}</label>
+                  <input value={form.accessoriesReceived} onChange={e => setForm(f => ({ ...f, accessoriesReceived: e.target.value }))}
+                    placeholder="" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.jobCategory')}</label>
+                  <input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    placeholder="" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('service.quotedPartsTotal')}</label>
+                  <input type="number" value={form.quotedPartsTotal} onChange={e => setForm(f => ({ ...f, quotedPartsTotal: e.target.value }))}
                     placeholder="0" min="0" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
               </div>
@@ -560,10 +602,30 @@ export function JobCardsScreen() {
               )}
 
               <div className="space-y-2 text-sm">
-                <Badge variant={STATUS_VARIANT[detail.status] ?? 'neutral'} size="sm">{t(STATUS_LABEL_KEY[detail.status] ?? detail.status)}</Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={STATUS_VARIANT[detail.status] ?? 'neutral'} size="sm">{t(STATUS_LABEL_KEY[detail.status] ?? detail.status)}</Badge>
+                  {detail.category && <span className="text-xs text-text-secondary border border-border rounded-full px-2 py-0.5">{detail.category}</span>}
+                  {detail.isRepeatFault && <Badge variant="danger" size="sm">{t('service.repeatFault')}</Badge>}
+                </div>
+                {detail.isRepeatFault && detail.repeatFaultOriginalJobNumber && (
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
+                    <AlertTriangle size={14} className="shrink-0" />
+                    <span>{t('service.repeatFaultDetail', { jobNumber: detail.repeatFaultOriginalJobNumber })}</span>
+                  </div>
+                )}
                 <div className="flex justify-between"><span className="text-text-secondary">{t('service.assignTo')}</span><span className="text-text-primary font-medium">{detail.assignedToName ?? '—'}</span></div>
                 {detail.itemDescription && (
                   <div><p className="text-text-secondary">{t('service.item')}</p><p className="text-text-primary mt-0.5">{detail.itemDescription}</p></div>
+                )}
+                {(detail.conditionOnArrival || detail.accessoriesReceived) && (
+                  <div className="border border-border rounded-lg p-2.5 space-y-1">
+                    {detail.conditionOnArrival && (
+                      <div><p className="text-text-secondary text-xs">{t('service.conditionOnArrival')}</p><p className="text-text-primary text-xs mt-0.5">{detail.conditionOnArrival}</p></div>
+                    )}
+                    {detail.accessoriesReceived && (
+                      <div><p className="text-text-secondary text-xs">{t('service.accessoriesReceived')}</p><p className="text-text-primary text-xs mt-0.5">{detail.accessoriesReceived}</p></div>
+                    )}
+                  </div>
                 )}
                 {detail.notes && (
                   <div><p className="text-text-secondary">{t('common.notes')}</p><p className="text-text-primary mt-0.5">{detail.notes}</p></div>
@@ -571,6 +633,17 @@ export function JobCardsScreen() {
                 <div className="flex justify-between"><span className="text-text-secondary">{t('service.estCost')}</span><span className="font-semibold text-text-primary">{formatCurrency(detail.estimatedCost)}</span></div>
                 {detail.actualCost > 0 && (
                   <div className="flex justify-between"><span className="text-text-secondary">{t('service.actualCostLabel')}</span><span className="font-semibold text-brand">{formatCurrency(detail.actualCost)}</span></div>
+                )}
+                {detail.quotedPartsTotal != null && (
+                  <div className="flex justify-between"><span className="text-text-secondary">{t('service.quotedPartsTotal')}</span><span className="text-text-primary">{formatCurrency(detail.quotedPartsTotal)}</span></div>
+                )}
+                {detail.partsVariance != null && (
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">{t('service.partsVariance')}</span>
+                    <span className={cn('font-semibold', detail.partsVariance > 0 ? 'text-red-600' : detail.partsVariance < 0 ? 'text-success' : 'text-text-primary')}>
+                      {detail.partsVariance > 0 ? '+' : ''}{formatCurrency(detail.partsVariance)}
+                    </span>
+                  </div>
                 )}
                 {detail.expectedDate && (
                   <div className="flex justify-between"><span className="text-text-secondary">{t('service.expectedBy')}</span><span className="text-text-primary">{formatDate(detail.expectedDate)}</span></div>

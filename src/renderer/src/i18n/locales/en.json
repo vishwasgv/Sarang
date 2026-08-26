@@ -520,6 +520,15 @@
     "customerName": "Customer Name",
     "customerCode": "Customer Code",
     "creditLimit": "Credit Limit",
+    "creditRisk": {
+      "effectiveLimit": "Risk-Adjusted Limit",
+      "tier": {
+        "LOW": "Low Risk",
+        "MEDIUM": "Medium Risk",
+        "HIGH": "High Risk",
+        "UNRATED": "Unrated"
+      }
+    },
     "totalDue": "Total Due",
     "noCustomers": "No customers yet",
     "searchCustomers": "Search customers…",
@@ -703,7 +712,8 @@
       "nothingToOrder": "No low-stock products need reordering right now.",
       "created": "Draft POs created: {{count}}",
       "skippedNoSupplier": "Skipped (no default supplier): {{count}}",
-      "skippedOpenPO": "Skipped (already on an open PO): {{count}}"
+      "skippedOpenPO": "Skipped (already on an open PO): {{count}}",
+      "suppressedExpiring": "Suppressed (near-expiry stock unlikely to sell through): {{count}}"
     }
   },
   "purchaseOrders": {
@@ -1842,6 +1852,18 @@
         "label": "Client Profitability",
         "description": "Which clients are actually worth keeping — revenue vs. hours spent, per client"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "Turnaround by Technician",
+        "description": "How long job cards actually take to deliver, average/fastest/slowest per technician"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "Repair Category Volume Trend",
+        "description": "Monthly repair volume by category — informs parts stocking"
+      },
+      "fieldRepLeaderboard": {
+        "label": "Field-Rep Leaderboard",
+        "description": "Orders booked, value, and hit-rate vs. plan — per field rep, best first"
+      },
       "serviceProjects": {
         "label": "Service Project Report",
         "description": "Every project by status and contract value — for Independent Consultant, Architect, Civil Engineer, Marketing Agency, Software Agency, and Real Estate Agent"
@@ -1949,6 +1971,10 @@
       "prescriptionDrugSales": {
         "label": "Prescription Drug Sales",
         "description": "Register of Schedule H/H1 prescription-only medicine sales, with patient and doctor names."
+      },
+      "scheduleH1XRegister": {
+        "label": "Schedule H1/X Register",
+        "description": "Narcotic/psychotropic drug sales register — the stricter subset of prescription sales, inspector-ready."
       },
       "schemeCostVsVolume": {
         "label": "Scheme Cost vs. Volume",
@@ -2142,6 +2168,7 @@
       "expiredValueSub": "{{value}} at risk in expired stock",
       "atRiskValue": "At-Risk Value (≤ 30 Days)",
       "totalSales": "Total Sales",
+      "totalQuantity": "Total Quantity",
       "missingDetails": "Missing Details",
       "totalSchemeCost": "Total Scheme Cost",
       "focUnitsGiven": "FOC Units Given",
@@ -2187,6 +2214,9 @@
       "overallAvgHours": "Avg. Resolution Time",
       "repeatRatePercent": "Repeat Rate",
       "overallUtilizationPercent": "Overall Utilization",
+      "totalDelivered": "Total Delivered",
+      "overallAvgTurnaroundHours": "Avg. Turnaround",
+      "totalOrdersBooked": "Total Orders Booked",
       "totalShipments": "Total Shipments",
       "deliveryRate": "Delivery Rate",
       "totalFreight": "Total Freight",
@@ -2319,6 +2349,7 @@
       "diagnosisTrendChart": "Diagnosis Category Trend",
       "packUtilizationChart": "Pack Utilization by Client",
       "prescriptionRegister": "Prescription Drug Sales Register",
+      "scheduleH1XRegister": "Schedule H1/X Narcotic Register",
       "batchDetails": "Batch Details",
       "byStage": "By Workflow Stage",
       "testDetails": "Test Order Details",
@@ -2402,6 +2433,9 @@
       "repeatBusinessRate": "No customer tickets in this period.",
       "consultantUtilization": "No billable work logged in this period.",
       "clientProfitability": "No client project revenue in this period.",
+      "jobCardTurnaroundByTechnician": "No job cards delivered in this period.",
+      "repairCategoryVolumeTrend": "No job cards received in this period.",
+      "fieldRepLeaderboard": "No field-rep orders booked in this period.",
       "projects": "No projects in this date range.",
       "serviceProjects": "No projects in this date range.",
       "jobCards": "No job cards in this date range.",
@@ -2429,6 +2463,7 @@
       "testScores": "No test scores recorded yet.",
       "complianceTasks": "No pending or overdue compliance tasks.",
       "prescriptionDrugSales": "No prescription drug sales in this date range.",
+      "scheduleH1XRegister": "No Schedule H1/X sales in this date range.",
       "schemeCostVsVolume": "No pricing schemes ran in this date range.",
       "chronicRecallCompliance": "No recall periods closed in this date range.",
       "walkInVsAppointmentRatio": "No walk-ins or appointments in this date range.",
@@ -2469,6 +2504,12 @@
       "utilizationPercent": "Utilization",
       "hoursSpent": "Hours Spent",
       "revenuePerHour": "Revenue/Hour",
+      "jobCount": "Job Count",
+      "repName": "Rep Name",
+      "ordersBooked": "Orders Booked",
+      "customersVisited": "Customers Visited",
+      "plannedStops": "Planned Stops",
+      "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",
       "invoiceDate": "Invoice Date",
       "doctorName": "Doctor",
@@ -4141,6 +4182,14 @@
     "notAWarrantyClaim": "Not a warranty claim",
     "originalUnderWarranty": "Original job is still under warranty",
     "originalWarrantyExpired": "Original job's warranty has expired",
+    "conditionOnArrival": "Condition on Arrival",
+    "accessoriesReceived": "Accessories Received",
+    "jobCategory": "Category",
+    "quotedPartsTotal": "Quoted Parts Total",
+    "partsVariance": "Parts Variance",
+    "repeatFault": "Repeat Fault",
+    "repeatFaultWarning": "Possible repeat fault — the same item was delivered on job {{jobNumber}} within the last 30 days.",
+    "repeatFaultDetail": "This looks like a repeat fault — the same item was delivered on job {{jobNumber}} within the last 30 days.",
     "cancelJob": "Cancel Job",
     "newProjectModal": "New Project",
     "projectTitleLabel": "Project Title *",
@@ -5208,6 +5257,43 @@
       "removed": "Removed",
       "removedMessage": "Price removed.",
       "couldNotRemove": "Could not remove price."
+    },
+    "beats": {
+      "title": "Beat Plans",
+      "subtitle": "Set each field rep's route — the order they visit customers in, per day.",
+      "newBeat": "New Beat",
+      "loading": "Loading…",
+      "empty": "No beats set up yet.",
+      "beatName": "Beat Name",
+      "repName": "Rep Name",
+      "dayOfWeek": "Day of Week",
+      "anyDay": "Any day",
+      "day": {
+        "sun": "Sunday",
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday"
+      },
+      "stopCount_other": "{{count}} stops",
+      "inactive": "Inactive",
+      "noStops": "No customers on this beat yet.",
+      "selectCustomer": "Select a customer to add…",
+      "addStop": "Add",
+      "creating": "Creating…",
+      "created": "Beat created.",
+      "couldNotCreate": "Could not create beat.",
+      "deleted": "Beat deleted.",
+      "couldNotDelete": "Could not delete beat.",
+      "couldNotAddStop": "Could not add customer to beat.",
+      "couldNotRemoveStop": "Could not remove stop.",
+      "couldNotMoveStop": "Could not reorder stop.",
+      "deleteTitle": "Delete Beat",
+      "deleteConfirm": "Delete the beat \"{{name}}\"? This cannot be undone.",
+      "error": "Error",
+      "couldNotLoad": "Could not load beats."
     }
   }
 }

@@ -520,6 +520,15 @@
     "customerName": "Nama Pelanggan",
     "customerCode": "Kode Pelanggan",
     "creditLimit": "Batas Kredit",
+    "creditRisk": {
+      "effectiveLimit": "Batas Disesuaikan Risiko",
+      "tier": {
+        "LOW": "Risiko Rendah",
+        "MEDIUM": "Risiko Sedang",
+        "HIGH": "Risiko Tinggi",
+        "UNRATED": "Belum Dinilai"
+      }
+    },
     "totalDue": "Total Tagihan",
     "noCustomers": "Belum ada pelanggan",
     "searchCustomers": "Cari pelanggan…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "Tidak ada produk stok rendah yang perlu dipesan ulang saat ini.",
       "created": "PO draf dibuat: {{count}}",
       "skippedNoSupplier": "Dilewati (tidak ada pemasok default): {{count}}",
-      "skippedOpenPO": "Dilewati (sudah ada di PO terbuka): {{count}}"
+      "skippedOpenPO": "Dilewati (sudah ada di PO terbuka): {{count}}",
+      "suppressedExpiring": "Ditekan (stok yang hampir kedaluwarsa kemungkinan kecil terjual): {{count}}"
     },
     "repairTicket": "Perbaikan"
   },
@@ -1817,6 +1827,18 @@
         "label": "Profitabilitas Klien",
         "description": "Klien mana yang sebenarnya layak dipertahankan — pendapatan vs. jam yang dihabiskan, per klien"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "Waktu Penyelesaian per Teknisi",
+        "description": "Berapa lama kartu kerja benar-benar selesai dikirim, rata-rata/tercepat/terlambat per teknisi"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "Tren Volume Kategori Perbaikan",
+        "description": "Volume perbaikan bulanan berdasarkan kategori — menginformasikan stok suku cadang"
+      },
+      "fieldRepLeaderboard": {
+        "label": "Papan Peringkat Perwakilan Lapangan",
+        "description": "Pesanan yang dipesan, nilai, dan tingkat pencapaian vs. rencana — per perwakilan lapangan, terbaik lebih dulu."
+      },
       "jobCards": {
         "label": "Laporan Kartu Kerja",
         "description": "Setiap pekerjaan perbaikan/layanan berdasarkan status, biaya estimasi vs aktual — untuk Bengkel Perbaikan"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "Penjualan Obat Resep",
         "description": "Register penjualan obat khusus resep (Schedule H/H1), dengan nama pasien dan dokter."
+      },
+      "scheduleH1XRegister": {
+        "label": "Register Jadwal H1/X",
+        "description": "Register penjualan obat narkotika/psikotropika — subkategori yang lebih ketat dari penjualan obat resep, siap untuk inspeksi."
       },
       "schemeCostVsVolume": {
         "label": "Biaya Skema vs. Volume",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "{{value}} berisiko dalam stok kedaluwarsa",
       "atRiskValue": "Nilai Berisiko (≤ 30 Hari)",
       "totalSales": "Total Penjualan",
+      "totalQuantity": "Jumlah Total",
       "missingDetails": "Detail Hilang",
       "totalSchemeCost": "Total Biaya Skema",
       "focUnitsGiven": "Unit Gratis (FOC) Diberikan",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "Waktu Penyelesaian Rata-rata",
       "repeatRatePercent": "Tingkat Pengulangan",
       "overallUtilizationPercent": "Utilisasi Keseluruhan",
+      "totalDelivered": "Total Terkirim",
+      "overallAvgTurnaroundHours": "Rata-rata Waktu Penyelesaian",
+      "totalOrdersBooked": "Total Pesanan Dipesan",
       "revenue": "Pendapatan",
       "cogs": "Harga Pokok Penjualan",
       "totalMargin": "Total Margin",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "Nilai Berisiko berdasarkan Kategori Kedaluwarsa",
       "byDoctor": "Berdasarkan Dokter Peresep",
       "prescriptionRegister": "Register Penjualan Obat Resep",
+      "scheduleH1XRegister": "Register Narkotika Jadwal H1/X",
       "schemeCostVsVolumeChart": "Biaya Skema vs. Volume Produk yang Dicakup",
       "schemesInPeriod": "Skema dalam Periode Ini",
       "batchDetails": "Detail Batch",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "Tidak ada tiket pelanggan pada periode ini.",
       "consultantUtilization": "Tidak ada pekerjaan yang dapat ditagih tercatat dalam periode ini.",
       "clientProfitability": "Tidak ada pendapatan proyek klien dalam periode ini.",
+      "jobCardTurnaroundByTechnician": "Tidak ada kartu kerja yang terkirim dalam periode ini.",
+      "repairCategoryVolumeTrend": "Tidak ada kartu kerja yang diterima dalam periode ini.",
+      "fieldRepLeaderboard": "Tidak ada pesanan perwakilan lapangan yang dipesan dalam periode ini.",
       "projects": "Tidak ada proyek dalam periode ini.",
       "jobCards": "Tidak ada kartu kerja dalam periode ini.",
       "prescriptionDrugSales": "Tidak ada penjualan obat resep dalam rentang tanggal ini.",
+      "scheduleH1XRegister": "Tidak ada penjualan Jadwal H1/X dalam rentang tanggal ini.",
       "schemeCostVsVolume": "Tidak ada skema harga yang berjalan dalam rentang tanggal ini.",
       "discounts": "Tidak ada diskon atau harga tawar yang diberikan dalam rentang tanggal ini.",
       "serviceProjects": "Tidak ada proyek dalam rentang tanggal ini.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "Utilisasi",
       "hoursSpent": "Jam Dihabiskan",
       "revenuePerHour": "Pendapatan/Jam",
+      "jobCount": "Jumlah Pekerjaan",
+      "repName": "Nama Perwakilan",
+      "ordersBooked": "Pesanan Dipesan",
+      "customersVisited": "Pelanggan Dikunjungi",
+      "plannedStops": "Pemberhentian Terencana",
+      "hitRatePercent": "Tingkat Pencapaian vs. Rencana",
       "invoiceNo": "No. Faktur",
       "invoiceDate": "Tanggal Faktur",
       "doctorName": "Dokter",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "Klaim Garansi Terhadap",
     "notAWarrantyClaim": "Bukan klaim garansi",
     "originalUnderWarranty": "Pekerjaan asli masih dalam garansi",
-    "originalWarrantyExpired": "Garansi pekerjaan asli telah berakhir"
+    "originalWarrantyExpired": "Garansi pekerjaan asli telah berakhir",
+    "conditionOnArrival": "Kondisi Saat Tiba",
+    "accessoriesReceived": "Aksesori yang Diterima",
+    "jobCategory": "Kategori",
+    "quotedPartsTotal": "Total Suku Cadang yang Ditawarkan",
+    "partsVariance": "Varians Suku Cadang",
+    "repeatFault": "Kerusakan Berulang",
+    "repeatFaultWarning": "Kemungkinan kerusakan berulang — barang yang sama dikirim di {{jobNumber}} dalam 30 hari terakhir.",
+    "repeatFaultDetail": "Ini terlihat seperti kerusakan berulang — barang yang sama dikirim di {{jobNumber}} dalam 30 hari terakhir."
   },
   "setup": {
     "welcome": "Selamat Datang di Sarang",
@@ -4995,6 +5044,43 @@
       "removed": "Dihapus",
       "removedMessage": "Harga dihapus.",
       "couldNotRemove": "Tidak dapat menghapus harga."
+    },
+    "beats": {
+      "title": "Rencana Rute",
+      "subtitle": "Atur rute setiap perwakilan lapangan — urutan mereka mengunjungi pelanggan, setiap hari.",
+      "newBeat": "Rute Baru",
+      "loading": "Memuat…",
+      "empty": "Belum ada rute yang diatur.",
+      "beatName": "Nama Rute",
+      "repName": "Nama Perwakilan",
+      "dayOfWeek": "Hari dalam Seminggu",
+      "anyDay": "Hari apa saja",
+      "day": {
+        "sun": "Minggu",
+        "mon": "Senin",
+        "tue": "Selasa",
+        "wed": "Rabu",
+        "thu": "Kamis",
+        "fri": "Jumat",
+        "sat": "Sabtu"
+      },
+      "stopCount_other": "{{count}} pemberhentian",
+      "inactive": "Tidak Aktif",
+      "noStops": "Belum ada pelanggan di rute ini.",
+      "selectCustomer": "Pilih pelanggan untuk ditambahkan…",
+      "addStop": "Tambah",
+      "creating": "Membuat…",
+      "created": "Rute dibuat.",
+      "couldNotCreate": "Tidak dapat membuat rute.",
+      "deleted": "Rute dihapus.",
+      "couldNotDelete": "Tidak dapat menghapus rute.",
+      "couldNotAddStop": "Tidak dapat menambahkan pelanggan ke rute.",
+      "couldNotRemoveStop": "Tidak dapat menghapus pemberhentian.",
+      "couldNotMoveStop": "Tidak dapat mengurutkan ulang pemberhentian.",
+      "deleteTitle": "Hapus Rute",
+      "deleteConfirm": "Hapus rute \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+      "error": "Kesalahan",
+      "couldNotLoad": "Tidak dapat memuat rute."
     }
   },
   "import": {

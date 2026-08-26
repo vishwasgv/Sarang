@@ -520,6 +520,15 @@
     "customerName": "Nome do Cliente",
     "customerCode": "Código do Cliente",
     "creditLimit": "Limite de Crédito",
+    "creditRisk": {
+      "effectiveLimit": "Limite Ajustado por Risco",
+      "tier": {
+        "LOW": "Risco Baixo",
+        "MEDIUM": "Risco Médio",
+        "HIGH": "Risco Alto",
+        "UNRATED": "Não Avaliado"
+      }
+    },
     "totalDue": "Total a Pagar",
     "noCustomers": "Sem clientes",
     "searchCustomers": "Buscar clientes…",
@@ -702,7 +711,8 @@
       "nothingToOrder": "Nenhum produto com estoque baixo precisa de reposição no momento.",
       "created": "Pedidos de compra em rascunho criados: {{count}}",
       "skippedNoSupplier": "Ignorados (sem fornecedor padrão): {{count}}",
-      "skippedOpenPO": "Ignorados (já em um pedido aberto): {{count}}"
+      "skippedOpenPO": "Ignorados (já em um pedido aberto): {{count}}",
+      "suppressedExpiring": "Suprimidos (estoque próximo do vencimento com pouca chance de venda): {{count}}"
     },
     "repairTicket": "Reparo"
   },
@@ -1817,6 +1827,18 @@
         "label": "Rentabilidade do Cliente",
         "description": "Quais clientes realmente valem a pena manter — receita vs. horas gastas, por cliente"
       },
+      "jobCardTurnaroundByTechnician": {
+        "label": "Prazo de Entrega por Técnico",
+        "description": "Quanto tempo as ordens de serviço realmente levam para serem entregues, média/mais rápido/mais lento por técnico"
+      },
+      "repairCategoryVolumeTrend": {
+        "label": "Tendência de Volume por Categoria de Reparo",
+        "description": "Volume mensal de reparos por categoria — informa o estoque de peças"
+      },
+      "fieldRepLeaderboard": {
+        "label": "Classificação de Representantes de Campo",
+        "description": "Pedidos reservados, valor, e taxa de acerto em relação ao plano — por representante de campo, os melhores primeiro."
+      },
       "jobCards": {
         "label": "Relatório de Ordens de Serviço",
         "description": "Cada trabalho de reparo/serviço por status, custo estimado vs. real — para Oficinas de Reparo"
@@ -1840,6 +1862,10 @@
       "prescriptionDrugSales": {
         "label": "Vendas de Medicamentos Sob Prescrição",
         "description": "Registro de vendas de medicamentos somente sob prescrição (Lista H/H1), com nomes do paciente e do médico."
+      },
+      "scheduleH1XRegister": {
+        "label": "Registro da Lista H1/X",
+        "description": "Registro de vendas de medicamentos narcóticos/psicotrópicos — o subconjunto mais rigoroso das vendas sob prescrição, pronto para inspeção."
       },
       "schemeCostVsVolume": {
         "label": "Custo do Esquema vs. Volume",
@@ -2076,6 +2102,7 @@
       "expiredValueSub": "{{value}} em risco em estoque vencido",
       "atRiskValue": "Valor em Risco (≤ 30 Dias)",
       "totalSales": "Vendas Totais",
+      "totalQuantity": "Quantidade Total",
       "missingDetails": "Detalhes Ausentes",
       "totalSchemeCost": "Custo Total do Esquema",
       "focUnitsGiven": "Unidades Gratuitas (FOC) Concedidas",
@@ -2153,6 +2180,9 @@
       "overallAvgHours": "Tempo Médio de Resolução",
       "repeatRatePercent": "Taxa de Recorrência",
       "overallUtilizationPercent": "Utilização Geral",
+      "totalDelivered": "Total Entregue",
+      "overallAvgTurnaroundHours": "Prazo Médio de Entrega",
+      "totalOrdersBooked": "Total de Pedidos Reservados",
       "revenue": "Receita",
       "cogs": "Custo das Mercadorias Vendidas",
       "totalMargin": "Margem Total",
@@ -2245,6 +2275,7 @@
       "byBucketValue": "Valor em Risco por Categoria de Validade",
       "byDoctor": "Por Médico Prescritor",
       "prescriptionRegister": "Registro de Vendas de Medicamentos Prescritos",
+      "scheduleH1XRegister": "Registro de Narcóticos da Lista H1/X",
       "schemeCostVsVolumeChart": "Custo do Esquema vs. Volume de Produtos Cobertos",
       "schemesInPeriod": "Esquemas Neste Período",
       "batchDetails": "Detalhes do Lote",
@@ -2370,9 +2401,13 @@
       "repeatBusinessRate": "Nenhum ticket de cliente neste período.",
       "consultantUtilization": "Nenhum trabalho faturável registrado neste período.",
       "clientProfitability": "Nenhuma receita de projeto de cliente neste período.",
+      "jobCardTurnaroundByTechnician": "Nenhuma ordem de serviço entregue neste período.",
+      "repairCategoryVolumeTrend": "Nenhuma ordem de serviço recebida neste período.",
+      "fieldRepLeaderboard": "Nenhum pedido de representante de campo reservado neste período.",
       "projects": "Nenhum projeto neste período.",
       "jobCards": "Nenhuma ordem de serviço neste período.",
       "prescriptionDrugSales": "Nenhuma venda de medicamento sob prescrição neste período.",
+      "scheduleH1XRegister": "Nenhuma venda da Lista H1/X neste período.",
       "schemeCostVsVolume": "Nenhum esquema de preços esteve ativo neste intervalo de datas.",
       "discounts": "Nenhum desconto ou preço negociado neste intervalo de datas.",
       "serviceProjects": "Nenhum projeto neste intervalo de datas.",
@@ -2426,6 +2461,12 @@
       "utilizationPercent": "Utilização",
       "hoursSpent": "Horas Gastas",
       "revenuePerHour": "Receita/Hora",
+      "jobCount": "Contagem de Trabalhos",
+      "repName": "Nome do Representante",
+      "ordersBooked": "Pedidos Reservados",
+      "customersVisited": "Clientes Visitados",
+      "plannedStops": "Paradas Planejadas",
+      "hitRatePercent": "Taxa de Acerto vs. Plano",
       "invoiceNo": "N.º Fatura",
       "invoiceDate": "Data da Fatura",
       "doctorName": "Médico",
@@ -4025,7 +4066,15 @@
     "warrantyClaimAgainst": "Reclamação de Garantia Contra",
     "notAWarrantyClaim": "Não é uma reclamação de garantia",
     "originalUnderWarranty": "O trabalho original ainda está em garantia",
-    "originalWarrantyExpired": "A garantia do trabalho original expirou"
+    "originalWarrantyExpired": "A garantia do trabalho original expirou",
+    "conditionOnArrival": "Condição na Chegada",
+    "accessoriesReceived": "Acessórios Recebidos",
+    "jobCategory": "Categoria",
+    "quotedPartsTotal": "Total de Peças Orçadas",
+    "partsVariance": "Variação de Peças",
+    "repeatFault": "Falha Repetida",
+    "repeatFaultWarning": "Possível falha repetida — o mesmo item foi entregue em {{jobNumber}} nos últimos 30 dias.",
+    "repeatFaultDetail": "Isso parece uma falha repetida — o mesmo item foi entregue em {{jobNumber}} nos últimos 30 dias."
   },
   "setup": {
     "welcome": "Bem-vindo ao Sarang",
@@ -4995,6 +5044,43 @@
       "removed": "Removido",
       "removedMessage": "Preço removido.",
       "couldNotRemove": "Não foi possível remover o preço."
+    },
+    "beats": {
+      "title": "Planos de Rota",
+      "subtitle": "Defina a rota de cada representante de campo — a ordem em que visita os clientes, todos os dias.",
+      "newBeat": "Nova Rota",
+      "loading": "Carregando…",
+      "empty": "Ainda não há rotas configuradas.",
+      "beatName": "Nome da Rota",
+      "repName": "Nome do Representante",
+      "dayOfWeek": "Dia da Semana",
+      "anyDay": "Qualquer dia",
+      "day": {
+        "sun": "Domingo",
+        "mon": "Segunda-feira",
+        "tue": "Terça-feira",
+        "wed": "Quarta-feira",
+        "thu": "Quinta-feira",
+        "fri": "Sexta-feira",
+        "sat": "Sábado"
+      },
+      "stopCount_other": "{{count}} paradas",
+      "inactive": "Inativa",
+      "noStops": "Ainda não há clientes nesta rota.",
+      "selectCustomer": "Selecione um cliente para adicionar…",
+      "addStop": "Adicionar",
+      "creating": "Criando…",
+      "created": "Rota criada.",
+      "couldNotCreate": "Não foi possível criar a rota.",
+      "deleted": "Rota excluída.",
+      "couldNotDelete": "Não foi possível excluir a rota.",
+      "couldNotAddStop": "Não foi possível adicionar o cliente à rota.",
+      "couldNotRemoveStop": "Não foi possível remover a parada.",
+      "couldNotMoveStop": "Não foi possível reordenar a parada.",
+      "deleteTitle": "Excluir Rota",
+      "deleteConfirm": "Excluir a rota \"{{name}}\"? Esta ação não pode ser desfeita.",
+      "error": "Erro",
+      "couldNotLoad": "Não foi possível carregar as rotas."
     }
   },
   "import": {

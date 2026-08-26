@@ -197,7 +197,7 @@ export interface IpcChannels {
     receive: (id: string) => Promise<ApiResponse>
     cancel: (payload: { id: string; reason: string }) => Promise<ApiResponse>
     // Phase 58 §2 — reorder automation triggered from low-stock alerts
-    generateReorderDraftPOs: () => Promise<ApiResponse<{ created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number }>>
+    generateReorderDraftPOs: () => Promise<ApiResponse<{ created: Array<{ poId: string; poNumber: string; supplierId: string; supplierName: string; itemCount: number }>; skippedNoDefaultSupplier: number; skippedAlreadyOnOpenPO: number; suppressedExpiringStock: Array<{ productId: string; productName: string; expiringSoonQty: number; daysUntilEarliestExpiry: number; recentDailyVelocity: number }> }>>
     // Share feature — Purchase Order PDF generation built from scratch (it had
     // none before). Gated on the new `purchaseOrders.printDocument` permission,
     // not the existing (mislabeled) `purchaseOrders.print` key, which is
@@ -463,6 +463,9 @@ export interface IpcChannels {
     repeatBusinessRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     consultantUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     clientProfitability: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    jobCardTurnaroundByTechnician: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    repairCategoryVolumeTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    fieldRepLeaderboard: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     serviceProjects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     jobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     carJobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -476,6 +479,7 @@ export interface IpcChannels {
     drawingRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     siteVisitLog: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     prescriptionDrugSales: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    scheduleH1XRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     schemeCostVsVolume: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     chronicRecallCompliance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     walkInVsAppointmentRatio: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -734,6 +738,16 @@ export interface IpcChannels {
     listFieldOrderRequests: (payload?: { status?: string }) => Promise<ApiResponse>
     acceptFieldOrderRequest: (payload: { requestId: string; paymentMethod: string }) => Promise<ApiResponse>
     rejectFieldOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Distributor item 2: beat-plan route sequencing.
+    listBeats: (payload?: { repName?: string; isActive?: boolean }) => Promise<ApiResponse>
+    createBeat: (payload: { name: string; repName: string; dayOfWeek?: number | null; customerIds?: string[] }) => Promise<ApiResponse>
+    updateBeat: (payload: { id: string; name?: string; repName?: string; dayOfWeek?: number | null; isActive?: boolean }) => Promise<ApiResponse>
+    deleteBeat: (payload: { id: string }) => Promise<ApiResponse>
+    addBeatStop: (payload: { beatId: string; customerId: string }) => Promise<ApiResponse>
+    removeBeatStop: (payload: { id: string }) => Promise<ApiResponse>
+    moveBeatStop: (payload: { id: string; direction: 'UP' | 'DOWN' }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Distributor item 5: risk-scored retailer credit.
+    getCustomerCreditRisk: (payload: { customerId: string }) => Promise<ApiResponse>
   }
   // Phase 58 §2 — Electronics repair/RMA workflow, linked to a specific
   // ProductSerial/IMEI.
@@ -903,13 +917,16 @@ export interface IpcChannels {
   }
   jobCards: {
     list: (payload?: { status?: string; customerId?: string; limit?: number }) => Promise<ApiResponse>
-    create: (payload: { title: string; itemDescription?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedCost?: number; expectedDate?: string; notes?: string; internalNotes?: string; warrantyClaimAgainstId?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; title?: string; itemDescription?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedCost?: number; actualCost?: number; expectedDate?: string | null; notes?: string; internalNotes?: string; warrantyDays?: number | null }) => Promise<ApiResponse>
+    create: (payload: { title: string; itemDescription?: string; priority?: string; customerId?: string; assignedToId?: string; estimatedCost?: number; expectedDate?: string; notes?: string; internalNotes?: string; warrantyClaimAgainstId?: string; conditionOnArrival?: string; accessoriesReceived?: string; category?: string; quotedPartsTotal?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; title?: string; itemDescription?: string; status?: string; priority?: string; customerId?: string | null; assignedToId?: string | null; estimatedCost?: number; actualCost?: number; expectedDate?: string | null; notes?: string; internalNotes?: string; warrantyDays?: number | null; conditionOnArrival?: string | null; accessoriesReceived?: string | null; category?: string | null; quotedPartsTotal?: number | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
     listParts: (payload: { jobCardId: string }) => Promise<ApiResponse>
     addPart: (payload: { jobCardId: string; productId: string; quantity: number }) => Promise<ApiResponse>
     removePart: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 67 §9.1 — Repair items 3/5.
+    getRepeatFaultSummary: () => Promise<ApiResponse>
+    getPartsVarianceSummary: () => Promise<ApiResponse>
   }
   workLogs: {
     list: (payload: { projectId?: string; ticketId?: string; jobCardId?: string; limit?: number }) => Promise<ApiResponse>

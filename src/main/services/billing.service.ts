@@ -19,6 +19,7 @@ import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.ser
 import { explodeKitComponentsTx } from './kit.service'
 import { loyaltyProgramService } from './loyalty-program.service'
 import { resolveNextHarvestDate } from './crop-season.service'
+import { getCustomerCreditRisk } from './distributor-credit-risk.service'
 import type { CreateInvoicePayload, CancelInvoicePayload, SplitInvoicePayload } from '../validation/billing.validation'
 import { ServiceError } from '../errors/service-error'
 
@@ -551,6 +552,18 @@ export const billingService = {
     // inside the transaction) since it never changes mid-request, matching
     // creditLimitModuleEnabled's own convention just above.
     const loyaltyModuleEnabled = await isModuleEnabled('loyalty_program')
+    // Phase 67 §9.1 — Distributor item 5: risk-scored credit. The static
+    // limit read fresh inside the transaction below (to avoid the
+    // concurrent-sale race described above) is scaled by this multiplier —
+    // a customer's own payment-history risk tier, which doesn't need
+    // transactional freshness since it reflects past behaviour, not the
+    // in-flight balance. A customer with no computable risk (module off, no
+    // customer, or the risk lookup itself failing) gets a neutral 1.0x, so
+    // this can only ever tighten or loosen an ALREADY-enabled credit check —
+    // never itself the reason the check runs.
+    const creditRiskMultiplier = (payload.customerId && creditLimitModuleEnabled)
+      ? (await getCustomerCreditRisk(payload.customerId)).data?.riskMultiplier ?? 1.0
+      : 1.0
 
     try {
       // RULE B007 + B008: ALL operations in ONE transaction — rolled back if any step fails
@@ -563,8 +576,9 @@ export const billingService = {
           const customer = await tx.customer.findUnique({ where: { id: payload.customerId } })
           if (customer && customer.creditLimit > 0) {
             const projectedBalance = customer.outstandingBalance + totalAmount
-            if (projectedBalance > customer.creditLimit) {
-              throw new ServiceError('CUST-003', `Credit limit exceeded. Outstanding: ${customer.outstandingBalance.toFixed(2)}, invoice: ${totalAmount.toFixed(2)}, limit: ${customer.creditLimit.toFixed(2)}.`)
+            const effectiveLimit = customer.creditLimit * creditRiskMultiplier
+            if (projectedBalance > effectiveLimit) {
+              throw new ServiceError('CUST-003', `Credit limit exceeded. Outstanding: ${customer.outstandingBalance.toFixed(2)}, invoice: ${totalAmount.toFixed(2)}, limit: ${effectiveLimit.toFixed(2)}${creditRiskMultiplier !== 1 ? ` (risk-adjusted from ${customer.creditLimit.toFixed(2)})` : ''}.`)
             }
           }
         }

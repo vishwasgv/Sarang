@@ -16,6 +16,8 @@ Você não escolhe um lote manualmente no momento da venda — o Faturamento con
 
 Marque um produto como **Prescrição Obrigatória** em seu formulário de Produto, e o Faturamento exigirá o nome do paciente e o nome do médico prescritor antes de permitir adicioná-lo a um carrinho — a venda simplesmente não pode ser concluída sem os dois, mantendo você em conformidade com as exigências de registro da Lista H/H1. Um relatório dedicado de **Vendas de Medicamentos Sob Prescrição** (somente Farmácia) lista toda venda desse tipo com os dados de paciente/médico capturados, e agora abre com um gráfico **Por Médico Prescritor** acima do registro — quais médicos estão lhe enviando mais negócio de prescrições neste período, de relance em vez de rolar o registro inteiro.
 
+Para medicamentos narcóticos ou psicotrópicos (Lista H1/X — uma categoria mais rigorosa do que apenas exigir prescrição), marque também **Schedule H1/X** no formulário do produto (só aparece depois que Prescription Required já estiver marcado). Toda venda de um produto da Lista H1/X é registrada com os mesmos detalhes de paciente/médico/data acima, e um relatório **Registro da Lista H1/X** separado e mais restrito (Relatórios → Registro da Lista H1/X) lista apenas essas vendas — exatamente o subconjunto que um inspetor gostaria de ver, sem que você precise filtrá-lo do registro completo de prescrições. Isso mostra exatamente o que o Sarang registra (data, produto, quantidade, paciente, médico, fatura) — não é uma alegação de formato de registro estatutário completo.
+
 ## Número da licença de farmácia
 
 Informe o **Número da Licença de Farmácia** do seu estabelecimento em Configurações → Perfil do Negócio — é específico deste tipo de negócio e só aparece quando Farmácia é o seu tipo de negócio ativo.
@@ -23,6 +25,8 @@ Informe o **Número da Licença de Farmácia** do seu estabelecimento em Configu
 ## Reposição automática a partir do estoque baixo
 
 Defina um **Fornecedor Padrão** em um produto (ao lado do seu Nível/Quantidade de Reposição no formulário de Produto), e quando esse produto ficar com estoque baixo, use **Gerar Pedidos de Reposição** na barra de alerta de estoque baixo em Estoque. O Sarang monta um pedido de compra por fornecedor, agrupando todo produto pendente que tenha um fornecedor padrão configurado, e ignora qualquer item que já esteja em um pedido de compra em aberto, para que executá-lo novamente nunca crie duplicatas — produtos sem fornecedor padrão definido também são ignorados, com uma contagem exibida para que você saiba o que ainda precisa de atenção manual.
+
+Um produto com estoque baixo também é verificado quanto ao seu próprio **estoque de lotes próximos do vencimento** antes de ser reposto: se uma quantidade significativa estiver prestes a vencer e a velocidade de vendas recente não for rápida o suficiente para vendê-la antes disso, a reposição é suprimida em vez de ser criada — pedir mais de algo que não está vendendo significa apenas comprar um segundo lote que também será desperdiçado. Os produtos suprimidos são contados na mesma mensagem de resumo que a tela já exibe, para que nada seja ignorado silenciosamente sem o seu conhecimento.
 
 ## Logística e Cadeia de Suprimentos
 

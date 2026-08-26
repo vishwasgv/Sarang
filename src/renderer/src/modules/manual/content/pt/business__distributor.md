@@ -16,13 +16,17 @@ Aplica-se a maior faixa para a qual a linha se qualifica; quantidades pequenas c
 
 Agrupe clientes em uma **classe de cliente** (a partir do registro dele em Clientes — por exemplo, "Atacadista", "Varejista") e defina preços específicos por classe para cada produto na nova tela **Preços por Classe de Cliente**. Uma vez definido, a Entrada de Pedidos em Atacado (e o pedido de um representante de campo abaixo) precifica automaticamente o carrinho daquele cliente pela sua taxa negociada, em vez do preço de venda normal — um cliente sem preço de classe cadastrado simplesmente é faturado pelo preço de tabela, como antes.
 
-## Planejamento de rota / roteiro
+## Remessas com múltiplas paradas
 
 Uma remessa pode carregar várias **paradas** em vez de apenas seu único endereço de destino — abra o detalhe de uma remessa e adicione cada parada ao longo da rota com seu próprio endereço e status de entrega, para que uma corrida com múltiplas entregas seja rastreada como a rota real que é, e não como um único destino com tudo o mais presumido como entregue de uma só vez.
 
 ## Captura de pedidos por representante de campo
 
 Ative **Captura de Pedido de Campo** para permitir que seus representantes de vendas enviem pedidos pelo próprio celular enquanto visitam clientes, pelo WiFi da sua loja — sem precisar instalar nenhum app. Abra **Pedidos de Campo** para ver o link/código QR da rede local a compartilhar com os representantes, e para **Aceitar** ou **Rejeitar** as solicitações recebidas. Um representante só escolhe produtos e quantidades — o Sarang sempre reverifica o preço negociado real do cliente (e seu limite de crédito) no momento em que você aceita, não o que o celular do representante estimou, de modo que a nota fiscal realmente criada sempre sai precificada corretamente.
+
+## Planos de Rota
+
+Abra **Planos de Rota** para definir a rota de visita própria de cada representante de campo — uma rota nomeada (ex.: "Rota Norte, terça-feira") com um representante, opcionalmente um dia da semana, e uma lista ordenada de paradas de clientes. Adicione clientes a uma rota e reordene-os com as setas para cima/baixo para corresponder à ordem em que o representante realmente percorre a rota; uma rota pode ser marcada como inativa sem ser excluída se for pausada. Isso é diferente das paradas de uma remessa de entrega acima — uma rota é a sequência planejada de visitas a clientes de um representante de vendas, não a rota de carga de um veículo.
 
 ## Análise de Saldos Pendentes
 
@@ -32,9 +36,15 @@ Abra **Análise de pendências** para ver sua exposição total de crédito entr
 
 Defina um **limite de crédito** para um cliente a partir do seu registro em **Clientes**, e o Sarang bloqueia qualquer nova venda a *crédito* (do Faturamento ou da Entrada de Pedidos em Atacado) que faça o saldo pendente dele ultrapassar esse limite — rejeitada diretamente no momento de salvar, com uma mensagem mostrando o saldo pendente dele, o valor da nova nota e o limite dele. Isso se aplica apenas a vendas pelo método Crédito; vendas em Dinheiro, UPI, Cartão e Divididas não são afetadas. Um limite de crédito de 0 significa que nenhum limite é imposto.
 
+O limite realmente aplicado é **ajustado por risco**, não sempre o número bruto registrado no cadastro do cliente: o Sarang pontua o histórico de pagamentos de cada cliente com crédito (faturas atualmente vencidas e quão atrasados foram os pagamentos de faturas anteriores) em um nível de risco — Baixo, Médio, Alto, ou Não Avaliado para um cliente sem histórico de pagamentos ainda — e ajusta o limite de crédito de acordo (o risco Baixo recebe 1,25× o limite declarado, o Médio e o Não Avaliado o usam como está, o risco Alto é limitado a 0,5×). Abra o cadastro do próprio cliente para ver seu nível de risco atual e o limite ajustado por risco ao lado do limite de crédito.
+
 ## Relatório de Custo do Esquema vs. Volume
 
 Se você executa esquemas de preços (Compre-X-Leve-Y-Grátis ou descontos por faixa — configure-os em Configurações → Esquemas de Preços), abra **Custo do Esquema vs. Volume** em Relatórios para ver se eles realmente estão funcionando: um gráfico mostra quanto o esquema custou (o valor das unidades gratuitas concedidas, ou o valor do desconto para um esquema por faixa) ao lado de quantas unidades do produto coberto realmente foram vendidas, semana a semana, além de um detalhamento de custo por esquema abaixo. Esta é uma comparação lado a lado, não uma afirmação de que o esquema *causou* o volume — o Sarang não tem como saber quanto você teria vendido sem o esquema, então leia o gráfico como evidência para julgar você mesmo, não como um veredito.
+
+## Relatório de Classificação de Representantes de Campo
+
+Abra **Field-Rep Leaderboard** em Relatórios para ver o desempenho de cada representante de campo: pedidos reservados, valor total, clientes distintos visitados, e — para um representante com uma rota ativa — uma taxa de acerto mostrando qual porcentagem de suas paradas planejadas ele realmente visitou. Os representantes são classificados por valor, do melhor para o pior, então isso se lê como uma classificação, não uma lista de problemas. Um representante sem rota ativa simplesmente não mostra nenhuma taxa de acerto, em vez de um 0% enganoso.
 
 ## Logística e Cadeia de Suprimentos
 

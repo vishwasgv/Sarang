@@ -16,6 +16,8 @@ import {
 } from '../../server/field-order-server'
 import { ensureTokenQueueServerState } from '../../server/token-queue-server'
 import * as fieldOrderService from '../../services/field-order.service'
+import * as distributorBeatService from '../../services/distributor-beat.service'
+import { getCustomerCreditRisk } from '../../services/distributor-credit-risk.service'
 import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
   DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
@@ -355,5 +357,70 @@ export function register(handle: HandleFn): void {
     const p = payload as { requestId?: string }
     if (!p?.requestId) return { success: false, error: { code: 'VAL-001', message: 'requestId is required.' } }
     return fieldOrderService.rejectFieldOrderRequest(p.requestId, getCurrentSession()?.userId)
+  })
+
+  // ── Phase 67 §9.1 — Distributor item 2: beat-plan route sequencing ──
+  // Reuses distributor.manageFieldOrders (same "manage distributor field
+  // operations" trust tier already granted to Admin/Manager/Cashier) rather
+  // than a new permission key, since beat planning is the same operational
+  // scope as field-rep order capture just above.
+
+  handle('distributor:listBeats', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    return distributorBeatService.listBeats((payload ?? undefined) as { repName?: string; isActive?: boolean } | undefined)
+  })
+
+  handle('distributor:createBeat', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { name?: string; repName?: string; dayOfWeek?: number | null; customerIds?: string[] }
+    if (!p?.name || !p?.repName) return { success: false, error: { code: 'VAL-001', message: 'name and repName are required.' } }
+    return distributorBeatService.createBeat(
+      { name: p.name, repName: p.repName, dayOfWeek: p.dayOfWeek, customerIds: p.customerIds },
+      getCurrentSession()?.userId
+    )
+  })
+
+  handle('distributor:updateBeat', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { id?: string; name?: string; repName?: string; dayOfWeek?: number | null; isActive?: boolean }
+    if (!p?.id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
+    return distributorBeatService.updateBeat(p as { id: string; name?: string; repName?: string; dayOfWeek?: number | null; isActive?: boolean }, getCurrentSession()?.userId)
+  })
+
+  handle('distributor:deleteBeat', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { id?: string }
+    if (!p?.id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
+    return distributorBeatService.deleteBeat(p.id, getCurrentSession()?.userId)
+  })
+
+  handle('distributor:addBeatStop', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { beatId?: string; customerId?: string }
+    if (!p?.beatId || !p?.customerId) return { success: false, error: { code: 'VAL-001', message: 'beatId and customerId are required.' } }
+    return distributorBeatService.addBeatStop({ beatId: p.beatId, customerId: p.customerId }, getCurrentSession()?.userId)
+  })
+
+  handle('distributor:removeBeatStop', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { id?: string }
+    if (!p?.id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
+    return distributorBeatService.removeBeatStop(p.id, getCurrentSession()?.userId)
+  })
+
+  handle('distributor:moveBeatStop', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { id?: string; direction?: 'UP' | 'DOWN' }
+    if (!p?.id || (p.direction !== 'UP' && p.direction !== 'DOWN')) return { success: false, error: { code: 'VAL-001', message: 'id and a valid direction are required.' } }
+    return distributorBeatService.moveBeatStop({ id: p.id, direction: p.direction }, getCurrentSession()?.userId)
+  })
+
+  // ── Phase 67 §9.1 — Distributor item 5: risk-scored retailer credit ──
+
+  handle('distributor:getCustomerCreditRisk', async (payload) => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const p = payload as { customerId?: string }
+    if (!p?.customerId) return { success: false, error: { code: 'VAL-001', message: 'customerId is required.' } }
+    return getCustomerCreditRisk(p.customerId)
   })
 }

@@ -197,6 +197,13 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'consultant.retainerBurnDown', patterns: [/retainer\s+(burn|burn-down|hours|usage)/i] },
   { template: 'consultant.clientProfitability', patterns: [/client\s+profitability/i, /(most|least)\s+profitable\s+client/i, /client.*(most|least)\s+profitable/i] },
   { template: 'consultant.proposalWinRate', patterns: [/proposal\s+win[\s-]rate/i, /win\s+rate/i] },
+  // Phase 67 §9.1 — Repair items 2-5. Safe to overlap in wording with
+  // SERVICE's/CONSULTANT's own patterns above — tryFastPathClassify only
+  // considers templates registered for the currently active business type.
+  { template: 'repair.turnaroundByTechnician', patterns: [/turnaround\s+by\s+technician/i, /(technician|repair).*turnaround/i] },
+  { template: 'repair.repeatFault', patterns: [/repeat[\s-]fault/i, /same\s+(device|issue).*(again|back)/i] },
+  { template: 'repair.categoryVolumeTrend', patterns: [/repair\s+categor(y|ies)/i, /category\s+volume\s+trend/i] },
+  { template: 'repair.partsVariance', patterns: [/parts?\s+(variance|vs\.?\s+quoted)/i, /quoted\s+vs\.?\s+(actual|used)\s+parts?/i] },
   { template: 'rental.status', patterns: [/(checked\s+out|rented\s+out|overdue\s+rental)/i] },
   // Real gap found live 2026-07-16 (full 109-template packaged-app battery):
   // "What's my rental revenue this month?" fell through to the LLM classify
@@ -318,9 +325,16 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'repair.jobCards', patterns: [/job\s+cards?/i, /repair\s+jobs?/i] },
   { template: 'inventory.batchExpiry', patterns: [/(batch|expir)/i] },
   // Phase 67 §9.1 — Pharmacy's "Doctor-wise prescription volume" signature win.
+  // Phase 67 §9.1 — Pharmacy item 1. Deliberately distinct trigger words
+  // (narcotic/schedule H1/X) so this never collides with the broader
+  // prescriptionVolumeByDoctor pattern just below.
+  { template: 'pharmacy.scheduleH1XRegister', patterns: [/narcotic/i, /schedule\s*h\s*1\s*\/?\s*x/i, /schedule\s*x\b/i] },
   { template: 'pharmacy.prescriptionVolumeByDoctor', patterns: [/prescription/i, /doctor.*(sales|volume|prescri)/i] },
   // Phase 67 §9.1 — Distributor's "Scheme cost vs. incremental volume" signature win.
   { template: 'distributor.schemeCostVsVolume', patterns: [/scheme.*(cost|volume)/i, /(foc|free.?of.?cost)/i] },
+  // Phase 67 §9.1 — Distributor items 2/3/5: beat-plan leaderboard, credit risk.
+  { template: 'distributor.fieldRepLeaderboard', patterns: [/(field.?rep|sales.?rep).*(leaderboard|performance|top|best)/i, /beat.?plan.*(hit.?rate|coverage)/i, /which rep/i] },
+  { template: 'distributor.creditRiskOverview', patterns: [/(credit|retailer).*(risk|high.?risk)/i, /which (customers?|retailers?).*(risk|overdue)/i] },
   { template: 'service.projects', patterns: [/\bprojects?\b.*(status|active|going)/i, /how.*projects/i] },
   { template: 'service.appointmentUtilisation', patterns: [/appointments?\s+(this|today|utilisation|utilization)/i] },
   { template: 'service.clientRetention', patterns: [/client\s+retention/i, /(new|returning)\s+clients?/i] },

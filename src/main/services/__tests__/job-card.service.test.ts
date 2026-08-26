@@ -12,7 +12,7 @@ vi.mock('../sequence.service', async (importOriginal) => {
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
 import { inventoryService } from '../inventory.service'
-import { generateJobCardInvoice, createJobCard, updateJobCard, addJobCardPart, removeJobCardPart } from '../job-card.service'
+import { generateJobCardInvoice, createJobCard, updateJobCard, addJobCardPart, removeJobCardPart, getRepeatFaultSummary, getPartsVarianceSummary } from '../job-card.service'
 import { ServiceError } from '../../errors/service-error'
 
 // Phase 58 §1 (2026-07-17) — legacy Repair Shop invoicing bridge. JobCard had
@@ -391,5 +391,176 @@ describe('job-card.service.removeJobCardPart', () => {
     // Confirms averageCost is never referenced in the restore path.
     expect(db.inventory.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ averageCost: expect.anything() }) }))
     expect(db.jobCardPart.delete).toHaveBeenCalledWith({ where: { id: 'part-1' } })
+  })
+})
+
+// Phase 67 §9.1 — Repair items 1/3/4/5: structured intake checklist,
+// repeat-fault flag, category, and parts-quoted-vs-actual variance.
+
+function makeCreateMockDbWithRepeatFault(priorDeliveries: Array<Record<string, unknown>> = []) {
+  const receivedNow = new Date('2026-08-26T10:00:00')
+  const db: Record<string, any> = {
+    jobCard: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({
+          id: 'jc-new', jobNumber: 'JC-00001', receivedDate: receivedNow, createdAt: receivedNow, updatedAt: receivedNow,
+          ...data, customer: null, assignedTo: null, warrantyClaimAgainst: null, parts: [],
+        })
+      ),
+      // computeRepeatFaultMap's own lookup of prior deliveries for the same customers.
+      findMany: vi.fn().mockResolvedValue(priorDeliveries),
+    },
+  }
+  db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
+  return db
+}
+
+describe('job-card.service.createJobCard — structured intake fields', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('persists conditionOnArrival, accessoriesReceived, category, and quotedPartsTotal', async () => {
+    const db = makeCreateMockDbWithRepeatFault()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobCard({
+      title: 'Screen replacement', conditionOnArrival: 'Cracked screen, minor scratches on back',
+      accessoriesReceived: 'Charger, case', category: 'Screen Repair', quotedPartsTotal: 1500,
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.jobCard.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        conditionOnArrival: 'Cracked screen, minor scratches on back',
+        accessoriesReceived: 'Charger, case',
+        category: 'Screen Repair',
+        quotedPartsTotal: 1500,
+      }),
+    }))
+  })
+})
+
+describe('job-card.service.createJobCard — repeat-fault flag', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('flags a repeat fault when the same customer had the same item delivered within 30 days', async () => {
+    const db = makeCreateMockDbWithRepeatFault([
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00099', deliveredDate: new Date('2026-08-11T00:00:00') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobCard({ title: 'Screen still broken', customerId: 'cust-1', itemDescription: 'Laptop Screen' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { isRepeatFault: boolean; repeatFaultOriginalJobNumber: string | null } }).data.isRepeatFault).toBe(true)
+    expect((res as { data: { repeatFaultOriginalJobNumber: string | null } }).data.repeatFaultOriginalJobNumber).toBe('JC-00099')
+  })
+
+  it('matches itemDescription case-insensitively', async () => {
+    const db = makeCreateMockDbWithRepeatFault([
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: '  laptop screen  ', jobNumber: 'JC-00099', deliveredDate: new Date('2026-08-11T00:00:00') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobCard({ title: 'Screen still broken', customerId: 'cust-1', itemDescription: 'LAPTOP SCREEN' })
+
+    expect((res as { data: { isRepeatFault: boolean } }).data.isRepeatFault).toBe(true)
+  })
+
+  it('does not flag a repeat fault when the prior delivery is older than 30 days', async () => {
+    const db = makeCreateMockDbWithRepeatFault([
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00099', deliveredDate: new Date('2026-07-01T00:00:00') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobCard({ title: 'Screen broken again', customerId: 'cust-1', itemDescription: 'Laptop Screen' })
+
+    expect((res as { data: { isRepeatFault: boolean } }).data.isRepeatFault).toBe(false)
+  })
+
+  it('does not flag a repeat fault for a different item description', async () => {
+    const db = makeCreateMockDbWithRepeatFault([
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00099', deliveredDate: new Date('2026-08-11T00:00:00') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createJobCard({ title: 'Different item', customerId: 'cust-1', itemDescription: 'Laptop Battery' })
+
+    expect((res as { data: { isRepeatFault: boolean } }).data.isRepeatFault).toBe(false)
+  })
+
+  it('does not query for repeat faults at all when the job has no customer or item description', async () => {
+    const db = makeCreateMockDbWithRepeatFault()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createJobCard({ title: 'Walk-in, no customer on file' })
+
+    expect(db.jobCard.findMany).not.toHaveBeenCalled()
+  })
+})
+
+describe('job-card.service.getRepeatFaultSummary', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('counts repeat-fault jobs among recently received ones', async () => {
+    const db: Record<string, any> = {
+      jobCard: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([
+            { id: 'jc-1', jobNumber: 'JC-00002', customerId: 'cust-1', itemDescription: 'Laptop Screen', receivedDate: new Date('2026-08-20T00:00:00') },
+            { id: 'jc-2', jobNumber: 'JC-00003', customerId: 'cust-2', itemDescription: 'Phone Battery', receivedDate: new Date('2026-08-21T00:00:00') },
+          ])
+          .mockResolvedValueOnce([
+            { id: 'jc-0', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00001', deliveredDate: new Date('2026-08-05T00:00:00') },
+          ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRepeatFaultSummary()
+
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({ totalRecentJobs: 2, repeatFaultCount: 1, repeatFaultJobNumbers: ['JC-00002'] })
+  })
+
+  it('reports zero (not an error) when nothing in the window is a repeat fault', async () => {
+    const db: Record<string, any> = { jobCard: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRepeatFaultSummary()
+
+    expect(res.data).toEqual({ totalRecentJobs: 0, repeatFaultCount: 0, repeatFaultJobNumbers: [] })
+  })
+})
+
+describe('job-card.service.getPartsVarianceSummary', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('computes total variance and over-quote count across quoted-and-used job cards', async () => {
+    const db: Record<string, any> = {
+      jobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { quotedPartsTotal: 1000, parts: [{ quantity: 1, unitPrice: 1200 }] }, // over quote by 200
+          { quotedPartsTotal: 500, parts: [{ quantity: 2, unitPrice: 200 }] }, // under quote by 100
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getPartsVarianceSummary()
+
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({ comparedCount: 2, totalQuoted: 1500, totalActual: 1600, totalVariance: 100, overQuoteCount: 1 })
+  })
+
+  it('skips a quoted job card that has no real parts recorded yet', async () => {
+    const db: Record<string, any> = {
+      jobCard: { findMany: vi.fn().mockResolvedValue([{ quotedPartsTotal: 1000, parts: [] }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getPartsVarianceSummary()
+
+    expect(res.data).toEqual({ comparedCount: 0, totalQuoted: 0, totalActual: 0, totalVariance: 0, overQuoteCount: 0 })
   })
 })

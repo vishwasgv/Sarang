@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent } from 'lucide-react'
 import { useAuthStore } from '@app/store/auth.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { formatDate } from '@shared/utils/locale.util'
@@ -10,6 +11,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Button } from '@shared/ui/atoms/Button'
+import { api } from '@renderer/services/ipc-client'
 
 interface Customer {
   id: string; customerCode: string; customerName: string
@@ -26,13 +28,18 @@ interface LedgerEntry {
 interface InterestLine { invoiceId: string; invoiceNumber: string; balanceAmount: number; daysOverdue: number; interest: number }
 interface InterestPreview { ratePercent: number; type: 'SIMPLE' | 'COMPOUND'; lines: InterestLine[]; totalInterest: number }
 
+// Phase 67 §9.1 — Distributor item 5: risk-scored retailer credit.
+interface CreditRisk { riskTier: 'LOW' | 'MEDIUM' | 'HIGH' | 'UNRATED'; effectiveCreditLimit: number; avgDaysLate: number; currentOverdueCount: number }
+
 export function CustomerDetailScreen() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { hasPermission } = useAuthStore()
+  const { isModuleEnabled } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [creditRisk, setCreditRisk] = useState<CreditRisk | null>(null)
   const [entries, setEntries] = useState<LedgerEntry[]>([])
   const [outstanding, setOutstanding] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -112,11 +119,27 @@ export function CustomerDetailScreen() {
     }
   }, [id, canViewInterest])
 
+  // Phase 67 §9.1 — Distributor item 5. Same trust tier as the outstanding
+  // balance it sits beside (customers.viewLedger) since it's derived from
+  // that same payment history. Only meaningful once credit_limit_enforcement
+  // is actually on and the customer has a limit to adjust in the first place.
+  const loadCreditRisk = useCallback(async () => {
+    if (!id || !canViewLedger || !isModuleEnabled('credit_limit_enforcement')) return
+    try {
+      const res = await api.distributor.getCustomerCreditRisk({ customerId: id })
+      if (res.success && res.data) setCreditRisk(res.data as CreditRisk)
+    } catch {
+      // Non-critical enrichment of the credit limit figure above — must
+      // never block the rest of the customer detail screen from rendering.
+    }
+  }, [id, canViewLedger, isModuleEnabled])
+
   useEffect(() => {
     loadCustomer()
     loadLedger()
     loadInterest()
-  }, [loadCustomer, loadLedger, loadInterest])
+    loadCreditRisk()
+  }, [loadCustomer, loadLedger, loadInterest, loadCreditRisk])
 
   async function handlePostInterest() {
     if (!id) return
@@ -228,6 +251,20 @@ export function CustomerDetailScreen() {
               {customer.creditLimit > 0 ? customer.creditLimit.toFixed(2) : '—'}
             </span>
           </div>
+          {customer.creditLimit > 0 && creditRisk && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600 dark:text-slate-300 w-auto">{t('customers.creditRisk.effectiveLimit')}</span>
+              <Badge
+                variant={creditRisk.riskTier === 'HIGH' ? 'danger' : creditRisk.riskTier === 'MEDIUM' ? 'warning' : creditRisk.riskTier === 'LOW' ? 'success' : 'neutral'}
+                size="sm"
+              >
+                {t(`customers.creditRisk.tier.${creditRisk.riskTier}`)}
+              </Badge>
+              <span className="ms-auto text-sm font-semibold text-dark dark:text-slate-100">
+                {creditRisk.effectiveCreditLimit.toFixed(2)}
+              </span>
+            </div>
+          )}
           {canViewLedger && (
             <div className="flex items-center gap-2">
               {outstanding > 0 ? (
