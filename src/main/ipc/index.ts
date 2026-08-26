@@ -92,6 +92,8 @@ import { register as registerBloodBank } from './handlers/blood-bank.handler'
 import { register as registerToothRecords } from './handlers/tooth-record.handler'
 // Phase 58 §2 — Beauty Salon
 import { register as registerProviderSkills } from './handlers/service-provider-skill.handler'
+// Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder
+import { register as registerServiceCombo } from './handlers/service-combo.handler'
 import { register as registerTreatmentPlans } from './handlers/treatment-plan.handler'
 import { register as registerRecallRecords } from './handlers/recall-record.handler'
 import { register as registerChronicConditionRecords } from './handlers/chronic-condition-record.handler'
@@ -281,6 +283,8 @@ export function registerAllIpcHandlers(): void {
   registerChronicConditionRecords(h)
   // Phase 58 §2 — Beauty Salon
   registerProviderSkills(h)
+  // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder
+  registerServiceCombo(h)
   // Phase 26 — Physio
   registerTreatmentPhases(h)
   registerExercisePrograms(h)

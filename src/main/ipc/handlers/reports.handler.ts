@@ -911,4 +911,22 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateAssetUtilizationReport(parsed.data)
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client rate.
+  handle('reports:stylistRepeatClient', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateStylistRepeatClientReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
+  handle('reports:retailAttachRate', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateRetailAttachRateReport(parsed.data)
+    return { success: true, data }
+  })
 }

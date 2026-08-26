@@ -193,6 +193,8 @@ export const NAV_ITEMS: NavItem[] = [
   // in practice until an owner creates at least one cost centre/budget.
   { label: 'Cost Centres', i18nKey: 'nav.costCentres', path: '/cost-centres', icon: Building2, permissionKey: 'costCentres.view' },
   { label: 'Budgets', i18nKey: 'nav.budgets', path: '/budgets', icon: PiggyBank, permissionKey: 'budgets.view' },
+  // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder.
+  { label: 'Service Combos', i18nKey: 'nav.serviceCombos', path: '/service-combos', icon: PackageCheck, permissionKey: 'settings.view', requiredModule: 'multi_service_booking' },
   // Phase 63 — Sales Orders, the mirror image of Purchase Orders on the sales side.
   { label: 'Sales Orders', i18nKey: 'nav.salesOrders', path: '/sales-orders', icon: ClipboardList, permissionKey: 'salesOrders.view' },
   { label: 'Purchase Orders', i18nKey: 'nav.purchaseOrders', path: '/purchase-orders', icon: ClipboardList, permissionKey: 'purchaseOrders.view' },

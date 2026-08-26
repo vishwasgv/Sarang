@@ -7157,6 +7157,130 @@ async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; date
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client
+// tracking + repeat-rate, in one function (the per-stylist repeat-client
+// list IS the drill-down behind each row's own rate). "Repeat" is judged
+// PER STYLIST, not per-salon — a client who always books the same stylist
+// twice counts once for that stylist, distinct from the salon's OWN overall
+// repeat-customer concept (which doesn't care who performed the service).
+// Sorted best-first (highest repeat rate) — a leaderboard celebrating which
+// stylists build real client loyalty, same convention as Distributor's own
+// Field-Rep Leaderboard, not this phase's usual worst-first problem list.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StylistRepeatClientRow {
+  providerName: string; totalClients: number; repeatClients: number; repeatRatePercent: number
+}
+export interface StylistRepeatClientReport {
+  dateFrom: string; dateTo: string
+  rows: StylistRepeatClientRow[]
+  summary: { totalStylists: number; overallRepeatRatePercent: number }
+}
+
+async function generateStylistRepeatClientReport(params: { dateFrom: string; dateTo: string }): Promise<StylistRepeatClientReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const appts = await db.appointment.findMany({
+    where: { status: 'COMPLETED', customerId: { not: null }, providerId: { not: null }, scheduledDate: { gte: from, lte: to } },
+    select: { providerId: true, customerId: true, provider: { select: { fullName: true } } },
+  })
+
+  const byProvider = new Map<string, { providerName: string; customerCounts: Map<string, number> }>()
+  for (const a of appts) {
+    const providerId = a.providerId!
+    const entry = byProvider.get(providerId) ?? { providerName: a.provider?.fullName ?? 'Unassigned', customerCounts: new Map<string, number>() }
+    const cid = a.customerId!
+    entry.customerCounts.set(cid, (entry.customerCounts.get(cid) ?? 0) + 1)
+    byProvider.set(providerId, entry)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: StylistRepeatClientRow[] = Array.from(byProvider.values()).map((p) => {
+    const totalClients = p.customerCounts.size
+    const repeatClients = Array.from(p.customerCounts.values()).filter((c) => c >= 2).length
+    return {
+      providerName: p.providerName, totalClients, repeatClients,
+      repeatRatePercent: totalClients > 0 ? round1((repeatClients / totalClients) * 100) : 0,
+    }
+  }).sort((a, b) => b.repeatRatePercent - a.repeatRatePercent)
+
+  const totalClientsAll = rows.reduce((s, r) => s + r.totalClients, 0)
+  const totalRepeatAll = rows.reduce((s, r) => s + r.repeatClients, 0)
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalStylists: rows.length, overallRepeatRatePercent: totalClientsAll > 0 ? round1((totalRepeatAll / totalClientsAll) * 100) : 0 },
+  }
+}
+
+// Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach at checkout
+// (the FEATURE already shipped in Phase 58 §2 as generateAppointmentInvoice's
+// own `retailItems` option — resolveRetailInvoiceItems in
+// appointment.service.ts) — this closes the missing REPORT half, measuring
+// how often staff actually use it. An "attach" is any appointment-generated
+// invoice whose items include at least one line where the underlying
+// Product is NOT the synthetic SERVICE-type placeholder
+// findOrCreateServiceCatalogProduct creates (a real retail Product, i.e.
+// productType !== 'SERVICE') — the same distinction that mechanism itself
+// already encodes, not a new convention invented here.
+export interface RetailAttachRateByProviderRow { providerName: string; totalInvoices: number; withAttach: number; attachRatePercent: number }
+export interface RetailAttachRateReport {
+  dateFrom: string; dateTo: string
+  byProvider: RetailAttachRateByProviderRow[]
+  summary: { totalAppointmentInvoices: number; withRetailAttach: number; attachRatePercent: number }
+}
+
+async function generateRetailAttachRateReport(params: { dateFrom: string; dateTo: string }): Promise<RetailAttachRateReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const appts = await db.appointment.findMany({
+    where: { status: 'COMPLETED', invoiceId: { not: null }, scheduledDate: { gte: from, lte: to } },
+    select: { providerId: true, invoiceId: true, provider: { select: { fullName: true } } },
+  })
+  // Appointment.invoiceId is an unenforced FK (the atomic claim-sentinel
+  // pattern generateAppointmentInvoice uses, same as every other
+  // claim-then-invoice flow in this codebase) — no Prisma relation exists,
+  // so the invoice+items lookup is a separate query, joined here in JS.
+  const invoiceIds = appts.map((a) => a.invoiceId).filter((id): id is string => !!id)
+  const invoices = invoiceIds.length
+    ? await db.invoice.findMany({ where: { id: { in: invoiceIds } }, select: { id: true, items: { select: { product: { select: { productType: true } } } } } })
+    : []
+  const invoiceById = new Map(invoices.map((inv) => [inv.id, inv]))
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byProviderMap = new Map<string, { providerName: string; total: number; withAttach: number }>()
+  let totalWithAttach = 0
+  let totalAppointmentInvoices = 0
+  for (const a of appts) {
+    const invoice = a.invoiceId ? invoiceById.get(a.invoiceId) : undefined
+    if (!invoice) continue
+    totalAppointmentInvoices++
+    const hasRetailLine = invoice.items.some((i) => i.product?.productType !== 'SERVICE')
+    if (hasRetailLine) totalWithAttach++
+    const key = a.providerId ?? 'unassigned'
+    const entry = byProviderMap.get(key) ?? { providerName: a.provider?.fullName ?? 'Unassigned', total: 0, withAttach: 0 }
+    entry.total += 1
+    if (hasRetailLine) entry.withAttach += 1
+    byProviderMap.set(key, entry)
+  }
+
+  const byProvider: RetailAttachRateByProviderRow[] = Array.from(byProviderMap.values())
+    .map((p) => ({ providerName: p.providerName, totalInvoices: p.total, withAttach: p.withAttach, attachRatePercent: p.total > 0 ? round1((p.withAttach / p.total) * 100) : 0 }))
+    .sort((a, b) => b.attachRatePercent - a.attachRatePercent)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, byProvider,
+    summary: {
+      totalAppointmentInvoices, withRetailAttach: totalWithAttach,
+      attachRatePercent: totalAppointmentInvoices > 0 ? round1((totalWithAttach / totalAppointmentInvoices) * 100) : 0,
+    },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -7268,4 +7392,6 @@ export const reportService = {
   generateDentalRecallComplianceReport,
   generateVaccinationComplianceReport,
   generateVetCaseTypeVolumeReport,
+  generateStylistRepeatClientReport,
+  generateRetailAttachRateReport,
 }

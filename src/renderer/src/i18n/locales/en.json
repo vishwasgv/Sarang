@@ -16,6 +16,7 @@
     "recurringProfiles": "Recurring Profiles",
     "locations": "Locations",
     "costCentres": "Cost Centres",
+    "serviceCombos": "Service Combos",
     "budgets": "Budgets",
     "approvalWorkflows": "Approval Workflows",
     "expenses": "Expenses",
@@ -1397,6 +1398,29 @@
       "body": "Create your first cost centre to start tagging invoices, bills, expenses and employees — then see a real profit/spend breakdown by department, branch or project."
     }
   },
+  "serviceCombos": {
+    "title": "Service Combos",
+    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
+    "comboName": "Combo Name",
+    "services": "Services",
+    "comboPrice": "Combo Price",
+    "savings": "Savings",
+    "newCombo": "New Combo",
+    "editCombo": "Edit Combo",
+    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
+    "nameRequired": "Combo name is required.",
+    "priceRequired": "Combo price must be greater than zero.",
+    "needTwoServices": "A combo needs at least 2 distinct services.",
+    "selectServices": "Select Services",
+    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
+    "memberTotalHint": "Individual price total: {{amount}}",
+    "couldNotLoad": "Could not load service combos.",
+    "couldNotSave": "Could not save this service combo.",
+    "empty": {
+      "title": "No service combos yet",
+      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
   "budgets": {
     "title": "Budgets",
     "subtitle": "Plan a monthly figure per cost centre or account, then compare it against real spend",
@@ -1771,6 +1795,14 @@
       "assetUtilization": {
         "label": "Asset Utilization Rate",
         "description": "Rented-days versus available-days for each individual tracked unit — which assets actually earn their keep"
+      },
+      "stylistRepeatClient": {
+        "label": "Stylist Repeat-Client Rate",
+        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+      },
+      "retailAttachRate": {
+        "label": "Retail Attach Rate",
+        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
       },
       "hotelOccupancy": {
         "label": "Room Occupancy",
@@ -2478,7 +2510,9 @@
       "treatmentAcceptanceRate": "No treatment plans proposed in this date range.",
       "dentalRecallCompliance": "No recall periods closed in this date range.",
       "vaccinationCompliance": "No follow-up doses with a prior due date in this date range.",
-      "vetCaseTypeVolume": "No cases recorded in this date range."
+      "vetCaseTypeVolume": "No cases recorded in this date range.",
+      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
+      "retailAttachRate": "No invoiced appointments in this date range."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2508,6 +2542,12 @@
       "repName": "Rep Name",
       "ordersBooked": "Orders Booked",
       "customersVisited": "Customers Visited",
+      "stylist": "Stylist",
+      "totalClients": "Total Clients",
+      "repeatClients": "Repeat Clients",
+      "totalInvoices": "Total Invoices",
+      "withAttach": "With Retail Attach",
+      "attachRatePercent": "Attach Rate %",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",

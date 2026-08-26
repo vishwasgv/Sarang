@@ -517,6 +517,10 @@ export interface IpcChannels {
     rentalRevenue: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 67 §9.1 — Rental item 3: Asset Utilization Rate, per unit.
     assetUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client rate.
+    stylistRepeatClient: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
+    retailAttachRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1248,6 +1252,14 @@ export interface IpcChannels {
     listForEmployee: (payload: { employeeId: string }) => Promise<ApiResponse>
     set: (payload: { employeeId: string; serviceCatalogIds: string[] }) => Promise<ApiResponse>
     listQualified: (payload: { serviceCatalogId: string }) => Promise<ApiResponse>
+  }
+  // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder.
+  serviceCombo: {
+    list: (payload?: { activeOnly?: boolean }) => Promise<ApiResponse>
+    create: (payload: { comboName: string; description?: string; comboPrice: number; serviceCatalogIds: string[] }) => Promise<ApiResponse>
+    update: (payload: { id: string; comboName?: string; description?: string | null; comboPrice?: number; isActive?: boolean; serviceCatalogIds?: string[] }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    resolve: (payload: { id: string }) => Promise<ApiResponse>
   }
   treatmentPlan: {
     list: (payload: { patientId: string }) => Promise<ApiResponse>

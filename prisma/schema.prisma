@@ -3175,6 +3175,7 @@ model ServiceCatalog {
   appointments      Appointment[]
   labTestOrderItems LabTestOrderItem[] // Phase 50 — Diagnostic Labs: test/panel catalog reuses this model
   providerSkills    ServiceProviderSkill[] // Phase 58 §2 — Beauty Salon: which staff can perform this service
+  comboMemberships  ServiceComboItem[] // Phase 68 §9.1 — Beauty Salon: combos this service belongs to
 
   @@index([isActive])
   @@index([category])
@@ -3199,6 +3200,43 @@ model ServiceProviderSkill {
 
   @@unique([employeeId, serviceCatalogId])
   @@index([employeeId])
+  @@index([serviceCatalogId])
+}
+
+// Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder. A
+// combo bundles N ServiceCatalog entries at one package price, typically
+// below the sum of the members' own basePrice — the price ADVANTAGE is
+// what makes it a package, not just a saved shortlist. Booking a combo
+// expands it into the SAME Appointment.services JSON multi-service shape
+// every salon appointment already uses (see buildAppointmentInvoiceItems in
+// appointment.service.ts), with each member's own price proportionally
+// scaled down from comboPrice by its basePrice weight — so invoicing needs
+// zero changes, the combo's saving is simply baked into the per-line prices
+// at booking time.
+model ServiceCombo {
+  id          String   @id @default(cuid())
+  comboName   String
+  description String?
+  comboPrice  Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items ServiceComboItem[]
+
+  @@index([isActive])
+}
+
+model ServiceComboItem {
+  id               String @id @default(cuid())
+  comboId          String
+  serviceCatalogId String
+
+  combo          ServiceCombo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  serviceCatalog ServiceCatalog @relation(fields: [serviceCatalogId], references: [id], onDelete: Cascade)
+
+  @@unique([comboId, serviceCatalogId])
+  @@index([comboId])
   @@index([serviceCatalogId])
 }
 

@@ -199,6 +199,14 @@ interface RentalRevenueReport { dateFrom: string; dateTo: string; rows: RentalRe
 interface AssetUtilizationRow { rentalUnitId: string; unitLabel: string; productName: string; status: string; rentedDays: number; availableDays: number; utilizationPercent: number }
 interface AssetUtilizationReport { dateFrom: string; dateTo: string; rows: AssetUtilizationRow[]; summary: { totalUnits: number; avgUtilizationPercent: number; idleUnitCount: number } }
 
+// Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client rate.
+interface StylistRepeatClientRow { providerName: string; totalClients: number; repeatClients: number; repeatRatePercent: number }
+interface StylistRepeatClientReport { dateFrom: string; dateTo: string; rows: StylistRepeatClientRow[]; summary: { totalStylists: number; overallRepeatRatePercent: number } }
+
+// Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
+interface RetailAttachRateByProviderRow { providerName: string; totalInvoices: number; withAttach: number; attachRatePercent: number }
+interface RetailAttachRateReport { dateFrom: string; dateTo: string; byProvider: RetailAttachRateByProviderRow[]; summary: { totalAppointmentInvoices: number; withRetailAttach: number; attachRatePercent: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -595,6 +603,8 @@ type ReportType =
   | 'purchaseRegister' | 'purchasesByVendor' | 'purchasesByItem' | 'apAging'
   // Phase 65 — Cost Centres, Budgets & Payroll Compliance
   | 'costCentreTreemap' | 'budgetVsActual' | 'statutoryComplianceSummary' | 'cashFlowProjection' | 'cashPositionTrend' | 'paymentPerformance'
+  // Phase 68 §9.1 — Beauty Salon items 1/2 & 3/4
+  | 'stylistRepeatClient' | 'retailAttachRate'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -790,6 +800,9 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // product volume, not a causal incrementality claim (see the report
   // function's own comment in report.service.ts for why).
   { id: 'schemeCostVsVolume', icon: <TrendingUp size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
+  // Phase 68 §9.1 — Beauty Salon items 1/2 & 3/4.
+  { id: 'stylistRepeatClient', icon: <Award size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'multi_service_booking' },
+  { id: 'retailAttachRate', icon: <Package size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'multi_service_booking' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1190,6 +1203,12 @@ export function ReportsScreen() {
           break
         case 'fieldRepLeaderboard':
           res = await window.api.reports.fieldRepLeaderboard({ dateFrom, dateTo })
+          break
+        case 'stylistRepeatClient':
+          res = await window.api.reports.stylistRepeatClient({ dateFrom, dateTo })
+          break
+        case 'retailAttachRate':
+          res = await window.api.reports.retailAttachRate({ dateFrom, dateTo })
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1876,6 +1895,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.repName'), t('reports.col.ordersBooked'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.customersVisited'), t('reports.col.plannedStops'), t('reports.col.hitRatePercent')],
           rows: d.rows.map(r => [r.repName, r.ordersBooked, r.totalValue.toFixed(2), r.distinctCustomersVisited, r.plannedStops ?? '—', r.hitRatePercent !== null ? `${r.hitRatePercent}%` : '—'])
+        }
+      }
+      case 'stylistRepeatClient': {
+        const d = reportData as StylistRepeatClientReport
+        return {
+          headers: [t('reports.col.stylist'), t('reports.col.totalClients'), t('reports.col.repeatClients'), t('reports.col.repeatRatePercent')],
+          rows: d.rows.map(r => [r.providerName, r.totalClients, r.repeatClients, `${r.repeatRatePercent}%`])
+        }
+      }
+      case 'retailAttachRate': {
+        const d = reportData as RetailAttachRateReport
+        return {
+          headers: [t('reports.col.stylist'), t('reports.col.totalInvoices'), t('reports.col.withAttach'), t('reports.col.attachRatePercent')],
+          rows: d.byProvider.map(r => [r.providerName, r.totalInvoices, r.withAttach, `${r.attachRatePercent}%`])
         }
       }
       case 'serviceProjects': {
@@ -2689,6 +2722,20 @@ export function ReportsScreen() {
           { label: `${t('common.amount')} (${currencySymbol})`, value: d.summary.totalValue.toFixed(2) }
         ]
       }
+      case 'stylistRepeatClient': {
+        const d = reportData as StylistRepeatClientReport
+        return [
+          { label: t('reports.col.stylist'), value: String(d.summary.totalStylists) },
+          { label: t('reports.col.repeatRatePercent'), value: `${d.summary.overallRepeatRatePercent}%` }
+        ]
+      }
+      case 'retailAttachRate': {
+        const d = reportData as RetailAttachRateReport
+        return [
+          { label: t('reports.col.totalInvoices'), value: String(d.summary.totalAppointmentInvoices) },
+          { label: t('reports.col.attachRatePercent'), value: `${d.summary.attachRatePercent}%` }
+        ]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         return [
@@ -3444,6 +3491,16 @@ export function ReportsScreen() {
         if (d.rows.length === 0) return []
         return [{ type: 'bar', title: t('reports.defs.fieldRepLeaderboard.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.repName, value: r.totalValue })) }]
       }
+      case 'stylistRepeatClient': {
+        const d = reportData as StylistRepeatClientReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.stylistRepeatClient.label'), data: d.rows.slice(0, 10).map(r => ({ label: r.providerName, value: r.repeatRatePercent })) }]
+      }
+      case 'retailAttachRate': {
+        const d = reportData as RetailAttachRateReport
+        if (d.byProvider.length === 0) return []
+        return [{ type: 'bar', title: t('reports.defs.retailAttachRate.label'), data: d.byProvider.slice(0, 10).map(r => ({ label: r.providerName, value: r.attachRatePercent })) }]
+      }
       case 'serviceProjects': {
         const d = reportData as ServiceProjectReport
         if (d.byStatus.length === 0) return []
@@ -3946,6 +4003,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'rentalStatus': return <RentalStatusView data={data as RentalStatusReport} />
     case 'rentalRevenue': return <RentalRevenueView data={data as RentalRevenueReport} fmt={fmt} />
     case 'assetUtilization': return <AssetUtilizationView data={data as AssetUtilizationReport} />
+    case 'stylistRepeatClient': return <StylistRepeatClientView data={data as StylistRepeatClientReport} />
+    case 'retailAttachRate': return <RetailAttachRateView data={data as RetailAttachRateReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5519,6 +5578,73 @@ function AssetUtilizationView({ data }: { data: AssetUtilizationReport }) {
         headers={[t('rental.unitLabel'), t('rental.col.item'), t('common.status'), t('reports.col.rentedDays'), t('reports.col.availableDays'), t('rental.utilization')]}
         rows={data.rows.map(r => [r.unitLabel, r.productName, t(`rental.status.${r.status}`), r.rentedDays, r.availableDays, `${r.utilizationPercent.toFixed(0)}%`])}
         emptyText={t('rental.empty.utilization')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client rate.
+// Best-first (highest repeat rate) — a leaderboard, not this phase's usual
+// worst-first problem list, same reasoning generateStylistRepeatClientReport
+// itself documents.
+function StylistRepeatClientView({ data }: { data: StylistRepeatClientReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.stylist'), value: String(data.summary.totalStylists) },
+        { label: t('reports.col.repeatRatePercent'), value: `${data.summary.overallRepeatRatePercent}%` },
+      ]} />
+      {data.rows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.stylistRepeatClient.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.rows.length, 10) * 40)}>
+            <BarChart data={data.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <YAxis type="category" dataKey="providerName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Bar dataKey="repeatRatePercent" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.stylist'), t('reports.col.totalClients'), t('reports.col.repeatClients'), t('reports.col.repeatRatePercent')]}
+        rows={data.rows.map(r => [r.providerName, r.totalClients, r.repeatClients, `${r.repeatRatePercent}%`])}
+        emptyText={t('reports.empty.stylistRepeatClient')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
+function RetailAttachRateView({ data }: { data: RetailAttachRateReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.totalInvoices'), value: String(data.summary.totalAppointmentInvoices) },
+        { label: t('reports.col.attachRatePercent'), value: `${data.summary.attachRatePercent}%` },
+      ]} />
+      {data.byProvider.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.retailAttachRate.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.byProvider.length, 10) * 40)}>
+            <BarChart data={data.byProvider.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} unit="%" />
+              <YAxis type="category" dataKey="providerName" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+              <Bar dataKey="attachRatePercent" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.stylist'), t('reports.col.totalInvoices'), t('reports.col.withAttach'), t('reports.col.attachRatePercent')]}
+        rows={data.byProvider.map(r => [r.providerName, r.totalInvoices, r.withAttach, `${r.attachRatePercent}%`])}
+        emptyText={t('reports.empty.retailAttachRate')}
       />
     </div>
   )

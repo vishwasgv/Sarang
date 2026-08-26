@@ -603,6 +603,8 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
   const [pets, setPets] = useState<Array<{ id: string; petName: string; species: string }>>([])
   const [pickedPetId, setPickedPetId] = useState('')
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder.
+  const [combos, setCombos] = useState<Array<{ id: string; comboName: string; comboPrice: number }>>([])
   const [form, setForm] = useState({
     customerName: '',
     providerId: '',
@@ -639,6 +641,37 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
       toastError('Error', 'Could not load services or providers.')
     })
   }, [toastError])
+
+  // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder.
+  useEffect(() => {
+    if (!isSalon) return
+    window.api.serviceCombo.list({ activeOnly: true }).then((res) => {
+      if (res.success && res.data) setCombos(res.data as Array<{ id: string; comboName: string; comboPrice: number }>)
+    })
+  }, [isSalon])
+
+  // Picking a combo REPLACES the current selection with its member services,
+  // priced at the combo's own package-scaled amounts (resolveComboServices
+  // in service-combo.service.ts) — not each service's plain catalog price.
+  // durationMinutes still comes from the real catalog entry (the combo
+  // resolver has no concept of duration, only price).
+  async function applyCombo(comboId: string) {
+    if (!comboId) return
+    const res = await window.api.serviceCombo.resolve({ id: comboId })
+    if (!res.success || !res.data) { toastError('Error', res.error?.message ?? 'Could not load this combo.'); return }
+    const resolved = res.data as { comboName: string; services: Array<{ id: string; name: string; price: number }> }
+    const applied: Service[] = resolved.services.map((r) => {
+      const catalogSvc = services.find((s) => s.id === r.id)
+      return { id: r.id, serviceName: r.name, basePrice: r.price, durationMinutes: catalogSvc?.durationMinutes ?? 30 }
+    })
+    setSelectedServices(applied)
+    setForm((f) => ({
+      ...f,
+      serviceTitle: resolved.comboName,
+      durationMinutes: applied.reduce((sum, s) => sum + s.durationMinutes, 0),
+      totalAmount: applied.reduce((sum, s) => sum + s.basePrice, 0),
+    }))
+  }
 
   useEffect(() => {
     if (!form.providerId || !form.scheduledDate) {
@@ -811,6 +844,17 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
                   </button>
                 </div>
               ))}
+              {combos.length > 0 && (
+                <Select
+                  value=""
+                  onChange={(e) => { if (e.target.value) applyCombo(e.target.value) }}
+                >
+                  <option value="">📦 Book a combo package...</option>
+                  {combos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.comboName} — ₹{c.comboPrice}</option>
+                  ))}
+                </Select>
+              )}
               <Select
                 value=""
                 onChange={(e) => { if (e.target.value) addSalonService(e.target.value) }}

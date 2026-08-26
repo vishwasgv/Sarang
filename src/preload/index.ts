@@ -429,6 +429,8 @@ const api: IpcChannels = {
     rentalStatus: () => invoke('reports:rentalStatus'),
     rentalRevenue: (p) => invoke('reports:rentalRevenue', p),
     assetUtilization: (p) => invoke('reports:assetUtilization', p),
+    stylistRepeatClient: (p) => invoke('reports:stylistRepeatClient', p),
+    retailAttachRate: (p) => invoke('reports:retailAttachRate', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1044,6 +1046,13 @@ const api: IpcChannels = {
     listForEmployee: (p: unknown) => invoke('providerSkills:listForEmployee', p),
     set: (p: unknown) => invoke('providerSkills:set', p),
     listQualified: (p: unknown) => invoke('providerSkills:listQualified', p),
+  },
+  serviceCombo: {
+    list: (p: unknown) => invoke('serviceCombo:list', p),
+    create: (p: unknown) => invoke('serviceCombo:create', p),
+    update: (p: unknown) => invoke('serviceCombo:update', p),
+    delete: (p: unknown) => invoke('serviceCombo:delete', p),
+    resolve: (p: unknown) => invoke('serviceCombo:resolve', p),
   },
   treatmentPlan: {
     list: (p: unknown) => invoke('treatmentPlan:list', p),

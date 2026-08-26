@@ -7521,3 +7521,118 @@ describe('reportService.generateDiscountReport', () => {
     expect(result.byProduct).toEqual([])
   })
 })
+
+// Phase 68 §9.1 — Beauty Salon items 1/2: stylist-wise repeat-client rate.
+describe('reportService.generateStylistRepeatClientReport', () => {
+  it('counts a client as repeat only when they returned to the SAME stylist twice+, not just the salon overall', async () => {
+    const db = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([
+          { providerId: 'stylist-1', customerId: 'cust-a', provider: { fullName: 'Asha' } },
+          { providerId: 'stylist-1', customerId: 'cust-a', provider: { fullName: 'Asha' } }, // repeat with Asha
+          { providerId: 'stylist-1', customerId: 'cust-b', provider: { fullName: 'Asha' } }, // one-time with Asha
+          { providerId: 'stylist-2', customerId: 'cust-b', provider: { fullName: 'Ravi' } }, // cust-b's FIRST visit with Ravi -- not a repeat for Ravi
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStylistRepeatClientReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const asha = result.rows.find((r) => r.providerName === 'Asha')
+    const ravi = result.rows.find((r) => r.providerName === 'Ravi')
+    expect(asha).toEqual({ providerName: 'Asha', totalClients: 2, repeatClients: 1, repeatRatePercent: 50 })
+    expect(ravi).toEqual({ providerName: 'Ravi', totalClients: 1, repeatClients: 0, repeatRatePercent: 0 })
+  })
+
+  it('sorts best-first (highest repeat rate) — a leaderboard, not this phase\'s usual worst-first problem list', async () => {
+    const db = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([
+          { providerId: 'stylist-low', customerId: 'c1', provider: { fullName: 'LowRepeat' } },
+          { providerId: 'stylist-high', customerId: 'c2', provider: { fullName: 'HighRepeat' } },
+          { providerId: 'stylist-high', customerId: 'c2', provider: { fullName: 'HighRepeat' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStylistRepeatClientReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows.map((r) => r.providerName)).toEqual(['HighRepeat', 'LowRepeat'])
+  })
+
+  it('excludes appointments with no provider or no customer from the computation entirely', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([]) }, // query itself filters providerId/customerId not-null
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateStylistRepeatClientReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(db.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ providerId: { not: null }, customerId: { not: null }, status: 'COMPLETED' }),
+    }))
+  })
+
+  it('returns an honest empty result when nothing matches the range', async () => {
+    const db = { appointment: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateStylistRepeatClientReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalStylists: 0, overallRepeatRatePercent: 0 })
+  })
+})
+
+// Phase 68 §9.1 — Beauty Salon items 3/4: retail-product attach rate.
+describe('reportService.generateRetailAttachRateReport', () => {
+  it('counts an invoice as "attached" only when it has a line whose product is NOT the synthetic SERVICE placeholder', async () => {
+    const db = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([
+          { providerId: 'stylist-1', invoiceId: 'inv-1', provider: { fullName: 'Asha' } },
+          { providerId: 'stylist-1', invoiceId: 'inv-2', provider: { fullName: 'Asha' } },
+        ]),
+      },
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'inv-1', items: [{ product: { productType: 'SERVICE' } }, { product: { productType: 'STANDARD' } }] }, // has retail line
+          { id: 'inv-2', items: [{ product: { productType: 'SERVICE' } }] }, // service only
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetailAttachRateReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.summary).toEqual({ totalAppointmentInvoices: 2, withRetailAttach: 1, attachRatePercent: 50 })
+    expect(result.byProvider).toEqual([{ providerName: 'Asha', totalInvoices: 2, withAttach: 1, attachRatePercent: 50 }])
+  })
+
+  it('excludes an appointment with no invoiceId (never billed yet) from the computation', async () => {
+    const db = {
+      appointment: { findMany: vi.fn().mockResolvedValue([]) }, // query filters invoiceId: { not: null }
+      invoice: { findMany: vi.fn() },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateRetailAttachRateReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(db.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ invoiceId: { not: null }, status: 'COMPLETED' }),
+    }))
+    expect(db.invoice.findMany).not.toHaveBeenCalled()
+  })
+
+  it('returns an honest empty result when nothing matches the range', async () => {
+    const db = { appointment: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetailAttachRateReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(result.byProvider).toEqual([])
+    expect(result.summary).toEqual({ totalAppointmentInvoices: 0, withRetailAttach: 0, attachRatePercent: 0 })
+  })
+})

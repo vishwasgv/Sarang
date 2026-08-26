@@ -26,6 +26,7 @@ import { PriceListsScreen } from '@modules/pricing/ui/PriceListsScreen'
 import { RecurringProfilesScreen } from '@modules/recurring/ui/RecurringProfilesScreen'
 import { LocationsScreen } from '@modules/locations/ui/LocationsScreen'
 import { CostCentresScreen } from '@modules/cost-centres/ui/CostCentresScreen'
+import { ServiceCombosScreen } from '@modules/service-combos/ui/ServiceCombosScreen'
 import { BudgetsScreen } from '@modules/budgets/ui/BudgetsScreen'
 import { ApprovalWorkflowsScreen } from '@modules/approvals/ui/ApprovalWorkflowsScreen'
 import { PricingSchemesScreen } from '@modules/pricing/ui/PricingSchemesScreen'
@@ -309,6 +310,8 @@ export function AppRouter() {
         {/* Phase 65 — Cost Centres, Budgets & Payroll Compliance */}
         <Route path="/cost-centres" element={<ProtectedRoute permission="costCentres.view"><CostCentresScreen /></ProtectedRoute>} />
         <Route path="/budgets" element={<ProtectedRoute permission="budgets.view"><BudgetsScreen /></ProtectedRoute>} />
+        {/* Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder */}
+        <Route path="/service-combos" element={<ProtectedRoute permission="settings.view"><ServiceCombosScreen /></ProtectedRoute>} />
         <Route path="/approval-workflows" element={<ProtectedRoute permission="approvalWorkflows.view"><ApprovalWorkflowsScreen /></ProtectedRoute>} />
         <Route path="/pricing/schemes" element={<ProtectedRoute permission="pricingSchemes.view"><PricingSchemesScreen /></ProtectedRoute>} />
         {/* Phase 67 §9.1 — Retail: time-boxed markdown workflow */}
