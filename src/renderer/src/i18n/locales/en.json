@@ -2036,6 +2036,18 @@
         "label": "Pest Control Report",
         "description": "Contracts expiring soon and revenue by pest type — for Pest Control Services"
       },
+      "renewalFunnel": {
+        "label": "Renewal Funnel",
+        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+      },
+      "chemicalUsageCompliance": {
+        "label": "Chemical Usage / Compliance Log",
+        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+      },
+      "pestRecurringValueTrend": {
+        "label": "Recurring Contract Value Trend",
+        "description": "Actual AMC contract-fee revenue billed, trended by month"
+      },
       "realEstatePipeline": {
         "label": "Listings & Deals Pipeline",
         "description": "Property listings, inquiry stages, and deal pipeline — for Real Estate Agents"
@@ -2659,6 +2671,8 @@
       "fittingStageTracker": "No orders currently at Trial or Alterations.",
       "fabricPopularity": "No orders with a fabric/design noted in this date range.",
       "pestContracts": "No contracts expiring in this window.",
+      "chemicalUsageCompliance": "No completed visits in this date range.",
+      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
       "realEstatePipeline": "No deals in this date range.",
       "retainers": "No retainers found.",
       "shootBookings": "No shoot bookings in this date range.",

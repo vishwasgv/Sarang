@@ -3,6 +3,7 @@ import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { inventoryService } from './inventory.service'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -120,7 +121,7 @@ export async function createPestJobSheet(payload: {
         jobNumber,
         contractId: payload.contractId ?? null,
         clientId: payload.clientId,
-        visitDate: new Date(payload.visitDate),
+        visitDate: parseLocalDateStart(payload.visitDate),
         scheduledTime: payload.scheduledTime ?? null,
         technicianIds: JSON.stringify(payload.technicianIds ?? []),
         pesticideUsed: payload.pesticideUsed ?? null,
@@ -128,7 +129,7 @@ export async function createPestJobSheet(payload: {
         treatmentType: payload.treatmentType ?? 'SPRAY',
         jobAmount: payload.jobAmount ?? 0,
         clientSignature: payload.clientSignature ?? false,
-        followUpDate: payload.followUpDate ? new Date(payload.followUpDate) : null,
+        followUpDate: payload.followUpDate ? parseLocalDateStart(payload.followUpDate) : null,
         notes: payload.notes ?? null,
       },
       include: {
@@ -160,9 +161,9 @@ export async function updatePestJobSheet(payload: {
   const db = getPrisma()
   const { id, visitDate, completedDate, followUpDate, technicianIds, areasServiced, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
-  if (visitDate !== undefined) data.visitDate = new Date(visitDate)
-  if (completedDate !== undefined) data.completedDate = completedDate ? new Date(completedDate) : null
-  if (followUpDate !== undefined) data.followUpDate = followUpDate ? new Date(followUpDate) : null
+  if (visitDate !== undefined) data.visitDate = parseLocalDateStart(visitDate)
+  if (completedDate !== undefined) data.completedDate = completedDate ? parseLocalDateStart(completedDate) : null
+  if (followUpDate !== undefined) data.followUpDate = followUpDate ? parseLocalDateStart(followUpDate) : null
   if (technicianIds !== undefined) data.technicianIds = JSON.stringify(technicianIds)
   if (areasServiced !== undefined) data.areasServiced = JSON.stringify(areasServiced)
 

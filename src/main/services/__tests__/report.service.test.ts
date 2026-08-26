@@ -6792,6 +6792,155 @@ describe('reportService.generatePestContractReport', () => {
   })
 })
 
+// ─── Renewal Funnel (Phase 68 §9.1 — Pest Control item 2) ──────────────────────
+
+describe('reportService.generateRenewalFunnelReport', () => {
+  it('only includes ACTIVE contracts with a real endDate', async () => {
+    const db = { pestServiceContract: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateRenewalFunnelReport()
+
+    expect(db.pestServiceContract.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'ACTIVE', endDate: { not: null } }
+    }))
+  })
+
+  it('buckets contracts by renewal urgency', async () => {
+    const now = Date.now()
+    const db = {
+      pestServiceContract: {
+        findMany: vi.fn().mockResolvedValue([
+          { endDate: new Date(now - 5 * 86400000), contractValue: 1000 },  // OVERDUE
+          { endDate: new Date(now + 3 * 86400000), contractValue: 2000 },  // DUE_THIS_WEEK
+          { endDate: new Date(now + 20 * 86400000), contractValue: 3000 }, // DUE_THIS_MONTH
+          { endDate: new Date(now + 60 * 86400000), contractValue: 4000 }, // DUE_NEXT_QUARTER
+          { endDate: new Date(now + 200 * 86400000), contractValue: 5000 }, // LATER
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRenewalFunnelReport()
+
+    const byStage = Object.fromEntries(result.stages.map(s => [s.stage, s]))
+    expect(byStage.OVERDUE).toMatchObject({ count: 1, value: 1000 })
+    expect(byStage.DUE_THIS_WEEK).toMatchObject({ count: 1, value: 2000 })
+    expect(byStage.DUE_THIS_MONTH).toMatchObject({ count: 1, value: 3000 })
+    expect(byStage.DUE_NEXT_QUARTER).toMatchObject({ count: 1, value: 4000 })
+    expect(byStage.LATER).toMatchObject({ count: 1, value: 5000 })
+    expect(result.summary).toEqual({ totalWithEndDate: 5, totalValue: 15000 })
+  })
+
+  it('returns all-zero buckets when there are no contracts with an end date', async () => {
+    const db = { pestServiceContract: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRenewalFunnelReport()
+
+    expect(result.stages.every(s => s.count === 0)).toBe(true)
+    expect(result.summary).toEqual({ totalWithEndDate: 0, totalValue: 0 })
+  })
+})
+
+// ─── Chemical Usage / Compliance Log (Phase 68 §9.1 — Pest Control item 3) ─────
+
+describe('reportService.generateChemicalUsageComplianceReport', () => {
+  it('groups usage by pesticide name AND unit, not summed across units', async () => {
+    const db = {
+      pestJobSheet: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'PJS-1', client: { customerName: 'A' }, visitDate: new Date('2026-01-05'), pesticideLines: [{ pesticideName: 'Cypermethrin', unit: 'ML', quantityUsed: 50 }] },
+          { jobNumber: 'PJS-2', client: { customerName: 'B' }, visitDate: new Date('2026-01-06'), pesticideLines: [{ pesticideName: 'Cypermethrin', unit: 'ML', quantityUsed: 30 }, { pesticideName: 'Cypermethrin', unit: 'L', quantityUsed: 2 }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateChemicalUsageComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const ml = result.rows.find(r => r.unit === 'ML')
+    const l = result.rows.find(r => r.unit === 'L')
+    expect(ml).toMatchObject({ totalQuantityUsed: 80, visitCount: 2 })
+    expect(l).toMatchObject({ totalQuantityUsed: 2, visitCount: 1 })
+  })
+
+  it('flags a COMPLETED visit with zero pesticide lines as undocumented', async () => {
+    const db = {
+      pestJobSheet: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'PJS-1', client: { customerName: 'A' }, visitDate: new Date('2026-01-05'), pesticideLines: [] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateChemicalUsageComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.undocumentedVisits).toHaveLength(1)
+    expect(result.undocumentedVisits[0].jobNumber).toBe('PJS-1')
+    expect(result.summary.undocumentedCount).toBe(1)
+    expect(result.rows).toHaveLength(0)
+  })
+
+  it('only queries COMPLETED visits in the date range', async () => {
+    const db = { pestJobSheet: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateChemicalUsageComplianceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.pestJobSheet.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: 'COMPLETED' })
+    }))
+  })
+})
+
+// ─── Recurring Contract Value Trend (Phase 68 §9.1 — Pest Control item 4) ──────
+
+describe('reportService.generatePestRecurringValueTrendReport', () => {
+  it('only queries invoices actually linked back to a pest contract', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generatePestRecurringValueTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-03-31' })
+
+    expect(db.invoice.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ pestContractId: { not: null }, status: 'ACTIVE' })
+    }))
+  })
+
+  it('trends real billed revenue by month', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoiceDate: new Date('2026-01-15'), totalAmount: 12000 },
+          { invoiceDate: new Date('2026-01-20'), totalAmount: 8000 },
+          { invoiceDate: new Date('2026-02-10'), totalAmount: 15000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePestRecurringValueTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-02-28' })
+
+    expect(result.rows).toEqual([
+      { period: '2026-01', totalValue: 20000, invoiceCount: 2 },
+      { period: '2026-02', totalValue: 15000, invoiceCount: 1 },
+    ])
+    expect(result.summary).toEqual({ totalRecurringRevenue: 35000, invoiceCount: 3 })
+  })
+
+  it('returns an empty trend when no contract invoices exist in range', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePestRecurringValueTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalRecurringRevenue: 0, invoiceCount: 0 })
+  })
+})
+
 describe('reportService.generateRealEstatePipelineReport', () => {
   it('only counts REGISTERED deals toward brokerage earned, and IN_PROGRESS toward the pipeline count', async () => {
     const db = {

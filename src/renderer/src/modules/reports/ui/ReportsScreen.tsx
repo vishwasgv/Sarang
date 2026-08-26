@@ -443,6 +443,19 @@ interface PestContractExpiringRow { contractNumber: string; customerName: string
 interface PestRevenueByType { pestType: string; revenue: number; visitCount: number }
 interface PestContractReport { dateFrom: string; dateTo: string; summary: { activeContracts: number; expiringWithin30Days: number; totalContractValue: number }; expiring: PestContractExpiringRow[]; byPestType: PestRevenueByType[] }
 
+// Phase 68 §9.1 — Pest Control item 2: renewal funnel.
+interface RenewalFunnelStage { stage: 'OVERDUE' | 'DUE_THIS_WEEK' | 'DUE_THIS_MONTH' | 'DUE_NEXT_QUARTER' | 'LATER'; count: number; value: number }
+interface RenewalFunnelReport { stages: RenewalFunnelStage[]; summary: { totalWithEndDate: number; totalValue: number } }
+
+// Phase 68 §9.1 — Pest Control item 3: chemical-usage/compliance log.
+interface ChemicalUsageRow { pesticideName: string; unit: string; totalQuantityUsed: number; visitCount: number }
+interface UndocumentedVisitRow { jobNumber: string; customerName: string; visitDate: string }
+interface ChemicalUsageComplianceReport { dateFrom: string; dateTo: string; rows: ChemicalUsageRow[]; undocumentedVisits: UndocumentedVisitRow[]; summary: { totalCompletedVisits: number; undocumentedCount: number } }
+
+// Phase 68 §9.1 — Pest Control item 4: recurring contract value trend.
+interface RecurringValueTrendRow { period: string; totalValue: number; invoiceCount: number }
+interface RecurringValueTrendReport { dateFrom: string; dateTo: string; rows: RecurringValueTrendRow[]; summary: { totalRecurringRevenue: number; invoiceCount: number } }
+
 interface RealEstatePipelineByStage { stage: string; count: number; value: number }
 interface RealEstateDealRow { propertyLocation: string; buyerName: string; sellerName: string; dealValue: number; brokerageAmount: number; status: string; createdAt: string }
 interface RealEstatePipelineReport { dateFrom: string; dateTo: string; summary: { totalListings: number; availableListings: number; dealsInProgress: number; totalBrokerageEarned: number }; byInquiryStage: RealEstatePipelineByStage[]; deals: RealEstateDealRow[] }
@@ -772,6 +785,8 @@ type ReportType =
   | 'carPartsVariance' | 'serviceTypeRevenue'
   // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4
   | 'orderTurnaround' | 'fittingStageTracker' | 'fabricPopularity'
+  // Phase 68 §9.1 — Pest Control items 2, 3 & 4
+  | 'renewalFunnel' | 'chemicalUsageCompliance' | 'pestRecurringValueTrend'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -967,6 +982,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Tailor/Boutique item 4.
   { id: 'fabricPopularity', icon: <Shirt size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
   { id: 'pestContracts', icon: <Bug size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
+  // Phase 68 §9.1 — Pest Control item 2. Current-state, no date range.
+  { id: 'renewalFunnel', icon: <Repeat size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'pest_contracts' },
+  // Phase 68 §9.1 — Pest Control item 3.
+  { id: 'chemicalUsageCompliance', icon: <FlaskConical size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
+  // Phase 68 §9.1 — Pest Control item 4.
+  { id: 'pestRecurringValueTrend', icon: <TrendingUp size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
   { id: 'realEstatePipeline', icon: <Home size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'properties' },
   { id: 'retainers', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'retainers' },
   { id: 'shootBookings', icon: <Camera size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
@@ -1546,6 +1567,15 @@ export function ReportsScreen() {
           break
         case 'pestContracts':
           res = await window.api.reports.pestContracts({ dateFrom, dateTo })
+          break
+        case 'renewalFunnel':
+          res = await window.api.reports.renewalFunnel()
+          break
+        case 'chemicalUsageCompliance':
+          res = await window.api.reports.chemicalUsageCompliance({ dateFrom, dateTo })
+          break
+        case 'pestRecurringValueTrend':
+          res = await window.api.reports.pestRecurringValueTrend({ dateFrom, dateTo })
           break
         case 'realEstatePipeline':
           res = await window.api.reports.realEstatePipeline({ dateFrom, dateTo })
@@ -2470,6 +2500,27 @@ export function ReportsScreen() {
           rows: d.expiring.map(r => [r.contractNumber, r.customerName, r.pestTypes.join(', '), r.endDate, r.daysUntilExpiry])
         }
       }
+      case 'renewalFunnel': {
+        const d = reportData as RenewalFunnelReport
+        return {
+          headers: ['Stage', 'Count', t('common.amount')],
+          rows: d.stages.map(s => [s.stage, s.count, s.value.toFixed(2)])
+        }
+      }
+      case 'chemicalUsageCompliance': {
+        const d = reportData as ChemicalUsageComplianceReport
+        return {
+          headers: ['Pesticide', 'Unit', 'Total Quantity Used', 'Visit Count'],
+          rows: d.rows.map(r => [r.pesticideName, r.unit, r.totalQuantityUsed, r.visitCount])
+        }
+      }
+      case 'pestRecurringValueTrend': {
+        const d = reportData as RecurringValueTrendReport
+        return {
+          headers: ['Period', t('common.amount'), 'Invoices'],
+          rows: d.rows.map(r => [r.period, r.totalValue.toFixed(2), r.invoiceCount])
+        }
+      }
       case 'realEstatePipeline': {
         const d = reportData as RealEstatePipelineReport
         return {
@@ -3368,6 +3419,27 @@ export function ReportsScreen() {
           { label: 'Active Contracts', value: String(d.summary.activeContracts) },
           { label: 'Expiring (30 days)', value: String(d.summary.expiringWithin30Days) },
           { label: 'Total Contract Value', value: fmt(d.summary.totalContractValue) }
+        ]
+      }
+      case 'renewalFunnel': {
+        const d = reportData as RenewalFunnelReport
+        return [
+          { label: 'Contracts with End Date', value: String(d.summary.totalWithEndDate) },
+          { label: 'Total Value', value: fmt(d.summary.totalValue) }
+        ]
+      }
+      case 'chemicalUsageCompliance': {
+        const d = reportData as ChemicalUsageComplianceReport
+        return [
+          { label: 'Completed Visits', value: String(d.summary.totalCompletedVisits) },
+          { label: 'Undocumented Visits', value: String(d.summary.undocumentedCount) }
+        ]
+      }
+      case 'pestRecurringValueTrend': {
+        const d = reportData as RecurringValueTrendReport
+        return [
+          { label: 'Total Recurring Revenue', value: fmt(d.summary.totalRecurringRevenue) },
+          { label: 'Invoices', value: String(d.summary.invoiceCount) }
         ]
       }
       case 'realEstatePipeline': {
@@ -4290,6 +4362,23 @@ export function ReportsScreen() {
         if (d.points.length === 0) return []
         return [{ type: 'line', title: t('reports.summary.cashPositionTrend'), data: d.points.map(p => ({ label: p.date, value: p.balance })), valueIsCurrency: true }]
       }
+      // Phase 68 §9.1 — Pest Control item 2: a real bar chart of the honest
+      // bucket counts (not a fabricated conversion rate).
+      case 'renewalFunnel': {
+        const d = reportData as RenewalFunnelReport
+        if (d.summary.totalWithEndDate === 0) return []
+        return [{ type: 'bar', title: 'Renewal Urgency', data: d.stages.map(s => ({ label: s.stage, value: s.count })) }]
+      }
+      // Phase 68 §9.1 — Pest Control item 3. Chart-free — a compliance log
+      // is a worklist, not an aggregate metric.
+      case 'chemicalUsageCompliance': return []
+      // Phase 68 §9.1 — Pest Control item 4: real billed history trended by
+      // month.
+      case 'pestRecurringValueTrend': {
+        const d = reportData as RecurringValueTrendReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'line', title: 'Recurring Value Trend', data: d.rows.map(r => ({ label: r.period, value: r.totalValue })), valueIsCurrency: true }]
+      }
       default: return []
     }
   }
@@ -4728,6 +4817,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'fittingStageTracker': return <FittingStageTrackerView data={data as FittingStageReport} />
     case 'fabricPopularity': return <FabricPopularityView data={data as FabricPopularityReport} fmt={fmt} />
     case 'pestContracts': return <PestContractReportView data={data as PestContractReport} fmt={fmt} />
+    case 'renewalFunnel': return <RenewalFunnelView data={data as RenewalFunnelReport} fmt={fmt} />
+    case 'chemicalUsageCompliance': return <ChemicalUsageComplianceView data={data as ChemicalUsageComplianceReport} />
+    case 'pestRecurringValueTrend': return <PestRecurringValueTrendView data={data as RecurringValueTrendReport} fmt={fmt} />
     case 'realEstatePipeline': return <RealEstatePipelineReportView data={data as RealEstatePipelineReport} fmt={fmt} />
     case 'retainers': return <RetainerReportView data={data as RetainerReport} fmt={fmt} />
     case 'shootBookings': return <ShootBookingReportView data={data as ShootBookingReport} fmt={fmt} />
@@ -8546,6 +8638,81 @@ function PestContractReportView({ data, fmt }: { data: PestContractReport; fmt: 
           headers={['Contract #', t('reports.col.customer'), 'Pest Types', 'Expires', 'Days Left']}
           rows={data.expiring.map(r => [r.contractNumber, r.customerName, r.pestTypes.join(', '), r.endDate, r.daysUntilExpiry])}
           emptyText={t('reports.empty.pestContracts')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Pest Control item 2: renewal funnel.
+function RenewalFunnelView({ data, fmt }: { data: RenewalFunnelReport; fmt: (n: number) => string }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Contracts with End Date', value: String(data.summary.totalWithEndDate) },
+        { label: 'Total Value', value: fmt(data.summary.totalValue) }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Renewal Urgency</h3>
+        <div className="space-y-2">
+          {data.stages.map(s => (
+            <div key={s.stage} className="flex items-center justify-between text-sm">
+              <span className="text-gray-700 dark:text-slate-300">{s.stage.replace(/_/g, ' ')}</span>
+              <span className="font-medium text-gray-900 dark:text-slate-100">{s.count} ({fmt(s.value)})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Pest Control item 3: chemical-usage/compliance log.
+function ChemicalUsageComplianceView({ data }: { data: ChemicalUsageComplianceReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Completed Visits', value: String(data.summary.totalCompletedVisits) },
+        { label: 'Undocumented Visits', value: String(data.summary.undocumentedCount) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Chemical Usage</h3>
+        <DataTable
+          headers={['Pesticide', 'Unit', 'Total Quantity Used', 'Visit Count']}
+          rows={data.rows.map(r => [r.pesticideName, r.unit, r.totalQuantityUsed, r.visitCount])}
+          emptyText={t('reports.empty.chemicalUsageCompliance')}
+        />
+      </div>
+      {data.undocumentedVisits.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Visits Missing Pesticide Documentation</h3>
+          <DataTable
+            headers={['Job #', t('reports.col.customer'), t('common.date')]}
+            rows={data.undocumentedVisits.map(r => [r.jobNumber, r.customerName, r.visitDate])}
+            emptyText=""
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Pest Control item 4: recurring contract value trend.
+function PestRecurringValueTrendView({ data, fmt }: { data: RecurringValueTrendReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Recurring Revenue', value: fmt(data.summary.totalRecurringRevenue) },
+        { label: 'Invoices', value: String(data.summary.invoiceCount) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Month</h3>
+        <DataTable
+          headers={['Period', t('common.amount'), 'Invoices']}
+          rows={data.rows.map(r => [r.period, fmt(r.totalValue), r.invoiceCount])}
+          emptyText={t('reports.empty.pestRecurringValueTrend')}
         />
       </div>
     </div>

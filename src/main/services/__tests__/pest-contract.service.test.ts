@@ -6,7 +6,7 @@ vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() 
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
-import { listPestContracts, getPestContract, createPestContract, updatePestContract, generateContractInvoice } from '../pest-contract.service'
+import { listPestContracts, getPestContract, createPestContract, updatePestContract, generateContractInvoice, getContractsDueForRenewalThisMonth } from '../pest-contract.service'
 
 // Regression coverage for the Phase 33 re-audit finding: PestServiceContract.
 // contractValue is a Prisma Decimal field, returned unserialized by every
@@ -69,6 +69,7 @@ function makeMockDb(existing: ReturnType<typeof makeContract> | null = null) {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: 'product-pest', hsnCode: '998534' }),
     },
+    invoice: { update: vi.fn().mockResolvedValue({}) },
     notificationQueue: { create: vi.fn().mockResolvedValue({}) },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     setting: {
@@ -137,10 +138,18 @@ describe('pest-contract.service — Decimal serialization', () => {
 describe('pest-contract.service — AMC renewal reminders (F.10)', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  // Phase 68 §9.1 — Pest Control: the real UI only ever sends a bare
+  // "YYYY-MM-DD" date-input value (see PestControlScreen.tsx's
+  // emptyContractForm), never a full ISO timestamp — parseLocalDateStart
+  // (fixed in this same phase) only accepts that bare shape.
+  function toDateOnlyStr(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
   it('createPestContract with a far-future endDate queues both 30-day and 7-day renewal reminders', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
-    const endDate = new Date(Date.now() + 60 * 86400000).toISOString()
+    const endDate = toDateOnlyStr(new Date(Date.now() + 60 * 86400000))
 
     const res = await createPestContract({ clientId: 'cust-1', propertyAddress: 'Test Address', startDate: '2026-07-01', endDate, contractValue: 12000 })
 
@@ -164,7 +173,7 @@ describe('pest-contract.service — AMC renewal reminders (F.10)', () => {
     const oldEndDate = new Date(Date.now() + 10 * 86400000)
     const db = makeMockDb(makeContract({ endDate: oldEndDate }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
-    const newEndDate = new Date(Date.now() + 60 * 86400000).toISOString()
+    const newEndDate = toDateOnlyStr(new Date(Date.now() + 60 * 86400000))
 
     const res = await updatePestContract({ id: 'pct-1', endDate: newEndDate })
 
@@ -271,5 +280,95 @@ describe('pest-contract.service — generateContractInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('PCT-004')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Phase 68 §9.1 — Pest Control item 4: recurring contract value trend.
+  it('links the created invoice back to the contract via pestContractId', async () => {
+    const db = makeMockDb(makeContract({ lastInvoicedPeriod: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    await generateContractInvoice('pct-1', '2026-07')
+
+    expect(db.invoice.update).toHaveBeenCalledWith({ where: { id: 'invoice-1' }, data: { pestContractId: 'pct-1' } })
+  })
+
+  // Real bug found+fixed (Phase 68 §9.1 — Pest Control, flagged-but-unfixed
+  // during CA Firm): a raw `.toISOString().slice(0, 7)` computes the UTC
+  // year-month, wrong for the first ~5.5h of a new month in IST.
+  it('defaults the target period to the local (not UTC) year-month when no explicit period is passed', async () => {
+    const db = makeMockDb(makeContract({ lastInvoicedPeriod: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    const now = new Date()
+    const expectedPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const res = await generateContractInvoice('pct-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { period: string } }).data.period).toBe(expectedPeriod)
+  })
+})
+
+// Real bug found+fixed (Phase 68 §9.1 — Pest Control): startDate/endDate were
+// written via a bare `new Date(dateOnlyString)`, which parses as UTC
+// midnight — wrong for IST writes, the same dominant bug class fixed across
+// every other Phase 68 vertical this session. Fixed to parseLocalDateStart.
+describe('pest-contract.service — date-only fields store local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createPestContract stores startDate and endDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPestContract({ clientId: 'cust-1', propertyAddress: 'Test Address', startDate: '2026-03-15', endDate: '2027-03-15', contractValue: 12000 })
+
+    const call = db.pestServiceContract.create.mock.calls[0][0].data
+    expect((call.startDate as Date).getDate()).toBe(15)
+    expect((call.startDate as Date).getHours()).toBe(0)
+    expect((call.endDate as Date).getFullYear()).toBe(2027)
+    expect((call.endDate as Date).getHours()).toBe(0)
+  })
+
+  it('updatePestContract stores a changed endDate at local midnight', async () => {
+    const db = makeMockDb(makeContract())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updatePestContract({ id: 'pct-1', endDate: '2027-06-20' })
+
+    const call = db.pestServiceContract.update.mock.calls[0][0].data
+    expect((call.endDate as Date).getDate()).toBe(20)
+    expect((call.endDate as Date).getHours()).toBe(0)
+  })
+})
+
+// Phase 68 §9.1 — Pest Control item 1: AMC-renewal-due-this-month list.
+describe('pest-contract.service.getContractsDueForRenewalThisMonth', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('only queries ACTIVE contracts with an endDate within the current calendar month', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getContractsDueForRenewalThisMonth()
+
+    const call = db.pestServiceContract.findMany.mock.calls[0][0]
+    expect(call.where.status).toBe('ACTIVE')
+    const now = new Date()
+    expect(call.where.endDate.gte).toEqual(new Date(now.getFullYear(), now.getMonth(), 1))
+  })
+
+  it('returns the contract shape the renderer banner expects', async () => {
+    const now = new Date()
+    const endDate = new Date(now.getFullYear(), now.getMonth(), 20)
+    const db = makeMockDb(makeContract({ endDate, contractValue: 12000 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getContractsDueForRenewalThisMonth()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: Array<{ contractNumber: string; contractValue: number }> }).data
+    expect(data[0]).toMatchObject({ contractNumber: 'PCT-00001', contractValue: 12000 })
   })
 })

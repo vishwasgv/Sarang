@@ -427,3 +427,47 @@ describe('pest-job-sheet.service.generatePestJobInvoice — invoice-claim atomic
     expect(db.pestJobSheet.update).toHaveBeenCalledWith({ where: { id: 'pjs-1' }, data: { invoiceId: null } })
   })
 })
+
+// Real bug found+fixed (Phase 68 §9.1 — Pest Control): visitDate/
+// completedDate/followUpDate were all written via a bare
+// `new Date(dateOnlyString)`, which parses as UTC midnight — wrong for IST
+// writes, the same dominant bug class fixed across every other Phase 68
+// vertical this session. Fixed to parseLocalDateStart.
+describe('pest-job-sheet.service — date-only fields store local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createPestJobSheet stores visitDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPestJobSheet({ contractId: 'pct-1', clientId: 'cust-1', visitDate: '2026-03-15' })
+
+    const call = db.pestJobSheet.create.mock.calls[0][0].data
+    expect((call.visitDate as Date).getDate()).toBe(15)
+    expect((call.visitDate as Date).getHours()).toBe(0)
+  })
+
+  it('createPestJobSheet stores followUpDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPestJobSheet({ contractId: 'pct-1', clientId: 'cust-1', visitDate: '2026-03-15', followUpDate: '2026-04-01' })
+
+    const call = db.pestJobSheet.create.mock.calls[0][0].data
+    expect((call.followUpDate as Date).getDate()).toBe(1)
+    expect((call.followUpDate as Date).getHours()).toBe(0)
+  })
+
+  it('updatePestJobSheet stores a changed visitDate and completedDate at local midnight', async () => {
+    const db = makeMockDb(makeSheet())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updatePestJobSheet({ id: 'pjs-1', visitDate: '2026-03-20', completedDate: '2026-03-20' })
+
+    const call = db.pestJobSheet.update.mock.calls[0][0].data
+    expect((call.visitDate as Date).getDate()).toBe(20)
+    expect((call.visitDate as Date).getHours()).toBe(0)
+    expect((call.completedDate as Date).getDate()).toBe(20)
+    expect((call.completedDate as Date).getHours()).toBe(0)
+  })
+})

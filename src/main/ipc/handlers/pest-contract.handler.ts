@@ -1,7 +1,7 @@
 import {
   listPestContracts, getPestContract, createPestContract,
   updatePestContract, deletePestContract, getPestContractKPIs,
-  generateContractInvoice
+  generateContractInvoice, getContractsDueForRenewalThisMonth
 } from '../../services/pest-contract.service'
 import { requirePermission } from '../permission-guard'
 import { CreatePestContractSchema, UpdatePestContractSchema, GenerateContractInvoiceSchema } from '../../validation/pest-contract.validation'
@@ -48,5 +48,10 @@ export function registerPestContract(handle: HandleFn): void {
     const parsed = GenerateContractInvoiceSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return generateContractInvoice(parsed.data.id, parsed.data.period)
+  })
+
+  handle('pestContract:dueForRenewalThisMonth', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getContractsDueForRenewalThisMonth()
   })
 }

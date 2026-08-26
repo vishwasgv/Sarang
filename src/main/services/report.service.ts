@@ -6097,6 +6097,154 @@ async function generatePestContractReport(params: { dateFrom: string; dateTo: st
   }
 }
 
+// Phase 68 §9.1 — Pest Control item 2: renewal funnel. A live current-state
+// bucket count by renewal urgency — honest bucket counts, not a fabricated
+// conversion rate (this system has no "was this contract actually renewed"
+// tracking field to compute a real conversion percentage from). Only
+// ACTIVE contracts with a real endDate are meaningfully bucketed — an
+// open-ended contract has nothing to renew yet.
+const RENEWAL_FUNNEL_STAGES = ['OVERDUE', 'DUE_THIS_WEEK', 'DUE_THIS_MONTH', 'DUE_NEXT_QUARTER', 'LATER'] as const
+
+export interface RenewalFunnelStage { stage: typeof RENEWAL_FUNNEL_STAGES[number]; count: number; value: number }
+export interface RenewalFunnelReport {
+  stages: RenewalFunnelStage[]
+  summary: { totalWithEndDate: number; totalValue: number }
+}
+
+async function generateRenewalFunnelReport(): Promise<RenewalFunnelReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const contracts = await db.pestServiceContract.findMany({
+    where: { status: 'ACTIVE', endDate: { not: null } },
+    select: { endDate: true, contractValue: true },
+  })
+
+  const buckets = new Map<typeof RENEWAL_FUNNEL_STAGES[number], { count: number; value: number }>(
+    RENEWAL_FUNNEL_STAGES.map((s) => [s, { count: 0, value: 0 }])
+  )
+  for (const c of contracts) {
+    const daysUntil = Math.ceil((c.endDate!.getTime() - now.getTime()) / 86400000)
+    const stage: typeof RENEWAL_FUNNEL_STAGES[number] =
+      daysUntil < 0 ? 'OVERDUE' :
+      daysUntil <= 7 ? 'DUE_THIS_WEEK' :
+      daysUntil <= 30 ? 'DUE_THIS_MONTH' :
+      daysUntil <= 90 ? 'DUE_NEXT_QUARTER' : 'LATER'
+    const b = buckets.get(stage)!
+    b.count += 1
+    b.value += Number(c.contractValue)
+  }
+
+  const stages = RENEWAL_FUNNEL_STAGES.map((stage) => ({ stage, ...buckets.get(stage)! }))
+  return {
+    stages,
+    summary: {
+      totalWithEndDate: contracts.length,
+      totalValue: roundCurrency(contracts.reduce((s, c) => s + Number(c.contractValue), 0)),
+    },
+  }
+}
+
+// Phase 68 §9.1 — Pest Control item 3: chemical-usage/compliance log. Grouped
+// by (pesticideName, unit) — NOT summed across units, since ML/L/G/KG are
+// not interchangeable and a fabricated cross-unit total would be dishonest.
+// The compliance half flags a COMPLETED visit with zero pesticide lines
+// recorded — a real documentation gap, not a fabricated risk score.
+export interface ChemicalUsageRow {
+  pesticideName: string; unit: string; totalQuantityUsed: number; visitCount: number
+}
+export interface UndocumentedVisitRow {
+  jobNumber: string; customerName: string; visitDate: string
+}
+export interface ChemicalUsageComplianceReport {
+  dateFrom: string; dateTo: string
+  rows: ChemicalUsageRow[]
+  undocumentedVisits: UndocumentedVisitRow[]
+  summary: { totalCompletedVisits: number; undocumentedCount: number }
+}
+
+async function generateChemicalUsageComplianceReport(params: { dateFrom: string; dateTo: string }): Promise<ChemicalUsageComplianceReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const sheets = await db.pestJobSheet.findMany({
+    where: { status: 'COMPLETED', visitDate: { gte: from, lte: to } },
+    include: {
+      client: { select: { customerName: true } },
+      pesticideLines: { select: { pesticideName: true, unit: true, quantityUsed: true } },
+    },
+  })
+
+  const byChemical = new Map<string, { pesticideName: string; unit: string; totalQuantityUsed: number; visitCount: number }>()
+  const undocumentedVisits: UndocumentedVisitRow[] = []
+  for (const s of sheets) {
+    if (s.pesticideLines.length === 0) {
+      undocumentedVisits.push({ jobNumber: s.jobNumber, customerName: s.client.customerName, visitDate: toLocalISODate(s.visitDate) })
+      continue
+    }
+    for (const line of s.pesticideLines) {
+      const key = `${line.pesticideName}::${line.unit}`
+      const entry = byChemical.get(key) ?? { pesticideName: line.pesticideName, unit: line.unit, totalQuantityUsed: 0, visitCount: 0 }
+      entry.totalQuantityUsed += line.quantityUsed
+      entry.visitCount += 1
+      byChemical.set(key, entry)
+    }
+  }
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows: Array.from(byChemical.values()).sort((a, b) => b.totalQuantityUsed - a.totalQuantityUsed),
+    undocumentedVisits: undocumentedVisits.sort((a, b) => b.visitDate.localeCompare(a.visitDate)),
+    summary: { totalCompletedVisits: sheets.length, undocumentedCount: undocumentedVisits.length },
+  }
+}
+
+// Phase 68 §9.1 — Pest Control item 4: recurring contract value trend. Uses
+// REAL billed history (Invoice.pestContractId, set by generateContractInvoice
+// on the invoice it creates), trended by the invoice's own month — not a
+// fabricated projection from contractValue × frequency, which could
+// overstate revenue for contracts billed late or not yet billed this period.
+export interface RecurringValueTrendRow { period: string; totalValue: number; invoiceCount: number }
+export interface RecurringValueTrendReport {
+  dateFrom: string; dateTo: string
+  rows: RecurringValueTrendRow[]
+  summary: { totalRecurringRevenue: number; invoiceCount: number }
+}
+
+async function generatePestRecurringValueTrendReport(params: { dateFrom: string; dateTo: string }): Promise<RecurringValueTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const invoices = await db.invoice.findMany({
+    where: { pestContractId: { not: null }, status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+    select: { invoiceDate: true, totalAmount: true },
+  })
+
+  const byMonth = new Map<string, { totalValue: number; invoiceCount: number }>()
+  for (const inv of invoices) {
+    const key = `${inv.invoiceDate.getFullYear()}-${String(inv.invoiceDate.getMonth() + 1).padStart(2, '0')}`
+    const entry = byMonth.get(key) ?? { totalValue: 0, invoiceCount: 0 }
+    entry.totalValue += Number(inv.totalAmount)
+    entry.invoiceCount += 1
+    byMonth.set(key, entry)
+  }
+
+  const rows: RecurringValueTrendRow[] = Array.from(byMonth.entries())
+    .map(([period, v]) => ({ period, totalValue: roundCurrency(v.totalValue), invoiceCount: v.invoiceCount }))
+    .sort((a, b) => a.period.localeCompare(b.period))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows,
+    summary: {
+      totalRecurringRevenue: roundCurrency(invoices.reduce((s, i) => s + Number(i.totalAmount), 0)),
+      invoiceCount: invoices.length,
+    },
+  }
+}
+
 // ── Real Estate — listings/deals pipeline ──────────────────────────────────
 
 export interface RealEstatePipelineByStage { stage: string; count: number; value: number }
@@ -8868,6 +9016,9 @@ export const reportService = {
   generateOrderTurnaroundReport,
   generateFittingStageTrackerReport,
   generateFabricPopularityReport,
+  generateRenewalFunnelReport,
+  generateChemicalUsageComplianceReport,
+  generatePestRecurringValueTrendReport,
   generatePestContractReport,
   generateRealEstatePipelineReport,
   generateRetainerReport,

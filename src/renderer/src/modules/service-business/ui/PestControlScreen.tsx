@@ -67,6 +67,12 @@ interface PesticideLine {
   targetPest?: string | null
 }
 
+// Phase 68 §9.1 — Pest Control item 1: AMC-renewal-due-this-month list.
+interface RenewalDueContract {
+  contractId: string; contractNumber: string; customerName: string; customerPhone: string | null
+  propertyAddress: string; endDate: string; contractValue: number
+}
+
 interface Customer { id: string; customerName: string; phone: string | null }
 interface Employee { id: string; fullName: string }
 interface PesticideProduct { id: string; productName: string; inventory?: { quantity: number } | null }
@@ -105,9 +111,17 @@ const parseSafe = <T,>(raw: string, fallback: T): T => { try { return JSON.parse
 // Date instances, not strings — calling .slice() directly on one throws
 // "d.slice is not a function". Handles both shapes so it's safe regardless
 // of how the value arrived.
+//
+// Real bug found+fixed (Phase 68 §9.1 — Pest Control): the previous version
+// did `d.toISOString().slice(0, 10)` for a real Date instance, which
+// converts to UTC first — showing the wrong (previous) calendar day for
+// anything before 5:30am IST. Same renderer-local-date-helper bug class
+// confirmed across every Phase 68 vertical touched this session. Extract
+// LOCAL Y/M/D components directly instead.
 const dateSlice = (d: unknown): string => {
   if (!d) return ''
-  return (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10)
+  if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return String(d).slice(0, 10)
 }
 
 function emptyContractForm() {
@@ -128,8 +142,14 @@ function emptySheetForm() {
 const COMMON_AREAS = ['Kitchen', 'Bathrooms', 'Bedroom', 'Store Room', 'Terrace', 'Garden', 'Basement', 'Office', 'Warehouse', 'Restaurant Kitchen', 'Common Areas']
 
 // Matches pest-contract.service.ts's generateContractInvoice default period
-// key ("YYYY-MM" of `new Date()` when no explicit period is passed).
-const currentContractPeriod = new Date().toISOString().slice(0, 7)
+// key ("YYYY-MM" of `new Date()` when no explicit period is passed). Real
+// bug found+fixed alongside it (Phase 68 §9.1): a raw `.toISOString()` here
+// computes the UTC month, which is the WRONG month for the first ~5.5h of a
+// new month in IST — would target the previous period's invoice.
+const currentContractPeriod = (() => {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+})()
 
 export default function PestControlScreen() {
   const { error: toastError } = useNotificationStore()
@@ -163,6 +183,8 @@ export default function PestControlScreen() {
   const [deletingContract, setDeletingContract] = useState(false)
   const [deleteSheetTarget, setDeleteSheetTarget] = useState<PestJobSheet | null>(null)
   const [deletingSheet, setDeletingSheet] = useState(false)
+  const [renewalsDueThisMonth, setRenewalsDueThisMonth] = useState<RenewalDueContract[]>([])
+  const [renewalsDismissed, setRenewalsDismissed] = useState(false)
 
   // Structured pesticide dosage/quantity per visit (Phase 58 §2) — an
   // add/remove ledger alongside the free-text pesticideUsed summary field.
@@ -273,6 +295,9 @@ export default function PestControlScreen() {
         if (!r.success) return
         const d = r.data as { employees?: Employee[] } | Employee[]
         setEmployees(Array.isArray(d) ? d : (d.employees ?? []))
+      }),
+      api.pestContract.dueForRenewalThisMonth().then((r: { success: boolean; data?: unknown }) => {
+        if (r.success) setRenewalsDueThisMonth(r.data as RenewalDueContract[])
       }),
     ]).finally(() => setLoading(false))
   }, [])
@@ -536,6 +561,23 @@ export default function PestControlScreen() {
         <div className="mx-6 mt-3 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2 flex items-center justify-between">
           <span>{actionError}</span>
           <button onClick={() => setActionError(null)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Phase 68 §9.1 — Pest Control item 1: AMC-renewal-due-this-month */}
+      {renewalsDueThisMonth.length > 0 && !renewalsDismissed && tab === 'contracts' && (
+        <div className="mx-6 mt-3 text-sm text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{renewalsDueThisMonth.length} contract(s) due for renewal this month</span>
+            <button onClick={() => setRenewalsDismissed(true)} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"><X size={14} /></button>
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {renewalsDueThisMonth.slice(0, 5).map(r => (
+              <li key={r.contractId} className="text-xs">
+                {r.contractNumber} — {r.customerName} ({r.propertyAddress}): expires {r.endDate}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

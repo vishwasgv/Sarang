@@ -593,6 +593,28 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  handle('reports:renewalFunnel', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateRenewalFunnelReport()
+    return { success: true, data }
+  })
+
+  handle('reports:chemicalUsageCompliance', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateChemicalUsageComplianceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:pestRecurringValueTrend', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePestRecurringValueTrendReport(parsed.data)
+    return { success: true, data }
+  })
+
   handle('reports:realEstatePipeline', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)

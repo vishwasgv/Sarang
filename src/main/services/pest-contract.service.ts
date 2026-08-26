@@ -3,6 +3,7 @@ import { serializePestJobSheet } from './pest-job-sheet.service'
 import { buildWhatsAppLink } from './notification-queue.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -135,8 +136,8 @@ export async function createPestContract(payload: {
         propertyType: payload.propertyType ?? 'RESIDENTIAL',
         pestTypes: JSON.stringify(payload.pestTypes ?? []),
         serviceFrequency: payload.serviceFrequency ?? 'QUARTERLY',
-        startDate: new Date(payload.startDate),
-        endDate: payload.endDate ? new Date(payload.endDate) : null,
+        startDate: parseLocalDateStart(payload.startDate),
+        endDate: payload.endDate ? parseLocalDateStart(payload.endDate) : null,
         contractValue: payload.contractValue,
         status: payload.status ?? 'ACTIVE',
         assignedToId: payload.assignedToId ?? null,
@@ -175,8 +176,8 @@ export async function updatePestContract(payload: {
   const { id, pestTypes, startDate, endDate, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
   if (pestTypes !== undefined) data.pestTypes = JSON.stringify(pestTypes)
-  if (startDate !== undefined) data.startDate = new Date(startDate)
-  if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null
+  if (startDate !== undefined) data.startDate = parseLocalDateStart(startDate)
+  if (endDate !== undefined) data.endDate = endDate ? parseLocalDateStart(endDate) : null
 
   // Only need the prior endDate to detect an actual change below.
   const existing = endDate !== undefined ? await db.pestServiceContract.findUnique({ where: { id }, select: { endDate: true } }) : null
@@ -230,7 +231,12 @@ export async function deletePestContract(id: string) {
 export async function generateContractInvoice(contractId: string, period?: string) {
   const db = getPrisma()
   try {
-    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    // Real bug found+fixed (Phase 68 §9.1 — Pest Control, flagged-but-
+    // unfixed during CA Firm): a raw `.toISOString().slice(0, 7)` computes
+    // the UTC year-month, which is the WRONG month for the first ~5.5h of a
+    // new month in IST.
+    const now = new Date()
+    const targetPeriod = period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const contract = await db.pestServiceContract.findUnique({
       where: { id: contractId },
       include: { client: { select: { id: true, customerName: true } } },
@@ -278,6 +284,10 @@ export async function generateContractInvoice(contractId: string, period?: strin
       }
 
       const invoice = result.data as { id: string }
+      // Phase 68 §9.1 — Pest Control item 4: links this invoice back to its
+      // contract so generatePestRecurringValueTrendReport can trend REAL
+      // billed history, not a fabricated projection.
+      await db.invoice.update({ where: { id: invoice.id }, data: { pestContractId: contractId } }).catch(() => {})
       await db.auditLog.create({ data: { action: 'INVOICED', entityType: 'PestServiceContract', entityId: contractId, newValue: JSON.stringify({ invoiceId: invoice.id, period: targetPeriod }) } }).catch(() => {})
 
       return { success: true, data: { invoiceId: invoice.id, period: targetPeriod } }
@@ -304,4 +314,36 @@ export async function getPestContractKPIs() {
     db.pestJobSheet.count({ where: { visitDate: { gte: todayStart, lte: sevenDaysLater }, status: { not: 'CANCELLED' } } }),
   ])
   return { success: true, data: { activeContracts, pendingJobSheets, scheduledThisWeek } }
+}
+
+// Phase 68 §9.1 — Pest Control item 1: AMC-renewal-due-this-month list.
+// Deliberately CALENDAR-MONTH-bounded (Aug 1–31), distinct from the
+// pre-existing 30-day ROLLING window generatePestContractReport's
+// `expiring` list uses — a genuinely different, real worklist a manager
+// checks once a month, not a duplicate of the rolling one.
+export async function getContractsDueForRenewalThisMonth() {
+  try {
+    const db = getPrisma()
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+    const contracts = await db.pestServiceContract.findMany({
+      where: { status: 'ACTIVE', endDate: { gte: monthStart, lte: monthEnd } },
+      include: { client: { select: { id: true, customerName: true, phone: true } } },
+      orderBy: { endDate: 'asc' },
+    })
+
+    return {
+      success: true,
+      data: contracts.map((c) => ({
+        contractId: c.id, contractNumber: c.contractNumber, customerName: c.client.customerName,
+        customerPhone: c.client.phone, propertyAddress: c.propertyAddress,
+        endDate: `${c.endDate!.getFullYear()}-${String(c.endDate!.getMonth() + 1).padStart(2, '0')}-${String(c.endDate!.getDate()).padStart(2, '0')}`,
+        contractValue: Number(c.contractValue),
+      })),
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'PCT-007', message: err instanceof Error ? err.message : 'Could not load contracts due for renewal.' } }
+  }
 }

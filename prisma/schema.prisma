@@ -1548,6 +1548,12 @@ model Invoice {
   costCentreId       String?
   // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
   customFields       String?
+  // Phase 68 §9.1 — Pest Control item 4: recurring contract value trend.
+  // Set only on the recurring-fee invoice generateContractInvoice() creates
+  // for a PestServiceContract — lets the trend report query REAL billed
+  // history instead of a fabricated projection from contractValue ×
+  // frequency. Pre-existing invoices simply have no link until re-invoiced.
+  pestContractId     String?
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1573,6 +1579,7 @@ model Invoice {
   salesOrder       SalesOrder?       @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
   invoiceTemplate  InvoiceTemplate?  @relation(fields: [invoiceTemplateId], references: [id])
   loyaltyPunchEvents LoyaltyPunchEvent[] // Phase 67 §9.1 — Retail: which invoice earned a given punch, if any
+  pestContract     PestServiceContract? @relation(fields: [pestContractId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([salesOrderId])
@@ -1588,6 +1595,7 @@ model Invoice {
   @@index([exchangeReturnId])
   @@index([costCentreId])
   @@index([cropSeasonId])
+  @@index([pestContractId])
 }
 
 // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms. A
@@ -5746,6 +5754,7 @@ model PestServiceContract {
   client     Customer       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   assignedTo Employee?      @relation("PestContractAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   jobSheets  PestJobSheet[]
+  invoices   Invoice[]
 
   @@index([clientId])
   @@index([status])

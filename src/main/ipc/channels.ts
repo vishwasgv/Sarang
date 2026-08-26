@@ -476,6 +476,9 @@ export interface IpcChannels {
     fittingStageTracker: () => Promise<ApiResponse>
     fabricPopularity: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     pestContracts: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    renewalFunnel: () => Promise<ApiResponse>
+    chemicalUsageCompliance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    pestRecurringValueTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     realEstatePipeline: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     retainers: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     shootBookings: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -1787,6 +1790,7 @@ export interface IpcChannels {
     delete: (payload: string) => Promise<ApiResponse>
     kpis: () => Promise<ApiResponse>
     generateInvoice: (payload: { id: string; period?: string }) => Promise<ApiResponse>
+    dueForRenewalThisMonth: () => Promise<ApiResponse>
   }
   pestJobSheet: {
     list: (payload?: { status?: string; contractId?: string; clientId?: string; search?: string }) => Promise<ApiResponse>

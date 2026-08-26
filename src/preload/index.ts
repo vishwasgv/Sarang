@@ -393,6 +393,9 @@ const api: IpcChannels = {
     fittingStageTracker: () => invoke('reports:fittingStageTracker'),
     fabricPopularity: (p) => invoke('reports:fabricPopularity', p),
     pestContracts: (p) => invoke('reports:pestContracts', p),
+    renewalFunnel: () => invoke('reports:renewalFunnel'),
+    chemicalUsageCompliance: (p) => invoke('reports:chemicalUsageCompliance', p),
+    pestRecurringValueTrend: (p) => invoke('reports:pestRecurringValueTrend', p),
     realEstatePipeline: (p) => invoke('reports:realEstatePipeline', p),
     retainers: (p) => invoke('reports:retainers', p),
     shootBookings: (p) => invoke('reports:shootBookings', p),
@@ -1542,6 +1545,7 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('pestContract:delete', p),
     kpis: () => invoke('pestContract:kpis'),
     generateInvoice: (p: unknown) => invoke('pestContract:generateInvoice', p),
+    dueForRenewalThisMonth: () => invoke('pestContract:dueForRenewalThisMonth'),
   },
   pestJobSheet: {
     list: (p?: unknown) => invoke('pestJobSheet:list', p),
