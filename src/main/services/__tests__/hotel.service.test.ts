@@ -21,6 +21,9 @@ import {
   generateGroupHotelInvoice,
   updateHousekeepingTaskStatus,
   getCustomerStayHistory,
+  getOccupancyTrendReport,
+  getRoomWiseADRReport,
+  getADRRevPARReport,
 } from '../hotel.service'
 
 function makeRoom(overrides: Record<string, unknown> = {}) {
@@ -720,5 +723,170 @@ describe('hotel.service — getCustomerStayHistory', () => {
     expect(res.success).toBe(true)
     expect((res as { data: { stayCount: number } }).data.stayCount).toBe(3)
     expect((res as { data: { lastStayCheckOut: string | null } }).data.lastStayCheckOut).toBe(new Date('2026-06-15').toISOString())
+  })
+})
+
+// Phase 68 §9.1 — Hotel/Lodge item 2: occupancy trend.
+describe('hotel.service — getOccupancyTrendReport', () => {
+  it('rejects an end date not after the start date', async () => {
+    const db = makeBaseMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOccupancyTrendReport({ dateFrom: '2026-08-10', dateTo: '2026-08-05' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('HTL-055')
+  })
+
+  it('computes daily occupancy % from real CHECKED_IN/CHECKED_OUT stays only', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(4)
+    db.hotelBooking.findMany.mockResolvedValue([
+      { roomId: 'room-1', checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-03') },
+      { roomId: 'room-2', checkInDate: new Date('2026-08-02'), checkOutDate: new Date('2026-08-03') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOccupancyTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-03' })
+
+    expect(res.success).toBe(true)
+    const points = (res as { data: { points: Array<{ date: string; occupiedRooms: number; occupancyPercent: number }> } }).data.points
+    expect(points.find(p => p.date === '2026-08-01')).toMatchObject({ occupiedRooms: 1, occupancyPercent: 25 })
+    expect(points.find(p => p.date === '2026-08-02')).toMatchObject({ occupiedRooms: 2, occupancyPercent: 50 })
+  })
+
+  it('only queries CHECKED_IN/CHECKED_OUT bookings, excluding CANCELLED/NO_SHOW', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(4)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getOccupancyTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-03' })
+
+    expect(db.hotelBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ['CHECKED_IN', 'CHECKED_OUT'] } })
+    }))
+  })
+
+  it('computes avg and peak occupancy across the series', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(2)
+    db.hotelBooking.findMany.mockResolvedValue([
+      { roomId: 'room-1', checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-04') },
+      { roomId: 'room-2', checkInDate: new Date('2026-08-02'), checkOutDate: new Date('2026-08-03') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOccupancyTrendReport({ dateFrom: '2026-08-01', dateTo: '2026-08-03' })
+
+    // Day1: room-1 only (50%). Day2: room-1+room-2 (100%).
+    expect((res as { data: { summary: { peakOccupancyPercent: number } } }).data.summary.peakOccupancyPercent).toBe(100)
+  })
+})
+
+// Phase 68 §9.1 — Hotel/Lodge item 3: room-wise ADR tracking.
+describe('hotel.service — getRoomWiseADRReport', () => {
+  it('rejects an end date not after the start date', async () => {
+    const db = makeBaseMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRoomWiseADRReport({ dateFrom: '2026-08-10', dateTo: '2026-08-05' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('HTL-057')
+  })
+
+  it('computes ADR per room from roomChargeTotal when set', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findMany.mockResolvedValue([
+      { roomId: 'room-1', room: { roomNumber: '101', roomType: 'Deluxe' }, checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-03'), roomChargeTotal: 5000, ratePerNight: 2000 },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRoomWiseADRReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(res.success).toBe(true)
+    const rows = (res as { data: { rows: Array<{ roomNumber: string; nightsSold: number; totalRevenue: number; adr: number }> } }).data.rows
+    expect(rows[0]).toMatchObject({ roomNumber: '101', nightsSold: 2, totalRevenue: 5000, adr: 2500 })
+  })
+
+  it('falls back to ratePerNight × nights when roomChargeTotal is null', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findMany.mockResolvedValue([
+      { roomId: 'room-1', room: { roomNumber: '101', roomType: 'Deluxe' }, checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-04'), roomChargeTotal: null, ratePerNight: 1500 },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRoomWiseADRReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const rows = (res as { data: { rows: Array<{ totalRevenue: number; adr: number }> } }).data.rows
+    expect(rows[0]).toMatchObject({ totalRevenue: 4500, adr: 1500 })
+  })
+
+  it('aggregates multiple stays for the same room and sorts best-ADR-first', async () => {
+    const db = makeBaseMockDb()
+    db.hotelBooking.findMany.mockResolvedValue([
+      { roomId: 'room-1', room: { roomNumber: '101', roomType: 'Deluxe' }, checkInDate: new Date('2026-08-01'), checkOutDate: new Date('2026-08-02'), roomChargeTotal: 1000, ratePerNight: 1000 },
+      { roomId: 'room-2', room: { roomNumber: '102', roomType: 'Suite' }, checkInDate: new Date('2026-08-05'), checkOutDate: new Date('2026-08-06'), roomChargeTotal: 4000, ratePerNight: 4000 },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getRoomWiseADRReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const rows = (res as { data: { rows: Array<{ roomNumber: string }> } }).data.rows
+    expect(rows.map(r => r.roomNumber)).toEqual(['102', '101'])
+  })
+})
+
+// Phase 68 §9.1 — Hotel/Lodge item 4: ADR & RevPAR, trended by month.
+describe('hotel.service — getADRRevPARReport', () => {
+  it('rejects an end date not after the start date', async () => {
+    const db = makeBaseMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getADRRevPARReport({ dateFrom: '2026-08-10', dateTo: '2026-08-05' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('HTL-059')
+  })
+
+  it('computes ADR and RevPAR for a single full month', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(2)
+    db.hotelBooking.findMany.mockResolvedValue([
+      { checkInDate: new Date('2026-08-05'), checkOutDate: new Date('2026-08-10'), roomChargeTotal: 10000, ratePerNight: 2000 },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getADRRevPARReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    expect(res.success).toBe(true)
+    const rows = (res as { data: { rows: Array<{ period: string; nightsSold: number; adr: number; availableRoomNights: number; revPAR: number }> } }).data.rows
+    expect(rows).toHaveLength(1)
+    // 2 rooms × 31 days = 62 available room-nights; 5 nights sold, 10000 revenue.
+    expect(rows[0]).toMatchObject({ period: '2026-08', nightsSold: 5, adr: 2000, availableRoomNights: 62 })
+    expect(rows[0].revPAR).toBeCloseTo(10000 / 62, 2)
+  })
+
+  it('includes a month with zero bookings in the series, not just months with stays', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(2)
+    db.hotelBooking.findMany.mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getADRRevPARReport({ dateFrom: '2026-08-01', dateTo: '2026-08-31' })
+
+    const rows = (res as { data: { rows: Array<{ period: string; roomRevenue: number }> } }).data.rows
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ period: '2026-08', roomRevenue: 0 })
+  })
+
+  it('clips available room-nights to the requested range for a partial month', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.count = vi.fn().mockResolvedValue(1)
+    db.hotelBooking.findMany.mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getADRRevPARReport({ dateFrom: '2026-08-20', dateTo: '2026-08-25' })
+
+    const rows = (res as { data: { rows: Array<{ availableRoomNights: number }> } }).data.rows
+    // Aug 20-25 inclusive = 6 days × 1 room.
+    expect(rows[0].availableRoomNights).toBe(6)
   })
 })

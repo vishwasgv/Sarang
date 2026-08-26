@@ -3,7 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
-import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -1255,6 +1255,202 @@ export async function getGuestRegister(params: { dateFrom: string; dateTo: strin
   }
 }
 
+// Phase 68 §9.1 — Hotel/Lodge item 2: occupancy trend. A genuine day-by-day
+// series (occupancy is inherently a daily metric, unlike ADR/RevPAR below
+// which are conventional monthly KPIs) — distinct from getOccupancyReport's
+// single current-state snapshot above. Only CHECKED_IN/CHECKED_OUT bookings
+// count as a real stay; CANCELLED/NO_SHOW never occupied the room.
+export interface OccupancyTrendPoint { date: string; occupiedRooms: number; totalRooms: number; occupancyPercent: number }
+export interface OccupancyTrendReport {
+  dateFrom: string; dateTo: string
+  points: OccupancyTrendPoint[]
+  summary: { avgOccupancyPercent: number; peakOccupancyPercent: number }
+}
+
+export async function getOccupancyTrendReport(params: { dateFrom: string; dateTo: string }): Promise<{ success: boolean; data?: OccupancyTrendReport; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const from = parseLocalDateStart(params.dateFrom)
+    const to = parseLocalDateEnd(params.dateTo)
+    if (to <= from) return { success: false, error: { code: 'HTL-055', message: 'End date must be after start date.' } }
+
+    const [totalRooms, bookings] = await Promise.all([
+      db.hotelRoom.count({ where: { isActive: true } }),
+      db.hotelBooking.findMany({
+        where: { status: { in: ['CHECKED_IN', 'CHECKED_OUT'] }, checkInDate: { lt: to }, checkOutDate: { gt: from } },
+        select: { roomId: true, checkInDate: true, checkOutDate: true },
+      }),
+    ])
+
+    const points: OccupancyTrendPoint[] = []
+    for (let d = new Date(from); d < to; d.setDate(d.getDate() + 1)) {
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const dayEnd = new Date(dayStart.getTime() + 86400000)
+      const occupiedRoomIds = new Set(
+        bookings.filter((b) => b.checkInDate < dayEnd && b.checkOutDate > dayStart).map((b) => b.roomId)
+      )
+      points.push({
+        date: toLocalISODate(dayStart), occupiedRooms: occupiedRoomIds.size, totalRooms,
+        occupancyPercent: totalRooms > 0 ? Math.round((occupiedRoomIds.size / totalRooms) * 1000) / 10 : 0,
+      })
+    }
+
+    const percentages = points.map((p) => p.occupancyPercent)
+    return {
+      success: true,
+      data: {
+        dateFrom: params.dateFrom, dateTo: params.dateTo, points,
+        summary: {
+          avgOccupancyPercent: percentages.length > 0 ? Math.round((percentages.reduce((s, p) => s + p, 0) / percentages.length) * 10) / 10 : 0,
+          peakOccupancyPercent: percentages.length > 0 ? Math.max(...percentages) : 0,
+        },
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-056', message: e instanceof Error ? e.message : 'Could not generate occupancy trend.' } }
+  }
+}
+
+// Phase 68 §9.1 — Hotel/Lodge item 3: room-wise ADR (Average Daily Rate)
+// tracking. Which specific rooms actually earn the most per night sold —
+// distinct from the property-wide ADR & RevPAR trend below. Bookings are
+// anchored on checkInDate falling within the range (same "anchor on a
+// single date, don't prorate across a boundary" simplification this
+// session's other trend reports already use, e.g. the Pest Control
+// recurring-value trend anchoring on invoiceDate).
+export interface RoomWiseADRRow { roomNumber: string; roomType: string; nightsSold: number; totalRevenue: number; adr: number }
+export interface RoomWiseADRReport {
+  dateFrom: string; dateTo: string
+  rows: RoomWiseADRRow[]
+  summary: { roomsWithStays: number; totalNightsSold: number; totalRevenue: number }
+}
+
+export async function getRoomWiseADRReport(params: { dateFrom: string; dateTo: string }): Promise<{ success: boolean; data?: RoomWiseADRReport; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const from = parseLocalDateStart(params.dateFrom)
+    const to = parseLocalDateEnd(params.dateTo)
+    if (to <= from) return { success: false, error: { code: 'HTL-057', message: 'End date must be after start date.' } }
+
+    const bookings = await db.hotelBooking.findMany({
+      where: { status: { in: ['CHECKED_IN', 'CHECKED_OUT'] }, checkInDate: { gte: from, lte: to } },
+      include: { room: { select: { roomNumber: true, roomType: true } } },
+    })
+
+    const byRoom = new Map<string, { roomNumber: string; roomType: string; nights: number; revenue: number }>()
+    for (const b of bookings) {
+      const nights = Math.max(1, Math.round((b.checkOutDate.getTime() - b.checkInDate.getTime()) / 86400000))
+      const revenue = b.roomChargeTotal ?? (b.ratePerNight * nights)
+      const entry = byRoom.get(b.roomId) ?? { roomNumber: b.room.roomNumber, roomType: b.room.roomType, nights: 0, revenue: 0 }
+      entry.nights += nights
+      entry.revenue += revenue
+      byRoom.set(b.roomId, entry)
+    }
+
+    const rows: RoomWiseADRRow[] = Array.from(byRoom.values())
+      .map((r) => ({ roomNumber: r.roomNumber, roomType: r.roomType, nightsSold: r.nights, totalRevenue: roundCurrency(r.revenue), adr: r.nights > 0 ? roundCurrency(r.revenue / r.nights) : 0 }))
+      .sort((a, b) => b.adr - a.adr)
+
+    return {
+      success: true,
+      data: {
+        dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+        summary: {
+          roomsWithStays: rows.length,
+          totalNightsSold: rows.reduce((s, r) => s + r.nightsSold, 0),
+          totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.totalRevenue, 0)),
+        },
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-058', message: e instanceof Error ? e.message : 'Could not generate room-wise ADR report.' } }
+  }
+}
+
+// Phase 68 §9.1 — Hotel/Lodge item 4: ADR & RevPAR, trended by month — the
+// property-wide, industry-standard hospitality KPI pair, distinct from the
+// per-room breakdown above. RevPAR = ADR × occupancy rate, computed here
+// directly from real revenue and real available room-nights (not derived
+// from a separately-rounded ADR/occupancy, to avoid compounding rounding
+// error). Available room-nights per month = active room count × the days
+// of that month actually within [dateFrom, dateTo] (clipped at the range
+// boundary), so a partial first/last month isn't overstated.
+export interface ADRRevPARRow { period: string; roomRevenue: number; nightsSold: number; availableRoomNights: number; adr: number; revPAR: number }
+export interface ADRRevPARReport {
+  dateFrom: string; dateTo: string
+  rows: ADRRevPARRow[]
+  summary: { totalRoomRevenue: number; overallADR: number; overallRevPAR: number }
+}
+
+export async function getADRRevPARReport(params: { dateFrom: string; dateTo: string }): Promise<{ success: boolean; data?: ADRRevPARReport; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const from = parseLocalDateStart(params.dateFrom)
+    const to = parseLocalDateEnd(params.dateTo)
+    if (to <= from) return { success: false, error: { code: 'HTL-059', message: 'End date must be after start date.' } }
+
+    const [totalRooms, bookings] = await Promise.all([
+      db.hotelRoom.count({ where: { isActive: true } }),
+      db.hotelBooking.findMany({
+        where: { status: { in: ['CHECKED_IN', 'CHECKED_OUT'] }, checkInDate: { gte: from, lte: to } },
+        select: { checkInDate: true, checkOutDate: true, roomChargeTotal: true, ratePerNight: true },
+      }),
+    ])
+
+    const byMonth = new Map<string, { revenue: number; nights: number }>()
+    for (const b of bookings) {
+      const nights = Math.max(1, Math.round((b.checkOutDate.getTime() - b.checkInDate.getTime()) / 86400000))
+      const revenue = b.roomChargeTotal ?? (b.ratePerNight * nights)
+      const key = `${b.checkInDate.getFullYear()}-${String(b.checkInDate.getMonth() + 1).padStart(2, '0')}`
+      const entry = byMonth.get(key) ?? { revenue: 0, nights: 0 }
+      entry.revenue += revenue
+      entry.nights += nights
+      byMonth.set(key, entry)
+    }
+
+    // Available room-nights per month a booking's checkInDate month didn't
+    // necessarily produce a bucket for (e.g. a month with zero stays still
+    // had rooms sitting empty) — walk every calendar month touched by the
+    // range, not just months with bookings.
+    for (let d = new Date(from.getFullYear(), from.getMonth(), 1); d <= to; d.setMonth(d.getMonth() + 1)) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!byMonth.has(key)) byMonth.set(key, { revenue: 0, nights: 0 })
+    }
+
+    const rows: ADRRevPARRow[] = Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([period, v]) => {
+      const [y, m] = period.split('-').map(Number)
+      const monthStart = new Date(y, m - 1, 1)
+      const monthEnd = new Date(y, m, 0) // last day of month
+      const clippedStart = monthStart < from ? from : monthStart
+      const clippedEnd = monthEnd > to ? new Date(to.getFullYear(), to.getMonth(), to.getDate()) : monthEnd
+      const daysInRange = Math.max(0, Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 86400000) + 1)
+      const availableRoomNights = totalRooms * daysInRange
+      return {
+        period, roomRevenue: roundCurrency(v.revenue), nightsSold: v.nights, availableRoomNights,
+        adr: v.nights > 0 ? roundCurrency(v.revenue / v.nights) : 0,
+        revPAR: availableRoomNights > 0 ? roundCurrency(v.revenue / availableRoomNights) : 0,
+      }
+    })
+
+    const totalRevenue = rows.reduce((s, r) => s + r.roomRevenue, 0)
+    const totalNights = rows.reduce((s, r) => s + r.nightsSold, 0)
+    const totalAvailable = rows.reduce((s, r) => s + r.availableRoomNights, 0)
+    return {
+      success: true,
+      data: {
+        dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+        summary: {
+          totalRoomRevenue: roundCurrency(totalRevenue),
+          overallADR: totalNights > 0 ? roundCurrency(totalRevenue / totalNights) : 0,
+          overallRevPAR: totalAvailable > 0 ? roundCurrency(totalRevenue / totalAvailable) : 0,
+        },
+      },
+    }
+  } catch (e) {
+    return { success: false, error: { code: 'HTL-060', message: e instanceof Error ? e.message : 'Could not generate ADR & RevPAR report.' } }
+  }
+}
+
 export const hotelService = {
   listRooms, createRoom, updateRoom, deleteRoom,
   checkAvailability, listAvailableRooms,
@@ -1266,4 +1462,5 @@ export const hotelService = {
   listRateCalendar, createRateCalendarEntry, deleteRateCalendarEntry,
   listHousekeepingTasks, createHousekeepingTask, assignHousekeepingTask, updateHousekeepingTaskStatus, deleteHousekeepingTask,
   getCustomerStayHistory,
+  getOccupancyTrendReport, getRoomWiseADRReport, getADRRevPARReport,
 }

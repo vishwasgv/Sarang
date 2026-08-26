@@ -1077,6 +1077,9 @@ export interface IpcChannels {
     generateGroupInvoice: (payload: { bookingIds: string[] }) => Promise<ApiResponse>
     occupancyReport: () => Promise<ApiResponse>
     guestRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    occupancyTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    roomWiseADR: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    adrRevPAR: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     listRateCalendar: () => Promise<ApiResponse>
     createRateCalendarEntry: (payload: { roomType?: string; startDate: string; endDate: string; rate: number; label?: string }) => Promise<ApiResponse>
     deleteRateCalendarEntry: (payload: { id: string }) => Promise<ApiResponse>

@@ -312,6 +312,18 @@ interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: num
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
 
+// Phase 68 §9.1 — Hotel/Lodge item 2: occupancy trend.
+interface OccupancyTrendPoint { date: string; occupiedRooms: number; totalRooms: number; occupancyPercent: number }
+interface OccupancyTrendReport { dateFrom: string; dateTo: string; points: OccupancyTrendPoint[]; summary: { avgOccupancyPercent: number; peakOccupancyPercent: number } }
+
+// Phase 68 §9.1 — Hotel/Lodge item 3: room-wise ADR tracking.
+interface RoomWiseADRRow { roomNumber: string; roomType: string; nightsSold: number; totalRevenue: number; adr: number }
+interface RoomWiseADRReport { dateFrom: string; dateTo: string; rows: RoomWiseADRRow[]; summary: { roomsWithStays: number; totalNightsSold: number; totalRevenue: number } }
+
+// Phase 68 §9.1 — Hotel/Lodge item 4: ADR & RevPAR, trended by month.
+interface ADRRevPARRow { period: string; roomRevenue: number; nightsSold: number; availableRoomNights: number; adr: number; revPAR: number }
+interface ADRRevPARReport { dateFrom: string; dateTo: string; rows: ADRRevPARRow[]; summary: { totalRoomRevenue: number; overallADR: number; overallRevPAR: number } }
+
 interface GSTR3BStateRow { state: string; taxableValue: number; igstAmount: number }
 interface GSTR3BTable31d { taxableValue: number; taxAmount: number; expenseTaxNotComputable: boolean }
 interface GSTR3BPreview {
@@ -809,6 +821,8 @@ type ReportType =
   | 'renewalFunnel' | 'chemicalUsageCompliance' | 'pestRecurringValueTrend'
   // Phase 68 §9.1 — Placement Agency items 1-5
   | 'candidatePipelineFunnel' | 'jobOrderFunnel' | 'feePercentage' | 'timeToFill' | 'sourceEffectiveness'
+  // Phase 68 §9.1 — Hotel/Lodge items 2, 3 & 4
+  | 'occupancyTrend' | 'roomWiseADR' | 'adrRevPAR'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -975,6 +989,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'assetUtilization', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'hotelOccupancy', icon: <BedDouble size={18} />, category: 'hotel', requiresDateRange: false, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'hotelGuestRegister', icon: <Users size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
+  // Phase 68 §9.1 — Hotel/Lodge items 2, 3 & 4.
+  { id: 'occupancyTrend', icon: <LineChart size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
+  { id: 'roomWiseADR', icon: <BedDouble size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
+  { id: 'adrRevPAR', icon: <TrendingUp size={18} />, category: 'hotel', requiresDateRange: true, permission: 'hotel.view', requiredModule: 'hotel_bookings' },
   { id: 'projects', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'projects' },
   // Phase 67 §9.1 — Service items 2/4.
   { id: 'serviceResolutionTime', icon: <Clock size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_tickets' },
@@ -1382,6 +1400,15 @@ export function ReportsScreen() {
           break
         case 'hotelGuestRegister':
           res = await window.api.hotel.guestRegister({ dateFrom, dateTo })
+          break
+        case 'occupancyTrend':
+          res = await window.api.hotel.occupancyTrend({ dateFrom, dateTo })
+          break
+        case 'roomWiseADR':
+          res = await window.api.hotel.roomWiseADR({ dateFrom, dateTo })
+          break
+        case 'adrRevPAR':
+          res = await window.api.hotel.adrRevPAR({ dateFrom, dateTo })
           break
         case 'appointmentUtilisation':
           res = await window.api.reports.appointmentUtilisation({ dateFrom, dateTo, providerId: providerId || undefined })
@@ -2073,6 +2100,27 @@ export function ReportsScreen() {
         return {
           headers: ['Booking', 'Room', 'Guest Name', 'ID Type', 'ID Number', 'Nationality', 'Address', 'Check-In', 'Check-Out'],
           rows: d.rows.map(r => [r.bookingNumber, r.roomNumber, r.guestName, r.idType, r.idNumber, r.nationality, r.address ?? '—', formatDate(r.checkInDate), formatDate(r.checkOutDate)])
+        }
+      }
+      case 'occupancyTrend': {
+        const d = reportData as OccupancyTrendReport
+        return {
+          headers: ['Date', 'Occupied Rooms', 'Total Rooms', 'Occupancy %'],
+          rows: d.points.map(p => [p.date, p.occupiedRooms, p.totalRooms, p.occupancyPercent])
+        }
+      }
+      case 'roomWiseADR': {
+        const d = reportData as RoomWiseADRReport
+        return {
+          headers: ['Room #', 'Room Type', 'Nights Sold', 'Total Revenue', 'ADR'],
+          rows: d.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, r.totalRevenue.toFixed(2), r.adr.toFixed(2)])
+        }
+      }
+      case 'adrRevPAR': {
+        const d = reportData as ADRRevPARReport
+        return {
+          headers: ['Period', 'Room Revenue', 'Nights Sold', 'Available Room-Nights', 'ADR', 'RevPAR'],
+          rows: d.rows.map(r => [r.period, r.roomRevenue.toFixed(2), r.nightsSold, r.availableRoomNights, r.adr.toFixed(2), r.revPAR.toFixed(2)])
         }
       }
       case 'appointmentUtilisation': {
@@ -3132,6 +3180,29 @@ export function ReportsScreen() {
         const d = reportData as HotelGuestRegisterReport
         return [{ label: 'Registered Guests', value: String(d.rows.length) }]
       }
+      case 'occupancyTrend': {
+        const d = reportData as OccupancyTrendReport
+        return [
+          { label: 'Avg. Occupancy %', value: `${d.summary.avgOccupancyPercent}%` },
+          { label: 'Peak Occupancy %', value: `${d.summary.peakOccupancyPercent}%` },
+        ]
+      }
+      case 'roomWiseADR': {
+        const d = reportData as RoomWiseADRReport
+        return [
+          { label: 'Rooms with Stays', value: String(d.summary.roomsWithStays) },
+          { label: 'Total Nights Sold', value: String(d.summary.totalNightsSold) },
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+        ]
+      }
+      case 'adrRevPAR': {
+        const d = reportData as ADRRevPARReport
+        return [
+          { label: 'Total Room Revenue', value: fmt(d.summary.totalRoomRevenue) },
+          { label: 'Overall ADR', value: fmt(d.summary.overallADR) },
+          { label: 'Overall RevPAR', value: fmt(d.summary.overallRevPAR) },
+        ]
+      }
       case 'appointmentUtilisation': {
         const d = reportData as AppointmentUtilisationReport
         return [
@@ -4092,6 +4163,22 @@ export function ReportsScreen() {
       // report's rows are individual guest ID records for a compliance
       // register, read as a table/produced-on-demand document, not a trend.
       case 'hotelGuestRegister': return []
+      // Phase 68 §9.1 — Hotel/Lodge items 2, 3 & 4.
+      case 'occupancyTrend': {
+        const d = reportData as OccupancyTrendReport
+        if (d.points.length === 0) return []
+        return [{ type: 'line', title: 'Occupancy % Trend', data: d.points.map(p => ({ label: p.date, value: p.occupancyPercent })) }]
+      }
+      case 'roomWiseADR': {
+        const d = reportData as RoomWiseADRReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'bar', title: 'ADR by Room', data: d.rows.slice(0, 15).map(r => ({ label: r.roomNumber, value: r.adr })), valueIsCurrency: true }]
+      }
+      case 'adrRevPAR': {
+        const d = reportData as ADRRevPARReport
+        if (d.rows.length === 0) return []
+        return [{ type: 'line', title: 'RevPAR Trend', data: d.rows.map(r => ({ label: r.period, value: r.revPAR })), valueIsCurrency: true }]
+      }
       case 'appointmentUtilisation': {
         const d = reportData as AppointmentUtilisationReport
         if (d.byProvider.length === 0) return []
@@ -4914,6 +5001,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'vendorPerformanceHistory': return <VendorPerformanceHistoryView data={data as VendorPerformanceReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
+    case 'occupancyTrend': return <OccupancyTrendView data={data as OccupancyTrendReport} />
+    case 'roomWiseADR': return <RoomWiseADRView data={data as RoomWiseADRReport} fmt={fmt} />
+    case 'adrRevPAR': return <ADRRevPARView data={data as ADRRevPARReport} fmt={fmt} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
     case 'clientRetention': return <ClientRetentionView data={data as ClientRetentionReport} />
     case 'commission': return <CommissionReportView data={data as CommissionReport} fmt={fmt} />
@@ -7182,6 +7272,68 @@ function HotelGuestRegisterView({ data }: { data: HotelGuestRegisterReport }) {
         />
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">No registered guests for this date range.</div>
+      )}
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Hotel/Lodge item 2: occupancy trend.
+function OccupancyTrendView({ data }: { data: OccupancyTrendReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Avg. Occupancy %', value: `${data.summary.avgOccupancyPercent}%` },
+        { label: 'Peak Occupancy %', value: `${data.summary.peakOccupancyPercent}%` },
+      ]} />
+      {data.points.length > 0 ? (
+        <DataTable
+          headers={['Date', 'Occupied Rooms', 'Total Rooms', 'Occupancy %']}
+          rows={data.points.map(p => [p.date, p.occupiedRooms, p.totalRooms, `${p.occupancyPercent}%`])}
+        />
+      ) : (
+        <div className="text-center py-12 text-slate-400 text-sm">No data for this date range.</div>
+      )}
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Hotel/Lodge item 3: room-wise ADR tracking.
+function RoomWiseADRView({ data, fmt }: { data: RoomWiseADRReport; fmt: (n: number) => string }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Rooms with Stays', value: String(data.summary.roomsWithStays) },
+        { label: 'Total Nights Sold', value: String(data.summary.totalNightsSold) },
+        { label: 'Total Revenue', value: fmt(data.summary.totalRevenue) },
+      ]} />
+      {data.rows.length > 0 ? (
+        <DataTable
+          headers={['Room #', 'Room Type', 'Nights Sold', 'Total Revenue', 'ADR']}
+          rows={data.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, fmt(r.totalRevenue), fmt(r.adr)])}
+        />
+      ) : (
+        <div className="text-center py-12 text-slate-400 text-sm">No stays in this date range.</div>
+      )}
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Hotel/Lodge item 4: ADR & RevPAR, trended by month.
+function ADRRevPARView({ data, fmt }: { data: ADRRevPARReport; fmt: (n: number) => string }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Room Revenue', value: fmt(data.summary.totalRoomRevenue) },
+        { label: 'Overall ADR', value: fmt(data.summary.overallADR) },
+        { label: 'Overall RevPAR', value: fmt(data.summary.overallRevPAR) },
+      ]} />
+      {data.rows.length > 0 ? (
+        <DataTable
+          headers={['Period', 'Room Revenue', 'Nights Sold', 'Available Room-Nights', 'ADR', 'RevPAR']}
+          rows={data.rows.map(r => [r.period, fmt(r.roomRevenue), r.nightsSold, r.availableRoomNights, fmt(r.adr), fmt(r.revPAR)])}
+        />
+      ) : (
+        <div className="text-center py-12 text-slate-400 text-sm">No data for this date range.</div>
       )}
     </div>
   )

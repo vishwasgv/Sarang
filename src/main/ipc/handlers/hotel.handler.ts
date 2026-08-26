@@ -142,6 +142,28 @@ export function register(handle: HandleFn): void {
     return hotelService.getGuestRegister(parsed.data)
   })
 
+  // Phase 68 §9.1 — Hotel/Lodge items 2, 3 & 4.
+  handle('hotel:occupancyTrend', async (payload) => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    const parsed = GuestRegisterSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.getOccupancyTrendReport(parsed.data)
+  })
+
+  handle('hotel:roomWiseADR', async (payload) => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    const parsed = GuestRegisterSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.getRoomWiseADRReport(parsed.data)
+  })
+
+  handle('hotel:adrRevPAR', async (payload) => {
+    const deny = await requirePermission('hotel.view'); if (deny) return deny
+    const parsed = GuestRegisterSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return hotelService.getADRRevPARReport(parsed.data)
+  })
+
   handle('hotel:generateGroupInvoice', async (payload) => {
     const deny = await requirePermission('hotel.manage'); if (deny) return deny
     const parsed = GenerateGroupHotelInvoiceSchema.safeParse(payload)
