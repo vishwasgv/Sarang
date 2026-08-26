@@ -389,6 +389,9 @@ const api: IpcChannels = {
     carPartsVariance: () => invoke('reports:carPartsVariance'),
     serviceTypeRevenue: (p) => invoke('reports:serviceTypeRevenue', p),
     tailoringOrders: (p) => invoke('reports:tailoringOrders', p),
+    orderTurnaround: (p) => invoke('reports:orderTurnaround', p),
+    fittingStageTracker: () => invoke('reports:fittingStageTracker'),
+    fabricPopularity: (p) => invoke('reports:fabricPopularity', p),
     pestContracts: (p) => invoke('reports:pestContracts', p),
     realEstatePipeline: (p) => invoke('reports:realEstatePipeline', p),
     retainers: (p) => invoke('reports:retainers', p),
@@ -1529,6 +1532,7 @@ const api: IpcChannels = {
     scheduleTrialAppointment: (p: unknown) => invoke('tailoringOrder:scheduleTrialAppointment', p),
     setFabric: (p: unknown) => invoke('tailoringOrder:setFabric', p),
     clearFabric: (p: unknown) => invoke('tailoringOrder:clearFabric', p),
+    staleMeasurements: () => invoke('tailoringOrder:staleMeasurements'),
   },
   pestContract: {
     list: (p?: unknown) => invoke('pestContract:list', p),

@@ -472,6 +472,9 @@ export interface IpcChannels {
     carPartsVariance: () => Promise<ApiResponse>
     serviceTypeRevenue: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     tailoringOrders: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    orderTurnaround: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    fittingStageTracker: () => Promise<ApiResponse>
+    fabricPopularity: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     pestContracts: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     realEstatePipeline: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     retainers: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -1774,6 +1777,7 @@ export interface IpcChannels {
     scheduleTrialAppointment: (payload: { orderId: string; providerId?: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number }) => Promise<ApiResponse>
     setFabric: (payload: { orderId: string; fabricProductId: string; fabricQuantity: number }) => Promise<ApiResponse>
     clearFabric: (payload: string) => Promise<ApiResponse>
+    staleMeasurements: () => Promise<ApiResponse>
   }
   pestContract: {
     list: (payload?: { status?: string; clientId?: string; search?: string }) => Promise<ApiResponse>

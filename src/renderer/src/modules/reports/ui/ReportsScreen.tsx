@@ -427,6 +427,18 @@ interface TailoringOrderReportRow { orderNumber: string; customerName: string; g
 interface TailoringOrderByGarment { garmentType: string; count: number; totalAmount: number }
 interface TailoringOrderReport { dateFrom: string; dateTo: string; summary: { totalOrders: number; delivered: number; totalAmount: number }; byGarmentType: TailoringOrderByGarment[]; rows: TailoringOrderReportRow[] }
 
+// Phase 68 §9.1 — Tailor/Boutique item 2: order turnaround time.
+interface OrderTurnaroundRow { orderNumber: string; customerName: string; garmentType: string; turnaroundDays: number; createdAt: string; deliveredDate: string }
+interface OrderTurnaroundReport { dateFrom: string; dateTo: string; rows: OrderTurnaroundRow[]; summary: { orderCount: number; avgTurnaroundDays: number; minTurnaroundDays: number; maxTurnaroundDays: number } }
+
+// Phase 68 §9.1 — Tailor/Boutique item 3: fitting-stage tracker.
+interface FittingStageRow { orderId: string; orderNumber: string; customerName: string; garmentType: string; status: string; daysInStage: number }
+interface FittingStageReport { rows: FittingStageRow[]; summary: { totalInFitting: number; avgDaysInStage: number } }
+
+// Phase 68 §9.1 — Tailor/Boutique item 4: fabric/design popularity.
+interface FabricPopularityRow { fabricDescription: string; orderCount: number; totalRevenue: number }
+interface FabricPopularityReport { dateFrom: string; dateTo: string; rows: FabricPopularityRow[]; summary: { totalRevenue: number; distinctFabrics: number } }
+
 interface PestContractExpiringRow { contractNumber: string; customerName: string; pestTypes: string[]; endDate: string; daysUntilExpiry: number }
 interface PestRevenueByType { pestType: string; revenue: number; visitCount: number }
 interface PestContractReport { dateFrom: string; dateTo: string; summary: { activeContracts: number; expiringWithin30Days: number; totalContractValue: number }; expiring: PestContractExpiringRow[]; byPestType: PestRevenueByType[] }
@@ -758,6 +770,8 @@ type ReportType =
   | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
   // Phase 68 §9.1 — Car Service Center items 3 & 4
   | 'carPartsVariance' | 'serviceTypeRevenue'
+  // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4
+  | 'orderTurnaround' | 'fittingStageTracker' | 'fabricPopularity'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -946,6 +960,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Car Service Center item 4.
   { id: 'serviceTypeRevenue', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
   { id: 'tailoringOrders', icon: <Scissors size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
+  // Phase 68 §9.1 — Tailor/Boutique item 2.
+  { id: 'orderTurnaround', icon: <Clock size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
+  // Phase 68 §9.1 — Tailor/Boutique item 3. Current-state, no date range.
+  { id: 'fittingStageTracker', icon: <Timer size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
+  // Phase 68 §9.1 — Tailor/Boutique item 4.
+  { id: 'fabricPopularity', icon: <Shirt size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
   { id: 'pestContracts', icon: <Bug size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
   { id: 'realEstatePipeline', icon: <Home size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'properties' },
   { id: 'retainers', icon: <Repeat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'retainers' },
@@ -1514,6 +1534,15 @@ export function ReportsScreen() {
           break
         case 'tailoringOrders':
           res = await window.api.reports.tailoringOrders({ dateFrom, dateTo })
+          break
+        case 'orderTurnaround':
+          res = await window.api.reports.orderTurnaround({ dateFrom, dateTo })
+          break
+        case 'fittingStageTracker':
+          res = await window.api.reports.fittingStageTracker()
+          break
+        case 'fabricPopularity':
+          res = await window.api.reports.fabricPopularity({ dateFrom, dateTo })
           break
         case 'pestContracts':
           res = await window.api.reports.pestContracts({ dateFrom, dateTo })
@@ -2413,6 +2442,27 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.quantity, r.totalAmount])
         }
       }
+      case 'orderTurnaround': {
+        const d = reportData as OrderTurnaroundReport
+        return {
+          headers: ['Order #', t('reports.col.customer'), 'Garment Type', 'Turnaround Days', 'Created', 'Delivered'],
+          rows: d.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.turnaroundDays, r.createdAt, r.deliveredDate])
+        }
+      }
+      case 'fittingStageTracker': {
+        const d = reportData as FittingStageReport
+        return {
+          headers: ['Order #', t('reports.col.customer'), 'Garment Type', t('common.status'), 'Days in Stage'],
+          rows: d.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.daysInStage])
+        }
+      }
+      case 'fabricPopularity': {
+        const d = reportData as FabricPopularityReport
+        return {
+          headers: ['Fabric / Design', 'Orders', t('common.amount')],
+          rows: d.rows.map(r => [r.fabricDescription, r.orderCount, r.totalRevenue.toFixed(2)])
+        }
+      }
       case 'pestContracts': {
         const d = reportData as PestContractReport
         return {
@@ -3289,6 +3339,29 @@ export function ReportsScreen() {
           { label: t('common.amount'), value: fmt(d.summary.totalAmount) }
         ]
       }
+      case 'orderTurnaround': {
+        const d = reportData as OrderTurnaroundReport
+        return [
+          { label: 'Orders Delivered', value: String(d.summary.orderCount) },
+          { label: 'Avg. Turnaround (days)', value: String(d.summary.avgTurnaroundDays) },
+          { label: 'Fastest (days)', value: String(d.summary.minTurnaroundDays) },
+          { label: 'Slowest (days)', value: String(d.summary.maxTurnaroundDays) }
+        ]
+      }
+      case 'fittingStageTracker': {
+        const d = reportData as FittingStageReport
+        return [
+          { label: 'Orders in Fitting', value: String(d.summary.totalInFitting) },
+          { label: 'Avg. Days in Stage', value: String(d.summary.avgDaysInStage) }
+        ]
+      }
+      case 'fabricPopularity': {
+        const d = reportData as FabricPopularityReport
+        return [
+          { label: t('common.amount'), value: fmt(d.summary.totalRevenue) },
+          { label: 'Distinct Fabrics', value: String(d.summary.distinctFabrics) }
+        ]
+      }
       case 'pestContracts': {
         const d = reportData as PestContractReport
         return [
@@ -4072,6 +4145,11 @@ export function ReportsScreen() {
       // channelPerformance, shootTypeRevenueMix above).
       case 'carPartsVariance': return []
       case 'serviceTypeRevenue': return []
+      // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4. Chart-free, same as
+      // this file's other worklist/breakdown-table reports above.
+      case 'orderTurnaround': return []
+      case 'fittingStageTracker': return []
+      case 'fabricPopularity': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4646,6 +4724,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'carPartsVariance': return <CarPartsVarianceView data={data as CarPartsVarianceReport} fmt={fmt} />
     case 'serviceTypeRevenue': return <ServiceTypeRevenueView data={data as ServiceTypeRevenueReport} fmt={fmt} />
     case 'tailoringOrders': return <TailoringOrderReportView data={data as TailoringOrderReport} fmt={fmt} />
+    case 'orderTurnaround': return <OrderTurnaroundView data={data as OrderTurnaroundReport} />
+    case 'fittingStageTracker': return <FittingStageTrackerView data={data as FittingStageReport} />
+    case 'fabricPopularity': return <FabricPopularityView data={data as FabricPopularityReport} fmt={fmt} />
     case 'pestContracts': return <PestContractReportView data={data as PestContractReport} fmt={fmt} />
     case 'realEstatePipeline': return <RealEstatePipelineReportView data={data as RealEstatePipelineReport} fmt={fmt} />
     case 'retainers': return <RetainerReportView data={data as RetainerReport} fmt={fmt} />
@@ -8362,6 +8443,73 @@ function TailoringOrderReportView({ data, fmt }: { data: TailoringOrderReport; f
           headers={['Order #', t('reports.col.customer'), 'Garment', t('common.status'), 'Qty', t('common.amount')]}
           rows={data.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.quantity, fmt(r.totalAmount)])}
           emptyText={t('reports.empty.tailoringOrders')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 2: order turnaround time.
+function OrderTurnaroundView({ data }: { data: OrderTurnaroundReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Orders Delivered', value: String(s.orderCount) },
+        { label: 'Avg. Turnaround (days)', value: String(s.avgTurnaroundDays) },
+        { label: 'Fastest (days)', value: String(s.minTurnaroundDays) },
+        { label: 'Slowest (days)', value: String(s.maxTurnaroundDays) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Turnaround Details</h3>
+        <DataTable
+          headers={['Order #', t('reports.col.customer'), 'Garment', 'Turnaround Days', 'Created', 'Delivered']}
+          rows={data.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.turnaroundDays, r.createdAt, r.deliveredDate])}
+          emptyText={t('reports.empty.orderTurnaround')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 3: fitting-stage tracker.
+function FittingStageTrackerView({ data }: { data: FittingStageReport }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Orders in Fitting', value: String(s.totalInFitting) },
+        { label: 'Avg. Days in Stage', value: String(s.avgDaysInStage) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Fitting-Stage Details</h3>
+        <DataTable
+          headers={['Order #', t('reports.col.customer'), 'Garment', t('common.status'), 'Days in Stage']}
+          rows={data.rows.map(r => [r.orderNumber, r.customerName, r.garmentType, r.status, r.daysInStage])}
+          emptyText={t('reports.empty.fittingStageTracker')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 4: fabric/design popularity.
+function FabricPopularityView({ data, fmt }: { data: FabricPopularityReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('common.amount'), value: fmt(data.summary.totalRevenue) },
+        { label: 'Distinct Fabrics', value: String(data.summary.distinctFabrics) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Fabric / Design</h3>
+        <DataTable
+          headers={['Fabric / Design', 'Orders', t('common.amount')]}
+          rows={data.rows.map(r => [r.fabricDescription, r.orderCount, fmt(r.totalRevenue)])}
+          emptyText={t('reports.empty.fabricPopularity')}
         />
       </div>
     </div>

@@ -2020,6 +2020,18 @@
         "label": "Tailoring Orders Report",
         "description": "Every order by garment type and status — for Tailor Boutiques"
       },
+      "orderTurnaround": {
+        "label": "Order Turnaround Time",
+        "description": "How many days it actually takes from order to delivery, per order"
+      },
+      "fittingStageTracker": {
+        "label": "Fitting-Stage Tracker",
+        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+      },
+      "fabricPopularity": {
+        "label": "Fabric / Design Popularity",
+        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+      },
       "pestContracts": {
         "label": "Pest Control Report",
         "description": "Contracts expiring soon and revenue by pest type — for Pest Control Services"
@@ -2643,6 +2655,9 @@
       "carPartsVariance": "No jobs with a quoted parts estimate yet.",
       "serviceTypeRevenue": "No service items billed in this date range.",
       "tailoringOrders": "No orders in this date range.",
+      "orderTurnaround": "No orders delivered in this date range.",
+      "fittingStageTracker": "No orders currently at Trial or Alterations.",
+      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
       "pestContracts": "No contracts expiring in this window.",
       "realEstatePipeline": "No deals in this date range.",
       "retainers": "No retainers found.",
@@ -5147,6 +5162,10 @@
     },
     "filters": {
       "all": "All"
+    },
+    "staleMeasurements": {
+      "title": "{{count}} order(s) may be using outdated measurements",
+      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
     },
     "searchPlaceholder": "Order #, Garment, Client…",
     "table": {

@@ -5890,6 +5890,144 @@ async function generateTailoringOrderReport(params: { dateFrom: string; dateTo: 
   }
 }
 
+// Phase 68 §9.1 — Tailor/Boutique item 2: order turnaround time. Only
+// DELIVERED orders with a real deliveredDate are counted (an order still in
+// progress has no turnaround yet, not a zero one) — same "don't fabricate a
+// baseline" discipline as Car Service Center's parts variance report.
+export interface OrderTurnaroundRow {
+  orderNumber: string; customerName: string; garmentType: string; turnaroundDays: number
+  createdAt: string; deliveredDate: string
+}
+export interface OrderTurnaroundReport {
+  dateFrom: string; dateTo: string
+  rows: OrderTurnaroundRow[]
+  summary: { orderCount: number; avgTurnaroundDays: number; minTurnaroundDays: number; maxTurnaroundDays: number }
+}
+
+async function generateOrderTurnaroundReport(params: { dateFrom: string; dateTo: string }): Promise<OrderTurnaroundReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const orders = await db.tailoringOrder.findMany({
+    where: { status: 'DELIVERED', deliveredDate: { gte: from, lte: to } },
+    include: { client: { select: { customerName: true } } },
+    orderBy: { deliveredDate: 'desc' },
+  })
+
+  const rows: OrderTurnaroundRow[] = orders
+    .filter((o) => o.deliveredDate != null)
+    .map((o) => ({
+      orderNumber: o.orderNumber, customerName: o.client.customerName, garmentType: o.garmentType,
+      turnaroundDays: Math.round((o.deliveredDate!.getTime() - o.createdAt.getTime()) / 86400000),
+      createdAt: toLocalISODate(o.createdAt), deliveredDate: toLocalISODate(o.deliveredDate!),
+    }))
+    .sort((a, b) => b.turnaroundDays - a.turnaroundDays)
+
+  const days = rows.map((r) => r.turnaroundDays)
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows,
+    summary: {
+      orderCount: rows.length,
+      avgTurnaroundDays: days.length > 0 ? Math.round((days.reduce((s, d) => s + d, 0) / days.length) * 10) / 10 : 0,
+      minTurnaroundDays: days.length > 0 ? Math.min(...days) : 0,
+      maxTurnaroundDays: days.length > 0 ? Math.max(...days) : 0,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 3: fitting-stage tracker. A live
+// current-state worklist of orders currently in a fitting-related stage
+// (TRIAL_SCHEDULED/ALTERATIONS), worst-first by days stuck in that stage —
+// same "aging, not just a status label" shape as Architect/Civil's
+// generateProjectStageProgressReport (TailoringOrder.statusUpdatedAt is
+// stamped the same way, only on a real status change).
+const FITTING_STAGES = ['TRIAL_SCHEDULED', 'ALTERATIONS']
+
+export interface FittingStageRow {
+  orderId: string; orderNumber: string; customerName: string; garmentType: string
+  status: string; daysInStage: number
+}
+export interface FittingStageReport {
+  rows: FittingStageRow[]
+  summary: { totalInFitting: number; avgDaysInStage: number }
+}
+
+async function generateFittingStageTrackerReport(): Promise<FittingStageReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const orders = await db.tailoringOrder.findMany({
+    where: { status: { in: FITTING_STAGES } },
+    select: { id: true, orderNumber: true, garmentType: true, status: true, statusUpdatedAt: true, createdAt: true, client: { select: { customerName: true } } },
+  })
+
+  const rows: FittingStageRow[] = orders.map((o) => {
+    const stageEnteredAt = o.statusUpdatedAt ?? o.createdAt
+    return {
+      orderId: o.id, orderNumber: o.orderNumber, customerName: o.client.customerName, garmentType: o.garmentType,
+      status: o.status, daysInStage: Math.floor((now.getTime() - stageEnteredAt.getTime()) / 86400000),
+    }
+  }).sort((a, b) => b.daysInStage - a.daysInStage)
+
+  return {
+    rows,
+    summary: {
+      totalInFitting: rows.length,
+      avgDaysInStage: rows.length > 0 ? Math.round((rows.reduce((s, r) => s + r.daysInStage, 0) / rows.length) * 10) / 10 : 0,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 4: fabric/design popularity. There is
+// no separate fabric-catalog table (fabricDescription is a free-text field
+// per order), so the description itself is the de facto "design" — same
+// "group by the free-text field that already exists" pattern as Car Service
+// Center's generateServiceTypeRevenueReport.
+export interface FabricPopularityRow {
+  fabricDescription: string; orderCount: number; totalRevenue: number
+}
+export interface FabricPopularityReport {
+  dateFrom: string; dateTo: string
+  rows: FabricPopularityRow[]
+  summary: { totalRevenue: number; distinctFabrics: number }
+}
+
+async function generateFabricPopularityReport(params: { dateFrom: string; dateTo: string }): Promise<FabricPopularityReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const orders = await db.tailoringOrder.findMany({
+    where: { createdAt: { gte: from, lte: to }, fabricDescription: { not: null } },
+    select: { fabricDescription: true, totalAmount: true },
+  })
+
+  const byFabric = new Map<string, { orderCount: number; totalRevenue: number }>()
+  for (const o of orders) {
+    const key = o.fabricDescription?.trim()
+    if (!key) continue
+    const entry = byFabric.get(key) ?? { orderCount: 0, totalRevenue: 0 }
+    entry.orderCount += 1
+    entry.totalRevenue += Number(o.totalAmount)
+    byFabric.set(key, entry)
+  }
+
+  const rows: FabricPopularityRow[] = Array.from(byFabric.entries())
+    .map(([fabricDescription, v]) => ({ fabricDescription, orderCount: v.orderCount, totalRevenue: roundCurrency(v.totalRevenue) }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows,
+    summary: {
+      totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.totalRevenue, 0)),
+      distinctFabrics: rows.length,
+    },
+  }
+}
+
 // ── Pest Control — contracts expiring, revenue by pest type ──────────────
 // Revenue-by-pest-type is attributed from PestJobSheet.jobAmount (actual
 // billed visits), joined back to the parent contract's pestTypes list —
@@ -8727,6 +8865,9 @@ export const reportService = {
   generateCarPartsVarianceReport,
   generateServiceTypeRevenueReport,
   generateTailoringOrderReport,
+  generateOrderTurnaroundReport,
+  generateFittingStageTrackerReport,
+  generateFabricPopularityReport,
   generatePestContractReport,
   generateRealEstatePipelineReport,
   generateRetainerReport,

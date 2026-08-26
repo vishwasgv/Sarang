@@ -5,6 +5,7 @@ import { inventoryService } from './inventory.service'
 import { createAppointment } from './appointment.service'
 import { createAppointmentReminder } from './notification-queue.service'
 import { roundCurrency } from './currency.service'
+import { parseLocalDateStart, toLocalISODate } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -111,8 +112,8 @@ export async function createTailoringOrder(payload: {
         unitPrice,
         totalAmount,
         advancePaid: payload.advancePaid ?? 0,
-        trialDate: payload.trialDate ? new Date(payload.trialDate) : null,
-        deliveryDate: payload.deliveryDate ? new Date(payload.deliveryDate) : null,
+        trialDate: payload.trialDate ? parseLocalDateStart(payload.trialDate) : null,
+        deliveryDate: payload.deliveryDate ? parseLocalDateStart(payload.deliveryDate) : null,
         assignedToId: payload.assignedToId ?? null,
         specialInstructions: payload.specialInstructions ?? null,
         notes: payload.notes ?? null,
@@ -151,9 +152,17 @@ export async function updateTailoringOrder(payload: {
   const db = getPrisma()
   const { id, trialDate, deliveryDate, deliveredDate, quantity, unitPrice, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
-  if (trialDate !== undefined) data.trialDate = trialDate ? new Date(trialDate) : null
-  if (deliveryDate !== undefined) data.deliveryDate = deliveryDate ? new Date(deliveryDate) : null
-  if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? new Date(deliveredDate) : null
+  if (trialDate !== undefined) data.trialDate = trialDate ? parseLocalDateStart(trialDate) : null
+  if (deliveryDate !== undefined) data.deliveryDate = deliveryDate ? parseLocalDateStart(deliveryDate) : null
+  if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? parseLocalDateStart(deliveredDate) : null
+
+  // Phase 68 §9.1 — Tailor/Boutique item 3: only stamp statusUpdatedAt on a
+  // REAL status change (not every update), same discipline as
+  // service-project.service.ts's stage-change detection.
+  if (payload.status !== undefined) {
+    const existing = await db.tailoringOrder.findUniqueOrThrow({ where: { id }, select: { status: true } })
+    if (existing.status !== payload.status) data.statusUpdatedAt = new Date()
+  }
 
   if (quantity !== undefined || unitPrice !== undefined) {
     const existing = await db.tailoringOrder.findUniqueOrThrow({ where: { id }, select: { quantity: true, unitPrice: true } })
@@ -312,8 +321,9 @@ export async function scheduleTrialAppointment(payload: {
       where: { id: payload.orderId },
       data: {
         trialAppointmentId: appointment.id,
-        trialDate: new Date(payload.scheduledDate),
+        trialDate: parseLocalDateStart(payload.scheduledDate),
         status: 'TRIAL_SCHEDULED',
+        statusUpdatedAt: new Date(),
       },
       include: {
         client: { select: { id: true, customerName: true, phone: true } },
@@ -420,5 +430,56 @@ export async function clearOrderFabric(orderId: string) {
     return { success: true, data: serializeTailoringOrder(updated) }
   } catch (err) {
     return { success: false, error: { code: 'TOF-008', message: err instanceof Error ? err.message : 'Could not clear fabric.' } }
+  }
+}
+
+// Phase 68 §9.1 — Tailor/Boutique item 5: measurement-change alert. Flags an
+// active (not yet DELIVERED/CANCELLED) order whose linked measurement is no
+// longer the client's most recent one — i.e. the customer was re-measured
+// AFTER this order was placed, so the order may be cutting/stitching to
+// stale numbers. Only a real signal: an order with no linked measurement, or
+// whose linked measurement IS still the latest, is never flagged.
+export async function getOrdersWithStaleMeasurements() {
+  try {
+    const db = getPrisma()
+    const orders = await db.tailoringOrder.findMany({
+      where: { status: { notIn: ['DELIVERED', 'CANCELLED'] }, measurementRecordId: { not: null } },
+      include: {
+        client: { select: { id: true, customerName: true } },
+        measurement: { select: { id: true, recordDate: true } },
+      },
+    })
+    if (orders.length === 0) return { success: true, data: [] }
+
+    const clientIds = Array.from(new Set(orders.map((o) => o.clientId)))
+    const allRecords = await db.measurementRecord.findMany({
+      where: { clientId: { in: clientIds } },
+      select: { id: true, clientId: true, recordDate: true },
+      orderBy: { recordDate: 'desc' },
+    })
+    const latestByClient = new Map<string, { id: string; recordDate: Date }>()
+    for (const r of allRecords) {
+      if (!latestByClient.has(r.clientId)) latestByClient.set(r.clientId, r)
+    }
+
+    const stale = orders
+      .filter((o) => {
+        const latest = latestByClient.get(o.clientId)
+        return latest != null && o.measurement != null && latest.id !== o.measurement.id && latest.recordDate.getTime() > o.measurement.recordDate.getTime()
+      })
+      .map((o) => {
+        const latest = latestByClient.get(o.clientId)!
+        return {
+          orderId: o.id, orderNumber: o.orderNumber, customerName: o.client.customerName,
+          garmentType: o.garmentType, status: o.status,
+          orderMeasurementDate: toLocalISODate(o.measurement!.recordDate),
+          latestMeasurementDate: toLocalISODate(latest.recordDate),
+        }
+      })
+      .sort((a, b) => new Date(b.latestMeasurementDate).getTime() - new Date(a.latestMeasurementDate).getTime())
+
+    return { success: true, data: stale }
+  } catch (err) {
+    return { success: false, error: { code: 'TO-009', message: err instanceof Error ? err.message : 'Could not check for measurement changes.' } }
   }
 }

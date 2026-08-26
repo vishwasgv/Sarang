@@ -1,7 +1,7 @@
 import {
   listTailoringOrders, getTailoringOrder, createTailoringOrder, updateTailoringOrder,
   deleteTailoringOrder, generateTailoringInvoice, getTailoringKPIs,
-  scheduleTrialAppointment, setOrderFabric, clearOrderFabric
+  scheduleTrialAppointment, setOrderFabric, clearOrderFabric, getOrdersWithStaleMeasurements
 } from '../../services/tailoring-order.service'
 import { requirePermission } from '../permission-guard'
 import {
@@ -74,5 +74,10 @@ export function registerTailoringOrder(handle: HandleFn): void {
     const parsed = TailoringOrderIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return clearOrderFabric(parsed.data)
+  })
+
+  handle('tailoringOrder:staleMeasurements', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getOrdersWithStaleMeasurements()
   })
 }

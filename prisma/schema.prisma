@@ -5686,6 +5686,10 @@ model TailoringOrder {
   deliveryDate        DateTime?
   deliveredDate       DateTime?
   status              String    @default("RECEIVED") // RECEIVED|IN_CUTTING|IN_STITCHING|TRIAL_SCHEDULED|ALTERATIONS|READY|DELIVERED|CANCELLED
+  // Phase 68 §9.1 — Tailor/Boutique item 3: fitting-stage tracker. Stamped
+  // ONLY on a real status change (mirrors ServiceProject.stageUpdatedAt/
+  // LegalCase.caseStageUpdatedAt) so "days in current stage" is accurate.
+  statusUpdatedAt     DateTime?
   assignedToId        String?
   invoiceId           String?
   specialInstructions String?

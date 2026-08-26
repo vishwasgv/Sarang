@@ -6554,6 +6554,200 @@ describe('reportService.generateTailoringOrderReport', () => {
   })
 })
 
+// ─── Order Turnaround Time (Phase 68 §9.1 — Tailor/Boutique item 2) ────────────
+
+describe('reportService.generateOrderTurnaroundReport', () => {
+  it('only counts DELIVERED orders with a real deliveredDate', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { orderNumber: 'TO-1', client: { customerName: 'A' }, garmentType: 'SHIRT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-08') },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateOrderTurnaroundReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.tailoringOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: 'DELIVERED' })
+    }))
+  })
+
+  it('computes turnaroundDays as whole days between createdAt and deliveredDate', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { orderNumber: 'TO-1', client: { customerName: 'A' }, garmentType: 'SHIRT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-08') },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateOrderTurnaroundReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0].turnaroundDays).toBe(7)
+  })
+
+  it('computes avg/min/max turnaround days across multiple orders', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { orderNumber: 'TO-1', client: { customerName: 'A' }, garmentType: 'SHIRT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-06') }, // 5
+          { orderNumber: 'TO-2', client: { customerName: 'B' }, garmentType: 'SUIT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-16') }, // 15
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateOrderTurnaroundReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary).toMatchObject({ orderCount: 2, avgTurnaroundDays: 10, minTurnaroundDays: 5, maxTurnaroundDays: 15 })
+  })
+
+  it('sorts slowest-first', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { orderNumber: 'TO-1', client: { customerName: 'A' }, garmentType: 'SHIRT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-06') }, // 5
+          { orderNumber: 'TO-2', client: { customerName: 'B' }, garmentType: 'SUIT', createdAt: new Date('2026-01-01'), deliveredDate: new Date('2026-01-16') }, // 15
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateOrderTurnaroundReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map(r => r.orderNumber)).toEqual(['TO-2', 'TO-1'])
+  })
+
+  it('returns zeroed summary when no orders were delivered in range', async () => {
+    const db = { tailoringOrder: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateOrderTurnaroundReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary).toEqual({ orderCount: 0, avgTurnaroundDays: 0, minTurnaroundDays: 0, maxTurnaroundDays: 0 })
+  })
+})
+
+// ─── Fitting-Stage Tracker (Phase 68 §9.1 — Tailor/Boutique item 3) ────────────
+
+describe('reportService.generateFittingStageTrackerReport', () => {
+  it('only includes orders currently in TRIAL_SCHEDULED or ALTERATIONS', async () => {
+    const db = { tailoringOrder: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateFittingStageTrackerReport()
+
+    expect(db.tailoringOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { in: ['TRIAL_SCHEDULED', 'ALTERATIONS'] } }
+    }))
+  })
+
+  it('computes daysInStage from statusUpdatedAt when set', async () => {
+    const now = Date.now()
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'to-1', orderNumber: 'TO-1', garmentType: 'SHIRT', status: 'TRIAL_SCHEDULED', statusUpdatedAt: new Date(now - 5 * 86400000), createdAt: new Date(now - 20 * 86400000), client: { customerName: 'A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingStageTrackerReport()
+
+    expect(result.rows[0].daysInStage).toBe(5)
+  })
+
+  it('falls back to createdAt when statusUpdatedAt was never stamped (a pre-existing row)', async () => {
+    const now = Date.now()
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'to-1', orderNumber: 'TO-1', garmentType: 'SHIRT', status: 'ALTERATIONS', statusUpdatedAt: null, createdAt: new Date(now - 12 * 86400000), client: { customerName: 'A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingStageTrackerReport()
+
+    expect(result.rows[0].daysInStage).toBe(12)
+  })
+
+  it('sorts worst (most days stuck) first', async () => {
+    const now = Date.now()
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'to-1', orderNumber: 'TO-1', garmentType: 'SHIRT', status: 'TRIAL_SCHEDULED', statusUpdatedAt: new Date(now - 2 * 86400000), createdAt: new Date(now - 2 * 86400000), client: { customerName: 'A' } },
+          { id: 'to-2', orderNumber: 'TO-2', garmentType: 'SUIT', status: 'ALTERATIONS', statusUpdatedAt: new Date(now - 9 * 86400000), createdAt: new Date(now - 9 * 86400000), client: { customerName: 'B' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingStageTrackerReport()
+
+    expect(result.rows.map(r => r.orderNumber)).toEqual(['TO-2', 'TO-1'])
+  })
+})
+
+// ─── Fabric/Design Popularity (Phase 68 §9.1 — Tailor/Boutique item 4) ─────────
+
+describe('reportService.generateFabricPopularityReport', () => {
+  it('groups orders by fabric description', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { fabricDescription: 'Cotton Blue Stripe', totalAmount: 1500 },
+          { fabricDescription: 'Cotton Blue Stripe', totalAmount: 1200 },
+          { fabricDescription: 'Silk Maroon', totalAmount: 5000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFabricPopularityReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const cotton = result.rows.find(r => r.fabricDescription === 'Cotton Blue Stripe')
+    expect(cotton).toMatchObject({ orderCount: 2, totalRevenue: 2700 })
+  })
+
+  it('sorts by revenue descending', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { fabricDescription: 'Cheap Cotton', totalAmount: 200 },
+          { fabricDescription: 'Premium Silk', totalAmount: 8000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFabricPopularityReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map(r => r.fabricDescription)).toEqual(['Premium Silk', 'Cheap Cotton'])
+  })
+
+  it('excludes orders with no fabric description noted', async () => {
+    const db = {
+      tailoringOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          { fabricDescription: '  ', totalAmount: 500 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFabricPopularityReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toEqual([])
+  })
+})
+
 describe('reportService.generatePestContractReport', () => {
   it('flags only contracts with endDate within the next 30 days as expiring', async () => {
     const now = Date.now()

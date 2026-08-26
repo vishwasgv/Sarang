@@ -13,6 +13,7 @@ import { createAppointmentReminder } from '../notification-queue.service'
 import {
   listTailoringOrders, getTailoringOrder, createTailoringOrder, updateTailoringOrder,
   scheduleTrialAppointment, setOrderFabric, clearOrderFabric, generateTailoringInvoice,
+  getOrdersWithStaleMeasurements,
 } from '../tailoring-order.service'
 import { billingService } from '../billing.service'
 import { ServiceError } from '../../errors/service-error'
@@ -489,5 +490,169 @@ describe('tailoring-order.service.generateTailoringInvoice', () => {
 
     expect(res.success).toBe(false)
     expect(db.tailoringOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: { invoiceId: null } }))
+  })
+})
+
+// Phase 68 §9.1 — Tailor/Boutique item 3: fitting-stage tracker.
+// statusUpdatedAt must be stamped ONLY on a real status change, same
+// discipline as service-project.service.ts's stage-change detection.
+describe('tailoring-order.service — statusUpdatedAt stamping', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stamps statusUpdatedAt when the status actually changes', async () => {
+    const db = makeMockDb(makeOrder({ status: 'RECEIVED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTailoringOrder({ id: 'to-1', status: 'IN_CUTTING' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0]
+    expect(call.data.statusUpdatedAt).toBeInstanceOf(Date)
+  })
+
+  it('does not stamp statusUpdatedAt when the status is set to its current value (no real change)', async () => {
+    const db = makeMockDb(makeOrder({ status: 'RECEIVED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTailoringOrder({ id: 'to-1', status: 'RECEIVED' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0]
+    expect(call.data).not.toHaveProperty('statusUpdatedAt')
+  })
+
+  it('does not stamp statusUpdatedAt when status is not part of this update at all', async () => {
+    const db = makeMockDb(makeOrder({ status: 'RECEIVED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTailoringOrder({ id: 'to-1', notes: 'Client called' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0]
+    expect(call.data).not.toHaveProperty('statusUpdatedAt')
+  })
+
+  it('scheduleTrialAppointment also stamps statusUpdatedAt when it sets status to TRIAL_SCHEDULED', async () => {
+    const db = makeMockDb(makeOrder())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(createAppointment).mockResolvedValue({ success: true, data: { id: 'apt-1' } } as never)
+
+    await scheduleTrialAppointment({ orderId: 'to-1', scheduledDate: '2026-08-01', scheduledTime: '10:00' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0]
+    expect(call.data.statusUpdatedAt).toBeInstanceOf(Date)
+  })
+})
+
+// Real bug found+fixed (Phase 68 §9.1 — Tailor/Boutique): trialDate/
+// deliveryDate/deliveredDate were all written via a bare
+// `new Date(dateOnlyString)`, which parses as UTC midnight — wrong for IST
+// writes, the same dominant bug class fixed across every other Phase 68
+// vertical this session. Fixed to parseLocalDateStart.
+describe('tailoring-order.service — date-only fields store local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createTailoringOrder stores trialDate and deliveryDate at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createTailoringOrder({ clientId: 'cust-1', garmentType: 'SHIRT', unitPrice: 1000, trialDate: '2026-03-15', deliveryDate: '2026-03-22' })
+
+    const call = db.tailoringOrder.create.mock.calls[0][0].data
+    expect((call.trialDate as Date).getDate()).toBe(15)
+    expect((call.trialDate as Date).getHours()).toBe(0)
+    expect((call.deliveryDate as Date).getDate()).toBe(22)
+    expect((call.deliveryDate as Date).getHours()).toBe(0)
+  })
+
+  it('updateTailoringOrder stores deliveredDate at local midnight', async () => {
+    const db = makeMockDb(makeOrder())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateTailoringOrder({ id: 'to-1', deliveredDate: '2026-03-20' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0].data
+    expect((call.deliveredDate as Date).getDate()).toBe(20)
+    expect((call.deliveredDate as Date).getHours()).toBe(0)
+  })
+
+  it('scheduleTrialAppointment stores trialDate at local midnight', async () => {
+    const db = makeMockDb(makeOrder())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(createAppointment).mockResolvedValue({ success: true, data: { id: 'apt-1' } } as never)
+
+    await scheduleTrialAppointment({ orderId: 'to-1', scheduledDate: '2026-08-25', scheduledTime: '10:00' })
+
+    const call = db.tailoringOrder.update.mock.calls[0][0].data
+    expect((call.trialDate as Date).getDate()).toBe(25)
+    expect((call.trialDate as Date).getHours()).toBe(0)
+  })
+})
+
+// Phase 68 §9.1 — Tailor/Boutique item 5: measurement-change alert.
+describe('tailoring-order.service.getOrdersWithStaleMeasurements', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function makeStaleMockDb(orders: Record<string, unknown>[], records: Record<string, unknown>[]) {
+    return {
+      tailoringOrder: { findMany: vi.fn().mockResolvedValue(orders) },
+      measurementRecord: { findMany: vi.fn().mockResolvedValue(records) },
+    }
+  }
+
+  it('only queries active orders with a linked measurement', async () => {
+    const db = makeStaleMockDb([], [])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getOrdersWithStaleMeasurements()
+
+    expect(db.tailoringOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { notIn: ['DELIVERED', 'CANCELLED'] }, measurementRecordId: { not: null } }
+    }))
+  })
+
+  it('flags an order whose client has a newer measurement record since the order was placed', async () => {
+    const db = makeStaleMockDb(
+      [{
+        id: 'to-1', orderNumber: 'TO-00001', clientId: 'cust-1', garmentType: 'SHIRT', status: 'IN_STITCHING',
+        client: { id: 'cust-1', customerName: 'Ramesh Kumar' },
+        measurement: { id: 'meas-old', recordDate: new Date('2026-01-01') },
+      }],
+      [
+        { id: 'meas-new', clientId: 'cust-1', recordDate: new Date('2026-03-01') },
+        { id: 'meas-old', clientId: 'cust-1', recordDate: new Date('2026-01-01') },
+      ]
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrdersWithStaleMeasurements()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: Array<{ orderNumber: string; latestMeasurementDate: string }> }).data
+    expect(data).toHaveLength(1)
+    expect(data[0]).toMatchObject({ orderNumber: 'TO-00001', latestMeasurementDate: '2026-03-01' })
+  })
+
+  it('does not flag an order whose linked measurement is still the client\'s latest', async () => {
+    const db = makeStaleMockDb(
+      [{
+        id: 'to-1', orderNumber: 'TO-00001', clientId: 'cust-1', garmentType: 'SHIRT', status: 'IN_STITCHING',
+        client: { id: 'cust-1', customerName: 'Ramesh Kumar' },
+        measurement: { id: 'meas-1', recordDate: new Date('2026-01-01') },
+      }],
+      [{ id: 'meas-1', clientId: 'cust-1', recordDate: new Date('2026-01-01') }]
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrdersWithStaleMeasurements()
+
+    expect((res as { data: unknown[] }).data).toHaveLength(0)
+  })
+
+  it('returns an empty list immediately when there are no active orders with a linked measurement', async () => {
+    const db = makeStaleMockDb([], [])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrdersWithStaleMeasurements()
+
+    expect(res).toEqual({ success: true, data: [] })
+    expect(db.measurementRecord.findMany).not.toHaveBeenCalled()
   })
 })

@@ -70,6 +70,12 @@ interface TailoringOrder {
   createdAt: string
 }
 
+// Phase 68 §9.1 — Tailor/Boutique item 5: measurement-change alert.
+interface StaleMeasurementAlert {
+  orderId: string; orderNumber: string; customerName: string; garmentType: string; status: string
+  orderMeasurementDate: string; latestMeasurementDate: string
+}
+
 interface Customer { id: string; customerName: string; phone: string | null }
 interface Employee { id: string; fullName: string }
 interface FabricProduct { id: string; productName: string; sellingPrice: number; inventory?: { quantity: number } | null }
@@ -106,9 +112,18 @@ const MEASUREMENT_FIELDS: { key: keyof MeasurementRecord }[] = [
 // Date instances, not strings — calling .slice() directly on one throws
 // "d.slice is not a function". Handles both shapes so it's safe regardless
 // of how the value arrived.
+//
+// Real bug found+fixed (Phase 68 §9.1 — Tailor/Boutique): the previous
+// version did `d.toISOString().slice(0, 10)` for a real Date instance, which
+// converts to UTC first — showing the wrong (previous) calendar day for
+// anything before 5:30am IST. Same renderer-local-date-helper bug class
+// confirmed across every Phase 68 vertical touched this session (Car
+// Service Center's own dateSlice had the identical bug). Extract LOCAL Y/M/D
+// components directly instead.
 const dateSlice = (d: unknown): string => {
   if (!d) return ''
-  return (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10)
+  if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return String(d).slice(0, 10)
 }
 
 function emptyOrderForm() {
@@ -135,6 +150,8 @@ export default function TailoringScreen() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [kpis, setKpis] = useState({ activeOrders: 0, readyForPickup: 0, deliveredThisMonth: 0 })
+  const [staleMeasurements, setStaleMeasurements] = useState<StaleMeasurementAlert[]>([])
+  const [staleMeasurementsDismissed, setStaleMeasurementsDismissed] = useState(false)
   const [showOrderForm, setShowOrderForm] = useState(false)
   const [editOrder, setEditOrder] = useState<TailoringOrder | null>(null)
   const [orderForm, setOrderForm] = useState(emptyOrderForm())
@@ -286,6 +303,9 @@ export default function TailoringScreen() {
         if (!r.success) return
         const d = r.data as { employees?: Employee[] } | Employee[]
         setEmployees(Array.isArray(d) ? d : (d.employees ?? []))
+      }),
+      api.tailoringOrder.staleMeasurements().then((r: { success: boolean; data?: unknown }) => {
+        if (r.success) setStaleMeasurements(r.data as StaleMeasurementAlert[])
       }),
     ]).finally(() => setLoading(false))
   }, [])
@@ -561,6 +581,23 @@ export default function TailoringScreen() {
         <div className="mx-6 mt-3 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2 flex items-center justify-between">
           <span>{actionError}</span>
           <button onClick={() => setActionError(null)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Phase 68 §9.1 — Tailor/Boutique item 5: measurement-change alert */}
+      {staleMeasurements.length > 0 && !staleMeasurementsDismissed && tab === 'orders' && (
+        <div className="mx-6 mt-3 text-sm text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{t('tailoring.staleMeasurements.title', { count: staleMeasurements.length })}</span>
+            <button onClick={() => setStaleMeasurementsDismissed(true)} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"><X size={14} /></button>
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {staleMeasurements.slice(0, 5).map(a => (
+              <li key={a.orderId} className="text-xs">
+                {t('tailoring.staleMeasurements.row', { orderNumber: a.orderNumber, customerName: a.customerName, orderDate: a.orderMeasurementDate, latestDate: a.latestMeasurementDate })}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
