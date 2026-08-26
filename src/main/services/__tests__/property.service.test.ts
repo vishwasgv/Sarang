@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
-import { listProperties, getProperty, createProperty, updateProperty } from '../property.service'
+import { listProperties, getProperty, createProperty, updateProperty, listPropertyPriceHistory } from '../property.service'
 
 // Regression coverage for the Phase 32 re-audit finding: Property has FIVE
 // Decimal-crash surfaces in a single response — its own area, askingPrice,
@@ -64,6 +64,10 @@ function makeMockDb(existing: ReturnType<typeof makeProperty> | null = null) {
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeProperty({ ...existing, ...data }))
       ),
+    },
+    propertyPriceHistory: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
@@ -134,5 +138,65 @@ describe('property.service — Decimal serialization', () => {
 
     expect(res.success).toBe(true)
     expect(typeof (res as { data: { area: unknown } }).data.area).toBe('number')
+  })
+})
+
+// Phase 68 §9.1 — Real Estate item 5: property price-history tracking.
+describe('property.service — price history', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('logs a price-history row when askingPrice actually changes', async () => {
+    const db = makeMockDb(makeProperty({ askingPrice: 5000000 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateProperty({ id: 'prop-1', askingPrice: 5500000 })
+
+    expect(db.propertyPriceHistory.create).toHaveBeenCalledWith({
+      data: { propertyId: 'prop-1', askingPrice: 5500000, monthlyRent: null },
+    })
+  })
+
+  it('does NOT log a price-history row on a no-op reassertion of the same askingPrice', async () => {
+    const db = makeMockDb(makeProperty({ askingPrice: 5000000 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateProperty({ id: 'prop-1', askingPrice: 5000000, notes: 'unrelated edit' })
+
+    expect(db.propertyPriceHistory.create).not.toHaveBeenCalled()
+  })
+
+  it('does not log anything when neither askingPrice nor monthlyRent is part of the update payload', async () => {
+    const db = makeMockDb(makeProperty({ askingPrice: 5000000 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateProperty({ id: 'prop-1', notes: 'unrelated edit' })
+
+    expect(db.property.findUnique).not.toHaveBeenCalled()
+    expect(db.propertyPriceHistory.create).not.toHaveBeenCalled()
+  })
+
+  it('logs a price-history row when monthlyRent changes on a rental listing', async () => {
+    const db = makeMockDb(makeProperty({ listingType: 'RENT', askingPrice: null, monthlyRent: 25000 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateProperty({ id: 'prop-1', monthlyRent: 27000 })
+
+    expect(db.propertyPriceHistory.create).toHaveBeenCalledWith({
+      data: { propertyId: 'prop-1', askingPrice: null, monthlyRent: 27000 },
+    })
+  })
+
+  it('listPropertyPriceHistory serializes Decimal fields to plain numbers, newest first', async () => {
+    const db = makeMockDb()
+    db.propertyPriceHistory.findMany = vi.fn().mockResolvedValue([
+      { id: 'ph-2', propertyId: 'prop-1', askingPrice: new FakeDecimal(5500000) as unknown as number, monthlyRent: null, changedAt: new Date() },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listPropertyPriceHistory('prop-1')
+
+    expect(res.success).toBe(true)
+    expect(typeof (res as { data: Array<{ askingPrice: unknown }> }).data[0].askingPrice).toBe('number')
+    expect(db.propertyPriceHistory.findMany).toHaveBeenCalledWith({ where: { propertyId: 'prop-1' }, orderBy: { changedAt: 'desc' } })
   })
 })

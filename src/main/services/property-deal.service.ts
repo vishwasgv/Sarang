@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
 import { ServiceError } from '../errors/service-error'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // PropertyDeal.dealValue/brokeragePercent/brokerageAmount/coBrokerSharePercent/
 // coBrokerShareAmount are Prisma Decimal fields — Electron's IPC (structured
@@ -81,7 +82,10 @@ export async function createPropertyDeal(payload: {
       dealValue: payload.dealValue,
       brokeragePercent: payload.brokeragePercent,
       brokerageAmount,
-      expectedRegistrationDate: payload.expectedRegistrationDate ? new Date(payload.expectedRegistrationDate) : null,
+      // Real bug found live (2026-08-27 Phase 68 audit): a bare
+      // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+      // with this app's own parseLocalDateStart convention.
+      expectedRegistrationDate: payload.expectedRegistrationDate ? parseLocalDateStart(payload.expectedRegistrationDate) : null,
       notes: payload.notes || null,
       coBrokerName: payload.coBrokerName?.trim() || null,
       coBrokerSharePercent: payload.coBrokerSharePercent ?? null,
@@ -140,7 +144,7 @@ export async function updatePropertyDeal(payload: {
     ...brokerageUpdate,
     ...(coBrokerSharePercent !== undefined ? { coBrokerSharePercent } : {}),
     ...(coBrokerShareAmountUpdate !== undefined ? { coBrokerShareAmount: coBrokerShareAmountUpdate } : {}),
-    ...(expectedRegistrationDate !== undefined ? { expectedRegistrationDate: expectedRegistrationDate ? new Date(expectedRegistrationDate) : null } : {}),
+    ...(expectedRegistrationDate !== undefined ? { expectedRegistrationDate: expectedRegistrationDate ? parseLocalDateStart(expectedRegistrationDate) : null } : {}),
   }
   const dealInclude = {
     property: { select: { id: true, propertyType: true, location: true, listingType: true } },

@@ -85,6 +85,31 @@ describe('property-deal.service — Decimal serialization', () => {
     expect(typeof data.brokerageAmount).toBe('number')
   })
 
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('createPropertyDeal stores expectedRegistrationDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createPropertyDeal({ propertyId: 'prop-1', buyerClientId: 'cust-buyer', sellerClientId: 'cust-seller', dealValue: 5000000, brokeragePercent: 2, expectedRegistrationDate: '2026-08-15' })
+
+    expect(db.propertyDeal.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ expectedRegistrationDate: new Date(2026, 7, 15) }),
+    }))
+  })
+
+  it('updatePropertyDeal stores an updated expectedRegistrationDate at local midnight too', async () => {
+    const db = makeMockDb(makeDeal())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updatePropertyDeal({ id: 'deal-1', expectedRegistrationDate: '2026-09-01' })
+
+    expect(db.propertyDeal.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ expectedRegistrationDate: new Date(2026, 8, 1) }),
+    }))
+  })
+
   it('listPropertyDeals returns brokerageAmount as a plain number, not a Decimal instance', async () => {
     const db = makeMockDb(makeDeal())
     vi.mocked(getPrisma).mockReturnValue(db as never)

@@ -126,6 +126,22 @@ export async function updateProperty(payload: {
 }) {
   const db = getPrisma()
   const { id, photos, amenities, ...rest } = payload
+
+  // Phase 68 §9.1 — Real Estate item 5: property price-history tracking.
+  // A row is appended ONLY when askingPrice or monthlyRent actually changes
+  // (compared against the currently-stored value) — a re-save of other
+  // fields must not log a spurious "price change" with an identical price.
+  if (payload.askingPrice !== undefined || payload.monthlyRent !== undefined) {
+    const existing = await db.property.findUnique({ where: { id }, select: { askingPrice: true, monthlyRent: true } })
+    const existingAskingPrice = existing?.askingPrice == null ? null : Number(existing.askingPrice)
+    const existingMonthlyRent = existing?.monthlyRent == null ? null : Number(existing.monthlyRent)
+    const nextAskingPrice = payload.askingPrice !== undefined ? payload.askingPrice : existingAskingPrice
+    const nextMonthlyRent = payload.monthlyRent !== undefined ? payload.monthlyRent : existingMonthlyRent
+    if (nextAskingPrice !== existingAskingPrice || nextMonthlyRent !== existingMonthlyRent) {
+      await db.propertyPriceHistory.create({ data: { propertyId: id, askingPrice: nextAskingPrice, monthlyRent: nextMonthlyRent } })
+    }
+  }
+
   const property = await db.property.update({
     where: { id },
     data: {
@@ -139,6 +155,25 @@ export async function updateProperty(payload: {
   })
   await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'Property', entityId: property.id } }).catch(() => {})
   return { success: true, data: serializeProperty(property) }
+}
+
+// Phase 68 §9.1 — Real Estate item 5: full price-change history for one
+// property, newest first.
+export async function listPropertyPriceHistory(propertyId: string) {
+  try {
+    const db = getPrisma()
+    const rows = await db.propertyPriceHistory.findMany({ where: { propertyId }, orderBy: { changedAt: 'desc' } })
+    return {
+      success: true,
+      data: rows.map((r) => ({
+        ...r,
+        askingPrice: r.askingPrice == null ? null : Number(r.askingPrice),
+        monthlyRent: r.monthlyRent == null ? null : Number(r.monthlyRent),
+      })),
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'PROP-007', message: err instanceof Error ? err.message : 'Could not load price history.' } }
+  }
 }
 
 export async function deleteProperty(id: string) {

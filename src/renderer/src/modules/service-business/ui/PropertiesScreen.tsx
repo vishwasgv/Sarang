@@ -71,9 +71,16 @@ interface Property {
   photos: string
   owner: PropertyOwner
 }
+interface PropertyPriceHistoryRow {
+  id: string
+  askingPrice: number | null
+  monthlyRent: number | null
+  changedAt: string
+}
 interface PropertyWithDetails extends Property {
   inquiries: PropertyInquiry[]
   deals: PropertyDeal[]
+  priceHistory: PropertyPriceHistoryRow[]
 }
 interface PropertyKPIs { activeListings: number; dealsInProgress: number; newInquiries: number; totalListings: number }
 interface Customer { id: string; customerName: string; phone: string }
@@ -544,9 +551,10 @@ export default function PropertiesScreen() {
 
   const loadPropertyDetails = useCallback(async (id: string, currentProperties: Property[]) => {
     try {
-      const [inqRes, dealRes] = await Promise.all([
+      const [inqRes, dealRes, priceHistoryRes] = await Promise.all([
         api.propertyInquiry.list(id),
         api.propertyDeal.list({ propertyId: id }),
+        api.property.priceHistory(id),
       ])
       const prop = currentProperties.find(p => p.id === id)
       if (!prop) return
@@ -556,6 +564,7 @@ export default function PropertiesScreen() {
           ...prop,
           inquiries: inqRes.success ? ((inqRes.data as PropertyInquiry[]) ?? []) : [],
           deals: dealRes.success ? ((dealRes.data as PropertyDeal[]) ?? []) : [],
+          priceHistory: priceHistoryRes.success ? ((priceHistoryRes.data as PropertyPriceHistoryRow[]) ?? []) : [],
         },
       }))
     } catch {
@@ -1146,6 +1155,25 @@ export default function PropertiesScreen() {
                     )}
                   </div>
 
+                  {/* Phase 68 §9.1 — Real Estate item 5: property price-history tracking */}
+                  {details.priceHistory.length > 0 && (
+                    <div className="mt-4 border-t pt-3 dark:border-slate-800">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-slate-400 mb-2">Price History ({details.priceHistory.length})</p>
+                      <div className="space-y-1">
+                        {details.priceHistory.map((h) => (
+                          <div key={h.id} className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-400">
+                            <span>{new Date(h.changedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="font-medium text-gray-800 dark:text-slate-200">
+                              {h.askingPrice != null && fmtCurrency(h.askingPrice)}
+                              {h.askingPrice != null && h.monthlyRent != null && ' · '}
+                              {h.monthlyRent != null && `${fmtCurrency(h.monthlyRent)}/mo`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {p.description && (
                     <p className="text-xs text-gray-500 italic mt-4 border-t pt-3 dark:text-slate-400">{p.description}</p>
                   )}
@@ -1160,7 +1188,17 @@ export default function PropertiesScreen() {
         <PropertyForm
           clients={clients}
           initial={editProperty ?? undefined}
-          onSave={() => { setShowForm(false); setEditProperty(null); loadProperties(statusFilter, listingTypeFilter); loadKpis() }}
+          onSave={async () => {
+            const editedId = editProperty?.id
+            setShowForm(false); setEditProperty(null)
+            const fresh = await loadProperties(statusFilter, listingTypeFilter)
+            loadKpis()
+            // Re-fetch this property's cached detail panel (price history
+            // included) so an askingPrice/monthlyRent edit shows up
+            // immediately if the card is already expanded — otherwise the
+            // stale cache from the first expand would silently hide it.
+            if (editedId && propertyDetails[editedId]) await loadPropertyDetails(editedId, fresh)
+          }}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
         />
       )}

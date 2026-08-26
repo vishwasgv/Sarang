@@ -6,6 +6,7 @@ import {
   updateProperty,
   deleteProperty,
   getPropertyKPIs,
+  listPropertyPriceHistory,
 } from '../../services/property.service'
 import { CreatePropertySchema, UpdatePropertySchema, PropertyIdSchema } from '../../validation/property.validation'
 
@@ -47,5 +48,10 @@ export function registerProperty(handle: HandleFn): void {
   handle('property:kpis', async () => {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     return getPropertyKPIs()
+  })
+
+  handle('property:priceHistory', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return listPropertyPriceHistory(raw as string)
   })
 }

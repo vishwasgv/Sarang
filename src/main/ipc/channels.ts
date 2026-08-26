@@ -1675,6 +1675,7 @@ export interface IpcChannels {
     update: (payload: { id: string; propertyType?: string; listingType?: string; status?: string; location?: string; area?: number; floorNumber?: number | null; totalFloors?: number | null; askingPrice?: number | null; monthlyRent?: number | null; securityDeposit?: number | null; ownerClientId?: string; brokeragePercent?: number | null; photos?: string[]; amenities?: string[]; description?: string | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
     kpis: () => Promise<ApiResponse>
+    priceHistory: (payload: string) => Promise<ApiResponse>
   }
   propertyInquiry: {
     list: (payload: string) => Promise<ApiResponse>

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildWhatsAppLink } from './notification-queue.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // Phase 58 §2 — Real Estate: structured site-visit scheduling with feedback
 // capture, replacing PropertyInquiry.status's bare "SITE_VISIT_SCHEDULED"
@@ -35,7 +36,10 @@ export async function schedulePropertySiteVisit(payload: {
     const visit = await db.propertySiteVisit.create({
       data: {
         inquiryId: payload.inquiryId,
-        scheduledDate: new Date(payload.scheduledDate),
+        // Real bug found live (2026-08-27 Phase 68 audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this app's own parseLocalDateStart convention.
+        scheduledDate: parseLocalDateStart(payload.scheduledDate),
         scheduledTime: payload.scheduledTime ?? null,
         status: 'SCHEDULED',
       },
@@ -48,7 +52,7 @@ export async function schedulePropertySiteVisit(payload: {
     // deadlines, appointments) — a single reminder 1 day before, since
     // property site visits are typically scheduled with days not months of
     // lead time (unlike a hearing or a statutory filing deadline).
-    scheduleVisitReminder(inquiry, new Date(payload.scheduledDate), payload.scheduledTime).catch(() => {})
+    scheduleVisitReminder(inquiry, visit.scheduledDate, payload.scheduledTime).catch(() => {})
 
     await db.auditLog.create({ data: { action: 'PROPERTY_SITE_VISIT_SCHEDULED', entityType: 'PropertySiteVisit', entityId: visit.id, newValue: JSON.stringify({ inquiryId: payload.inquiryId, scheduledDate: payload.scheduledDate }) } }).catch(() => {})
     return { success: true, data: visit }
@@ -81,7 +85,7 @@ export async function updatePropertySiteVisit(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(scheduledDate !== undefined ? { scheduledDate: new Date(scheduledDate) } : {}),
+        ...(scheduledDate !== undefined ? { scheduledDate: parseLocalDateStart(scheduledDate) } : {}),
         ...(payload.status === 'COMPLETED' ? { completedDate: new Date() } : {}),
       },
     })

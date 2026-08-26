@@ -137,14 +137,34 @@ describe('property-site-visit.service.updatePropertySiteVisit', () => {
   })
 
   it('re-saving the SAME scheduledDate does not touch any reminder', async () => {
-    const sameDateStr = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    const db = makeMockDb(makeInquiry(), makeVisit({ scheduledDate: new Date(sameDateStr) }))
+    // Fixture constructs the "already stored" date the same way the real
+    // write path does (parseLocalDateStart — local Y/M/D components), not a
+    // raw ISO parse, so this test stays valid after the Phase 68 UTC-
+    // midnight fix below (a mismatched construction method would make an
+    // identical calendar date compare as "changed").
+    const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+    const sameDateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`
+    const db = makeMockDb(makeInquiry(), makeVisit({ scheduledDate: new Date(future.getFullYear(), future.getMonth(), future.getDate()) }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await updatePropertySiteVisit({ id: 'psv-1', scheduledDate: sameDateStr, feedback: 'edited' })
 
     expect(res.success).toBe(true)
     expect(db.notificationQueue.deleteMany).not.toHaveBeenCalled()
+  })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('stores an updated scheduledDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updatePropertySiteVisit({ id: 'psv-1', scheduledDate: '2026-09-01' })
+
+    expect(db.propertySiteVisit.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ scheduledDate: new Date(2026, 8, 1) }),
+    }))
   })
 })
 

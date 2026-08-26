@@ -5429,13 +5429,31 @@ model Property {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  owner     Customer          @relation("PropertyOwner", fields: [ownerClientId], references: [id], onDelete: Cascade)
-  inquiries PropertyInquiry[]
-  deals     PropertyDeal[]
+  owner        Customer               @relation("PropertyOwner", fields: [ownerClientId], references: [id], onDelete: Cascade)
+  inquiries    PropertyInquiry[]
+  deals        PropertyDeal[]
+  priceHistory PropertyPriceHistory[]
 
   @@index([status])
   @@index([listingType])
   @@index([ownerClientId])
+}
+
+// Phase 68 §9.1 — Real Estate item 5: property price-history tracking.
+// Property.askingPrice/monthlyRent are plain mutable fields with no
+// retained history — every previous listing price silently vanished on
+// edit. A row is appended automatically by updateProperty whenever either
+// price actually changes (never on a no-op re-save of other fields).
+model PropertyPriceHistory {
+  id          String   @id @default(cuid())
+  propertyId  String
+  askingPrice Decimal?
+  monthlyRent Decimal?
+  changedAt   DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
 }
 
 model PropertyInquiry {

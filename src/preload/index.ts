@@ -1447,6 +1447,7 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('property:update', p),
     delete: (p: unknown) => invoke('property:delete', p),
     kpis: () => invoke('property:kpis'),
+    priceHistory: (p: unknown) => invoke('property:priceHistory', p),
   },
   propertyInquiry: {
     list: (p: unknown) => invoke('propertyInquiry:list', p),

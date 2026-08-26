@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listPropertyInquiries(propertyId: string) {
   const db = getPrisma()
@@ -22,7 +23,10 @@ export async function createPropertyInquiry(payload: {
       propertyId: payload.propertyId,
       buyerClientId: payload.buyerClientId,
       notes: payload.notes || null,
-      nextFollowUpDate: payload.nextFollowUpDate ? new Date(payload.nextFollowUpDate) : null,
+      // Real bug found live (2026-08-27 Phase 68 audit): a bare
+      // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+      // with this app's own parseLocalDateStart convention.
+      nextFollowUpDate: payload.nextFollowUpDate ? parseLocalDateStart(payload.nextFollowUpDate) : null,
     },
     include: { buyer: { select: { id: true, customerName: true, phone: true } } },
   })
@@ -42,7 +46,7 @@ export async function updatePropertyInquiry(payload: {
     where: { id },
     data: {
       ...rest,
-      ...(nextFollowUpDate !== undefined ? { nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null } : {}),
+      ...(nextFollowUpDate !== undefined ? { nextFollowUpDate: nextFollowUpDate ? parseLocalDateStart(nextFollowUpDate) : null } : {}),
     },
     include: { buyer: { select: { id: true, customerName: true, phone: true } } },
   })
