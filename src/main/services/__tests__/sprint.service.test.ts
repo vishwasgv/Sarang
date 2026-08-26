@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { getSprintBurndown, getProjectVelocity, createSprint, listSprints, updateSprint } from '../sprint.service'
+import { getSprintBurndown, getProjectVelocity, createSprint, listSprints, updateSprint, getSprintsPendingBilling } from '../sprint.service'
 
 // Real bug found live (2026-07-28 service-vertical audit), two-part:
 // (1) createSprint/updateSprint wrote startDate/endDate via a bare
@@ -270,5 +270,38 @@ describe('sprint.service.getProjectVelocity', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
     await getProjectVelocity('proj-1', 3)
     expect(db.sprint.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 3 }))
+  })
+})
+
+// Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+// milestones — the "delivered but not yet billed" worklist.
+describe('sprint.service.getSprintsPendingBilling', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('queries only COMPLETED sprints with no linked milestone', async () => {
+    const db = { sprint: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getSprintsPendingBilling('proj-1')
+
+    expect(db.sprint.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { projectId: 'proj-1', status: 'COMPLETED', milestone: null },
+    }))
+  })
+
+  it('returns the matching sprints, serialized', async () => {
+    const db = {
+      sprint: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'sprint-1', projectId: 'proj-1', sprintNumber: 2, status: 'COMPLETED', startDate: new Date(2026, 0, 1), endDate: new Date(2026, 0, 15) },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getSprintsPendingBilling('proj-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: Array<{ id: string }> }).data).toHaveLength(1)
   })
 })

@@ -275,6 +275,18 @@ interface ChannelPerformanceReport { rows: ChannelPerformanceRow[] }
 interface RetainerWorkDeliveredRow { title: string; clientName: string; monthlyAmount: number; deliveredCount: number; billedThisPeriod: boolean }
 interface RetainerWorkDeliveredReport { period: string; rows: RetainerWorkDeliveredRow[]; summary: { totalRetainers: number; zeroDeliveredCount: number } }
 
+// Phase 68 §9.1 — Software Agency item 1: Issue Aging (SLA breach flag).
+interface IssueAgingRow { issueId: string; title: string; projectName: string; priority: string; status: string; daysOpen: number; slaThresholdDays: number; slaBreached: boolean }
+interface IssueAgingReport { rows: IssueAgingRow[]; summary: { totalOpenIssues: number; breachedCount: number } }
+
+// Phase 68 §9.1 — Software Agency item 4: Team Utilization.
+interface TeamUtilizationRow { employeeName: string; billableHours: number; nonBillableHours: number; totalHours: number; utilizationPercent: number }
+interface TeamUtilizationReport { dateFrom: string; dateTo: string; rows: TeamUtilizationRow[]; summary: { totalBillableHours: number; totalNonBillableHours: number; overallUtilizationPercent: number } }
+
+// Phase 68 §9.1 — Software Agency item 5: Sprint Billing.
+interface SprintBillingRow { projectName: string; sprintNumber: number; sprintName: string | null; milestoneStatus: string | null; milestoneAmount: number | null }
+interface SprintBillingReport { rows: SprintBillingRow[]; summary: { totalCompletedSprints: number; unlinkedCount: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -689,6 +701,8 @@ type ReportType =
   | 'retainerUtilization' | 'proposalWinRate' | 'clientRevenueConcentration'
   // Phase 68 §9.1 — Marketing Agency items 1, 3, 4 & 5
   | 'campaignROI' | 'deliverableStatusPipeline' | 'channelPerformance' | 'retainerWorkDelivered'
+  // Phase 68 §9.1 — Software Agency items 1, 4 & 5
+  | 'issueAging' | 'teamUtilization' | 'sprintBilling'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -922,6 +936,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'channelPerformance', icon: <Share2 size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
   // Phase 68 §9.1 — Marketing Agency item 5. Current period, no date range.
   { id: 'retainerWorkDelivered', icon: <Repeat size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'marketing_campaigns' },
+  // Phase 68 §9.1 — Software Agency item 1. Current-state, no date range.
+  { id: 'issueAging', icon: <AlertCircle size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'issues' },
+  // Phase 68 §9.1 — Software Agency item 4.
+  { id: 'teamUtilization', icon: <Users size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'time_entries' },
+  // Phase 68 §9.1 — Software Agency item 5. Current-state, no date range.
+  { id: 'sprintBilling', icon: <CalendarClock size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'issues' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1379,6 +1399,15 @@ export function ReportsScreen() {
           break
         case 'retainerWorkDelivered':
           res = await window.api.reports.retainerWorkDelivered()
+          break
+        case 'issueAging':
+          res = await window.api.reports.issueAging()
+          break
+        case 'teamUtilization':
+          res = await window.api.reports.teamUtilization({ dateFrom, dateTo })
+          break
+        case 'sprintBilling':
+          res = await window.api.reports.sprintBilling()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2184,6 +2213,27 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.title'), t('reports.col.client'), `${t('reports.col.monthlyAmount')} (${currencySymbol})`, t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')],
           rows: d.rows.map(r => [r.title, r.clientName, r.monthlyAmount.toFixed(2), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'issueAging': {
+        const d = reportData as IssueAgingReport
+        return {
+          headers: [t('reports.col.title'), t('reports.col.projectName'), t('reports.col.priority'), t('common.status'), t('reports.col.daysOpen'), t('reports.col.slaThresholdDays'), t('reports.col.slaBreached')],
+          rows: d.rows.map(r => [r.title, r.projectName, r.priority, r.status, r.daysOpen, r.slaThresholdDays, r.slaBreached ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'teamUtilization': {
+        const d = reportData as TeamUtilizationReport
+        return {
+          headers: [t('reports.col.employeeName'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('reports.col.totalHours'), t('reports.col.utilizationPercent')],
+          rows: d.rows.map(r => [r.employeeName, r.billableHours, r.nonBillableHours, r.totalHours, r.utilizationPercent])
+        }
+      }
+      case 'sprintBilling': {
+        const d = reportData as SprintBillingReport
+        return {
+          headers: [t('reports.col.projectName'), t('reports.col.sprintNumber'), t('reports.col.sprintName'), t('reports.col.milestoneStatus'), `${t('reports.col.milestoneAmount')} (${currencySymbol})`],
+          rows: d.rows.map(r => [r.projectName, r.sprintNumber, r.sprintName ?? '—', r.milestoneStatus ?? 'Not billed', r.milestoneAmount ?? '—'])
         }
       }
       case 'serviceProjects': {
@@ -3810,6 +3860,9 @@ export function ReportsScreen() {
       case 'deliverableStatusPipeline': return []
       case 'channelPerformance': return []
       case 'retainerWorkDelivered': return []
+      case 'issueAging': return []
+      case 'teamUtilization': return []
+      case 'sprintBilling': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4336,6 +4389,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'deliverableStatusPipeline': return <DeliverableStatusPipelineView data={data as DeliverableStatusPipelineReport} />
     case 'channelPerformance': return <ChannelPerformanceView data={data as ChannelPerformanceReport} fmt={fmt} />
     case 'retainerWorkDelivered': return <RetainerWorkDeliveredView data={data as RetainerWorkDeliveredReport} fmt={fmt} />
+    case 'issueAging': return <IssueAgingView data={data as IssueAgingReport} />
+    case 'teamUtilization': return <TeamUtilizationView data={data as TeamUtilizationReport} />
+    case 'sprintBilling': return <SprintBillingView data={data as SprintBillingReport} fmt={fmt} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6387,6 +6443,61 @@ function RetainerWorkDeliveredView({ data, fmt }: { data: RetainerWorkDeliveredR
         headers={[t('reports.col.title'), t('reports.col.client'), t('common.amount'), t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')]}
         rows={data.rows.map(r => [r.title, r.clientName, fmt(r.monthlyAmount), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])}
         emptyText={t('reports.empty.retainerWorkDelivered')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Software Agency item 1: Issue Aging (SLA breach flag).
+function IssueAgingView({ data }: { data: IssueAgingReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalOpenIssues'), value: String(data.summary.totalOpenIssues) },
+        { label: t('reports.summary.breachedCount'), value: String(data.summary.breachedCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.title'), t('reports.col.projectName'), t('reports.col.priority'), t('common.status'), t('reports.col.daysOpen'), t('reports.col.slaBreached')]}
+        rows={data.rows.map(r => [r.title, r.projectName, r.priority, r.status, r.daysOpen, r.slaBreached ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.issueAging')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Software Agency item 4: Team Utilization.
+function TeamUtilizationView({ data }: { data: TeamUtilizationReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalBillableHours'), value: String(data.summary.totalBillableHours) },
+        { label: t('reports.summary.totalNonBillableHours'), value: String(data.summary.totalNonBillableHours) },
+        { label: t('reports.summary.overallUtilizationPercent'), value: `${data.summary.overallUtilizationPercent}%` },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.employeeName'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('reports.col.totalHours'), t('reports.col.utilizationPercent')]}
+        rows={data.rows.map(r => [r.employeeName, r.billableHours, r.nonBillableHours, r.totalHours, `${r.utilizationPercent}%`])}
+        emptyText={t('reports.empty.teamUtilization')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Software Agency item 5: Sprint Billing.
+function SprintBillingView({ data, fmt }: { data: SprintBillingReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalCompletedSprints'), value: String(data.summary.totalCompletedSprints) },
+        { label: t('reports.summary.unlinkedCount'), value: String(data.summary.unlinkedCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.projectName'), t('reports.col.sprintNumber'), t('reports.col.sprintName'), t('reports.col.milestoneStatus'), t('common.amount')]}
+        rows={data.rows.map(r => [r.projectName, r.sprintNumber, r.sprintName ?? '—', r.milestoneStatus ?? 'Not billed', r.milestoneAmount != null ? fmt(r.milestoneAmount) : '—'])}
+        emptyText={t('reports.empty.sprintBilling')}
       />
     </div>
   )

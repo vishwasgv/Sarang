@@ -6165,6 +6165,131 @@ async function generateRetainerWorkDeliveredReport(): Promise<RetainerWorkDelive
   }
 }
 
+// Phase 68 §9.1 — Software Agency item 1: issue/ticket aging with SLA
+// breach flag. No stored SLA-deadline field exists on Issue — thresholds
+// are a fixed, documented lookup by priority (a real, if simple, SLA
+// policy) rather than a fabricated per-issue deadline. Current-state
+// worklist of every OPEN/IN_PROGRESS issue, worst (most overdue) first.
+const SLA_THRESHOLD_DAYS: Record<string, number> = { HIGH: 2, MED: 5, LOW: 10 }
+
+export interface IssueAgingRow {
+  issueId: string; title: string; projectName: string; priority: string; status: string
+  daysOpen: number; slaThresholdDays: number; slaBreached: boolean
+}
+export interface IssueAgingReport {
+  rows: IssueAgingRow[]
+  summary: { totalOpenIssues: number; breachedCount: number }
+}
+
+async function generateIssueAgingReport(): Promise<IssueAgingReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const issues = await db.issue.findMany({
+    where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+    include: { project: { select: { projectName: true } } },
+  })
+
+  const rows: IssueAgingRow[] = issues.map((i) => {
+    const daysOpen = Math.floor((now.getTime() - i.reportedDate.getTime()) / 86400000)
+    const slaThresholdDays = SLA_THRESHOLD_DAYS[i.priority] ?? SLA_THRESHOLD_DAYS.MED
+    return {
+      issueId: i.id, title: i.title, projectName: i.project.projectName, priority: i.priority, status: i.status,
+      daysOpen, slaThresholdDays, slaBreached: daysOpen > slaThresholdDays,
+    }
+  }).sort((a, b) => (b.daysOpen - b.slaThresholdDays) - (a.daysOpen - a.slaThresholdDays))
+
+  return {
+    rows,
+    summary: { totalOpenIssues: rows.length, breachedCount: rows.filter((r) => r.slaBreached).length },
+  }
+}
+
+// Phase 68 §9.1 — Software Agency item 4: team utilization. Distinct from
+// the pre-existing generateConsultantUtilizationReport, which is scoped to
+// the OLDER WorkLog/Project models — Software Agency (and Architect/Civil/
+// Consultant/Agency generally) logs hours via TimeEntry against
+// ServiceProject, a completely different model the old report never
+// queries. "Billable" = ratePerHour > 0, same convention as Lawyer's own
+// billable-hours report.
+export interface TeamUtilizationRow {
+  employeeName: string; billableHours: number; nonBillableHours: number; totalHours: number; utilizationPercent: number
+}
+export interface TeamUtilizationReport {
+  dateFrom: string; dateTo: string
+  rows: TeamUtilizationRow[]
+  summary: { totalBillableHours: number; totalNonBillableHours: number; overallUtilizationPercent: number }
+}
+
+async function generateTeamUtilizationReport(params: { dateFrom: string; dateTo: string }): Promise<TeamUtilizationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const entries = await db.timeEntry.findMany({
+    where: { projectId: { not: null }, date: { gte: from, lte: to } },
+    select: { hours: true, ratePerHour: true, employeeId: true, employee: { select: { fullName: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byEmployee = new Map<string, { employeeName: string; billable: number; nonBillable: number }>()
+  for (const e of entries) {
+    const key = e.employeeId ?? 'unassigned'
+    const existing = byEmployee.get(key) ?? { employeeName: e.employee?.fullName ?? 'Unassigned', billable: 0, nonBillable: 0 }
+    if (Number(e.ratePerHour) > 0) existing.billable += Number(e.hours)
+    else existing.nonBillable += Number(e.hours)
+    byEmployee.set(key, existing)
+  }
+
+  const rows: TeamUtilizationRow[] = Array.from(byEmployee.values()).map((e) => {
+    const totalHours = e.billable + e.nonBillable
+    return {
+      employeeName: e.employeeName, billableHours: round1(e.billable), nonBillableHours: round1(e.nonBillable),
+      totalHours: round1(totalHours), utilizationPercent: totalHours > 0 ? round1((e.billable / totalHours) * 100) : 0,
+    }
+  }).sort((a, b) => a.utilizationPercent - b.utilizationPercent)
+
+  const totalBillableHours = round1(rows.reduce((s, r) => s + r.billableHours, 0))
+  const totalNonBillableHours = round1(rows.reduce((s, r) => s + r.nonBillableHours, 0))
+  const grandTotal = totalBillableHours + totalNonBillableHours
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalBillableHours, totalNonBillableHours, overallUtilizationPercent: grandTotal > 0 ? round1((totalBillableHours / grandTotal) * 100) : 0 },
+  }
+}
+
+// Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+// milestones. Every COMPLETED sprint across every project, whether it has
+// a linked billing milestone yet and, if so, that milestone's own status —
+// unlinked (nothing billed) sprints surface first, the real "delivered but
+// not billed" signal.
+export interface SprintBillingRow {
+  projectName: string; sprintNumber: number; sprintName: string | null
+  milestoneStatus: string | null; milestoneAmount: number | null
+}
+export interface SprintBillingReport {
+  rows: SprintBillingRow[]
+  summary: { totalCompletedSprints: number; unlinkedCount: number }
+}
+
+async function generateSprintBillingReport(): Promise<SprintBillingReport> {
+  const db = getPrisma()
+  const sprints = await db.sprint.findMany({
+    where: { status: 'COMPLETED' },
+    include: { project: { select: { projectName: true } }, milestone: { select: { status: true, milestoneAmount: true } } },
+  })
+
+  const rows: SprintBillingRow[] = sprints.map((s) => ({
+    projectName: s.project.projectName, sprintNumber: s.sprintNumber, sprintName: s.name,
+    milestoneStatus: s.milestone?.status ?? null,
+    milestoneAmount: s.milestone?.milestoneAmount == null ? null : Number(s.milestone.milestoneAmount),
+  })).sort((a, b) => Number(a.milestoneStatus !== null) - Number(b.milestoneStatus !== null))
+
+  return {
+    rows,
+    summary: { totalCompletedSprints: rows.length, unlinkedCount: rows.filter((r) => r.milestoneStatus === null).length },
+  }
+}
+
 // ── Photo Studio — shoot bookings by type ──────────────────────────────────
 
 export interface ShootBookingReportRow {
@@ -8208,4 +8333,7 @@ export const reportService = {
   generateDeliverableStatusPipelineReport,
   generateChannelPerformanceReport,
   generateRetainerWorkDeliveredReport,
+  generateIssueAgingReport,
+  generateTeamUtilizationReport,
+  generateSprintBillingReport,
 }

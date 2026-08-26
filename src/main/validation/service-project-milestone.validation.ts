@@ -7,6 +7,7 @@ export const CreateMilestoneSchema = z.object({
   status: z.string().optional(),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
+  sprintId: z.string().optional(),
 })
 
 export const UpdateMilestoneSchema = z.object({

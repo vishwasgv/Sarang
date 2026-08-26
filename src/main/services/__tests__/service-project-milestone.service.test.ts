@@ -162,6 +162,29 @@ describe('service-project-milestone.service — date-field IPC serialization', (
     expect(stored.getDate()).toBe(10)
     expect(stored.getHours()).toBe(0)
   })
+
+  // Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing.
+  it('createMilestone persists an optional sprintId linking this milestone to a sprint', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createMilestone({ projectId: 'proj-1', milestoneName: 'Sprint 3 Billing', sprintId: 'sprint-3' })
+
+    expect(db.serviceProjectMilestone.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ sprintId: 'sprint-3' }),
+    }))
+  })
+
+  it('createMilestone leaves sprintId null when not linked to a sprint', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createMilestone({ projectId: 'proj-1', milestoneName: 'Design Phase' })
+
+    expect(db.serviceProjectMilestone.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ sprintId: null }),
+    }))
+  })
 })
 
 // Phase 40 — generateMilestoneInvoice

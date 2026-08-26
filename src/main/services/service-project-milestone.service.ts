@@ -48,6 +48,11 @@ export async function createMilestone(payload: {
   status?: string
   dueDate?: string
   notes?: string
+  // Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+  // milestones. Optional — most milestones have nothing to do with a
+  // sprint; when set, this milestone becomes the billing record for that
+  // sprint's completed work (reuses generateMilestoneInvoice as-is).
+  sprintId?: string
 }) {
   try {
     const db = getPrisma()
@@ -63,6 +68,7 @@ export async function createMilestone(payload: {
         // date-only write in this service family.
         dueDate:         payload.dueDate ? parseLocalDateStart(payload.dueDate) : null,
         notes:           payload.notes ?? null,
+        sprintId:        payload.sprintId ?? null,
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ServiceProjectMilestone', entityId: milestone.id, newValue: JSON.stringify({ milestoneName: milestone.milestoneName }) } }).catch(() => {})

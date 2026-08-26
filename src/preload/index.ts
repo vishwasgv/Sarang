@@ -448,6 +448,9 @@ const api: IpcChannels = {
     deliverableStatusPipeline: () => invoke('reports:deliverableStatusPipeline'),
     channelPerformance: () => invoke('reports:channelPerformance'),
     retainerWorkDelivered: () => invoke('reports:retainerWorkDelivered'),
+    issueAging: () => invoke('reports:issueAging'),
+    teamUtilization: (p: unknown) => invoke('reports:teamUtilization', p),
+    sprintBilling: () => invoke('reports:sprintBilling'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1344,6 +1347,7 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('sprint:delete', p),
     burndown: (p: unknown) => invoke('sprint:burndown', p),
     velocity: (p: unknown) => invoke('sprint:velocity', p),
+    pendingBilling: (p: unknown) => invoke('sprint:pendingBilling', p),
   },
   // Phase 31 — Coaching Institute
   student: {

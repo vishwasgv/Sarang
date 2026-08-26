@@ -232,6 +232,9 @@ export default function ProjectsScreen(): React.ReactElement {
   const [mStatus, setMStatus]           = useState('UPCOMING')
   const [mDueDate, setMDueDate]         = useState('')
   const [mNotes, setMNotes]             = useState('')
+  // Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+  const [mSprintId, setMSprintId]       = useState('')
+  const [pendingBillingMap, setPendingBillingMap] = useState<Record<string, Set<string>>>({})
 
   // ── Sprint form state ───────────────────────────────────────────────────────
   const [showSForm, setShowSForm]     = useState(false)
@@ -296,6 +299,18 @@ export default function ProjectsScreen(): React.ReactElement {
     }
   }, [toastError])
 
+  // Phase 68 §9.1 — Software Agency item 5: which COMPLETED sprints have no
+  // billing milestone linked yet.
+  const loadPendingBilling = useCallback(async (projectId: string) => {
+    try {
+      const res = await api.sprint.pendingBilling({ projectId })
+      if (res.success) {
+        const ids = new Set(((res.data as Sprint[]) ?? []).map((s) => s.id))
+        setPendingBillingMap((prev) => ({ ...prev, [projectId]: ids }))
+      }
+    } catch { /* non-critical — the "Bill Sprint" button just won't show */ }
+  }, [])
+
   // ── Expand tab toggle ──────────────────────────────────────────────────────
 
   const loadPerformance = useCallback(async (projectId: string) => {
@@ -331,7 +346,7 @@ export default function ProjectsScreen(): React.ReactElement {
     setExpandedTab((prev) => {
       const current = prev[projectId]
       const next = current === tab ? null : tab
-      if (next === 'sprints') { loadSprints(projectId); if (isSoftwareAgency) void loadVelocity(projectId) }
+      if (next === 'sprints') { loadSprints(projectId); if (isSoftwareAgency) { void loadVelocity(projectId); void loadPendingBilling(projectId) } }
       if (next === 'performance') { setPerfForm({ periodStart: '', periodEnd: '', impressions: '', clicks: '', conversions: '', actualSpend: '' }); void loadPerformance(projectId) }
       if (next === 'content') { setContentForm({ scheduledDate: '', contentType: 'SOCIAL_POST', title: '', platform: '' }); void loadContent(projectId) }
       return { ...prev, [projectId]: next }
@@ -605,14 +620,25 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
 
   function openNewMilestone(projectId: string): void {
     setEditMilestone(null); setMProjectId(projectId)
-    setMName(''); setMAmount(''); setMStatus('UPCOMING'); setMDueDate(''); setMNotes('')
+    setMName(''); setMAmount(''); setMStatus('UPCOMING'); setMDueDate(''); setMNotes(''); setMSprintId('')
     setShowMForm(true)
   }
 
   function openEditMilestone(m: Milestone, projectId: string): void {
     setEditMilestone(m); setMProjectId(projectId)
     setMName(m.milestoneName); setMAmount(m.milestoneAmount != null ? String(m.milestoneAmount) : '')
-    setMStatus(m.status); setMDueDate(m.dueDate ? m.dueDate.slice(0, 10) : ''); setMNotes(m.notes ?? '')
+    setMStatus(m.status); setMDueDate(m.dueDate ? m.dueDate.slice(0, 10) : ''); setMNotes(m.notes ?? ''); setMSprintId('')
+    setShowMForm(true)
+  }
+
+  // Phase 68 §9.1 — Software Agency item 5: pre-fills the milestone form,
+  // linked back to the completed sprint via sprintId — reuses the existing
+  // milestone create/invoice flow instead of a parallel "bill sprint" path.
+  function openMilestoneForSprint(projectId: string, s: Sprint): void {
+    setEditMilestone(null); setMProjectId(projectId)
+    setMName(`Sprint ${s.sprintNumber}${s.name ? ` — ${s.name}` : ''} Billing`)
+    setMAmount(''); setMStatus('COMPLETED'); setMDueDate(''); setMNotes('')
+    setMSprintId(s.id)
     setShowMForm(true)
   }
 
@@ -638,9 +664,14 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
           status:          mStatus,
           dueDate:         mDueDate || undefined,
           notes:           mNotes || undefined,
+          sprintId:        mSprintId || undefined,
         })
       }
-      if (res.success) { setShowMForm(false); loadAll() }
+      if (res.success) {
+        setShowMForm(false)
+        loadAll()
+        if (mSprintId) void loadPendingBilling(mProjectId)
+      }
       else toastError('Error', res.error?.message ?? 'Could not save milestone.')
     } catch {
       toastError('Error', 'Could not save milestone.')
@@ -1013,6 +1044,11 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                                   {isSoftwareAgency && (
                                     <button onClick={() => void openBurndown(s.id)} title="Burndown chart" className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">
                                       <LineChartIcon className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {isSoftwareAgency && s.status === 'COMPLETED' && pendingBillingMap[p.id]?.has(s.id) && (
+                                    <button onClick={() => openMilestoneForSprint(p.id, s)} title="Bill this sprint" className="px-1.5 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/20 dark:border-amber-800">
+                                      Bill Sprint
                                     </button>
                                   )}
                                   <button onClick={() => openEditSprint(s)} className="p-1 text-gray-400 hover:text-indigo-600 rounded dark:text-slate-500">

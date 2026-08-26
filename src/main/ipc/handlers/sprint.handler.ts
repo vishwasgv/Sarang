@@ -1,5 +1,5 @@
 import { requirePermission } from '../permission-guard'
-import { listSprints, createSprint, updateSprint, deleteSprint, getSprintBurndown, getProjectVelocity } from '../../services/sprint.service'
+import { listSprints, createSprint, updateSprint, deleteSprint, getSprintBurndown, getProjectVelocity, getSprintsPendingBilling } from '../../services/sprint.service'
 import { CreateSprintSchema, UpdateSprintSchema, DeleteSprintSchema, SprintIdSchema, ProjectVelocitySchema } from '../../validation/sprint.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -46,5 +46,12 @@ export function register(handle: HandleFn): void {
     const parsed = ProjectVelocitySchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return getProjectVelocity(parsed.data.projectId, parsed.data.limit)
+  })
+
+  handle('sprint:pendingBilling', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const payload = raw as { projectId: string }
+    if (!payload?.projectId) return { success: false, error: { code: 'VAL-001', message: 'Project ID is required.' } }
+    return getSprintsPendingBilling(payload.projectId)
   })
 }

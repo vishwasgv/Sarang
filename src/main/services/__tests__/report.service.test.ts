@@ -8522,3 +8522,130 @@ describe('reportService.generateRetainerWorkDeliveredReport', () => {
     expect(result.summary.zeroDeliveredCount).toBe(1)
   })
 })
+
+describe('reportService.generateIssueAgingReport', () => {
+  it('flags an SLA breach only once daysOpen exceeds the priority threshold (HIGH=2, MED=5, LOW=10)', async () => {
+    const now = Date.now()
+    const db = {
+      issue: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'i1', title: 'Critical bug', priority: 'HIGH', status: 'OPEN', reportedDate: new Date(now - 3 * 86400000), project: { projectName: 'App' } },
+          { id: 'i2', title: 'Minor tweak', priority: 'LOW', status: 'OPEN', reportedDate: new Date(now - 3 * 86400000), project: { projectName: 'App' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateIssueAgingReport()
+
+    expect(result.rows.find((r) => r.issueId === 'i1')?.slaBreached).toBe(true)
+    expect(result.rows.find((r) => r.issueId === 'i2')?.slaBreached).toBe(false)
+    expect(result.summary.breachedCount).toBe(1)
+  })
+
+  it('only queries OPEN/IN_PROGRESS issues', async () => {
+    const db = { issue: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateIssueAgingReport()
+
+    expect(db.issue.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+    }))
+  })
+
+  it('returns an honest empty result when there are no open issues', async () => {
+    const db = { issue: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateIssueAgingReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalOpenIssues: 0, breachedCount: 0 })
+  })
+})
+
+describe('reportService.generateTeamUtilizationReport', () => {
+  it('splits billable (ratePerHour > 0) vs non-billable hours per employee', async () => {
+    const db = {
+      timeEntry: {
+        findMany: vi.fn().mockResolvedValue([
+          { hours: 4, ratePerHour: 500, employeeId: 'emp-1', employee: { fullName: 'Dev A' } },
+          { hours: 2, ratePerHour: 0, employeeId: 'emp-1', employee: { fullName: 'Dev A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTeamUtilizationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ employeeName: 'Dev A', billableHours: 4, nonBillableHours: 2, totalHours: 6, utilizationPercent: 66.7 })
+  })
+
+  it('only queries TimeEntry rows tied to a ServiceProject', async () => {
+    const db = { timeEntry: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateTeamUtilizationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.timeEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ projectId: { not: null } }),
+    }))
+  })
+
+  it('sorts worst (least utilized) first', async () => {
+    const db = {
+      timeEntry: {
+        findMany: vi.fn().mockResolvedValue([
+          { hours: 8, ratePerHour: 500, employeeId: 'emp-1', employee: { fullName: 'Fully Billable' } },
+          { hours: 8, ratePerHour: 0, employeeId: 'emp-2', employee: { fullName: 'Never Billable' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTeamUtilizationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map((r) => r.employeeName)).toEqual(['Never Billable', 'Fully Billable'])
+  })
+})
+
+describe('reportService.generateSprintBillingReport', () => {
+  it('surfaces unlinked (unbilled) sprints first', async () => {
+    const db = {
+      sprint: {
+        findMany: vi.fn().mockResolvedValue([
+          { project: { projectName: 'App' }, sprintNumber: 1, name: 'Sprint 1', milestone: { status: 'INVOICED', milestoneAmount: 20000 } },
+          { project: { projectName: 'App' }, sprintNumber: 2, name: 'Sprint 2', milestone: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSprintBillingReport()
+
+    expect(result.rows.map((r) => r.sprintNumber)).toEqual([2, 1])
+    expect(result.summary.unlinkedCount).toBe(1)
+  })
+
+  it('only queries COMPLETED sprints', async () => {
+    const db = { sprint: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateSprintBillingReport()
+
+    expect(db.sprint.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'COMPLETED' },
+    }))
+  })
+
+  it('returns an honest empty result when there are no completed sprints', async () => {
+    const db = { sprint: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSprintBillingReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalCompletedSprints: 0, unlinkedCount: 0 })
+  })
+})

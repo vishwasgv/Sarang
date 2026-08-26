@@ -1058,4 +1058,27 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateRetainerWorkDeliveredReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Software Agency item 1: Issue Aging (SLA breach flag).
+  handle('reports:issueAging', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateIssueAgingReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Software Agency item 4: Team Utilization.
+  handle('reports:teamUtilization', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTeamUtilizationReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Software Agency item 5: Sprint Billing.
+  handle('reports:sprintBilling', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateSprintBillingReport()
+    return { success: true, data }
+  })
 }

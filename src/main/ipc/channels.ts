@@ -555,6 +555,12 @@ export interface IpcChannels {
     channelPerformance: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Marketing Agency item 5: Retainer Work Delivered.
     retainerWorkDelivered: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Software Agency item 1: Issue Aging (SLA breach flag).
+    issueAging: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Software Agency item 4: Team Utilization.
+    teamUtilization: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Software Agency item 5: Sprint Billing.
+    sprintBilling: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1541,7 +1547,7 @@ export interface IpcChannels {
   }
   milestone: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>
-    create: (payload: { projectId: string; milestoneName: string; milestoneAmount?: number; status?: string; dueDate?: string; notes?: string }) => Promise<ApiResponse>
+    create: (payload: { projectId: string; milestoneName: string; milestoneAmount?: number; status?: string; dueDate?: string; notes?: string; sprintId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; milestoneName?: string; milestoneAmount?: number | null; status?: string; dueDate?: string | null; completedDate?: string | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
@@ -1578,6 +1584,7 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     burndown: (payload: { sprintId: string }) => Promise<ApiResponse>
     velocity: (payload: { projectId: string; limit?: number }) => Promise<ApiResponse>
+    pendingBilling: (payload: { projectId: string }) => Promise<ApiResponse>
   }
   // Phase 31 — Coaching Institute
   student: {

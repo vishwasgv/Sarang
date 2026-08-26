@@ -4950,10 +4950,18 @@ model ServiceProjectMilestone {
   completedDate   DateTime?
   invoiceId       String? // Invoice reference when INVOICED
   notes           String?
+  // Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+  // milestones. Optional — most milestones (Architect/CA Firm/etc.) have
+  // nothing to do with a sprint. When set, this milestone IS the billing
+  // record for that sprint's completed work, reusing the existing
+  // milestone+generateMilestoneInvoice infrastructure instead of a parallel
+  // "SprintInvoice" entity.
+  sprintId        String?   @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint  Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
   @@index([status])
@@ -5054,8 +5062,9 @@ model Sprint {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  project ServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  issues  Issue[]
+  project   ServiceProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    Issue[]
+  milestone ServiceProjectMilestone?
 
   @@unique([projectId, sprintNumber])
   @@index([projectId])

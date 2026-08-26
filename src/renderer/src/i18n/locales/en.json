@@ -1872,6 +1872,18 @@
         "label": "Retainer Work Delivered",
         "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
       },
+      "issueAging": {
+        "label": "Issue Aging",
+        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+      },
+      "teamUtilization": {
+        "label": "Team Utilization",
+        "description": "Billable vs. non-billable hours logged per team member against a client project"
+      },
+      "sprintBilling": {
+        "label": "Sprint Billing",
+        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2173,6 +2185,12 @@
       "totalDeliverables": "Deliverables",
       "overdueCount": "Overdue",
       "zeroDeliveredCount": "Zero Delivered",
+      "totalOpenIssues": "Open Issues",
+      "breachedCount": "SLA Breached",
+      "totalBillableHours": "Total Billable Hours",
+      "totalNonBillableHours": "Total Non-Billable Hours",
+      "totalCompletedSprints": "Completed Sprints",
+      "unlinkedCount": "Unbilled Sprints",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2627,7 +2645,10 @@
       "clientRevenueConcentration": "No invoiced revenue in this date range.",
       "campaignROI": "No marketing campaigns recorded yet.",
       "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet."
+      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
+      "issueAging": "No open issues right now.",
+      "teamUtilization": "No hours logged against a project in this date range.",
+      "sprintBilling": "No completed sprints yet."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2990,7 +3011,16 @@
       "totalClicks": "Clicks",
       "totalConversions": "Conversions",
       "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered"
+      "deliveredCount": "Delivered",
+      "daysOpen": "Days Open",
+      "slaThresholdDays": "SLA (days)",
+      "slaBreached": "SLA Breached",
+      "employeeName": "Employee",
+      "totalHours": "Total Hours",
+      "sprintNumber": "Sprint #",
+      "sprintName": "Sprint Name",
+      "milestoneStatus": "Milestone Status",
+      "milestoneAmount": "Milestone Amount"
     },
     "legend": {
       "schemeCost": "Scheme Cost",

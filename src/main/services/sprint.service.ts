@@ -197,6 +197,23 @@ export async function getProjectVelocity(projectId: string, limit = 6) {
   }
 }
 
+// Phase 68 §9.1 — Software Agency item 5: sprint/release-linked billing
+// milestones. Every COMPLETED sprint that has no linked
+// ServiceProjectMilestone yet — the real "delivered but not yet billed"
+// worklist, surfaced so a completed sprint doesn't silently go unbilled.
+export async function getSprintsPendingBilling(projectId: string) {
+  try {
+    const db = getPrisma()
+    const sprints = await db.sprint.findMany({
+      where: { projectId, status: 'COMPLETED', milestone: null },
+      orderBy: { sprintNumber: 'asc' },
+    })
+    return { success: true, data: sprints.map(serializeSprint) }
+  } catch (err) {
+    return { success: false, error: { code: 'SR30-008', message: err instanceof Error ? err.message : 'Could not list sprints pending billing.' } }
+  }
+}
+
 export async function deleteSprint(id: string) {
   try {
     const db = getPrisma()
