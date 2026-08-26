@@ -469,6 +469,8 @@ export interface IpcChannels {
     serviceProjects: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     jobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     carJobCards: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    carPartsVariance: () => Promise<ApiResponse>
+    serviceTypeRevenue: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     tailoringOrders: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     pestContracts: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     realEstatePipeline: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
@@ -1745,8 +1747,8 @@ export interface IpcChannels {
   carJobCard: {
     list: (payload?: { status?: string; clientId?: string; search?: string }) => Promise<ApiResponse>
     get: (payload: string) => Promise<ApiResponse>
-    create: (payload: { clientId: string; vehicleNumber: string; vehicleMake: string; vehicleModel: string; vehicleYear?: number; vehicleType?: string; kmIn?: number; serviceAdvisorId?: string; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; estimatedDelivery?: string; notes?: string; internalNotes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; vehicleNumber?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number | null; vehicleType?: string; kmIn?: number | null; kmOut?: number | null; serviceAdvisorId?: string | null; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; estimatedDelivery?: string | null; deliveredDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null; internalNotes?: string | null; nextServiceDueDate?: string | null; nextServiceDueKm?: number | null }) => Promise<ApiResponse>
+    create: (payload: { clientId: string; vehicleNumber: string; vehicleMake: string; vehicleModel: string; vehicleYear?: number; vehicleType?: string; kmIn?: number; serviceAdvisorId?: string; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; quotedPartsTotal?: number; estimatedDelivery?: string; notes?: string; internalNotes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; vehicleNumber?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number | null; vehicleType?: string; kmIn?: number | null; kmOut?: number | null; serviceAdvisorId?: string | null; technicianIds?: string[]; serviceItems?: Array<{ name: string; quantity: number; unitPrice: number }>; partsItems?: Array<{ name: string; partNumber?: string; quantity: number; unitPrice: number }>; quotedPartsTotal?: number | null; estimatedDelivery?: string | null; deliveredDate?: string | null; status?: string; invoiceId?: string | null; notes?: string | null; internalNotes?: string | null; nextServiceDueDate?: string | null; nextServiceDueKm?: number | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
     generateInvoice: (payload: string) => Promise<ApiResponse>
     kpis: () => Promise<ApiResponse>

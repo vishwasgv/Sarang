@@ -415,6 +415,14 @@ interface CarJobCardReportRow { jobNumber: string; customerName: string; vehicle
 interface CarJobCardTechnicianStat { technicianId: string; jobCount: number }
 interface CarJobCardReport { dateFrom: string; dateTo: string; summary: { totalJobs: number; delivered: number; totalLaborRevenue: number; totalPartsRevenue: number }; byTechnician: CarJobCardTechnicianStat[]; rows: CarJobCardReportRow[] }
 
+// Phase 68 §9.1 — Car Service Center item 3: parts-used-vs-quoted variance.
+interface CarPartsVarianceRow { jobNumber: string; vehicleNumber: string; quotedPartsTotal: number; actualPartsTotal: number; variance: number; variancePercent: number | null }
+interface CarPartsVarianceReport { rows: CarPartsVarianceRow[]; summary: { quotedJobCount: number; totalQuoted: number; totalActual: number; totalOverage: number } }
+
+// Phase 68 §9.1 — Car Service Center item 4: revenue by service type.
+interface ServiceTypeRevenueRow { serviceType: string; jobCount: number; totalRevenue: number }
+interface ServiceTypeRevenueReport { dateFrom: string; dateTo: string; rows: ServiceTypeRevenueRow[]; summary: { totalRevenue: number; distinctServiceTypes: number } }
+
 interface TailoringOrderReportRow { orderNumber: string; customerName: string; garmentType: string; status: string; quantity: number; totalAmount: number; createdAt: string; deliveryDate: string | null }
 interface TailoringOrderByGarment { garmentType: string; count: number; totalAmount: number }
 interface TailoringOrderReport { dateFrom: string; dateTo: string; summary: { totalOrders: number; delivered: number; totalAmount: number }; byGarmentType: TailoringOrderByGarment[]; rows: TailoringOrderReportRow[] }
@@ -748,6 +756,8 @@ type ReportType =
   | 'vendorCostVsBudget' | 'vendorPerformanceHistory'
   // Phase 68 §9.1 — Coaching Institute items 3 & 4
   | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
+  // Phase 68 §9.1 — Car Service Center items 3 & 4
+  | 'carPartsVariance' | 'serviceTypeRevenue'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -931,6 +941,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'serviceProjects', icon: <FolderOpen size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   { id: 'jobCards', icon: <Wrench size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'job_cards' },
   { id: 'carJobCards', icon: <Car size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
+  // Phase 68 §9.1 — Car Service Center item 3. Current-state, no date range.
+  { id: 'carPartsVariance', icon: <TrendingUp size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'car_job_cards' },
+  // Phase 68 §9.1 — Car Service Center item 4.
+  { id: 'serviceTypeRevenue', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'car_job_cards' },
   { id: 'tailoringOrders', icon: <Scissors size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'tailoring_orders' },
   { id: 'pestContracts', icon: <Bug size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'pest_contracts' },
   { id: 'realEstatePipeline', icon: <Home size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'properties' },
@@ -1491,6 +1505,12 @@ export function ReportsScreen() {
           break
         case 'carJobCards':
           res = await window.api.reports.carJobCards({ dateFrom, dateTo })
+          break
+        case 'carPartsVariance':
+          res = await window.api.reports.carPartsVariance()
+          break
+        case 'serviceTypeRevenue':
+          res = await window.api.reports.serviceTypeRevenue({ dateFrom, dateTo })
           break
         case 'tailoringOrders':
           res = await window.api.reports.tailoringOrders({ dateFrom, dateTo })
@@ -2372,6 +2392,20 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.jobNumber, r.customerName, r.vehicleNumber, r.vehicleMake, r.vehicleModel, r.status, r.laborTotal, r.partsTotal, r.createdAt])
         }
       }
+      case 'carPartsVariance': {
+        const d = reportData as CarPartsVarianceReport
+        return {
+          headers: ['Job #', 'Vehicle #', 'Quoted Parts', 'Actual Parts', 'Variance', 'Variance %'],
+          rows: d.rows.map(r => [r.jobNumber, r.vehicleNumber, r.quotedPartsTotal.toFixed(2), r.actualPartsTotal.toFixed(2), r.variance.toFixed(2), r.variancePercent != null ? `${r.variancePercent}%` : '—'])
+        }
+      }
+      case 'serviceTypeRevenue': {
+        const d = reportData as ServiceTypeRevenueReport
+        return {
+          headers: ['Service Type', 'Jobs', t('common.amount')],
+          rows: d.rows.map(r => [r.serviceType, r.jobCount, r.totalRevenue.toFixed(2)])
+        }
+      }
       case 'tailoringOrders': {
         const d = reportData as TailoringOrderReport
         return {
@@ -3231,6 +3265,22 @@ export function ReportsScreen() {
           { label: 'Parts Revenue', value: fmt(d.summary.totalPartsRevenue) }
         ]
       }
+      case 'carPartsVariance': {
+        const d = reportData as CarPartsVarianceReport
+        return [
+          { label: 'Quoted Jobs', value: String(d.summary.quotedJobCount) },
+          { label: 'Total Quoted', value: fmt(d.summary.totalQuoted) },
+          { label: 'Total Actual', value: fmt(d.summary.totalActual) },
+          { label: 'Total Overage', value: fmt(d.summary.totalOverage) }
+        ]
+      }
+      case 'serviceTypeRevenue': {
+        const d = reportData as ServiceTypeRevenueReport
+        return [
+          { label: t('common.amount'), value: fmt(d.summary.totalRevenue) },
+          { label: 'Service Types', value: String(d.summary.distinctServiceTypes) }
+        ]
+      }
       case 'tailoringOrders': {
         const d = reportData as TailoringOrderReport
         return [
@@ -4017,6 +4067,11 @@ export function ReportsScreen() {
       // worklist, not an aggregate metric.
       case 'attendancePerformanceCorrelation': return []
       case 'feeDueUnderperformanceAlert': return []
+      // Phase 68 §9.1 — Car Service Center items 3 & 4. Chart-free, same as
+      // this file's other worklist/breakdown-table reports (e.g.
+      // channelPerformance, shootTypeRevenueMix above).
+      case 'carPartsVariance': return []
+      case 'serviceTypeRevenue': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4588,6 +4643,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'serviceProjects': return <ServiceProjectReportView data={data as ServiceProjectReport} fmt={fmt} />
     case 'jobCards': return <JobCardReportView data={data as JobCardReport} fmt={fmt} />
     case 'carJobCards': return <CarJobCardReportView data={data as CarJobCardReport} fmt={fmt} />
+    case 'carPartsVariance': return <CarPartsVarianceView data={data as CarPartsVarianceReport} fmt={fmt} />
+    case 'serviceTypeRevenue': return <ServiceTypeRevenueView data={data as ServiceTypeRevenueReport} fmt={fmt} />
     case 'tailoringOrders': return <TailoringOrderReportView data={data as TailoringOrderReport} fmt={fmt} />
     case 'pestContracts': return <PestContractReportView data={data as PestContractReport} fmt={fmt} />
     case 'realEstatePipeline': return <RealEstatePipelineReportView data={data as RealEstatePipelineReport} fmt={fmt} />
@@ -8224,6 +8281,51 @@ function CarJobCardReportView({ data, fmt }: { data: CarJobCardReport; fmt: (n: 
           headers={['Job #', t('reports.col.customer'), 'Vehicle', t('common.status'), 'Labor', 'Parts']}
           rows={data.rows.map(r => [r.jobNumber, r.customerName, `${r.vehicleMake} ${r.vehicleModel} (${r.vehicleNumber})`, r.status, fmt(r.laborTotal), fmt(r.partsTotal)])}
           emptyText={t('reports.empty.carJobCards')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Car Service Center item 3: parts-used-vs-quoted variance.
+function CarPartsVarianceView({ data, fmt }: { data: CarPartsVarianceReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Quoted Jobs', value: String(s.quotedJobCount) },
+        { label: 'Total Quoted', value: fmt(s.totalQuoted) },
+        { label: 'Total Actual', value: fmt(s.totalActual) },
+        { label: 'Total Overage', value: fmt(s.totalOverage) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Variance Details</h3>
+        <DataTable
+          headers={['Job #', 'Vehicle', 'Quoted', 'Actual', 'Variance', 'Variance %']}
+          rows={data.rows.map(r => [r.jobNumber, r.vehicleNumber, fmt(r.quotedPartsTotal), fmt(r.actualPartsTotal), fmt(r.variance), r.variancePercent != null ? `${r.variancePercent}%` : '—'])}
+          emptyText={t('reports.empty.carPartsVariance')}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Car Service Center item 4: revenue by service type.
+function ServiceTypeRevenueView({ data, fmt }: { data: ServiceTypeRevenueReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('common.amount'), value: fmt(data.summary.totalRevenue) },
+        { label: 'Service Types', value: String(data.summary.distinctServiceTypes) }
+      ]} />
+      <div>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Service Type</h3>
+        <DataTable
+          headers={['Service Type', 'Jobs', t('common.amount')]}
+          rows={data.rows.map(r => [r.serviceType, r.jobCount, fmt(r.totalRevenue)])}
+          emptyText={t('reports.empty.serviceTypeRevenue')}
         />
       </div>
     </div>

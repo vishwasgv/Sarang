@@ -5598,6 +5598,10 @@ model CarJobCard {
   partsItems         String    @default("[]") // JSON: [{name,partNumber?,quantity,unitPrice}]
   laborTotal         Decimal   @default(0)
   partsTotal         Decimal   @default(0)
+  // Phase 68 §9.1 — Car Service Center item 3: parts-used-vs-quoted variance.
+  // An optional, one-time estimate the advisor can set at intake/inspection —
+  // distinct from partsTotal, which keeps evolving as actual parts get used.
+  quotedPartsTotal   Decimal?
   estimatedDelivery  DateTime?
   deliveredDate      DateTime?
   status             String    @default("RECEIVED") // RECEIVED|INSPECTION|IN_PROGRESS|WAITING_PARTS|READY|DELIVERED|CANCELLED

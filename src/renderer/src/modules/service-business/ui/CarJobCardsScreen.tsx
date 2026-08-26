@@ -42,6 +42,7 @@ interface CarJobCard {
   partsItems: string
   laborTotal: number
   partsTotal: number
+  quotedPartsTotal?: number | null
   estimatedDelivery?: string | null
   deliveredDate?: string | null
   status: string
@@ -106,9 +107,17 @@ const parseSafe = <T,>(raw: unknown, fallback: T): T => {
 // Date instances, not strings — calling .slice() directly on one throws
 // "d.slice is not a function". Handles both shapes so it's safe regardless
 // of how the value arrived.
+//
+// Real bug found+fixed (Phase 68 §9.1 — Car Service Center): the previous
+// version did `d.toISOString().slice(0, 10)` for a real Date instance, which
+// converts to UTC first — showing the wrong (previous) calendar day for
+// anything before 5:30am IST. Same renderer-local-date-helper bug class as
+// Photo Studio's/Event Management's own toDateInput. Extract LOCAL Y/M/D
+// components directly instead.
 const dateSlice = (d: unknown): string => {
   if (!d) return ''
-  return (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10)
+  if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return String(d).slice(0, 10)
 }
 
 function emptyForm() {
@@ -117,6 +126,7 @@ function emptyForm() {
     vehicleYear: '', vehicleType: '4W', kmIn: '',
     serviceAdvisorId: '', technicianIds: [] as string[],
     serviceItems: [] as ServiceItem[], partsItems: [] as PartItem[],
+    quotedPartsTotal: '',
     estimatedDelivery: '', notes: '', internalNotes: '', status: 'RECEIVED',
     kmOut: '', deliveredDate: '',
     nextServiceDueDate: '', nextServiceDueKm: '',
@@ -279,6 +289,7 @@ export default function CarJobCardsScreen() {
       technicianIds: parseSafe<string[]>(card.technicianIds, []),
       serviceItems: parseSafe<ServiceItem[]>(card.serviceItems, []),
       partsItems: parseSafe<PartItem[]>(card.partsItems, []),
+      quotedPartsTotal: card.quotedPartsTotal != null ? String(card.quotedPartsTotal) : '',
       estimatedDelivery: dateSlice(card.estimatedDelivery),
       deliveredDate: dateSlice(card.deliveredDate),
       notes: card.notes ?? '',
@@ -311,6 +322,7 @@ export default function CarJobCardsScreen() {
       technicianIds: form.technicianIds,
       serviceItems: form.serviceItems,
       partsItems: form.partsItems,
+      quotedPartsTotal: form.quotedPartsTotal ? parseFloat(form.quotedPartsTotal) : undefined,
       estimatedDelivery: form.estimatedDelivery || undefined,
       deliveredDate: form.deliveredDate || undefined,
       notes: form.notes || undefined,
@@ -723,6 +735,29 @@ export default function CarJobCardsScreen() {
                 <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-8">No service history found.</p>
               ) : (
                 <div className="space-y-2">
+                  {(() => {
+                    // Phase 68 §9.1 — Car Service Center item 5: vehicle-wise
+                    // service-cost history, as a lifetime aggregate on top of
+                    // the already-per-job cost rows below (item 1).
+                    const lifetimeTotal = vehicleHistory.reduce((s, j) => s + Number(j.laborTotal) + Number(j.partsTotal), 0)
+                    const visitCount = vehicleHistory.length
+                    return (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">₹{lifetimeTotal.toFixed(2)}</div>
+                          <div className="text-[11px] text-gray-500 dark:text-slate-400">Lifetime Spend</div>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{visitCount}</div>
+                          <div className="text-[11px] text-gray-500 dark:text-slate-400">Visits</div>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">₹{(lifetimeTotal / visitCount).toFixed(2)}</div>
+                          <div className="text-[11px] text-gray-500 dark:text-slate-400">Avg. per Visit</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {vehicleHistory.map(job => {
                     const total = Number(job.laborTotal) + Number(job.partsTotal)
                     return (
@@ -924,6 +959,10 @@ export default function CarJobCardsScreen() {
                     <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Parts Total: ₹{partsTotal.toFixed(2)}</div>
                   </div>
                 )}
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <label className="text-xs text-gray-500 dark:text-slate-400" title="An upfront estimate given to the customer — compared against the actual parts total once billed">Quoted Parts Estimate (₹)</label>
+                  <input type="number" value={form.quotedPartsTotal} onChange={e => setForm(f => ({ ...f, quotedPartsTotal: e.target.value }))} min="0" placeholder="Optional" className="w-28 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-end focus:ring-2 focus:ring-orange-400 focus:border-transparent dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+                </div>
               </div>
               {(form.serviceItems.length > 0 || form.partsItems.length > 0) && (
                 <div className="text-end text-sm font-semibold text-gray-800 border-t border-gray-100 pt-2 dark:border-slate-800 dark:text-slate-200">

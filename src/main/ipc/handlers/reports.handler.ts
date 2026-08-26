@@ -541,6 +541,20 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  handle('reports:carPartsVariance', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateCarPartsVarianceReport()
+    return { success: true, data }
+  })
+
+  handle('reports:serviceTypeRevenue', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateServiceTypeRevenueReport(parsed.data)
+    return { success: true, data }
+  })
+
   handle('reports:tailoringOrders', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny
     const parsed = DateRangeSchema.safeParse(payload)

@@ -5743,6 +5743,102 @@ async function generateCarJobCardReport(params: { dateFrom: string; dateTo: stri
   }
 }
 
+// Phase 68 §9.1 — Car Service Center item 3: parts-used-vs-quoted variance.
+// Only jobs where the advisor actually set a quotedPartsTotal are included —
+// no fabricated baseline for jobs that were never quoted.
+export interface CarPartsVarianceRow {
+  jobNumber: string; vehicleNumber: string; quotedPartsTotal: number; actualPartsTotal: number
+  variance: number; variancePercent: number | null
+}
+export interface CarPartsVarianceReport {
+  rows: CarPartsVarianceRow[]
+  summary: { quotedJobCount: number; totalQuoted: number; totalActual: number; totalOverage: number }
+}
+
+async function generateCarPartsVarianceReport(): Promise<CarPartsVarianceReport> {
+  const db = getPrisma()
+  const jobs = await db.carJobCard.findMany({
+    where: { quotedPartsTotal: { not: null } },
+    select: { jobNumber: true, vehicleNumber: true, quotedPartsTotal: true, partsTotal: true },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const rows: CarPartsVarianceRow[] = jobs.map((j) => {
+    const quoted = Number(j.quotedPartsTotal)
+    const actual = Number(j.partsTotal)
+    const variance = roundCurrency(actual - quoted)
+    return {
+      jobNumber: j.jobNumber, vehicleNumber: j.vehicleNumber,
+      quotedPartsTotal: quoted, actualPartsTotal: actual, variance,
+      variancePercent: quoted > 0 ? Math.round((variance / quoted) * 1000) / 10 : null,
+    }
+  })
+  rows.sort((a, b) => b.variance - a.variance)
+
+  return {
+    rows,
+    summary: {
+      quotedJobCount: rows.length,
+      totalQuoted: roundCurrency(rows.reduce((s, r) => s + r.quotedPartsTotal, 0)),
+      totalActual: roundCurrency(rows.reduce((s, r) => s + r.actualPartsTotal, 0)),
+      totalOverage: roundCurrency(rows.reduce((s, r) => s + r.variance, 0)),
+    },
+  }
+}
+
+// Phase 68 §9.1 — Car Service Center item 4: revenue by service type. There
+// is no separate service-catalog/type table (serviceItems is a free-text
+// JSON blob per job card, same as Photo Studio's shootType), so the item
+// NAME itself is the de facto service type — same "group by the free-text
+// field that already exists" pattern as generateChannelPerformanceReport.
+export interface ServiceTypeRevenueRow {
+  serviceType: string; jobCount: number; totalRevenue: number
+}
+export interface ServiceTypeRevenueReport {
+  dateFrom: string; dateTo: string
+  rows: ServiceTypeRevenueRow[]
+  summary: { totalRevenue: number; distinctServiceTypes: number }
+}
+
+async function generateServiceTypeRevenueReport(params: { dateFrom: string; dateTo: string }): Promise<ServiceTypeRevenueReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const jobs = await db.carJobCard.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { serviceItems: true },
+  })
+
+  const byType = new Map<string, { jobCount: number; totalRevenue: number }>()
+  for (const job of jobs) {
+    let items: { name: string; quantity: number; unitPrice: number }[] = []
+    try { items = JSON.parse(job.serviceItems || '[]') } catch { /* leave empty */ }
+    const seenInThisJob = new Set<string>()
+    for (const item of items) {
+      const key = item.name.trim()
+      if (!key) continue
+      const entry = byType.get(key) ?? { jobCount: 0, totalRevenue: 0 }
+      entry.totalRevenue += item.quantity * item.unitPrice
+      if (!seenInThisJob.has(key)) { entry.jobCount += 1; seenInThisJob.add(key) }
+      byType.set(key, entry)
+    }
+  }
+
+  const rows: ServiceTypeRevenueRow[] = Array.from(byType.entries())
+    .map(([serviceType, v]) => ({ serviceType, jobCount: v.jobCount, totalRevenue: roundCurrency(v.totalRevenue) }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows,
+    summary: {
+      totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.totalRevenue, 0)),
+      distinctServiceTypes: rows.length,
+    },
+  }
+}
+
 // ── Tailor Boutique — orders by garment type ──────────────────────────────
 
 export interface TailoringOrderReportRow {
@@ -8628,6 +8724,8 @@ export const reportService = {
   generateServiceProjectReport,
   generateJobCardReport,
   generateCarJobCardReport,
+  generateCarPartsVarianceReport,
+  generateServiceTypeRevenueReport,
   generateTailoringOrderReport,
   generatePestContractReport,
   generateRealEstatePipelineReport,

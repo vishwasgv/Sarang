@@ -3,6 +3,7 @@ import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { buildWhatsAppLink } from './notification-queue.service'
 import { sumCurrency } from './currency.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -10,8 +11,13 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // IPC (structured clone) cannot serialize a Decimal instance and throws
 // "An object could not be cloned" on every response that includes one.
 // Applied to every function below that returns a card.
-function serializeCarJobCard<T extends { laborTotal: unknown; partsTotal: unknown }>(c: T): T {
-  return { ...c, laborTotal: Number(c.laborTotal), partsTotal: Number(c.partsTotal) }
+function serializeCarJobCard<T extends { laborTotal: unknown; partsTotal: unknown; quotedPartsTotal?: unknown }>(c: T): T {
+  return {
+    ...c,
+    laborTotal: Number(c.laborTotal),
+    partsTotal: Number(c.partsTotal),
+    quotedPartsTotal: c.quotedPartsTotal != null ? Number(c.quotedPartsTotal) : null,
+  }
 }
 
 interface ServiceItem { name: string; quantity: number; unitPrice: number }
@@ -95,6 +101,7 @@ export async function createCarJobCard(payload: {
   technicianIds?: string[]
   serviceItems?: ServiceItem[]
   partsItems?: PartItem[]
+  quotedPartsTotal?: number
   estimatedDelivery?: string
   notes?: string
   internalNotes?: string
@@ -133,7 +140,8 @@ export async function createCarJobCard(payload: {
         partsItems: JSON.stringify(partsItems),
         laborTotal,
         partsTotal,
-        estimatedDelivery: payload.estimatedDelivery ? new Date(payload.estimatedDelivery) : null,
+        quotedPartsTotal: payload.quotedPartsTotal ?? null,
+        estimatedDelivery: payload.estimatedDelivery ? parseLocalDateStart(payload.estimatedDelivery) : null,
         notes: payload.notes ?? null,
         internalNotes: payload.internalNotes ?? null,
       },
@@ -160,6 +168,7 @@ export async function updateCarJobCard(payload: {
   technicianIds?: string[]
   serviceItems?: ServiceItem[]
   partsItems?: PartItem[]
+  quotedPartsTotal?: number | null
   estimatedDelivery?: string | null
   deliveredDate?: string | null
   status?: string
@@ -182,9 +191,9 @@ export async function updateCarJobCard(payload: {
     data.partsItems = JSON.stringify(partsItems)
     data.partsTotal = sumCurrency(partsItems.map((i) => i.quantity * i.unitPrice))
   }
-  if (estimatedDelivery !== undefined) data.estimatedDelivery = estimatedDelivery ? new Date(estimatedDelivery) : null
-  if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? new Date(deliveredDate) : null
-  if (nextServiceDueDate !== undefined) data.nextServiceDueDate = nextServiceDueDate ? new Date(nextServiceDueDate) : null
+  if (estimatedDelivery !== undefined) data.estimatedDelivery = estimatedDelivery ? parseLocalDateStart(estimatedDelivery) : null
+  if (deliveredDate !== undefined) data.deliveredDate = deliveredDate ? parseLocalDateStart(deliveredDate) : null
+  if (nextServiceDueDate !== undefined) data.nextServiceDueDate = nextServiceDueDate ? parseLocalDateStart(nextServiceDueDate) : null
 
   const card = await db.carJobCard.update({
     where: { id },

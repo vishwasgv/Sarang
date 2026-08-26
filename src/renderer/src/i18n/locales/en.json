@@ -2008,6 +2008,14 @@
         "label": "Job Card Report",
         "description": "Labor vs. parts revenue split and technician productivity — for Car Service Centers"
       },
+      "carPartsVariance": {
+        "label": "Parts Cost Variance",
+        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+      },
+      "serviceTypeRevenue": {
+        "label": "Revenue by Service Type",
+        "description": "Which services bring in the most revenue, across every job card"
+      },
       "tailoringOrders": {
         "label": "Tailoring Orders Report",
         "description": "Every order by garment type and status — for Tailor Boutiques"
@@ -2632,6 +2640,8 @@
       "serviceProjects": "No projects in this date range.",
       "jobCards": "No job cards in this date range.",
       "carJobCards": "No job cards in this date range.",
+      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
+      "serviceTypeRevenue": "No service items billed in this date range.",
       "tailoringOrders": "No orders in this date range.",
       "pestContracts": "No contracts expiring in this window.",
       "realEstatePipeline": "No deals in this date range.",

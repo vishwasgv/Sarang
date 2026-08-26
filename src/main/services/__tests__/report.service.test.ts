@@ -6394,6 +6394,144 @@ describe('reportService.generateCarJobCardReport', () => {
   })
 })
 
+// ─── Parts-Used-vs-Quoted Variance (Phase 68 §9.1 — Car Service Center item 3) ─
+
+describe('reportService.generateCarPartsVarianceReport', () => {
+  it('only includes jobs where an estimate was actually quoted', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-1', vehicleNumber: 'MH01AB1234', quotedPartsTotal: 5000, partsTotal: 6000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateCarPartsVarianceReport()
+
+    expect(db.carJobCard.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { quotedPartsTotal: { not: null } }
+    }))
+  })
+
+  it('computes variance and variancePercent (actual over quoted)', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-1', vehicleNumber: 'MH01AB1234', quotedPartsTotal: 5000, partsTotal: 6000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarPartsVarianceReport()
+
+    expect(result.rows[0]).toMatchObject({ quotedPartsTotal: 5000, actualPartsTotal: 6000, variance: 1000, variancePercent: 20 })
+  })
+
+  it('sorts biggest overage first', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-1', vehicleNumber: 'A', quotedPartsTotal: 1000, partsTotal: 1100 }, // +100
+          { jobNumber: 'CJ-2', vehicleNumber: 'B', quotedPartsTotal: 1000, partsTotal: 1500 }, // +500
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarPartsVarianceReport()
+
+    expect(result.rows.map(r => r.jobNumber)).toEqual(['CJ-2', 'CJ-1'])
+  })
+
+  it('reports variancePercent as null when quotedPartsTotal is zero (avoids divide-by-zero)', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { jobNumber: 'CJ-1', vehicleNumber: 'A', quotedPartsTotal: 0, partsTotal: 200 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarPartsVarianceReport()
+
+    expect(result.rows[0].variancePercent).toBeNull()
+  })
+
+  it('returns zeroed summary when no jobs were quoted', async () => {
+    const db = { carJobCard: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCarPartsVarianceReport()
+
+    expect(result.summary).toEqual({ quotedJobCount: 0, totalQuoted: 0, totalActual: 0, totalOverage: 0 })
+  })
+})
+
+// ─── Revenue by Service Type (Phase 68 §9.1 — Car Service Center item 4) ───────
+
+describe('reportService.generateServiceTypeRevenueReport', () => {
+  it('groups revenue by service item name across job cards', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { serviceItems: JSON.stringify([{ name: 'Oil Change', quantity: 1, unitPrice: 500 }, { name: 'Wheel Alignment', quantity: 1, unitPrice: 300 }]) },
+          { serviceItems: JSON.stringify([{ name: 'Oil Change', quantity: 1, unitPrice: 500 }]) },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateServiceTypeRevenueReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const oilChange = result.rows.find(r => r.serviceType === 'Oil Change')
+    const alignment = result.rows.find(r => r.serviceType === 'Wheel Alignment')
+    expect(oilChange).toMatchObject({ jobCount: 2, totalRevenue: 1000 })
+    expect(alignment).toMatchObject({ jobCount: 1, totalRevenue: 300 })
+  })
+
+  it('sorts by revenue descending', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { serviceItems: JSON.stringify([{ name: 'Small Job', quantity: 1, unitPrice: 100 }, { name: 'Big Job', quantity: 1, unitPrice: 5000 }]) },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateServiceTypeRevenueReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map(r => r.serviceType)).toEqual(['Big Job', 'Small Job'])
+  })
+
+  it('treats an unparsable serviceItems value as no items rather than crashing', async () => {
+    const db = { carJobCard: { findMany: vi.fn().mockResolvedValue([{ serviceItems: 'not-json' }]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateServiceTypeRevenueReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toEqual([])
+  })
+
+  it('counts a job once per distinct service type even if the same item name appears twice on one job', async () => {
+    const db = {
+      carJobCard: {
+        findMany: vi.fn().mockResolvedValue([
+          { serviceItems: JSON.stringify([{ name: 'Oil Change', quantity: 1, unitPrice: 500 }, { name: 'Oil Change', quantity: 1, unitPrice: 500 }]) },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateServiceTypeRevenueReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ jobCount: 1, totalRevenue: 1000 })
+  })
+})
+
 describe('reportService.generateTailoringOrderReport', () => {
   it('aggregates count and total amount per garment type', async () => {
     const db = {

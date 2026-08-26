@@ -461,3 +461,79 @@ describe('car-job-card.service.scheduleNextServiceReminder', () => {
     expect(dueDate.getTime() - scheduledFor.getTime()).toBe(3 * 86400000)
   })
 })
+
+// Phase 68 §9.1 — Car Service Center item 3: parts-used-vs-quoted variance.
+describe('car-job-card.service — quotedPartsTotal', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createCarJobCard stores the quoted estimate and serializes it as a plain number', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createCarJobCard({
+      clientId: 'cust-1', vehicleNumber: 'KA01AB1234', vehicleMake: 'Maruti', vehicleModel: 'Swift',
+      quotedPartsTotal: 5000,
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.carJobCard.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ quotedPartsTotal: 5000 })
+    }))
+    expect(typeof (res as { data: { quotedPartsTotal: unknown } }).data.quotedPartsTotal).toBe('number')
+  })
+
+  it('stores quotedPartsTotal as null when not provided, not zero', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createCarJobCard({ clientId: 'cust-1', vehicleNumber: 'KA01AB1234', vehicleMake: 'Maruti', vehicleModel: 'Swift' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { quotedPartsTotal: unknown } }).data.quotedPartsTotal).toBeNull()
+  })
+
+  it('updateCarJobCard can set the quoted estimate after intake', async () => {
+    const db = makeMockDb(makeCard())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateCarJobCard({ id: 'cjc-1', quotedPartsTotal: 4500 })
+
+    expect(res.success).toBe(true)
+    expect(db.carJobCard.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ quotedPartsTotal: 4500 })
+    }))
+  })
+})
+
+// Real bug found+fixed (Phase 68 §9.1 — Car Service Center): estimatedDelivery/
+// deliveredDate/nextServiceDueDate were all written via a bare `new
+// Date(dateOnlyString)`, which parses as UTC midnight — wrong for IST writes,
+// same dominant bug class fixed across every other Phase 68 vertical this
+// session. Fixed to parseLocalDateStart.
+describe('car-job-card.service — date-only fields store local midnight, not UTC-shifted', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createCarJobCard stores estimatedDelivery at local midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createCarJobCard({ clientId: 'cust-1', vehicleNumber: 'KA01AB1234', vehicleMake: 'Maruti', vehicleModel: 'Swift', estimatedDelivery: '2026-03-15' })
+
+    const stored: Date = db.carJobCard.create.mock.calls[0][0].data.estimatedDelivery
+    expect(stored.getDate()).toBe(15)
+    expect(stored.getHours()).toBe(0)
+  })
+
+  it('updateCarJobCard stores deliveredDate and nextServiceDueDate at local midnight', async () => {
+    const db = makeMockDb(makeCard())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateCarJobCard({ id: 'cjc-1', deliveredDate: '2026-03-20', nextServiceDueDate: '2026-09-20' })
+
+    const call = db.carJobCard.update.mock.calls[0][0].data
+    expect((call.deliveredDate as Date).getDate()).toBe(20)
+    expect((call.deliveredDate as Date).getHours()).toBe(0)
+    expect((call.nextServiceDueDate as Date).getMonth()).toBe(8) // September, 0-indexed
+    expect((call.nextServiceDueDate as Date).getHours()).toBe(0)
+  })
+})
