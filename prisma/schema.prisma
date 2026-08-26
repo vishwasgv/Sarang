@@ -5424,6 +5424,12 @@ model EventVendorBooking {
   advancePaid    Decimal  @default(0)
   status         String   @default("ENQUIRED") // ENQUIRED|BOOKED|CONFIRMED|COMPLETED
   notes          String?
+  // Phase 68 §9.1 — Event Management item 5: post-event feedback linked to
+  // vendor history. Lives on THIS row (not a separate model) so a vendor's
+  // performance is directly queryable across every event they've ever
+  // worked — a real track record, not a one-off note.
+  vendorRating   Int? // 1-5, set only after the event; null = not yet rated
+  vendorFeedback String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

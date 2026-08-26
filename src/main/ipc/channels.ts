@@ -567,6 +567,10 @@ export interface IpcChannels {
     shootTypeRevenueMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Photo Studio item 3: Equipment Checkout.
     equipmentCheckout: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Event Management item 2: Vendor Cost vs. Budget.
+    vendorCostVsBudget: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
+    vendorPerformanceHistory: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1695,6 +1699,8 @@ export interface IpcChannels {
     create: (payload: { eventId: string; vendorId: string; vendorCategory: string; pricingType?: string; quotedAmount?: number; perHeadRate?: number; advancePaid?: number; status?: string; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; vendorCategory?: string; pricingType?: string; quotedAmount?: number; perHeadRate?: number; advancePaid?: number; status?: string; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
+    recordFeedback: (payload: { id: string; vendorRating: number; vendorFeedback?: string }) => Promise<ApiResponse>
+    vendorHistory: (payload: string) => Promise<ApiResponse>
   }
   eventRunOfShow: {
     list: (payload: { eventId: string }) => Promise<ApiResponse>

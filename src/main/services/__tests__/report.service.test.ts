@@ -8804,3 +8804,89 @@ describe('reportService.generateEquipmentCheckoutReport', () => {
     expect(result.summary).toEqual({ totalOutstanding: 0, overdueCount: 0 })
   })
 })
+
+describe('reportService.generateVendorCostVsBudgetReport', () => {
+  it('computes budgetVariancePercent from total vendor cost against clientBudget', async () => {
+    const db = {
+      eventBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { eventName: 'Sharma Wedding', client: { customerName: 'Ramesh' }, clientBudget: 100000, finalAmount: 150000, vendorBookings: [{ quotedAmount: 60000 }, { quotedAmount: 60000 }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorCostVsBudgetReport()
+
+    expect(result.rows[0].totalVendorCost).toBe(120000)
+    expect(result.rows[0].budgetVariancePercent).toBe(20)
+    expect(result.summary.overBudgetCount).toBe(1)
+  })
+
+  it('leaves budgetVariancePercent null when no clientBudget was ever set', async () => {
+    const db = {
+      eventBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { eventName: 'Untracked Event', client: { customerName: 'Someone' }, clientBudget: null, finalAmount: null, vendorBookings: [] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorCostVsBudgetReport()
+
+    expect(result.rows[0].budgetVariancePercent).toBeNull()
+  })
+
+  it('only queries non-CANCELLED events', async () => {
+    const db = { eventBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateVendorCostVsBudgetReport()
+
+    expect(db.eventBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: { not: 'CANCELLED' } },
+    }))
+  })
+})
+
+describe('reportService.generateVendorPerformanceHistoryReport', () => {
+  it('averages ratings per vendor, worst (lowest) first', async () => {
+    const db = {
+      eventVendorBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { vendorId: 'v1', vendorRating: 5, vendor: { supplierName: 'Great Caterer' } },
+          { vendorId: 'v1', vendorRating: 5, vendor: { supplierName: 'Great Caterer' } },
+          { vendorId: 'v2', vendorRating: 2, vendor: { supplierName: 'Poor Decorator' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorPerformanceHistoryReport()
+
+    expect(result.rows.map((r) => r.vendorName)).toEqual(['Poor Decorator', 'Great Caterer'])
+    expect(result.rows[1]).toMatchObject({ ratedEventCount: 2, avgRating: 5 })
+  })
+
+  it('only queries rated bookings', async () => {
+    const db = { eventVendorBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateVendorPerformanceHistoryReport()
+
+    expect(db.eventVendorBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { vendorRating: { not: null } },
+    }))
+  })
+
+  it('returns an honest empty result when nothing has been rated yet', async () => {
+    const db = { eventVendorBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVendorPerformanceHistoryReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalRatedVendors: 0, overallAvgRating: 0 })
+  })
+})

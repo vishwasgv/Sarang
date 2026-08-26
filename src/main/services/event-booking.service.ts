@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializeVendorBooking, recomputePerHeadVendorBookings } from './event-vendor-booking.service'
 import { billingService } from './billing.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // EventBooking.clientBudget/finalAmount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws "An
@@ -57,8 +58,11 @@ export async function createEventBooking(payload: {
       clientId: payload.clientId,
       eventName: payload.eventName,
       eventType: payload.eventType,
-      eventDate: new Date(payload.eventDate),
-      eventEndDate: payload.eventEndDate ? new Date(payload.eventEndDate) : null,
+      // Real bug found live (2026-08-27 Phase 68 audit): a bare
+      // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+      // with this app's own parseLocalDateStart convention.
+      eventDate: parseLocalDateStart(payload.eventDate),
+      eventEndDate: payload.eventEndDate ? parseLocalDateStart(payload.eventEndDate) : null,
       venueName: payload.venueName,
       venueAddress: payload.venueAddress || null,
       expectedGuestCount: payload.expectedGuestCount ?? null,
@@ -100,8 +104,8 @@ export async function updateEventBooking(payload: {
     where: { id },
     data: {
       ...rest,
-      ...(eventDate !== undefined ? { eventDate: new Date(eventDate) } : {}),
-      ...(eventEndDate !== undefined ? { eventEndDate: eventEndDate ? new Date(eventEndDate) : null } : {}),
+      ...(eventDate !== undefined ? { eventDate: parseLocalDateStart(eventDate) } : {}),
+      ...(eventEndDate !== undefined ? { eventEndDate: eventEndDate ? parseLocalDateStart(eventEndDate) : null } : {}),
     },
     include: {
       client: { select: { id: true, customerName: true, phone: true } },

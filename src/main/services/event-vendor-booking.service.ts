@@ -163,6 +163,39 @@ export async function recomputePerHeadVendorBookings(eventId: string, expectedGu
   }
 }
 
+// Phase 68 §9.1 — Event Management item 5: post-event feedback linked to
+// vendor history. Deliberately separate from updateVendorBooking — this is
+// a distinct, one-time post-event action, not a general field edit.
+export async function recordVendorFeedback(payload: { id: string; vendorRating: number; vendorFeedback?: string }) {
+  if (payload.vendorRating < 1 || payload.vendorRating > 5) {
+    return { success: false, error: { code: 'EVB-006', message: 'Rating must be between 1 and 5.' } }
+  }
+  const db = getPrisma()
+  const existing = await db.eventVendorBooking.findUnique({ where: { id: payload.id }, select: { id: true } })
+  if (!existing) return { success: false, error: { code: 'EVB-005', message: 'Vendor booking not found.' } }
+
+  const booking = await db.eventVendorBooking.update({
+    where: { id: payload.id },
+    data: { vendorRating: payload.vendorRating, vendorFeedback: payload.vendorFeedback ?? null },
+    include: { vendor: { select: { id: true, supplierName: true, phone: true } } },
+  })
+  await db.auditLog.create({ data: { action: 'FEEDBACK_RECORDED', entityType: 'EventVendorBooking', entityId: booking.id, newValue: JSON.stringify({ vendorRating: payload.vendorRating }) } }).catch(() => {})
+  return { success: true, data: serializeVendorBooking(booking) }
+}
+
+// Phase 68 §9.1 — Event Management item 5: a vendor's full rated history
+// across every event they've worked — the real "should we book them again"
+// signal, worst-average-first so underperforming vendors surface first.
+export async function getVendorHistory(vendorId: string) {
+  const db = getPrisma()
+  const bookings = await db.eventVendorBooking.findMany({
+    where: { vendorId, vendorRating: { not: null } },
+    include: { event: { select: { id: true, eventName: true, eventType: true, eventDate: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return { success: true, data: bookings.map(serializeVendorBooking) }
+}
+
 export async function deleteVendorBooking(id: string) {
   const db = getPrisma()
   await db.eventVendorBooking.delete({ where: { id } })

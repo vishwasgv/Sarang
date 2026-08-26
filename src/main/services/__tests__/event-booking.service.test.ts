@@ -120,6 +120,34 @@ describe('event-booking.service — Decimal serialization', () => {
     expect((res as { error: { code: string } }).error.code).toBe('EVT-006')
     expect(db.eventBooking.update).not.toHaveBeenCalled()
   })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('createEventBooking stores eventDate/eventEndDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEventBooking({
+      clientId: 'cust-1', eventName: 'Sharma Wedding', eventType: 'WEDDING', eventDate: '2026-08-15',
+      eventEndDate: '2026-08-16', venueName: 'Test Venue',
+    })
+
+    expect(db.eventBooking.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ eventDate: new Date(2026, 7, 15), eventEndDate: new Date(2026, 7, 16) }),
+    }))
+  })
+
+  it('updateEventBooking stores an updated eventDate at local midnight too', async () => {
+    const db = makeMockDb(makeEvent())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateEventBooking({ id: 'event-1', eventDate: '2026-09-01' })
+
+    expect(db.eventBooking.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ eventDate: new Date(2026, 8, 1) }),
+    }))
+  })
 })
 
 // Phase 58 §2 — Event Management: changing expectedGuestCount must keep

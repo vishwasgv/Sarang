@@ -4,8 +4,10 @@ import {
   createVendorBooking,
   updateVendorBooking,
   deleteVendorBooking,
+  recordVendorFeedback,
+  getVendorHistory,
 } from '../../services/event-vendor-booking.service'
-import { CreateVendorBookingSchema, UpdateVendorBookingSchema, VendorBookingIdSchema } from '../../validation/event-vendor-booking.validation'
+import { CreateVendorBookingSchema, UpdateVendorBookingSchema, VendorBookingIdSchema, RecordVendorFeedbackSchema } from '../../validation/event-vendor-booking.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -34,5 +36,19 @@ export function registerEventVendorBooking(handle: HandleFn): void {
     const parsed = VendorBookingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteVendorBooking(parsed.data)
+  })
+
+  handle('eventVendorBooking:recordFeedback', async (raw) => {
+    const deny = await requirePermission('eventOperations.manage'); if (deny) return deny
+    const parsed = RecordVendorFeedbackSchema.safeParse(raw)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return recordVendorFeedback(parsed.data)
+  })
+
+  handle('eventVendorBooking:vendorHistory', async (raw) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const vendorId = raw as string
+    if (!vendorId) return { success: false, error: { code: 'VAL-001', message: 'Vendor ID is required.' } }
+    return getVendorHistory(vendorId)
   })
 }

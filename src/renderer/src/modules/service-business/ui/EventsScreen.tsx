@@ -24,6 +24,8 @@ interface EventVendorBooking {
   advancePaid: number
   status: string
   notes: string | null
+  vendorRating: number | null
+  vendorFeedback: string | null
   vendor: Supplier
 }
 interface EventRunOfShowItem {
@@ -85,7 +87,16 @@ const vendorStatusColor: Record<string, string> = {
 
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-IN') : '-'
 const fmtLabel = (s: string) => s.replace(/_/g, ' ')
-const toDateInput = (d: string | null) => d ? new Date(d).toISOString().split('T')[0] : ''
+// Real bug found live (2026-08-27 Phase 68 audit): `new Date(d).toISOString()`
+// shifts a LOCAL-midnight-stored date back to the PREVIOUS calendar day in
+// UTC for IST. Extracts local Y/M/D components directly instead — same fix
+// as ShootsScreen.tsx's own toDateInput (Photo Studio vertical).
+const toDateInput = (d: string | null) => {
+  if (!d) return ''
+  const dt = new Date(d)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
 const fmtCurrency = (n: number | null) => n == null ? '-' : `₹${Number(n).toLocaleString('en-IN')}`
 
 // ─── Event Form (shared Add + Edit) ─────────────────────────────────────────
@@ -527,6 +538,12 @@ export default function EventsScreen() {
   const [deleting, setDeleting] = useState(false)
   const [deleteVendorTarget, setDeleteVendorTarget] = useState<{ vendorId: string; eventId: string; vendorName: string } | null>(null)
   const [deletingVendor, setDeletingVendor] = useState(false)
+
+  // Phase 68 §9.1 — Event Management item 5: post-event feedback linked to vendor history
+  const [ratingFormFor, setRatingFormFor] = useState<string | null>(null)
+  const [ratingValue, setRatingValue] = useState(5)
+  const [ratingFeedback, setRatingFeedback] = useState('')
+  const [ratingSaving, setRatingSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [calendarMonth, setCalendarMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
 
@@ -636,6 +653,34 @@ export default function EventsScreen() {
       setErrorBanner('Could not refresh vendor list.')
     }
     loadKpis()
+  }
+
+  // Phase 68 §9.1 — Event Management item 5: post-event feedback linked to vendor history
+  function openRatingForm(v: EventVendorBooking) {
+    setRatingFormFor(v.id)
+    setRatingValue(v.vendorRating ?? 5)
+    setRatingFeedback(v.vendorFeedback ?? '')
+  }
+
+  async function handleSubmitRating(eventId: string) {
+    if (!ratingFormFor) return
+    setRatingSaving(true)
+    try {
+      const res = await api.eventVendorBooking.recordFeedback({ id: ratingFormFor, vendorRating: ratingValue, vendorFeedback: ratingFeedback.trim() || undefined })
+      if (res.success) {
+        setEvents(ev => ev.map(e => {
+          if (e.id !== eventId) return e
+          return { ...e, vendorBookings: e.vendorBookings.map(v => v.id === ratingFormFor ? (res.data as EventVendorBooking) : v) }
+        }))
+        setRatingFormFor(null)
+      } else {
+        setErrorBanner(res.error?.message ?? 'Could not save vendor feedback.')
+      }
+    } catch {
+      setErrorBanner('Could not save vendor feedback.')
+    } finally {
+      setRatingSaving(false)
+    }
   }
 
   async function handleGenerateInvoice(ev: EventBooking) {
@@ -802,25 +847,51 @@ export default function EventsScreen() {
                     ) : (
                       <div className="space-y-2">
                         {ev.vendorBookings.map(v => (
-                          <div key={v.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-gray-100 rounded-lg px-3 py-2 dark:border-slate-800">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{v.vendor.supplierName}</p>
-                              <p className="text-xs text-gray-500 dark:text-slate-400">
-                                {fmtLabel(v.vendorCategory)} · Quoted: {fmtCurrency(v.quotedAmount)}
-                                {v.pricingType === 'PER_HEAD' && v.perHeadRate != null && ` (₹${v.perHeadRate}/guest)`}
-                                {v.advancePaid ? ` · Advance: ${fmtCurrency(v.advancePaid)}` : ''}
-                              </p>
+                          <div key={v.id} className="bg-white dark:bg-slate-900 border border-gray-100 rounded-lg px-3 py-2 dark:border-slate-800">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{v.vendor.supplierName}</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400">
+                                  {fmtLabel(v.vendorCategory)} · Quoted: {fmtCurrency(v.quotedAmount)}
+                                  {v.pricingType === 'PER_HEAD' && v.perHeadRate != null && ` (₹${v.perHeadRate}/guest)`}
+                                  {v.advancePaid ? ` · Advance: ${fmtCurrency(v.advancePaid)}` : ''}
+                                </p>
+                              </div>
+                              <select
+                                value={v.status}
+                                onChange={e => handleVendorStatusChange(v.id, ev.id, e.target.value)}
+                                className={`text-xs h-7 px-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 font-medium ${vendorStatusColor[v.status] ?? 'text-gray-700 dark:text-slate-300'}`}
+                              >
+                                {VENDOR_STATUSES.map(s => <option key={s} value={s}>{fmtLabel(s)}</option>)}
+                              </select>
+                              {v.vendorRating != null ? (
+                                <button onClick={() => openRatingForm(v)} className="text-xs text-amber-600 font-medium hover:underline whitespace-nowrap">
+                                  {'★'.repeat(v.vendorRating)}{'☆'.repeat(5 - v.vendorRating)}
+                                </button>
+                              ) : (
+                                <button onClick={() => openRatingForm(v)} className="text-xs text-purple-600 font-medium hover:underline whitespace-nowrap">Rate</button>
+                              )}
+                              <button onClick={() => setDeleteVendorTarget({ vendorId: v.id, eventId: ev.id, vendorName: v.vendor.supplierName })} className="text-gray-300 hover:text-red-500 p-1">
+                                <X size={13} />
+                              </button>
                             </div>
-                            <select
-                              value={v.status}
-                              onChange={e => handleVendorStatusChange(v.id, ev.id, e.target.value)}
-                              className={`text-xs h-7 px-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 font-medium ${vendorStatusColor[v.status] ?? 'text-gray-700 dark:text-slate-300'}`}
-                            >
-                              {VENDOR_STATUSES.map(s => <option key={s} value={s}>{fmtLabel(s)}</option>)}
-                            </select>
-                            <button onClick={() => setDeleteVendorTarget({ vendorId: v.id, eventId: ev.id, vendorName: v.vendor.supplierName })} className="text-gray-300 hover:text-red-500 p-1">
-                              <X size={13} />
-                            </button>
+                            {ratingFormFor === v.id && (
+                              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2 flex-wrap">
+                                {[1, 2, 3, 4, 5].map(n => (
+                                  <button key={n} onClick={() => setRatingValue(n)} className={`text-lg leading-none ${n <= ratingValue ? 'text-amber-500' : 'text-gray-300 dark:text-slate-600'}`}>★</button>
+                                ))}
+                                <input
+                                  value={ratingFeedback} onChange={e => setRatingFeedback(e.target.value)}
+                                  placeholder="Feedback notes (optional)"
+                                  className="flex-1 min-w-[140px] h-8 px-2 border border-gray-300 rounded-lg text-xs dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                                />
+                                <button onClick={() => void handleSubmitRating(ev.id)} disabled={ratingSaving} className="px-2.5 h-8 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50">Save</button>
+                                <button onClick={() => setRatingFormFor(null)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">Cancel</button>
+                              </div>
+                            )}
+                            {v.vendorFeedback && ratingFormFor !== v.id && (
+                              <p className="mt-1.5 text-xs text-gray-500 italic dark:text-slate-400">&ldquo;{v.vendorFeedback}&rdquo;</p>
+                            )}
                           </div>
                         ))}
                       </div>

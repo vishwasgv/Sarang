@@ -6520,6 +6520,93 @@ async function generateEventBookingReport(params: { dateFrom: string; dateTo: st
   }
 }
 
+// Phase 68 §9.1 — Event Management item 2: vendor cost vs. budget. Every
+// non-CANCELLED event, total vendor cost (summed from every real vendor
+// line's quotedAmount) against the client's own budget AND the agency's own
+// finalAmount quote — a real margin-visibility signal (vendor cost eating
+// into the agency's own margin is invisible without this), worst-first by
+// budget overrun.
+export interface VendorCostVsBudgetRow {
+  eventName: string; clientName: string; clientBudget: number | null
+  totalVendorCost: number; finalAmount: number | null; budgetVariancePercent: number | null
+}
+export interface VendorCostVsBudgetReport {
+  rows: VendorCostVsBudgetRow[]
+  summary: { totalEvents: number; totalVendorCost: number; overBudgetCount: number }
+}
+
+async function generateVendorCostVsBudgetReport(): Promise<VendorCostVsBudgetReport> {
+  const db = getPrisma()
+  const events = await db.eventBooking.findMany({
+    where: { status: { not: 'CANCELLED' } },
+    include: { client: { select: { customerName: true } }, vendorBookings: { select: { quotedAmount: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: VendorCostVsBudgetRow[] = events.map((e) => {
+    const totalVendorCost = roundCurrency(e.vendorBookings.reduce((s, v) => s + Number(v.quotedAmount), 0))
+    const clientBudget = e.clientBudget == null ? null : Number(e.clientBudget)
+    return {
+      eventName: e.eventName, clientName: e.client.customerName, clientBudget, totalVendorCost,
+      finalAmount: e.finalAmount == null ? null : Number(e.finalAmount),
+      budgetVariancePercent: clientBudget != null && clientBudget > 0 ? round1(((totalVendorCost - clientBudget) / clientBudget) * 100) : null,
+    }
+  }).sort((a, b) => (b.budgetVariancePercent ?? -Infinity) - (a.budgetVariancePercent ?? -Infinity))
+
+  return {
+    rows,
+    summary: {
+      totalEvents: rows.length,
+      totalVendorCost: roundCurrency(rows.reduce((s, r) => s + r.totalVendorCost, 0)),
+      overBudgetCount: rows.filter((r) => (r.budgetVariancePercent ?? 0) > 0).length,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Event Management item 5: post-event feedback linked to
+// vendor history. Every RATED vendor booking, grouped by vendor, worst
+// (lowest average rating) first — the real "should we book them again"
+// signal across every event a vendor has actually worked.
+export interface VendorPerformanceRow {
+  vendorId: string; vendorName: string; ratedEventCount: number; avgRating: number
+}
+export interface VendorPerformanceReport {
+  rows: VendorPerformanceRow[]
+  summary: { totalRatedVendors: number; overallAvgRating: number }
+}
+
+async function generateVendorPerformanceHistoryReport(): Promise<VendorPerformanceReport> {
+  const db = getPrisma()
+  const bookings = await db.eventVendorBooking.findMany({
+    where: { vendorRating: { not: null } },
+    select: { vendorId: true, vendorRating: true, vendor: { select: { supplierName: true } } },
+  })
+
+  const byVendor = new Map<string, { vendorName: string; ratings: number[] }>()
+  for (const b of bookings) {
+    const existing = byVendor.get(b.vendorId) ?? { vendorName: b.vendor.supplierName, ratings: [] }
+    existing.ratings.push(b.vendorRating as number)
+    byVendor.set(b.vendorId, existing)
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: VendorPerformanceRow[] = Array.from(byVendor.entries())
+    .map(([vendorId, v]) => ({
+      vendorId, vendorName: v.vendorName, ratedEventCount: v.ratings.length,
+      avgRating: round1(v.ratings.reduce((s, r) => s + r, 0) / v.ratings.length),
+    }))
+    .sort((a, b) => a.avgRating - b.avgRating)
+
+  const allRatings = bookings.map((b) => b.vendorRating as number)
+  return {
+    rows,
+    summary: {
+      totalRatedVendors: rows.length,
+      overallAvgRating: allRatings.length > 0 ? round1(allRatings.reduce((s, r) => s + r, 0) / allRatings.length) : 0,
+    },
+  }
+}
+
 // ── Placement Agency — candidate/placement pipeline with commission ────────
 
 export interface PlacementReportRow {
@@ -8484,4 +8571,6 @@ export const reportService = {
   generateDeliveryPipelineReport,
   generateShootTypeRevenueMixReport,
   generateEquipmentCheckoutReport,
+  generateVendorCostVsBudgetReport,
+  generateVendorPerformanceHistoryReport,
 }

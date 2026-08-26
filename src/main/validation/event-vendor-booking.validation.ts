@@ -25,5 +25,12 @@ export const UpdateVendorBookingSchema = z.object({
 
 export const VendorBookingIdSchema = z.string().min(1, 'Vendor booking ID is required')
 
+export const RecordVendorFeedbackSchema = z.object({
+  id: z.string().min(1, 'Vendor booking ID is required'),
+  vendorRating: z.number().int().min(1, 'Rating must be between 1 and 5').max(5, 'Rating must be between 1 and 5'),
+  vendorFeedback: z.string().max(2000).optional(),
+})
+
 export type CreateVendorBookingPayload = z.infer<typeof CreateVendorBookingSchema>
 export type UpdateVendorBookingPayload = z.infer<typeof UpdateVendorBookingSchema>
+export type RecordVendorFeedbackPayload = z.infer<typeof RecordVendorFeedbackSchema>

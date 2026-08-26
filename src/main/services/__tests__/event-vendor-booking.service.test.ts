@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { listVendorBookings, createVendorBooking, updateVendorBooking, recomputePerHeadVendorBookings } from '../event-vendor-booking.service'
+import { listVendorBookings, createVendorBooking, updateVendorBooking, recomputePerHeadVendorBookings, recordVendorFeedback, getVendorHistory } from '../event-vendor-booking.service'
 
 // Regression coverage for the Phase 32 re-audit finding: EventVendorBooking.
 // quotedAmount/advancePaid are Prisma Decimal fields, returned unserialized
@@ -242,5 +242,76 @@ describe('event-vendor-booking.service — per-head pricing', () => {
     await recomputePerHeadVendorBookings('event-1', null)
 
     expect(db.eventVendorBooking.update).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 68 §9.1 — Event Management item 5: post-event feedback linked to
+// vendor history.
+describe('event-vendor-booking.service.recordVendorFeedback', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects a rating outside 1-5', async () => {
+    const res = await recordVendorFeedback({ id: 'vb-1', vendorRating: 6 })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EVB-006')
+  })
+
+  it('rejects a missing vendor booking', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorFeedback({ id: 'missing', vendorRating: 4 })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EVB-005')
+  })
+
+  it('records a real rating and feedback note', async () => {
+    const db = makeMockDb(makeVendorBooking())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await recordVendorFeedback({ id: 'vb-1', vendorRating: 4, vendorFeedback: 'Slightly late setup, food was excellent' })
+
+    expect(res.success).toBe(true)
+    expect(db.eventVendorBooking.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'vb-1' },
+      data: { vendorRating: 4, vendorFeedback: 'Slightly late setup, food was excellent' },
+    }))
+  })
+
+  it('leaves vendorFeedback null when no note is given', async () => {
+    const db = makeMockDb(makeVendorBooking())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await recordVendorFeedback({ id: 'vb-1', vendorRating: 5 })
+
+    expect(db.eventVendorBooking.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { vendorRating: 5, vendorFeedback: null },
+    }))
+  })
+})
+
+describe('event-vendor-booking.service.getVendorHistory', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('only queries rated bookings for the given vendor', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getVendorHistory('sup-1')
+
+    expect(db.eventVendorBooking.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { vendorId: 'sup-1', vendorRating: { not: null } },
+    }))
+  })
+
+  it('returns serialized bookings for that vendor', async () => {
+    const db = makeMockDb(makeVendorBooking({ vendorRating: 5, vendorFeedback: 'Great' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getVendorHistory('sup-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: Array<{ vendorRating: number }> }).data[0].vendorRating).toBe(5)
   })
 })

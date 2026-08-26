@@ -454,6 +454,8 @@ const api: IpcChannels = {
     deliveryPipeline: () => invoke('reports:deliveryPipeline'),
     shootTypeRevenueMix: (p: unknown) => invoke('reports:shootTypeRevenueMix', p),
     equipmentCheckout: () => invoke('reports:equipmentCheckout'),
+    vendorCostVsBudget: () => invoke('reports:vendorCostVsBudget'),
+    vendorPerformanceHistory: () => invoke('reports:vendorPerformanceHistory'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1454,6 +1456,8 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('eventVendorBooking:create', p),
     update: (p: unknown) => invoke('eventVendorBooking:update', p),
     delete: (p: unknown) => invoke('eventVendorBooking:delete', p),
+    recordFeedback: (p: unknown) => invoke('eventVendorBooking:recordFeedback', p),
+    vendorHistory: (p: unknown) => invoke('eventVendorBooking:vendorHistory', p),
   },
   eventRunOfShow: {
     list: (p: unknown) => invoke('eventRunOfShow:list', p),

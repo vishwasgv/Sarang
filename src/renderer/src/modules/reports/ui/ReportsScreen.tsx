@@ -300,6 +300,14 @@ interface ShootTypeRevenueMixReport { dateFrom: string; dateTo: string; rows: Sh
 interface EquipmentCheckoutRow { checkoutId: string; assetName: string; checkedOutToName: string | null; checkedOutDate: string; expectedReturnDate: string | null; daysOut: number; isOverdue: boolean }
 interface EquipmentCheckoutReport { rows: EquipmentCheckoutRow[]; summary: { totalOutstanding: number; overdueCount: number } }
 
+// Phase 68 §9.1 — Event Management item 2: Vendor Cost vs. Budget.
+interface VendorCostVsBudgetRow { eventName: string; clientName: string; clientBudget: number | null; totalVendorCost: number; finalAmount: number | null; budgetVariancePercent: number | null }
+interface VendorCostVsBudgetReport { rows: VendorCostVsBudgetRow[]; summary: { totalEvents: number; totalVendorCost: number; overBudgetCount: number } }
+
+// Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
+interface VendorPerformanceRow { vendorId: string; vendorName: string; ratedEventCount: number; avgRating: number }
+interface VendorPerformanceReport { rows: VendorPerformanceRow[]; summary: { totalRatedVendors: number; overallAvgRating: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -718,6 +726,8 @@ type ReportType =
   | 'issueAging' | 'teamUtilization' | 'sprintBilling'
   // Phase 68 §9.1 — Photo Studio items 1/2/5, 3 & 4
   | 'deliveryPipeline' | 'shootTypeRevenueMix' | 'equipmentCheckout'
+  // Phase 68 §9.1 — Event Management items 2 & 5
+  | 'vendorCostVsBudget' | 'vendorPerformanceHistory'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -909,6 +919,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — Photo Studio item 3. Current-state, no date range.
   { id: 'equipmentCheckout', icon: <PackageSearch size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'shoot_bookings' },
   { id: 'eventBookings', icon: <PartyPopper size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'event_bookings' },
+  // Phase 68 §9.1 — Event Management item 2. Current-state, no date range.
+  { id: 'vendorCostVsBudget', icon: <HandCoins size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'event_bookings' },
+  // Phase 68 §9.1 — Event Management item 5. Current-state, no date range.
+  { id: 'vendorPerformanceHistory', icon: <Award size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'event_bookings' },
   { id: 'placements', icon: <UsersRound size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'placement_agency' },
   { id: 'drawingRegister', icon: <FileStack size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'drawing_register' },
   { id: 'siteVisitLog', icon: <HardHat size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'site_visit_log' },
@@ -1438,6 +1452,12 @@ export function ReportsScreen() {
           break
         case 'equipmentCheckout':
           res = await window.api.reports.equipmentCheckout()
+          break
+        case 'vendorCostVsBudget':
+          res = await window.api.reports.vendorCostVsBudget()
+          break
+        case 'vendorPerformanceHistory':
+          res = await window.api.reports.vendorPerformanceHistory()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2285,6 +2305,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.assetName'), t('reports.col.checkedOutToName'), t('reports.col.checkedOutDate'), t('reports.col.expectedReturnDate'), t('reports.col.daysOut'), t('reports.col.isOverdue')],
           rows: d.rows.map(r => [r.assetName, r.checkedOutToName ?? '—', r.checkedOutDate, r.expectedReturnDate ?? '—', r.daysOut, r.isOverdue ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'vendorCostVsBudget': {
+        const d = reportData as VendorCostVsBudgetReport
+        return {
+          headers: [t('reports.col.eventName'), t('reports.col.client'), `${t('reports.col.clientBudget')} (${currencySymbol})`, `${t('reports.col.totalVendorCost')} (${currencySymbol})`, t('reports.col.budgetVariancePercent')],
+          rows: d.rows.map(r => [r.eventName, r.clientName, r.clientBudget ?? '—', r.totalVendorCost.toFixed(2), r.budgetVariancePercent ?? '—'])
+        }
+      }
+      case 'vendorPerformanceHistory': {
+        const d = reportData as VendorPerformanceReport
+        return {
+          headers: [t('reports.col.vendorName'), t('reports.col.ratedEventCount'), t('reports.col.avgRating')],
+          rows: d.rows.map(r => [r.vendorName, r.ratedEventCount, r.avgRating])
         }
       }
       case 'serviceProjects': {
@@ -3917,6 +3951,8 @@ export function ReportsScreen() {
       case 'deliveryPipeline': return []
       case 'shootTypeRevenueMix': return []
       case 'equipmentCheckout': return []
+      case 'vendorCostVsBudget': return []
+      case 'vendorPerformanceHistory': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4449,6 +4485,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'deliveryPipeline': return <DeliveryPipelineView data={data as DeliveryPipelineReport} />
     case 'shootTypeRevenueMix': return <ShootTypeRevenueMixView data={data as ShootTypeRevenueMixReport} fmt={fmt} />
     case 'equipmentCheckout': return <EquipmentCheckoutView data={data as EquipmentCheckoutReport} />
+    case 'vendorCostVsBudget': return <VendorCostVsBudgetView data={data as VendorCostVsBudgetReport} fmt={fmt} />
+    case 'vendorPerformanceHistory': return <VendorPerformanceHistoryView data={data as VendorPerformanceReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6628,6 +6666,43 @@ function EquipmentCheckoutView({ data }: { data: EquipmentCheckoutReport }) {
         headers={[t('reports.col.assetName'), t('reports.col.checkedOutToName'), t('reports.col.checkedOutDate'), t('reports.col.expectedReturnDate'), t('reports.col.daysOut'), t('reports.col.isOverdue')]}
         rows={data.rows.map(r => [r.assetName, r.checkedOutToName ?? '—', r.checkedOutDate, r.expectedReturnDate ?? '—', r.daysOut, r.isOverdue ? t('common.yes') : t('common.no')])}
         emptyText={t('reports.empty.equipmentCheckout')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Event Management item 2: Vendor Cost vs. Budget.
+function VendorCostVsBudgetView({ data, fmt }: { data: VendorCostVsBudgetReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalEvents'), value: String(data.summary.totalEvents) },
+        { label: t('reports.summary.totalVendorCost'), value: fmt(data.summary.totalVendorCost) },
+        { label: t('reports.summary.overBudgetCount'), value: String(data.summary.overBudgetCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.eventName'), t('reports.col.client'), t('reports.col.clientBudget'), t('reports.col.totalVendorCost'), t('reports.col.budgetVariancePercent')]}
+        rows={data.rows.map(r => [r.eventName, r.clientName, r.clientBudget != null ? fmt(r.clientBudget) : '—', fmt(r.totalVendorCost), r.budgetVariancePercent != null ? `${r.budgetVariancePercent}%` : '—'])}
+        emptyText={t('reports.empty.vendorCostVsBudget')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
+function VendorPerformanceHistoryView({ data }: { data: VendorPerformanceReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRatedVendors'), value: String(data.summary.totalRatedVendors) },
+        { label: t('reports.summary.overallAvgRating'), value: String(data.summary.overallAvgRating) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.vendorName'), t('reports.col.ratedEventCount'), t('reports.col.avgRating')]}
+        rows={data.rows.map(r => [r.vendorName, r.ratedEventCount, r.avgRating])}
+        emptyText={t('reports.empty.vendorPerformanceHistory')}
       />
     </div>
   )

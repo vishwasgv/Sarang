@@ -1896,6 +1896,14 @@
         "label": "Equipment Checkout",
         "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
       },
+      "vendorCostVsBudget": {
+        "label": "Vendor Cost vs. Budget",
+        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+      },
+      "vendorPerformanceHistory": {
+        "label": "Vendor Performance History",
+        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2208,6 +2216,10 @@
       "avgRevisionRounds": "Avg. Revision Rounds",
       "totalBookings": "Total Bookings",
       "totalOutstanding": "Outstanding",
+      "totalEvents": "Events",
+      "totalVendorCost": "Total Vendor Cost",
+      "totalRatedVendors": "Rated Vendors",
+      "overallAvgRating": "Overall Avg. Rating",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2668,7 +2680,9 @@
       "sprintBilling": "No completed sprints yet.",
       "deliveryPipeline": "No bookings with a revision round logged yet.",
       "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out."
+      "equipmentCheckout": "No equipment currently checked out.",
+      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
+      "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -3050,7 +3064,13 @@
       "checkedOutDate": "Checked Out",
       "expectedReturnDate": "Expected Return",
       "daysOut": "Days Out",
-      "isOverdue": "Overdue"
+      "isOverdue": "Overdue",
+      "eventName": "Event",
+      "clientBudget": "Client Budget",
+      "totalVendorCost": "Total Vendor Cost",
+      "vendorName": "Vendor",
+      "ratedEventCount": "Rated Events",
+      "avgRating": "Avg. Rating"
     },
     "legend": {
       "schemeCost": "Scheme Cost",

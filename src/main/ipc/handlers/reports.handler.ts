@@ -1104,4 +1104,18 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateEquipmentCheckoutReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Event Management item 2: Vendor Cost vs. Budget.
+  handle('reports:vendorCostVsBudget', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateVendorCostVsBudgetReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
+  handle('reports:vendorPerformanceHistory', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateVendorPerformanceHistoryReport()
+    return { success: true, data }
+  })
 }
