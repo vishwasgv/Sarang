@@ -977,4 +977,18 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateFeeRealizationReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Architect item 2: Drawing Approval Cycle Time.
+  handle('reports:drawingApprovalCycleTime', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateDrawingApprovalCycleTimeReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Architect/Civil item 4: Project Stage Progress.
+  handle('reports:projectStageProgress', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateProjectStageProgressReport()
+    return { success: true, data }
+  })
 }

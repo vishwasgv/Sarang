@@ -231,6 +231,15 @@ interface LawyerBillableHoursReport { dateFrom: string; dateTo: string; rows: La
 interface FeeRealizationRow { engagementTitle: string; clientName: string; expectedFee: number; isInvoicedThisPeriod: boolean }
 interface FeeRealizationReport { period: string; rows: FeeRealizationRow[]; summary: { totalExpectedFee: number; totalRealizedFee: number; realizationPercent: number } }
 
+// Phase 68 §9.1 — Architect item 2: Drawing Approval Cycle Time.
+interface DrawingApprovalCycleRow { drawingNumber: string; revisionNumber: string; discipline: string; projectName: string; issuedDate: string; approvedDate: string; daysToApprove: number }
+interface DrawingApprovalCycleByDiscipline { discipline: string; avgDaysToApprove: number; count: number }
+interface DrawingApprovalCycleTimeReport { rows: DrawingApprovalCycleRow[]; byDiscipline: DrawingApprovalCycleByDiscipline[]; summary: { totalApproved: number; avgDaysToApprove: number } }
+
+// Phase 68 §9.1 — Architect/Civil item 4: Project Stage Progress.
+interface ProjectStageProgressRow { projectId: string; projectName: string; clientName: string; stage: string; stageProgressPercent: number | null; daysInStage: number }
+interface ProjectStageProgressReport { rows: ProjectStageProgressRow[]; summary: { totalActiveProjects: number; avgDaysInStage: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -637,6 +646,8 @@ type ReportType =
   | 'caseAging' | 'lawyerBillableHours'
   // Phase 68 §9.1 — CA Firm item 4
   | 'feeRealization'
+  // Phase 68 §9.1 — Architect items 2 & 4
+  | 'drawingApprovalCycleTime' | 'projectStageProgress'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -847,6 +858,11 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // Phase 68 §9.1 — CA Firm item 4. Current-state snapshot for the current
   // calendar month, no date range.
   { id: 'feeRealization', icon: <TrendingUp size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'engagements' },
+  // Phase 68 §9.1 — Architect item 2. Current-state (every APPROVED
+  // drawing), no date range.
+  { id: 'drawingApprovalCycleTime', icon: <Timer size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'drawing_register' },
+  // Phase 68 §9.1 — Architect/Civil item 4. Current-state worklist, no date range.
+  { id: 'projectStageProgress', icon: <Target size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'service_projects' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1271,6 +1287,12 @@ export function ReportsScreen() {
           break
         case 'feeRealization':
           res = await window.api.reports.feeRealization()
+          break
+        case 'drawingApprovalCycleTime':
+          res = await window.api.reports.drawingApprovalCycleTime()
+          break
+        case 'projectStageProgress':
+          res = await window.api.reports.projectStageProgress()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2013,6 +2035,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.engagement'), t('reports.col.clientName'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.invoicedThisPeriod')],
           rows: d.rows.map(r => [r.engagementTitle, r.clientName, r.expectedFee.toFixed(2), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'drawingApprovalCycleTime': {
+        const d = reportData as DrawingApprovalCycleTimeReport
+        return {
+          headers: [t('reports.col.drawingNumber'), t('reports.col.revisionNumber'), t('reports.col.discipline'), t('reports.col.projectName'), t('reports.col.issuedDate'), t('reports.col.approvedDate'), t('reports.col.daysToApprove')],
+          rows: d.rows.map(r => [r.drawingNumber, r.revisionNumber, r.discipline, r.projectName, r.issuedDate, r.approvedDate, r.daysToApprove])
+        }
+      }
+      case 'projectStageProgress': {
+        const d = reportData as ProjectStageProgressReport
+        return {
+          headers: [t('reports.col.projectName'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.stageProgress'), t('reports.col.daysInStage')],
+          rows: d.rows.map(r => [r.projectName, r.clientName, r.stage, r.stageProgressPercent ?? '—', r.daysInStage])
         }
       }
       case 'serviceProjects': {
@@ -3628,6 +3664,8 @@ export function ReportsScreen() {
       case 'learnerProgressFunnel': return []
       case 'caseAging': return []
       case 'feeRealization': return []
+      case 'drawingApprovalCycleTime': return []
+      case 'projectStageProgress': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4143,6 +4181,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'caseAging': return <CaseAgingView data={data as CaseAgingReport} />
     case 'lawyerBillableHours': return <LawyerBillableHoursView data={data as LawyerBillableHoursReport} fmt={fmt} />
     case 'feeRealization': return <FeeRealizationView data={data as FeeRealizationReport} fmt={fmt} />
+    case 'drawingApprovalCycleTime': return <DrawingApprovalCycleTimeView data={data as DrawingApprovalCycleTimeReport} />
+    case 'projectStageProgress': return <ProjectStageProgressView data={data as ProjectStageProgressReport} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5969,6 +6009,56 @@ function FeeRealizationView({ data, fmt }: { data: FeeRealizationReport; fmt: (n
         headers={[t('reports.col.engagement'), t('reports.col.clientName'), t('common.amount'), t('reports.col.invoicedThisPeriod')]}
         rows={data.rows.map(r => [r.engagementTitle, r.clientName, fmt(r.expectedFee), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])}
         emptyText={t('reports.empty.feeRealization')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Architect item 2: Drawing Approval Cycle Time.
+function DrawingApprovalCycleTimeView({ data }: { data: DrawingApprovalCycleTimeReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalApproved'), value: String(data.summary.totalApproved) },
+        { label: t('reports.summary.avgDaysToApprove'), value: String(data.summary.avgDaysToApprove) },
+      ]} />
+      {data.byDiscipline.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.drawingApprovalCycleTime.label')}</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, Math.min(data.byDiscipline.length, 10) * 40)}>
+            <BarChart data={data.byDiscipline} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="discipline" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={110} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="avgDaysToApprove" fill={STATUS_COLORS.brand} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={[t('reports.col.drawingNumber'), t('reports.col.revisionNumber'), t('reports.col.discipline'), t('reports.col.projectName'), t('reports.col.issuedDate'), t('reports.col.approvedDate'), t('reports.col.daysToApprove')]}
+        rows={data.rows.map(r => [r.drawingNumber, r.revisionNumber, r.discipline, r.projectName, r.issuedDate, r.approvedDate, r.daysToApprove])}
+        emptyText={t('reports.empty.drawingApprovalCycleTime')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Architect/Civil item 4: Project Stage Progress.
+function ProjectStageProgressView({ data }: { data: ProjectStageProgressReport }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalActiveProjects'), value: String(data.summary.totalActiveProjects) },
+        { label: t('reports.summary.avgDaysInStage'), value: String(data.summary.avgDaysInStage) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.projectName'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.stageProgress'), t('reports.col.daysInStage')]}
+        rows={data.rows.map(r => [r.projectName, r.clientName, r.stage, r.stageProgressPercent != null ? `${r.stageProgressPercent}%` : '—', r.daysInStage])}
+        emptyText={t('reports.empty.projectStageProgress')}
       />
     </div>
   )

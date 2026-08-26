@@ -7939,3 +7939,161 @@ describe('reportService.generateFeeRealizationReport', () => {
     expect(result.summary).toEqual({ totalExpectedFee: 0, totalRealizedFee: 0, realizationPercent: 0 })
   })
 })
+
+describe('reportService.generateDrawingApprovalCycleTimeReport', () => {
+  it('computes daysToApprove from issuedDate to approvedDate', async () => {
+    const db = {
+      drawingRevision: {
+        findMany: vi.fn().mockResolvedValue([
+          { drawingNumber: 'A-101', revisionNumber: 'B', discipline: 'ARCHITECTURAL', issuedDate: new Date(2026, 7, 1), createdAt: new Date(2026, 7, 1), approvedDate: new Date(2026, 7, 15), project: { projectName: 'Office Fitout' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDrawingApprovalCycleTimeReport()
+
+    expect(result.rows[0].daysToApprove).toBe(14)
+    expect(result.summary).toEqual({ totalApproved: 1, avgDaysToApprove: 14 })
+  })
+
+  it('falls back to createdAt when issuedDate was never recorded', async () => {
+    const db = {
+      drawingRevision: {
+        findMany: vi.fn().mockResolvedValue([
+          { drawingNumber: 'A-102', revisionNumber: 'A', discipline: 'STRUCTURAL', issuedDate: null, createdAt: new Date(2026, 7, 1), approvedDate: new Date(2026, 7, 6), project: { projectName: 'Villa Extension' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDrawingApprovalCycleTimeReport()
+
+    expect(result.rows[0].daysToApprove).toBe(5)
+  })
+
+  it('averages days-to-approve per discipline, worst-average first', async () => {
+    const db = {
+      drawingRevision: {
+        findMany: vi.fn().mockResolvedValue([
+          { drawingNumber: 'A-101', revisionNumber: 'A', discipline: 'ARCHITECTURAL', issuedDate: new Date(2026, 7, 1), createdAt: new Date(2026, 7, 1), approvedDate: new Date(2026, 7, 3), project: { projectName: 'P1' } },
+          { drawingNumber: 'S-101', revisionNumber: 'A', discipline: 'STRUCTURAL', issuedDate: new Date(2026, 7, 1), createdAt: new Date(2026, 7, 1), approvedDate: new Date(2026, 7, 21), project: { projectName: 'P1' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDrawingApprovalCycleTimeReport()
+
+    expect(result.byDiscipline.map((d) => d.discipline)).toEqual(['STRUCTURAL', 'ARCHITECTURAL'])
+  })
+
+  it('only queries APPROVED drawings with a real approvedDate', async () => {
+    const db = { drawingRevision: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateDrawingApprovalCycleTimeReport()
+
+    expect(db.drawingRevision.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'APPROVED', approvedDate: { not: null } },
+    }))
+  })
+
+  it('returns an honest empty result when there are no approved drawings', async () => {
+    const db = { drawingRevision: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDrawingApprovalCycleTimeReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.byDiscipline).toEqual([])
+    expect(result.summary).toEqual({ totalApproved: 0, avgDaysToApprove: 0 })
+  })
+})
+
+describe('reportService.generateProjectStageProgressReport', () => {
+  it('computes stageProgressPercent from the recognized Architect pipeline position', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'p1', projectName: 'Office Fitout', stage: 'DRAWINGS', stageUpdatedAt: new Date(), createdAt: new Date(), client: { customerName: 'Client A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectStageProgressReport()
+
+    // DRAWINGS is index 3 (0-based) of 7 Architect stages -> (4/7)*100 = 57%
+    expect(result.rows[0].stageProgressPercent).toBe(57)
+  })
+
+  it('computes stageProgressPercent from the recognized Civil pipeline when the stage matches that vocabulary instead', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'p1', projectName: 'Road Widening', stage: 'FOUNDATION', stageUpdatedAt: new Date(), createdAt: new Date(), client: { customerName: 'Client A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectStageProgressReport()
+
+    // FOUNDATION is index 2 (0-based) of 6 Civil stages -> (3/6)*100 = 50%
+    expect(result.rows[0].stageProgressPercent).toBe(50)
+  })
+
+  it('returns null stageProgressPercent for a stage value not in any recognized pipeline', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'p1', projectName: 'Custom Project', stage: 'SOME_CUSTOM_STAGE', stageUpdatedAt: new Date(), createdAt: new Date(), client: { customerName: 'Client A' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectStageProgressReport()
+
+    expect(result.rows[0].stageProgressPercent).toBeNull()
+  })
+
+  it('sorts worst-first by days stuck in the current stage, and falls back to createdAt when stageUpdatedAt was never set', async () => {
+    const db = {
+      serviceProject: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'p1', projectName: 'Recently moved', stage: 'CONCEPT', stageUpdatedAt: new Date(Date.now() - 2 * 86400000), createdAt: new Date(Date.now() - 200 * 86400000), client: { customerName: 'Client A' } },
+          { id: 'p2', projectName: 'Never tracked', stage: 'SCHEMATIC', stageUpdatedAt: null, createdAt: new Date(Date.now() - 40 * 86400000), client: { customerName: 'Client B' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectStageProgressReport()
+
+    expect(result.rows.map((r) => r.projectId)).toEqual(['p2', 'p1'])
+    expect(result.rows[0].daysInStage).toBeGreaterThanOrEqual(39)
+  })
+
+  it('only queries ACTIVE projects with a stage set', async () => {
+    const db = { serviceProject: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateProjectStageProgressReport()
+
+    expect(db.serviceProject.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'ACTIVE', stage: { not: null } },
+    }))
+  })
+
+  it('returns an honest empty result when there are no active staged projects', async () => {
+    const db = { serviceProject: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProjectStageProgressReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalActiveProjects: 0, avgDaysInStage: 0 })
+  })
+})

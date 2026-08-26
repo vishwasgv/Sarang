@@ -4768,6 +4768,13 @@ model ServiceProject {
   // separate, generic Project Kanban model) since this is the model
   // TimeEntry's hours/ratePerHour already drive real invoicing from.
   billingMethod      String    @default("FIXED_COST") // FIXED_COST | HOURLY | DAILY_PER_TASK | DAILY_PER_PROJECT | DAILY_PER_USER
+  // Phase 68 §9.1 — Architect/Civil item 4: project stage progress. Only
+  // set by the dedicated stage-change path in updateServiceProject (a no-op
+  // reassertion of the same stage does NOT reset this) — same pattern as
+  // LegalCase.caseStageUpdatedAt — so a "days in current stage" aging report
+  // has a real signal to work from instead of updatedAt (which changes on
+  // ANY field edit, not just a stage move).
+  stageUpdatedAt     DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

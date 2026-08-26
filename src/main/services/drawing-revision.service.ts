@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // Fresh-audit build (2026-07-12) — Architect real depth. A drawing register
 // (which drawing, which revision, current status) is genuine everyday
@@ -37,7 +38,11 @@ export async function createDrawingRevision(payload: {
         discipline: payload.discipline ?? 'ARCHITECTURAL',
         revisionNumber: payload.revisionNumber?.trim() || 'A',
         status: payload.status ?? 'DRAFT',
-        issuedDate: payload.issuedDate ? new Date(payload.issuedDate) : null,
+        // Real bug found live (2026-08-27 Phase 68 audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this app's own parseLocalDateStart convention used
+        // everywhere else for a date-only write.
+        issuedDate: payload.issuedDate ? parseLocalDateStart(payload.issuedDate) : null,
         notes: payload.notes ?? null,
       }
     })
@@ -82,7 +87,7 @@ export async function updateDrawingRevision(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(issuedDate !== undefined ? { issuedDate: issuedDate ? new Date(issuedDate) : null } : {}),
+        ...(issuedDate !== undefined ? { issuedDate: issuedDate ? parseLocalDateStart(issuedDate) : null } : {}),
         ...(payload.status === 'APPROVED' && payload.approvedByName?.trim() ? { approvedDate: new Date() } : {}),
       }
     })
@@ -135,7 +140,7 @@ export async function issueNewRevision(payload: {
           discipline: payload.discipline ?? previous.discipline,
           revisionNumber: payload.revisionNumber.trim(),
           status: 'DRAFT',
-          issuedDate: payload.issuedDate ? new Date(payload.issuedDate) : null,
+          issuedDate: payload.issuedDate ? parseLocalDateStart(payload.issuedDate) : null,
           notes: payload.notes ?? null,
           supersedesId: previous.id,
         },
@@ -148,6 +153,42 @@ export async function issueNewRevision(payload: {
     return { success: true, data: created }
   } catch (err) {
     return { success: false, error: { code: 'DR-011', message: err instanceof Error ? err.message : 'Could not issue new revision.' } }
+  }
+}
+
+// Phase 68 §9.1 — Architect item 5: superseded-drawing warning. issueNewRevision
+// is the only path that properly retires a revision (creates a real
+// successor AND flips the predecessor to SUPERSEDED in the same
+// transaction). But the status dropdown on DrawingRegisterScreen lets a
+// user flip ANY revision's status directly, including setting the newest
+// (currently-displayed "current") revision to SUPERSEDED without ever
+// issuing a replacement — silently leaving that drawing number with no
+// valid current revision at all, which is exactly the dangerous case a site
+// team could act on by mistake. Flags any SUPERSEDED row that nothing else
+// in the register actually supersedes (no other row's supersedesId points
+// at it) as orphaned.
+export interface OrphanedSupersededDrawing {
+  id: string
+  projectId: string
+  drawingNumber: string
+  title: string
+  revisionNumber: string
+}
+
+export async function getOrphanedSupersededDrawings(
+  projectId: string
+): Promise<{ success: true; data: OrphanedSupersededDrawing[] } | { success: false; error: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const revisions = await db.drawingRevision.findMany({ where: { projectId }, select: { id: true, drawingNumber: true, title: true, revisionNumber: true, status: true, supersedesId: true } })
+    const supersededByOthers = new Set(revisions.map((r) => r.supersedesId).filter((id): id is string => !!id))
+    const orphaned = revisions.filter((r) => r.status === 'SUPERSEDED' && !supersededByOthers.has(r.id))
+    return {
+      success: true,
+      data: orphaned.map((r) => ({ id: r.id, projectId, drawingNumber: r.drawingNumber, title: r.title, revisionNumber: r.revisionNumber })),
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'DR-013', message: err instanceof Error ? err.message : 'Could not check for orphaned superseded drawings.' } }
   }
 }
 

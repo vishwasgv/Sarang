@@ -7587,6 +7587,111 @@ async function generateFeeRealizationReport(): Promise<FeeRealizationReport> {
   }
 }
 
+// Phase 68 §9.1 — Architect items 1/2: drawing approval-cycle time. The live
+// per-drawing "awaiting approval Xd" timer (item 1) is a pure client-side
+// computation on DrawingRegisterScreen.tsx (no backend needed — it's just
+// now-minus-issuedDate for an ISSUED_FOR_REVIEW row). This report is item 2:
+// the aggregate — for every APPROVED drawing, how many days actually elapsed
+// from issue to approval, so a practice can see whether its review cycle is
+// getting faster or slower, broken down by discipline. Falls back to
+// createdAt when issuedDate was never recorded (an APPROVED drawing must
+// have an approvedDate by construction — see updateDrawingRevision's
+// approvedByName+approvedDate requirement — but issuedDate is optional).
+export interface DrawingApprovalCycleRow {
+  drawingNumber: string; revisionNumber: string; discipline: string; projectName: string
+  issuedDate: string; approvedDate: string; daysToApprove: number
+}
+export interface DrawingApprovalCycleByDiscipline { discipline: string; avgDaysToApprove: number; count: number }
+export interface DrawingApprovalCycleTimeReport {
+  rows: DrawingApprovalCycleRow[]
+  byDiscipline: DrawingApprovalCycleByDiscipline[]
+  summary: { totalApproved: number; avgDaysToApprove: number }
+}
+
+async function generateDrawingApprovalCycleTimeReport(): Promise<DrawingApprovalCycleTimeReport> {
+  const db = getPrisma()
+  const drawings = await db.drawingRevision.findMany({
+    where: { status: 'APPROVED', approvedDate: { not: null } },
+    include: { project: { select: { projectName: true } } },
+    orderBy: { approvedDate: 'desc' },
+  })
+
+  const rows: DrawingApprovalCycleRow[] = drawings.map((d) => {
+    const from = d.issuedDate ?? d.createdAt
+    const daysToApprove = Math.max(0, Math.floor((d.approvedDate!.getTime() - from.getTime()) / 86400000))
+    return {
+      drawingNumber: d.drawingNumber, revisionNumber: d.revisionNumber, discipline: d.discipline, projectName: d.project.projectName,
+      issuedDate: toLocalISODate(from), approvedDate: toLocalISODate(d.approvedDate!),
+      daysToApprove,
+    }
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byDisciplineMap = new Map<string, number[]>()
+  for (const r of rows) byDisciplineMap.set(r.discipline, [...(byDisciplineMap.get(r.discipline) ?? []), r.daysToApprove])
+  const byDiscipline: DrawingApprovalCycleByDiscipline[] = Array.from(byDisciplineMap.entries())
+    .map(([discipline, days]) => ({ discipline, avgDaysToApprove: round1(days.reduce((s, d) => s + d, 0) / days.length), count: days.length }))
+    .sort((a, b) => b.avgDaysToApprove - a.avgDaysToApprove)
+
+  return {
+    rows, byDiscipline,
+    summary: { totalApproved: rows.length, avgDaysToApprove: rows.length > 0 ? round1(rows.reduce((s, r) => s + r.daysToApprove, 0) / rows.length) : 0 },
+  }
+}
+
+// Phase 68 §9.1 — Architect/Civil item 4: project stage progress. A live
+// current-state worklist across every ACTIVE project on a recognized stage
+// pipeline, worst-first by days stuck in the CURRENT stage
+// (ServiceProject.stageUpdatedAt — only reset on an actual stage change, see
+// updateServiceProject) — same "aging, not just a status label" shape as
+// Lawyer's generateCaseAgingReport. stageProgressPercent is a plain
+// index-in-pipeline count, not a fabricated weighted score.
+const ARCHITECT_STAGE_PIPELINE = ['CONCEPT', 'SCHEMATIC', 'DESIGN_DEVELOPMENT', 'DRAWINGS', 'APPROVALS', 'CONSTRUCTION', 'HANDOVER']
+const CIVIL_STAGE_PIPELINE = ['SURVEY', 'DESIGN', 'FOUNDATION', 'STRUCTURE', 'FINISHING', 'HANDOVER']
+
+function stagePipelineFor(stage: string): string[] | null {
+  if (ARCHITECT_STAGE_PIPELINE.includes(stage)) return ARCHITECT_STAGE_PIPELINE
+  if (CIVIL_STAGE_PIPELINE.includes(stage)) return CIVIL_STAGE_PIPELINE
+  return null
+}
+
+export interface ProjectStageProgressRow {
+  projectId: string; projectName: string; clientName: string
+  stage: string; stageProgressPercent: number | null; daysInStage: number
+}
+export interface ProjectStageProgressReport {
+  rows: ProjectStageProgressRow[]
+  summary: { totalActiveProjects: number; avgDaysInStage: number }
+}
+
+async function generateProjectStageProgressReport(): Promise<ProjectStageProgressReport> {
+  const db = getPrisma()
+  const now = new Date()
+
+  const projects = await db.serviceProject.findMany({
+    where: { status: 'ACTIVE', stage: { not: null } },
+    select: { id: true, projectName: true, stage: true, stageUpdatedAt: true, createdAt: true, client: { select: { customerName: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: ProjectStageProgressRow[] = projects.map((p) => {
+    const stage = p.stage as string
+    const pipeline = stagePipelineFor(stage)
+    const stageProgressPercent = pipeline ? Math.round(((pipeline.indexOf(stage) + 1) / pipeline.length) * 100) : null
+    const stageEnteredAt = p.stageUpdatedAt ?? p.createdAt
+    return {
+      projectId: p.id, projectName: p.projectName, clientName: p.client.customerName,
+      stage, stageProgressPercent,
+      daysInStage: Math.floor((now.getTime() - stageEnteredAt.getTime()) / 86400000),
+    }
+  }).sort((a, b) => b.daysInStage - a.daysInStage)
+
+  return {
+    rows,
+    summary: { totalActiveProjects: rows.length, avgDaysInStage: rows.length > 0 ? round1(rows.reduce((s, r) => s + r.daysInStage, 0) / rows.length) : 0 },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7707,4 +7812,6 @@ export const reportService = {
   generateCaseAgingReport,
   generateLawyerBillableHoursReport,
   generateFeeRealizationReport,
+  generateDrawingApprovalCycleTimeReport,
+  generateProjectStageProgressReport,
 }

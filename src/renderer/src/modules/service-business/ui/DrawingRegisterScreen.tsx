@@ -21,6 +21,15 @@ interface DrawingRevision {
   approvedDate: string | null
 }
 
+// Phase 68 §9.1 — Architect item 1: live per-drawing approval-cycle timer.
+// Pure client-side computation (no backend round-trip needed) — days
+// elapsed since issuedDate (or createdAt, when issuedDate was never set)
+// for a drawing still sitting in ISSUED_FOR_REVIEW.
+function daysAwaitingApproval(d: { issuedDate: string | null; createdAt: string }): number {
+  const from = new Date(d.issuedDate ?? d.createdAt)
+  return Math.max(0, Math.floor((Date.now() - from.getTime()) / 86400000))
+}
+
 const DISCIPLINES = ['ARCHITECTURAL', 'STRUCTURAL', 'MEP', 'LANDSCAPE', 'INTERIOR']
 const STATUSES = ['DRAFT', 'ISSUED_FOR_REVIEW', 'APPROVED', 'SUPERSEDED']
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -55,6 +64,9 @@ export function DrawingRegisterScreen(): React.JSX.Element {
   const [deleteTarget, setDeleteTarget] = useState<DrawingRevision | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Phase 68 §9.1 — Architect item 5: superseded-drawing warning
+  const [orphanedSuperseded, setOrphanedSuperseded] = useState<{ id: string; drawingNumber: string; revisionNumber: string }[]>([])
+
   // Phase 58 §2 — issue-new-revision form (per drawing)
   const [newRevisionFor, setNewRevisionFor] = useState<DrawingRevision | null>(null)
   const [nextRevisionNumber, setNextRevisionNumber] = useState('')
@@ -78,12 +90,16 @@ export function DrawingRegisterScreen(): React.JSX.Element {
   }, [])
 
   const load = useCallback(async (pid: string) => {
-    if (!pid) { setItems([]); return }
+    if (!pid) { setItems([]); setOrphanedSuperseded([]); return }
     setLoading(true)
     try {
-      const res = await window.api.drawingRevision.list({ projectId: pid })
+      const [res, orphanRes] = await Promise.all([
+        window.api.drawingRevision.list({ projectId: pid }),
+        window.api.drawingRevision.orphanedSuperseded({ projectId: pid }),
+      ])
       if (res.success) setItems((res.data as DrawingRevision[]) ?? [])
       else toastError('Error', res.error?.message ?? 'Could not load drawing register.')
+      if (orphanRes.success) setOrphanedSuperseded((orphanRes.data as { id: string; drawingNumber: string; revisionNumber: string }[]) ?? [])
     } catch {
       toastError('Error', 'Could not load drawing register.')
     } finally {
@@ -243,6 +259,17 @@ export function DrawingRegisterScreen(): React.JSX.Element {
         {projects.map((p) => <option key={p.id} value={p.id}>{p.projectName} — {p.client.customerName}</option>)}
       </Select>
 
+      {orphanedSuperseded.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-red-800 dark:text-red-400 uppercase tracking-wide mb-1">
+            {orphanedSuperseded.length} drawing{orphanedSuperseded.length === 1 ? '' : 's'} marked Superseded with no replacement on file
+          </p>
+          <p className="text-xs text-red-700 dark:text-red-400">
+            {orphanedSuperseded.map((o) => `${o.drawingNumber} Rev ${o.revisionNumber}`).join(', ')} — issue a new revision or correct the status; this drawing currently has no valid current revision.
+          </p>
+        </div>
+      )}
+
       {showForm && canManage && (
         <Card padding="md" className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -290,6 +317,11 @@ export function DrawingRegisterScreen(): React.JSX.Element {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400">Rev {d.revisionNumber}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400">{d.discipline}</span>
                       <Badge variant={STATUS_VARIANT[d.status] ?? 'neutral'} size="sm">{d.status.replace(/_/g, ' ')}</Badge>
+                      {d.status === 'ISSUED_FOR_REVIEW' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">
+                          Awaiting approval {daysAwaitingApproval(d)}d
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{d.title}</div>
                     {d.issuedDate && <div className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">Issued {new Date(d.issuedDate).toLocaleDateString()}</div>}

@@ -304,3 +304,63 @@ describe('service-project.service — billingMethod (Phase 63)', () => {
     expect(call.data.billingMethod).toBe('DAILY_PER_TASK')
   })
 })
+
+// Phase 68 §9.1 — Architect/Civil item 4: project stage progress needs a
+// real "entered this stage on" signal distinct from updatedAt (which
+// changes on ANY field edit, not just a stage move).
+describe('service-project.service — stageUpdatedAt tracking (Phase 68 §9.1)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('createServiceProject stamps stageUpdatedAt when a stage is provided', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createServiceProject({ clientId: 'cust-1', projectName: 'New Office Fitout', stage: 'CONCEPT' })
+
+    const call = vi.mocked(db.serviceProject.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.stage).toBe('CONCEPT')
+    expect(call.data.stageUpdatedAt).toBeInstanceOf(Date)
+  })
+
+  it('createServiceProject leaves stageUpdatedAt null when no stage is given', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createServiceProject({ clientId: 'cust-1', projectName: 'Retainer Only' })
+
+    const call = vi.mocked(db.serviceProject.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.stageUpdatedAt).toBeNull()
+  })
+
+  it('updateServiceProject stamps a fresh stageUpdatedAt when the stage actually changes', async () => {
+    const db = makeMockDb(makeProject({ stage: 'CONCEPT' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateServiceProject({ id: 'proj-1', stage: 'SCHEMATIC' })
+
+    expect(db.serviceProject.findUnique).toHaveBeenCalledWith({ where: { id: 'proj-1' }, select: { stage: true } })
+    const call = vi.mocked(db.serviceProject.update).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.stageUpdatedAt).toBeInstanceOf(Date)
+  })
+
+  it('updateServiceProject does NOT reset stageUpdatedAt on a no-op reassertion of the same stage', async () => {
+    const db = makeMockDb(makeProject({ stage: 'CONCEPT' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateServiceProject({ id: 'proj-1', stage: 'CONCEPT', notes: 'unrelated edit' })
+
+    const call = vi.mocked(db.serviceProject.update).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data).not.toHaveProperty('stageUpdatedAt')
+  })
+
+  it('updateServiceProject does not touch stageUpdatedAt at all when stage is not part of the payload', async () => {
+    const db = makeMockDb(makeProject({ stage: 'CONCEPT' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateServiceProject({ id: 'proj-1', notes: 'unrelated edit' })
+
+    expect(db.serviceProject.findUnique).not.toHaveBeenCalled()
+    const call = vi.mocked(db.serviceProject.update).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data).not.toHaveProperty('stageUpdatedAt')
+  })
+})

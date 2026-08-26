@@ -23,7 +23,7 @@ import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 // transition, not a date-only user input), so it's serialized via plain
 // toISOString() instead — mirroring how createdAt/updatedAt are handled
 // elsewhere, not truncated to a date-only value.
-function serializeProject<T extends { totalContractValue: unknown; adSpendBudget?: unknown; milestones?: unknown[]; startDate: Date | null; expectedEndDate: Date | null; completedDate: Date | null }>(p: T): T {
+function serializeProject<T extends { totalContractValue: unknown; adSpendBudget?: unknown; milestones?: unknown[]; startDate: Date | null; expectedEndDate: Date | null; completedDate: Date | null; stageUpdatedAt?: Date | null }>(p: T): T {
   return {
     ...p,
     totalContractValue: (p as { totalContractValue: unknown }).totalContractValue == null ? null : Number((p as { totalContractValue: unknown }).totalContractValue),
@@ -32,6 +32,7 @@ function serializeProject<T extends { totalContractValue: unknown; adSpendBudget
     startDate: (p.startDate ? toLocalDateOnlyIso(p.startDate) : null) as unknown as Date,
     expectedEndDate: (p.expectedEndDate ? toLocalDateOnlyIso(p.expectedEndDate) : null) as unknown as Date,
     completedDate: (p.completedDate ? p.completedDate.toISOString() : null) as unknown as Date,
+    ...('stageUpdatedAt' in p ? { stageUpdatedAt: (p.stageUpdatedAt ? p.stageUpdatedAt.toISOString() : null) as unknown as Date } : {}),
   }
 }
 
@@ -111,6 +112,7 @@ export async function createServiceProject(payload: {
         projectName:        payload.projectName.trim(),
         projectType:        payload.projectType ?? 'GENERAL',
         stage:              payload.stage ?? null,
+        stageUpdatedAt:     payload.stage ? new Date() : null,
         status:             payload.status ?? 'ACTIVE',
         billingMethod:      payload.billingMethod ?? 'FIXED_COST',
         totalContractValue: payload.totalContractValue ?? null,
@@ -167,6 +169,16 @@ export async function updateServiceProject(payload: {
     } else if ((payload.status === 'ACTIVE' || payload.status === 'ON_HOLD') && completedDate === undefined) {
       autoCompletedDate = null
     }
+    // Phase 68 §9.1 — Architect/Civil item 4: project stage progress needs a
+    // real "entered this stage on" signal, not `updatedAt` (which changes on
+    // ANY field edit). Only stamp stageUpdatedAt when the stage actually
+    // changes — a no-op reassertion of the same stage (e.g. re-saving other
+    // fields on the edit form without touching stage) must not reset it.
+    let stageUpdatedAt: Date | undefined
+    if (payload.stage !== undefined) {
+      const existing = await db.serviceProject.findUnique({ where: { id }, select: { stage: true } })
+      if (existing && existing.stage !== payload.stage) stageUpdatedAt = new Date()
+    }
     const project = await db.serviceProject.update({
       where: { id },
       data: {
@@ -176,6 +188,7 @@ export async function updateServiceProject(payload: {
         ...(expectedEndDate !== undefined ? { expectedEndDate: expectedEndDate ? parseLocalDateStart(expectedEndDate) : null } : {}),
         ...(completedDate !== undefined        ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
         ...(autoCompletedDate !== undefined    ? { completedDate: autoCompletedDate } : {}),
+        ...(stageUpdatedAt !== undefined       ? { stageUpdatedAt } : {}),
       },
       include: {
         client:     { select: { id: true, customerName: true, phone: true } },

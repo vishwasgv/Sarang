@@ -6,7 +6,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 import { getPrisma } from '../../database/db'
 import {
   listDrawingRevisions, createDrawingRevision, updateDrawingRevision, deleteDrawingRevision,
-  issueNewRevision, getRevisionHistory,
+  issueNewRevision, getRevisionHistory, getOrphanedSupersededDrawings,
 } from '../drawing-revision.service'
 
 function makeRevision(overrides: Record<string, unknown> = {}) {
@@ -72,6 +72,31 @@ describe('drawing-revision.service — basic CRUD', () => {
     const res = await deleteDrawingRevision('dr-1')
     expect(res.success).toBe(true)
     expect(db.drawingRevision.delete).toHaveBeenCalledWith({ where: { id: 'dr-1' } })
+  })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): a bare
+  // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent with
+  // this app's own parseLocalDateStart convention used everywhere else.
+  it('createDrawingRevision stores issuedDate at local midnight, not UTC midnight', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createDrawingRevision({ projectId: 'proj-1', drawingNumber: 'A-101', title: 'Ground Floor Plan', issuedDate: '2026-08-15' })
+
+    expect(db.drawingRevision.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ issuedDate: new Date(2026, 7, 15) }),
+    }))
+  })
+
+  it('updateDrawingRevision stores an updated issuedDate at local midnight too', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateDrawingRevision({ id: 'dr-1', issuedDate: '2026-09-01' })
+
+    expect(db.drawingRevision.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ issuedDate: new Date(2026, 8, 1) }),
+    }))
   })
 })
 
@@ -180,6 +205,58 @@ describe('drawing-revision.service.issueNewRevision', () => {
     expect(db.drawingRevision.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ title: 'Ground Floor Plan', discipline: 'STRUCTURAL' }),
     }))
+  })
+})
+
+// Phase 68 §9.1 — Architect item 5: superseded-drawing warning.
+
+function makeOrphanedDb(revisions: Array<{ id: string; drawingNumber: string; title: string; revisionNumber: string; status: string; supersedesId: string | null }>) {
+  return {
+    drawingRevision: {
+      findMany: vi.fn().mockResolvedValue(revisions),
+    },
+  }
+}
+
+describe('drawing-revision.service.getOrphanedSupersededDrawings', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('does not flag a normally-retired revision (superseded AND pointed to by its real successor)', async () => {
+    const db = makeOrphanedDb([
+      { id: 'dr-1', drawingNumber: 'A-101', title: 'Plan', revisionNumber: 'A', status: 'SUPERSEDED', supersedesId: null },
+      { id: 'dr-2', drawingNumber: 'A-101', title: 'Plan', revisionNumber: 'B', status: 'APPROVED', supersedesId: 'dr-1' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrphanedSupersededDrawings('proj-1')
+
+    expect(res.success).toBe(true)
+    expect((res as { data: unknown[] }).data).toHaveLength(0)
+  })
+
+  it('flags a dangling SUPERSEDED revision that nothing actually supersedes (manual status flip, no real successor)', async () => {
+    const db = makeOrphanedDb([
+      { id: 'dr-1', drawingNumber: 'A-101', title: 'Plan', revisionNumber: 'A', status: 'SUPERSEDED', supersedesId: null },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrphanedSupersededDrawings('proj-1')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: Array<{ id: string; drawingNumber: string }> }).data
+    expect(data).toHaveLength(1)
+    expect(data[0].drawingNumber).toBe('A-101')
+  })
+
+  it('does not flag a non-SUPERSEDED revision', async () => {
+    const db = makeOrphanedDb([
+      { id: 'dr-1', drawingNumber: 'A-101', title: 'Plan', revisionNumber: 'A', status: 'APPROVED', supersedesId: null },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getOrphanedSupersededDrawings('proj-1')
+
+    expect((res as { data: unknown[] }).data).toHaveLength(0)
   })
 })
 

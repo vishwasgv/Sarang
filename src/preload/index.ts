@@ -437,6 +437,8 @@ const api: IpcChannels = {
     caseAging: () => invoke('reports:caseAging'),
     lawyerBillableHours: (p) => invoke('reports:lawyerBillableHours', p),
     feeRealization: () => invoke('reports:feeRealization'),
+    drawingApprovalCycleTime: () => invoke('reports:drawingApprovalCycleTime'),
+    projectStageProgress: () => invoke('reports:projectStageProgress'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -864,6 +866,7 @@ const api: IpcChannels = {
     delete: (p: unknown) => invoke('drawingRevision:delete', p),
     issueNewRevision: (p: unknown) => invoke('drawingRevision:issueNewRevision', p),
     getHistory: (p: unknown) => invoke('drawingRevision:getHistory', p),
+    orphanedSuperseded: (p: unknown) => invoke('drawingRevision:orphanedSuperseded', p),
   },
   siteVisit: {
     list: (p: unknown) => invoke('siteVisit:list', p),

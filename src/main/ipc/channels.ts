@@ -533,6 +533,10 @@ export interface IpcChannels {
     lawyerBillableHours: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — CA Firm item 4: Fee Realization.
     feeRealization: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Architect item 2: Drawing Approval Cycle Time.
+    drawingApprovalCycleTime: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Architect/Civil item 4: Project Stage Progress.
+    projectStageProgress: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1059,6 +1063,7 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     issueNewRevision: (payload: { previousRevisionId: string; revisionNumber: string; title?: string; discipline?: string; issuedDate?: string; notes?: string }) => Promise<ApiResponse>
     getHistory: (payload: { projectId: string; drawingNumber: string }) => Promise<ApiResponse>
+    orphanedSuperseded: (payload: { projectId: string }) => Promise<ApiResponse>
   }
   siteVisit: {
     list: (payload: { projectId: string }) => Promise<ApiResponse>

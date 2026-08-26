@@ -1828,6 +1828,14 @@
         "label": "Fee Realization",
         "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
       },
+      "drawingApprovalCycleTime": {
+        "label": "Drawing Approval Cycle Time",
+        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+      },
+      "projectStageProgress": {
+        "label": "Project Stage Progress",
+        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2101,6 +2109,10 @@
       "totalOpenCases": "Open Cases",
       "avgDaysInCurrentStage": "Avg. Days in Stage",
       "staleCaseCount": "Stale Cases (90+ days)",
+      "totalApproved": "Drawings Approved",
+      "avgDaysToApprove": "Avg. Days to Approve",
+      "totalActiveProjects": "Active Projects",
+      "avgDaysInStage": "Avg. Days in Stage",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2546,7 +2558,9 @@
       "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
       "caseAging": "No open cases right now.",
       "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now."
+      "feeRealization": "No active, priced engagements right now.",
+      "drawingApprovalCycleTime": "No approved drawings on file yet.",
+      "projectStageProgress": "No active projects with a stage set right now."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2602,6 +2616,13 @@
       "realizedFee": "Realized Fee",
       "realizationPercent": "Realization %",
       "invoicedThisPeriod": "Invoiced This Period",
+      "drawingNumber": "Drawing No.",
+      "revisionNumber": "Rev.",
+      "discipline": "Discipline",
+      "issuedDate": "Issued Date",
+      "approvedDate": "Approved Date",
+      "daysToApprove": "Days to Approve",
+      "stageProgress": "Stage Progress %",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",
