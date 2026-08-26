@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { formatAmount } from './print.service'
+import { buildWhatsAppLink } from './notification-queue.service'
 
 // RetainerAgreement.monthlyAmount/hoursPerMonth are Prisma Decimal fields —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -55,6 +56,66 @@ async function scheduleRetainerReminder(retainerId: string, clientName: string, 
       const body = `Retainer invoice for ${clientName} (${title}) [${retainerId}] of ${formattedAmount}/month is due in 3 days (${nextBillingStr}). Please generate the invoice. Powered by Sarang | www.aszurex.com`
       await db.notificationQueue.create({
         data: { customerId: null, customerName: clientName, customerPhone: null, notificationType: 'RETAINER_INVOICE_DUE_3D', templateBody: body, whatsappLink: null, scheduledFor: reminderDate, status: 'PENDING' },
+      })
+    }
+  } catch { /* non-critical */ }
+}
+
+// Phase 68 §9.1 — Independent Consultant item 5: retainer-lapse renewal
+// reminder. Distinct from scheduleRetainerReminder above (that one fires
+// every month for the recurring BILLING due date) — this fires once, ahead
+// of the retainer AGREEMENT's own endDate, so a fixed-term retainer doesn't
+// silently lapse unnoticed. An open-ended retainer (endDate null) has
+// nothing to renew. Same reschedule-on-change shape as
+// engagement.service.ts's scheduleEngagementRenewalReminder/
+// cancelEngagementRenewalReminder (CA Firm vertical).
+async function cancelRetainerLapseReminder(retainerId: string, oldEndDate: Date) {
+  try {
+    const db = getPrisma()
+    const retainer = await db.retainerAgreement.findUnique({ where: { id: retainerId }, select: { clientId: true } })
+    if (!retainer) return
+    const old30 = new Date(oldEndDate.getTime() - 30 * 86400000)
+    const old7 = new Date(oldEndDate.getTime() - 7 * 86400000)
+    await db.notificationQueue.deleteMany({
+      where: {
+        customerId: retainer.clientId,
+        notificationType: { in: ['RETAINER_LAPSE_30D', 'RETAINER_LAPSE_7D'] },
+        status: 'PENDING',
+        scheduledFor: { in: [old30, old7] },
+      },
+    })
+  } catch { /* non-critical — worst case a stale reminder from the old date remains */ }
+}
+
+async function scheduleRetainerLapseReminder(retainerId: string, endDate: Date) {
+  try {
+    const db = getPrisma()
+    const retainer = await db.retainerAgreement.findUnique({
+      where: { id: retainerId },
+      include: { client: { select: { id: true, customerName: true, phone: true } } },
+    })
+    if (!retainer) return
+
+    const thirtyDaysBefore = new Date(endDate.getTime() - 30 * 86400000)
+    const sevenDaysBefore = new Date(endDate.getTime() - 7 * 86400000)
+    const now = new Date()
+    if (thirtyDaysBefore <= now && sevenDaysBefore <= now) return
+
+    const dateStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const phone = retainer.client.phone ?? ''
+
+    if (thirtyDaysBefore > now) {
+      const body30 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
+      const link30 = phone ? await buildWhatsAppLink(phone, body30) : null
+      await db.notificationQueue.create({
+        data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore, status: 'PENDING' },
+      })
+    }
+    if (sevenDaysBefore > now) {
+      const body7 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
+      const link7 = phone ? await buildWhatsAppLink(phone, body7) : null
+      await db.notificationQueue.create({
+        data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore, status: 'PENDING' },
       })
     }
   } catch { /* non-critical */ }
@@ -130,6 +191,7 @@ export async function createRetainer(payload: {
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'RetainerAgreement', entityId: retainer.id, newValue: JSON.stringify({ title: retainer.title }) } }).catch(() => {})
     if (retainer.status === 'ACTIVE') scheduleRetainerReminder(retainer.id, retainer.client.customerName, retainer.title, retainer.billingDay, Number(retainer.monthlyAmount)).catch(() => {})
+    if (retainer.endDate) await scheduleRetainerLapseReminder(retainer.id, retainer.endDate)
     return { success: true, data: serializeRetainer(retainer) }
   } catch (err) {
     return { success: false, error: { code: 'RT30-002', message: err instanceof Error ? err.message : 'Could not create retainer.' } }
@@ -153,6 +215,15 @@ export async function updateRetainer(payload: {
   try {
     const db = getPrisma()
     const { id, title, billingDay, startDate, endDate, ...rest } = payload
+
+    // Fetch the pre-update endDate so a change can cancel the lapse
+    // reminder tied to the old date and schedule a fresh one for the new
+    // date — same reschedule-on-change discipline as
+    // engagement.service.ts's own renewal reminder.
+    const before = endDate !== undefined
+      ? await db.retainerAgreement.findUnique({ where: { id }, select: { endDate: true } })
+      : null
+
     const retainer = await db.retainerAgreement.update({
       where: { id },
       data: {
@@ -169,6 +240,17 @@ export async function updateRetainer(payload: {
     })
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'RetainerAgreement', entityId: retainer.id } }).catch(() => {})
     if (retainer.status === 'ACTIVE') scheduleRetainerReminder(retainer.id, retainer.client.customerName, retainer.title, retainer.billingDay, Number(retainer.monthlyAmount)).catch(() => {})
+
+    if (endDate !== undefined) {
+      const oldDate = before?.endDate ?? null
+      const newDate = retainer.endDate
+      const changed = (oldDate?.getTime() ?? null) !== (newDate?.getTime() ?? null)
+      if (changed) {
+        if (oldDate) await cancelRetainerLapseReminder(retainer.id, oldDate)
+        if (newDate) await scheduleRetainerLapseReminder(retainer.id, newDate)
+      }
+    }
+
     return { success: true, data: serializeRetainer(retainer) }
   } catch (err) {
     return { success: false, error: { code: 'RT30-003', message: err instanceof Error ? err.message : 'Could not update retainer.' } }
@@ -185,7 +267,12 @@ export async function updateRetainer(payload: {
 export async function generateInvoiceForRetainer(retainerId: string, period?: string) {
   const db = getPrisma()
   try {
-    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    // Real bug found live (2026-08-27 Phase 68 audit): `.toISOString().slice(0, 7)`
+    // extracts the UTC year-month — wrong for the first ~5.5h of a new
+    // month in IST (flagged during the CA Firm vertical, fixed here as the
+    // matching in-scope file for Independent Consultant).
+    const now = new Date()
+    const targetPeriod = period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const retainer = await db.retainerAgreement.findUnique({
       where: { id: retainerId },
       include: { client: { select: { id: true, customerName: true } } },
@@ -255,7 +342,12 @@ export async function getRetainerHoursUsage(retainerId: string, period?: string)
     const retainer = await db.retainerAgreement.findUnique({ where: { id: retainerId }, select: { hoursPerMonth: true } })
     if (!retainer) return { success: false, error: { code: 'RT30-008', message: 'Retainer not found.' } }
 
-    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    // Real bug found live (2026-08-27 Phase 68 audit): `.toISOString().slice(0, 7)`
+    // extracts the UTC year-month — wrong for the first ~5.5h of a new
+    // month in IST (flagged during the CA Firm vertical, fixed here as the
+    // matching in-scope file for Independent Consultant).
+    const now = new Date()
+    const targetPeriod = period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const [year, month] = targetPeriod.split('-').map(Number)
     const periodStart = new Date(year, month - 1, 1)
     const periodEnd = new Date(year, month, 0, 23, 59, 59, 999)

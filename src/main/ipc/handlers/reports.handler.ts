@@ -1005,4 +1005,29 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateMaterialTestResultsReport()
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — Independent Consultant item 1: Retainer Utilization.
+  handle('reports:retainerUtilization', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateRetainerUtilizationReport()
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Independent Consultant item 3: Proposal Win Rate.
+  handle('reports:proposalWinRate', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateProposalWinRateReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Phase 68 §9.1 — Independent Consultant item 4: Client Revenue Concentration.
+  handle('reports:clientRevenueConcentration', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateClientRevenueConcentrationReport(parsed.data)
+    return { success: true, data }
+  })
 }

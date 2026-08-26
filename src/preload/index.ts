@@ -441,6 +441,9 @@ const api: IpcChannels = {
     projectStageProgress: () => invoke('reports:projectStageProgress'),
     siteVisitBilling: () => invoke('reports:siteVisitBilling'),
     materialTestResults: () => invoke('reports:materialTestResults'),
+    retainerUtilization: () => invoke('reports:retainerUtilization'),
+    proposalWinRate: (p: unknown) => invoke('reports:proposalWinRate', p),
+    clientRevenueConcentration: (p: unknown) => invoke('reports:clientRevenueConcentration', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),

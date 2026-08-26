@@ -8184,3 +8184,176 @@ describe('reportService.generateMaterialTestResultsReport', () => {
     expect(result.summary).toEqual({ totalTests: 0, passCount: 0, failCount: 0, pendingCount: 0, passRatePercent: 0 })
   })
 })
+
+describe('reportService.generateRetainerUtilizationReport', () => {
+  it('computes utilizationPercent from logged hours against the monthly bucket, worst (highest) first', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'r1', title: 'Low Usage', hoursPerMonth: 20, monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client A' } },
+          { id: 'r2', title: 'High Usage', hoursPerMonth: 10, monthlyAmount: 15000, lastInvoicedPeriod: null, client: { customerName: 'Client B' } },
+        ]),
+      },
+      timeEntry: {
+        findMany: vi.fn().mockImplementation(({ where }: { where: { retainerId: string } }) =>
+          Promise.resolve(where.retainerId === 'r1' ? [{ hours: 2 }] : [{ hours: 9 }])
+        ),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerUtilizationReport()
+
+    expect(result.rows.map((r) => r.title)).toEqual(['High Usage', 'Low Usage'])
+    expect(result.rows[0].utilizationPercent).toBe(90)
+  })
+
+  it('marks billedThisPeriod true only when lastInvoicedPeriod matches the current month', async () => {
+    const now = new Date()
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'r1', title: 'Billed', hoursPerMonth: 10, monthlyAmount: 20000, lastInvoicedPeriod: currentPeriod, client: { customerName: 'Client A' } },
+          { id: 'r2', title: 'Unbilled', hoursPerMonth: 10, monthlyAmount: 20000, lastInvoicedPeriod: '2020-01', client: { customerName: 'Client B' } },
+        ]),
+      },
+      timeEntry: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerUtilizationReport()
+
+    expect(result.rows.find((r) => r.title === 'Billed')?.billedThisPeriod).toBe(true)
+    expect(result.rows.find((r) => r.title === 'Unbilled')?.billedThisPeriod).toBe(false)
+    expect(result.summary.unbilledCount).toBe(1)
+  })
+
+  it('counts a retainer as over-utilized only above 100%', async () => {
+    const db = {
+      retainerAgreement: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'r1', title: 'Over', hoursPerMonth: 10, monthlyAmount: 20000, lastInvoicedPeriod: null, client: { customerName: 'Client A' } },
+        ]),
+      },
+      timeEntry: { findMany: vi.fn().mockResolvedValue([{ hours: 15 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRetainerUtilizationReport()
+
+    expect(result.rows[0].utilizationPercent).toBe(150)
+    expect(result.summary.overUtilizedCount).toBe(1)
+  })
+
+  it('only queries ACTIVE retainers with an hours bucket set', async () => {
+    const db = { retainerAgreement: { findMany: vi.fn().mockResolvedValue([]) }, timeEntry: { findMany: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateRetainerUtilizationReport()
+
+    expect(db.retainerAgreement.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'ACTIVE', hoursPerMonth: { not: null } },
+    }))
+  })
+})
+
+describe('reportService.generateProposalWinRateReport', () => {
+  it('computes winRatePercent from decided (ACCEPTED+EXPIRED) quotations only, excluding still-pending SENT ones', async () => {
+    const db = {
+      quotation: {
+        findMany: vi.fn().mockResolvedValue([
+          { status: 'ACCEPTED', totalAmount: 50000 },
+          { status: 'ACCEPTED', totalAmount: 30000 },
+          { status: 'EXPIRED', totalAmount: 20000 },
+          { status: 'SENT', totalAmount: 10000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProposalWinRateReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary).toEqual({ wonCount: 2, lostCount: 1, pendingCount: 1, winRatePercent: 66.7, wonValue: 80000 })
+  })
+
+  it('excludes DRAFT quotations entirely — never sent, not a decided proposal', async () => {
+    const db = { quotation: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateProposalWinRateReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.quotation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ['SENT', 'ACCEPTED', 'EXPIRED'] } }),
+    }))
+  })
+
+  it('returns an honest 0% win rate when nothing has been decided yet', async () => {
+    const db = { quotation: { findMany: vi.fn().mockResolvedValue([{ status: 'SENT', totalAmount: 10000 }]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateProposalWinRateReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.winRatePercent).toBe(0)
+    expect(result.summary.pendingCount).toBe(1)
+  })
+})
+
+describe('reportService.generateClientRevenueConcentrationReport', () => {
+  it('computes revenueSharePercent and cumulativeSharePercent, ranked highest-revenue-first', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          { customerId: 'c1', customer: { customerName: 'Big Client' }, totalAmount: 80000 },
+          { customerId: 'c2', customer: { customerName: 'Small Client' }, totalAmount: 20000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateClientRevenueConcentrationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.map((r) => r.clientName)).toEqual(['Big Client', 'Small Client'])
+    expect(result.rows[0]).toMatchObject({ revenue: 80000, revenueSharePercent: 80, cumulativeSharePercent: 80 })
+    expect(result.rows[1]).toMatchObject({ revenue: 20000, revenueSharePercent: 20, cumulativeSharePercent: 100 })
+    expect(result.summary.topClientSharePercent).toBe(80)
+  })
+
+  it('sums multiple invoices for the same customer into one row', async () => {
+    const db = {
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          { customerId: 'c1', customer: { customerName: 'Repeat Client' }, totalAmount: 10000 },
+          { customerId: 'c1', customer: { customerName: 'Repeat Client' }, totalAmount: 15000 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateClientRevenueConcentrationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].revenue).toBe(25000)
+  })
+
+  it('excludes CANCELLED invoices', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateClientRevenueConcentrationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(db.invoice.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { not: 'CANCELLED' } }),
+    }))
+  })
+
+  it('returns an honest empty result when there is no invoiced revenue', async () => {
+    const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateClientRevenueConcentrationReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalRevenue: 0, topClientSharePercent: 0, top3SharePercent: 0 })
+  })
+})

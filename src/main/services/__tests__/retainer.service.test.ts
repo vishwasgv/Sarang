@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/test') }))
+
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
 import { listRetainers, createRetainer, updateRetainer, generateInvoiceForRetainer, getRetainerHoursUsage } from '../retainer.service'
@@ -48,15 +50,25 @@ function makeRetainer(overrides: Record<string, unknown> = {}) {
 }
 
 function makeMockDb(existing: ReturnType<typeof makeRetainer> | null = null) {
+  // Tracks the "current" row so findUnique (called separately by
+  // scheduleRetainerLapseReminder/cancelRetainerLapseReminder to re-fetch
+  // with the client relation, and by updateRetainer itself for the
+  // pre-update endDate) sees whatever create/update most recently
+  // produced, not just the fixture this mock was originally seeded with —
+  // same pattern as engagement.service.test.ts's own makeMockDb.
+  let current = existing
   const db: Record<string, any> = {
     retainerAgreement: {
-      findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
-      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve(makeRetainer({ id: 'ret-abc123', ...data }))
-      ),
-      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve(makeRetainer({ ...existing, ...data }))
-      ),
+      findMany: vi.fn().mockImplementation(() => Promise.resolve(current ? [current] : [])),
+      findUnique: vi.fn().mockImplementation(() => Promise.resolve(current)),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+        current = makeRetainer({ id: 'ret-abc123', ...data })
+        return Promise.resolve(current)
+      }),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+        current = makeRetainer({ ...current, ...data })
+        return Promise.resolve(current)
+      }),
     },
     notificationQueue: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -187,6 +199,62 @@ describe('retainer.service — date-field IPC serialization', () => {
   })
 })
 
+// Phase 68 §9.1 — Independent Consultant item 5: retainer-lapse renewal
+// reminder. Distinct from the recurring monthly billing reminder above —
+// this fires ahead of the retainer AGREEMENT's own endDate.
+describe('retainer.service — lapse renewal reminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('schedules a real reminder when creating a retainer with a real endDate', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createRetainer({ clientId: 'cust-1', title: 'Fixed-Term Retainer', monthlyAmount: 20000, startDate: '2026-01-01', endDate: '2027-06-01' })
+
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'RETAINER_LAPSE_30D' }),
+    }))
+  })
+
+  it('does NOT schedule a lapse reminder for an open-ended retainer (no endDate)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createRetainer({ clientId: 'cust-1', title: 'Open-Ended Retainer', monthlyAmount: 20000, startDate: '2026-01-01' })
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: expect.stringContaining('RETAINER_LAPSE') }),
+    }))
+  })
+
+  it('cancels the old lapse reminder and schedules a fresh one when endDate is rescheduled', async () => {
+    const db = makeMockDb(makeRetainer({ endDate: new Date(2027, 5, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateRetainer({ id: 'ret-abc123', endDate: '2027-08-01' })
+
+    expect(db.notificationQueue.deleteMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ notificationType: { in: ['RETAINER_LAPSE_30D', 'RETAINER_LAPSE_7D'] } }),
+    }))
+    expect(db.notificationQueue.create).toHaveBeenCalled()
+  })
+
+  it('does not touch lapse reminders when endDate is not part of the update at all', async () => {
+    // scheduleRetainerReminder (the separate, pre-existing monthly BILLING
+    // reminder) still fires its own unrelated deleteMany/create on every
+    // ACTIVE-status update — this test only asserts the LAPSE-specific
+    // reminder type is left untouched, not that no reminder call happens.
+    const db = makeMockDb(makeRetainer({ endDate: new Date(2027, 5, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateRetainer({ id: 'ret-abc123', title: 'Renamed Retainer' })
+
+    expect(db.notificationQueue.deleteMany).not.toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ notificationType: { in: ['RETAINER_LAPSE_30D', 'RETAINER_LAPSE_7D'] } }),
+    }))
+  })
+})
+
 describe('retainer.service — reminder dedup precision', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -288,6 +356,29 @@ describe('retainer.service — generateInvoiceForRetainer', () => {
 
     expect(res.success).toBe(false)
   })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): the default target
+  // period (when no explicit period arg is given) used to extract the UTC
+  // year-month via `.toISOString().slice(0, 7)` — wrong for the first
+  // ~5.5h of a new month in IST. Pinned "now" here would extract the WRONG
+  // (previous) month via a UTC slice: local 2026-09-01 02:00 IST = UTC
+  // 2026-08-31 20:30.
+  it('defaults to the current LOCAL calendar month, not the UTC one', async () => {
+    const retainer = makeRetainer({ lastInvoicedPeriod: null })
+    const db = makeDbForInvoice(retainer)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 2, 0, 0))
+    try {
+      const res = await generateInvoiceForRetainer('ret-abc123')
+      expect(res.success).toBe(true)
+      expect((res as { data: { period: string } }).data.period).toBe('2026-09')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 // ─── Phase 58 §1 (2026-07-17) — getRetainerHoursUsage ──────────────────────
@@ -351,7 +442,11 @@ describe('retainer.service.getRetainerHoursUsage', () => {
 
     const res = await getRetainerHoursUsage('ret-abc123')
 
-    const expectedPeriod = new Date().toISOString().slice(0, 7)
+    // Local Y/M components, not toISOString() (UTC) — matches the Phase 68
+    // fix below; a UTC-based expectation would flake near a month boundary
+    // in IST.
+    const now = new Date()
+    const expectedPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     expect((res as { data: { period: string } }).data.period).toBe(expectedPeriod)
   })
 

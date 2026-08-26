@@ -1844,6 +1844,18 @@
         "label": "Material Test Results",
         "description": "Every recorded material test, failed ones first, with an overall pass rate"
       },
+      "retainerUtilization": {
+        "label": "Retainer Utilization",
+        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+      },
+      "proposalWinRate": {
+        "label": "Proposal Win Rate",
+        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+      },
+      "clientRevenueConcentration": {
+        "label": "Client Revenue Concentration",
+        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2130,6 +2142,14 @@
       "failCount": "Failed",
       "pendingCount": "Pending",
       "passRatePercent": "Pass Rate %",
+      "totalRetainers": "Retainers",
+      "overUtilizedCount": "Over-Utilized",
+      "wonCount": "Won",
+      "lostCount": "Lost",
+      "winRatePercent": "Win Rate %",
+      "wonValue": "Won Value",
+      "topClientSharePercent": "Top Client Share %",
+      "top3SharePercent": "Top 3 Clients Share %",
       "totalDiscountGiven": "Total Discount Given",
       "discountedLines": "Discounted / Total Lines",
       "discountIncidence": "Lines Discounted",
@@ -2579,7 +2599,9 @@
       "drawingApprovalCycleTime": "No approved drawings on file yet.",
       "projectStageProgress": "No active projects with a stage set right now.",
       "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet."
+      "materialTestResults": "No material test results recorded yet.",
+      "retainerUtilization": "No active hourly retainers right now.",
+      "clientRevenueConcentration": "No invoiced revenue in this date range."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2921,7 +2943,16 @@
       "testValue": "Test Value",
       "requiredMinValue": "Pass Minimum",
       "result": "Result",
-      "testedDate": "Tested Date"
+      "testedDate": "Tested Date",
+      "title": "Title",
+      "hoursPerMonth": "Hours/Month",
+      "hoursUsed": "Hours Used",
+      "utilizationPercent": "Utilization %",
+      "monthlyAmount": "Monthly Amount",
+      "billedThisPeriod": "Billed This Period",
+      "revenue": "Revenue",
+      "revenueSharePercent": "Revenue Share %",
+      "cumulativeSharePercent": "Cumulative Share %"
     },
     "legend": {
       "schemeCost": "Scheme Cost",

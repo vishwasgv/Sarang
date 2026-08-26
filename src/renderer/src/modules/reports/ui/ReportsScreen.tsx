@@ -248,6 +248,17 @@ interface SiteVisitBillingReport { rows: SiteVisitBillingRow[]; summary: { total
 interface MaterialTestResultsRow { projectName: string; testType: string; materialDescription: string | null; testValue: number | null; unit: string | null; requiredMinValue: number | null; result: string; testedDate: string | null }
 interface MaterialTestResultsReport { rows: MaterialTestResultsRow[]; summary: { totalTests: number; passCount: number; failCount: number; pendingCount: number; passRatePercent: number } }
 
+// Phase 68 §9.1 — Independent Consultant item 1: Retainer Utilization.
+interface RetainerUtilizationRow { title: string; clientName: string; hoursPerMonth: number; hoursUsed: number; utilizationPercent: number; monthlyAmount: number; billedThisPeriod: boolean }
+interface RetainerUtilizationReport { period: string; rows: RetainerUtilizationRow[]; summary: { totalRetainers: number; overUtilizedCount: number; unbilledCount: number } }
+
+// Phase 68 §9.1 — Independent Consultant item 3: Proposal Win Rate.
+interface ProposalWinRateReport { dateFrom: string; dateTo: string; summary: { wonCount: number; lostCount: number; pendingCount: number; winRatePercent: number; wonValue: number } }
+
+// Phase 68 §9.1 — Independent Consultant item 4: Client Revenue Concentration.
+interface ClientRevenueConcentrationRow { clientName: string; revenue: number; revenueSharePercent: number; cumulativeSharePercent: number }
+interface ClientRevenueConcentrationReport { dateFrom: string; dateTo: string; rows: ClientRevenueConcentrationRow[]; summary: { totalRevenue: number; topClientSharePercent: number; top3SharePercent: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -658,6 +669,8 @@ type ReportType =
   | 'drawingApprovalCycleTime' | 'projectStageProgress'
   // Phase 68 §9.1 — Civil Engineer items 1/2 & 5
   | 'siteVisitBilling' | 'materialTestResults'
+  // Phase 68 §9.1 — Independent Consultant items 1, 3 & 4
+  | 'retainerUtilization' | 'proposalWinRate' | 'clientRevenueConcentration'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -877,6 +890,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'siteVisitBilling', icon: <HandCoins size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'site_visit_log' },
   // Phase 68 §9.1 — Civil Engineer item 5. Current-state, no date range.
   { id: 'materialTestResults', icon: <HardHat size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'site_visit_log' },
+  // Phase 68 §9.1 — Independent Consultant item 1. Current period, no date range.
+  { id: 'retainerUtilization', icon: <Timer size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'retainers' },
+  // Phase 68 §9.1 — Independent Consultant item 3.
+  { id: 'proposalWinRate', icon: <Target size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
+  // Phase 68 §9.1 — Independent Consultant item 4.
+  { id: 'clientRevenueConcentration', icon: <PieChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'service_projects' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1313,6 +1332,15 @@ export function ReportsScreen() {
           break
         case 'materialTestResults':
           res = await window.api.reports.materialTestResults()
+          break
+        case 'retainerUtilization':
+          res = await window.api.reports.retainerUtilization()
+          break
+        case 'proposalWinRate':
+          res = await window.api.reports.proposalWinRate({ dateFrom, dateTo })
+          break
+        case 'clientRevenueConcentration':
+          res = await window.api.reports.clientRevenueConcentration({ dateFrom, dateTo })
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -2083,6 +2111,20 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.projectName'), t('reports.col.testType'), t('reports.col.materialDescription'), t('reports.col.testValue'), t('reports.col.unit'), t('reports.col.requiredMinValue'), t('reports.col.result'), t('reports.col.testedDate')],
           rows: d.rows.map(r => [r.projectName, r.testType, r.materialDescription ?? '—', r.testValue ?? '—', r.unit ?? '—', r.requiredMinValue ?? '—', r.result, r.testedDate ?? '—'])
+        }
+      }
+      case 'retainerUtilization': {
+        const d = reportData as RetainerUtilizationReport
+        return {
+          headers: [t('reports.col.title'), t('reports.col.client'), t('reports.col.hoursPerMonth'), t('reports.col.hoursUsed'), t('reports.col.utilizationPercent'), `${t('reports.col.monthlyAmount')} (${currencySymbol})`, t('reports.col.billedThisPeriod')],
+          rows: d.rows.map(r => [r.title, r.clientName, r.hoursPerMonth, r.hoursUsed, r.utilizationPercent, r.monthlyAmount.toFixed(2), r.billedThisPeriod ? t('common.yes') : t('common.no')])
+        }
+      }
+      case 'clientRevenueConcentration': {
+        const d = reportData as ClientRevenueConcentrationReport
+        return {
+          headers: [t('reports.col.client'), `${t('reports.col.revenue')} (${currencySymbol})`, t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')],
+          rows: d.rows.map(r => [r.clientName, r.revenue.toFixed(2), r.revenueSharePercent, r.cumulativeSharePercent])
         }
       }
       case 'serviceProjects': {
@@ -3702,6 +3744,9 @@ export function ReportsScreen() {
       case 'projectStageProgress': return []
       case 'siteVisitBilling': return []
       case 'materialTestResults': return []
+      case 'retainerUtilization': return []
+      case 'proposalWinRate': return []
+      case 'clientRevenueConcentration': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4221,6 +4266,9 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'projectStageProgress': return <ProjectStageProgressView data={data as ProjectStageProgressReport} />
     case 'siteVisitBilling': return <SiteVisitBillingView data={data as SiteVisitBillingReport} fmt={fmt} />
     case 'materialTestResults': return <MaterialTestResultsView data={data as MaterialTestResultsReport} />
+    case 'retainerUtilization': return <RetainerUtilizationView data={data as RetainerUtilizationReport} fmt={fmt} />
+    case 'proposalWinRate': return <ProposalWinRateView data={data as ProposalWinRateReport} fmt={fmt} />
+    case 'clientRevenueConcentration': return <ClientRevenueConcentrationView data={data as ClientRevenueConcentrationReport} fmt={fmt} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -6136,6 +6184,60 @@ function MaterialTestResultsView({ data }: { data: MaterialTestResultsReport }) 
         headers={[t('reports.col.projectName'), t('reports.col.testType'), t('reports.col.materialDescription'), t('reports.col.testValue'), t('reports.col.unit'), t('reports.col.requiredMinValue'), t('reports.col.result'), t('reports.col.testedDate')]}
         rows={data.rows.map(r => [r.projectName, r.testType, r.materialDescription ?? '—', r.testValue ?? '—', r.unit ?? '—', r.requiredMinValue ?? '—', r.result, r.testedDate ?? '—'])}
         emptyText={t('reports.empty.materialTestResults')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Independent Consultant item 1: Retainer Utilization.
+function RetainerUtilizationView({ data, fmt }: { data: RetainerUtilizationReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRetainers'), value: String(data.summary.totalRetainers) },
+        { label: t('reports.summary.overUtilizedCount'), value: String(data.summary.overUtilizedCount) },
+        { label: t('reports.summary.unbilledCount'), value: String(data.summary.unbilledCount) },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.title'), t('reports.col.client'), t('reports.col.hoursPerMonth'), t('reports.col.hoursUsed'), t('reports.col.utilizationPercent'), t('common.amount'), t('reports.col.billedThisPeriod')]}
+        rows={data.rows.map(r => [r.title, r.clientName, r.hoursPerMonth, r.hoursUsed, `${r.utilizationPercent}%`, fmt(r.monthlyAmount), r.billedThisPeriod ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.retainerUtilization')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Independent Consultant item 3: Proposal Win Rate.
+function ProposalWinRateView({ data, fmt }: { data: ProposalWinRateReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.winRatePercent'), value: `${data.summary.winRatePercent}%` },
+        { label: t('reports.summary.wonCount'), value: String(data.summary.wonCount) },
+        { label: t('reports.summary.lostCount'), value: String(data.summary.lostCount) },
+        { label: t('reports.summary.pendingCount'), value: String(data.summary.pendingCount) },
+        { label: t('reports.summary.wonValue'), value: fmt(data.summary.wonValue) },
+      ]} />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Independent Consultant item 4: Client Revenue Concentration.
+function ClientRevenueConcentrationView({ data, fmt }: { data: ClientRevenueConcentrationReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.summary.totalRevenue'), value: fmt(data.summary.totalRevenue) },
+        { label: t('reports.summary.topClientSharePercent'), value: `${data.summary.topClientSharePercent}%` },
+        { label: t('reports.summary.top3SharePercent'), value: `${data.summary.top3SharePercent}%` },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.client'), t('common.amount'), t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')]}
+        rows={data.rows.map(r => [r.clientName, fmt(r.revenue), `${r.revenueSharePercent}%`, `${r.cumulativeSharePercent}%`])}
+        emptyText={t('reports.empty.clientRevenueConcentration')}
       />
     </div>
   )

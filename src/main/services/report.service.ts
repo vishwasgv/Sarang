@@ -5857,6 +5857,146 @@ async function generateRetainerReport(params: { dateFrom: string; dateTo: string
   }
 }
 
+// Phase 68 §9.1 — Independent Consultant item 1: retainer-utilization-vs-
+// billed tracking. RetainersScreen.tsx already shows a live per-retainer
+// hours-used progress bar (item 2, "burn-down" — already covered, no
+// changes needed there); this is the missing cross-cut view: utilization %
+// for every HOURLY_BUCKET-style retainer (hoursPerMonth set) side-by-side
+// with whether it's actually been billed for the current period, so a
+// consultant can spot "high utilization but not yet invoiced" at a glance.
+export interface RetainerUtilizationRow {
+  title: string; clientName: string; hoursPerMonth: number; hoursUsed: number
+  utilizationPercent: number; monthlyAmount: number; billedThisPeriod: boolean
+}
+export interface RetainerUtilizationReport {
+  period: string
+  rows: RetainerUtilizationRow[]
+  summary: { totalRetainers: number; overUtilizedCount: number; unbilledCount: number }
+}
+
+async function generateRetainerUtilizationReport(): Promise<RetainerUtilizationReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const retainers = await db.retainerAgreement.findMany({
+    where: { status: 'ACTIVE', hoursPerMonth: { not: null } },
+    include: { client: { select: { customerName: true } } },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const rows: RetainerUtilizationRow[] = await Promise.all(retainers.map(async (r) => {
+    const entries = await db.timeEntry.findMany({ where: { retainerId: r.id, date: { gte: periodStart, lte: periodEnd } }, select: { hours: true } })
+    const hoursUsed = round1(entries.reduce((s, e) => s + Number(e.hours), 0))
+    const hoursPerMonth = Number(r.hoursPerMonth)
+    return {
+      title: r.title, clientName: r.client.customerName, hoursPerMonth, hoursUsed,
+      utilizationPercent: hoursPerMonth > 0 ? round1((hoursUsed / hoursPerMonth) * 100) : 0,
+      monthlyAmount: Number(r.monthlyAmount), billedThisPeriod: r.lastInvoicedPeriod === period,
+    }
+  }))
+  rows.sort((a, b) => b.utilizationPercent - a.utilizationPercent)
+
+  return {
+    period, rows,
+    summary: {
+      totalRetainers: rows.length,
+      overUtilizedCount: rows.filter((r) => r.utilizationPercent > 100).length,
+      unbilledCount: rows.filter((r) => !r.billedThisPeriod).length,
+    },
+  }
+}
+
+// Phase 68 §9.1 — Independent Consultant item 3: proposal win-rate
+// tracking. A Quotation IS the proposal document in this system (no
+// separate Proposal entity) — win rate is scoped to quotations that were
+// actually SENT to the client (a DRAFT never reached anyone, so it isn't a
+// "decided" proposal yet), ACCEPTED = won, EXPIRED = lost, still-SENT =
+// pending (excluded from the rate denominator, shown separately).
+export interface ProposalWinRateReport {
+  dateFrom: string; dateTo: string
+  summary: { wonCount: number; lostCount: number; pendingCount: number; winRatePercent: number; wonValue: number }
+}
+
+async function generateProposalWinRateReport(params: { dateFrom: string; dateTo: string }): Promise<ProposalWinRateReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const quotations = await db.quotation.findMany({
+    where: { status: { in: ['SENT', 'ACCEPTED', 'EXPIRED'] }, createdAt: { gte: from, lte: to } },
+    select: { status: true, totalAmount: true },
+  })
+
+  const wonCount = quotations.filter((q) => q.status === 'ACCEPTED').length
+  const lostCount = quotations.filter((q) => q.status === 'EXPIRED').length
+  const pendingCount = quotations.filter((q) => q.status === 'SENT').length
+  const decidedCount = wonCount + lostCount
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    summary: {
+      wonCount, lostCount, pendingCount,
+      winRatePercent: decidedCount > 0 ? Math.round((wonCount / decidedCount) * 1000) / 10 : 0,
+      wonValue: roundCurrency(quotations.filter((q) => q.status === 'ACCEPTED').reduce((s, q) => s + q.totalAmount, 0)),
+    },
+  }
+}
+
+// Phase 68 §9.1 — Independent Consultant item 4: client revenue
+// concentration. What share of total invoiced revenue comes from each
+// client, ranked worst-concentration-first — a consultant with one client
+// at 60%+ of revenue has a real, actionable dependency risk even though
+// every individual invoice looks perfectly healthy on its own.
+export interface ClientRevenueConcentrationRow {
+  clientName: string; revenue: number; revenueSharePercent: number; cumulativeSharePercent: number
+}
+export interface ClientRevenueConcentrationReport {
+  dateFrom: string; dateTo: string
+  rows: ClientRevenueConcentrationRow[]
+  summary: { totalRevenue: number; topClientSharePercent: number; top3SharePercent: number }
+}
+
+async function generateClientRevenueConcentrationReport(params: { dateFrom: string; dateTo: string }): Promise<ClientRevenueConcentrationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const invoices = await db.invoice.findMany({
+    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    select: { customerId: true, customer: { select: { customerName: true } }, totalAmount: true },
+  })
+
+  const byCustomer = new Map<string, { clientName: string; revenue: number }>()
+  for (const inv of invoices) {
+    if (!inv.customerId) continue
+    const existing = byCustomer.get(inv.customerId) ?? { clientName: inv.customer?.customerName ?? 'Unknown', revenue: 0 }
+    existing.revenue += inv.totalAmount
+    byCustomer.set(inv.customerId, existing)
+  }
+
+  const totalRevenue = roundCurrency(Array.from(byCustomer.values()).reduce((s, c) => s + c.revenue, 0))
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  let cumulative = 0
+  const rows: ClientRevenueConcentrationRow[] = Array.from(byCustomer.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .map((c) => {
+      const revenueSharePercent = totalRevenue > 0 ? round1((c.revenue / totalRevenue) * 100) : 0
+      cumulative += revenueSharePercent
+      return { clientName: c.clientName, revenue: roundCurrency(c.revenue), revenueSharePercent, cumulativeSharePercent: round1(cumulative) }
+    })
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalRevenue,
+      topClientSharePercent: rows[0]?.revenueSharePercent ?? 0,
+      top3SharePercent: round1(rows.slice(0, 3).reduce((s, r) => s + r.revenueSharePercent, 0)),
+    },
+  }
+}
+
 // ── Photo Studio — shoot bookings by type ──────────────────────────────────
 
 export interface ShootBookingReportRow {
@@ -7893,4 +8033,7 @@ export const reportService = {
   generateProjectStageProgressReport,
   generateSiteVisitBillingReport,
   generateMaterialTestResultsReport,
+  generateRetainerUtilizationReport,
+  generateProposalWinRateReport,
+  generateClientRevenueConcentrationReport,
 }

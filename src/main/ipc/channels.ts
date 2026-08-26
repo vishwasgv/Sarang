@@ -541,6 +541,12 @@ export interface IpcChannels {
     siteVisitBilling: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Civil Engineer item 5: Material Test Results.
     materialTestResults: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Independent Consultant item 1: Retainer Utilization.
+    retainerUtilization: () => Promise<ApiResponse>
+    // Phase 68 §9.1 — Independent Consultant item 3: Proposal Win Rate.
+    proposalWinRate: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — Independent Consultant item 4: Client Revenue Concentration.
+    clientRevenueConcentration: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
