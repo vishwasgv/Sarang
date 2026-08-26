@@ -27,5 +27,12 @@ export const UpdateROCFilingSchema = z.object({
 
 export const ROCFilingIdSchema = z.object({ id: z.string().min(1, 'Filing ID is required') })
 
+export const GenerateFilingsFromAGMSchema = z.object({
+  clientId: z.string().min(1, 'Client ID is required'),
+  agmDate: z.string().min(1, 'AGM date is required'),
+  financialYear: z.string().min(1, 'Financial year is required'),
+})
+
 export type CreateROCFilingPayload = z.infer<typeof CreateROCFilingSchema>
 export type UpdateROCFilingPayload = z.infer<typeof UpdateROCFilingSchema>
+export type GenerateFilingsFromAGMPayload = z.infer<typeof GenerateFilingsFromAGMSchema>

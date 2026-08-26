@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { parseLocalDateStart, parseLocalDateEnd, toLocalDateOnlyIso } from '../utils/date.util'
 
 // meetingDate/createdAt/updatedAt are Prisma DateTime fields, preserved as
 // real Date instances across IPC's structured clone — but ROCFilingsScreen.tsx's
@@ -7,10 +7,17 @@ import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 // assuming an ISO string. Same bug class as compliance-task.service.ts's
 // serializeTask / roc-filing.service.ts's serializeFiling — see those for
 // the full writeup.
+//
+// Real bug found live (2026-08-27 Phase 68 audit): this used a plain
+// `.toISOString()` instead of toLocalDateOnlyIso — meetingDate is stored at
+// LOCAL midnight (parseLocalDateStart below), which is 18:30 UTC the
+// PREVIOUS calendar day in IST, so `.slice(0, 10)` displayed every meeting
+// one day early. Same exact bug, same fix, as roc-filing.service.ts's own
+// serializeFiling (found and fixed in the same session, sibling file).
 function serializeMeeting<T extends { meetingDate: Date; createdAt: Date; updatedAt: Date }>(m: T): T {
   return {
     ...m,
-    meetingDate: m.meetingDate.toISOString() as unknown as Date,
+    meetingDate: toLocalDateOnlyIso(m.meetingDate) as unknown as Date,
     createdAt: m.createdAt.toISOString() as unknown as Date,
     updatedAt: m.updatedAt.toISOString() as unknown as Date,
   }
@@ -133,5 +140,52 @@ export async function deleteBoardMeeting(id: string) {
     return { success: true, data: { id } }
   } catch (err) {
     return { success: false, error: { code: 'BM29-004', message: err instanceof Error ? err.message : 'Could not delete board meeting.' } }
+  }
+}
+
+// Phase 68 §9.1 — Company Secretary item 3: board-meeting minutes cadence
+// reminder. Companies Act practice expects minutes finalized within 30 days
+// of the meeting; this is a worklist of meetings still marked
+// minutesDone=false past that window, worst (most-overdue) first — same
+// "chase" shape as CA Firm's getClientsWithStalePendingDocuments.
+const MINUTES_OVERDUE_DAYS = 30
+
+export interface OverdueMinutesRow {
+  meetingId: string
+  clientId: string
+  clientName: string
+  meetingType: string
+  meetingDate: string
+  daysOverdue: number
+}
+
+export async function getMeetingsWithOverdueMinutes(): Promise<
+  { success: true; data: OverdueMinutesRow[] } | { success: false; error: { code: string; message: string } }
+> {
+  try {
+    const db = getPrisma()
+    const meetings = await db.boardMeeting.findMany({
+      where: { minutesDone: false },
+      include: { client: { select: { id: true, customerName: true } } },
+      orderBy: { meetingDate: 'asc' },
+    })
+    const now = Date.now()
+    const rows: OverdueMinutesRow[] = meetings
+      .map((m) => {
+        const daysSinceMeeting = Math.floor((now - m.meetingDate.getTime()) / (24 * 60 * 60 * 1000))
+        return {
+          meetingId: m.id,
+          clientId: m.clientId,
+          clientName: m.client.customerName,
+          meetingType: m.meetingType,
+          meetingDate: toLocalDateOnlyIso(m.meetingDate),
+          daysOverdue: daysSinceMeeting - MINUTES_OVERDUE_DAYS,
+        }
+      })
+      .filter((r) => r.daysOverdue > 0)
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
+    return { success: true, data: rows }
+  } catch (err) {
+    return { success: false, error: { code: 'BM29-005', message: err instanceof Error ? err.message : 'Could not compute overdue minutes.' } }
   }
 }

@@ -1481,12 +1481,15 @@ export interface IpcChannels {
     update: (payload: { id: string; staffId?: string | null; formType?: string; financialYear?: string | null; purpose?: string | null; dueDate?: string | null; filedOn?: string | null; srn?: string | null; status?: string; govtFee?: number | null; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     complianceRollup: (payload: { financialYear: string }) => Promise<ApiResponse>
+    generateFromAGM: (payload: { clientId: string; agmDate: string; financialYear: string }) => Promise<ApiResponse>
+    completionSummary: (payload: { financialYear: string }) => Promise<ApiResponse>
   }
   boardMeeting: {
     list: (payload?: { clientId?: string; meetingType?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>
     create: (payload: { clientId: string; meetingType?: string; meetingDate: string; meetingTime?: string; venue?: string; agenda?: string; notes?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; meetingType?: string; meetingDate?: string; meetingTime?: string | null; venue?: string | null; agenda?: string | null; quorumMet?: boolean; minutesDone?: boolean; minutesText?: string | null; noticesSent?: boolean; notes?: string | null }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
+    overdueMinutes: () => Promise<ApiResponse>
   }
   boardResolution: {
     list: (payload: { boardMeetingId: string }) => Promise<ApiResponse>

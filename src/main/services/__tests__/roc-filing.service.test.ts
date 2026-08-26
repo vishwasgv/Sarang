@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { listROCFilings, createROCFiling, updateROCFiling, getComplianceRollup } from '../roc-filing.service'
+import { listROCFilings, createROCFiling, updateROCFiling, getComplianceRollup, generateFilingsFromAGM, getComplianceCompletionSummary } from '../roc-filing.service'
 
 // Regression coverage for the Phase 29 re-audit finding: ROCFiling.govtFee is
 // a Prisma Decimal field, returned unserialized by listROCFilings/
@@ -108,6 +108,24 @@ describe('roc-filing.service — Decimal serialization', () => {
     expect(typeof (res as { data: Array<{ govtFee: unknown }> }).data[0].govtFee).toBe('number')
   })
 
+  // Real bug found live (2026-08-27 Phase 68 audit): serializeFiling used a
+  // plain `.toISOString()` instead of toLocalDateOnlyIso (the fix every
+  // sibling service in this family already applies) — a dueDate stored at
+  // LOCAL midnight (Date(2026, 7, 15)) shifts to the PREVIOUS calendar day
+  // in UTC for any positive-offset timezone, so the renderer's own
+  // `.slice(0, 10)` displayed every due/filed date one day early in IST.
+  it('listROCFilings returns dueDate/filedOn on the correct LOCAL calendar day, not shifted back a day via UTC', async () => {
+    const db = makeMockDb(makeFiling({ dueDate: new Date(2026, 7, 15), filedOn: new Date(2026, 6, 2) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await listROCFilings({})
+
+    expect(res.success).toBe(true)
+    const row = (res as unknown as { data: Array<{ dueDate: string; filedOn: string }> }).data[0]
+    expect(row.dueDate.slice(0, 10)).toBe('2026-08-15')
+    expect(row.filedOn.slice(0, 10)).toBe('2026-07-02')
+  })
+
   it('updateROCFiling returns govtFee as a plain number', async () => {
     const db = makeMockDb(makeFiling())
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -183,7 +201,9 @@ describe('roc-filing.service.getComplianceRollup', () => {
   })
 
   it('reports agmHeld true with the real meeting date when an AGM board meeting exists in the FY window', async () => {
-    const agmDate = new Date('2026-08-15T00:00:00Z')
+    // A real BoardMeeting.meetingDate is stored at LOCAL midnight (via
+    // parseLocalDateStart), not UTC midnight — this fixture matches that.
+    const agmDate = new Date(2026, 7, 15)
     const db = makeRollupDb({
       filingClientIds: [],
       meetingClientIds: ['cust-1'],
@@ -198,7 +218,28 @@ describe('roc-filing.service.getComplianceRollup', () => {
     expect(res.success).toBe(true)
     const row = (res as { data: any[] }).data[0]
     expect(row.agmHeld).toBe(true)
-    expect(row.agmDate).toBe(agmDate.toISOString())
+    expect(row.agmDate).toBe('2026-08-15T00:00:00.000Z')
+  })
+
+  // Real bug found live (2026-08-27 Phase 68 audit): agmDate used to be a
+  // raw `agm.meetingDate.toISOString()` — for a real LOCAL-midnight-stored
+  // date, that shifts to the PREVIOUS calendar day in UTC for IST, so a
+  // renderer's `.slice(0, 10)` displayed the AGM one day early. Fixed to
+  // toLocalDateOnlyIso, matching serializeFiling/serializeMeeting's own fix.
+  it('agmDate reflects the correct LOCAL calendar day, not shifted back a day via UTC', async () => {
+    const db = makeRollupDb({
+      filingClientIds: [],
+      meetingClientIds: ['cust-1'],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Pvt Ltd' }],
+      filings: [],
+      agmMeetings: [{ clientId: 'cust-1', meetingDate: new Date(2026, 7, 15) }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceRollup('2025-26')
+
+    const row = (res as { data: any[] }).data[0]
+    expect((row.agmDate as string).slice(0, 10)).toBe('2026-08-15')
   })
 
   it('reports agmHeld false when no AGM meeting exists', async () => {
@@ -230,5 +271,125 @@ describe('roc-filing.service.getComplianceRollup', () => {
     const res = await getComplianceRollup('2025-26')
 
     expect((res as { data: any[] }).data.map((r) => r.clientName)).toEqual(['Alpha Ltd', 'Zed Ltd'])
+  })
+})
+
+// Phase 68 §9.1 — Company Secretary item 1: AGM-to-ROC-filing auto-calendar.
+
+function makeAGMDb(existingFormTypes: string[] = []) {
+  const db: Record<string, any> = {
+    rOCFiling: {
+      findMany: vi.fn().mockResolvedValue(existingFormTypes.map((formType) => ({ formType }))),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve(makeFiling({ id: `filing-${data.formType}`, ...data }))
+      ),
+    },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
+  }
+  return db
+}
+
+describe('roc-filing.service.generateFilingsFromAGM', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('creates AOC-4 (due +30d) and MGT-7 (due +60d) filings from the AGM date when neither exists', async () => {
+    const db = makeAGMDb([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateFilingsFromAGM({ clientId: 'cust-1', agmDate: '2026-08-15', financialYear: '2025-26' })
+
+    expect(res.success).toBe(true)
+    const created = (res as { data: any[] }).data
+    expect(created).toHaveLength(2)
+    const aoc4Call = db.rOCFiling.create.mock.calls.find((c: any[]) => c[0].data.formType === 'AOC-4')[0]
+    const mgt7Call = db.rOCFiling.create.mock.calls.find((c: any[]) => c[0].data.formType === 'MGT-7')[0]
+    expect(aoc4Call.data.dueDate).toEqual(new Date(2026, 8, 14))
+    expect(mgt7Call.data.dueDate).toEqual(new Date(2026, 9, 14))
+  })
+
+  it('is idempotent — skips a form type that already has a filing row for that client+FY', async () => {
+    const db = makeAGMDb(['AOC-4'])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateFilingsFromAGM({ clientId: 'cust-1', agmDate: '2026-08-15', financialYear: '2025-26' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: any[] }).data).toHaveLength(1)
+    expect(db.rOCFiling.create).toHaveBeenCalledTimes(1)
+    expect(db.rOCFiling.create.mock.calls[0][0].data.formType).toBe('MGT-7')
+  })
+
+  it('creates nothing and returns an empty array when both filings already exist', async () => {
+    const db = makeAGMDb(['AOC-4', 'MGT-7'])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateFilingsFromAGM({ clientId: 'cust-1', agmDate: '2026-08-15', financialYear: '2025-26' })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: any[] }).data).toHaveLength(0)
+    expect(db.rOCFiling.create).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 68 §9.1 — Company Secretary items 4/5: aggregate completion rate +
+// per-company health score, both derived from getComplianceRollup's rows.
+
+describe('roc-filing.service.getComplianceCompletionSummary', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('computes a 100% health score for a company with AGM held and all 3 filings FILED', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-1'],
+      meetingClientIds: ['cust-1'],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Ltd' }],
+      filings: [
+        { clientId: 'cust-1', formType: 'MGT-7', status: 'FILED' },
+        { clientId: 'cust-1', formType: 'AOC-4', status: 'FILED' },
+        { clientId: 'cust-1', formType: 'ADT-1', status: 'FILED' },
+      ],
+      agmMeetings: [{ clientId: 'cust-1', meetingDate: new Date(2026, 7, 15) }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceCompletionSummary('2025-26')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { rows: any[]; overallCompletionRatePercent: number } }).data
+    expect(data.rows[0].healthScorePercent).toBe(100)
+    expect(data.overallCompletionRatePercent).toBe(100)
+  })
+
+  it('computes a 0% health score for a company with no AGM and no filings done', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-1'],
+      meetingClientIds: [],
+      clients: [{ id: 'cust-1', customerName: 'Alpha Ltd' }],
+      filings: [],
+      agmMeetings: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceCompletionSummary('2025-26')
+
+    const data = (res as { data: { rows: any[]; overallCompletionRatePercent: number } }).data
+    expect(data.rows[0].healthScorePercent).toBe(0)
+    expect(data.overallCompletionRatePercent).toBe(0)
+  })
+
+  it('averages per-company scores into the overall completion rate across multiple companies', async () => {
+    const db = makeRollupDb({
+      filingClientIds: ['cust-a', 'cust-b'],
+      meetingClientIds: ['cust-a'],
+      clients: [{ id: 'cust-a', customerName: 'Alpha Ltd' }, { id: 'cust-b', customerName: 'Beta Ltd' }],
+      filings: [{ clientId: 'cust-a', formType: 'MGT-7', status: 'FILED' }],
+      agmMeetings: [{ clientId: 'cust-a', meetingDate: new Date(2026, 7, 15) }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getComplianceCompletionSummary('2025-26')
+
+    const data = (res as { data: { rows: any[]; overallCompletionRatePercent: number } }).data
+    // cust-a: agmHeld + mgt7 FILED = 2/4 = 50%. cust-b: 0/4 = 0%. avg = 25%.
+    expect(data.overallCompletionRatePercent).toBe(25)
   })
 })

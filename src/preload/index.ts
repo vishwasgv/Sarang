@@ -1261,12 +1261,15 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('rocFiling:update', p),
     delete: (p: unknown) => invoke('rocFiling:delete', p),
     complianceRollup: (p: unknown) => invoke('rocFiling:complianceRollup', p),
+    generateFromAGM: (p: unknown) => invoke('rocFiling:generateFromAGM', p),
+    completionSummary: (p: unknown) => invoke('rocFiling:completionSummary', p),
   },
   boardMeeting: {
     list: (p?: unknown) => invoke('boardMeeting:list', p),
     create: (p: unknown) => invoke('boardMeeting:create', p),
     update: (p: unknown) => invoke('boardMeeting:update', p),
     delete: (p: unknown) => invoke('boardMeeting:delete', p),
+    overdueMinutes: () => invoke('boardMeeting:overdueMinutes'),
   },
   boardResolution: {
     list: (p: unknown) => invoke('boardResolution:list', p),

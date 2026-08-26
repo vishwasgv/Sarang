@@ -73,6 +73,16 @@ interface ComplianceRollupRow {
   mgt7Status: string
   aoc4Status: string
   adt1Status: string
+  healthScorePercent: number
+}
+
+interface OverdueMinutesRow {
+  meetingId: string
+  clientId: string
+  clientName: string
+  meetingType: string
+  meetingDate: string
+  daysOverdue: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -190,7 +200,7 @@ function currentFinancialYear(): string {
 }
 
 export default function ROCFilingsScreen(): React.JSX.Element {
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess, info: toastInfo } = useNotificationStore()
   const [tab, setTab] = useState<'filings' | 'meetings' | 'rollup'>('filings')
 
   // ROC Filings state
@@ -254,10 +264,17 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   const [clients, setClients] = useState<Customer[]>([])
   const [staff, setStaff] = useState<Employee[]>([])
 
-  // Compliance rollup (Phase 58 §2) — per-company annual view
+  // Compliance rollup (Phase 58 §2) — per-company annual view. Phase 68 §9.1
+  // items 4/5: healthScorePercent per row + an overall completion rate,
+  // both derived from these same rows (getComplianceCompletionSummary).
   const [rollupFY, setRollupFY] = useState(currentFinancialYear())
   const [rollupRows, setRollupRows] = useState<ComplianceRollupRow[]>([])
+  const [rollupCompletionRate, setRollupCompletionRate] = useState(0)
   const [rollupLoading, setRollupLoading] = useState(false)
+  const [generatingAGMFilings, setGeneratingAGMFilings] = useState<string | null>(null)
+
+  // Phase 68 §9.1 item 3 — board-meeting minutes cadence reminder
+  const [overdueMinutes, setOverdueMinutes] = useState<OverdueMinutesRow[]>([])
 
   // Destructive-action confirmations — deleting a filed ROC record or board
   // meeting is a real loss of a legal-compliance history, not a routine undo.
@@ -331,9 +348,12 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   const loadRollup = useCallback(async (fy: string) => {
     setRollupLoading(true)
     try {
-      const res = await api.rocFiling.complianceRollup({ financialYear: fy })
-      if (res.success) setRollupRows(res.data as ComplianceRollupRow[])
-      else toastError('Error', res.error?.message ?? 'Could not load compliance rollup.')
+      const res = await api.rocFiling.completionSummary({ financialYear: fy })
+      if (res.success) {
+        const data = res.data as { rows: ComplianceRollupRow[]; overallCompletionRatePercent: number }
+        setRollupRows(data.rows)
+        setRollupCompletionRate(data.overallCompletionRatePercent)
+      } else toastError('Error', res.error?.message ?? 'Could not load compliance rollup.')
     } catch {
       toastError('Error', 'Could not load compliance rollup.')
     } finally {
@@ -341,12 +361,42 @@ export default function ROCFilingsScreen(): React.JSX.Element {
     }
   }, [toastError])
 
+  const loadOverdueMinutes = useCallback(async () => {
+    try {
+      const res = await api.boardMeeting.overdueMinutes()
+      if (res.success) setOverdueMinutes(res.data as OverdueMinutesRow[])
+    } catch {
+      // Non-critical banner — silently skip on failure, meetings list still loads.
+    }
+  }, [])
+
+  const generateFilingsFromAGM = useCallback(async (row: ComplianceRollupRow) => {
+    if (!row.agmDate) return
+    setGeneratingAGMFilings(row.clientId)
+    try {
+      const res = await api.rocFiling.generateFromAGM({ clientId: row.clientId, agmDate: row.agmDate.slice(0, 10), financialYear: rollupFY })
+      if (res.success) {
+        const created = res.data as unknown[]
+        if (created.length === 0) toastInfo('No new filings', 'AOC-4 and MGT-7 filings already exist for this client and financial year.')
+        else toastSuccess('Filings generated', `Created ${created.length} ROC filing deadline${created.length === 1 ? '' : 's'} from the AGM date.`)
+        void loadRollup(rollupFY)
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not auto-generate filings.')
+      }
+    } catch {
+      toastError('Error', 'Could not auto-generate filings.')
+    } finally {
+      setGeneratingAGMFilings(null)
+    }
+  }, [rollupFY, toastError, loadRollup])
+
   useEffect(() => {
     void loadFilings()
     void loadMeetings()
     void loadClients()
     void loadStaff()
-  }, [loadFilings, loadMeetings, loadClients, loadStaff])
+    void loadOverdueMinutes()
+  }, [loadFilings, loadMeetings, loadClients, loadStaff, loadOverdueMinutes])
 
   useEffect(() => {
     if (tab === 'rollup') void loadRollup(rollupFY)
@@ -487,8 +537,10 @@ export default function ROCFilingsScreen(): React.JSX.Element {
   async function toggleMeetingFlag(m: BoardMeeting, flag: 'quorumMet' | 'minutesDone' | 'noticesSent'): Promise<void> {
     try {
       const res = await api.boardMeeting.update({ id: m.id, [flag]: !m[flag] })
-      if (res.success) await loadMeetings()
-      else toastError('Error', res.error?.message ?? 'Could not update meeting.')
+      if (res.success) {
+        await loadMeetings()
+        if (flag === 'minutesDone') void loadOverdueMinutes()
+      } else toastError('Error', res.error?.message ?? 'Could not update meeting.')
     } catch {
       toastError('Error', 'Could not update meeting.')
     }
@@ -703,6 +755,20 @@ export default function ROCFilingsScreen(): React.JSX.Element {
       {/* ── Board Meetings Tab ───────────────────────────────────────────────── */}
       {tab === 'meetings' && (
         <>
+          {overdueMinutes.length > 0 && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-3">
+              <div className="text-xs font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wide mb-2">
+                Minutes overdue (30+ days, not yet finalized) — {overdueMinutes.length}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {overdueMinutes.slice(0, 8).map((r) => (
+                  <span key={r.meetingId} className="px-2.5 py-1 rounded-full text-xs bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300">
+                    {r.clientName} · {MEETING_TYPE_LABELS[r.meetingType] ?? r.meetingType} · {r.daysOverdue}d overdue
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="bg-white dark:bg-slate-900 border-b border-gray-200 px-6 py-3 flex items-center gap-3 flex-wrap dark:border-slate-700">
             <div className="relative flex-1 min-w-48">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
@@ -802,6 +868,11 @@ export default function ROCFilingsScreen(): React.JSX.Element {
             <label className="text-sm text-gray-600 dark:text-slate-400">Financial Year</label>
             <input type="text" value={rollupFY} onChange={(e) => setRollupFY(e.target.value)} placeholder="2025-26" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" style={{ minHeight: 44 }} />
             <button onClick={() => void loadRollup(rollupFY)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800" style={{ minHeight: 44 }}>Refresh</button>
+            {rollupRows.length > 0 && (
+              <span className="ms-auto text-sm text-gray-600 dark:text-slate-400">
+                Overall completion rate: <span className={cn('font-semibold', rollupCompletionRate >= 75 ? 'text-green-700 dark:text-green-400' : rollupCompletionRate >= 40 ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400')}>{rollupCompletionRate}%</span>
+              </span>
+            )}
           </div>
           <div className="flex-1 overflow-auto">
             {rollupLoading ? (
@@ -815,7 +886,7 @@ export default function ROCFilingsScreen(): React.JSX.Element {
               <table className="w-full text-sm">
                 <thead className="bg-white dark:bg-slate-900 border-b border-gray-200 sticky top-0 dark:border-slate-700">
                   <tr>
-                    {['Client', 'AGM Held', 'MGT-7', 'AOC-4', 'ADT-1'].map((h) => (
+                    {['Client', 'AGM Held', 'MGT-7', 'AOC-4', 'ADT-1', 'Health', ''].map((h) => (
                       <th key={h} className="text-start px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap dark:text-slate-400">{h}</th>
                     ))}
                   </tr>
@@ -838,6 +909,23 @@ export default function ROCFilingsScreen(): React.JSX.Element {
                           </Badge>
                         </td>
                       ))}
+                      <td className="px-4 py-3">
+                        <span className={cn('text-xs font-semibold', row.healthScorePercent >= 75 ? 'text-green-700 dark:text-green-400' : row.healthScorePercent >= 40 ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400')}>
+                          {row.healthScorePercent}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.agmHeld && (
+                          <button
+                            onClick={() => void generateFilingsFromAGM(row)}
+                            disabled={generatingAGMFilings === row.clientId}
+                            className="px-2.5 py-1.5 text-xs border border-teal-200 text-teal-700 rounded-lg hover:bg-teal-50 disabled:opacity-50 dark:border-teal-800 dark:text-teal-400 dark:hover:bg-teal-900/30"
+                            title="Auto-generate AOC-4/MGT-7 filing deadlines from the AGM date"
+                          >
+                            {generatingAGMFilings === row.clientId ? 'Generating...' : 'Generate Filings'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

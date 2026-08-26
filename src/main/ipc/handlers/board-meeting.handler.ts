@@ -4,6 +4,7 @@ import {
   createBoardMeeting,
   updateBoardMeeting,
   deleteBoardMeeting,
+  getMeetingsWithOverdueMinutes,
 } from '../../services/board-meeting.service'
 import { CreateBoardMeetingSchema, UpdateBoardMeetingSchema, BoardMeetingIdSchema } from '../../validation/board-meeting.validation'
 
@@ -35,5 +36,10 @@ export function register(handle: HandleFn): void {
     const parsed = BoardMeetingIdSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return deleteBoardMeeting(parsed.data.id)
+  })
+
+  handle('boardMeeting:overdueMinutes', async () => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return getMeetingsWithOverdueMinutes()
   })
 }
