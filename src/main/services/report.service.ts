@@ -7547,6 +7547,46 @@ async function generateLawyerBillableHoursReport(params: { dateFrom: string; dat
   }
 }
 
+// Phase 68 §9.1 — CA Firm item 4: Fee Realization. A live current-state
+// snapshot for THIS calendar month (no date-range param — "realization"
+// means "have we actually billed what we expected to bill this period,"
+// not a historical trend) across every ACTIVE, priced engagement.
+// Deliberately uses `lastInvoicedPeriod` (the same real, reliable claim key
+// generateEngagementInvoice's own atomic claim already relies on) rather
+// than trying to join back to Invoice via the truncated-cuid
+// `referenceNumber` string generateEngagementInvoice stamps on the invoice
+// — that field is a display/audit trail, never designed as a queryable
+// join key, and treating it as one would be fragile.
+export interface FeeRealizationRow { engagementTitle: string; clientName: string; expectedFee: number; isInvoicedThisPeriod: boolean }
+export interface FeeRealizationReport {
+  period: string
+  rows: FeeRealizationRow[]
+  summary: { totalExpectedFee: number; totalRealizedFee: number; realizationPercent: number }
+}
+
+async function generateFeeRealizationReport(): Promise<FeeRealizationReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  const engagements = await db.engagement.findMany({
+    where: { status: 'ACTIVE', feeAmount: { not: null } },
+    select: { title: true, feeAmount: true, lastInvoicedPeriod: true, client: { select: { customerName: true } } },
+  })
+
+  const rows: FeeRealizationRow[] = engagements.map((e) => ({
+    engagementTitle: e.title, clientName: e.client.customerName,
+    expectedFee: roundCurrency(Number(e.feeAmount)), isInvoicedThisPeriod: e.lastInvoicedPeriod === period,
+  })).sort((a, b) => Number(a.isInvoicedThisPeriod) - Number(b.isInvoicedThisPeriod))
+
+  const totalExpectedFee = roundCurrency(rows.reduce((s, r) => s + r.expectedFee, 0))
+  const totalRealizedFee = roundCurrency(rows.filter((r) => r.isInvoicedThisPeriod).reduce((s, r) => s + r.expectedFee, 0))
+  return {
+    period, rows,
+    summary: { totalExpectedFee, totalRealizedFee, realizationPercent: totalExpectedFee > 0 ? Math.round((totalRealizedFee / totalExpectedFee) * 1000) / 10 : 0 },
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7666,4 +7706,5 @@ export const reportService = {
   generateLearnerProgressFunnelReport,
   generateCaseAgingReport,
   generateLawyerBillableHoursReport,
+  generateFeeRealizationReport,
 }

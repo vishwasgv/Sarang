@@ -531,6 +531,8 @@ export interface IpcChannels {
     caseAging: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Lawyer item 2: Billable Hours.
     lawyerBillableHours: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — CA Firm item 4: Fee Realization.
+    feeRealization: () => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -1456,6 +1458,9 @@ export interface IpcChannels {
     seedStandard: (payload: { clientId: string }) => Promise<ApiResponse>
     update: (payload: { id: string; status?: string; notes?: string | null }) => Promise<ApiResponse>
     remove: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 68 §9.1 — CA Firm item 3: document-checklist auto-chase.
+    stale: (payload?: { staleDays?: number }) => Promise<ApiResponse>
+    chase: (payload: { clientId: string }) => Promise<ApiResponse>
   }
   complianceTask: {
     list: (payload?: { clientId?: string; staffId?: string; status?: string; category?: string; fromDate?: string; toDate?: string }) => Promise<ApiResponse>

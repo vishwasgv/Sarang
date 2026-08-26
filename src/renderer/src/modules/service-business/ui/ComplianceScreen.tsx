@@ -175,6 +175,10 @@ export default function ComplianceScreen(): React.JSX.Element {
   const [checklistSaving, setChecklistSaving] = useState(false)
   const [checklistError, setChecklistError] = useState('')
 
+  // Phase 68 §9.1 — CA Firm item 3: document-checklist auto-chase.
+  const [staleClients, setStaleClients] = useState<Array<{ clientId: string; clientName: string; phone: string | null; pendingLabels: string[]; oldestPendingDays: number }>>([])
+  const [chasingClientId, setChasingClientId] = useState<string | null>(null)
+
   const loadTasks = useCallback(async () => {
     setLoading(true)
     try {
@@ -219,12 +223,38 @@ export default function ComplianceScreen(): React.JSX.Element {
     } catch { /* form-dropdown data is supplementary */ }
   }, [])
 
+  // Phase 68 §9.1 — CA Firm item 3: document-checklist auto-chase.
+  const loadStaleClients = useCallback(async () => {
+    try {
+      const res = await api.clientDocumentChecklist.stale()
+      if (res.success && res.data) setStaleClients(res.data as typeof staleClients)
+    } catch { /* worklist banner is supplementary */ }
+  }, [])
+
+  async function handleChaseClient(clientId: string) {
+    setChasingClientId(clientId)
+    try {
+      const res = await api.clientDocumentChecklist.chase({ clientId })
+      if (res.success) {
+        const link = (res.data as { whatsappLink: string | null } | null)?.whatsappLink
+        if (link) window.open(link, '_blank')
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not send reminder.')
+      }
+    } catch {
+      toastError('Error', 'Could not send reminder.')
+    } finally {
+      setChasingClientId(null)
+    }
+  }
+
   useEffect(() => {
     void loadTasks()
     void loadClients()
     void loadStaff()
     void loadEvents()
-  }, [loadTasks, loadClients, loadStaff, loadEvents])
+    void loadStaleClients()
+  }, [loadTasks, loadClients, loadStaff, loadEvents, loadStaleClients])
 
   function openAddForm(): void {
     setEditTask(null)
@@ -487,6 +517,28 @@ export default function ComplianceScreen(): React.JSX.Element {
           <KpiCard label="Due in 7 Days" value={dueWeekCount} color="info" />
           <KpiCard label="Filed / Done" value={doneCount} color="success" />
         </div>
+
+        {/* Document-checklist auto-chase — Phase 68 §9.1 CA Firm item 3 */}
+        {staleClients.length > 0 && (
+          <div className="mt-4 border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              {staleClients.length} client{staleClients.length === 1 ? '' : 's'} have documents pending 7+ days — a nudge might help
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {staleClients.slice(0, 6).map((c) => (
+                <button
+                  key={c.clientId}
+                  onClick={() => handleChaseClient(c.clientId)}
+                  disabled={chasingClientId === c.clientId}
+                  className="text-xs bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 disabled:opacity-50"
+                  title={c.pendingLabels.join(', ')}
+                >
+                  {chasingClientId === c.clientId ? 'Sending...' : `${c.clientName} (${c.oldestPendingDays}d)`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

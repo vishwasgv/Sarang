@@ -227,6 +227,10 @@ interface CaseAgingReport { rows: CaseAgingRow[]; summary: { totalOpenCases: num
 interface LawyerBillableHoursRow { advocateName: string; billableHours: number; nonBillableHours: number; billableAmount: number; billedAmount: number; unbilledAmount: number }
 interface LawyerBillableHoursReport { dateFrom: string; dateTo: string; rows: LawyerBillableHoursRow[]; summary: { totalBillableHours: number; totalBillableAmount: number; totalUnbilledAmount: number } }
 
+// Phase 68 §9.1 — CA Firm item 4: Fee Realization.
+interface FeeRealizationRow { engagementTitle: string; clientName: string; expectedFee: number; isInvoicedThisPeriod: boolean }
+interface FeeRealizationReport { period: string; rows: FeeRealizationRow[]; summary: { totalExpectedFee: number; totalRealizedFee: number; realizationPercent: number } }
+
 interface HotelOccupancyReport { asOf: string; totalRooms: number; occupied: number; available: number; cleaning: number; maintenance: number; occupancyPercent: number }
 interface HotelGuestRegisterRow { bookingNumber: string; roomNumber: string; guestName: string; idType: string; idNumber: string; nationality: string; address: string | null; checkInDate: string; checkOutDate: string; actualCheckInAt: string | null; actualCheckOutAt: string | null }
 interface HotelGuestRegisterReport { rows: HotelGuestRegisterRow[] }
@@ -631,6 +635,8 @@ type ReportType =
   | 'learnerProgressFunnel'
   // Phase 68 §9.1 — Lawyer items 2 & 4
   | 'caseAging' | 'lawyerBillableHours'
+  // Phase 68 §9.1 — CA Firm item 4
+  | 'feeRealization'
 
 interface ReportDef {
   id: ReportType; label: string; description: string
@@ -838,6 +844,9 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'caseAging', icon: <Clock size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'legal_cases' },
   // Phase 68 §9.1 — Lawyer item 2.
   { id: 'lawyerBillableHours', icon: <Briefcase size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'legal_cases' },
+  // Phase 68 §9.1 — CA Firm item 4. Current-state snapshot for the current
+  // calendar month, no date range.
+  { id: 'feeRealization', icon: <TrendingUp size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'engagements' },
   // Phase 67 §9.1 — Distributor item 3: field-rep performance leaderboard.
   { id: 'fieldRepLeaderboard', icon: <Award size={18} />, category: 'distributor', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'DISTRIBUTOR' },
   // Phase 67 §9.1 item 19.2 — GP Clinic: % of chronic-condition recalls
@@ -1259,6 +1268,9 @@ export function ReportsScreen() {
           break
         case 'lawyerBillableHours':
           res = await window.api.reports.lawyerBillableHours({ dateFrom, dateTo })
+          break
+        case 'feeRealization':
+          res = await window.api.reports.feeRealization()
           break
         case 'serviceProjects':
           res = await window.api.reports.serviceProjects({ dateFrom, dateTo })
@@ -1994,6 +2006,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.advocate'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.billedAmount'), t('reports.col.unbilledAmount')],
           rows: d.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, r.billableAmount.toFixed(2), r.billedAmount.toFixed(2), r.unbilledAmount.toFixed(2)])
+        }
+      }
+      case 'feeRealization': {
+        const d = reportData as FeeRealizationReport
+        return {
+          headers: [t('reports.col.engagement'), t('reports.col.clientName'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.invoicedThisPeriod')],
+          rows: d.rows.map(r => [r.engagementTitle, r.clientName, r.expectedFee.toFixed(2), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])
         }
       }
       case 'serviceProjects': {
@@ -3608,6 +3627,7 @@ export function ReportsScreen() {
       case 'classAttendanceHeatmap': return []
       case 'learnerProgressFunnel': return []
       case 'caseAging': return []
+      case 'feeRealization': return []
       case 'lawyerBillableHours': {
         const d = reportData as LawyerBillableHoursReport
         if (d.rows.length === 0) return []
@@ -4122,6 +4142,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'learnerProgressFunnel': return <LearnerProgressFunnelView data={data as LearnerProgressFunnelReport} />
     case 'caseAging': return <CaseAgingView data={data as CaseAgingReport} />
     case 'lawyerBillableHours': return <LawyerBillableHoursView data={data as LawyerBillableHoursReport} fmt={fmt} />
+    case 'feeRealization': return <FeeRealizationView data={data as FeeRealizationReport} fmt={fmt} />
     case 'hotelOccupancy': return <HotelOccupancyView data={data as HotelOccupancyReport} />
     case 'hotelGuestRegister': return <HotelGuestRegisterView data={data as HotelGuestRegisterReport} />
     case 'appointmentUtilisation': return <AppointmentUtilisationView data={data as AppointmentUtilisationReport} />
@@ -5929,6 +5950,25 @@ function LawyerBillableHoursView({ data, fmt }: { data: LawyerBillableHoursRepor
         headers={[t('reports.col.advocate'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('common.amount'), t('reports.col.billedAmount'), t('reports.col.unbilledAmount')]}
         rows={data.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, fmt(r.billableAmount), fmt(r.billedAmount), fmt(r.unbilledAmount)])}
         emptyText={t('reports.empty.lawyerBillableHours')}
+      />
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — CA Firm item 4: Fee Realization.
+function FeeRealizationView({ data, fmt }: { data: FeeRealizationReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.expectedFee'), value: fmt(data.summary.totalExpectedFee) },
+        { label: t('reports.col.realizedFee'), value: fmt(data.summary.totalRealizedFee) },
+        { label: t('reports.col.realizationPercent'), value: `${data.summary.realizationPercent}%` },
+      ]} />
+      <DataTable
+        headers={[t('reports.col.engagement'), t('reports.col.clientName'), t('common.amount'), t('reports.col.invoicedThisPeriod')]}
+        rows={data.rows.map(r => [r.engagementTitle, r.clientName, fmt(r.expectedFee), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])}
+        emptyText={t('reports.empty.feeRealization')}
       />
     </div>
   )

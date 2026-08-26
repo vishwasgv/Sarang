@@ -436,6 +436,7 @@ const api: IpcChannels = {
     learnerProgressFunnel: () => invoke('reports:learnerProgressFunnel'),
     caseAging: () => invoke('reports:caseAging'),
     lawyerBillableHours: (p) => invoke('reports:lawyerBillableHours', p),
+    feeRealization: () => invoke('reports:feeRealization'),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -1238,6 +1239,8 @@ const api: IpcChannels = {
     seedStandard: (p: unknown) => invoke('clientDocumentChecklist:seedStandard', p),
     update: (p: unknown) => invoke('clientDocumentChecklist:update', p),
     remove: (p: unknown) => invoke('clientDocumentChecklist:remove', p),
+    stale: (p?: unknown) => invoke('clientDocumentChecklist:stale', p),
+    chase: (p: unknown) => invoke('clientDocumentChecklist:chase', p),
   },
   complianceTask: {
     list: (p?: unknown) => invoke('complianceTask:list', p),

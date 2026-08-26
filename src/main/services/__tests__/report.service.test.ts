@@ -7895,3 +7895,47 @@ describe('reportService.generateLawyerBillableHoursReport', () => {
     expect(result.summary).toEqual({ totalBillableHours: 0, totalBillableAmount: 0, totalUnbilledAmount: 0 })
   })
 })
+
+// Phase 68 §9.1 — CA Firm item 4: Fee Realization.
+describe('reportService.generateFeeRealizationReport', () => {
+  it('computes realizationPercent from engagements actually invoiced THIS period (lastInvoicedPeriod)', async () => {
+    const now = new Date()
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const db = {
+      engagement: {
+        findMany: vi.fn().mockResolvedValue([
+          { title: 'GST Retainer', feeAmount: 10000, lastInvoicedPeriod: currentPeriod, client: { customerName: 'Client A' } },
+          { title: 'Tax Audit', feeAmount: 5000, lastInvoicedPeriod: '2020-01', client: { customerName: 'Client B' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeRealizationReport()
+
+    expect(result.summary).toEqual({ totalExpectedFee: 15000, totalRealizedFee: 10000, realizationPercent: 66.7 })
+    expect(result.rows.find((r) => r.engagementTitle === 'GST Retainer')?.isInvoicedThisPeriod).toBe(true)
+    expect(result.rows.find((r) => r.engagementTitle === 'Tax Audit')?.isInvoicedThisPeriod).toBe(false)
+  })
+
+  it('only queries ACTIVE engagements with a real fee amount set', async () => {
+    const db = { engagement: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateFeeRealizationReport()
+
+    expect(db.engagement.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'ACTIVE', feeAmount: { not: null } },
+    }))
+  })
+
+  it('returns an honest empty result when there are no priced active engagements', async () => {
+    const db = { engagement: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFeeRealizationReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalExpectedFee: 0, totalRealizedFee: 0, realizationPercent: 0 })
+  })
+})

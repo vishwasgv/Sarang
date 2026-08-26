@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/test') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -36,15 +37,28 @@ function makeEngagement(overrides: Record<string, unknown> = {}) {
 }
 
 function makeMockDb(existing: ReturnType<typeof makeEngagement> | null = null) {
+  // Tracks the "current" row so findUnique (called separately by
+  // scheduleEngagementRenewalReminder to re-fetch with the client relation)
+  // sees whatever create/update most recently produced, not just the
+  // fixture this mock was originally seeded with.
+  let current = existing
+  const withClient = (row: ReturnType<typeof makeEngagement>) => ({ ...row, client: { id: row.clientId, customerName: 'Ramesh Sharma', phone: '9812340000' } })
   const db: Record<string, any> = {
     engagement: {
-      findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
-      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve(makeEngagement({ id: 'eng-new', ...data }))
-      ),
-      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve(makeEngagement({ ...existing, ...data }))
-      ),
+      findMany: vi.fn().mockImplementation(() => Promise.resolve(current ? [current] : [])),
+      findUnique: vi.fn().mockImplementation(() => Promise.resolve(current ? withClient(current) : null)),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+        current = makeEngagement({ id: 'eng-new', ...data })
+        return Promise.resolve(withClient(current))
+      }),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+        current = makeEngagement({ ...current, ...data })
+        return Promise.resolve(withClient(current))
+      }),
+    },
+    notificationQueue: {
+      create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
@@ -325,5 +339,72 @@ describe('engagement.service — deleteEngagement invoice guard', () => {
 
     expect(res.success).toBe(true)
     expect(db.engagement.delete).toHaveBeenCalledWith({ where: { id: 'eng-1' } })
+  })
+})
+
+// Phase 68 §9.1 — CA Firm item 5: engagement renewal reminder.
+describe('engagement.service — renewal reminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('schedules a real reminder when creating an engagement with a real endDate', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEngagement({ clientId: 'cust-1', title: 'Tax Audit FY26', endDate: '2027-06-01' })
+
+    expect(db.notificationQueue.create).toHaveBeenCalled()
+  })
+
+  it('does NOT schedule a reminder for an open-ended engagement (no endDate)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEngagement({ clientId: 'cust-1', title: 'GST Retainer' })
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
+  })
+
+  it('cancels the old reminder and schedules a fresh one when endDate is rescheduled', async () => {
+    const db = makeMockDb(makeEngagement({ endDate: new Date(2027, 5, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateEngagement({ id: 'eng-1', endDate: '2027-08-01' })
+
+    expect(db.notificationQueue.deleteMany).toHaveBeenCalled()
+    expect(db.notificationQueue.create).toHaveBeenCalled()
+  })
+
+  it('does not touch reminders when endDate is not part of the update at all', async () => {
+    const db = makeMockDb(makeEngagement({ endDate: new Date(2027, 5, 1) }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateEngagement({ id: 'eng-1', title: 'Renamed Engagement' })
+
+    expect(db.notificationQueue.deleteMany).not.toHaveBeenCalled()
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
+  })
+})
+
+// Phase 68 §9.1 — real bug found live: `new Date().toISOString().slice(0, 7)`
+// extracts the UTC year-month, which lags the real local one for the first
+// ~5.5 hours of a new month in IST — same bug class already documented
+// elsewhere in this codebase (report.service.ts's own UTC-slice bug note).
+describe('engagement.service — generateEngagementInvoice period computation', () => {
+  it('derives the default period from LOCAL year/month, not UTC', async () => {
+    const db = makeInvoiceMockDb(makeEngagementForInvoice({ lastInvoicedPeriod: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'invoice-1' } } as never)
+
+    // Pin "now" to a moment that would extract the WRONG month via a UTC slice
+    // in IST: local 2026-09-01 02:00 IST = UTC 2026-08-31 20:30.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 1, 2, 0, 0))
+    try {
+      const res = await generateEngagementInvoice('eng-1')
+      expect(res.success).toBe(true)
+      expect((res as { data: { period: string } }).data.period).toBe('2026-09')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

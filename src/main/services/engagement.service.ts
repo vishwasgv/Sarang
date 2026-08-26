@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { buildWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Engagement.feeAmount is a Prisma Decimal field — Electron's IPC (structured
@@ -22,6 +23,64 @@ function serializeEngagement<T extends { feeAmount: unknown; startDate: Date | n
     startDate: (e.startDate ? toLocalDateOnlyIso(e.startDate) : null) as unknown as Date,
     endDate: (e.endDate ? toLocalDateOnlyIso(e.endDate) : null) as unknown as Date,
   }
+}
+
+// Phase 68 §9.1 — CA Firm item 5: engagement renewal reminder. Only a
+// FIXED-TERM engagement (a real endDate set) has a renewal to remind about
+// — an open-ended RETAINER with no endDate simply keeps auto-invoicing
+// monthly via generateEngagementInvoice, nothing to renew. Mirrors
+// legal-case.service.ts's limitation-date reminder shape exactly
+// (cancel-old-then-schedule-new on any endDate change).
+async function cancelEngagementRenewalReminder(engagementId: string, oldEndDate: Date) {
+  try {
+    const db = getPrisma()
+    const engagement = await db.engagement.findUnique({ where: { id: engagementId }, select: { clientId: true } })
+    if (!engagement) return
+    const old30 = new Date(oldEndDate.getTime() - 30 * 86400000)
+    const old7 = new Date(oldEndDate.getTime() - 7 * 86400000)
+    await db.notificationQueue.deleteMany({
+      where: {
+        customerId: engagement.clientId,
+        notificationType: { in: ['ENGAGEMENT_RENEWAL_30D', 'ENGAGEMENT_RENEWAL_7D'] },
+        status: 'PENDING',
+        scheduledFor: { in: [old30, old7] },
+      },
+    })
+  } catch { /* non-critical — worst case a stale reminder from the old date remains */ }
+}
+
+async function scheduleEngagementRenewalReminder(engagementId: string, endDate: Date) {
+  try {
+    const db = getPrisma()
+    const engagement = await db.engagement.findUnique({
+      where: { id: engagementId },
+      include: { client: { select: { id: true, customerName: true, phone: true } } },
+    })
+    if (!engagement) return
+
+    const thirtyDaysBefore = new Date(endDate.getTime() - 30 * 86400000)
+    const sevenDaysBefore = new Date(endDate.getTime() - 7 * 86400000)
+    const now = new Date()
+    if (thirtyDaysBefore <= now && sevenDaysBefore <= now) return
+
+    const dateStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const phone = engagement.client.phone ?? ''
+
+    if (thirtyDaysBefore > now) {
+      const body30 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
+      const link30 = phone ? await buildWhatsAppLink(phone, body30) : null
+      await db.notificationQueue.create({
+        data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore },
+      })
+    }
+    if (sevenDaysBefore > now) {
+      const body7 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
+      const link7 = phone ? await buildWhatsAppLink(phone, body7) : null
+      await db.notificationQueue.create({
+        data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore },
+      })
+    }
+  } catch { /* non-critical — silently ignore reminder scheduling failures */ }
 }
 
 export async function listEngagements(filters?: {
@@ -90,6 +149,7 @@ export async function createEngagement(payload: {
       },
     })
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'Engagement', entityId: engagement.id, newValue: JSON.stringify({ title: engagement.title }) } }).catch(() => {})
+    if (engagement.endDate) await scheduleEngagementRenewalReminder(engagement.id, engagement.endDate)
     return { success: true, data: serializeEngagement(engagement) }
   } catch (err) {
     return { success: false, error: { code: 'EN29-002', message: err instanceof Error ? err.message : 'Could not create engagement.' } }
@@ -115,6 +175,15 @@ export async function updateEngagement(payload: {
     }
     const db = getPrisma()
     const { id, startDate, endDate, billingDay, ...rest } = payload
+
+    // Fetch the pre-update endDate so a change can cancel the reminder tied
+    // to the old date and schedule a fresh one for the new date — same
+    // reschedule-on-change discipline as legal-case.service.ts's
+    // limitation-date reminder.
+    const before = endDate !== undefined
+      ? await db.engagement.findUnique({ where: { id }, select: { endDate: true } })
+      : null
+
     const engagement = await db.engagement.update({
       where: { id },
       data: {
@@ -128,6 +197,17 @@ export async function updateEngagement(payload: {
         staff:  { select: { id: true, fullName: true } },
       },
     })
+
+    if (endDate !== undefined) {
+      const oldDate = before?.endDate ?? null
+      const newDate = engagement.endDate
+      const changed = (oldDate?.getTime() ?? null) !== (newDate?.getTime() ?? null)
+      if (changed) {
+        if (oldDate) await cancelEngagementRenewalReminder(engagement.id, oldDate)
+        if (newDate) await scheduleEngagementRenewalReminder(engagement.id, newDate)
+      }
+    }
+
     await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'Engagement', entityId: engagement.id } }).catch(() => {})
     return { success: true, data: serializeEngagement(engagement) }
   } catch (err) {
@@ -164,7 +244,14 @@ export async function deleteEngagement(id: string) {
 export async function generateEngagementInvoice(engagementId: string, period?: string) {
   const db = getPrisma()
   try {
-    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    // Real bug found live (2026-08-27 Phase 68 audit): `new Date().toISOString()
+    // .slice(0, 7)` extracts the UTC year-month, which lags the real local
+    // one for the first ~5.5 hours of a new month in IST (same bug class as
+    // report.service.ts's own documented UTC-slice bug). Same pattern also
+    // exists in retainer/pest-contract/service-contract.service.ts — flagged
+    // but out of scope for this vertical's own fix, not touched here.
+    const now = new Date()
+    const targetPeriod = period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const engagement = await db.engagement.findUnique({
       where: { id: engagementId },
       include: { client: { select: { id: true, customerName: true } } },

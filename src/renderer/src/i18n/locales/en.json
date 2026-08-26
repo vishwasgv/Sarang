@@ -1824,6 +1824,10 @@
         "label": "Billable Hours",
         "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
       },
+      "feeRealization": {
+        "label": "Fee Realization",
+        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+      },
       "hotelOccupancy": {
         "label": "Room Occupancy",
         "description": "Current room status breakdown and occupancy rate, right now"
@@ -2541,7 +2545,8 @@
       "membershipRenewalFunnel": "No memberships expired in this date range.",
       "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
       "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range."
+      "lawyerBillableHours": "No time entries logged against a case in this date range.",
+      "feeRealization": "No active, priced engagements right now."
     },
     "col": {
       "invoiceNumber": "Invoice Number",
@@ -2592,6 +2597,11 @@
       "advocate": "Advocate",
       "billedAmount": "Billed",
       "unbilledAmount": "Unbilled",
+      "engagement": "Engagement",
+      "expectedFee": "Expected Fee",
+      "realizedFee": "Realized Fee",
+      "realizationPercent": "Realization %",
+      "invoicedThisPeriod": "Invoiced This Period",
       "plannedStops": "Planned Stops",
       "hitRatePercent": "Hit-Rate vs. Plan",
       "invoiceNo": "Invoice #",

@@ -970,4 +970,11 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateLawyerBillableHoursReport(parsed.data)
     return { success: true, data }
   })
+
+  // Phase 68 §9.1 — CA Firm item 4: Fee Realization.
+  handle('reports:feeRealization', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateFeeRealizationReport()
+    return { success: true, data }
+  })
 }
